@@ -566,7 +566,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
     )
   }
 
-  def groups(g1: NonEmptyString, gs: NonEmptyString*): UniqueNonEmptyList[Group] = {
+  def groups(g1: String, gs: String*): UniqueNonEmptyList[Group] = {
     UniqueNonEmptyList.of(group(g1), gs.map(group): _*)
   }
 

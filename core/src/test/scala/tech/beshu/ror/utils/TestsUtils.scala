@@ -18,6 +18,7 @@ package tech.beshu.ror.utils
 
 import better.files.File
 import cats.data.NonEmptyList
+import com.softwaremill.sttp.Uri
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
@@ -48,6 +49,7 @@ import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
+import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -104,7 +106,9 @@ object TestsUtils {
     }
   }
 
-  def group(str: NonEmptyString): Group = Group.from(GroupId(str))
+  def group(str: String): Group = Group.from(GroupId(NonEmptyString.unsafeFrom(str)))
+
+  def group(id: String, name: String): Group = Group(GroupId(NonEmptyString.unsafeFrom(id)), GroupName(NonEmptyString.unsafeFrom(name)))
 
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
@@ -141,13 +145,15 @@ object TestsUtils {
 
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
+  def userId(str: NonEmptyString): User.Id = User.Id(str)
+
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
 
   def impersonatorDefFrom(userIdPattern: NonEmptyString,
                           impersonatorCredentials: Credentials,
                           impersonatedUsersIdPatterns: NonEmptyList[NonEmptyString]): ImpersonatorDef = {
     ImpersonatorDef(
-      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id(userIdPattern)))),
+      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userId(userIdPattern)))),
       new AuthKeyRule(
         BasicAuthenticationRule.Settings(impersonatorCredentials),
         CaseSensitivity.Enabled,
@@ -323,7 +329,7 @@ object TestsUtils {
   }
 
   def noGroupMappingFrom(value: String): GroupMappings =
-    GroupMappings.Simple(UniqueNonEmptyList.of(group(NonEmptyString.unsafeFrom(value))))
+    GroupMappings.Simple(UniqueNonEmptyList.of(group(value)))
 
   def groupMapping(mapping: Mapping, mappings: Mapping*): GroupMappings =
     GroupMappings.Advanced(UniqueNonEmptyList.of(mapping, mappings: _*))
@@ -337,6 +343,10 @@ object TestsUtils {
     case Right(v) => Token(v)
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Token")
   }
+
+  def jsonPathFrom(value: String): JsonPath = JsonPath(value).get
+
+  def uriFrom(value: String): Uri = Uri.parse(value).get
 
   implicit class NonEmptyListOps[T](val value: T) extends AnyVal {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)

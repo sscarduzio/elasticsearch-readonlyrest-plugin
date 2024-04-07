@@ -10,6 +10,6 @@
   },
   "response": {
     "status": 200,
-    "body": "{ \"sth\": \"unknown\", \"groups\": [ { \"name\": \"group4\" }, { \"name\": \"group5\" } ] }"
+    "body": "{ \"sth\": \"unknown\", \"groups\": [ { \"id\": \"group4\" }, { \"id\": \"group5\" } ] }"
   }
 }

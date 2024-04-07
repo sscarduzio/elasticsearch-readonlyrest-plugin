@@ -58,10 +58,10 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.Base64
@@ -164,7 +164,7 @@ object show {
     }
     implicit val ipShow: Show[Ip] = Show.show(_.value.toString())
     implicit val methodShow: Show[Method] = Show.show(_.m)
-    implicit val jsonPathShow: Show[JsonPath] = Show.show(_.getPath)
+    implicit val jsonPathShow: Show[JsonPath] = Show.show(_.rawPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val lemonUriShow: Show[LemonUri] = Show.show(_.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
@@ -197,7 +197,7 @@ object show {
     implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value.value)
     implicit val groupIdShow: Show[GroupId] = Show.show(_.value.value)
-    implicit val groupShow: Show[Group] = Show.show(_.id.show)
+    implicit val groupShow: Show[Group] = Show.show(group => s"(id=${group.id.show},name=${group.name.value.value})")
     implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
     implicit val jwtTokenShow: Show[Jwt.Token] = Show.show(_.value.value)
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value.value)
@@ -219,7 +219,7 @@ object show {
       Show.show { bc =>
         (showOption("user", bc.userMetadata.loggedUser) ::
           showOption("group", bc.userMetadata.currentGroupId) ::
-          showNamedIterable("av_groups", bc.userMetadata.availableGroups) ::
+          showNamedIterable("av_groups", bc.userMetadata.availableGroups.toList.map(_.id)) ::
           showNamedIterable("indices", bc.indices) ::
           showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
           showOption("fls", bc.fieldLevelSecurity) ::
@@ -253,7 +253,7 @@ object show {
     implicit val userMetadataShow: Show[UserMetadata] = Show.show { u =>
       (showOption("user", u.loggedUser) ::
         showOption("curr_group", u.currentGroupId) ::
-        showNamedIterable("av_groups", u.availableGroups) ::
+        showNamedIterable("av_groups", u.availableGroups.toList.map(_.id)) ::
         showOption("kibana_idx", u.kibanaIndex) ::
         showNamedIterable("hidden_apps", u.hiddenKibanaApps) ::
         showNamedIterable("allowed_api_paths", u.allowedKibanaApiPaths) ::

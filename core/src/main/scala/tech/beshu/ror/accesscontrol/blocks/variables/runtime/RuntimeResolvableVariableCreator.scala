@@ -26,16 +26,16 @@ import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token.Transformation
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator._
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
 import tech.beshu.ror.accesscontrol.blocks.variables.{Tokenizer, runtime}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
-import RuntimeResolvableVariableCreator._
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
+import tech.beshu.ror.utils.json.JsonPath
 
 import scala.util.matching.Regex
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCompiler) extends Logging {
 
@@ -136,7 +136,7 @@ class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCom
   }
 
   private def createJwtExtractable(jsonPathStr: String, maybeTransformation: Option[Function], `type`: ExtractableType): Either[CreationError, `type`.TYPE] = {
-    Try(JsonPath.compile(jsonPathStr)) match {
+    JsonPath(jsonPathStr) match {
       case Success(compiledPath) =>
         Right(`type`.createJwtVariableExtractable(compiledPath, maybeTransformation))
       case Failure(ex) =>

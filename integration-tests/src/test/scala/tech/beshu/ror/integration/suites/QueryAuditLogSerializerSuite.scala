@@ -72,8 +72,8 @@ class QueryAuditLogSerializerSuite
 
         result.responseJson.obj.size should be(4)
         result.responseJson("x-ror-username").str should be("user1-proxy-id")
-        result.responseJson("x-ror-current-group").str should be("group1")
-        result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group1")))
+        result.responseJson("x-ror-current-group").obj("id").str should be("group1")
+        result.responseJson("x-ror-available-groups").arr.map(_.obj("id")).toList should be(List(Str("group1")))
         result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex
 
         val auditEntries = auditIndexManager.getEntries.jsons

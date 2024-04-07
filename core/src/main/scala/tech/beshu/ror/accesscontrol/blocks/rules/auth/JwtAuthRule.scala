@@ -128,12 +128,16 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
                                     groups: Option[ClaimSearchResult[UniqueList[Group]]]): Unit = {
     (settings.jwt.userClaim, user) match {
       case (Some(userClaim), Some(u)) =>
-        logger.debug(s"JWT resolved user for claim ${userClaim.name.getPath}: ${u.show}")
+        logger.debug(s"JWT resolved user for claim ${userClaim.name.rawPath}: ${u.show}")
       case _ =>
     }
-    (settings.jwt.groupsClaim, groups) match {
-      case (Some(groupsClaim), Some(g)) =>
-        logger.debug(s"JWT resolved groups for claim ${groupsClaim.name.getPath}: ${g.show}")
+    (settings.jwt.groupsConfig, groups) match {
+      case (Some(groupsConfig), Some(g)) =>
+        val claimsDescription = groupsConfig.namesClaim match {
+          case Some(namesClaim) => s"claims (id:'${groupsConfig.idsClaim.name.show}',name:'${namesClaim.name.show}')"
+          case None => s"claim '${groupsConfig.idsClaim.name.show}'"
+        }
+        logger.debug(s"JWT resolved groups for $claimsDescription: ${g.show}")
       case _ =>
     }
   }
@@ -181,7 +185,9 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   }
 
   private def groupsFrom(payload: Jwt.Payload) = {
-    settings.jwt.groupsClaim.map(payload.claims.groupsClaim)
+    settings.jwt.groupsConfig.map(groupsConfig =>
+      payload.claims.groupsClaim(groupsConfig.idsClaim, groupsConfig.namesClaim)
+    )
   }
 
   private def handleUserClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,

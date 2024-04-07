@@ -21,8 +21,8 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps.StringOps
+import tech.beshu.ror.utils.json.JsonPath
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
@@ -89,17 +89,7 @@ final case class Token(value: NonEmptyString)
 final case class AuthorizationToken(value: NonEmptyString)
 
 object Jwt {
-  final case class ClaimName(name: JsonPath) {
-
-    override def equals(other: Any): Boolean = {
-      other match {
-        case that: ClaimName => that.name.getPath.equals(this.name.getPath)
-        case _ => false
-      }
-    }
-
-    override def hashCode: Int = name.getPath.hashCode
-  }
+  final case class ClaimName(name: JsonPath)
 
   final case class Token(value: NonEmptyString)
 

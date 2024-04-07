@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, bearerHeader, currentGroupHeader, group}
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
