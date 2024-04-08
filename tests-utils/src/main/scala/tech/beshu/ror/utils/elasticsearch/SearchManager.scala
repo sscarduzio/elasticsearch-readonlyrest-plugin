@@ -20,14 +20,13 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
+import tech.beshu.ror.utils.elasticsearch.SearchManager.*
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
 import ujson.Value
 
-import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
-import SearchManager._
 
 class SearchManager(client: RestClient,
                     esVersion: String,
@@ -110,7 +109,7 @@ class SearchManager(client: RestClient,
     request
   }
 
-  private def createSearchRequest(@nowarn("cat=unused") indexNames: List[String] = Nil,
+  private def createSearchRequest(indexNames: List[String] = Nil,
                                   customSize: Option[Int] = None,
                                   scroll: Option[FiniteDuration] = None) = {
     val queryParams = Map(

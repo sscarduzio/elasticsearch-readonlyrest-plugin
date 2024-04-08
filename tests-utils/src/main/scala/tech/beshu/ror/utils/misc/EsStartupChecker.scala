@@ -16,82 +16,89 @@
  */
 package tech.beshu.ror.utils.misc
 
-import cats.Id
-import cats.implicits._
+import cats.effect.Resource
+import cats.implicits.*
 import com.typesafe.scalalogging.LazyLogging
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import org.apache.http.client.methods.HttpGet
-import retry.RetryPolicies.{constantDelay, limitRetriesByCumulativeDelay}
-import retry.{RetryDetails, RetryPolicy, retrying}
 import tech.beshu.ror.utils.httpclient.HttpResponseHelper.deserializeJsonBody
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.EsStartupChecker.Mode
-import tech.beshu.ror.utils.misc.ScalaUtils._
+import tech.beshu.ror.utils.misc.EsStartupChecker.{ClusterNotReady, Mode}
 
-import scala.annotation.nowarn
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.Try
 
 class EsStartupChecker private(name: String,
                                client: RestClient,
                                mode: Mode)
-                              (implicit val startupTimeout: FiniteDuration)
   extends LazyLogging {
 
   def waitForStart(): Boolean = {
-    retry {
-      checkClusterHealth(client).fold(
-        throwable => {
-          logger.debug(s"[$name] Cannot check ES health: ${throwable.getLocalizedMessage}")
-          false
-        },
-        identity
-      )
+    retryBackoff(clusterIsReady(client), maxRetries = 30, interval = 2 seconds)
+      .map((_: Unit) => true)
+      .onErrorRecover(_ => false)
+      .runSyncUnsafe(2 minutes)
+  }
+
+  private def retryBackoff[A](source: Task[A],
+                              maxRetries: Int,
+                              interval: FiniteDuration): Task[A] = {
+    source.onErrorHandleWith {
+      case ex: Exception =>
+        if (maxRetries > 0)
+          retryBackoff(source, maxRetries - 1, interval).delayExecution(interval)
+        else
+          Task.raiseError(ex)
     }
   }
 
-  private def retry(checkClusterHealthAction: => Boolean)
-                   (implicit startupThreshold: FiniteDuration) = {
-    val policy: RetryPolicy[Id] = limitRetriesByCumulativeDelay(startupThreshold, constantDelay(2 seconds))
-    val predicate = (_: Boolean) == true
-
-    @nowarn("cat=unused")
-    def onFailure(failedValue: Boolean, details: RetryDetails): Unit = {
-      logger.debug(s"[$name] ES not ready yet. Retrying ...")
-    }
-
-    retrying(policy, predicate, onFailure) {
-      checkClusterHealthAction
-    }
-  }
-
-  private def checkClusterHealth(client: RestClient) = {
-    val clusterHealthRequest = new HttpGet(client.from("_cluster/health"))
-    Try(client.execute(clusterHealthRequest)).bracket { response =>
-      response.getStatusLine.getStatusCode match {
-        case 200 =>
-          mode match {
-            case Mode.GreenCluster =>
-              val healthJson = deserializeJsonBody(RestClient.bodyFrom(response))
-              "green" == healthJson.get("status")
-            case Mode.Accessible =>
-              true
+  private def clusterIsReady(client: RestClient): Task[Unit] = {
+    Resource
+      .make(
+        Task
+          .delay(client.execute(new HttpGet(client.from("_cluster/health"))))
+          .recoverWith { ex =>
+            logger.error(s"[$name] ES not ready yet, healthcheck failed")
+            Task.raiseError(ex)
           }
-        case _ =>
-          false
+      )(
+        response => Task.delay(response.close())
+      )
+      .use { response =>
+        response.getStatusLine.getStatusCode match {
+          case 200 =>
+            mode match {
+              case Mode.GreenCluster =>
+                val healthJson = deserializeJsonBody(RestClient.bodyFrom(response))
+                val healthStatus = healthJson.get("status")
+                if (healthStatus == "green") {
+                  logger.info(s"[$name] ES is ready")
+                  Task.unit
+                } else {
+                  logger.info(s"[$name] ES not ready yet, health status is $healthStatus")
+                  Task.raiseError(ClusterNotReady)
+                }
+              case Mode.Accessible =>
+                logger.info(s"[$name] ES is ready")
+                Task.unit
+            }
+          case otherStatus =>
+            logger.info(s"[$name] ES not ready yet, received HTTP $otherStatus")
+            Task.raiseError(ClusterNotReady)
+        }
       }
-    }
   }
 }
 
 object EsStartupChecker {
 
-  def greenEsClusterChecker(name: String, client: RestClient)
-                           (implicit startupTimeout: FiniteDuration): EsStartupChecker =
+  private case object ClusterNotReady extends Exception
+
+  def greenEsClusterChecker(name: String, client: RestClient): EsStartupChecker =
     new EsStartupChecker(name, client, Mode.GreenCluster)
 
-  def accessibleEsChecker(name: String, client: RestClient)
-                         (implicit startupTimeout: FiniteDuration): EsStartupChecker =
+  def accessibleEsChecker(name: String, client: RestClient): EsStartupChecker =
     new EsStartupChecker(name, client, Mode.Accessible)
 
   private sealed trait Mode

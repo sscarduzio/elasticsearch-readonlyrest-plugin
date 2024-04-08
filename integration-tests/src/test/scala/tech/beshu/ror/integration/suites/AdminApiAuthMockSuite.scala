@@ -17,14 +17,15 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import org.scalatest.concurrent.Eventually
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.BaseManyEsClustersIntegrationTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
-import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
@@ -35,7 +36,7 @@ import ujson.Value.Value
 
 import java.time.{Instant, ZoneOffset}
 import java.time.temporal.ChronoUnit
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class AdminApiAuthMockSuite
@@ -59,7 +60,7 @@ class AdminApiAuthMockSuite
     def esClusterSettingsCreator(securityType: SecurityType) =
       EsClusterSettings.create(
         clusterName = "ROR1",
-        numberOfInstances = 2,
+        numberOfInstances = positiveInt(2),
         securityType = securityType,
         nodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
         dependentServicesContainers = clusterDependencies
