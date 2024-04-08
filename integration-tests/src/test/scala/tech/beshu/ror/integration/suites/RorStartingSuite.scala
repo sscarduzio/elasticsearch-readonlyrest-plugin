@@ -24,11 +24,10 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.EsModule.isCurrentModuleNotExcluded
 import tech.beshu.ror.utils.misc.EsModulePatterns
 
 import scala.concurrent.duration._
@@ -180,16 +179,11 @@ private object RorStartingSuite extends EsModulePatterns {
         nodeSettings = EsNodeSettings(
           nodeName = nodeName,
           clusterName = clusterName,
-          securityType =
-            if (isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {
-              SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-                rorConfigFileName = rorConfigFile
-              ))
-            } else {
-              SecurityType.RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
-                rorConfigFileName = rorConfigFile
-              ))
-            },
+          securityType = SecurityType.RorWithXpackSecurity(
+            ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+              rorConfigFileName = rorConfigFile
+            )
+          ),
           containerSpecification = ContainerSpecification.empty.copy(
             additionalElasticsearchYamlEntries = additionalEsYamlEntries
           ),

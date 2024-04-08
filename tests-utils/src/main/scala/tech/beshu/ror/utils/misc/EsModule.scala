@@ -52,14 +52,8 @@ object EsModule {
 }
 
 trait EsModulePatterns {
-  val es60x = "^es60x$".r
   val allEs6x = "^es6\\dx$".r
-  val allEs6xBelowEs63x = "^es6[0-2]x$".r
-  val allEs6xBelowEs65x = "^es6[0-4]x$".r
-  val allEs6xBelowEs66x = "^es6[0-5]x$".r
-  val allEs6xExceptEs67x = "^es6(?!(?:7x)$)\\dx$".r
   val allEs7x = "^es7\\d+x$".r
-  val allEs7xExceptEs70x = "^es(?!(?:70x)$)7\\d+x$".r
   val allEs7xBelowEs74x = "^es7[0-3]x$".r
   val allEs7xBelowEs77x = "^es7[0-6]x$".r
   val allEs7xBelowEs78x = "^es7[0-7]x$".r

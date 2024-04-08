@@ -1,0 +1,16 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/groups",
+    "queryParameters": {
+      "user": {
+        "equalTo": "user7"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{ \"sth\": \"unknown\", \"groups\": [ { \"id\": \"service3_group1\", \"name\": \"Group 1\" }, { \"id\": \"service3_group2\", \"name\": \"Group 2\" } ] }"
+  }
+}

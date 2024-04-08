@@ -40,7 +40,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, GroupsFromUserAttribute, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
@@ -56,12 +56,12 @@ import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{B
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
-import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.KibanaUserDataRuleTogetherWith
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.Base64
@@ -164,7 +164,7 @@ object show {
     }
     implicit val ipShow: Show[Ip] = Show.show(_.value.toString())
     implicit val methodShow: Show[Method] = Show.show(_.m)
-    implicit val jsonPathShow: Show[JsonPath] = Show.show(_.getPath)
+    implicit val jsonPathShow: Show[JsonPath] = Show.show(_.rawPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val lemonUriShow: Show[LemonUri] = Show.show(_.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
@@ -197,7 +197,7 @@ object show {
     implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value.value)
     implicit val groupIdShow: Show[GroupId] = Show.show(_.value.value)
-    implicit val groupShow: Show[Group] = Show.show(_.id.show)
+    implicit val groupShow: Show[Group] = Show.show(group => s"(id=${group.id.show},name=${group.name.value.value})")
     implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
     implicit val jwtTokenShow: Show[Jwt.Token] = Show.show(_.value.value)
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value.value)
@@ -219,7 +219,7 @@ object show {
       Show.show { bc =>
         (showOption("user", bc.userMetadata.loggedUser) ::
           showOption("group", bc.userMetadata.currentGroupId) ::
-          showNamedIterable("av_groups", bc.userMetadata.availableGroups) ::
+          showNamedIterable("av_groups", bc.userMetadata.availableGroups.toList.map(_.id)) ::
           showNamedIterable("indices", bc.indices) ::
           showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
           showOption("fls", bc.fieldLevelSecurity) ::
@@ -253,7 +253,7 @@ object show {
     implicit val userMetadataShow: Show[UserMetadata] = Show.show { u =>
       (showOption("user", u.loggedUser) ::
         showOption("curr_group", u.currentGroupId) ::
-        showNamedIterable("av_groups", u.availableGroups) ::
+        showNamedIterable("av_groups", u.availableGroups.toList.map(_.id)) ::
         showOption("kibana_idx", u.kibanaIndex) ::
         showNamedIterable("hidden_apps", u.hiddenKibanaApps) ::
         showNamedIterable("allowed_api_paths", u.allowedKibanaApiPaths) ::
@@ -374,10 +374,16 @@ object show {
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
       case BlockValidationError.OnlyOneAuthenticationRuleAllowed(authRules) =>
         s"The '${block.show}' block should contain only one authentication rule, but contains: [${authRules.map(_.name.show).mkString_(",")}]"
-      case BlockValidationError.KibanaRuleTogetherWithActionsRule =>
-        s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule (or deprecated '${KibanaAccessRule.Name.name.show}' rule) and '${ActionsRule.Name.name.show}' rule. These two cannot be used together in one block."
       case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
         s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
+      case error: BlockValidationError.KibanaRuleTogetherWith =>
+        val conflictingRule = error match {
+          case KibanaRuleTogetherWith.ActionsRule => ActionsRule.Name.name
+          case KibanaRuleTogetherWith.FilterRule => FilterRule.Name.name
+          case KibanaRuleTogetherWith.FieldsRule => FieldsRule.Name.name
+          case KibanaRuleTogetherWith.ResponseFieldsRule => ResponseFieldsRule.Name.name
+        }
+        s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule (or any deprecated kibana-related rule) and '${conflictingRule.show}' rule. These two cannot be used together in one block."
       case error: BlockValidationError.KibanaUserDataRuleTogetherWith =>
         val conflictingRule = error match {
           case KibanaUserDataRuleTogetherWith.KibanaAccessRule => KibanaAccessRule.Name.name

@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroupIds}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.TestsUtils.group
+import tech.beshu.ror.utils.TestsUtils._
 
 class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
 

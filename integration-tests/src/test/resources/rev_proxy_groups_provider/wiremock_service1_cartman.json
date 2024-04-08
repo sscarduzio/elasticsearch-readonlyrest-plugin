@@ -11,6 +11,6 @@
   },
   "response": {
     "status": 200,
-    "body": "{ \"sth\": \"unknown\", \"groups\": [ { \"name\": \"group1\" }, { \"name\": \"group2\" } ] }"
+    "body": "{ \"sth\": \"unknown\", \"groups\": [ { \"id\": \"group1\" }, { \"id\": \"group2\" } ] }"
   }
 }

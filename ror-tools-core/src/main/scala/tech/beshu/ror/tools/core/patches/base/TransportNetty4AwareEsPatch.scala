@@ -17,6 +17,9 @@
 package tech.beshu.ror.tools.core.patches.base
 
 import just.semver.SemVer
+import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
+import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No
+import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No.Cause
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.FilePatchCreator
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, MultiFilePatch, RorPluginDirectory}
 
@@ -31,8 +34,12 @@ private [patches] abstract class TransportNetty4AwareEsPatch(rorPluginDirectory:
     filePatchCreators.map(_.create(rorPluginDirectory, esVersion)): _*
   )
 
-  override def isPatched: Boolean = {
-    rorPluginDirectory.doesBackupFolderExist && rorPluginDirectory.isTransportNetty4PresentInRorPluginPath
+  override def isPatched: IsPatched = {
+    if (rorPluginDirectory.doesBackupFolderExist && rorPluginDirectory.isTransportNetty4PresentInRorPluginPath) {
+      checkWithPatchedByFile(rorPluginDirectory)
+    } else {
+      No(Cause.NotPatchedAtAll)
+    }
   }
 
   override def backup(): Unit = {

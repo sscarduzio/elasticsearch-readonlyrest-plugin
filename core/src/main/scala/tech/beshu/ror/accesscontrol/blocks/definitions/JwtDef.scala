@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 import java.security.PublicKey
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Jwt}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 
@@ -27,7 +27,7 @@ final case class JwtDef(id: Name,
                         authorizationTokenDef: AuthorizationTokenDef,
                         checkMethod: SignatureCheckMethod,
                         userClaim: Option[Jwt.ClaimName],
-                        groupsClaim: Option[Jwt.ClaimName])
+                        groupsConfig: Option[GroupsConfig])
   extends Item {
 
   override type Id = Name
@@ -43,6 +43,8 @@ object JwtDef {
     final case class Rsa(pubKey: PublicKey) extends SignatureCheckMethod
     final case class Ec(pubKey: PublicKey) extends SignatureCheckMethod
   }
+
+  final case class GroupsConfig(idsClaim: Jwt.ClaimName, namesClaim: Option[Jwt.ClaimName])
 
   implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
   implicit val nameShow: Show[Name] = Show.show(_.value.value)

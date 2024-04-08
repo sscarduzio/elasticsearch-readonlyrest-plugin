@@ -21,8 +21,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
-import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
-import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, SecurityType}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -49,13 +49,8 @@ class ClusterApiSuite
     )
 
     createLocalClusterContainer(
-      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+      esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName
-        ))
-      ),
-      esOlderThan63ClusterSettings = esClusterSettingsCreator(
-        RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
           rorConfigFileName = rorConfigFileName
         ))
       )

@@ -19,9 +19,9 @@ package tech.beshu.ror.integration.suites
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
-import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
+import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.images.domain.Enabled
-import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, SecurityType}
 
 class AdminApiWithDefaultRorIndexSuite
@@ -41,14 +41,8 @@ class AdminApiWithDefaultRorIndexSuite
       )
 
     createLocalClusterContainer(
-      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+      esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName,
-          rorConfigReloading = Enabled.Yes(settingsReloadInterval)
-        ))
-      ),
-      esOlderThan63ClusterSettings = esClusterSettingsCreator(
-        RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
           rorConfigFileName = rorConfigFileName,
           rorConfigReloading = Enabled.Yes(settingsReloadInterval)
         ))
@@ -64,13 +58,8 @@ class AdminApiWithDefaultRorIndexSuite
       )
 
     createLocalClusterContainer(
-      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+      esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName
-        ))
-      ),
-      esOlderThan63ClusterSettings = esClusterSettingsCreator(
-        RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
           rorConfigFileName = rorConfigFileName
         ))
       )

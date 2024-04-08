@@ -17,13 +17,14 @@
 package tech.beshu.ror.tools.core.patches.internal
 
 import tech.beshu.ror.tools.core.patches.base.EsPatch
+import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 
 import scala.util.{Failure, Success, Try}
 
 private[patches] class EsPatchLoggingDecorator(underlying: EsPatch)
   extends EsPatch {
 
-  override def isPatched: Boolean = {
+  override def isPatched: IsPatched = {
     println("Checking if Elasticsearch is patched ...")
     underlying.isPatched
   }

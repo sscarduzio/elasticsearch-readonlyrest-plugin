@@ -45,7 +45,7 @@ class RemoteReindexSuite
     EsClusterSettings.create(
       clusterName = "ROR_SOURCE_ES",
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
-      esVersion = EsVersion.SpecificVersion("es60x"),
+      esVersion = EsVersion.SpecificVersion("es68x"),
       securityType = SecurityType.RorSecurity(
         ReadonlyRestPlugin.Config.Attributes.default.copy(
           rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName,
@@ -64,17 +64,9 @@ class RemoteReindexSuite
       securityType = securityType
     )
     createLocalClusterContainer(
-      esNewerOrEqual63ClusterSettings = clusterSettingsCreator {
+      clusterSettingsCreator {
         SecurityType.RorWithXpackSecurity(
           ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-            rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
-            restSsl = Enabled.No
-          )
-        )
-      },
-      esOlderThan63ClusterSettings =  clusterSettingsCreator {
-        SecurityType.RorSecurity(
-          ReadonlyRestPlugin.Config.Attributes.default.copy(
             rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
             restSsl = Enabled.No
           )

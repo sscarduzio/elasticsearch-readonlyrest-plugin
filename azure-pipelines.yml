@@ -108,6 +108,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es813x:
+              ROR_TASK: integration_es813x
             IT_es812x:
               ROR_TASK: integration_es812x
             IT_es811x:
@@ -160,8 +162,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es812x:
-              ROR_TASK: integration_es812x
+            IT_es813x:
+              ROR_TASK: integration_es813x
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
@@ -215,20 +217,8 @@ stages:
               ROR_TASK: integration_es72x
             IT_es70x:
               ROR_TASK: integration_es70x
-            IT_es67x:
-              ROR_TASK: integration_es67x
-            IT_es66x:
-              ROR_TASK: integration_es66x
-            IT_es65x:
-              ROR_TASK: integration_es65x
-            IT_es63x:
-              ROR_TASK: integration_es63x
-            IT_es62x:
-              ROR_TASK: integration_es62x
-            IT_es61x:
-              ROR_TASK: integration_es61x
-            IT_es60x:
-              ROR_TASK: integration_es60x
+            IT_es68x:
+              ROR_TASK: integration_es68x
       - job:
         condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         timeoutInMinutes: 120
@@ -262,10 +252,8 @@ stages:
               ROR_TASK: integration_es710x
             IT_es70x:
               ROR_TASK: integration_es70x
-            IT_es67x:
-              ROR_TASK: integration_es67x
-            IT_es60x:
-              ROR_TASK: integration_es60x
+            IT_es68x:
+              ROR_TASK: integration_es68x
 
   - stage: BUILD_ROR
     dependsOn:

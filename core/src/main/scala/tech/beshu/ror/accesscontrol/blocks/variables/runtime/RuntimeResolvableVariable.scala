@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.CustomClaimValue.{CollectionValue, SingleValue}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.json.JsonPath
 
 private[runtime] trait RuntimeResolvableVariable[VALUE] {
 

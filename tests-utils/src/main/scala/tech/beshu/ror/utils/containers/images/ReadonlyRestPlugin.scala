@@ -110,7 +110,7 @@ class ReadonlyRestPlugin(esVersion: String,
         .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
           command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch"
         )
-        .runWhen(Version.greaterOrEqualThan(esVersion, 6, 3, 0) && Version.lowerThan(esVersion, 7, 0, 0),
+        .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
           command = s"$$JAVA_HOME/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch"
         )
         .user("elasticsearch")

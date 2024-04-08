@@ -176,11 +176,9 @@ object LdapServicesDecoder {
     for {
       searchUserBaseDn <- c.downField("search_user_base_DN").as[Dn]
       userIdAttributeName <- c.downNonEmptyOptionalField("user_id_attribute")
-      // to be removed in the future (it's a safety-valve)
-      disableUserAuthenticationOptimization <- c.downField("disable_user_authentication_optimization").as[Option[Boolean]]
     } yield UserSearchFilterConfig(
       searchUserBaseDN = searchUserBaseDn,
-      userIdAttribute = userIdAttributeFrom(userIdAttributeName, disableUserAuthenticationOptimization)
+      userIdAttribute = userIdAttributeFrom(userIdAttributeName, disableUserAuthenticationOptimization = Some(true))
     )
   }
 
