@@ -92,8 +92,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             val ldapService = definitions.items.head
             ldapService shouldBe a[CacheableLdapServiceDecorator]
             val ldapServiceUnderlying = getUnderlyingFieldFromCacheableLdapServiceDecorator(ldapService.asInstanceOf[CacheableLdapServiceDecorator])
-            ldapServiceUnderlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-            ldapServiceUnderlying.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
+            ldapServiceUnderlying shouldBe a[CircuitBreakerLdapAuthServiceDecorator]
+            ldapServiceUnderlying.asInstanceOf[CircuitBreakerLdapAuthServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
             ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
@@ -127,8 +127,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             val ldapService = definitions.items.head
             ldapService shouldBe a[CacheableLdapServiceDecorator]
             val ldapServiceUnderlying = getUnderlyingFieldFromCacheableLdapServiceDecorator(ldapService.asInstanceOf[CacheableLdapServiceDecorator])
-            ldapServiceUnderlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-            ldapServiceUnderlying.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(3), Refined.unsafeApply(2 seconds))
+            ldapServiceUnderlying shouldBe a[CircuitBreakerLdapAuthServiceDecorator]
+            ldapServiceUnderlying.asInstanceOf[CircuitBreakerLdapAuthServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(3), Refined.unsafeApply(2 seconds))
             ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
@@ -459,8 +459,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             assertion = { definitions =>
               definitions.items should have size 1
               val ldapService = definitions.items.head
-              ldapService shouldBe a[CircuitBreakerLdapServiceDecorator]
-              ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe
+              ldapService shouldBe a[CircuitBreakerLdapAuthServiceDecorator]
+              ldapService.asInstanceOf[CircuitBreakerLdapAuthServiceDecorator].circuitBreakerConfig shouldBe
                 CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
               ldapService.id should be(LdapService.Name("ldap1"))
 
@@ -501,8 +501,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             assertion = { definitions =>
               definitions.items should have size 1
               val ldapService = definitions.items.head
-              ldapService shouldBe a[CircuitBreakerLdapServiceDecorator]
-              ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
+              ldapService shouldBe a[CircuitBreakerLdapAuthServiceDecorator]
+              ldapService.asInstanceOf[CircuitBreakerLdapAuthServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
               ldapService.id should be(LdapService.Name("ldap1"))
 
               val groupsSearchFilterConfig = getGroupsSearchFilterConfigFrom(

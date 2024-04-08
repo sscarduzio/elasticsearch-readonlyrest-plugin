@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.data.EitherT
 import cats.implicits._
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
@@ -28,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Sear
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser, LdapUsersService}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.utils.TaskOps._
@@ -38,7 +37,7 @@ import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
 
 class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
-                                                ldapUsersService: UnboundidLdapUsersService,
+                                                override val ldapUsersService: LdapUsersService,
                                                 connectionPool: UnboundidLdapConnectionPool,
                                                 groupsSearchFilter: UserGroupsSearchFilterConfig,
                                                 override val serviceTimeout: FiniteDuration Refined Positive)
@@ -166,21 +165,20 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
 
 object UnboundidLdapAuthorizationService {
   def create(id: LdapService#Id,
-             ldapUsersService: UnboundidLdapUsersService,
+             ldapUsersService: LdapUsersService,
              poolProvider: UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
              userGroupsSearchFilter: UserGroupsSearchFilterConfig)
             (implicit clock: Clock): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
-    (for {
-      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
-        .recoverWith {
-          case error: ConnectionError =>
-            if (connectionConfig.ignoreLdapConnectivityProblems)
-              EitherT.rightT(())
-            else
-              EitherT.leftT(error)
-        }
-      connectionPool <- EitherT.right[ConnectionError](poolProvider.connect(connectionConfig))
-    } yield new UnboundidLdapAuthorizationService(id, ldapUsersService, connectionPool, userGroupsSearchFilter, connectionConfig.requestTimeout)).value
+    UnboundidLdapConnectionPoolProvider
+      .connectWithOptionalBindingTest(poolProvider, connectionConfig)
+      .map(_.map(connectionPool =>
+        new UnboundidLdapAuthorizationService(
+          id = id,
+          ldapUsersService = ldapUsersService,
+          connectionPool = connectionPool,
+          groupsSearchFilter = userGroupsSearchFilter,
+          serviceTimeout = connectionConfig.requestTimeout)
+      ))
   }
 }

@@ -50,7 +50,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
                                                        user: LoggedUser,
                                                        permittedGroupIds: Set[GroupIdLike])
                                                       (implicit requestId: RequestId): Task[UniqueList[Group]] =
-    settings.service.grantsFor(user.id) // todo: filtering?
+    settings.service.grantsFor(user.id)
 
   override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)
                                        (implicit requestId: RequestId): Groups = {

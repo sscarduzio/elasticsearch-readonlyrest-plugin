@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
-import cats.{Eq, Show}
+import cats.implicits._
+import cats.{Eq, Order, Show}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
@@ -31,7 +32,9 @@ import scala.concurrent.duration.FiniteDuration
 
 sealed trait LdapService extends Item {
   override type Id = Name
+
   def id: Id
+
   def serviceTimeout: FiniteDuration Refined Positive
 
   override implicit def show: Show[Name] = Name.nameShow
@@ -50,14 +53,20 @@ trait LdapUsersService extends LdapService {
 }
 
 trait LdapAuthenticationService extends LdapService {
+  def ldapUsersService: LdapUsersService
+
   def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[Boolean]
 }
 
 trait LdapAuthorizationService extends LdapService {
+  def ldapUsersService: LdapUsersService
+
   def groupsOf(id: User.Id)(implicit requestId: RequestId): Task[UniqueList[Group]]
 }
 
 trait LdapAuthorizationServiceWithGroupsFiltering extends LdapService {
+  def ldapUsersService: LdapUsersService
+
   def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
               (implicit requestId: RequestId): Task[UniqueList[Group]]
 }
@@ -69,17 +78,20 @@ object LdapAuthorizationServiceWithGroupsFiltering {
 
     override def serviceTimeout: Refined[FiniteDuration, Positive] = service.serviceTimeout
 
+    override def ldapUsersService: LdapUsersService = service.ldapUsersService
+
     override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
-                         (implicit requestId: RequestId): Task[UniqueList[Group]] =
-      service.groupsOf(id)
+                         (implicit requestId: RequestId): Task[UniqueList[Group]] = service.groupsOf(id)
   }
 }
 
 trait LdapAuthService extends LdapAuthenticationService with LdapAuthorizationServiceWithGroupsFiltering
 
-class ComposedLdapAuthService(override val id: LdapService#Id,
-                              ldapAuthenticationService: LdapAuthenticationService,
-                              ldapAuthorizationService: LdapAuthorizationServiceWithGroupsFiltering)
+class ComposedLdapAuthService private(override val id: LdapService#Id,
+                                      override val ldapUsersService: LdapUsersService,
+                                      override val serviceTimeout: Refined[FiniteDuration, Positive],
+                                      ldapAuthenticationService: LdapAuthenticationService,
+                                      ldapAuthorizationService: LdapAuthorizationServiceWithGroupsFiltering)
   extends LdapAuthService {
 
   override def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
@@ -88,14 +100,37 @@ class ComposedLdapAuthService(override val id: LdapService#Id,
   override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] =
     ldapAuthorizationService.groupsOf(id, filteringGroupIds)
 
-  override val serviceTimeout: Refined[FiniteDuration, Positive] = {
-    val authnServiceTimeout = ldapAuthenticationService.serviceTimeout
-    val authzServiceTimeout = ldapAuthorizationService.serviceTimeout
-    if(authnServiceTimeout.value > authzServiceTimeout.value) authnServiceTimeout
-    else authzServiceTimeout
+}
+object ComposedLdapAuthService {
+  def create(ldapUsersService: LdapUsersService,
+             ldapAuthenticationService: LdapAuthenticationService,
+             ldapAuthorizationService: LdapAuthorizationServiceWithGroupsFiltering): Either[String, ComposedLdapAuthService] = {
+    for {
+      _ <- Either.cond(
+        test = allIdEqual(ldapUsersService, ldapAuthenticationService, ldapAuthorizationService),
+        right = (),
+        left = s"You cannot create ComposedLdapAuthService from services with different IDs: [${ldapUsersService.id.show}, ${ldapAuthenticationService.id.show}, ${ldapAuthorizationService.id.show}]"
+      )
+    } yield new ComposedLdapAuthService(
+      ldapUsersService.id,
+      ldapUsersService,
+      maxServiceTimeoutFrom(ldapUsersService, ldapAuthenticationService, ldapAuthorizationService),
+      ldapAuthenticationService,
+      ldapAuthorizationService
+    )
+  }
+
+  private def allIdEqual(ldapServices: LdapService*) = {
+    ldapServices.map(_.id).distinct.size == 1
+  }
+
+  private def maxServiceTimeoutFrom(ldapServices: LdapService*) = {
+    implicit val ordering: Ordering[FiniteDuration Refined Positive] = Order
+      .from[FiniteDuration Refined Positive] { case (a, b) => a.value.compare(b.value)}
+      .toOrdering
+    ldapServices.map(_.serviceTimeout).max
   }
 }
-
 
 final case class LdapUser(id: User.Id, dn: Dn, confirmed: Boolean)
 final case class Dn(value: NonEmptyString)

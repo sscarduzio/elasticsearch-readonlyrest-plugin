@@ -55,14 +55,10 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
     simpleLdapAuthenticationNameAndLocalConfig
       .orElse(complexLdapAuthenticationServiceNameAndLocalConfig)
       .toSyncDecoder
-      .emapE {
-        case (name, Some(ttl)) =>
-          LdapRulesDecodersHelper
-            .findLdapService[LdapAuthenticationService, LdapAuthenticationRule](ldapDefinitions.items, name)
-            .map(new CacheableLdapAuthenticationServiceDecorator(_, ttl))
-        case (name, None) =>
-          LdapRulesDecodersHelper
-            .findLdapService[LdapAuthenticationService, LdapAuthenticationRule](ldapDefinitions.items, name)
+      .emapE { case (name, ttl) =>
+        LdapRulesDecodersHelper
+          .findLdapService[LdapAuthenticationService, LdapAuthenticationRule](ldapDefinitions.items, name)
+          .map(CacheableLdapAuthenticationServiceDecorator.create(_, ttl))
       }
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
       .map(service => RuleDefinition.create(
@@ -140,12 +136,7 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                           groupsLogic: GroupsLogic,
                                           ldapDefinitions: Definitions[LdapService]): Either[CoreCreationError, LdapAuthorizationRule.Settings] = {
     findLdapService[LdapAuthorizationServiceWithGroupsFiltering, LdapAuthorizationRule](ldapDefinitions.items, name)
-      .map(svc => {
-        ttl match {
-          case Some(ttlValue) => new CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator(svc, ttlValue)
-          case _ => svc
-        }
-      })
+      .map(svc => CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator.create(svc, ttl))
       .map(service => new LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(service))
       .map(LdapAuthorizationRule.Settings(_, groupsLogic))
   }
@@ -197,12 +188,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                  mocksProvider: MocksProvider,
                                  userIdCaseSensitivity: CaseSensitivity) = {
     findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
-      .map(svc => {
-        ttl match {
-          case Some(ttlValue) => new CacheableLdapServiceDecorator(svc, ttlValue)
-          case _ => svc
-        }
-      })
+      .map(svc => CacheableLdapServiceDecorator.create(svc, ttl))
       .map(new LoggableLdapServiceDecorator(_))
       .map(ldapService => {
         new LdapAuthRule(

@@ -58,7 +58,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapAuthServiceDecorator]
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
           }
         )
@@ -88,7 +88,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapAuthServiceDecorator]
             rule.settings.permittedGroupsLogic should be (GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
             rule.settings.permittedGroupsLogic.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
           }
@@ -119,7 +119,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapAuthServiceDecorator]
             rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
             )))

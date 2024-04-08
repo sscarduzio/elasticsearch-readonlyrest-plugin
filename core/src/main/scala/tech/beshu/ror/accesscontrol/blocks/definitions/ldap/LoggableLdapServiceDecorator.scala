@@ -35,8 +35,6 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
   extends LdapAuthenticationService
     with Logging {
 
-  override def id: LdapService.Name = underlying.id
-
   override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
     logger.debug(s"[${requestId.show}] Trying to authenticate user [${user.show}] with LDAP [${id.show}]")
     underlying
@@ -49,14 +47,16 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
       }
   }
 
+  override val ldapUsersService: LdapUsersService = new LoggableLdapUsersServiceDecorator(underlying.ldapUsersService)
+
+  override def id: LdapService.Name = underlying.id
+
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizationService)
   extends LdapAuthorizationService
     with Logging {
-
-  override def id: LdapService.Name = underlying.id
 
   override def groupsOf(userId: User.Id)
                        (implicit requestId: RequestId): Task[UniqueList[Group]] = {
@@ -71,14 +71,16 @@ class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizatio
       }
   }
 
+  override val ldapUsersService: LdapUsersService = new LoggableLdapUsersServiceDecorator(underlying.ldapUsersService)
+
+  override def id: LdapService.Name = underlying.id
+
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 class LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(val underlying: LdapAuthorizationServiceWithGroupsFiltering)
   extends LdapAuthorizationServiceWithGroupsFiltering
     with Logging {
-
-  override def id: LdapService.Name = underlying.id
 
   override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])
                        (implicit requestId: RequestId): Task[UniqueList[Group]] = {
@@ -93,7 +95,12 @@ class LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(val underlyin
       }
   }
 
+  override val ldapUsersService: LdapUsersService = new LoggableLdapUsersServiceDecorator(underlying.ldapUsersService)
+
+  override def id: LdapService.Name = underlying.id
+
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+
 }
 
 class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
@@ -102,22 +109,23 @@ class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
   private val loggableLdapAuthenticationService = new LoggableLdapAuthenticationServiceDecorator(underlying)
   private val loggableLdapAuthorizationService = new LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(underlying)
 
-  override def id: LdapService.Name = underlying.id
-
   override def authenticate(userId: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
     loggableLdapAuthenticationService.authenticate(userId, secret)
 
   override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] =
     loggableLdapAuthorizationService.groupsOf(userId, filteringGroupIds)
 
+  override val ldapUsersService: LdapUsersService = new LoggableLdapUsersServiceDecorator(underlying.ldapUsersService)
+
+  override def id: LdapService.Name = underlying.id
+
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+
 }
 
 private class LoggableLdapUsersServiceDecorator(underlying: LdapUsersService)
   extends LdapUsersService
     with Logging {
-
-  override def id: LdapService.Name = underlying.id
 
   override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] = {
     logger.debug(s"[${requestId.show}] Trying to fetch user with identifier [${userId.show}] from LDAP [${id.show}]")
@@ -133,6 +141,8 @@ private class LoggableLdapUsersServiceDecorator(underlying: LdapUsersService)
           logger.debug(s"[${requestId.show}] Fetching LDAP user failed:", ex)
       }
   }
+
+  override def id: LdapService.Name = underlying.id
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }

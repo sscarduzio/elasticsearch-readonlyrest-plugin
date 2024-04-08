@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.data.EitherT
 import cats.implicits.toShow
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
@@ -98,17 +97,16 @@ object UnboundidLdapUsersService {
              poolProvider: UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
              userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapUsersService]] = {
-    (for {
-      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
-        .recoverWith {
-          case error: ConnectionError =>
-            if (connectionConfig.ignoreLdapConnectivityProblems)
-              EitherT.rightT(())
-            else
-              EitherT.leftT(error)
-        }
-      connectionPool <- EitherT.right[ConnectionError](poolProvider.connect(connectionConfig))
-    } yield new UnboundidLdapUsersService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
+    UnboundidLdapConnectionPoolProvider
+      .connectWithOptionalBindingTest(poolProvider, connectionConfig)
+      .map(_.map(connectionPool =>
+        new UnboundidLdapUsersService(
+          id = id,
+          connectionPool = connectionPool,
+          userSearchFiler = userSearchFiler,
+          serviceTimeout = connectionConfig.requestTimeout
+        )
+      ))
   }
 }
 
