@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.misc
 
+import cats.effect.Resource
 import cats.implicits.*
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
@@ -53,14 +54,19 @@ class EsStartupChecker private(name: String,
   }
 
   private def clusterIsReady(client: RestClient): Task[Unit] = {
-    Task
-      .delay(client.execute(new HttpGet(client.from("_cluster/health"))))
-      .recoverWith { ex =>
-        logger.error(s"[$name] ES not ready yet, healthcheck failed")
-        Task.raiseError(ex)
-      }
-      .flatMap { response =>
-        val result = response.getStatusLine.getStatusCode match {
+    Resource
+      .make(
+        Task
+          .delay(client.execute(new HttpGet(client.from("_cluster/health"))))
+          .recoverWith { ex =>
+            logger.error(s"[$name] ES not ready yet, healthcheck failed")
+            Task.raiseError(ex)
+          }
+      )(
+        response => Task.delay(response.close())
+      )
+      .use { response =>
+        response.getStatusLine.getStatusCode match {
           case 200 =>
             mode match {
               case Mode.GreenCluster =>
@@ -81,8 +87,6 @@ class EsStartupChecker private(name: String,
             logger.info(s"[$name] ES not ready yet, received HTTP $otherStatus")
             Task.raiseError(ClusterNotReady)
         }
-        response.close()
-        result
       }
   }
 }
