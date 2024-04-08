@@ -30,21 +30,19 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.doma
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationServiceWithGroupsFiltering, LdapService, LdapUser, LdapUsersService}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
-import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
 
-// todo: DRY
-class UnboundidLdapAuthorizationServiceWithGroupsFiltering private(override val id: LdapService#Id,
-                                                                   override val ldapUsersService: LdapUsersService,
-                                                                   connectionPool: UnboundidLdapConnectionPool,
-                                                                   groupsSearchFilter: DefaultGroupSearch,
-                                                                   nestedGroupsConfig: Option[NestedGroupsConfig],
-                                                                   override val serviceTimeout: FiniteDuration Refined Positive)
-                                                                  (implicit clock: Clock)
+class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering private(override val id: LdapService#Id,
+                                                                                               override val ldapUsersService: LdapUsersService,
+                                                                                               connectionPool: UnboundidLdapConnectionPool,
+                                                                                               groupsSearchFilter: DefaultGroupSearch,
+                                                                                               nestedGroupsConfig: Option[NestedGroupsConfig],
+                                                                                               override val serviceTimeout: FiniteDuration Refined Positive)
+                                                                                              (implicit clock: Clock)
   extends LdapAuthorizationServiceWithGroupsFiltering with Logging {
 
   private val nestedGroupsService = nestedGroupsConfig
@@ -65,10 +63,8 @@ class UnboundidLdapAuthorizationServiceWithGroupsFiltering private(override val 
     ldapUsersService
       .ldapUserBy(id)
       .flatMap {
-        case Some(user) =>
-          groupsFrom(groupsSearchFilter, user, filteringGroupIds)
-        case None =>
-          Task.now(UniqueList.empty)
+        case Some(user) => groupsFrom(groupsSearchFilter, user, filteringGroupIds)
+        case None => Task.now(UniqueList.empty)
       }
   }
 
@@ -92,9 +88,6 @@ class UnboundidLdapAuthorizationServiceWithGroupsFiltering private(override val 
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .map(asGroups)
-      .onError { case ex =>
-        Task(logger.errorEx(s"[${requestId.show}] LDAP getting user groups returned error", ex))
-      }
   }
 
   private def searchUserGroupsLdapRequest(listener: AsyncSearchResultListener,
@@ -131,7 +124,7 @@ class UnboundidLdapAuthorizationServiceWithGroupsFiltering private(override val 
   }
 
   private def enrichWithNestedGroupsIfNecessary(mainGroups: Set[LdapGroup])
-                                               (implicit requestId: RequestId)= {
+                                               (implicit requestId: RequestId) = {
     nestedGroupsService match {
       case Some(service) => service.fetchNestedGroupsOf(mainGroups).map(_ ++ mainGroups)
       case None => Task.delay(mainGroups)
@@ -143,18 +136,18 @@ class UnboundidLdapAuthorizationServiceWithGroupsFiltering private(override val 
   }
 }
 
-object UnboundidLdapAuthorizationServiceWithGroupsFiltering {
+object UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering {
   def create(id: LdapService#Id,
              ldapUsersService: LdapUsersService,
              poolProvider: UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
              groupsSearchFilter: DefaultGroupSearch,
              nestedGroupsConfig: Option[NestedGroupsConfig])
-            (implicit clock: Clock): Task[Either[ConnectionError, UnboundidLdapAuthorizationServiceWithGroupsFiltering]] = {
+            (implicit clock: Clock): Task[Either[ConnectionError, LdapAuthorizationServiceWithGroupsFiltering]] = {
     UnboundidLdapConnectionPoolProvider
       .connectWithOptionalBindingTest(poolProvider, connectionConfig)
       .map(_.map(connectionPool =>
-        new UnboundidLdapAuthorizationServiceWithGroupsFiltering(
+        new UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering(
           id = id,
           ldapUsersService = ldapUsersService,
           connectionPool = connectionPool,
@@ -164,4 +157,5 @@ object UnboundidLdapAuthorizationServiceWithGroupsFiltering {
         )
       ))
   }
+
 }

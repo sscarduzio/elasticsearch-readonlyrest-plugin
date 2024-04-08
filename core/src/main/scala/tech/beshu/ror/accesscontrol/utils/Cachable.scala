@@ -55,13 +55,7 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
   def call(key: K)(implicit requestId: RequestId): Task[V] = {
     val mappedKey = keyMap(key)
     for {
-      _ <- Task.delay {
-        logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - started")
-      }
       semaphore <- semaphoreOf(mappedKey)
-      _ <- Task.delay {
-        logger.trace(s"[${requestId.show}]  CACHEABLE ${this.hashCode()}: call key: $mappedKey - semaphore acquired")
-      }
       cachedValue <- semaphore.withPermit {
         getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
       }
@@ -70,28 +64,17 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
 
   private def getFromCacheOrRunAction(key: K, mappedKey: K1)(implicit requestId: RequestId): Task[V] = {
     for {
-      _ <- Task.delay {
-        logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - permit acquired")
-      }
       cachedValue <- Task.delay(cache.getIfPresent(mappedKey))
       result <- cachedValue match {
         case Some(value) =>
-          logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - use cached value")
           Task.now(value)
         case None =>
-          logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - call action")
           action(key, requestId)
             .flatMap { value =>
               Task
-                .delay {
-                  logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - cache value: $value")
-                  cache.put(mappedKey, value)
-                }
+                .delay { cache.put(mappedKey, value) }
                 .map(_ => value)
             }
-      }
-      _ <- Task.delay {
-        logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - done: value: $result")
       }
     } yield result
   }
@@ -99,7 +82,6 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
   private def onRemoveHook(mappedKey: K1,
                            @nowarn("cat=unused") value: V,
                            @nowarn("cat=unused") cause: RemovalCause): Unit = {
-    logger.trace(s"CACHEABLE ${this.hashCode()}: call key: $mappedKey - remove $cause")
     keySemaphoresMap.remove(mappedKey)
   }
 

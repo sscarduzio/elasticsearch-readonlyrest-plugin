@@ -61,7 +61,7 @@ class UnboundidLdapConnectionPoolProvider {
   private def createConnectionPool(connectionConfig: LdapConnectionConfig): Task[UnboundidLdapConnectionPool] = retry {
     Task
       .delay(createLdapConnectionPoolFrom(connectionConfig))
-      .map(new UnboundidLdapConnectionPool(connectionConfig.poolName, _, connectionConfig.bindRequestUser))
+      .map(new UnboundidLdapConnectionPool(_, connectionConfig.bindRequestUser))
   }
 
   private def createLdapConnectionPoolFrom(connectionConfig: LdapConnectionConfig) = {

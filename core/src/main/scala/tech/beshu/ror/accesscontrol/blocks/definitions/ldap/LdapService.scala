@@ -72,7 +72,7 @@ trait LdapAuthorizationServiceWithGroupsFiltering extends LdapService {
 }
 object LdapAuthorizationServiceWithGroupsFiltering {
 
-  final class NoOpLdapAuthorizationServiceAdapter(service: LdapAuthorizationService)
+  final class NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter(service: LdapAuthorizationService)
     extends LdapAuthorizationServiceWithGroupsFiltering {
     override def id: Name = service.id
 

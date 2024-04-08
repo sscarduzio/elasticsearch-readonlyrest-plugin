@@ -27,7 +27,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationServiceWithGroupsFiltering.NoOpLdapAuthorizationServiceAdapter
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationServiceWithGroupsFiltering.NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
@@ -194,15 +194,31 @@ object LdapServicesDecoder {
           name <- c.downField("name").as[LdapService.Name]
           connectionConfig <- connectionConfigDecoder(c)
           userGroupsSearchFilter <- userGroupsSearchFilterConfigDecoder(c)
-        } yield UnboundidLdapAuthorizationService
-          .create(
-            name,
-            ldapUsersService,
-            ldapConnectionPoolProvider,
-            connectionConfig,
-            userGroupsSearchFilter
-          )
-          .map(_.map(new NoOpLdapAuthorizationServiceAdapter(_)))
+        } yield {
+          userGroupsSearchFilter.mode match {
+            case groupSearch: DefaultGroupSearch =>
+              UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering
+                .create(
+                  name,
+                  ldapUsersService,
+                  ldapConnectionPoolProvider,
+                  connectionConfig,
+                  groupSearch,
+                  userGroupsSearchFilter.nestedGroupsConfig
+                )
+            case groupSearch: GroupsFromUserEntry =>
+              UnboundidLdapGroupsFromUserEntryAuthorizationService
+                .create(
+                  name,
+                  ldapUsersService,
+                  ldapConnectionPoolProvider,
+                  connectionConfig,
+                  groupSearch,
+                  userGroupsSearchFilter.nestedGroupsConfig
+                )
+              .map(_.map(new NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter(_)))
+          }
+        }
         ldapServiceDecodingResult match {
           case Left(error) => Task.now(Left(error))
           case Right(task) => task.map {

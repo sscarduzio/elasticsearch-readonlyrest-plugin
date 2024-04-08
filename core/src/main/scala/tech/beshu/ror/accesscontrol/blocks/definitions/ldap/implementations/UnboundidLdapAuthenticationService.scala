@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.data.EitherT
 import cats.implicits._
 import com.unboundid.ldap.sdk.{LDAPBindException, ResultCode, SimpleBindRequest}
 import eu.timepit.refined.api.Refined

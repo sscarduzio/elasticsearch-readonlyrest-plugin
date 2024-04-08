@@ -16,13 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.implicits.toShow
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 
 import java.util.concurrent.atomic.AtomicReference
@@ -30,39 +28,22 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
-class UnboundidLdapConnectionPool(poolName: String,
-                                  connectionPool: LDAPConnectionPool,
+class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
                                   bindRequestUser: BindRequestUser)
   extends Logging {
 
-  def asyncBind(request: BindRequest)(implicit requestId: RequestId): Task[BindResult] = {
-    Task
-      .delay(
-        logger.trace(s"[${requestId.show}] Starting bind request")
-      )
-      .flatMap { _ =>
-        bind(request)
-      }
-      .map { r =>
-        logger.trace(s"[${requestId.show}] Bind response: $r")
-        r
-      }
+  def asyncBind(request: BindRequest): Task[BindResult] = {
+    bindRequestUser match {
+      case BindRequestUser.Anonymous => Task(connectionPool.bind(request))
+      case BindRequestUser.CustomUser(_, _) => Task(connectionPool.bindAndRevertAuthentication(request))
+    }
   }
 
   def process(requestCreator: AsyncSearchResultListener => LDAPRequest,
-              timeout: FiniteDuration Refined Positive)
-             (implicit requestId: RequestId): Task[Either[SearchResult, List[SearchResultEntry]]] = {
+              timeout: FiniteDuration Refined Positive): Task[Either[SearchResult, List[SearchResultEntry]]] = {
     val searchResultListener = new UnboundidLdapConnectionPool.UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
-      .map { r =>
-        logger.trace(s"[${requestId.show}] UNBOUNDID [${Thread.currentThread().toString()}] ${this.hashCode()} [$poolName]: calling ${r.toString()}")
-        r
-      }
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
-      .map { r =>
-        logger.trace(s"[${requestId.show}] UNBOUNDID [${Thread.currentThread().toString()}] ${this.hashCode()} [$poolName]: result ${r.toString}")
-        r
-      }
       .flatMap { results =>
         results.asScala.toList match {
           case Nil => throw new IllegalStateException("LDAP - expected at least one result")
@@ -77,12 +58,6 @@ class UnboundidLdapConnectionPool(poolName: String,
     Task.delay(connectionPool.close())
   }
 
-  private def bind(request: BindRequest) = {
-    bindRequestUser match {
-      case BindRequestUser.Anonymous => Task(connectionPool.bind(request))
-      case BindRequestUser.CustomUser(_, _) => Task(connectionPool.bindAndRevertAuthentication(request))
-    }
-  }
 }
 
 object UnboundidLdapConnectionPool {
