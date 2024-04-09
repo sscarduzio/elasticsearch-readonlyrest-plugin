@@ -53,6 +53,8 @@ trait RequestContext extends Logging {
 
   def id: Id
 
+  def kibanaSessionId: CorrelationId
+
   def `type`: Type
 
   def action: Action
@@ -103,22 +105,19 @@ trait RequestContext extends Logging {
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
-  lazy val correlationId: CorrelationId =
-    headers
-      .find(_.name === Header.Name.correlationId)
-      .map(_.value)
-      .map(CorrelationId.apply)
-      .getOrElse(CorrelationId.random)
 }
 
 object RequestContext extends Logging {
 
   type Aux[B <: BlockContext] = RequestContext { type BLOCK_CONTEXT = B }
 
-  final case class Id(value: String) {
+  final case class Id private(value: String) {
     def toRequestId: RequestId = RequestId(value)
   }
   object Id {
+    def from(sessionCorrelationId: CorrelationId, requestId: String): Id =
+      new Id(s"${sessionCorrelationId.value.value}-$requestId")
+
     implicit val show: Show[Id] = Show.show(_.value)
   }
 

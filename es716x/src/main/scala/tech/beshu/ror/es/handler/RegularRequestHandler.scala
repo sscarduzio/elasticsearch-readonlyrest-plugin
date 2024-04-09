@@ -66,9 +66,9 @@ class RegularRequestHandler(engine: Engine,
         case allow: RegularRequestResult.Allow[B] =>
           onAllow(request, allow.blockContext)
         case RegularRequestResult.ForbiddenBy(_, _) =>
-          onForbidden(NonEmptyList.one(ForbiddenBlockMatch))
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch))
         case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(causes.toNonEmptyList.map(fromMismatchedCause))
+          onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound() =>
           onIndexNotFound(request)
         case RegularRequestResult.AliasNotFound() =>
@@ -78,12 +78,12 @@ class RegularRequestHandler(engine: Engine,
         case RegularRequestResult.Failed(ex) =>
           esContext.listener.onFailure(ex.asInstanceOf[Exception])
         case RegularRequestResult.PassedThrough() =>
-          proceed(esContext.listener)
+          proceed(request, esContext.listener)
       }
     } match {
       case Success(_) =>
       case Failure(ex) =>
-        logger.errorEx(s"[${request.id.show}] ACL committing result failure", ex)
+        logger.errorEx(s"[${request.id.toRequestId.show}] ACL committing result failure", ex)
         esContext.listener.onFailure(ex.asInstanceOf[Exception])
     }
   }
@@ -93,21 +93,21 @@ class RegularRequestHandler(engine: Engine,
     configureResponseTransformations(blockContext.responseTransformations)
     request.modifyUsing(blockContext) match {
       case ModificationResult.Modified =>
-        proceed()
+        proceed(request)
       case ModificationResult.ShouldBeInterrupted =>
-        onForbidden(NonEmptyList.one(OperationNotAllowed))
+        onForbidden(request, NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.CannotModify =>
-        logger.error(s"[${request.id.show}] Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
-        onForbidden(NonEmptyList.one(OperationNotAllowed))
+        logger.error(s"[${request.id.toRequestId.show}] Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
+        onForbidden(request, NonEmptyList.one(OperationNotAllowed))
       case CustomResponse(response) =>
-        respond(response)
+        respond(request, response)
       case UpdateResponse(updateFunc) =>
-        proceed(new UpdateResponseListener(updateFunc))
+        proceed(request, new UpdateResponseListener(updateFunc))
     }
   }
 
-  private def onForbidden(causes: NonEmptyList[ForbiddenResponse.Cause]): Unit = {
-    logRequestProcessingTime()
+  private def onForbidden(requestContext: RequestContext, causes: NonEmptyList[ForbiddenResponse.Cause]): Unit = {
+    logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(ForbiddenResponse.create(causes.toList, engine.core.accessControl.staticContext))
   }
 
@@ -129,7 +129,7 @@ class RegularRequestHandler(engine: Engine,
            TemplateRequestBlockContextUpdater |
            MultiIndexRequestBlockContextUpdater |
            RorApiRequestBlockContextUpdater =>
-        onForbidden(NonEmptyList.one(OperationNotAllowed))
+        onForbidden(request, NonEmptyList.one(OperationNotAllowed))
     }
   }
 
@@ -148,7 +148,7 @@ class RegularRequestHandler(engine: Engine,
            TemplateRequestBlockContextUpdater |
            MultiIndexRequestBlockContextUpdater |
            RorApiRequestBlockContextUpdater =>
-        onForbidden(NonEmptyList.one(OperationNotAllowed))
+        onForbidden(request, NonEmptyList.one(OperationNotAllowed))
     }
   }
 
@@ -167,52 +167,52 @@ class RegularRequestHandler(engine: Engine,
            AliasRequestBlockContextUpdater |
            MultiIndexRequestBlockContextUpdater |
            RorApiRequestBlockContextUpdater =>
-        onForbidden(NonEmptyList.one(OperationNotAllowed))
+        onForbidden(request, NonEmptyList.one(OperationNotAllowed))
     }
   }
 
   private def handleIndexNotFoundForGeneralIndexRequest(request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound
-    handleModificationResult(modificationResult)
+    handleModificationResult(request, modificationResult)
   }
 
   private def handleIndexNotFoundForSearchRequest(request: EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound
-    handleModificationResult(modificationResult)
+    handleModificationResult(request, modificationResult)
   }
 
   private def handleIndexNotFoundForMultiSearchRequest(request: EsRequest[FilterableMultiRequestBlockContext] with RequestContext.Aux[FilterableMultiRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound
-    handleModificationResult(modificationResult)
+    handleModificationResult(request, modificationResult)
   }
 
   private def handleIndexNotFoundForAliasRequest(request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound
-    handleModificationResult(modificationResult)
+    handleModificationResult(request, modificationResult)
   }
 
   private def handleAliasNotFoundForAliasRequest(request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenAliasNotFound
-    handleModificationResult(modificationResult)
+    handleModificationResult(request, modificationResult)
   }
 
   private def handleTemplateNotFoundForTemplateRequest(request: EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenTemplateNotFound
-    handleModificationResult(modificationResult)
+    handleModificationResult(request, modificationResult)
   }
 
-  private def handleModificationResult(modificationResult: ModificationResult): Unit = {
+  private def handleModificationResult(requestContext: RequestContext, modificationResult: ModificationResult): Unit = {
     modificationResult match {
       case ModificationResult.Modified =>
-        proceed()
+        proceed(requestContext)
       case ModificationResult.CannotModify =>
-        onForbidden(NonEmptyList.one(OperationNotAllowed))
+        onForbidden(requestContext, NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.ShouldBeInterrupted =>
-        onForbidden(NonEmptyList.one(OperationNotAllowed))
+        onForbidden(requestContext, NonEmptyList.one(OperationNotAllowed))
       case CustomResponse(response) =>
-        respond(response)
+        respond(requestContext, response)
       case UpdateResponse(updateFunc) =>
-        proceed(new UpdateResponseListener(updateFunc))
+        proceed(requestContext, new UpdateResponseListener(updateFunc))
     }
   }
 
@@ -223,8 +223,8 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def proceed(listener: ActionListener[ActionResponse] = esContext.listener): Unit = {
-    logRequestProcessingTime()
+  private def proceed(requestContext: RequestContext, listener: ActionListener[ActionResponse] = esContext.listener): Unit = {
+    logRequestProcessingTime(requestContext)
     addProperHeader()
     esContext.chain.continue(esContext, listener)
   }
@@ -238,13 +238,13 @@ class RegularRequestHandler(engine: Engine,
       threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(esContext.nodeName)
   }
 
-  private def respond(response: ActionResponse): Unit = {
-    logRequestProcessingTime()
+  private def respond(requestContext: RequestContext, response: ActionResponse): Unit = {
+    logRequestProcessingTime(requestContext)
     esContext.listener.onResponse(response)
   }
 
-  private def logRequestProcessingTime(): Unit = {
-    logger.debug(s"[${esContext.requestContextId}] Request processing time: ${Duration.between(esContext.timestamp, Instant.now()).toMillis}ms")
+  private def logRequestProcessingTime(requestContext: RequestContext): Unit = {
+    logger.debug(s"[${requestContext.id.toRequestId.show}] Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
   }
 
   private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse]) extends ActionListener[ActionResponse] {

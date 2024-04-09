@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import eu.timepit.refined.auto._
-import cats.Eq
+import cats.{Eq, Show}
 import cats.implicits._
 import cats.data.NonEmptyList
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
@@ -34,6 +34,8 @@ import scala.util.Try
 final case class CorrelationId(value: NonEmptyString)
 object CorrelationId {
   def random: CorrelationId = new CorrelationId(NonEmptyString.unsafeFrom(UUID.randomUUID().toString))
+
+  implicit val show: Show[CorrelationId] = Show.show(_.value.value)
 }
 
 final case class Header(name: Header.Name, value: NonEmptyString)
