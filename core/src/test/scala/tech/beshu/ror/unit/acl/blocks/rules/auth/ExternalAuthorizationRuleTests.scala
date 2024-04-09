@@ -26,6 +26,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
@@ -495,7 +496,8 @@ class ExternalAuthorizationRuleTests
     new ExternalAuthorizationService {
       override def id: ExternalAuthorizationService.Name = ExternalAuthorizationService.Name(name)
 
-      override def grantsFor(userId: User.Id): Task[UniqueList[Group]] = Task.delay {
+      override def grantsFor(userId: User.Id)
+                            (implicit requestId: RequestId): Task[UniqueList[Group]] = Task.delay {
         groups.get(userId) match {
           case Some(g) => UniqueList.fromIterable(g)
           case None => UniqueList.empty

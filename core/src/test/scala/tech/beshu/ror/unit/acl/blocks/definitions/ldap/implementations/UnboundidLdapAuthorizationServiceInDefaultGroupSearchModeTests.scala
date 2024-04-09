@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
+import cats.data.EitherT
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
@@ -24,7 +25,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
@@ -32,7 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.User
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, PlainTextSecret, User}
-import tech.beshu.ror.utils.SingletonLdapContainers
+import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -62,7 +63,8 @@ abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
   extends AnyWordSpec
     with BeforeAndAfterAll
     with Inside
-    with Eventually {
+    with Eventually
+    with WithDummyRequestIdSupport {
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
@@ -112,88 +114,99 @@ abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
 
   private def peopleAndGroupsLdapAuthorizationService = {
     implicit val clock: Clock = Clock.systemUTC()
-    UnboundidLdapAuthorizationServiceWithGroupsFiltering
-      .create(
-        Name("LDAP1"),
-        ldapConnectionPoolProvider,
-        LdapConnectionConfig(
-          ConnectionMethod.SingleServer(
-            LdapHost
-              .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
-              .get
-          ),
-          poolSize = 1,
-          connectionTimeout = Refined.unsafeApply(5 seconds),
-          requestTimeout = Refined.unsafeApply(5 seconds),
-          trustAllCerts = false,
-          BindRequestUser.CustomUser(
-            Dn("cn=admin,dc=example,dc=com"),
-            PlainTextSecret("password")
-          ),
-          ignoreLdapConnectivityProblems = false
-        ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute),
-        UserGroupsSearchFilterConfig(
-          DefaultGroupSearch(
-            Dn("ou=Groups,dc=example,dc=com"),
-            GroupSearchFilter("(cn=*)"),
-            GroupIdAttribute("cn"),
-            UniqueMemberAttribute("uniqueMember"),
-            groupAttributeIsDN = true,
-          ),
-          nestedGroupsConfig = None
-        )
+    val ldapId = Name("ldap2")
+    val ldapConnectionConfig = createLdapConnectionConfig(ldapId)
+    val result = for {
+      usersService <- EitherT(UnboundidLdapUsersService.create(
+        id = ldapId,
+        poolProvider = ldapConnectionPoolProvider,
+        connectionConfig = ldapConnectionConfig,
+        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
+      ))
+      authorizationService <- EitherT(
+        UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering
+          .create(
+            id = ldapId,
+            ldapUsersService = usersService,
+            poolProvider = ldapConnectionPoolProvider,
+            connectionConfig = ldapConnectionConfig,
+            groupsSearchFilter = DefaultGroupSearch(
+              Dn("ou=Groups,dc=example,dc=com"),
+              GroupSearchFilter("(cn=*)"),
+              GroupIdAttribute("cn"),
+              UniqueMemberAttribute("uniqueMember"),
+              groupAttributeIsDN = true,
+            ),
+            nestedGroupsConfig = None
+          )
       )
-      .runSyncUnsafe()
-      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
+    } yield authorizationService
+    result.valueOrThrowIllegalState()
   }
 
   private def usersAndRolesLdapAuthorizationService = {
     implicit val clock: Clock = Clock.systemUTC()
-    UnboundidLdapAuthorizationServiceWithGroupsFiltering
-      .create(
-        Name("LDAP1"),
-        ldapConnectionPoolProvider,
-        LdapConnectionConfig(
-          ConnectionMethod.SingleServer(
-            LdapHost
-              .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
-              .get
-          ),
-          poolSize = 1,
-          connectionTimeout = Refined.unsafeApply(5 seconds),
-          requestTimeout = Refined.unsafeApply(5 seconds),
-          trustAllCerts = false,
-          BindRequestUser.CustomUser(
-            Dn("cn=admin,dc=example,dc=com"),
-            PlainTextSecret("password")
-          ),
-          ignoreLdapConnectivityProblems = false
-        ),
-        UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), userIdAttribute),
-        UserGroupsSearchFilterConfig(
-          DefaultGroupSearch(
-            Dn("ou=Roles,dc=example,dc=com"),
-            GroupSearchFilter("(cn=*)"),
-            GroupIdAttribute("cn"),
-            UniqueMemberAttribute("uniqueMember"),
-            groupAttributeIsDN = true,
-          ),
-          Some(NestedGroupsConfig(
-            nestedLevels = 1,
-            Dn("ou=Roles,dc=example,dc=com"),
-            GroupSearchFilter("(cn=*)"),
-            UniqueMemberAttribute("uniqueMember"),
-            GroupIdAttribute("cn"),
-          ))
-        )
+    val ldapId = Name("ldap2")
+    val ldapConnectionConfig = createLdapConnectionConfig(ldapId)
+    val result = for {
+      usersService <- EitherT(UnboundidLdapUsersService.create(
+        id = ldapId,
+        poolProvider = ldapConnectionPoolProvider,
+        connectionConfig = ldapConnectionConfig,
+        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
+      ))
+      authorizationService <- EitherT(
+        UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering
+          .create(
+            id = ldapId,
+            ldapUsersService = usersService,
+            poolProvider = ldapConnectionPoolProvider,
+            connectionConfig = ldapConnectionConfig,
+            groupsSearchFilter = DefaultGroupSearch(
+              Dn("ou=Roles,dc=example,dc=com"),
+              GroupSearchFilter("(cn=*)"),
+              GroupIdAttribute("cn"),
+              UniqueMemberAttribute("uniqueMember"),
+              groupAttributeIsDN = true,
+            ),
+            nestedGroupsConfig = Some(NestedGroupsConfig(
+              nestedLevels = 1,
+              Dn("ou=Roles,dc=example,dc=com"),
+              GroupSearchFilter("(cn=*)"),
+              UniqueMemberAttribute("uniqueMember"),
+              GroupIdAttribute("cn"),
+            ))
+          )
       )
-      .runSyncUnsafe()
-      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
+    } yield authorizationService
+    result.valueOrThrowIllegalState()
+  }
+
+  private def createLdapConnectionConfig(poolName: LdapService.Name) = {
+    LdapConnectionConfig(
+      poolName = poolName,
+      connectionMethod = ConnectionMethod.SingleServer(
+        LdapHost
+          .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
+          .get
+      ),
+      poolSize = 1,
+      connectionTimeout = Refined.unsafeApply(5 seconds),
+      requestTimeout = Refined.unsafeApply(5 seconds),
+      trustAllCerts = false,
+      bindRequestUser = BindRequestUser.CustomUser(
+        Dn("cn=admin,dc=example,dc=com"),
+        PlainTextSecret("password")
+      ),
+      ignoreLdapConnectivityProblems = false
+    )
   }
 
   protected def userIdAttribute: UserIdAttribute
+
   protected def morganUserId: User.Id
+
   protected def userSpeakerUserId: User.Id
+
   protected def devitoUserId: User.Id
 }

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-import cats.implicits.toShow
 import com.github.benmanes.caffeine.cache.RemovalCause
 import com.github.blemale.scaffeine.Scaffeine
 import eu.timepit.refined.api.Refined

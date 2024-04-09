@@ -36,8 +36,9 @@ import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
-class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
+class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with WithDummyRequestIdSupport {
 
   "An LdapAuthenticationRule" should {
     "match" when {

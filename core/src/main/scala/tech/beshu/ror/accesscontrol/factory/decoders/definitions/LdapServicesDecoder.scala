@@ -326,7 +326,7 @@ object LdapServicesDecoder {
       .instance { c =>
         for {
           connectionMethod <- connectionMethodDecoder.tryDecode(c)
-          poolName <- c.downField("name").as[String]
+          poolName <- c.downField("name").as[LdapService.Name]
           poolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
           connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[FiniteDuration Refined Positive]]
           requestTimeout <- c.downFields("request_timeout_in_sec", "request_timeout").as[Option[FiniteDuration Refined Positive]]

@@ -217,7 +217,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             )
             userSearchFilterConfig should be(UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid")))
             val groupsSearchFilterConfig = getGroupsSearchFilterConfigFrom(
-                extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapAuthorizationServiceWithGroupsFiltering](ldapService)
+                extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering](ldapService)
             )
             groupsSearchFilterConfig should be (UserGroupsSearchFilterConfig(
               UserGroupsSearchMode.DefaultGroupSearch(
@@ -423,7 +423,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             )
             userSearchFilterConfig should be(UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid")))
             val groupsSearchFilterConfig = getGroupsSearchFilterConfigFrom(
-              extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapAuthorizationServiceWithGroupsFiltering](ldapService)
+              extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapGroupsFromUserEntryAuthorizationService](ldapService)
             )
             groupsSearchFilterConfig should be(UserGroupsSearchFilterConfig(
               UserGroupsSearchMode.GroupsFromUserEntry(
@@ -465,7 +465,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               ldapService.id should be(LdapService.Name("ldap1"))
 
               val groupsSearchFilterConfig = getGroupsSearchFilterConfigFrom(
-                extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapAuthorizationServiceWithGroupsFiltering](ldapService)
+                extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering](ldapService)
               )
               groupsSearchFilterConfig.nestedGroupsConfig should be(
                 Some(NestedGroupsConfig(
@@ -506,7 +506,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               ldapService.id should be(LdapService.Name("ldap1"))
 
               val groupsSearchFilterConfig = getGroupsSearchFilterConfigFrom(
-                extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapAuthorizationServiceWithGroupsFiltering](ldapService)
+                extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapGroupsFromUserEntryAuthorizationService](ldapService)
               )
               groupsSearchFilterConfig.nestedGroupsConfig should be(Some(NestedGroupsConfig(
                 nestedLevels = 5,

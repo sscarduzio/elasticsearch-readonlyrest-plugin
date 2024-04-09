@@ -44,6 +44,7 @@ import tech.beshu.ror.accesscontrol.domain.{Jwt => _, _}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -54,7 +55,7 @@ import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 class JwtAuthRuleTests
-  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion with WithDummyRequestIdSupport {
 
   "A JwtAuthRule" should {
     "match" when {

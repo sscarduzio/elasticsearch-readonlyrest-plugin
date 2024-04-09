@@ -53,7 +53,7 @@ trait RequestContext extends Logging {
 
   def id: Id
 
-  def kibanaSessionId: CorrelationId
+  def rorKibanaSessionId: CorrelationId
 
   def `type`: Type
 

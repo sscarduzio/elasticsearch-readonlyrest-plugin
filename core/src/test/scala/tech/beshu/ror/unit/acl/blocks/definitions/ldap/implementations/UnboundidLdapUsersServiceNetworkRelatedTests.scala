@@ -31,11 +31,12 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapAuthenticationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapAuthenticationService, LdapService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.ScalaOps.repeat
-import tech.beshu.ror.utils.SingletonLdapContainers
+import tech.beshu.ror.utils.TestsUtils.ValueOrIllegalState
 import tech.beshu.ror.utils.containers.{LdapContainer, ToxiproxyContainer}
+import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 
 import java.time.Clock
 import scala.concurrent.duration._
@@ -47,7 +48,8 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with ForAllTestContainer
-    with Inside {
+    with Inside
+    with WithDummyRequestIdSupport {
 
   private val ldap1ContainerWithToxiproxy = new ToxiproxyContainer(
     SingletonLdapContainers.ldap1,
@@ -127,56 +129,77 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
 
   private def createSimpleAuthenticationService() = {
     implicit val clock: Clock = Clock.systemUTC()
-    UnboundidLdapAuthenticationService
-      .create(
-        Name("my_ldap"),
-        ldapConnectionPoolProvider,
-        LdapConnectionConfig(
-          ConnectionMethod.SingleServer(LdapHost.from(s"ldap://localhost:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}").get),
-          poolSize = 1,
-          connectionTimeout = Refined.unsafeApply(5 seconds),
-          requestTimeout = Refined.unsafeApply(5 seconds),
-          trustAllCerts = false,
-          BindRequestUser.CustomUser(
-            Dn("cn=admin,dc=example,dc=com"),
-            PlainTextSecret("password")
-          ),
-          ignoreLdapConnectivityProblems = false,
-        ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+    val ldapId = Name("my_ldap")
+    val ldapConnectionConfig = createLdapConnectionConfig(
+      poolName = ldapId,
+      connectionMethod = ConnectionMethod.SingleServer(
+        LdapHost.from(s"ldap://localhost:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}").get
       )
-      .runSyncUnsafe()
-      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
+    )
+    val result = for {
+      usersService <- EitherT(UnboundidLdapUsersService.create(
+        id = ldapId,
+        poolProvider = ldapConnectionPoolProvider,
+        connectionConfig = ldapConnectionConfig,
+        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+      ))
+      authenticationService <- EitherT(UnboundidLdapAuthenticationService
+        .create(
+          id = ldapId,
+          ldapUsersService = usersService,
+          poolProvider = ldapConnectionPoolProvider,
+          connectionConfig = ldapConnectionConfig
+        ))
+    } yield authenticationService
+    result.valueOrThrowIllegalState()
   }
 
   private def createHaAuthenticationService() = {
     implicit val clock: Clock = Clock.systemUTC()
-    UnboundidLdapAuthenticationService
-      .create(
-        Name("my_ldap"),
-        ldapConnectionPoolProvider,
-        LdapConnectionConfig(
-          ConnectionMethod.SeveralServers(
-            NonEmptyList.of(
-              LdapHost.from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}").get,
-              LdapHost.from(s"ldap://${ldapContainerToStop.ldapHost}:${ldapContainerToStop.ldapPort}").get,
-            ),
-            HaMethod.RoundRobin
-          ),
-          poolSize = 1,
-          connectionTimeout = Refined.unsafeApply(5 seconds),
-          requestTimeout = Refined.unsafeApply(5 seconds),
-          trustAllCerts = false,
-          BindRequestUser.CustomUser(
-            Dn("cn=admin,dc=example,dc=com"),
-            PlainTextSecret("password")
-          ),
-          ignoreLdapConnectivityProblems = false
+    val ldapId = Name("my_ldap")
+    val ldapConnectionConfig = createLdapConnectionConfig(
+      poolName = ldapId,
+      connectionMethod = ConnectionMethod.SeveralServers(
+        NonEmptyList.of(
+          LdapHost.from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}").get,
+          LdapHost.from(s"ldap://${ldapContainerToStop.ldapHost}:${ldapContainerToStop.ldapPort}").get,
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+        HaMethod.RoundRobin
       )
-      .runSyncUnsafe()
-      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
+    )
+    val result = for {
+      usersService <- EitherT(UnboundidLdapUsersService.create(
+        id = ldapId,
+        poolProvider = ldapConnectionPoolProvider,
+        connectionConfig = ldapConnectionConfig,
+        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+      ))
+      authenticationService <- EitherT(UnboundidLdapAuthenticationService
+        .create(
+          id = ldapId,
+          ldapUsersService = usersService,
+          poolProvider = ldapConnectionPoolProvider,
+          connectionConfig = ldapConnectionConfig
+        ))
+    } yield authenticationService
+    result.valueOrThrowIllegalState()
+  }
+
+  private def createLdapConnectionConfig(poolName: LdapService.Name,
+                                         connectionMethod: ConnectionMethod) = {
+    LdapConnectionConfig(
+      poolName = poolName,
+      connectionMethod = connectionMethod,
+      poolSize = 1,
+      connectionTimeout = Refined.unsafeApply(5 seconds),
+      requestTimeout = Refined.unsafeApply(5 seconds),
+      trustAllCerts = false,
+      bindRequestUser = BindRequestUser.CustomUser(
+        Dn("cn=admin,dc=example,dc=com"),
+        PlainTextSecret("password")
+      ),
+      ignoreLdapConnectivityProblems = false
+    )
   }
 
 }
