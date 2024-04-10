@@ -24,6 +24,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
@@ -477,7 +478,7 @@ class LdapAuthRuleTests
 
   private def mockLdapAuthenticationService(user: User.Id, secret: PlainTextSecret, result: Task[Boolean]) = {
     val service = mock[LdapAuthenticationService]
-    (service.authenticate _).expects(user, secret).returning(result)
+    (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId)).expects(user, secret, *).returning(result)
     service
   }
 
@@ -489,7 +490,9 @@ class LdapAuthRuleTests
 
   private def mockLdapAuthorizationService(user: User.Id, result: Task[UniqueList[Group]]) = {
     val service = mock[LdapAuthorizationServiceWithGroupsFiltering]
-    ((id: User.Id) => service.groupsOf(id, Set.empty)).expects(user).returning(result) // todo: set.empy
+    (service.groupsOf(_: User.Id, _: Set[GroupIdLike])(_: RequestId))
+      .expects(user, *, *)
+      .returning(result)
     service
   }
 

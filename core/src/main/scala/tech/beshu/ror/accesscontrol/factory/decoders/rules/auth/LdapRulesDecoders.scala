@@ -188,7 +188,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                  mocksProvider: MocksProvider,
                                  userIdCaseSensitivity: CaseSensitivity) = {
     findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
-      .map(svc => CacheableLdapServiceDecorator.create(svc, ttl))
+      .map(svc => CacheableLdapAuthServiceDecorator.create(svc, ttl))
       .map(new LoggableLdapServiceDecorator(_))
       .map(ldapService => {
         new LdapAuthRule(

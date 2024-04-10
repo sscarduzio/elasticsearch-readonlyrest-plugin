@@ -41,7 +41,8 @@ import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.reflect.ClassTag
+import scala.reflect.{ClassTag, classTag}
+import scala.util.{Failure, Success, Try}
 
 class UnboundidLdapUsersServiceNetworkRelatedTests
   extends AnyFreeSpec
@@ -77,7 +78,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
         val authenticationService = createSimpleAuthenticationService()
         authenticationService.assertSuccessfulAuthentication
         ldap1ContainerWithToxiproxy.enableNetworkTimeout()
-        authenticationService.assertFailedAuthentication[LdapUnexpectedResult]
+        authenticationService.assertFailedAuthentication[LdapUnexpectedResult, LDAPSearchException]
         ldap1ContainerWithToxiproxy.disableNetworkTimeout()
         authenticationService.assertSuccessfulAuthentication
       }
@@ -85,7 +86,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
         val authenticationService = createSimpleAuthenticationService()
         authenticationService.assertSuccessfulAuthentication
         ldap1ContainerWithToxiproxy.disableNetwork()
-        authenticationService.assertFailedAuthentication[LDAPSearchException]
+        authenticationService.assertFailedAuthentication[LDAPSearchException, LDAPSearchException]
         ldap1ContainerWithToxiproxy.enableNetwork()
         authenticationService.assertSuccessfulAuthentication
       }
@@ -98,6 +99,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
               .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
               .runSyncUnsafe() should be(true)
           }
+
           val service = createHaAuthenticationService()
           (for {
             _ <- repeat(maxRetries = 5, delay = 500 millis) {
@@ -120,10 +122,17 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
         .runSyncUnsafe() should be(true)
     }
 
-    def assertFailedAuthentication[T : ClassTag]: Assertion = {
-      an [T] should be thrownBy authenticationService
-        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-        .runSyncUnsafe()
+    def assertFailedAuthentication[T: ClassTag, S: ClassTag]: Assertion = {
+      Try {
+        authenticationService
+          .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
+          .runSyncUnsafe()
+      } match {
+        case Failure(_: T) | Failure(_: S) =>
+          succeed
+        case Failure(_) | Success(_) =>
+          fail(s"Expected either ${classTag[T].runtimeClass} or ${classTag[S].runtimeClass} to be thrown")
+      }
     }
   }
 

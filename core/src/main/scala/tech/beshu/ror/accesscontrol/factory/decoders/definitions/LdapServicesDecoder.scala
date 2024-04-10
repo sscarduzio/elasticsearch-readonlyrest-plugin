@@ -197,7 +197,7 @@ object LdapServicesDecoder {
         } yield {
           userGroupsSearchFilter.mode match {
             case groupSearch: DefaultGroupSearch =>
-              UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering
+              UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering
                 .create(
                   name,
                   ldapUsersService,
@@ -216,18 +216,18 @@ object LdapServicesDecoder {
                   groupSearch,
                   userGroupsSearchFilter.nestedGroupsConfig
                 )
-              .map(_.map(new NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter(_)))
           }
         }
         ldapServiceDecodingResult match {
-          case Left(error) => Task.now(Left(error))
+          case Left(error) =>
+            Task.now(Left(error))
           case Right(task) => task.map {
             case Left(error: HostConnectionError) =>
               Left(hostConnectionErrorDecodingFailureFrom(error))
             case Left(error: ServerDiscoveryConnectionError) =>
               Left(serverDiscoveryConnectionDecodingFailureFrom(error))
             case Right(service) =>
-              Right(service)
+              Right(new NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter(service))
           }
         }
       }

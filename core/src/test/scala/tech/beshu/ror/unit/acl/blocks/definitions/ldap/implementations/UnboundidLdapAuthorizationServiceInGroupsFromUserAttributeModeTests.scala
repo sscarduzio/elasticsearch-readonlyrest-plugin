@@ -118,7 +118,7 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
         id = ldapId,
         poolProvider = ldapConnectionPoolProvider,
         connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), userIdAttribute)
+        userSearchFiler = UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), userIdAttribute)
       ))
       authorizationService <- EitherT(
         UnboundidLdapGroupsFromUserEntryAuthorizationService

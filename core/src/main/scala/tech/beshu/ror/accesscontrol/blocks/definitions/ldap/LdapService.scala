@@ -63,6 +63,20 @@ trait LdapAuthorizationService extends LdapService {
 
   def groupsOf(id: User.Id)(implicit requestId: RequestId): Task[UniqueList[Group]]
 }
+object LdapAuthorizationService {
+
+  final class NoOpLdapAuthorizationServiceAdapter(service: LdapAuthorizationServiceWithGroupsFiltering)
+    extends LdapAuthorizationService {
+    override def id: Name = service.id
+
+    override def serviceTimeout: Refined[FiniteDuration, Positive] = service.serviceTimeout
+
+    override def ldapUsersService: LdapUsersService = service.ldapUsersService
+
+    override def groupsOf(id: User.Id)
+                         (implicit requestId: RequestId): Task[UniqueList[Group]] = service.groupsOf(id, Set.empty)
+  }
+}
 
 trait LdapAuthorizationServiceWithGroupsFiltering extends LdapService {
   def ldapUsersService: LdapUsersService

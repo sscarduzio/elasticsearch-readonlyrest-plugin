@@ -86,7 +86,7 @@ object UnboundidLdapAuthenticationService {
           id = id,
           ldapUsersService = ldapUsersService,
           connectionPool = connectionPool,
-          serviceTimeout = connectionConfig.connectionTimeout + connectionConfig.requestTimeout
+          serviceTimeout = connectionConfig.requestTimeout
         )
       ))
   }
