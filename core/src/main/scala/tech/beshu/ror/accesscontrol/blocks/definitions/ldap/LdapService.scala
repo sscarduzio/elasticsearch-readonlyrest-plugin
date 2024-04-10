@@ -65,16 +65,16 @@ trait LdapAuthorizationService extends LdapService {
 }
 object LdapAuthorizationService {
 
-  final class NoOpLdapAuthorizationServiceAdapter(service: LdapAuthorizationServiceWithGroupsFiltering)
+  final class NoOpLdapAuthorizationServiceAdapter(underlying: LdapAuthorizationServiceWithGroupsFiltering)
     extends LdapAuthorizationService {
-    override def id: Name = service.id
+    override def id: Name = underlying.id
 
-    override def serviceTimeout: Refined[FiniteDuration, Positive] = service.serviceTimeout
+    override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 
-    override def ldapUsersService: LdapUsersService = service.ldapUsersService
+    override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
 
     override def groupsOf(id: User.Id)
-                         (implicit requestId: RequestId): Task[UniqueList[Group]] = service.groupsOf(id, Set.empty)
+                         (implicit requestId: RequestId): Task[UniqueList[Group]] = underlying.groupsOf(id, Set.empty)
   }
 }
 
@@ -86,16 +86,16 @@ trait LdapAuthorizationServiceWithGroupsFiltering extends LdapService {
 }
 object LdapAuthorizationServiceWithGroupsFiltering {
 
-  final class NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter(service: LdapAuthorizationService)
+  final class NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter(underlying: LdapAuthorizationService)
     extends LdapAuthorizationServiceWithGroupsFiltering {
-    override def id: Name = service.id
+    override def id: Name = underlying.id
 
-    override def serviceTimeout: Refined[FiniteDuration, Positive] = service.serviceTimeout
+    override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 
-    override def ldapUsersService: LdapUsersService = service.ldapUsersService
+    override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
 
     override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
-                         (implicit requestId: RequestId): Task[UniqueList[Group]] = service.groupsOf(id)
+                         (implicit requestId: RequestId): Task[UniqueList[Group]] = underlying.groupsOf(id)
   }
 }
 

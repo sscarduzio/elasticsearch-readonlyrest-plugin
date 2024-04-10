@@ -26,6 +26,7 @@ import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.{Assertions, BeforeAndAfterAll, Checkpoints}
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationService.NoOpLdapAuthorizationServiceAdapter
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationServiceWithGroupsFiltering.NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
@@ -163,12 +164,16 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               },
               ldapServiceLayer4 => {
                 ldapServiceLayer4.id should be(expectedLdapServiceName)
-                ldapServiceLayer4 mustBe a[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering]
-                val ldapAuthorizationService = ldapServiceLayer4.asInstanceOf[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering]
+                ldapServiceLayer4 mustBe a[NoOpLdapAuthorizationServiceAdapter]
+              },
+              ldapServiceLayer5 => {
+                ldapServiceLayer5.id should be(expectedLdapServiceName)
+                ldapServiceLayer5 mustBe a[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering]
+                val ldapAuthorizationService = ldapServiceLayer5.asInstanceOf[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering]
                 on(ldapAuthorizationService).get[DefaultGroupSearch]("groupsSearchFilter") should be {
                   DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
-                    GroupSearchFilter("(cn=*)"),
+                    GroupSearchFilter("(objectClass=*)"),
                     GroupIdAttribute("cn"),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,

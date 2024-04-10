@@ -26,7 +26,6 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapService, LdapUser, LdapUsersService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
-import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
 
 import java.time.Clock
