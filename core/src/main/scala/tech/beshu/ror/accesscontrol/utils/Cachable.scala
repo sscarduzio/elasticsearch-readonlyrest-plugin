@@ -18,23 +18,21 @@ package tech.beshu.ror.accesscontrol.utils
 
 import com.github.benmanes.caffeine.cache.RemovalCause
 import com.github.blemale.scaffeine.Scaffeine
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext._
-import scala.concurrent.duration.FiniteDuration
 
-class CacheableAction[K, V](ttl: FiniteDuration Refined Positive,
+class CacheableAction[K, V](ttl: PositiveFiniteDuration,
                             action: (K, RequestId) => Task[V])
   extends CacheableActionWithKeyMapping[K, K, V](ttl, action, identity)
 
-class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positive,
+class CacheableActionWithKeyMapping[K, K1, V](ttl: PositiveFiniteDuration,
                                               action: (K, RequestId) => Task[V],
                                               keyMap: K => K1) extends Logging {
 
@@ -47,7 +45,7 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
     .build[K1, V]()
 
   def call(key: K,
-           requestTimeout: FiniteDuration Refined Positive)(implicit requestId: RequestId): Task[V] = {
+           requestTimeout: PositiveFiniteDuration)(implicit requestId: RequestId): Task[V] = {
     call(key).timeout(requestTimeout.value)
   }
 

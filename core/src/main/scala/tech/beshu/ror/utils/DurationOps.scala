@@ -25,15 +25,17 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 
 object DurationOps {
 
+  type PositiveFiniteDuration =  FiniteDuration Refined Positive
+
   implicit class RefinedDurationOps(val duration: Duration) extends AnyVal {
-    def toRefinedPositive: Either[String, FiniteDuration Refined Positive] = duration match {
+    def toRefinedPositive: Either[String, PositiveFiniteDuration] = duration match {
       case v: FiniteDuration if v.toMillis > 0 =>
         refineV[Positive](v)
       case _ =>
         Left(s"Cannot map '${duration.toString}' to finite duration.")
     }
 
-    def toRefinedPositiveUnsafe: FiniteDuration Refined Positive =
+    def toRefinedPositiveUnsafe: PositiveFiniteDuration =
       toRefinedPositive.fold(err => throw new IllegalArgumentException(err), identity)
   }
 

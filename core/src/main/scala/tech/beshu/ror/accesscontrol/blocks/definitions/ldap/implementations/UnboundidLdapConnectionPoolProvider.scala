@@ -35,10 +35,11 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.{Address, PlainTextSecret}
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.concurrent.duration.{FiniteDuration, _}
+import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -86,8 +87,8 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
   final case class LdapConnectionConfig(poolName: LdapService.Name,
                                         connectionMethod: ConnectionMethod,
                                         poolSize: Int Refined Positive,
-                                        connectionTimeout: FiniteDuration Refined Positive,
-                                        requestTimeout: FiniteDuration Refined Positive,
+                                        connectionTimeout: PositiveFiniteDuration,
+                                        requestTimeout: PositiveFiniteDuration,
                                         trustAllCerts: Boolean,
                                         bindRequestUser: BindRequestUser,
                                         ignoreLdapConnectivityProblems: Boolean)
@@ -134,7 +135,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
         extends ConnectionMethod
       final case class ServerDiscovery(recordName: Option[String],
                                        providerUrl: Option[String],
-                                       ttl: Option[FiniteDuration Refined Positive],
+                                       ttl: Option[PositiveFiniteDuration],
                                        useSSL: Boolean)
         extends ConnectionMethod
     }

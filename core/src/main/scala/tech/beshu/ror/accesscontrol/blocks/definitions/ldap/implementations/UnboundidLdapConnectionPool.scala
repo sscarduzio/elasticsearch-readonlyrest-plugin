@@ -17,15 +17,13 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Promise
-import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
 class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
@@ -40,7 +38,7 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
   }
 
   def process(requestCreator: AsyncSearchResultListener => LDAPRequest,
-              timeout: FiniteDuration Refined Positive): Task[Either[SearchResult, List[SearchResultEntry]]] = {
+              timeout: PositiveFiniteDuration): Task[Either[SearchResult, List[SearchResultEntry]]] = {
     val searchResultListener = new UnboundidLdapConnectionPool.UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))

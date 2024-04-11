@@ -31,13 +31,12 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.User
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.NestedGroupsConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.domain.User
-
-import scala.concurrent.duration._
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 class UnboundidLdapUsersService private(override val id: LdapService#Id,
                                         connectionPool: UnboundidLdapConnectionPool,
                                         userSearchFiler: UserSearchFilterConfig,
-                                        override val serviceTimeout: FiniteDuration Refined Positive)
+                                        override val serviceTimeout: PositiveFiniteDuration)
   extends LdapUsersService with Logging {
 
   override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] = {

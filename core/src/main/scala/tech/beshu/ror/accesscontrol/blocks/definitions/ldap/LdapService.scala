@@ -18,24 +18,21 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
 import cats.implicits._
 import cats.{Eq, Order, Show}
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueList
-
-import scala.concurrent.duration.FiniteDuration
 
 sealed trait LdapService extends Item {
   override type Id = Name
 
   def id: Id
 
-  def serviceTimeout: FiniteDuration Refined Positive
+  def serviceTimeout: PositiveFiniteDuration
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -69,7 +66,7 @@ object LdapAuthorizationService {
     extends LdapAuthorizationService {
     override def id: Name = underlying.id
 
-    override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+    override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 
     override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
 
@@ -90,7 +87,7 @@ object LdapAuthorizationServiceWithGroupsFiltering {
     extends LdapAuthorizationServiceWithGroupsFiltering {
     override def id: Name = underlying.id
 
-    override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+    override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 
     override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
 
@@ -103,7 +100,7 @@ trait LdapAuthService extends LdapAuthenticationService with LdapAuthorizationSe
 
 class ComposedLdapAuthService private(override val id: LdapService#Id,
                                       override val ldapUsersService: LdapUsersService,
-                                      override val serviceTimeout: Refined[FiniteDuration, Positive],
+                                      override val serviceTimeout: PositiveFiniteDuration,
                                       ldapAuthenticationService: LdapAuthenticationService,
                                       ldapAuthorizationService: LdapAuthorizationServiceWithGroupsFiltering)
   extends LdapAuthService {
@@ -139,8 +136,8 @@ object ComposedLdapAuthService {
   }
 
   private def maxServiceTimeoutFrom(ldapServices: LdapService*) = {
-    implicit val ordering: Ordering[FiniteDuration Refined Positive] = Order
-      .from[FiniteDuration Refined Positive] { case (a, b) => a.value.compare(b.value)}
+    implicit val ordering: Ordering[PositiveFiniteDuration] = Order
+      .from[PositiveFiniteDuration] { case (a, b) => a.value.compare(b.value)}
       .toOrdering
     ldapServices.map(_.serviceTimeout).max
   }

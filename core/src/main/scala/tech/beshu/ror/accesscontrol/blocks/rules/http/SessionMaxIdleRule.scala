@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -29,9 +27,9 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.{ExtractingError, toSessionHeader}
 import tech.beshu.ror.providers.UuidProvider
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.{Clock, Instant}
-import scala.concurrent.duration.FiniteDuration
 
 final class SessionMaxIdleRule(val settings: Settings,
                                implicit val caseSensitivity: CaseSensitivity)
@@ -71,6 +69,6 @@ object SessionMaxIdleRule {
     override val name = Rule.Name("session_max_idle")
   }
 
-  final case class Settings(sessionMaxIdle: FiniteDuration Refined Positive)
+  final case class Settings(sessionMaxIdle: PositiveFiniteDuration)
 
 }

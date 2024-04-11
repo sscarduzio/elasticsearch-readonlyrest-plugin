@@ -18,8 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import cats.implicits._
 import com.unboundid.ldap.sdk._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
@@ -30,18 +28,18 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.doma
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser, LdapUsersService}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.time.Clock
-import scala.concurrent.duration.FiniteDuration
 
 class UnboundidLdapGroupsFromUserEntryAuthorizationService private(override val id: LdapService#Id,
                                                                    override val ldapUsersService: LdapUsersService,
                                                                    connectionPool: UnboundidLdapConnectionPool,
                                                                    groupsSearchFilter: GroupsFromUserEntry,
                                                                    nestedGroupsConfig: Option[NestedGroupsConfig],
-                                                                   override val serviceTimeout: FiniteDuration Refined Positive)
+                                                                   override val serviceTimeout: PositiveFiniteDuration)
                                                                   (implicit clock: Clock)
   extends LdapAuthorizationService with Logging {
 

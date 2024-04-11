@@ -18,8 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
-
-import scala.concurrent.duration.FiniteDuration
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 final case class CircuitBreakerConfig(maxFailures: Int Refined Positive,
-                                      resetDuration: FiniteDuration Refined Positive)
+                                      resetDuration: PositiveFiniteDuration)

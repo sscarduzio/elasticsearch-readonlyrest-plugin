@@ -19,9 +19,7 @@ package tech.beshu.ror.unit.boot
 import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.implicits._
-import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -1533,7 +1531,7 @@ class ReadonlyRestStartingTests
        |}
        |""".stripMargin
 
-  private implicit def toRefined(fd: FiniteDuration): FiniteDuration Refined Positive = fd.toRefinedPositiveUnsafe
+  private implicit def toRefined(fd: FiniteDuration): PositiveFiniteDuration = fd.toRefinedPositiveUnsafe
 
   private def newRequestId() = RequestId(UUID.randomUUID().toString)
 

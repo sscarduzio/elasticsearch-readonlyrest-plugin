@@ -46,8 +46,8 @@ trait HttpClientsFactory {
 object HttpClientsFactory {
   type HttpClient = SttpBackend[Task, Nothing]
 
-  final case class Config(connectionTimeout: FiniteDuration Refined Positive,
-                          requestTimeout: FiniteDuration Refined Positive,
+  final case class Config(connectionTimeout: PositiveFiniteDuration,
+                          requestTimeout: PositiveFiniteDuration,
                           connectionPoolSize: Int Refined Positive,
                           validate: Boolean)
   object Config {

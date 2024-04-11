@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 import cats.data.NonEmptyList
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -40,6 +39,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, Imper
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, impersonationHeader, impersonatorDefFrom, mocksProviderForExternalAuthnServiceFrom}
 
 import scala.concurrent.duration._
@@ -267,7 +267,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         credentials == aCredentials
       }
 
-      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(5 second)
+      override def serviceTimeout: PositiveFiniteDuration = Refined.unsafeApply(5 second)
     }
   }
 

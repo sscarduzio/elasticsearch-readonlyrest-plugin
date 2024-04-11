@@ -46,6 +46,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Clock
 import scala.concurrent.duration._
@@ -67,7 +68,7 @@ object LdapServicesDecoder {
     AsyncDecoderCreator.instance { c =>
       val result = for {
         circuitBreakerConfig <- circuitBreakerDecoder(c)
-        cacheTTl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
+        cacheTTl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
       } yield {
         decodeLdapService(c, circuitBreakerConfig, cacheTTl)
       }
@@ -76,7 +77,7 @@ object LdapServicesDecoder {
 
   private def decodeLdapService(cursor: HCursor,
                                 circuitBreakerConfig: CircuitBreakerConfig,
-                                ttl: Option[FiniteDuration Refined Positive])
+                                ttl: Option[PositiveFiniteDuration])
                                (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                                 clock: Clock): Task[Either[DecodingFailure, LdapService]] = {
     ldapUsersServiceDecoder(circuitBreakerConfig, ttl)
@@ -92,7 +93,7 @@ object LdapServicesDecoder {
   private def doDecodeLdap(cursor: HCursor,
                            ldapUsersService: LdapUsersService,
                            circuitBreakerConfig: CircuitBreakerConfig,
-                           ttl: Option[FiniteDuration Refined Positive])
+                           ttl: Option[PositiveFiniteDuration])
                           (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                            clock: Clock): Task[Either[DecodingFailure, LdapService]] = {
     for {
@@ -112,7 +113,7 @@ object LdapServicesDecoder {
   }
 
   private def ldapUsersServiceDecoder(circuitBreakerConfig: CircuitBreakerConfig,
-                                      ttl: Option[FiniteDuration Refined Positive])
+                                      ttl: Option[PositiveFiniteDuration])
                                      (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapUsersService] = {
     AsyncDecoderCreator
       .instance[UnboundidLdapUsersService] { c =>
@@ -149,7 +150,7 @@ object LdapServicesDecoder {
 
   private def authenticationServiceDecoder(ldapUsersService: LdapUsersService,
                                            circuitBreakerConfig: CircuitBreakerConfig,
-                                           ttl: Option[FiniteDuration Refined Positive])
+                                           ttl: Option[PositiveFiniteDuration])
                                           (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                                            clock: Clock): AsyncDecoder[LdapAuthenticationService] =
     AsyncDecoderCreator
@@ -185,7 +186,7 @@ object LdapServicesDecoder {
 
   private def authorizationServiceDecoder(ldapUsersService: LdapUsersService,
                                           circuitBreakerConfig: CircuitBreakerConfig,
-                                          ttl: Option[FiniteDuration Refined Positive])
+                                          ttl: Option[PositiveFiniteDuration])
                                          (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                                           clock: Clock): AsyncDecoder[LdapAuthorizationServiceWithGroupsFiltering] =
     AsyncDecoderCreator
@@ -328,8 +329,8 @@ object LdapServicesDecoder {
           connectionMethod <- connectionMethodDecoder.tryDecode(c)
           poolName <- c.downField("name").as[LdapService.Name]
           poolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
-          connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[FiniteDuration Refined Positive]]
-          requestTimeout <- c.downFields("request_timeout_in_sec", "request_timeout").as[Option[FiniteDuration Refined Positive]]
+          connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[PositiveFiniteDuration]]
+          requestTimeout <- c.downFields("request_timeout_in_sec", "request_timeout").as[Option[PositiveFiniteDuration]]
           trustAllCertsOps <- c.downField("ssl_trust_all_certs").as[Option[Boolean]]
           ignoreLdapConnectivityProblems <- c.downField("ignore_ldap_connectivity_problems").as[Option[Boolean]]
           bindRequestUser <- bindRequestUserDecoder.tryDecode(c)
@@ -355,7 +356,7 @@ object LdapServicesDecoder {
         } else {
           for {
             maxRetries <- circuitBreaker.downField("max_retries").as[Int Refined Positive]
-            resetDuration <- circuitBreaker.downField("reset_duration").as[FiniteDuration Refined Positive]
+            resetDuration <- circuitBreaker.downField("reset_duration").as[PositiveFiniteDuration]
           } yield CircuitBreakerConfig(maxRetries, resetDuration)
         }
       }
@@ -414,7 +415,7 @@ object LdapServicesDecoder {
           for {
             recordName <- c.downField("record_name").as[Option[String]]
             dnsUrl <- c.downField("dns_url").as[Option[String]]
-            ttl <- c.downField("ttl").as[Option[FiniteDuration Refined Positive]]
+            ttl <- c.downField("ttl").as[Option[PositiveFiniteDuration]]
             useSsl <- c.downField("use_ssl").as[Option[Boolean]]
           } yield ConnectionMethod.ServerDiscovery(recordName, dnsUrl, ttl, useSsl.getOrElse(false))
         }

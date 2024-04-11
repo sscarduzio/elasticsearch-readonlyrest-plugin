@@ -18,23 +18,21 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import cats.implicits._
 import com.unboundid.ldap.sdk.{LDAPBindException, ResultCode, SimpleBindRequest}
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapService, LdapUser, LdapUsersService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TaskOps._
 
 import java.time.Clock
-import scala.concurrent.duration.FiniteDuration
 
 class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
                                                  override val ldapUsersService: LdapUsersService,
                                                  connectionPool: UnboundidLdapConnectionPool,
-                                                 override val serviceTimeout: FiniteDuration Refined Positive)
+                                                 override val serviceTimeout: PositiveFiniteDuration)
                                                 (implicit clock: Clock)
   extends LdapAuthenticationService with Logging {
 

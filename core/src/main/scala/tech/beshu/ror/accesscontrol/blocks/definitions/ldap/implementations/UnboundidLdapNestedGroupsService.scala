@@ -18,8 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import cats.implicits._
 import com.unboundid.ldap.sdk._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
@@ -27,14 +25,13 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Sear
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.GraphNodeAncestorsExplorer
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 
-import scala.concurrent.duration.FiniteDuration
-
 private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: UnboundidLdapConnectionPool,
                                                                 config: NestedGroupsConfig,
-                                                                serviceTimeout: FiniteDuration Refined Positive)
+                                                                serviceTimeout: PositiveFiniteDuration)
   extends Logging {
 
   private val ldapGroupsExplorer = new GraphNodeAncestorsExplorer[LdapGroup](

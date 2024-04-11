@@ -21,9 +21,7 @@ import java.util.concurrent.TimeUnit
 import better.files.File
 import cats.Show
 import cats.implicits._
-import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.providers.PropertiesProvider
@@ -37,8 +35,8 @@ import scala.util.{Failure, Success, Try}
 object RorProperties extends Logging {
 
   object defaults {
-    val refreshInterval: FiniteDuration Refined Positive = (5 second).toRefinedPositiveUnsafe
-    val loadingDelay: FiniteDuration Refined Positive = (5 second).toRefinedPositiveUnsafe
+    val refreshInterval: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
+    val loadingDelay: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
   }
 
   object keys {
@@ -103,7 +101,7 @@ object RorProperties extends Logging {
     case None => LoadingDelay(defaults.loadingDelay)
   }
 
-  private def toPositiveFiniteDuration(value: String): Try[Option[FiniteDuration Refined Positive]] = Try {
+  private def toPositiveFiniteDuration(value: String): Try[Option[PositiveFiniteDuration]] = Try {
     Try(Integer.valueOf(value)) match {
       case Success(interval) if interval == 0 =>
         None
@@ -113,14 +111,14 @@ object RorProperties extends Logging {
         throw new IllegalArgumentException(s"Cannot convert '$value' to finite positive duration")
     }
   }
-  final case class LoadingDelay(duration:FiniteDuration Refined Positive)
+  final case class LoadingDelay(duration:PositiveFiniteDuration)
   object LoadingDelay {
     implicit val  showLoadingDelay:Show[LoadingDelay] = Show[FiniteDuration].contramap(_.duration.value)
   }
   sealed trait RefreshInterval
   object RefreshInterval {
     case object Disabled extends RefreshInterval
-    final case class Enabled(interval: FiniteDuration Refined Positive) extends RefreshInterval
+    final case class Enabled(interval: PositiveFiniteDuration) extends RefreshInterval
 
     implicit val show: Show[RefreshInterval] = Show.show {
       case Disabled => "0 sec"

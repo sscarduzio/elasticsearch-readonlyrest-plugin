@@ -16,12 +16,7 @@
  */
 package tech.beshu.ror.boot
 
-import java.nio.file.Path
-import java.time.Instant
-
 import cats.data.{EitherT, NonEmptyList}
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -40,8 +35,10 @@ import tech.beshu.ror.configuration._
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadRawTestRorConfig, LoadedRorConfig, LoadedTestRorConfig, TestConfigLoadingInterpreter}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
-import scala.concurrent.duration.FiniteDuration
+import java.nio.file.Path
+import java.time.Instant
 
 class ReadonlyRest(coreFactory: CoreFactory,
                    auditSinkCreator: AuditSinkCreator,
@@ -281,7 +278,7 @@ object ReadonlyRest {
                                 expiration: Expiration) extends TestEngine
     final case class Invalidated(config: RawRorConfig,
                                  expiration: Expiration) extends TestEngine
-    final case class Expiration(ttl: FiniteDuration Refined Positive,
+    final case class Expiration(ttl: PositiveFiniteDuration,
                                 validTo: Instant)
   }
 
