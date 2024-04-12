@@ -38,7 +38,7 @@ class UnboundidLdapGroupsFromUserEntryAuthorizationService private(override val 
                                                                    override val ldapUsersService: LdapUsersService,
                                                                    connectionPool: UnboundidLdapConnectionPool,
                                                                    groupsSearchFilter: GroupsFromUserEntry,
-                                                                   nestedGroupsConfig: Option[NestedGroupsConfig],
+                                                                   val nestedGroupsConfig: Option[NestedGroupsConfig],
                                                                    override val serviceTimeout: PositiveFiniteDuration)
                                                                   (implicit clock: Clock)
   extends LdapAuthorizationService with Logging {

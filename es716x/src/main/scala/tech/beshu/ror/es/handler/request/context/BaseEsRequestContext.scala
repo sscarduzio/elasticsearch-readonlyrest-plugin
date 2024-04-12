@@ -43,7 +43,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   private val restRequest = esContext.channel.request()
 
-  override val kibanaSessionId: CorrelationId = esContext.correlationId
+  override val rorKibanaSessionId: CorrelationId = esContext.correlationId
 
   override val timestamp: Instant = esContext.timestamp
 
