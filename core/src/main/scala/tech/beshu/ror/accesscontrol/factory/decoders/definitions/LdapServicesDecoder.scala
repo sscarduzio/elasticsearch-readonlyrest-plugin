@@ -68,7 +68,7 @@ object LdapServicesDecoder {
     AsyncDecoderCreator.instance { c =>
       val result = for {
         circuitBreakerConfig <- circuitBreakerDecoder(c)
-        cacheTTl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
+        cacheTTl <- c.downFields("cache_ttl", "cache_ttl_in_sec").as[Option[PositiveFiniteDuration]]
       } yield {
         decodeLdapService(c, circuitBreakerConfig, cacheTTl)
       }
@@ -116,7 +116,7 @@ object LdapServicesDecoder {
                                       ttl: Option[PositiveFiniteDuration])
                                      (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapUsersService] = {
     AsyncDecoderCreator
-      .instance[UnboundidLdapUsersService] { c =>
+      .instance[LdapUsersService] { c =>
         val ldapServiceDecodingResult = for {
           name <- c.downField("name").as[LdapService.Name]
           connectionConfig <- connectionConfigDecoder(c)
@@ -134,18 +134,17 @@ object LdapServicesDecoder {
               Left(hostConnectionErrorDecodingFailureFrom(error))
             case Left(error: ServerDiscoveryConnectionError) =>
               Left(serverDiscoveryConnectionDecodingFailureFrom(error))
-            case Right(service) =>
-              Right(service)
+            case Right(ldapUsersService) =>
+              Right {
+                CacheableLdapUsersServiceDecorator.create(
+                  ldapUsersService = new CircuitBreakerLdapUsersServiceDecorator(ldapUsersService, circuitBreakerConfig),
+                  ttl = ttl
+                )
+              }
           }
         }
       }
       .mapError(DefinitionsLevelCreationError.apply)
-      .map { ldapUsersService =>
-        CacheableLdapUsersServiceDecorator.create(
-          new CircuitBreakerLdapUsersServiceDecorator(ldapUsersService, circuitBreakerConfig),
-          ttl
-        )
-      }
   }
 
   private def authenticationServiceDecoder(ldapUsersService: LdapUsersService,
@@ -171,18 +170,19 @@ object LdapServicesDecoder {
               Left(hostConnectionErrorDecodingFailureFrom(error))
             case Left(error: ServerDiscoveryConnectionError) =>
               Left(serverDiscoveryConnectionDecodingFailureFrom(error))
-            case Right(service) =>
-              Right(service)
+            case Right(ldapAuthenticationService) =>
+              Right {
+                CacheableLdapAuthenticationServiceDecorator.create(
+                  ldapAuthenticationService = new CircuitBreakerLdapAuthenticationServiceDecorator(
+                    ldapAuthenticationService, circuitBreakerConfig
+                  ),
+                  ttl = ttl
+                )
+              }
           }
         }
       }
       .mapError(DefinitionsLevelCreationError.apply)
-      .map { ldapAuthenticationService =>
-        CacheableLdapAuthenticationServiceDecorator.create(
-          new CircuitBreakerLdapAuthenticationServiceDecorator(ldapAuthenticationService, circuitBreakerConfig),
-          ttl
-        )
-      }
 
   private def authorizationServiceDecoder(ldapUsersService: LdapUsersService,
                                           circuitBreakerConfig: CircuitBreakerConfig,
@@ -227,18 +227,20 @@ object LdapServicesDecoder {
               Left(hostConnectionErrorDecodingFailureFrom(error))
             case Left(error: ServerDiscoveryConnectionError) =>
               Left(serverDiscoveryConnectionDecodingFailureFrom(error))
-            case Right(service) =>
-              Right(new NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter(service))
+            case Right(ldapAuthorizationServiceWithGroupsFiltering) =>
+              Right {
+                CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator.create(
+                  ldapService = new CircuitBreakerLdapAuthorizationServiceWithGroupsFilteringDecorator(
+                    new NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter(ldapAuthorizationServiceWithGroupsFiltering), // todo: are you sure?
+                    circuitBreakerConfig
+                  ),
+                  ttl = ttl
+                )
+              }
           }
         }
       }
       .mapError(DefinitionsLevelCreationError.apply)
-      .map { ldapAuthorizationServiceWithGroupsFiltering =>
-        CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator.create(
-          new CircuitBreakerLdapAuthorizationServiceWithGroupsFilteringDecorator(ldapAuthorizationServiceWithGroupsFiltering, circuitBreakerConfig),
-          ttl
-        )
-      }
 
   private def hostConnectionErrorDecodingFailureFrom(error: HostConnectionError) = {
     val connectionErrorMessage = Message(

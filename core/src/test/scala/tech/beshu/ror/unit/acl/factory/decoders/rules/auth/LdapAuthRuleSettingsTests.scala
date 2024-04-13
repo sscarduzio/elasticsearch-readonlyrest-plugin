@@ -50,7 +50,10 @@ class LdapAuthRuleSettingsTests
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
-          assertion = _ => ()
+          assertion = rule => {
+            assertLdapAuthNServiceLayerTypes(rule.authentication.settings.ldap)
+            assertLdapAnthZServiceLayerTypes(rule.authorization.settings.ldap)
+          }
         )
       }
       "auth LDAP rule can have caching declared at rule level" in {
@@ -76,7 +79,10 @@ class LdapAuthRuleSettingsTests
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
-          assertion = _ => ()
+          assertion = rule => {
+            assertLdapAuthNServiceLayerTypes(rule.authentication.settings.ldap, withRuleLevelCaching = true)
+            assertLdapAnthZServiceLayerTypes(rule.authorization.settings.ldap, withRuleLevelCaching = true)
+          }
         )
       }
     }

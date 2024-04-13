@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
 import org.scalatest.matchers.should.Matchers._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CacheableLdapAuthenticationServiceDecorator, CircuitBreakerLdapAuthenticationServiceDecorator, LoggableLdapAuthenticationServiceDecorator}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -49,8 +48,7 @@ class LdapAuthenticationRuleSettingsTests
               |    search_user_base_DN: "ou=People,dc=example,dc=com"
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [LoggableLdapAuthenticationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthenticationServiceDecorator].underlying shouldBe a [CircuitBreakerLdapAuthenticationServiceDecorator]
+            assertLdapAuthNServiceLayerTypes(rule.settings.ldap)
           }
         )
       }
@@ -76,8 +74,7 @@ class LdapAuthenticationRuleSettingsTests
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [LoggableLdapAuthenticationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthenticationServiceDecorator].underlying shouldBe a [CacheableLdapAuthenticationServiceDecorator]
+            assertLdapAuthNServiceLayerTypes(rule.settings.ldap, withRuleLevelCaching = true)
           }
         )
       }
@@ -102,8 +99,7 @@ class LdapAuthenticationRuleSettingsTests
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [LoggableLdapAuthenticationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthenticationServiceDecorator].underlying shouldBe a [CircuitBreakerLdapAuthenticationServiceDecorator]
+            assertLdapAuthNServiceLayerTypes(rule.settings.ldap)
           }
         )
       }

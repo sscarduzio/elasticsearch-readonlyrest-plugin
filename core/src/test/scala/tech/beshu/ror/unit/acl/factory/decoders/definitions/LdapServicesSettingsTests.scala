@@ -101,7 +101,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             ldapService shouldBe a[ComposedLdapAuthService]
             val composedLdapAuthService = ldapService.asInstanceOf[ComposedLdapAuthService]
 
-            assertLdapService(composedLdapAuthService.ldapUsersService)(
+            composedLdapAuthService.ldapAuthenticationService.ldapUsersService should equal {
+              composedLdapAuthService.ldapAuthorizationService.ldapUsersService
+            }
+
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
@@ -119,7 +123,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               )
             )
 
-            assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthenticationService"))(
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
@@ -132,12 +136,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                 ),
               ldapServiceLayer3 =>
                 ldapServiceLayer3 matchUnboundidLdapAuthenticationService(
-                  name = expectedLdapServiceName,
-                  serviceTimeout = 10 second
+                  name = expectedLdapServiceName
                 )
             )
 
-            assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthorizationService"))(
+            assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
@@ -205,7 +208,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             ldapService shouldBe a[ComposedLdapAuthService]
             val composedLdapAuthService = ldapService.asInstanceOf[ComposedLdapAuthService]
 
-            assertLdapService(composedLdapAuthService.ldapUsersService)(
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
@@ -223,7 +226,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               )
             )
 
-            assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthenticationService"))(
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
@@ -236,12 +239,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                 ),
               ldapServiceLayer3 =>
                 ldapServiceLayer3 matchUnboundidLdapAuthenticationService(
-                  name = expectedLdapServiceName,
-                  serviceTimeout = 10 second
+                  name = expectedLdapServiceName
                 )
             )
 
-            assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthorizationService"))(
+            assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
@@ -310,11 +312,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             definitions.items should have size 2
             val ldap1Service = definitions.items.head
             ldap1Service.id should be(LdapService.Name("ldap1"))
-            ldap1Service shouldBe a[LdapAuthService]
+            ldap1Service shouldBe a[ComposedLdapAuthService]
 
             val ldap2Service = definitions.items(1)
             ldap2Service.id should be(LdapService.Name("ldap2"))
-            ldap2Service shouldBe a[LdapAuthService]
+            ldap2Service shouldBe a[ComposedLdapAuthService]
           }
         )
       }
@@ -344,8 +346,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                 ),
               ldapServiceLayer2 =>
                 ldapServiceLayer2 matchUnboundidLdapAuthenticationService(
-                  name = expectedLdapServiceName,
-                  serviceTimeout = 10 second
+                  name = expectedLdapServiceName
                 )
             )
 
@@ -387,7 +388,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             ldapService shouldBe a[ComposedLdapAuthService]
             val composedLdapAuthService = ldapService.asInstanceOf[ComposedLdapAuthService]
 
-            assertLdapService(composedLdapAuthService.ldapUsersService)(
+            composedLdapAuthService.ldapAuthenticationService.ldapUsersService should equal {
+              composedLdapAuthService.ldapAuthorizationService.ldapUsersService
+            }
+
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
@@ -400,7 +405,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               )
             )
 
-            assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthenticationService"))(
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
@@ -408,12 +413,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                 ),
               ldapServiceLayer2 =>
                 ldapServiceLayer2 matchUnboundidLdapAuthenticationService(
-                  name = expectedLdapServiceName,
-                  serviceTimeout = 10 second
+                  name = expectedLdapServiceName
                 )
             )
 
-            assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthorizationService"))(
+            assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationServiceWithGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
@@ -511,7 +515,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
-            ldapService shouldBe a[LdapAuthService]
+            ldapService shouldBe a[ComposedLdapAuthService]
             ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
@@ -541,7 +545,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
-            ldapService shouldBe a[LdapAuthService]
+            ldapService shouldBe a[ComposedLdapAuthService]
             ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
@@ -571,7 +575,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
-            ldapService shouldBe a[LdapAuthService]
+            ldapService shouldBe a[ComposedLdapAuthService]
             ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
@@ -602,7 +606,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
-            ldapService shouldBe a[LdapAuthService]
+            ldapService shouldBe a[ComposedLdapAuthService]
             ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
@@ -633,7 +637,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             ldapService shouldBe a[ComposedLdapAuthService]
             val composedLdapAuthService = ldapService.asInstanceOf[ComposedLdapAuthService]
 
-            assertLdapService(composedLdapAuthService.ldapUsersService)(
+            composedLdapAuthService.ldapAuthenticationService.ldapUsersService should equal {
+              composedLdapAuthService.ldapAuthorizationService.ldapUsersService
+            }
+
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
@@ -646,7 +654,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               )
             )
 
-            assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthenticationService"))(
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
@@ -654,12 +662,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                 ),
               ldapServiceLayer2 =>
                 ldapServiceLayer2 matchUnboundidLdapAuthenticationService(
-                  name = expectedLdapServiceName,
-                  serviceTimeout = 10 second
+                  name = expectedLdapServiceName
                 )
             )
 
-            assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthorizationService"))(
+            assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
                 ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationServiceWithGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
@@ -712,7 +719,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               ldapService shouldBe a[ComposedLdapAuthService]
               val composedLdapAuthService = ldapService.asInstanceOf[ComposedLdapAuthService]
 
-              assertLdapService(composedLdapAuthService.ldapUsersService)(
+              composedLdapAuthService.ldapAuthenticationService.ldapUsersService should equal {
+                composedLdapAuthService.ldapAuthorizationService.ldapUsersService
+              }
+
+              assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
                 ldapServiceLayer1 =>
                   ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                     name = expectedLdapServiceName,
@@ -725,7 +736,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                 )
               )
 
-              assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthenticationService"))(
+              assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
                 ldapServiceLayer1 =>
                   ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                     name = expectedLdapServiceName,
@@ -733,12 +744,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                   ),
                 ldapServiceLayer2 =>
                   ldapServiceLayer2 matchUnboundidLdapAuthenticationService(
-                    name = expectedLdapServiceName,
-                    serviceTimeout = 10 second
+                    name = expectedLdapServiceName
                   )
               )
 
-              assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthorizationService"))(
+              assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
                 ldapServiceLayer1 =>
                   ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationServiceWithGroupsFilteringDecorator](
                     name = expectedLdapServiceName,
@@ -802,7 +812,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               ldapService shouldBe a[ComposedLdapAuthService]
               val composedLdapAuthService = ldapService.asInstanceOf[ComposedLdapAuthService]
 
-              assertLdapService(composedLdapAuthService.ldapUsersService)(
+              composedLdapAuthService.ldapAuthenticationService.ldapUsersService should equal {
+                composedLdapAuthService.ldapAuthorizationService.ldapUsersService
+              }
+
+              assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
                 ldapServiceLayer1 =>
                   ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                     name = expectedLdapServiceName,
@@ -815,7 +829,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                 )
               )
 
-              assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthenticationService"))(
+              assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
                 ldapServiceLayer1 =>
                   ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                     name = expectedLdapServiceName,
@@ -823,12 +837,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                   ),
                 ldapServiceLayer2 =>
                   ldapServiceLayer2 matchUnboundidLdapAuthenticationService(
-                    name = expectedLdapServiceName,
-                    serviceTimeout = 10 second
+                    name = expectedLdapServiceName
                   )
               )
 
-              assertLdapService(on(composedLdapAuthService).get[LdapService]("ldapAuthorizationService"))(
+              assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
                 ldapServiceLayer1 =>
                   ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationServiceWithGroupsFilteringDecorator](
                     name = expectedLdapServiceName,
@@ -1362,15 +1375,14 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                                        userSearchFilterConfig: UserSearchFilterConfig): Assertion = {
       ldapService.id should be(name)
       ldapService mustBe a[UnboundidLdapUsersService]
-      ldapService.serviceTimeout should be(serviceTimeout.toRefinedPositiveUnsafe)
-      ldapService.getUserSearchFilterConfig should be(userSearchFilterConfig)
+      val unboundidLdapUsersService = ldapService.asInstanceOf[UnboundidLdapUsersService]
+      unboundidLdapUsersService.serviceTimeout should be(serviceTimeout.toRefinedPositiveUnsafe)
+      unboundidLdapUsersService.getUserSearchFilterConfig should be(userSearchFilterConfig)
     }
 
-    def matchUnboundidLdapAuthenticationService(name: LdapService.Name,
-                                                serviceTimeout: FiniteDuration): Assertion = {
+    def matchUnboundidLdapAuthenticationService(name: LdapService.Name): Assertion = {
       ldapService.id should be(name)
       ldapService mustBe a[UnboundidLdapAuthenticationService]
-      ldapService.serviceTimeout should be(serviceTimeout.toRefinedPositiveUnsafe)
     }
 
     def matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering(name: LdapService.Name,

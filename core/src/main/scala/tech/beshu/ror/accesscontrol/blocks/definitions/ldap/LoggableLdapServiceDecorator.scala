@@ -52,6 +52,7 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
   override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
+// todo: remove?
 class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizationService)
   extends LdapAuthorizationService
     with Logging {
@@ -101,26 +102,7 @@ class LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(val underlyin
 
 }
 
-class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
-  extends LdapAuthService {
-
-  private val loggableLdapAuthenticationService = new LoggableLdapAuthenticationServiceDecorator(underlying)
-  private val loggableLdapAuthorizationService = new LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(underlying)
-
-  override def authenticate(userId: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
-    loggableLdapAuthenticationService.authenticate(userId, secret)
-
-  override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] =
-    loggableLdapAuthorizationService.groupsOf(userId, filteringGroupIds)
-
-  override val ldapUsersService: LdapUsersService = new LoggableLdapUsersServiceDecorator(underlying.ldapUsersService)
-
-  override def id: LdapService.Name = underlying.id
-
-  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
-
-}
-
+// todo: do we need it?
 private class LoggableLdapUsersServiceDecorator(underlying: LdapUsersService)
   extends LdapUsersService
     with Logging {

@@ -28,8 +28,9 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.nio.charset.Charset
 
-class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationService,
-                                                  val ttl: PositiveFiniteDuration)
+class CacheableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticationService,
+                                                  val ttl: PositiveFiniteDuration,
+                                                  cacheLdapUserServiceAsWell: Boolean)
   extends LdapAuthenticationService {
 
   private val cacheableAuthentication =
@@ -40,6 +41,11 @@ class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthentication
       },
       keyMap = hashCredential
     )
+
+  override val ldapUsersService: LdapUsersService = CacheableLdapUsersServiceDecorator.create(
+    ldapUsersService = underlying.ldapUsersService,
+    ttl = Option.when(cacheLdapUserServiceAsWell)(ttl)
+  )
 
   override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
     cacheableAuthentication.call((user, secret), serviceTimeout)
@@ -56,18 +62,26 @@ class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthentication
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
-
   override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
-
 }
 
 object CacheableLdapAuthenticationServiceDecorator {
 
   def create(ldapAuthenticationService: LdapAuthenticationService,
              ttl: Option[PositiveFiniteDuration]): LdapAuthenticationService = {
+    create(ldapAuthenticationService, ttl, cacheLdapUserServiceAsWell = false)
+  }
+
+  def createWithCachebaleLdapUsersService(ldapAuthenticationService: LdapAuthenticationService,
+                                          ttl: Option[PositiveFiniteDuration]): LdapAuthenticationService = {
+    create(ldapAuthenticationService, ttl, cacheLdapUserServiceAsWell = true)
+  }
+
+  private def create(ldapAuthenticationService: LdapAuthenticationService,
+                     ttl: Option[PositiveFiniteDuration],
+                     cacheLdapUserServiceAsWell: Boolean) = {
     ttl match {
-      case Some(ttlValue) => new CacheableLdapAuthenticationServiceDecorator(ldapAuthenticationService, ttlValue)
+      case Some(ttlValue) => new CacheableLdapAuthenticationServiceDecorator(ldapAuthenticationService, ttlValue, cacheLdapUserServiceAsWell)
       case None => ldapAuthenticationService
     }
   }
@@ -76,27 +90,9 @@ object CacheableLdapAuthenticationServiceDecorator {
                                                        hashedCredentials: String)
 }
 
-class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationService,
-                                                 val ttl: PositiveFiniteDuration)
-  extends LdapAuthorizationService {
-
-  private val cacheableGroupsOf = new CacheableAction[User.Id, UniqueList[Group]](
-    ttl = ttl,
-    action = (userId, requestId) => underlying.groupsOf(userId)(requestId)
-  )
-
-  override def groupsOf(id: User.Id)(implicit requestId: RequestId): Task[UniqueList[Group]] =
-    cacheableGroupsOf.call(id, serviceTimeout)
-
-  override def id: LdapService.Name = underlying.id
-
-  override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
-
-  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
-}
-
-class CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator(underlying: LdapAuthorizationServiceWithGroupsFiltering,
-                                                                    val ttl: PositiveFiniteDuration)
+class CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator(val underlying: LdapAuthorizationServiceWithGroupsFiltering,
+                                                                    val ttl: PositiveFiniteDuration,
+                                                                    cacheLdapUserServiceAsWell: Boolean)
   extends LdapAuthorizationServiceWithGroupsFiltering {
 
   private val cacheableGroupsOf = new CacheableAction[(User.Id, Set[GroupIdLike]), UniqueList[Group]](
@@ -106,30 +102,44 @@ class CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator(underlying: 
     }
   )
 
+  override val ldapUsersService: LdapUsersService = CacheableLdapUsersServiceDecorator.create(
+    ldapUsersService = underlying.ldapUsersService,
+    ttl = Option.when(cacheLdapUserServiceAsWell)(ttl)
+  )
+
   override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] =
     cacheableGroupsOf.call((id, filteringGroupIds), serviceTimeout)
 
   override def id: LdapService.Name = underlying.id
-
-  override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
 
   override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
 object CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator {
 
-  def create(ldapAuthorizationServiceWithGroupsFiltering: LdapAuthorizationServiceWithGroupsFiltering,
+  def create(ldapService: LdapAuthorizationServiceWithGroupsFiltering,
              ttl: Option[PositiveFiniteDuration]): LdapAuthorizationServiceWithGroupsFiltering = {
+    create(ldapService, ttl, cacheLdapUserServiceAsWell = false)
+  }
+
+  def createWithCachebaleLdapUsersService(ldapService: LdapAuthorizationServiceWithGroupsFiltering,
+                                          ttl: Option[PositiveFiniteDuration]): LdapAuthorizationServiceWithGroupsFiltering = {
+    create(ldapService, ttl, cacheLdapUserServiceAsWell = true)
+  }
+
+  private def create(ldapService: LdapAuthorizationServiceWithGroupsFiltering,
+                     ttl: Option[PositiveFiniteDuration],
+                     cacheLdapUserServiceAsWell: Boolean) = {
     ttl match {
       case Some(ttlValue) =>
-        new CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator(ldapAuthorizationServiceWithGroupsFiltering, ttlValue)
+        new CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator(ldapService, ttlValue, cacheLdapUserServiceAsWell)
       case None =>
-        ldapAuthorizationServiceWithGroupsFiltering
+        ldapService
     }
   }
 }
 
-class CacheableLdapUsersServiceDecorator(underlying: LdapUsersService,
+class CacheableLdapUsersServiceDecorator(val underlying: LdapUsersService,
                                          val ttl: PositiveFiniteDuration)
   extends LdapUsersService {
 
@@ -151,39 +161,6 @@ object CacheableLdapUsersServiceDecorator {
              ttl: Option[PositiveFiniteDuration]): LdapUsersService = {
     ttl match {
       case Some(ttlValue) => new CacheableLdapUsersServiceDecorator(ldapUsersService, ttlValue)
-      case None => ldapUsersService
-    }
-  }
-}
-
-class CacheableLdapAuthServiceDecorator(val underlying: LdapAuthService,
-                                        val ttl: PositiveFiniteDuration)
-  extends LdapAuthService {
-
-  private val cacheableLdapAuthenticationService = new CacheableLdapAuthenticationServiceDecorator(underlying, ttl)
-  private val cacheableLdapAuthorizationService = new CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator(
-    underlying, ttl
-  )
-
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
-    cacheableLdapAuthenticationService.authenticate(user, secret)
-
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] =
-    cacheableLdapAuthorizationService.groupsOf(id, filteringGroupIds)
-
-  override def id: LdapService.Name = underlying.id
-
-  override val ldapUsersService: LdapUsersService = new CacheableLdapUsersServiceDecorator(underlying.ldapUsersService, ttl)
-
-  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
-
-}
-object CacheableLdapAuthServiceDecorator {
-
-  def create(ldapUsersService: LdapAuthService,
-             ttl: Option[PositiveFiniteDuration]): LdapAuthService = {
-    ttl match {
-      case Some(ttlValue) => new CacheableLdapAuthServiceDecorator(ldapUsersService, ttlValue)
       case None => ldapUsersService
     }
   }

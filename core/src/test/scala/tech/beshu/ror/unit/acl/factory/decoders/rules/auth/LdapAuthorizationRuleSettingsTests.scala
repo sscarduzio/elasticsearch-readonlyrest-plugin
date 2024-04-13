@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroupIds}
@@ -57,9 +56,8 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapAuthServiceDecorator]
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
+            assertLdapAnthZServiceLayerTypes(rule.settings.ldap)
           }
         )
       }
@@ -87,10 +85,9 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapAuthServiceDecorator]
-            rule.settings.permittedGroupsLogic should be (GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
+            rule.settings.permittedGroupsLogic should be(GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
             rule.settings.permittedGroupsLogic.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+            assertLdapAnthZServiceLayerTypes(rule.settings.ldap)
           }
         )
       }
@@ -118,11 +115,10 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapAuthServiceDecorator]
             rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
             )))
+            assertLdapAnthZServiceLayerTypes(rule.settings.ldap)
           }
         )
       }
@@ -151,9 +147,8 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CacheableLdapAuthorizationServiceDecorator]
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
+            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withRuleLevelCaching = true)
           }
         )
       }
