@@ -188,7 +188,7 @@ class LdapAuthorizationRuleTests
       "user is not logged" in {
         assertNotMatchRule(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+            ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
             permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
             ))
@@ -216,7 +216,7 @@ class LdapAuthorizationRuleTests
       "user current group is not permitted" in {
         assertNotMatchRule(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+            ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
             permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g2"), GroupId("g1"))
             ))
@@ -326,7 +326,7 @@ class LdapAuthorizationRuleTests
           "admin is trying to impersonate user" in {
             assertNotMatchRule(
               settings = LdapAuthorizationRule.Settings(
-                ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+                ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
                 permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
                 ))
@@ -397,13 +397,13 @@ class LdapAuthorizationRuleTests
   }
 
   private def mockLdapService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) = {
-    new LdapAuthorizationServiceWithGroupsFiltering {
+    new LdapAuthorizationService.WithoutGroupsFiltering {
       override def id: LdapService.Name = LdapService.Name(name)
 
-      override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
+      override def groupsOf(id: User.Id)
                            (implicit requestId: RequestId): Task[UniqueList[Group]] = Task.delay {
         groups.get(id) match {
-          case Some(g) => UniqueList.fromIterable(g) // todo: filtering
+          case Some(g) => UniqueList.fromIterable(g)
           case None => UniqueList.empty
         }
       }
@@ -416,10 +416,10 @@ class LdapAuthorizationRuleTests
   }
 
   private def mockFailedLdapService(name: NonEmptyString, failure: Throwable) = {
-    new LdapAuthorizationServiceWithGroupsFiltering {
+    new LdapAuthorizationService.WithoutGroupsFiltering {
       override def id: LdapService.Name = LdapService.Name(name)
 
-      override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
+      override def groupsOf(id: User.Id)
                            (implicit requestId: RequestId): Task[UniqueList[Group]] =
         Task.raiseError(failure)
 

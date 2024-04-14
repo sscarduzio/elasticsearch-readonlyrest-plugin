@@ -41,7 +41,7 @@ class UnboundidLdapGroupsFromUserEntryAuthorizationService private(override val 
                                                                    val nestedGroupsConfig: Option[NestedGroupsConfig],
                                                                    override val serviceTimeout: PositiveFiniteDuration)
                                                                   (implicit clock: Clock)
-  extends LdapAuthorizationService with Logging {
+  extends LdapAuthorizationService.WithoutGroupsFiltering with Logging {
 
   private val nestedGroupsService = nestedGroupsConfig
     .map(new UnboundidLdapNestedGroupsService(connectionPool, _, serviceTimeout))
@@ -122,7 +122,7 @@ object UnboundidLdapGroupsFromUserEntryAuthorizationService {
              connectionConfig: LdapConnectionConfig,
              groupsSearchFilter: GroupsFromUserEntry,
              nestedGroupsConfig: Option[NestedGroupsConfig])
-            (implicit clock: Clock): Task[Either[ConnectionError, LdapAuthorizationService]] = {
+            (implicit clock: Clock): Task[Either[ConnectionError, LdapAuthorizationService.WithoutGroupsFiltering]] = {
     UnboundidLdapConnectionPoolProvider
       .connectWithOptionalBindingTest(poolProvider, connectionConfig)
       .map(_.map(connectionPool =>

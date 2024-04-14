@@ -45,28 +45,63 @@ class CircuitBreakerLdapAuthenticationServiceDecorator(val underlying: LdapAuthe
   override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
-class CircuitBreakerLdapAuthorizationServiceWithGroupsFilteringDecorator(val underlying: LdapAuthorizationServiceWithGroupsFiltering,
-                                                                         override val circuitBreakerConfig: CircuitBreakerConfig)
-  extends LdapAuthorizationServiceWithGroupsFiltering
-    with LdapCircuitBreaker {
+object CircuitBreakerLdapAuthorizationService {
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
-                       (implicit requestId: RequestId): Task[UniqueList[Group]] = {
-    protect(
-      underlying.groupsOf(id, filteringGroupIds)
-    )
+  def create(ldapService: LdapAuthorizationService,
+             circuitBreakerConfig: CircuitBreakerConfig): LdapAuthorizationService = {
+    ldapService match {
+      case ls: LdapAuthorizationService.WithoutGroupsFiltering =>
+        new CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator(ls, circuitBreakerConfig)
+      case ls: LdapAuthorizationService.WithGroupsFiltering =>
+        new CircuitBreakerLdapAuthorizationService.WithGroupsFilteringDecorator(ls, circuitBreakerConfig)
+    }
   }
 
-  override def id: LdapService.Name = underlying.id
+  class WithGroupsFilteringDecorator(val underlying: LdapAuthorizationService.WithGroupsFiltering,
+                                     override val circuitBreakerConfig: CircuitBreakerConfig)
+    extends LdapAuthorizationService.WithGroupsFiltering
+      with LdapCircuitBreaker {
 
-  override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
+    override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
+                         (implicit requestId: RequestId): Task[UniqueList[Group]] = {
+      protect(
+        underlying.groupsOf(id, filteringGroupIds)
+      )
+    }
 
-  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
+    override def id: LdapService.Name = underlying.id
+
+    override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
+
+    override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
+  }
+
+  class WithoutGroupsFilteringDecorator(val underlying: LdapAuthorizationService.WithoutGroupsFiltering,
+                                        override val circuitBreakerConfig: CircuitBreakerConfig)
+    extends LdapAuthorizationService.WithoutGroupsFiltering
+      with LdapCircuitBreaker {
+
+    override def groupsOf(id: User.Id)
+                         (implicit requestId: RequestId): Task[UniqueList[Group]] = {
+      protect(
+        underlying.groupsOf(id)
+      )
+    }
+
+    override def id: LdapService.Name = underlying.id
+
+    override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
+
+    override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
+  }
+
 }
+
 class CircuitBreakerLdapUsersServiceDecorator(val underlying: LdapUsersService,
                                               override val circuitBreakerConfig: CircuitBreakerConfig)
   extends LdapUsersService
     with LdapCircuitBreaker {
+
   override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] = {
     protect(
       underlying.ldapUserBy(userId)

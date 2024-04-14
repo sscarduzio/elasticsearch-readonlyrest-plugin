@@ -56,7 +56,7 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .emapE { case (name, ttl) =>
         LdapRulesDecodersHelper
           .findLdapService[LdapAuthenticationRule](LdapServiceType.Authentication, name, ldapDefinitions.items)
-          .map(CacheableLdapAuthenticationServiceDecorator.createWithCachebaleLdapUsersService(_, ttl))
+          .map(CacheableLdapAuthenticationServiceDecorator.createWithCacheableLdapUsersService(_, ttl))
       }
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
       .map(service => RuleDefinition.create(
@@ -134,8 +134,8 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                           groupsLogic: GroupsLogic,
                                           ldapDefinitions: Definitions[LdapService]): Either[CoreCreationError, LdapAuthorizationRule.Settings] = {
     findLdapService[LdapAuthorizationRule](LdapServiceType.Authorization, name, ldapDefinitions.items)
-      .map(CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator.createWithCachebaleLdapUsersService(_, ttl))
-      .map(service => new LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(service))
+      .map(CacheableLdapAuthorizationService.createWithCacheableLdapUsersService(_, ttl))
+      .map(service => LoggableLdapAuthorizationService.create(service))
       .map(LdapAuthorizationRule.Settings(_, groupsLogic))
   }
 }
@@ -199,8 +199,8 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
           ),
           new LdapAuthorizationRule(
             LdapAuthorizationRule.Settings(
-              new LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(
-                CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator.create(ldapService.ldapAuthorizationService, ttl)
+              LoggableLdapAuthorizationService.create(
+                CacheableLdapAuthorizationService.create(ldapService.ldapAuthorizationService, ttl)
               ),
               groupsLogic
             ),
@@ -254,7 +254,7 @@ private object LdapRulesDecodersHelper {
       override type LDAP_SERVICE = LdapAuthenticationService
     }
     case object Authorization extends LdapServiceType {
-      override type LDAP_SERVICE = LdapAuthorizationServiceWithGroupsFiltering
+      override type LDAP_SERVICE = LdapAuthorizationService
     }
     case object Composed extends LdapServiceType {
       override type LDAP_SERVICE = ComposedLdapAuthService

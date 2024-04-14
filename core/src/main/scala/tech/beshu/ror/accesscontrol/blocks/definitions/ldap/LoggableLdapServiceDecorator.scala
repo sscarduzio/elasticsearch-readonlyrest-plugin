@@ -52,54 +52,66 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
   override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
-// todo: remove?
-class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizationService)
-  extends LdapAuthorizationService
-    with Logging {
 
-  override def groupsOf(userId: User.Id)
-                       (implicit requestId: RequestId): Task[UniqueList[Group]] = {
-    logger.debug(s"[${requestId.show}] Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}]")
-    underlying
-      .groupsOf(userId)
-      .andThen {
-        case Success(groups) =>
-          logger.debug(s"LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
-        case Failure(ex) =>
-          logger.debug(s"Fetching LDAP user's groups failed:", ex)
-      }
+object LoggableLdapAuthorizationService {
+
+  def create(ldapService: LdapAuthorizationService): LdapAuthorizationService = {
+    ldapService match {
+      case ls: LdapAuthorizationService.WithoutGroupsFiltering =>
+        new LoggableLdapAuthorizationService.WithoutGroupsFilteringDecorator(ls)
+      case ls: LdapAuthorizationService.WithGroupsFiltering =>
+        new LoggableLdapAuthorizationService.WithGroupsFilteringDecorator(ls)
+    }
   }
 
-  override val ldapUsersService: LdapUsersService = new LoggableLdapUsersServiceDecorator(underlying.ldapUsersService)
+  class WithoutGroupsFilteringDecorator(val underlying: LdapAuthorizationService.WithoutGroupsFiltering)
+    extends LdapAuthorizationService.WithoutGroupsFiltering
+      with Logging {
 
-  override def id: LdapService.Name = underlying.id
+    override def groupsOf(userId: User.Id)
+                         (implicit requestId: RequestId): Task[UniqueList[Group]] = {
+      logger.debug(s"[${requestId.show}] Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}]")
+      underlying
+        .groupsOf(userId)
+        .andThen {
+          case Success(groups) =>
+            logger.debug(s"LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
+          case Failure(ex) =>
+            logger.debug(s"Fetching LDAP user's groups failed:", ex)
+        }
+    }
 
-  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
-}
+    override val ldapUsersService: LdapUsersService = new LoggableLdapUsersServiceDecorator(underlying.ldapUsersService)
 
-class LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(val underlying: LdapAuthorizationServiceWithGroupsFiltering)
-  extends LdapAuthorizationServiceWithGroupsFiltering
-    with Logging {
+    override def id: LdapService.Name = underlying.id
 
-  override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])
-                       (implicit requestId: RequestId): Task[UniqueList[Group]] = {
-    logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that filtered group IDs are [${filteringGroupIds.map(_.show).mkString(",")}])")
-    underlying
-      .groupsOf(userId, filteringGroupIds)
-      .andThen {
-        case Success(groups) =>
-          logger.debug(s"[${requestId.show}] LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
-        case Failure(ex) =>
-          logger.debug(s"[${requestId.show}] Fetching LDAP user's groups failed:", ex)
-      }
+    override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
   }
 
-  override val ldapUsersService: LdapUsersService = new LoggableLdapUsersServiceDecorator(underlying.ldapUsersService)
+  class WithGroupsFilteringDecorator(val underlying: LdapAuthorizationService.WithGroupsFiltering)
+    extends LdapAuthorizationService.WithGroupsFiltering
+      with Logging {
 
-  override def id: LdapService.Name = underlying.id
+    override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])
+                         (implicit requestId: RequestId): Task[UniqueList[Group]] = {
+      logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that filtered group IDs are [${filteringGroupIds.map(_.show).mkString(",")}])")
+      underlying
+        .groupsOf(userId, filteringGroupIds)
+        .andThen {
+          case Success(groups) =>
+            logger.debug(s"[${requestId.show}] LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
+          case Failure(ex) =>
+            logger.debug(s"[${requestId.show}] Fetching LDAP user's groups failed:", ex)
+        }
+    }
 
-  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
+    override val ldapUsersService: LdapUsersService = new LoggableLdapUsersServiceDecorator(underlying.ldapUsersService)
 
+    override def id: LdapService.Name = underlying.id
+
+    override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
+
+  }
 }
 
 // todo: do we need it?

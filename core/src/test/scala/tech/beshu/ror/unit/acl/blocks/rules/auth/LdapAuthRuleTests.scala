@@ -181,7 +181,7 @@ class LdapAuthRuleTests
         assertNotMatchRule(
           authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+            ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
             permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
@@ -195,7 +195,7 @@ class LdapAuthRuleTests
             mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(false))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+            ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
             permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
@@ -237,7 +237,7 @@ class LdapAuthRuleTests
             mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.raiseError(TestException("authentication failure")))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+            ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
             permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
@@ -267,7 +267,7 @@ class LdapAuthRuleTests
             assertNotMatchRule(
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+                ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
                 permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
@@ -291,7 +291,7 @@ class LdapAuthRuleTests
             assertNotMatchRule(
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+                ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
                 permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
@@ -315,7 +315,7 @@ class LdapAuthRuleTests
             assertNotMatchRule(
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+                ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
                 permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
@@ -339,7 +339,7 @@ class LdapAuthRuleTests
             assertNotMatchRule(
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+                ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
                 permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
@@ -363,7 +363,7 @@ class LdapAuthRuleTests
             assertNotMatchRule(
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+                ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
                 permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
@@ -389,7 +389,7 @@ class LdapAuthRuleTests
                 mockLdapAuthenticationService(User.Id("admin"), PlainTextSecret("pass"), Task.now(false))
               ),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                ldap = mock[LdapAuthorizationServiceWithGroupsFiltering],
+                ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
                 permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
@@ -489,15 +489,15 @@ class LdapAuthRuleTests
   }
 
   private def mockLdapAuthorizationService(user: User.Id, result: Task[UniqueList[Group]]) = {
-    val service = mock[LdapAuthorizationServiceWithGroupsFiltering]
-    (service.groupsOf(_: User.Id, _: Set[GroupIdLike])(_: RequestId))
-      .expects(user, *, *)
+    val service = mock[LdapAuthorizationService.WithoutGroupsFiltering]
+    (service.groupsOf(_: User.Id)(_: RequestId))
+      .expects(user, *)
       .returning(result)
     service
   }
 
   private def mockLdapAuthorizationService(ldapId: LdapService#Id) = {
-    val service = mock[LdapAuthorizationServiceWithGroupsFiltering]
+    val service = mock[LdapAuthorizationService.WithoutGroupsFiltering]
     (() => service.id).expects().returning(ldapId)
     service
   }

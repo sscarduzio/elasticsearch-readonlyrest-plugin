@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Sear
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationServiceWithGroupsFiltering, LdapService, LdapUser, LdapUsersService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser, LdapUsersService}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -41,7 +41,8 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
                                                                                                val nestedGroupsConfig: Option[NestedGroupsConfig],
                                                                                                override val serviceTimeout: PositiveFiniteDuration)
                                                                                               (implicit clock: Clock)
-  extends LdapAuthorizationServiceWithGroupsFiltering with Logging {
+  extends LdapAuthorizationService.WithGroupsFiltering
+    with Logging {
 
   private val nestedGroupsService = nestedGroupsConfig
     .map(new UnboundidLdapNestedGroupsService(connectionPool, _, serviceTimeout))
@@ -141,7 +142,7 @@ object UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFi
              connectionConfig: LdapConnectionConfig,
              groupsSearchFilter: DefaultGroupSearch,
              nestedGroupsConfig: Option[NestedGroupsConfig])
-            (implicit clock: Clock): Task[Either[ConnectionError, LdapAuthorizationServiceWithGroupsFiltering]] = {
+            (implicit clock: Clock): Task[Either[ConnectionError, LdapAuthorizationService.WithGroupsFiltering]] = {
     UnboundidLdapConnectionPoolProvider
       .connectWithOptionalBindingTest(poolProvider, connectionConfig)
       .map(_.map(connectionPool =>

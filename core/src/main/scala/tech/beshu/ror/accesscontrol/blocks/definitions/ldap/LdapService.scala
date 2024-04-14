@@ -57,60 +57,30 @@ trait LdapAuthenticationService extends LdapService {
   def serviceTimeout: PositiveFiniteDuration
 }
 
-trait LdapAuthorizationService extends LdapService {
+sealed trait LdapAuthorizationService extends LdapService {
   def ldapUsersService: LdapUsersService
-
-  def groupsOf(id: User.Id)(implicit requestId: RequestId): Task[UniqueList[Group]]
-
   def serviceTimeout: PositiveFiniteDuration
 }
 object LdapAuthorizationService {
-
-  final class NoOpLdapAuthorizationServiceAdapter(val underlying: LdapAuthorizationServiceWithGroupsFiltering)
-    extends LdapAuthorizationService {
-    override def id: Name = underlying.id
-
-    override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
-
-    override def groupsOf(id: User.Id)
-                         (implicit requestId: RequestId): Task[UniqueList[Group]] = underlying.groupsOf(id, Set.empty)
-
-    override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
+  trait WithoutGroupsFiltering extends LdapAuthorizationService {
+    def groupsOf(id: User.Id)(implicit requestId: RequestId): Task[UniqueList[Group]]
   }
-}
 
-trait LdapAuthorizationServiceWithGroupsFiltering extends LdapService {
-  def ldapUsersService: LdapUsersService
-
-  def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
-              (implicit requestId: RequestId): Task[UniqueList[Group]]
-
-  def serviceTimeout: PositiveFiniteDuration
-}
-object LdapAuthorizationServiceWithGroupsFiltering {
-
-  final class NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter(val underlying: LdapAuthorizationService)
-    extends LdapAuthorizationServiceWithGroupsFiltering {
-    override def id: Name = underlying.id
-
-    override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
-
-    override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
-                         (implicit requestId: RequestId): Task[UniqueList[Group]] = underlying.groupsOf(id)
-
-    override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
+  trait WithGroupsFiltering extends LdapAuthorizationService {
+    def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
+                (implicit requestId: RequestId): Task[UniqueList[Group]]
   }
 }
 
 class ComposedLdapAuthService private(override val id: LdapService#Id,
                                       val ldapAuthenticationService: LdapAuthenticationService,
-                                      val ldapAuthorizationService: LdapAuthorizationServiceWithGroupsFiltering)
+                                      val ldapAuthorizationService: LdapAuthorizationService)
   extends LdapService
 
 object ComposedLdapAuthService {
   def create(ldapUsersService: LdapUsersService,
              ldapAuthenticationService: LdapAuthenticationService,
-             ldapAuthorizationService: LdapAuthorizationServiceWithGroupsFiltering): Either[String, ComposedLdapAuthService] = {
+             ldapAuthorizationService: LdapAuthorizationService): Either[String, ComposedLdapAuthService] = {
     for {
       _ <- Either.cond(
         test = allIdEqual(ldapUsersService, ldapAuthenticationService, ldapAuthorizationService),

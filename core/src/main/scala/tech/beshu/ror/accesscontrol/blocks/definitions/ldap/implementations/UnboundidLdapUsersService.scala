@@ -133,7 +133,8 @@ object UserGroupsSearchFilterConfig {
                                         groupSearchFilter: GroupSearchFilter,
                                         groupIdAttribute: GroupIdAttribute,
                                         uniqueMemberAttribute: UniqueMemberAttribute,
-                                        groupAttributeIsDN: Boolean)
+                                        groupAttributeIsDN: Boolean,
+                                        serverSideGroupsFiltering: Boolean)
       extends UserGroupsSearchMode
 
     final case class GroupsFromUserEntry(searchGroupBaseDN: Dn,

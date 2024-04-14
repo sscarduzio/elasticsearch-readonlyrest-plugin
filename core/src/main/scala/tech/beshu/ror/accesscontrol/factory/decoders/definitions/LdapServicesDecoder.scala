@@ -27,7 +27,6 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationServiceWithGroupsFiltering.NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
@@ -98,7 +97,7 @@ object LdapServicesDecoder {
                            clock: Clock): Task[Either[DecodingFailure, LdapService]] = {
     for {
       authenticationService <- (authenticationServiceDecoder(ldapUsersService, circuitBreakerConfig, ttl): AsyncDecoder[LdapAuthenticationService])(cursor)
-      authorizationService <- (authorizationServiceDecoder(ldapUsersService, circuitBreakerConfig, ttl): AsyncDecoder[LdapAuthorizationServiceWithGroupsFiltering])(cursor)
+      authorizationService <- (authorizationServiceDecoder(ldapUsersService, circuitBreakerConfig, ttl): AsyncDecoder[LdapAuthorizationService])(cursor)
     } yield (authenticationService, authorizationService) match {
       case (Right(authn), Right(authz)) => Right {
         ComposedLdapAuthService.create(ldapUsersService, authn, authz) match {
@@ -188,15 +187,25 @@ object LdapServicesDecoder {
                                           circuitBreakerConfig: CircuitBreakerConfig,
                                           ttl: Option[PositiveFiniteDuration])
                                          (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                                          clock: Clock): AsyncDecoder[LdapAuthorizationServiceWithGroupsFiltering] =
+                                          clock: Clock): AsyncDecoder[LdapAuthorizationService] =
     AsyncDecoderCreator
-      .instance[LdapAuthorizationServiceWithGroupsFiltering] { c =>
+      .instance[LdapAuthorizationService] { c =>
         val ldapServiceDecodingResult = for {
           name <- c.downField("name").as[LdapService.Name]
           connectionConfig <- connectionConfigDecoder(c)
           userGroupsSearchFilter <- userGroupsSearchFilterConfigDecoder(c)
         } yield {
           userGroupsSearchFilter.mode match {
+            case groupSearch: DefaultGroupSearch if groupSearch.serverSideGroupsFiltering =>
+              UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering
+                .create(
+                  name,
+                  ldapUsersService,
+                  ldapConnectionPoolProvider,
+                  connectionConfig,
+                  groupSearch,
+                  userGroupsSearchFilter.nestedGroupsConfig
+                )
             case groupSearch: DefaultGroupSearch =>
               UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering
                 .create(
@@ -227,13 +236,10 @@ object LdapServicesDecoder {
               Left(hostConnectionErrorDecodingFailureFrom(error))
             case Left(error: ServerDiscoveryConnectionError) =>
               Left(serverDiscoveryConnectionDecodingFailureFrom(error))
-            case Right(ldapAuthorizationServiceWithGroupsFiltering) =>
+            case Right(ldapAuthorizationService) =>
               Right {
-                CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator.create(
-                  ldapService = new CircuitBreakerLdapAuthorizationServiceWithGroupsFilteringDecorator(
-                    new NoOpLdapAuthorizationServiceWithGroupsFilteringAdapter(ldapAuthorizationServiceWithGroupsFiltering), // todo: are you sure?
-                    circuitBreakerConfig
-                  ),
+                CacheableLdapAuthorizationService.create(
+                  ldapService = CircuitBreakerLdapAuthorizationService.create(ldapAuthorizationService, circuitBreakerConfig),
                   ttl = ttl
                 )
               }
@@ -293,7 +299,8 @@ object LdapServicesDecoder {
         groupSearchFilter.getOrElse(GroupSearchFilter.default),
         groupIdAttribute.getOrElse(GroupIdAttribute.default),
         uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
-        groupAttributeIsDN.getOrElse(true)
+        groupAttributeIsDN.getOrElse(true),
+        false // todo:
       )
     }
 
@@ -489,7 +496,7 @@ object LdapServicesDecoder {
 
   private def nestedGroupsConfigDecoder(searchMode: UserGroupsSearchMode) = {
     searchMode match {
-      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, uniqueMemberAttribute, _) =>
+      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, uniqueMemberAttribute, _, _) =>
         Decoder.instance { c =>
           for {
             nestedGroupsDepthOpt <- c.downField("nested_groups_depth").as[Option[Int Refined Positive]]

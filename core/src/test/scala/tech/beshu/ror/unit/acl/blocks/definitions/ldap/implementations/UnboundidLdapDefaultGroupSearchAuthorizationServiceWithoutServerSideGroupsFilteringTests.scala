@@ -41,8 +41,8 @@ import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeWhenUserIdAttributeIsUidTests
-  extends UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests {
+class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringWhenUserIdAttributeIsUidTests
+  extends UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringTests {
 
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.CustomAttribute("uid")
   override protected val morganUserId: User.Id = User.Id("morgan")
@@ -50,8 +50,8 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeWhenUserIdAttribu
   override protected val devitoUserId: User.Id = User.Id("devito")
 }
 
-class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeWhenUserIdAttributeIsCnTests
-  extends UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests {
+class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringWhenUserIdAttributeIsCnTests
+  extends UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringTests {
 
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.Cn
   override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
@@ -60,7 +60,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeWhenUserIdAttribu
 }
 
 // todo: without filtering. what about with filtering?
-abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
+abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringTests
   extends AnyWordSpec
     with BeforeAndAfterAll
     with Inside
@@ -134,6 +134,7 @@ abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
               GroupIdAttribute("cn"),
               UniqueMemberAttribute("uniqueMember"),
               groupAttributeIsDN = true,
+              serverSideGroupsFiltering = false
             ),
             nestedGroupsConfig = None
           )
@@ -166,6 +167,7 @@ abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
               GroupIdAttribute("cn"),
               UniqueMemberAttribute("uniqueMember"),
               groupAttributeIsDN = true,
+              serverSideGroupsFiltering = false
             ),
             nestedGroupsConfig = Some(NestedGroupsConfig(
               nestedLevels = 1,
