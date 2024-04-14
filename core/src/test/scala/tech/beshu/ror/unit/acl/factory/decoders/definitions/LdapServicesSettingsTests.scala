@@ -1367,8 +1367,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
       ldapService.id should be(name)
       ldapService mustBe a[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering]
       val ldapAuthorizationService = ldapService.asInstanceOf[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering]
-      ldapAuthorizationService.underlying mustBe a[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering]
-      val adaptedLdapAuthorizationService = ldapAuthorizationService.underlying.asInstanceOf[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering]
+      ldapAuthorizationService.underlying mustBe a[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering]
+      val adaptedLdapAuthorizationService = ldapAuthorizationService.underlying.asInstanceOf[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering]
       adaptedLdapAuthorizationService.getDefaultGroupSearch should be(defaultGroupSearch)
       adaptedLdapAuthorizationService.getNestedGroupsConfig should be(nestedGroupsConfig)
       adaptedLdapAuthorizationService.serviceTimeout should be(serviceTimeout.toRefinedPositiveUnsafe)
