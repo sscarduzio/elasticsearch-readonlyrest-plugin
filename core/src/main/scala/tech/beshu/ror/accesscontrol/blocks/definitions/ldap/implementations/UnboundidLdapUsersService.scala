@@ -41,7 +41,7 @@ class UnboundidLdapUsersService private(override val id: LdapService#Id,
 
   override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] = {
     userSearchFiler.userIdAttribute match {
-      case UserIdAttribute.Cn => createLdapUser(userId)
+      case UserIdAttribute.OptimizedCn => createLdapUser(userId)
       case attribute@UserIdAttribute.CustomAttribute(_) => fetchLdapUser(userId, attribute)
     }
   }
@@ -117,7 +117,7 @@ object UserSearchFilterConfig {
 
   sealed trait UserIdAttribute
   object UserIdAttribute {
-    case object Cn extends UserIdAttribute
+    case object OptimizedCn extends UserIdAttribute // optimization means: skipping user search
     final case class CustomAttribute(name: NonEmptyString) extends UserIdAttribute
   }
 }

@@ -52,7 +52,6 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
   override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
-
 object LoggableLdapAuthorizationService {
 
   def create(ldapService: LdapAuthorizationService): LdapAuthorizationService = {
@@ -114,7 +113,6 @@ object LoggableLdapAuthorizationService {
   }
 }
 
-// todo: do we need it?
 private class LoggableLdapUsersServiceDecorator(underlying: LdapUsersService)
   extends LdapUsersService
     with Logging {

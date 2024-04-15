@@ -52,7 +52,7 @@ class LdapAuthRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             assertLdapAuthNServiceLayerTypes(rule.authentication.settings.ldap)
-            assertLdapAnthZServiceLayerTypes(rule.authorization.settings.ldap)
+            assertLdapAnthZServiceLayerTypes(rule.authorization.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )
       }
@@ -78,10 +78,11 @@ class LdapAuthRuleSettingsTests
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    sever_side_groups_filtering: true
                |""".stripMargin,
           assertion = rule => {
             assertLdapAuthNServiceLayerTypes(rule.authentication.settings.ldap, withRuleLevelCaching = true)
-            assertLdapAnthZServiceLayerTypes(rule.authorization.settings.ldap, withRuleLevelCaching = true)
+            assertLdapAnthZServiceLayerTypes(rule.authorization.settings.ldap, withServerSideGroupsFiltering = true, withRuleLevelCaching = true)
           }
         )
       }

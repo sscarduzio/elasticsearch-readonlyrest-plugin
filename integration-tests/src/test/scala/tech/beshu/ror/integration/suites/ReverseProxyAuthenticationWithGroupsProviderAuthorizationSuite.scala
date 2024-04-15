@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.containers.dependencies.wiremock
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
-//TODO: change test names. Current names are copies from old java integration tests
+//todo: change test names. Current names are copies from old java integration tests
 class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest

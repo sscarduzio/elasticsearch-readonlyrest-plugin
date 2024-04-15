@@ -123,7 +123,35 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
   }
 
   def assertLdapAnthZServiceLayerTypes(ldapService: LdapAuthorizationService,
+                                       withServerSideGroupsFiltering: Boolean,
                                        withRuleLevelCaching: Boolean = false): Assertion = {
+    if(withServerSideGroupsFiltering) {
+      assertLdapAuthZWithoutServerSideGroupsFilteringServiceLayerTypes(ldapService, withRuleLevelCaching)
+    } else {
+      assertLdapAuthZWithServerSideGroupsFilteringServiceLayerTypes(ldapService, withRuleLevelCaching)
+    }
+  }
+
+  private def assertLdapAuthZWithoutServerSideGroupsFilteringServiceLayerTypes(ldapService: LdapAuthorizationService,
+                                                                            withRuleLevelCaching: Boolean) = {
+    ldapService shouldBe a[LoggableLdapAuthorizationService.WithGroupsFilteringDecorator]
+    val loggableLdapService = ldapService.asInstanceOf[LoggableLdapAuthorizationService.WithGroupsFilteringDecorator]
+    val underlying = if (withRuleLevelCaching) {
+      loggableLdapService.underlying shouldBe a[CacheableLdapAuthorizationService.WithGroupsFilteringDecorator]
+      val ruleLevelCachedLdapService = loggableLdapService.underlying.asInstanceOf[CacheableLdapAuthorizationService.WithGroupsFilteringDecorator]
+      ruleLevelCachedLdapService.underlying
+    } else {
+      loggableLdapService.underlying
+    }
+
+    underlying shouldBe a[CircuitBreakerLdapAuthorizationService.WithGroupsFilteringDecorator]
+    val circuitBreakerLdapAuthorizationService = underlying.asInstanceOf[CircuitBreakerLdapAuthorizationService.WithGroupsFilteringDecorator]
+    val theBottomLdapService = circuitBreakerLdapAuthorizationService.underlying
+    theBottomLdapService shouldBe an[UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering]
+  }
+
+  private def assertLdapAuthZWithServerSideGroupsFilteringServiceLayerTypes(ldapService: LdapAuthorizationService,
+                                                                            withRuleLevelCaching: Boolean) = {
     ldapService shouldBe a[LoggableLdapAuthorizationService.WithoutGroupsFilteringDecorator]
     val loggableLdapService = ldapService.asInstanceOf[LoggableLdapAuthorizationService.WithoutGroupsFilteringDecorator]
     val underlying = if (withRuleLevelCaching) {

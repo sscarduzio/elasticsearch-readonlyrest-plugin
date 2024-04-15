@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapAuthorizationService, LdapService}
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -53,13 +53,12 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroups
 class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringWhenUserIdAttributeIsCnTests
   extends UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringTests {
 
-  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.Cn
+  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.OptimizedCn
   override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
   override protected val userSpeakerUserId: User.Id = User.Id("UserSpeaker (ext)")
   override protected val devitoUserId: User.Id = User.Id("Danny DeVito")
 }
 
-// todo: without filtering. what about with filtering?
 abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringTests
   extends AnyWordSpec
     with BeforeAndAfterAll
@@ -77,7 +76,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
     ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
-  "An LdapAuthorizationService" should {
+  "An LdapAuthorizationService without server side groups filtering" should {
     "has method to provide user groups" which {
       "returns non empty set of groups" when {
         "user has groups" in {
@@ -122,24 +121,26 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
         userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
       ))
       authorizationService <- EitherT(
-        UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering
+        UnboundidLdapAuthorizationService
           .create(
             id = ldapId,
             ldapUsersService = usersService,
             poolProvider = ldapConnectionPoolProvider,
             connectionConfig = ldapConnectionConfig,
-            groupsSearchFilter = DefaultGroupSearch(
-              Dn("ou=Groups,dc=example,dc=com"),
-              GroupSearchFilter("(cn=*)"),
-              GroupIdAttribute("cn"),
-              UniqueMemberAttribute("uniqueMember"),
-              groupAttributeIsDN = true,
-              serverSideGroupsFiltering = false
-            ),
-            nestedGroupsConfig = None
+            groupsSearchFilter = UserGroupsSearchFilterConfig(
+              mode = DefaultGroupSearch(
+                Dn("ou=Groups,dc=example,dc=com"),
+                GroupSearchFilter("(cn=*)"),
+                GroupIdAttribute("cn"),
+                UniqueMemberAttribute("uniqueMember"),
+                groupAttributeIsDN = true,
+                serverSideGroupsFiltering = false
+              ),
+              nestedGroupsConfig = None
+            )
           )
       )
-    } yield authorizationService
+    } yield authorizationService.asInstanceOf[LdapAuthorizationService.WithoutGroupsFiltering]
     result.valueOrThrowIllegalState()
   }
 
@@ -155,30 +156,32 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
         userSearchFiler = UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), userIdAttribute)
       ))
       authorizationService <- EitherT(
-        UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering
+        UnboundidLdapAuthorizationService
           .create(
             id = ldapId,
             ldapUsersService = usersService,
             poolProvider = ldapConnectionPoolProvider,
             connectionConfig = ldapConnectionConfig,
-            groupsSearchFilter = DefaultGroupSearch(
-              Dn("ou=Roles,dc=example,dc=com"),
-              GroupSearchFilter("(cn=*)"),
-              GroupIdAttribute("cn"),
-              UniqueMemberAttribute("uniqueMember"),
-              groupAttributeIsDN = true,
-              serverSideGroupsFiltering = false
-            ),
-            nestedGroupsConfig = Some(NestedGroupsConfig(
-              nestedLevels = 1,
-              Dn("ou=Roles,dc=example,dc=com"),
-              GroupSearchFilter("(cn=*)"),
-              UniqueMemberAttribute("uniqueMember"),
-              GroupIdAttribute("cn"),
-            ))
+            groupsSearchFilter = UserGroupsSearchFilterConfig(
+              mode = DefaultGroupSearch(
+                Dn("ou=Roles,dc=example,dc=com"),
+                GroupSearchFilter("(cn=*)"),
+                GroupIdAttribute("cn"),
+                UniqueMemberAttribute("uniqueMember"),
+                groupAttributeIsDN = true,
+                serverSideGroupsFiltering = false
+              ),
+              nestedGroupsConfig = Some(NestedGroupsConfig(
+                nestedLevels = 1,
+                Dn("ou=Roles,dc=example,dc=com"),
+                GroupSearchFilter("(cn=*)"),
+                UniqueMemberAttribute("uniqueMember"),
+                GroupIdAttribute("cn"),
+              ))
+            )
           )
       )
-    } yield authorizationService
+    } yield authorizationService.asInstanceOf[LdapAuthorizationService.WithoutGroupsFiltering]
     result.valueOrThrowIllegalState()
   }
 
@@ -203,7 +206,10 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
   }
 
   protected def userIdAttribute: UserIdAttribute
+
   protected def morganUserId: User.Id
+
   protected def userSpeakerUserId: User.Id
+
   protected def devitoUserId: User.Id
 }

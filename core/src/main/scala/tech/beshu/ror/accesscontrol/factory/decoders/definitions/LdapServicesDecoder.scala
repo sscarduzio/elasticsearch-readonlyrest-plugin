@@ -194,40 +194,9 @@ object LdapServicesDecoder {
           name <- c.downField("name").as[LdapService.Name]
           connectionConfig <- connectionConfigDecoder(c)
           userGroupsSearchFilter <- userGroupsSearchFilterConfigDecoder(c)
-        } yield {
-          userGroupsSearchFilter.mode match {
-            case groupSearch: DefaultGroupSearch if groupSearch.serverSideGroupsFiltering =>
-              UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering
-                .create(
-                  name,
-                  ldapUsersService,
-                  ldapConnectionPoolProvider,
-                  connectionConfig,
-                  groupSearch,
-                  userGroupsSearchFilter.nestedGroupsConfig
-                )
-            case groupSearch: DefaultGroupSearch =>
-              UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering
-                .create(
-                  name,
-                  ldapUsersService,
-                  ldapConnectionPoolProvider,
-                  connectionConfig,
-                  groupSearch,
-                  userGroupsSearchFilter.nestedGroupsConfig
-                )
-            case groupSearch: GroupsFromUserEntry =>
-              UnboundidLdapGroupsFromUserEntryAuthorizationService
-                .create(
-                  name,
-                  ldapUsersService,
-                  ldapConnectionPoolProvider,
-                  connectionConfig,
-                  groupSearch,
-                  userGroupsSearchFilter.nestedGroupsConfig
-                )
-          }
-        }
+        } yield UnboundidLdapAuthorizationService.create(
+          name, ldapUsersService, ldapConnectionPoolProvider, connectionConfig, userGroupsSearchFilter
+        )
         ldapServiceDecodingResult match {
           case Left(error) =>
             Task.now(Left(error))
@@ -263,26 +232,34 @@ object LdapServicesDecoder {
     DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))
   }
 
-  private val userSearchFilerConfigDecoder: Decoder[UserSearchFilterConfig] = Decoder.instance { c =>
-    for {
-      searchUserBaseDn <- c.downField("search_user_base_DN").as[Dn]
-      userIdAttributeName <- c.downNonEmptyOptionalField("user_id_attribute")
-    } yield UserSearchFilterConfig(
-      searchUserBaseDN = searchUserBaseDn,
-      userIdAttribute = userIdAttributeFrom(userIdAttributeName, disableUserAuthenticationOptimization = Some(true))
-    )
-  }
+  private val userSearchFilerConfigDecoder: Decoder[UserSearchFilterConfig] =
+    SyncDecoderCreator
+      .instance { c =>
+        for {
+          searchUserBaseDn <- c.downField("search_user_base_DN").as[Dn]
+          userIdAttributeName <- c.downNonEmptyOptionalField("user_id_attribute")
+          skipUserSearch <- c.downField("skip_user_search").as[Option[Boolean]]
+        } yield {
+          userIdAttributeFrom(userIdAttributeName, skipUserSearch)
+            .map(UserSearchFilterConfig(searchUserBaseDn, _))
+        }
+      }
+      .emapE[UserSearchFilterConfig](identity)
+      .decoder
 
   private def userIdAttributeFrom(attributeName: Option[NonEmptyString],
-                                  disableUserAuthenticationOptimization: Option[Boolean]) = {
+                                  skipUserSearch: Option[Boolean]) = {
     attributeName match {
       case Some(name) if name.value.toLowerCase == "cn" =>
-        disableUserAuthenticationOptimization match {
-          case Some(false) | None => UserIdAttribute.Cn
-          case Some(true) => UserIdAttribute.CustomAttribute(name)
+        skipUserSearch match {
+          case Some(true) => Right(UserIdAttribute.OptimizedCn)
+          case Some(false) | None => Right(UserIdAttribute.CustomAttribute(name))
         }
-      case Some(name) => UserIdAttribute.CustomAttribute(name)
-      case None => UserIdAttribute.CustomAttribute("uid")
+      case Some(_) if skipUserSearch.contains(true) => Left(DefinitionsLevelCreationError(Message(
+        "When you configure 'skip_user_search: true' in the LDAP connector, the 'user_id_attribute' has to be 'cn'"
+      )))
+      case Some(name) => Right(UserIdAttribute.CustomAttribute(name))
+      case None => Right(UserIdAttribute.CustomAttribute("uid"))
     }
   }
 
@@ -294,13 +271,14 @@ object LdapServicesDecoder {
         groupIdAttribute <- c.downField("group_name_attribute").as[Option[GroupIdAttribute]]
         uniqueMemberAttribute <- c.downField("unique_member_attribute").as[Option[UniqueMemberAttribute]]
         groupAttributeIsDN <- c.downField("group_attribute_is_dn").as[Option[Boolean]]
+        serverSideGroupsFiltering <- c.downField("sever_side_groups_filtering").as[Option[Boolean]]
       } yield DefaultGroupSearch(
         searchGroupBaseDn,
         groupSearchFilter.getOrElse(GroupSearchFilter.default),
         groupIdAttribute.getOrElse(GroupIdAttribute.default),
         uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
         groupAttributeIsDN.getOrElse(true),
-        false // todo:
+        serverSideGroupsFiltering.getOrElse(false)
       )
     }
 

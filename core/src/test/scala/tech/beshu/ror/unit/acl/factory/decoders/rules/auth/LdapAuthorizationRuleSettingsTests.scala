@@ -57,7 +57,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
-            assertLdapAnthZServiceLayerTypes(rule.settings.ldap)
+            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )
       }
@@ -87,7 +87,7 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.permittedGroupsLogic should be(GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
             rule.settings.permittedGroupsLogic.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
-            assertLdapAnthZServiceLayerTypes(rule.settings.ldap)
+            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )
       }
@@ -113,12 +113,45 @@ class LdapAuthorizationRuleSettingsTests
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    sever_side_groups_filtering: false
                |""".stripMargin,
           assertion = rule => {
             rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
             )))
-            assertLdapAnthZServiceLayerTypes(rule.settings.ldap)
+            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
+          }
+        )
+      }
+      "there is LDAP service with server side groups filtering defined" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |    ldap_authorization:
+               |      name: "ldap1"
+               |      groups_or: ["group3", "group4*"]
+               |
+               |  ldaps:
+               |
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    sever_side_groups_filtering: true
+               |""".stripMargin,
+          assertion = rule => {
+            rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(
+              UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
+            )))
+            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = true)
           }
         )
       }
@@ -148,7 +181,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
-            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withRuleLevelCaching = true)
+            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false, withRuleLevelCaching = true)
           }
         )
       }
