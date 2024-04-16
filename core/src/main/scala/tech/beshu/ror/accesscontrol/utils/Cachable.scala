@@ -44,8 +44,8 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: PositiveFiniteDuration,
     .removalListener(onRemoveHook)
     .build[K1, V]()
 
-  def call(key: K,
-           requestTimeout: PositiveFiniteDuration)(implicit requestId: RequestId): Task[V] = {
+  def call(key: K, requestTimeout: PositiveFiniteDuration)
+          (implicit requestId: RequestId): Task[V] = {
     call(key).timeout(requestTimeout.value)
   }
 

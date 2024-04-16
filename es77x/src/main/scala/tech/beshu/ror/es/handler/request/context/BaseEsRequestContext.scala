@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.utils.RCUtils
 
 import java.time.Instant
@@ -44,15 +43,20 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   private val restRequest = esContext.channel.request()
 
-  override val timestamp: Instant = Instant.now()
+  override val rorKibanaSessionId: CorrelationId = esContext.correlationId
+
+  override val timestamp: Instant = esContext.timestamp
 
   override val taskId: Long = esContext.task.getId
 
-  override lazy implicit val id: RequestContext.Id = RequestContext.Id(esContext.requestContextId)
+  override lazy implicit val id: RequestContext.Id = RequestContext.Id.from(
+    sessionCorrelationId = esContext.correlationId,
+    requestId = s"${esContext.channel.request().hashCode()}#${esContext.task.getId}"
+  )
 
   override lazy val action: Action = esContext.action
 
-  override lazy val headers: Set[Header] = restRequest.allHeaders()
+  override lazy val headers: Set[Header] = esContext.allHeaders
 
   override lazy val remoteAddress: Option[Address] =
     Option(restRequest.getHttpChannel)

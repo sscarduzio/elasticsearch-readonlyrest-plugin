@@ -33,7 +33,7 @@ import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.TestConfigLoading._
 import tech.beshu.ror.configuration._
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
-import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadRawTestRorConfig, LoadedRorConfig, LoadedTestRorConfig, TestConfigLoadingInterpreter}
+import tech.beshu.ror.configuration.loader._
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -278,8 +278,7 @@ object ReadonlyRest {
                                 expiration: Expiration) extends TestEngine
     final case class Invalidated(config: RawRorConfig,
                                  expiration: Expiration) extends TestEngine
-    final case class Expiration(ttl: PositiveFiniteDuration,
-                                validTo: Instant)
+    final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
   }
 
   final class Engine(val core: Core,

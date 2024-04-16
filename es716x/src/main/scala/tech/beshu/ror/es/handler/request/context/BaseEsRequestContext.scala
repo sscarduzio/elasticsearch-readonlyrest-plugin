@@ -133,7 +133,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
     request
       .indicesOptions()
-      .getExpandWildcards.iterator().asScala
+      .expandWildcards().iterator().asScala
       .flatMap {
         case WildcardStates.OPEN => Some(IndexAttribute.Opened)
         case WildcardStates.CLOSED => Some(IndexAttribute.Closed)

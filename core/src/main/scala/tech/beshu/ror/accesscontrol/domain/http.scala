@@ -23,7 +23,7 @@ import cats.data.NonEmptyList
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.constants
-import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
+import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError._
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.accesscontrol.show.logs._

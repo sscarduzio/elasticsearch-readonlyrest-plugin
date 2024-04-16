@@ -36,6 +36,7 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.Cause.fromMismatchedCause
 import tech.beshu.ror.utils.LoggerOps._
 
+import java.time.{Duration, Instant}
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -56,33 +57,40 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
         case UserMetadataRequestResult.Allow(userMetadata, _) =>
           onAllow(request, userMetadata)
         case UserMetadataRequestResult.Forbidden(causes) =>
-          onForbidden(causes)
+          onForbidden(request, causes)
         case UserMetadataRequestResult.PassedThrough =>
-          onPassThrough()
+          onPassThrough(request)
       }
     } match {
       case Success(_) =>
       case Failure(ex) =>
-        logger.errorEx(s"[${request.id.show}] ACL committing result failure", ex)
+        logger.errorEx(s"[${request.id.toRequestId.show}] ACL committing result failure", ex)
         esContext.listener.onFailure(ex.asInstanceOf[Exception])
     }
   }
 
   private def onAllow(requestContext: RequestContext, userMetadata: UserMetadata): Unit = {
-    esContext.listener.onResponse(new RRMetadataResponse(userMetadata, requestContext.correlationId))
+    logRequestProcessingTime(requestContext)
+    esContext.listener.onResponse(new RRMetadataResponse(userMetadata, esContext.correlationId))
   }
 
-  private def onForbidden(causes: NonEmptySet[ForbiddenCause]): Unit = {
+  private def onForbidden(requestContext: RequestContext, causes: NonEmptySet[ForbiddenCause]): Unit = {
+    logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(ForbiddenResponse.create(
       causes = causes.toList.map(fromMismatchedCause),
       aclStaticContext = engine.core.accessControl.staticContext
     ))
   }
 
-  private def onPassThrough(): Unit = {
-    logger.warn(s"[${esContext.requestContextId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST plugin was disabled in settings")
+  private def onPassThrough(requestContext: RequestContext): Unit = {
+    logger.warn(s"[${requestContext.id.toRequestId.show}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST plugin was disabled in settings")
     esContext.listener.onFailure(createRorNotEnabledResponse())
   }
+
+  private def logRequestProcessingTime(requestContext: RequestContext): Unit = {
+    logger.debug(s"[${requestContext.id.toRequestId.show}] Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
+  }
+
 }
 
 private class RRMetadataResponse(userMetadata: UserMetadata,

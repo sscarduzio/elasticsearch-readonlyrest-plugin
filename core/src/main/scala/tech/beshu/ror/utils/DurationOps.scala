@@ -25,7 +25,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 
 object DurationOps {
 
-  type PositiveFiniteDuration =  FiniteDuration Refined Positive
+  type PositiveFiniteDuration = FiniteDuration Refined Positive
 
   implicit class RefinedDurationOps(val duration: Duration) extends AnyVal {
     def toRefinedPositive: Either[String, PositiveFiniteDuration] = duration match {

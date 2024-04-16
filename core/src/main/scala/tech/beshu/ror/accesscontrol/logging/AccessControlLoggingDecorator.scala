@@ -46,7 +46,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
   override def description: String = underlying.description
 
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {
-    logger.debug(s"[${requestContext.id.show}] checking request ...")
+    logger.trace(s"[${requestContext.id.show}] checking request ...")
     underlying
       .handleRegularRequest(requestContext)
       .andThen {
