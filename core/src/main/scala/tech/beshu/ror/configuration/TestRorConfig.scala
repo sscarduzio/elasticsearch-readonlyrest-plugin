@@ -16,13 +16,10 @@
  */
 package tech.beshu.ror.configuration
 
-import java.time.{Clock, Instant}
-
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
-import scala.concurrent.duration.FiniteDuration
+import java.time.{Clock, Instant}
 
 sealed trait TestRorConfig
 object TestRorConfig {
@@ -37,7 +34,6 @@ object TestRorConfig {
   }
 
   object Present {
-    final case class ExpirationConfig(ttl: FiniteDuration Refined Positive,
-                                      validTo: Instant)
+    final case class ExpirationConfig(ttl: PositiveFiniteDuration, validTo: Instant)
   }
 }

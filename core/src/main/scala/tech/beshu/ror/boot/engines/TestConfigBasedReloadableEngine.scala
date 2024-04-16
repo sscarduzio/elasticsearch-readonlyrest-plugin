@@ -18,8 +18,6 @@ package tech.beshu.ror.boot.engines
 
 import cats.data.EitherT
 import cats.implicits._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -35,10 +33,10 @@ import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.TestRorConfig.Present.ExpirationConfig
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, TestRorConfig}
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
 
 import scala.annotation.nowarn
-import scala.concurrent.duration.FiniteDuration
 
 private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
                                                             initialEngine: InitialEngine,
@@ -66,8 +64,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
     }
   }
 
-  def forceReloadTestConfigEngine(config: RawRorConfig,
-                                  ttl: FiniteDuration Refined Positive)
+  def forceReloadTestConfigEngine(config: RawRorConfig, ttl: PositiveFiniteDuration)
                                  (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestConfig.Present]] = {
     for {
       _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of ROR test settings was forced (TTL of test engine is ${ttl.toString()}) ..."))

@@ -1533,7 +1533,7 @@ class ReadonlyRestStartingTests
        |}
        |""".stripMargin
 
-  private implicit def toRefined(fd: FiniteDuration): FiniteDuration Refined Positive = fd.toRefinedPositiveUnsafe
+  private implicit def toRefined(fd: FiniteDuration): PositiveFiniteDuration = fd.toRefinedPositiveUnsafe
 
   private def newRequestId() = RequestId(UUID.randomUUID().toString)
 
