@@ -20,8 +20,6 @@ import cats.Show
 import cats.effect.Resource
 import cats.implicits.toShow
 import cats.syntax.either._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
@@ -36,9 +34,9 @@ import tech.beshu.ror.configuration.index.{IndexConfigError, SavingIndexConfigEr
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig, RorProperties}
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
-import scala.concurrent.duration.FiniteDuration
 
 class RorInstance private(boot: ReadonlyRest,
                           mode: RorInstance.Mode,
@@ -119,7 +117,7 @@ class RorInstance private(boot: ReadonlyRest,
   }
 
   def forceReloadTestConfigEngine(config: RawRorConfig,
-                                  ttl: FiniteDuration Refined Positive)
+                                  ttl: PositiveFiniteDuration)
                                  (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestConfig.Present]] = {
     anTestConfigEngine.forceReloadTestConfigEngine(config, ttl)
   }
@@ -143,7 +141,7 @@ class RorInstance private(boot: ReadonlyRest,
     } yield ()
   }
 
-  private def scheduleEnginesReload(interval: FiniteDuration Refined Positive): Cancelable = {
+  private def scheduleEnginesReload(interval: PositiveFiniteDuration): Cancelable = {
     val reloadTask = { requestId: RequestId =>
       Task.sequence {
         Seq(
@@ -155,7 +153,7 @@ class RorInstance private(boot: ReadonlyRest,
     scheduleIndexConfigChecking(interval, reloadTask)
   }
 
-  private def scheduleIndexConfigChecking(interval: FiniteDuration Refined Positive,
+  private def scheduleIndexConfigChecking(interval: PositiveFiniteDuration,
                                           reloadTask: RequestId => Task[Seq[(ConfigType, Either[ScheduledReloadError, Unit])]]): Cancelable = {
     logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within ${interval.value}")
     scheduler.scheduleOnce(interval.value) {
@@ -263,10 +261,10 @@ object RorInstance {
     case object NotSet extends TestConfig
     final case class Present(config: RorConfig,
                              rawConfig: RawRorConfig,
-                             configuredTtl: FiniteDuration Refined Positive,
+                             configuredTtl: PositiveFiniteDuration,
                              validTo: Instant) extends TestConfig
     final case class Invalidated(recent: RawRorConfig,
-                                 configuredTtl: FiniteDuration Refined Positive) extends TestConfig
+                                 configuredTtl: PositiveFiniteDuration) extends TestConfig
   }
 
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,

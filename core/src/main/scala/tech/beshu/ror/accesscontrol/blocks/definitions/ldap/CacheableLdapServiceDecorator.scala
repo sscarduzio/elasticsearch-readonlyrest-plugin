@@ -16,21 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
-import java.nio.charset.Charset
 import com.google.common.hash.Hashing
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.CacheableLdapAuthenticationServiceDecorator.HashedUserCredentials
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.utils.{CacheableAction, CacheableActionWithKeyMapping}
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.concurrent.duration.FiniteDuration
+import java.nio.charset.Charset
 
 class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationService,
-                                                  ttl: FiniteDuration Refined Positive)
+                                                  ttl: PositiveFiniteDuration)
   extends LdapAuthenticationService {
 
   private val cacheableAuthentication =
@@ -55,7 +53,7 @@ class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthentication
     underlying.authenticate(userId, secret)
   }
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
 object CacheableLdapAuthenticationServiceDecorator {
@@ -64,7 +62,7 @@ object CacheableLdapAuthenticationServiceDecorator {
 }
 
 class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationService,
-                                                 ttl: FiniteDuration Refined Positive)
+                                                 ttl: PositiveFiniteDuration)
   extends LdapAuthorizationService {
 
   private val cacheableGroupsOf = new CacheableAction[User.Id, UniqueList[Group]](ttl, underlying.groupsOf)
@@ -78,11 +76,11 @@ class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationSe
   override def groupsOf(id: User.Id): Task[UniqueList[Group]] =
     cacheableGroupsOf.call(id, serviceTimeout)
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
 class CacheableLdapServiceDecorator(val underlying: LdapAuthService,
-                                    ttl: FiniteDuration Refined Positive)
+                                    ttl: PositiveFiniteDuration)
   extends LdapAuthService {
 
   private val cacheableLdapAuthenticationService = new CacheableLdapAuthenticationServiceDecorator(underlying, ttl)
@@ -99,11 +97,11 @@ class CacheableLdapServiceDecorator(val underlying: LdapAuthService,
   override def groupsOf(id: User.Id): Task[UniqueList[Group]] =
     cacheableLdapAuthorizationService.groupsOf(id)
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
 private class CacheableLdapUserServiceDecorator(underlying: LdapUserService,
-                                                ttl: FiniteDuration Refined Positive)
+                                                ttl: PositiveFiniteDuration)
   extends LdapUserService {
 
   private val cacheableLdapUserById = new CacheableAction[User.Id, Option[LdapUser]](ttl, underlying.ldapUserBy)
@@ -113,5 +111,5 @@ private class CacheableLdapUserServiceDecorator(underlying: LdapUserService,
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     cacheableLdapUserById.call(userId, serviceTimeout)
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }

@@ -17,17 +17,15 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
 import cats.implicits._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
 class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticationService)
@@ -53,7 +51,7 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
       }
   }
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
 class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizationService)
@@ -79,7 +77,7 @@ class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizatio
       }
   }
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
 class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
@@ -99,7 +97,7 @@ class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
   override def groupsOf(userId: User.Id): Task[UniqueList[Group]] =
     loggableLdapAuthorizationService.groupsOf(userId)
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
 private class LoggableLdapUserServiceDecorator(underlying: LdapUserService)
@@ -123,5 +121,5 @@ private class LoggableLdapUserServiceDecorator(underlying: LdapUserService)
       }
   }
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }

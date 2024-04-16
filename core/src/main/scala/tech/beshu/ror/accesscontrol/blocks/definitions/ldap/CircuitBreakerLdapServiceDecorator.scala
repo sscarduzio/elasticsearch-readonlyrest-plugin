@@ -17,17 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
 import cats.implicits.toShow
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.catnap._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueList
-
-import scala.concurrent.duration.FiniteDuration
 
 class CircuitBreakerLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationService,
                                                        override val circuitBreakerConfig: CircuitBreakerConfig)
@@ -48,7 +45,7 @@ class CircuitBreakerLdapAuthenticationServiceDecorator(underlying: LdapAuthentic
 
   override def id: LdapService.Name = underlying.id
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 
 }
 
@@ -71,7 +68,7 @@ class CircuitBreakerLdapAuthorizationServiceDecorator(underlying: LdapAuthorizat
 
   override def id: LdapService.Name = underlying.id
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
 class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
@@ -99,7 +96,7 @@ class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
 
   override def id: LdapService.Name = underlying.id
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
 trait LdapCircuitBreaker extends Logging {
@@ -107,26 +104,22 @@ trait LdapCircuitBreaker extends Logging {
 
   protected def circuitBreakerConfig: CircuitBreakerConfig
 
-  private val circuitBreaker = {
-    val CircuitBreakerConfig(maxFailures, resetDuration) = circuitBreakerConfig
-    CircuitBreaker[Task]
-      .unsafe(
-        maxFailures = maxFailures.value,
-        resetTimeout = resetDuration.value,
-        onRejected = Task {
-          logger.debug(s"LDAP ${id.show} circuit breaker rejected task (Open or HalfOpen state)")
-        },
-        onClosed = Task {
-          logger.debug(s"LDAP ${id.show} circuit breaker is accepting tasks again (switched to Close state)")
-        },
-        onHalfOpen = Task {
-          logger.debug(s"LDAP ${id.show} circuit breaker accepted one task for testing (switched to HalfOpen state)")
-        },
-        onOpen = Task {
-          logger.debug(s"LDAP ${id.show} circuit breaker rejected task (switched to Open state)")
-        }
-      )
-  }
+  private val circuitBreaker = CircuitBreaker[Task].unsafe(
+    maxFailures = circuitBreakerConfig.maxFailures.value,
+    resetTimeout = circuitBreakerConfig.resetDuration.value,
+    onRejected = Task {
+      logger.debug(s"LDAP ${id.show} circuit breaker rejected task (Open or HalfOpen state)")
+    },
+    onClosed = Task {
+      logger.debug(s"LDAP ${id.show} circuit breaker is accepting tasks again (switched to Close state)")
+    },
+    onHalfOpen = Task {
+      logger.debug(s"LDAP ${id.show} circuit breaker accepted one task for testing (switched to HalfOpen state)")
+    },
+    onOpen = Task {
+      logger.debug(s"LDAP ${id.show} circuit breaker rejected task (switched to Open state)")
+    }
+  )
 
   protected def protect[A](task: => Task[A]): Task[A] = {
     circuitBreaker.protect(Task.defer(task))

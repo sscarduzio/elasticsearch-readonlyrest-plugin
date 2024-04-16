@@ -17,16 +17,14 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import cats.implicits._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
@@ -40,8 +38,8 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.LdapRulesDecodersHelper.{errorMsgNoGroupsList, errorMsgOnlyOneGroupsList, findLdapService}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
-import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 // ------ ldap_authentication
@@ -75,16 +73,16 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .decoder
   }
 
-  private def simpleLdapAuthenticationNameAndLocalConfig: Decoder[(LdapService.Name, Option[FiniteDuration Refined Positive])] =
+  private def simpleLdapAuthenticationNameAndLocalConfig: Decoder[(LdapService.Name, Option[PositiveFiniteDuration])] =
     LdapServicesDecoder.nameDecoder
       .map((_, None))
 
-  private def complexLdapAuthenticationServiceNameAndLocalConfig: Decoder[(LdapService.Name, Option[FiniteDuration Refined Positive])] = {
+  private def complexLdapAuthenticationServiceNameAndLocalConfig: Decoder[(LdapService.Name, Option[PositiveFiniteDuration])] = {
     Decoder
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
+          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
         } yield (name, ttl)
       }
       .toSyncDecoder
@@ -118,7 +116,7 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
           name <- c.downField("name").as[LdapService.Name]
           groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
           groupsOr <- c.downFields("groups_or", "groups").as[Option[GroupsLogic.Or]]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
+          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
         } yield (name, ttl, groupsOr, groupsAnd)
       }
       .toSyncDecoder
@@ -136,7 +134,7 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .decoder
 
   private def createLdapAuthorizationRule(name: LdapService.Name,
-                                          ttl: Option[Refined[FiniteDuration, Positive]],
+                                          ttl: Option[PositiveFiniteDuration],
                                           groupsLogic: GroupsLogic,
                                           ldapDefinitions: Definitions[LdapService]): Either[CoreCreationError, LdapAuthorizationRule.Settings] = {
     findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
@@ -173,7 +171,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
           name <- c.downField("name").as[LdapService.Name]
           groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
           groupsOr <- c.downFields("groups_or", "groups").as[Option[GroupsLogic.Or]]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
+          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
         } yield (name, ttl, groupsOr, groupsAnd)
       }
       .toSyncDecoder
@@ -191,7 +189,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .decoder
 
   private def createLdapAuthRule(name: LdapService.Name,
-                                 ttl: Option[Refined[FiniteDuration, Positive]],
+                                 ttl: Option[PositiveFiniteDuration],
                                  groupsLogic: GroupsLogic, ldapDefinitions: Definitions[LdapService],
                                  impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                  mocksProvider: MocksProvider,

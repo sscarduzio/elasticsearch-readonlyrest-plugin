@@ -43,6 +43,7 @@ import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.js.JsCompiler
@@ -87,7 +88,7 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val positiveFiniteDurationDecoder: Decoder[FiniteDuration Refined Positive] = {
+  implicit val positiveFiniteDurationDecoder: Decoder[PositiveFiniteDuration] = {
     implicit val finiteDurationDecoder: Decoder[FiniteDuration] = finiteDurationStringDecoder.or(finiteDurationInSecondsDecoder)
     positiveValueDecoder[FiniteDuration]
   }
@@ -277,8 +278,8 @@ object common extends Logging {
   implicit val httpClientConfigDecoder: Decoder[HttpClientsFactory.Config] =
     Decoder.instance { c =>
       for {
-        connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[FiniteDuration Refined Positive]]
-        requestTimeout <- c.downFields("connection_request_timeout_in_sec", "connection_request_timeout", "request_timeout").as[Option[FiniteDuration Refined Positive]]
+        connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[PositiveFiniteDuration]]
+        requestTimeout <- c.downFields("connection_request_timeout_in_sec", "connection_request_timeout", "request_timeout").as[Option[PositiveFiniteDuration]]
         connectionPoolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
         validate <- c.downField("validate").as[Option[Boolean]]
       } yield HttpClientsFactory.Config(

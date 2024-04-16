@@ -18,8 +18,6 @@ package tech.beshu.ror.api
 
 import cats.data.EitherT
 import cats.implicits._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.RequestId
@@ -125,8 +123,7 @@ class TestConfigApi(rorInstance: RorInstance){
       }
   }
 
-  private def forceReloadTestConfig(config: RawRorConfig,
-                                    ttl: FiniteDuration Refined Positive)
+  private def forceReloadTestConfig(config: RawRorConfig, ttl: PositiveFiniteDuration)
                                    (implicit requestId: RequestId): EitherT[Task, TestConfigResponse, TestConfigResponse] = {
     EitherT(
       rorInstance
@@ -243,9 +240,9 @@ object TestConfigApi {
 
   private object Utils {
     final case class UpdateTestConfigRequest(configString: String,
-                                             ttl: FiniteDuration Refined Positive)
+                                             ttl: PositiveFiniteDuration)
 
-    private def parseDuration(value: String): Either[String, FiniteDuration Refined Positive] = {
+    private def parseDuration(value: String): Either[String, PositiveFiniteDuration] = {
       Try(Duration(value))
         .toEither
         .leftMap(_ =>s"Cannot parse '$value' as duration.")
@@ -253,13 +250,13 @@ object TestConfigApi {
     }
 
     object decoders {
-      implicit val durationDecoder: Decoder[FiniteDuration Refined Positive] = Decoder.decodeString.emap(parseDuration)
+      implicit val durationDecoder: Decoder[PositiveFiniteDuration] = Decoder.decodeString.emap(parseDuration)
 
       implicit val updateTestConfigRequestDecoder: Decoder[UpdateTestConfigRequest] =
         Decoder.forProduct2("settings", "ttl")(UpdateTestConfigRequest.apply)
     }
 
-    def apiFormat(duration: FiniteDuration Refined Positive): FiniteDuration = {
+    def apiFormat(duration: PositiveFiniteDuration): FiniteDuration = {
       duration.value.toCoarsest
     }
   }

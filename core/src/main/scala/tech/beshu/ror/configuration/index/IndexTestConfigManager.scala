@@ -21,8 +21,6 @@ import java.time.{Instant, ZoneOffset}
 import java.util.concurrent.TimeUnit
 import cats.data.EitherT
 import cats.implicits._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder}
@@ -48,7 +46,7 @@ import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, Cann
 import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.json.KeyCodec
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.Duration
 import scala.util.Try
 
 final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService)
@@ -119,7 +117,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
     }
   }
 
-  private def getExpirationTtl(value: String): EitherT[Task, Error, FiniteDuration Refined Positive] = {
+  private def getExpirationTtl(value: String): EitherT[Task, Error, PositiveFiniteDuration] = {
     Try {
       Duration
         .apply(value.toLong, TimeUnit.MILLISECONDS)

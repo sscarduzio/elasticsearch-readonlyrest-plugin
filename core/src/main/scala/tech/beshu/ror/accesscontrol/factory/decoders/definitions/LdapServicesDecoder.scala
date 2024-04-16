@@ -43,11 +43,12 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.refined._
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecodingFailureOps, _}
+import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Clock
-import scala.concurrent.duration.{FiniteDuration, _}
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object LdapServicesDecoder {
@@ -65,7 +66,7 @@ object LdapServicesDecoder {
                                                   clock: Clock): AsyncDecoder[LdapService] =
     AsyncDecoderCreator.instance { c =>
       c.downFields("cache_ttl_in_sec", "cache_ttl")
-        .as[Option[FiniteDuration Refined Positive]]
+        .as[Option[PositiveFiniteDuration]]
         .map {
           case Some(ttl) =>
             decodeLdapService(c).map(_.map {
@@ -245,8 +246,8 @@ object LdapServicesDecoder {
         for {
           connectionMethod <- connectionMethodDecoder.tryDecode(c)
           poolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
-          connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[FiniteDuration Refined Positive]]
-          requestTimeout <- c.downFields("request_timeout_in_sec", "request_timeout").as[Option[FiniteDuration Refined Positive]]
+          connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[PositiveFiniteDuration]]
+          requestTimeout <- c.downFields("request_timeout_in_sec", "request_timeout").as[Option[PositiveFiniteDuration]]
           trustAllCertsOps <- c.downField("ssl_trust_all_certs").as[Option[Boolean]]
           ignoreLdapConnectivityProblems <- c.downField("ignore_ldap_connectivity_problems").as[Option[Boolean]]
           bindRequestUser <- bindRequestUserDecoder.tryDecode(c)
@@ -271,7 +272,7 @@ object LdapServicesDecoder {
         } else {
           for {
             maxRetries <- circuitBreaker.downField("max_retries").as[Int Refined Positive]
-            resetDuration <- circuitBreaker.downField("reset_duration").as[FiniteDuration Refined Positive]
+            resetDuration <- circuitBreaker.downField("reset_duration").as[PositiveFiniteDuration]
           } yield CircuitBreakerConfig(maxRetries, resetDuration)
         }
       }
@@ -330,7 +331,7 @@ object LdapServicesDecoder {
           for {
             recordName <- c.downField("record_name").as[Option[String]]
             dnsUrl <- c.downField("dns_url").as[Option[String]]
-            ttl <- c.downField("ttl").as[Option[FiniteDuration Refined Positive]]
+            ttl <- c.downField("ttl").as[Option[PositiveFiniteDuration]]
             useSsl <- c.downField("use_ssl").as[Option[Boolean]]
           } yield ConnectionMethod.ServerDiscovery(recordName, dnsUrl, ttl, useSsl.getOrElse(false))
         }

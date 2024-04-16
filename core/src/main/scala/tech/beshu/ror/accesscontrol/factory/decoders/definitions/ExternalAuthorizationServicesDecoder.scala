@@ -19,8 +19,6 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 import cats.Id
 import cats.implicits._
 import com.softwaremill.sttp.Uri
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config._
 import tech.beshu.ror.accesscontrol.blocks.definitions._
@@ -31,9 +29,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.json.JsonPath
-
-import scala.concurrent.duration.FiniteDuration
 
 object ExternalAuthorizationServicesDecoder {
 
@@ -58,7 +55,7 @@ object ExternalAuthorizationServicesDecoder {
           groupsConfig <- c.as[GroupsConfig](groupsConfigDecoder(name))
           defaultQueryParams <- c.downField("default_query_parameters").as[Option[Set[QueryParam]]]
           defaultHeaders <- c.downField("default_headers").as[Option[Set[Header]]]
-          cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
+          cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
           httpClientConfig <- c.as[ValidatedHttpClientConfig].map(_.config)
         } yield {
           val httpClient = httpClientFactory.create(httpClientConfig)
