@@ -18,7 +18,6 @@ package tech.beshu.ror.configuration.index
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneOffset}
-import java.util.concurrent.TimeUnit
 import cats.data.EitherT
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -120,7 +119,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
   private def getExpirationTtl(value: String): EitherT[Task, Error, PositiveFiniteDuration] = {
     Try {
       Duration
-        .apply(value.toLong, TimeUnit.MILLISECONDS)
+        .apply(value.toLong, "ms")
         .toRefinedPositive
         .leftMap((_: String) => parserError)
     }

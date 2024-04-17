@@ -21,10 +21,10 @@ import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
+import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
-import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 
 class RorApiManager(client: RestClient,
@@ -67,7 +67,7 @@ class RorApiManager(client: RestClient,
     call(createGetTestConfigRequest, new RorApiJsonResponse(_))
   }
 
-  def updateRorTestConfig(config: String, ttl: FiniteDuration = FiniteDuration(30, TimeUnit.MINUTES)): RorApiResponseWithBusinessStatus = {
+  def updateRorTestConfig(config: String, ttl: FiniteDuration = 30.minutes): RorApiResponseWithBusinessStatus = {
     call(createUpdateRorTestConfigRequest(config, ttl), new RorApiResponseWithBusinessStatus(_))
   }
 

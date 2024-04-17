@@ -17,17 +17,12 @@
 package tech.beshu.ror.audit
 
 import java.time.{Duration, Instant}
-import java.util.concurrent.TimeUnit
-
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
 sealed trait AuditResponseContext {
   def requestContext: AuditRequestContext
 
-  val duration: FiniteDuration = FiniteDuration(
-    Duration.between(requestContext.timestamp, Instant.now()).toMillis,
-    TimeUnit.MILLISECONDS
-  )
+  val duration: FiniteDuration = Duration.between(requestContext.timestamp, Instant.now()).toMillis.millis
 }
 
 object AuditResponseContext {

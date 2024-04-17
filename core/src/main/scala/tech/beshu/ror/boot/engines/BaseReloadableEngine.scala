@@ -35,7 +35,6 @@ import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.utils.DurationOps._
 
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -411,8 +410,8 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   private def isStillValid(validTo: Instant) = {
-    FiniteDuration
-      .apply(validTo.minusMillis(environmentConfig.clock.instant().toEpochMilli).toEpochMilli, TimeUnit.MILLISECONDS)
+    validTo.minusMillis(environmentConfig.clock.instant().toEpochMilli)
+      .toEpochMilli.millis
       .toRefinedPositive
       .map(RemainingEngineTime.Valid)
       .getOrElse(RemainingEngineTime.Expired)
