@@ -647,8 +647,9 @@ class ReadonlyRestStartingTests
 
           val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
           testEngineConfig shouldBe a[TestConfig.Present]
-          Option(testEngineConfig.asInstanceOf[TestConfig.Present])
-            .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, (1 minute).toRefinedPositiveUnsafe).some)
+          Option(testEngineConfig.asInstanceOf[TestConfig.Present]).map(i => (i.rawConfig, i.configuredTtl.value)) should be {
+            (testConfig1, 1 minute).some
+          }
         }
         "there is previous engine" when {
           "same config and ttl" in withReadonlyRestExt({
@@ -697,8 +698,9 @@ class ReadonlyRestStartingTests
 
             val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
             testEngineConfig shouldBe a[TestConfig.Present]
-            Option(testEngineConfig.asInstanceOf[TestConfig.Present])
-              .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, (1 minute).toRefinedPositiveUnsafe).some)
+            Option(testEngineConfig.asInstanceOf[TestConfig.Present]).map(i => (i.rawConfig, i.configuredTtl.value)) should be {
+              (testConfig1, 1 minute).some
+            }
 
             val testEngine1Expiration = testEngineConfig.asInstanceOf[TestConfig.Present].validTo
 
@@ -848,8 +850,9 @@ class ReadonlyRestStartingTests
 
           val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
           testEngineConfig shouldBe a[TestConfig.Present]
-          Option(testEngineConfig.asInstanceOf[TestConfig.Present])
-            .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, (1 minute).toRefinedPositiveUnsafe).some)
+          Option(testEngineConfig.asInstanceOf[TestConfig.Present]).map(i => (i.rawConfig, i.configuredTtl.value)) should be {
+            (testConfig1, 1 minute).some
+          }
 
           val testEngine1Expiration = testEngineConfig.asInstanceOf[TestConfig.Present].validTo
 
