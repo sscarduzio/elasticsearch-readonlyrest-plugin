@@ -1384,7 +1384,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
         )
       }
       "User ID attribute is configured to be something else than CN but skipping user search is enabled" in {
-        assertDecodingSuccess(
+        assertDecodingFailure(
           yaml =
             s"""
                |  ldaps:
