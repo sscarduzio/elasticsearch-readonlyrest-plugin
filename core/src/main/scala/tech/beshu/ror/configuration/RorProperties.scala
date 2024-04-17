@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.configuration
 
-import java.util.concurrent.TimeUnit
-
 import better.files.File
 import cats.Show
 import cats.implicits._
@@ -106,7 +104,7 @@ object RorProperties extends Logging {
       case Success(interval) if interval == 0 =>
         None
       case Success(interval) if interval > 0 =>
-        Some(FiniteDuration(interval.toLong, TimeUnit.SECONDS).toRefinedPositiveUnsafe)
+        Some(interval.toLong.seconds.toRefinedPositiveUnsafe)
       case Success(_) | Failure(_) =>
         throw new IllegalArgumentException(s"Cannot convert '$value' to finite positive duration")
     }

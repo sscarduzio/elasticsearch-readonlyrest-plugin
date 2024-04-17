@@ -39,10 +39,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
-import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, TestConfig}
+import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, EnvironmentConfig}
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.utils.DurationOps._
@@ -51,9 +51,8 @@ import tech.beshu.ror.utils.TestsUtils._
 
 import java.time.Clock
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
-import scala.language.{implicitConversions, postfixOps}
+import scala.language.postfixOps
 
 class ReadonlyRestStartingTests
   extends AnyWordSpec
@@ -444,7 +443,7 @@ class ReadonlyRestStartingTests
                 TestConfig.Present(
                   config = RorConfig.disabled,
                   rawConfig = testConfig1,
-                  configuredTtl = FiniteDuration(100, TimeUnit.SECONDS),
+                  configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
                   validTo = expirationTimestamp
                 )
               )
@@ -504,7 +503,7 @@ class ReadonlyRestStartingTests
               rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
                 TestConfig.Invalidated(
                   recent = testConfig1,
-                  configuredTtl = FiniteDuration(100, TimeUnit.SECONDS)
+                  configuredTtl = (100 seconds).toRefinedPositiveUnsafe
                 )
               )
             }
@@ -594,7 +593,7 @@ class ReadonlyRestStartingTests
             rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
               TestConfig.Invalidated(
                 recent = testConfigMalformed,
-                configuredTtl = FiniteDuration(100, TimeUnit.SECONDS)
+                configuredTtl = (100 seconds).toRefinedPositiveUnsafe
               )
             )
           }
@@ -640,7 +639,7 @@ class ReadonlyRestStartingTests
             .returns(Task.now(Right(())))
 
           val testEngineReloadResult = rorInstance
-            .forceReloadTestConfigEngine(testConfig1, 1 minute)(newRequestId())
+            .forceReloadTestConfigEngine(testConfig1, (1 minute).toRefinedPositiveUnsafe)(newRequestId())
             .runSyncUnsafe()
 
           testEngineReloadResult.value shouldBe a[TestConfig.Present]
@@ -649,7 +648,7 @@ class ReadonlyRestStartingTests
           val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
           testEngineConfig shouldBe a[TestConfig.Present]
           Option(testEngineConfig.asInstanceOf[TestConfig.Present])
-            .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, 1 minute).some)
+            .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, (1 minute).toRefinedPositiveUnsafe).some)
         }
         "there is previous engine" when {
           "same config and ttl" in withReadonlyRestExt({
@@ -690,7 +689,7 @@ class ReadonlyRestStartingTests
               .returns(Task.now(Right(())))
 
             val testEngineReloadResult1stAttempt = rorInstance
-              .forceReloadTestConfigEngine(testConfig1, 1 minute)(newRequestId())
+              .forceReloadTestConfigEngine(testConfig1, (1 minute).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
             testEngineReloadResult1stAttempt.value shouldBe a[TestConfig.Present]
@@ -699,12 +698,12 @@ class ReadonlyRestStartingTests
             val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
             testEngineConfig shouldBe a[TestConfig.Present]
             Option(testEngineConfig.asInstanceOf[TestConfig.Present])
-              .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, 1 minute).some)
+              .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, (1 minute).toRefinedPositiveUnsafe).some)
 
             val testEngine1Expiration = testEngineConfig.asInstanceOf[TestConfig.Present].validTo
 
             val testEngineReloadResult2ndAttempt = rorInstance
-              .forceReloadTestConfigEngine(testConfig1, 1 minute)(newRequestId())
+              .forceReloadTestConfigEngine(testConfig1, (1 minute).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
             testEngineReloadResult2ndAttempt.value shouldBe a[TestConfig.Present]
@@ -713,7 +712,7 @@ class ReadonlyRestStartingTests
             val testEngineConfigAfterReload = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
             testEngineConfigAfterReload shouldBe a[TestConfig.Present]
             Option(testEngineConfigAfterReload.asInstanceOf[TestConfig.Present])
-              .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, 1 minute).some)
+              .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, (1 minute).toRefinedPositiveUnsafe).some)
 
             val testEngine2Expiration = testEngineConfigAfterReload.asInstanceOf[TestConfig.Present].validTo
 
@@ -757,7 +756,7 @@ class ReadonlyRestStartingTests
               .returns(Task.now(Right(())))
 
             val testEngineReloadResult1stAttempt = rorInstance
-              .forceReloadTestConfigEngine(testConfig1, 10 minute)(newRequestId())
+              .forceReloadTestConfigEngine(testConfig1, (10 minute).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
             testEngineReloadResult1stAttempt.value shouldBe a[TestConfig.Present]
@@ -786,7 +785,7 @@ class ReadonlyRestStartingTests
               .returns(Task.now(Right(())))
 
             val testEngineReloadResult2ndAttempt = rorInstance
-              .forceReloadTestConfigEngine(testConfig1, 5 minute)(newRequestId())
+              .forceReloadTestConfigEngine(testConfig1, (5 minute).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
             testEngineReloadResult2ndAttempt.value shouldBe a[TestConfig.Present]
@@ -841,7 +840,7 @@ class ReadonlyRestStartingTests
             .returns(Task.now(Right(())))
 
           val testEngineReloadResult1stAttempt = rorInstance
-            .forceReloadTestConfigEngine(testConfig1, 1 minute)(newRequestId())
+            .forceReloadTestConfigEngine(testConfig1, (1 minute).toRefinedPositiveUnsafe)(newRequestId())
             .runSyncUnsafe()
 
           testEngineReloadResult1stAttempt.value shouldBe a[TestConfig.Present]
@@ -850,7 +849,7 @@ class ReadonlyRestStartingTests
           val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
           testEngineConfig shouldBe a[TestConfig.Present]
           Option(testEngineConfig.asInstanceOf[TestConfig.Present])
-            .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, 1 minute).some)
+            .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, (1 minute).toRefinedPositiveUnsafe).some)
 
           val testEngine1Expiration = testEngineConfig.asInstanceOf[TestConfig.Present].validTo
 
@@ -870,7 +869,7 @@ class ReadonlyRestStartingTests
             .returns(Task.now(Right(())))
 
           val testEngineReloadResult2ndAttempt = rorInstance
-            .forceReloadTestConfigEngine(testConfig2, 2 minutes)(newRequestId())
+            .forceReloadTestConfigEngine(testConfig2, (2 minutes).toRefinedPositiveUnsafe)(newRequestId())
             .runSyncUnsafe()
 
           testEngineReloadResult2ndAttempt.value shouldBe a[TestConfig.Present]
@@ -931,7 +930,7 @@ class ReadonlyRestStartingTests
             TestConfig.Present(
               config = RorConfig.disabled,
               rawConfig = testConfig1,
-              configuredTtl = FiniteDuration(100, TimeUnit.SECONDS),
+              configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp
             )
           )
@@ -968,7 +967,7 @@ class ReadonlyRestStartingTests
             TestConfig.Present(
               config = RorConfig.disabled,
               rawConfig = testConfig1,
-              configuredTtl = FiniteDuration(100, TimeUnit.SECONDS),
+              configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp
             )
           )
@@ -994,7 +993,7 @@ class ReadonlyRestStartingTests
             TestConfig.Present(
               config = RorConfig.disabled,
               rawConfig = testConfig1,
-              configuredTtl = FiniteDuration(200, TimeUnit.SECONDS),
+              configuredTtl = (200 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp2
             )
           )
@@ -1032,7 +1031,7 @@ class ReadonlyRestStartingTests
             TestConfig.Present(
               config = RorConfig.disabled,
               rawConfig = testConfig1,
-              configuredTtl = FiniteDuration(100, TimeUnit.SECONDS),
+              configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp
             )
           )
@@ -1058,7 +1057,7 @@ class ReadonlyRestStartingTests
             TestConfig.Present(
               config = RorConfig.disabled,
               rawConfig = testConfig1,
-              configuredTtl = FiniteDuration(100, TimeUnit.SECONDS),
+              configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp2
             )
           )
@@ -1096,7 +1095,7 @@ class ReadonlyRestStartingTests
             TestConfig.Present(
               config = RorConfig.disabled,
               rawConfig = testConfig1,
-              configuredTtl = FiniteDuration(100, TimeUnit.SECONDS),
+              configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp
             )
           )
@@ -1121,7 +1120,7 @@ class ReadonlyRestStartingTests
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Invalidated(
               recent = testConfig2,
-              configuredTtl = FiniteDuration(200, TimeUnit.SECONDS)
+              configuredTtl = (200 seconds).toRefinedPositiveUnsafe
             )
           )
         }
@@ -1165,7 +1164,7 @@ class ReadonlyRestStartingTests
             .returns(Task.now(Right(())))
 
           val testEngineReloadResult = rorInstance
-            .forceReloadTestConfigEngine(testConfig1, 3 seconds)(newRequestId())
+            .forceReloadTestConfigEngine(testConfig1, (3 seconds).toRefinedPositiveUnsafe)(newRequestId())
             .runSyncUnsafe()
 
           testEngineReloadResult.value shouldBe a[TestConfig.Present]
@@ -1174,7 +1173,9 @@ class ReadonlyRestStartingTests
           Task.sleep(5 seconds).runSyncUnsafe()
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.Invalidated(testConfig1, 3 seconds))
+          rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
+            TestConfig.Invalidated(testConfig1, (3 seconds).toRefinedPositiveUnsafe)
+          )
         }
       }
       "can be invalidated by user" in withReadonlyRestExt({
@@ -1215,7 +1216,7 @@ class ReadonlyRestStartingTests
           .returns(Task.now(Right(())))
 
         val testEngineReloadResult = rorInstance
-          .forceReloadTestConfigEngine(testConfig1, 1 minute)(newRequestId())
+          .forceReloadTestConfigEngine(testConfig1, (1 minute).toRefinedPositiveUnsafe)(newRequestId())
           .runSyncUnsafe()
 
         testEngineReloadResult.value shouldBe a[TestConfig.Present]
@@ -1240,7 +1241,9 @@ class ReadonlyRestStartingTests
         rorInstance.invalidateTestConfigEngine()(newRequestId()).runSyncUnsafe() should be(Right(()))
 
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-        rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.Invalidated(recent = testConfig1, configuredTtl = 1 minute))
+        rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
+          TestConfig.Invalidated(recent = testConfig1, configuredTtl = (1 minute).toRefinedPositiveUnsafe)
+        )
       }
       "should return error for invalidation" when {
         "cannot save invalidation timestamp in index" in withReadonlyRestExt({
@@ -1275,7 +1278,7 @@ class ReadonlyRestStartingTests
             TestConfig.Present(
               config = RorConfig.disabled,
               rawConfig = testConfig1,
-              configuredTtl = FiniteDuration(100, TimeUnit.SECONDS),
+              configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp
             )
           )
@@ -1299,7 +1302,9 @@ class ReadonlyRestStartingTests
           )
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.Invalidated(testConfig1, 100 seconds))
+          rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
+            TestConfig.Invalidated(testConfig1, (100 seconds).toRefinedPositiveUnsafe)
+          )
         }
       }
     }
@@ -1530,8 +1535,6 @@ class ReadonlyRestStartingTests
        |  }
        |}
        |""".stripMargin
-
-  private implicit def toRefined(fd: FiniteDuration): PositiveFiniteDuration = fd.toRefinedPositiveUnsafe
 
   private def newRequestId() = RequestId(UUID.randomUUID().toString)
 

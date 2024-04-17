@@ -51,7 +51,6 @@ import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.net.URI
-import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -364,7 +363,7 @@ object common extends Logging {
     Decoder
       .decodeLong
       .toSyncDecoder
-      .map(FiniteDuration(_, TimeUnit.SECONDS))
+      .map(_.seconds)
       .withErrorFromCursor { case (element, _) =>
         ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces}' to duration"))
       }

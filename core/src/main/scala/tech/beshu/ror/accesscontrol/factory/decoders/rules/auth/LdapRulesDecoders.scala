@@ -40,8 +40,6 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
-import scala.reflect.ClassTag
-
 // ------ ldap_authentication
 class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                     impersonatorsDef: Option[Definitions[ImpersonatorDef]],

@@ -49,7 +49,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy implicit val id: RequestContext.Id = RequestContext.Id.from(
     sessionCorrelationId = esContext.correlationId,
-    requestId = s"${esContext.channel.request().hashCode()}#${esContext.task.getId}"
+    requestId = s"${restRequest.hashCode()}#$taskId"
   )
 
   override lazy val action: Action = esContext.action
