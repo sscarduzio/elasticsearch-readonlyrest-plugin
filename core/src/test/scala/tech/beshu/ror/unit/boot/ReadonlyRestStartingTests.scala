@@ -713,8 +713,9 @@ class ReadonlyRestStartingTests
 
             val testEngineConfigAfterReload = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
             testEngineConfigAfterReload shouldBe a[TestConfig.Present]
-            Option(testEngineConfigAfterReload.asInstanceOf[TestConfig.Present])
-              .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, (1 minute).toRefinedPositiveUnsafe).some)
+            Option(testEngineConfigAfterReload.asInstanceOf[TestConfig.Present]).map(i => (i.rawConfig, i.configuredTtl.value)) should be {
+              (testConfig1, 1 minute).some
+            }
 
             val testEngine2Expiration = testEngineConfigAfterReload.asInstanceOf[TestConfig.Present].validTo
 
