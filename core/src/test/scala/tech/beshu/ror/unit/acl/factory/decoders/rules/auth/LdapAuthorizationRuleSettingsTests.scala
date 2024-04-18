@@ -57,7 +57,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
-            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )
       }
@@ -87,7 +87,7 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.permittedGroupsLogic should be(GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
             rule.settings.permittedGroupsLogic.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
-            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )
       }
@@ -119,7 +119,7 @@ class LdapAuthorizationRuleSettingsTests
             rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
             )))
-            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )
       }
@@ -151,7 +151,7 @@ class LdapAuthorizationRuleSettingsTests
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
             )))
-            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = true)
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = true)
           }
         )
       }
@@ -181,7 +181,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
-            assertLdapAnthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false, withRuleLevelCaching = true)
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false, withRuleLevelCaching = true)
           }
         )
       }

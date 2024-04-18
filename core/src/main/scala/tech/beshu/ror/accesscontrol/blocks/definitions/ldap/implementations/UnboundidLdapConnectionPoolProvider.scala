@@ -154,20 +154,6 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
 
   }
 
-  def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
-    val ldapBindingTask = for {
-      _ <- resolveHostnames(connectionConfig)
-      result <- testLdapBinding(connectionConfig)
-    } yield result
-
-    ldapBindingTask
-      .value
-      .recover { case NonFatal(ex) =>
-        logger.error("LDAP binding exception", ex)
-        Left(toConnectionError(connectionConfig))
-      }
-  }
-
   def connectWithOptionalBindingTest(poolProvider: UnboundidLdapConnectionPoolProvider,
                                      connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, UnboundidLdapConnectionPool]] = {
     val result = for {
@@ -182,6 +168,20 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
       connectionPool <- EitherT.right[ConnectionError](poolProvider.connect(connectionConfig))
     } yield connectionPool
     result.value
+  }
+
+  private def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
+    val ldapBindingTask = for {
+      _ <- resolveHostnames(connectionConfig)
+      result <- testLdapBinding(connectionConfig)
+    } yield result
+
+    ldapBindingTask
+      .value
+      .recover { case NonFatal(ex) =>
+        logger.error("LDAP binding exception", ex)
+        Left(toConnectionError(connectionConfig))
+      }
   }
 
   private def resolveHostnames(connectionConfig: LdapConnectionConfig): EitherT[Task, ConnectionError, Unit] = {

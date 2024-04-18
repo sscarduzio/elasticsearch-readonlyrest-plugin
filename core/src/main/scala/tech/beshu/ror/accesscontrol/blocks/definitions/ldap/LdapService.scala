@@ -59,6 +59,7 @@ trait LdapAuthenticationService extends LdapService {
 
 sealed trait LdapAuthorizationService extends LdapService {
   def ldapUsersService: LdapUsersService
+
   def serviceTimeout: PositiveFiniteDuration
 }
 object LdapAuthorizationService {
@@ -81,16 +82,14 @@ object ComposedLdapAuthService {
   def create(ldapUsersService: LdapUsersService,
              ldapAuthenticationService: LdapAuthenticationService,
              ldapAuthorizationService: LdapAuthorizationService): Either[String, ComposedLdapAuthService] = {
-    for {
-      _ <- Either.cond(
-        test = allIdEqual(ldapUsersService, ldapAuthenticationService, ldapAuthorizationService),
-        right = (),
-        left = s"You cannot create ComposedLdapAuthService from services with different IDs: [${ldapUsersService.id.show}, ${ldapAuthenticationService.id.show}, ${ldapAuthorizationService.id.show}]"
-      )
-    } yield new ComposedLdapAuthService(
-      ldapUsersService.id,
-      ldapAuthenticationService,
-      ldapAuthorizationService
+    Either.cond(
+      test = allIdEqual(ldapUsersService, ldapAuthenticationService, ldapAuthorizationService),
+      right = new ComposedLdapAuthService(
+        ldapUsersService.id,
+        ldapAuthenticationService,
+        ldapAuthorizationService
+      ),
+      left = s"You cannot create ComposedLdapAuthService from services with different IDs: [${ldapUsersService.id.show}, ${ldapAuthenticationService.id.show}, ${ldapAuthorizationService.id.show}]"
     )
   }
 

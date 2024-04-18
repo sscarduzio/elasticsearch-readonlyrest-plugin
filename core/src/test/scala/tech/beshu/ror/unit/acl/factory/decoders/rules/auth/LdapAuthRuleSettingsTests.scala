@@ -52,7 +52,7 @@ class LdapAuthRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             assertLdapAuthNServiceLayerTypes(rule.authentication.settings.ldap)
-            assertLdapAnthZServiceLayerTypes(rule.authorization.settings.ldap, withServerSideGroupsFiltering = false)
+            assertLdapAuthZServiceLayerTypes(rule.authorization.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )
       }
@@ -82,7 +82,7 @@ class LdapAuthRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             assertLdapAuthNServiceLayerTypes(rule.authentication.settings.ldap, withRuleLevelCaching = true)
-            assertLdapAnthZServiceLayerTypes(rule.authorization.settings.ldap, withServerSideGroupsFiltering = true, withRuleLevelCaching = true)
+            assertLdapAuthZServiceLayerTypes(rule.authorization.settings.ldap, withServerSideGroupsFiltering = true, withRuleLevelCaching = true)
           }
         )
       }

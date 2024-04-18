@@ -122,7 +122,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
     circuitBreakerLdapUsersService.underlying shouldBe a[UnboundidLdapUsersService]
   }
 
-  def assertLdapAnthZServiceLayerTypes(ldapService: LdapAuthorizationService,
+  def assertLdapAuthZServiceLayerTypes(ldapService: LdapAuthorizationService,
                                        withServerSideGroupsFiltering: Boolean,
                                        withRuleLevelCaching: Boolean = false): Assertion = {
     if(withServerSideGroupsFiltering) {
