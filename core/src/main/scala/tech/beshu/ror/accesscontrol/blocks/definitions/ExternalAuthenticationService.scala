@@ -20,8 +20,6 @@ import cats.implicits._
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
 import com.softwaremill.sttp._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.CacheableExternalAuthenticationServiceDecorator.HashedUserCredentials
@@ -30,15 +28,15 @@ import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, Header, User
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.nio.charset.Charset
-import scala.concurrent.duration.FiniteDuration
 
 trait ExternalAuthenticationService extends Item {
   override type Id = Name
   def id: Id
   def authenticate(credentials: Credentials): Task[Boolean]
-  def serviceTimeout: FiniteDuration Refined Positive
+  def serviceTimeout: PositiveFiniteDuration
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -54,7 +52,7 @@ object ExternalAuthenticationService {
 class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
                                                  uri: Uri,
                                                  successStatusCode: Int,
-                                                 override val serviceTimeout: FiniteDuration Refined Positive,
+                                                 override val serviceTimeout: PositiveFiniteDuration,
                                                  httpClient: HttpClient)
   extends ExternalAuthenticationService {
 
@@ -69,7 +67,7 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
 class JwtExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
                                        uri: Uri,
                                        successStatusCode: Int,
-                                       override val serviceTimeout: FiniteDuration Refined Positive,
+                                       override val serviceTimeout: PositiveFiniteDuration,
                                        httpClient: HttpClient)
   extends ExternalAuthenticationService {
 
@@ -81,7 +79,7 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
 }
 
 class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthenticationService,
-                                                      ttl: FiniteDuration Refined Positive)
+                                                      ttl: PositiveFiniteDuration)
   extends ExternalAuthenticationService {
 
   private val cacheableAuthentication =
@@ -101,7 +99,7 @@ class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthen
     underlying.authenticate(credentials)
   }
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+  override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
 object CacheableExternalAuthenticationServiceDecorator {

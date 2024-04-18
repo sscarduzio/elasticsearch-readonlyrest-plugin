@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -41,6 +40,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, Imper
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -407,7 +407,7 @@ class LdapAuthorizationRuleTests
       override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
         Task.raiseError(new IllegalStateException("Should not be called"))
 
-      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(1 second)
+      override def serviceTimeout: PositiveFiniteDuration = Refined.unsafeApply(1 second)
     }
   }
 
@@ -421,7 +421,7 @@ class LdapAuthorizationRuleTests
       override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
         Task.raiseError(new IllegalStateException("Should not be called"))
 
-      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(1 second)
+      override def serviceTimeout: PositiveFiniteDuration = Refined.unsafeApply(1 second)
     }
   }
 

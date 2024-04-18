@@ -58,7 +58,7 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.{Action, Header}
+import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
@@ -230,8 +230,17 @@ object AclAwareRequestFilter {
                              listener: ActionListener[ActionResponse],
                              chain: EsChain,
                              threadContextResponseHeaders: Set[(String, String)]) {
-    lazy val requestContextId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
+
     val timestamp: Instant = Instant.now()
+
+    lazy val allHeaders: Set[Header] = channel.request().allHeaders()
+
+    lazy val correlationId: CorrelationId =
+      allHeaders
+        .find(_.name === Header.Name.correlationId)
+        .map(_.value)
+        .map(CorrelationId.apply)
+        .getOrElse(CorrelationId.random)
 
     def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
       val impersonationHeaderPresent = isImpersonationHeader

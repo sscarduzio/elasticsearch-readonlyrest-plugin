@@ -46,7 +46,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
   override def description: String = underlying.description
 
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {
-    logger.debug(s"checking request: ${requestContext.id.show}")
+    logger.debug(s"[${requestContext.id.show}] checking request ${requestContext.method.show} ${requestContext.uriPath.show} ...")
     underlying
       .handleRegularRequest(requestContext)
       .andThen {
@@ -70,13 +70,13 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
             // ignore
           }
         case Failure(ex) =>
-          logger.error("Request handling unexpected failure", ex)
+          logger.error(s"[${requestContext.id.show}] Request handling unexpected failure", ex)
       }
   }
 
   // todo: logging metadata should be a little bit different
   override def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] = {
-    logger.debug(s"checking user metadata request: ${requestContext.id.show}")
+    logger.debug(s"[${requestContext.id.show}] checking user metadata request ...")
     underlying
       .handleMetadataRequest(requestContext)
       .andThen {
@@ -90,7 +90,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
             // ignore
           }
         case Failure(ex) =>
-          logger.error("Request handling unexpected failure", ex)
+          logger.error(s"[${requestContext.id.show}] Request handling unexpected failure", ex)
       }
   }
 
@@ -108,7 +108,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
         .runAsync {
           case Right(_) =>
           case Left(ex) =>
-            logger.warn("Auditing issue", ex)
+            logger.warn(s"[${responseContext.requestContext.id.show}] Auditing issue", ex)
         }
     }
   }

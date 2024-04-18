@@ -19,8 +19,6 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 import cats.data.EitherT
 import cats.implicits._
 import com.unboundid.ldap.sdk._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
@@ -29,18 +27,18 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.doma
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
-import tech.beshu.ror.utils.uniquelist.UniqueList
 import tech.beshu.ror.utils.TaskOps._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.time.Clock
-import scala.concurrent.duration.FiniteDuration
 
 class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
                                                 connectionPool: UnboundidLdapConnectionPool,
                                                 groupsSearchFilter: UserGroupsSearchFilterConfig,
                                                 userSearchFiler: UserSearchFilterConfig,
-                                                override val serviceTimeout: FiniteDuration Refined Positive)
+                                                override val serviceTimeout: PositiveFiniteDuration)
                                                (implicit clock: Clock)
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, serviceTimeout)
     with LdapAuthorizationService {

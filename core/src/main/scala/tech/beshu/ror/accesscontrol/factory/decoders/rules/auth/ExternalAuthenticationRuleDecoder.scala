@@ -17,8 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import cats.implicits._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, ImpersonatorDef}
@@ -37,8 +35,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
-
-import scala.concurrent.duration.FiniteDuration
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService],
                                         impersonatorsDef: Option[Definitions[ImpersonatorDef]],
@@ -67,17 +64,17 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
       .decoder
   }
 
-  private def simpleExternalAuthenticationServiceNameAndLocalConfig: Decoder[(ExternalAuthenticationService.Name, Option[FiniteDuration Refined Positive])] =
+  private def simpleExternalAuthenticationServiceNameAndLocalConfig: Decoder[(ExternalAuthenticationService.Name, Option[PositiveFiniteDuration])] =
     ExternalAuthenticationServicesDecoder
       .serviceNameDecoder
       .map((_, None))
 
-  private def complexExternalAuthenticationServiceNameAndLocalConfig: Decoder[(ExternalAuthenticationService.Name, Option[FiniteDuration Refined Positive])] = {
+  private def complexExternalAuthenticationServiceNameAndLocalConfig: Decoder[(ExternalAuthenticationService.Name, Option[PositiveFiniteDuration])] = {
     SyncDecoderCreator
       .instance { c =>
         for {
           name <- c.downField("service").as[ExternalAuthenticationService.Name]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[FiniteDuration Refined Positive]
+          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[PositiveFiniteDuration]
         } yield (name, Option(ttl))
       }
       .mapError(RulesLevelCreationError.apply)

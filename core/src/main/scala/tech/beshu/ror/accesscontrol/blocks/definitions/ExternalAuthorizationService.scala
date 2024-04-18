@@ -19,9 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 import cats.implicits._
 import cats.{Eq, Show}
 import com.softwaremill.sttp._
-import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -35,10 +33,10 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CacheableAction
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -46,7 +44,7 @@ trait ExternalAuthorizationService extends Item {
   override type Id = Name
   def id: Id
   def grantsFor(userId: User.Id): Task[UniqueList[Group]]
-  def serviceTimeout: FiniteDuration Refined Positive
+  def serviceTimeout: PositiveFiniteDuration
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -60,7 +58,7 @@ object ExternalAuthorizationService {
 }
 
 final class HttpExternalAuthorizationService(override val id: ExternalAuthorizationService#Id,
-                                             override val serviceTimeout: Refined[FiniteDuration, Positive],
+                                             override val serviceTimeout: PositiveFiniteDuration,
                                              val config: HttpExternalAuthorizationService.Config,
                                              httpClient: HttpClient)
   extends ExternalAuthorizationService
@@ -218,7 +216,7 @@ object HttpExternalAuthorizationService {
 }
 
 final class CacheableExternalAuthorizationServiceDecorator(val underlying: ExternalAuthorizationService,
-                                                           val ttl: FiniteDuration Refined Positive)
+                                                           val ttl: PositiveFiniteDuration)
   extends ExternalAuthorizationService {
 
   private val cacheableGrantsFor = new CacheableAction[User.Id, UniqueList[Group]](ttl, underlying.grantsFor)
@@ -228,6 +226,6 @@ final class CacheableExternalAuthorizationServiceDecorator(val underlying: Exter
   override def grantsFor(userId: User.Id): Task[UniqueList[Group]] =
     cacheableGrantsFor.call(userId, serviceTimeout)
 
-  override def serviceTimeout: Refined[FiniteDuration, Positive] =
+  override def serviceTimeout: PositiveFiniteDuration =
     underlying.serviceTimeout
 }
