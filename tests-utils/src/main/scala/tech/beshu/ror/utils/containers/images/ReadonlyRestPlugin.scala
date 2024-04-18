@@ -224,7 +224,7 @@ class ReadonlyRestPlugin(esVersion: String,
             .add("readonlyrest.ssl_internode.keystore_file: ror-keystore.bcfks")
             .add("readonlyrest.ssl_internode.keystore_pass: readonlyrest")
             .add("readonlyrest.ssl_internode.key_pass: readonlyrest")
-            .add("truststore_file: ror-truststore.bcfks") // todo:
+            .add("truststore_file: ror-truststore.bcfks") // todo: no "readonlyrest" prefix?
             .add("truststore_pass: readonlyrest")
             .add("certificate_verification: true")
         case Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile)) =>

@@ -21,43 +21,32 @@ import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleCont
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
-import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers.{be, convertToAnyShouldWrapper}
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService, LdapUser}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.TestsUtils.ValueOrIllegalState
-import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 
-import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsUidTests extends UnboundidLdapAuthenticationServiceTests {
-  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.CustomAttribute("uid")
-  override protected val morganUserId: User.Id = User.Id("morgan")
-}
-
-class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsCnTests extends UnboundidLdapAuthenticationServiceTests {
-  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.OptimizedCn
-  override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
-}
-
-abstract class UnboundidLdapAuthenticationServiceTests
-  extends AnyWordSpec
+class UnboundIdLdapUsersServiceTests
+  extends AnyFreeSpec
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with ForAllTestContainer
     with Inside
     with WithDummyRequestIdSupport {
 
-  private val ldapContainer = LdapContainer.create("LDAP3", "test_example.ldif")
+  private val ldapContainer = LdapContainer.create("LDAP4", "test_example.ldif")
   private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   override val container: Container = MultipleContainers(ldapContainer)
@@ -67,32 +56,39 @@ abstract class UnboundidLdapAuthenticationServiceTests
     ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
-  "An LdapAuthenticationService" should {
-    "have method to authenticate" which {
-      "returns true" when {
-        "user exists in LDAP and its credentials are correct" in {
-          createSimpleAuthenticationService()
-            .authenticate(morganUserId, PlainTextSecret("user1"))
-            .runSyncUnsafe() should be(true)
-        }
+  "An LdapUsersService should" - {
+    "have method to get an LDAP user which" - {
+      "just return the user is the CN optimization is enabled" in {
+        val ldapUser = createSimpleLdapUsersService(UserIdAttribute.OptimizedCn)
+          .ldapUserBy(User.Id("even-non-existing-user"))
+          .runSyncUnsafe()
+
+        ldapUser should be (Some(LdapUser(
+          User.Id("even-non-existing-user"), Dn("cn=even-non-existing-user,ou=People,dc=example,dc=com"), confirmed = false
+        )))
       }
-      "returns false" when {
-        "user doesn't exist in LDAP" in {
-          createSimpleAuthenticationService()
-            .authenticate(User.Id("unknown"), PlainTextSecret("user1"))
-            .runSyncUnsafe() should be(false)
+      "searches for the user in LDAP and" - {
+        "return the user if exists" in {
+          val ldapUser = createSimpleLdapUsersService(UserIdAttribute.CustomAttribute("uid"))
+            .ldapUserBy(User.Id("morgan"))
+            .runSyncUnsafe()
+
+          ldapUser should be(Some(LdapUser(
+            User.Id("morgan"), Dn("cn=Morgan Freeman,ou=People,dc=example,dc=com"), confirmed = true
+          )))
         }
-        "user has invalid credentials" in {
-          createSimpleAuthenticationService()
-            .authenticate(morganUserId, PlainTextSecret("invalid_secret"))
-            .runSyncUnsafe() should be(false)
+        "return None if the user doesn't exist" in {
+          val ldapUser = createSimpleLdapUsersService(UserIdAttribute.CustomAttribute("uid"))
+            .ldapUserBy(User.Id("non-existing"))
+            .runSyncUnsafe()
+
+          ldapUser should be(None)
         }
       }
     }
   }
 
-  private def createSimpleAuthenticationService() = {
-    implicit val clock: Clock = Clock.systemUTC()
+  private def createSimpleLdapUsersService(userIdAttribute: UserIdAttribute) = {
     val ldapId = Name("ldap")
     val ldapConnectionConfig = createLdapConnectionConfig(ldapId)
     val result = for {
@@ -102,14 +98,7 @@ abstract class UnboundidLdapAuthenticationServiceTests
         connectionConfig = ldapConnectionConfig,
         userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
       ))
-      authenticationService <- EitherT(UnboundidLdapAuthenticationService
-        .create(
-          id = ldapId,
-          ldapUsersService = usersService,
-          poolProvider = ldapConnectionPoolProvider,
-          connectionConfig = ldapConnectionConfig
-        ))
-    } yield authenticationService
+    } yield usersService
     result.valueOrThrowIllegalState()
   }
 
@@ -132,9 +121,5 @@ abstract class UnboundidLdapAuthenticationServiceTests
       ignoreLdapConnectivityProblems = false
     )
   }
-
-  protected def userIdAttribute: UserIdAttribute
-
-  protected def morganUserId: User.Id
 
 }

@@ -21,20 +21,19 @@ import com.github.blemale.scaffeine.Scaffeine
 import monix.catnap.Semaphore
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
-import tech.beshu.ror.utils.TaskOps._
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext._
-import scala.util.Success
 
 class CacheableAction[K, V](ttl: PositiveFiniteDuration,
-                            action: K => Task[V])
+                            action: (K, RequestId) => Task[V])
   extends CacheableActionWithKeyMapping[K, K, V](ttl, action, identity)
 
 class CacheableActionWithKeyMapping[K, K1, V](ttl: PositiveFiniteDuration,
-                                              action: K => Task[V],
+                                              action: (K, RequestId) => Task[V],
                                               keyMap: K => K1) extends Logging {
 
   private val keySemaphoresMap = new ConcurrentHashMap[K1, Semaphore[Task]]()
@@ -45,11 +44,12 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: PositiveFiniteDuration,
     .removalListener(onRemoveHook)
     .build[K1, V]()
 
-  def call(key: K, requestTimeout: PositiveFiniteDuration): Task[V] = {
+  def call(key: K, requestTimeout: PositiveFiniteDuration)
+          (implicit requestId: RequestId): Task[V] = {
     call(key).timeout(requestTimeout.value)
   }
 
-  def call(key: K): Task[V] = {
+  def call(key: K)(implicit requestId: RequestId): Task[V] = {
     val mappedKey = keyMap(key)
     for {
       semaphore <- semaphoreOf(mappedKey)
@@ -59,24 +59,27 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: PositiveFiniteDuration,
     } yield cachedValue
   }
 
-  private def getFromCacheOrRunAction(key: K, mappedKey: K1): Task[V] = {
+  private def getFromCacheOrRunAction(key: K, mappedKey: K1)(implicit requestId: RequestId): Task[V] = {
     for {
       cachedValue <- Task.delay(cache.getIfPresent(mappedKey))
       result <- cachedValue match {
-        case Some(value) => Task.now(value)
+        case Some(value) =>
+          Task.now(value)
         case None =>
-          action(key)
-            .andThen {
-              case Success(value) => cache.put(mappedKey, value)
+          action(key, requestId)
+            .flatMap { value =>
+              Task
+                .delay { cache.put(mappedKey, value) }
+                .map(_ => value)
             }
       }
     } yield result
   }
 
-  private def onRemoveHook(mappedKay: K1,
+  private def onRemoveHook(mappedKey: K1,
                            @nowarn("cat=unused") value: V,
                            @nowarn("cat=unused") cause: RemovalCause): Unit = {
-    keySemaphoresMap.remove(mappedKay)
+    keySemaphoresMap.remove(mappedKey)
   }
 
   private def semaphoreOf(key: K1) = for {

@@ -35,12 +35,10 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDec
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.LdapRulesDecodersHelper.{errorMsgNoGroupsList, errorMsgOnlyOneGroupsList, findLdapService}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.LdapRulesDecodersHelper._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
-
-import scala.reflect.ClassTag
 
 // ------ ldap_authentication
 class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
@@ -49,18 +47,16 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                     globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthenticationRule] {
 
+  import LdapRulesDecodersHelper._
+
   override protected def decoder: Decoder[RuleDefinition[LdapAuthenticationRule]] = {
     simpleLdapAuthenticationNameAndLocalConfig
       .orElse(complexLdapAuthenticationServiceNameAndLocalConfig)
       .toSyncDecoder
-      .emapE {
-        case (name, Some(ttl)) =>
-          LdapRulesDecodersHelper
-            .findLdapService[LdapAuthenticationService, LdapAuthenticationRule](ldapDefinitions.items, name)
-            .map(new CacheableLdapAuthenticationServiceDecorator(_, ttl))
-        case (name, None) =>
-          LdapRulesDecodersHelper
-            .findLdapService[LdapAuthenticationService, LdapAuthenticationRule](ldapDefinitions.items, name)
+      .emapE { case (name, ttl) =>
+        LdapRulesDecodersHelper
+          .findLdapService[LdapAuthenticationRule](LdapServiceType.Authentication, name, ldapDefinitions.items)
+          .map(CacheableLdapAuthenticationServiceDecorator.createWithCacheableLdapUsersService(_, ttl))
       }
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
       .map(service => RuleDefinition.create(
@@ -137,14 +133,9 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                           ttl: Option[PositiveFiniteDuration],
                                           groupsLogic: GroupsLogic,
                                           ldapDefinitions: Definitions[LdapService]): Either[CoreCreationError, LdapAuthorizationRule.Settings] = {
-    findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
-      .map(svc => {
-        ttl match {
-          case Some(ttlValue) => new CacheableLdapAuthorizationServiceDecorator(svc, ttlValue)
-          case _ => svc
-        }
-      })
-      .map(service => new LoggableLdapAuthorizationServiceDecorator(service))
+    findLdapService[LdapAuthorizationRule](LdapServiceType.Authorization, name, ldapDefinitions.items)
+      .map(CacheableLdapAuthorizationService.createWithCacheableLdapUsersService(_, ttl))
+      .map(service => LoggableLdapAuthorizationService.create(service))
       .map(LdapAuthorizationRule.Settings(_, groupsLogic))
   }
 }
@@ -194,23 +185,25 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                  impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                  mocksProvider: MocksProvider,
                                  userIdCaseSensitivity: CaseSensitivity) = {
-    findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
-      .map(svc => {
-        ttl match {
-          case Some(ttlValue) => new CacheableLdapServiceDecorator(svc, ttlValue)
-          case _ => svc
-        }
-      })
-      .map(new LoggableLdapServiceDecorator(_))
+    findLdapService[LdapAuthRule](LdapServiceType.Composed, name, ldapDefinitions.items)
       .map(ldapService => {
         new LdapAuthRule(
           new LdapAuthenticationRule(
-            LdapAuthenticationRule.Settings(ldapService),
+            LdapAuthenticationRule.Settings(
+              new LoggableLdapAuthenticationServiceDecorator(
+                CacheableLdapAuthenticationServiceDecorator.create(ldapService.ldapAuthenticationService, ttl)
+              )
+            ),
             userIdCaseSensitivity,
             impersonatorsDef.toImpersonation(mocksProvider)
           ),
           new LdapAuthorizationRule(
-            LdapAuthorizationRule.Settings(ldapService, groupsLogic),
+            LdapAuthorizationRule.Settings(
+              LoggableLdapAuthorizationService.create(
+                CacheableLdapAuthorizationService.create(ldapService.ldapAuthorizationService, ttl)
+              ),
+              groupsLogic
+            ),
             userIdCaseSensitivity,
             impersonatorsDef.toImpersonation(mocksProvider)
           )
@@ -229,13 +222,42 @@ private object LdapRulesDecodersHelper {
     s"${ruleName.show} rule requires to define 'groups_or'/'groups' or 'groups_and' arrays (but not both)"
   }
 
-  private[rules] def findLdapService[T <: LdapService : ClassTag, R <: Rule : RuleName](ldapServices: List[LdapService],
-                                                                                        searchedServiceName: LdapService.Name): Either[CoreCreationError, T] = {
-    ldapServices
-      .find(_.id === searchedServiceName) match {
-      case Some(service: T) => Right(service)
-      case Some(_) => Left(RulesLevelCreationError(Message(s"Service: ${searchedServiceName.show} cannot be used in '${RuleName[R].show}' rule")))
-      case None => Left(RulesLevelCreationError(Message(s"Cannot find LDAP service with name: ${searchedServiceName.show}")))
+  private[rules] def findLdapService[R <: Rule : RuleName](toFind: LdapServiceType,
+                                                           searchedServiceName: LdapService.Name,
+                                                           ldapServices: List[LdapService]): Either[CoreCreationError, toFind.LDAP_SERVICE] = {
+    ldapServices.find(_.id === searchedServiceName) match {
+      case Some(service) =>
+        (service, toFind) match {
+          case (service: LdapAuthenticationService, LdapServiceType.Authentication) =>
+            Right(service.asInstanceOf[toFind.LDAP_SERVICE])
+          case (service: LdapAuthorizationService, LdapServiceType.Authorization) =>
+            Right(service.asInstanceOf[toFind.LDAP_SERVICE])
+          case (service: ComposedLdapAuthService, LdapServiceType.Composed) =>
+            Right(service.asInstanceOf[toFind.LDAP_SERVICE])
+          case (service: ComposedLdapAuthService, LdapServiceType.Authentication) =>
+            Right(service.ldapAuthenticationService.asInstanceOf[toFind.LDAP_SERVICE])
+          case (service: ComposedLdapAuthService, LdapServiceType.Authorization) =>
+            Right(service.ldapAuthorizationService.asInstanceOf[toFind.LDAP_SERVICE])
+          case (_, _) =>
+            Left(RulesLevelCreationError(Message(s"Service: ${searchedServiceName.show} cannot be used in '${RuleName[R].show}' rule")))
+        }
+      case None =>
+        Left(RulesLevelCreationError(Message(s"Cannot find LDAP service with name: ${searchedServiceName.show}")))
+    }
+  }
+
+  private[auth] sealed trait LdapServiceType {
+    type LDAP_SERVICE
+  }
+  private[auth] object LdapServiceType {
+    case object Authentication extends LdapServiceType {
+      override type LDAP_SERVICE = LdapAuthenticationService
+    }
+    case object Authorization extends LdapServiceType {
+      override type LDAP_SERVICE = LdapAuthorizationService
+    }
+    case object Composed extends LdapServiceType {
+      override type LDAP_SERVICE = ComposedLdapAuthService
     }
   }
 }

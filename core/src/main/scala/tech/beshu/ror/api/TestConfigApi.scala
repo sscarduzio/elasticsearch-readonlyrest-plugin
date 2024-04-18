@@ -123,7 +123,8 @@ class TestConfigApi(rorInstance: RorInstance){
       }
   }
 
-  private def forceReloadTestConfig(config: RawRorConfig, ttl: PositiveFiniteDuration)
+  private def forceReloadTestConfig(config: RawRorConfig,
+                                    ttl: PositiveFiniteDuration)
                                    (implicit requestId: RequestId): EitherT[Task, TestConfigResponse, TestConfigResponse] = {
     EitherT(
       rorInstance

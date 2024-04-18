@@ -21,16 +21,16 @@ import cats.effect.{ContextShift, IO}
 import cats.implicits._
 import cats.{Functor, Order}
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.util
 import java.util.Base64
-import scala.jdk.CollectionConverters._
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.Try
@@ -227,9 +227,9 @@ object ScalaOps {
     }
   }
 
-  implicit class PositiveFiniteDurationAdd(val duration: FiniteDuration Refined Positive) {
+  implicit class PositiveFiniteDurationAdd(val duration: PositiveFiniteDuration) {
 
-    def +(duration: FiniteDuration Refined Positive): FiniteDuration Refined Positive = {
+    def +(duration: PositiveFiniteDuration): PositiveFiniteDuration = {
       Refined.unsafeApply(this.duration.value + duration.value)
     }
   }

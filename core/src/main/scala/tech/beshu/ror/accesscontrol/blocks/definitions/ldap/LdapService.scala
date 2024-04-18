@@ -16,19 +16,21 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
+import cats.implicits._
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 sealed trait LdapService extends Item {
   override type Id = Name
+
   def id: Id
-  def serviceTimeout: PositiveFiniteDuration
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -41,42 +43,61 @@ object LdapService {
   }
 }
 
-trait LdapUserService extends LdapService {
-  def ldapUserBy(userId: User.Id): Task[Option[LdapUser]]
+trait LdapUsersService extends LdapService {
+  def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]]
+
+  def serviceTimeout: PositiveFiniteDuration
 }
 
-trait LdapAuthenticationService extends LdapUserService {
-  def authenticate(user: User.Id, secret: PlainTextSecret): Task[Boolean]
+trait LdapAuthenticationService extends LdapService {
+  def ldapUsersService: LdapUsersService
+
+  def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[Boolean]
+
+  def serviceTimeout: PositiveFiniteDuration
 }
 
-trait LdapAuthorizationService extends LdapUserService {
-  def groupsOf(id: User.Id): Task[UniqueList[Group]]
+sealed trait LdapAuthorizationService extends LdapService {
+  def ldapUsersService: LdapUsersService
+
+  def serviceTimeout: PositiveFiniteDuration
 }
+object LdapAuthorizationService {
+  trait WithoutGroupsFiltering extends LdapAuthorizationService {
+    def groupsOf(id: User.Id)(implicit requestId: RequestId): Task[UniqueList[Group]]
+  }
 
-trait LdapAuthService extends LdapAuthenticationService with LdapAuthorizationService
-
-class ComposedLdapAuthService(override val id: LdapService#Id,
-                              ldapAuthenticationService: LdapAuthenticationService,
-                              ldapAuthorizationService: LdapAuthorizationService)
-  extends LdapAuthService {
-
-  def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
-    ldapAuthenticationService.ldapUserBy(userId)
-
-  override def authenticate(user: User.Id, secret: PlainTextSecret): Task[Boolean] =
-    ldapAuthenticationService.authenticate(user, secret)
-
-  override def groupsOf(id: User.Id): Task[UniqueList[Group]] =
-    ldapAuthorizationService.groupsOf(id)
-
-  override val serviceTimeout: PositiveFiniteDuration = {
-    val authnServiceTimeout = ldapAuthenticationService.serviceTimeout
-    val authzServiceTimeout = ldapAuthorizationService.serviceTimeout
-    if(authnServiceTimeout.value > authzServiceTimeout.value) authnServiceTimeout
-    else authzServiceTimeout
+  trait WithGroupsFiltering extends LdapAuthorizationService {
+    def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
+                (implicit requestId: RequestId): Task[UniqueList[Group]]
   }
 }
 
+class ComposedLdapAuthService private(override val id: LdapService#Id,
+                                      val ldapAuthenticationService: LdapAuthenticationService,
+                                      val ldapAuthorizationService: LdapAuthorizationService)
+  extends LdapService
+
+object ComposedLdapAuthService {
+  def create(ldapUsersService: LdapUsersService,
+             ldapAuthenticationService: LdapAuthenticationService,
+             ldapAuthorizationService: LdapAuthorizationService): Either[String, ComposedLdapAuthService] = {
+    Either.cond(
+      test = allIdEqual(ldapUsersService, ldapAuthenticationService, ldapAuthorizationService),
+      right = new ComposedLdapAuthService(
+        ldapUsersService.id,
+        ldapAuthenticationService,
+        ldapAuthorizationService
+      ),
+      left = s"You cannot create ComposedLdapAuthService from services with different IDs: [${ldapUsersService.id.show}, ${ldapAuthenticationService.id.show}, ${ldapAuthorizationService.id.show}]"
+    )
+  }
+
+  private def allIdEqual(ldapServices: LdapService*) = {
+    ldapServices.map(_.id).distinct.size == 1
+  }
+
+}
 
 final case class LdapUser(id: User.Id, dn: Dn, confirmed: Boolean)
 final case class Dn(value: NonEmptyString)

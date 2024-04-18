@@ -25,6 +25,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralNonIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -261,7 +262,8 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
     new ExternalAuthenticationService {
       override def id: ExternalAuthenticationService.Name = ExternalAuthenticationService.Name(name)
 
-      override def authenticate(aCredentials: Credentials): Task[Boolean] = Task.delay {
+      override def authenticate(aCredentials: Credentials)
+                               (implicit requestId: RequestId): Task[Boolean] = Task.delay {
         credentials == aCredentials
       }
 

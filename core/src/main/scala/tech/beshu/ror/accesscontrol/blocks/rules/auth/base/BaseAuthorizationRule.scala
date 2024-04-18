@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, LoggedUser, PermittedGroupIds}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, GroupIdLike, LoggedUser, PermittedGroupIds}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.annotation.nowarn
@@ -42,7 +42,10 @@ private[auth] trait BaseAuthorizationRule
 
   protected def groupsPermittedByRule: PermittedGroupIds
 
-  protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]]
+  protected def userGroups[B <: BlockContext](blockContext: B,
+                                              user: LoggedUser,
+                                              permittedGroupIds: Set[GroupIdLike])
+                                             (implicit requestId: RequestId): Task[UniqueList[Group]]
 
   protected def loggedUserPreconditionCheck(@nowarn("cat=unused") user: LoggedUser): Either[Unit, Unit] = Right(())
 
@@ -60,6 +63,7 @@ private[auth] trait BaseAuthorizationRule
       case (Some(ImpersonatedUser(_, _)), Impersonation.Disabled) =>
         Task.now(Rejected(ImpersonationNotSupported))
       case (Some(user@DirectlyLoggedUser(_)), _) =>
+        implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         loggedUserPreconditionCheck(user) match {
           case Left(_) => Task.now(Rejected())
           case Right(_) => authorizeLoggedUser(blockContext, user)
@@ -78,7 +82,7 @@ private[auth] trait BaseAuthorizationRule
         authorizeLoggedUser(
           blockContext,
           user,
-          userGroupsProvider = (_, _) => Task.now(mockedGroups)
+          userGroupsProvider = (_, _, _) => Task.now(mockedGroups)
         )
       case Groups.CannotCheck =>
         Task.now(Rejected(Cause.ImpersonationNotSupported))
@@ -86,7 +90,8 @@ private[auth] trait BaseAuthorizationRule
   }
 
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                           user: LoggedUser): Task[RuleResult[B]] = {
+                                                                           user: LoggedUser)
+                                                                          (implicit requestId: RequestId): Task[RuleResult[B]] = {
     authorizeLoggedUser(
       blockContext,
       user,
@@ -96,9 +101,9 @@ private[auth] trait BaseAuthorizationRule
 
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
-                                                                           userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
+                                                                           userGroupsProvider: (B, LoggedUser, Set[GroupIdLike]) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
     if (blockContext.isCurrentGroupEligible(groupsPermittedByRule)) {
-      userGroupsProvider(blockContext, user)
+      userGroupsProvider(blockContext, user, groupsPermittedByRule.groupIds.toSet)
         .map(uniqueList => UniqueNonEmptyList.fromIterable(uniqueList.toSet))
         .map {
           case Some(fetchedUserGroups) =>

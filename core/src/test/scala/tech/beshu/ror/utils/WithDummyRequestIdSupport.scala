@@ -14,11 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.definitions
+package tech.beshu.ror.utils
 
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.RequestId
 
-final case class CircuitBreakerConfig(maxFailures: Int Refined Positive,
-                                      resetDuration: PositiveFiniteDuration)
+import java.util.UUID
+
+trait WithDummyRequestIdSupport {
+
+  protected implicit val dummyRequestId: RequestId = RequestId(s"dummy-${UUID.randomUUID().toString}")
+}

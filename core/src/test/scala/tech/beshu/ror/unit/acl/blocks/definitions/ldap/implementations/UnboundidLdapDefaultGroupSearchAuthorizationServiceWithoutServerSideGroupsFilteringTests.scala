@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapAuthorizationService, LdapService}
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -41,25 +41,25 @@ import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeWhenUserIdAttributeIsUidTests
-  extends UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests {
+class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringWhenUserIdAttributeIsUidTests
+  extends UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringTests {
 
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.CustomAttribute("uid")
-  override protected val jesusUserId: User.Id = User.Id("jesus")
+  override protected val morganUserId: User.Id = User.Id("morgan")
   override protected val userSpeakerUserId: User.Id = User.Id("userSpeaker")
-  override protected val spaghettiUserId: User.Id = User.Id("spaghetti")
+  override protected val devitoUserId: User.Id = User.Id("devito")
 }
 
-class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeWhenUserIdAttributeIsCnTests
-  extends UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests {
+class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringWhenUserIdAttributeIsCnTests
+  extends UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringTests {
 
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.OptimizedCn
-  override protected val jesusUserId: User.Id = User.Id("Jesus Christ")
+  override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
   override protected val userSpeakerUserId: User.Id = User.Id("UserSpeaker (ext)")
-  override protected val spaghettiUserId: User.Id = User.Id("Spaghetti Monster")
+  override protected val devitoUserId: User.Id = User.Id("Danny DeVito")
 }
 
-abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
+abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringTests
   extends AnyWordSpec
     with BeforeAndAfterAll
     with Inside
@@ -76,14 +76,14 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
     ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
-  "An LdapAuthorizationService" should {
+  "An LdapAuthorizationService without server side groups filtering" should {
     "has method to provide user groups" which {
       "returns non empty set of groups" when {
         "user has groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(jesusUserId).runSyncUnsafe() should contain only(
-              group("europe"), group("north america"), group("south america"), group("africa")
-            )
+            peopleAndGroupsLdapAuthorizationService.groupsOf(morganUserId).runSyncUnsafe() should be {
+              UniqueList.of(group("groupAll"), group("group3"), group("group2"))
+            }
           }
         }
       }
@@ -97,46 +97,50 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(spaghettiUserId).runSyncUnsafe() should be (UniqueList.empty[Group])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(devitoUserId).runSyncUnsafe() should be(UniqueList.empty[Group])
           }
         }
         "there is no user with given name" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
           }
         }
       }
     }
   }
 
-  private def godAndRegionsLdapAuthorizationService = {
+  private def peopleAndGroupsLdapAuthorizationService = {
     implicit val clock: Clock = Clock.systemUTC()
-    val ldapId = Name("ldap1")
+    val ldapId = Name("ldap2")
     val ldapConnectionConfig = createLdapConnectionConfig(ldapId)
     val result = for {
       usersService <- EitherT(UnboundidLdapUsersService.create(
         id = ldapId,
         poolProvider = ldapConnectionPoolProvider,
         connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), userIdAttribute)
+        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
       ))
       authorizationService <- EitherT(
-        UnboundidLdapGroupsFromUserEntryAuthorizationService
+        UnboundidLdapAuthorizationService
           .create(
             id = ldapId,
             ldapUsersService = usersService,
             poolProvider = ldapConnectionPoolProvider,
             connectionConfig = ldapConnectionConfig,
-            groupsSearchFilter = GroupsFromUserEntry(
-              Dn("ou=Regions,dc=example,dc=com"),
-              GroupSearchFilter("(objectClass=*)"),
-              GroupIdAttribute("cn"),
-              GroupsFromUserAttribute("title"),
-            ),
-            nestedGroupsConfig = None
+            groupsSearchFilter = UserGroupsSearchFilterConfig(
+              mode = DefaultGroupSearch(
+                Dn("ou=Groups,dc=example,dc=com"),
+                GroupSearchFilter("(cn=*)"),
+                GroupIdAttribute("cn"),
+                UniqueMemberAttribute("uniqueMember"),
+                groupAttributeIsDN = true,
+                serverSideGroupsFiltering = false
+              ),
+              nestedGroupsConfig = None
+            )
           )
       )
-    } yield authorizationService
+    } yield authorizationService.asInstanceOf[LdapAuthorizationService.WithoutGroupsFiltering]
     result.valueOrThrowIllegalState()
   }
 
@@ -152,31 +156,33 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
         userSearchFiler = UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), userIdAttribute)
       ))
       authorizationService <- EitherT(
-        UnboundidLdapGroupsFromUserEntryAuthorizationService
+        UnboundidLdapAuthorizationService
           .create(
             id = ldapId,
             ldapUsersService = usersService,
             poolProvider = ldapConnectionPoolProvider,
             connectionConfig = ldapConnectionConfig,
-            groupsSearchFilter = GroupsFromUserEntry(
-              Dn("ou=Roles,dc=example,dc=com"),
-              GroupSearchFilter("(objectClass=*)"),
-              GroupIdAttribute("cn"),
-              GroupsFromUserAttribute("memberOf"),
-            ),
-            nestedGroupsConfig = Some(NestedGroupsConfig(
-              nestedLevels = 1,
-              Dn("ou=Roles,dc=example,dc=com"),
-              GroupSearchFilter("(objectClass=*)"),
-              UniqueMemberAttribute("uniqueMember"),
-              GroupIdAttribute("cn"),
-            ))
+            groupsSearchFilter = UserGroupsSearchFilterConfig(
+              mode = DefaultGroupSearch(
+                Dn("ou=Roles,dc=example,dc=com"),
+                GroupSearchFilter("(cn=*)"),
+                GroupIdAttribute("cn"),
+                UniqueMemberAttribute("uniqueMember"),
+                groupAttributeIsDN = true,
+                serverSideGroupsFiltering = false
+              ),
+              nestedGroupsConfig = Some(NestedGroupsConfig(
+                nestedLevels = 1,
+                Dn("ou=Roles,dc=example,dc=com"),
+                GroupSearchFilter("(cn=*)"),
+                UniqueMemberAttribute("uniqueMember"),
+                GroupIdAttribute("cn"),
+              ))
+            )
           )
       )
-    } yield authorizationService
-    result.value
-      .runSyncUnsafe()
-      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
+    } yield authorizationService.asInstanceOf[LdapAuthorizationService.WithoutGroupsFiltering]
+    result.valueOrThrowIllegalState()
   }
 
   private def createLdapConnectionConfig(poolName: LdapService.Name) = {
@@ -200,7 +206,10 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
   }
 
   protected def userIdAttribute: UserIdAttribute
-  protected def jesusUserId: User.Id
+
+  protected def morganUserId: User.Id
+
   protected def userSpeakerUserId: User.Id
-  protected def spaghettiUserId: User.Id
+
+  protected def devitoUserId: User.Id
 }

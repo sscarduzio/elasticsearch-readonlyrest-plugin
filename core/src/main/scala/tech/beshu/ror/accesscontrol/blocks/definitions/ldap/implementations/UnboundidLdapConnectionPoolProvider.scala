@@ -27,28 +27,24 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.{Address, PlainTextSecret}
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
-import tech.beshu.ror.boot.RorSchedulers.ldapUnboundIdBlockingScheduler
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.concurrent.duration.{FiniteDuration, _}
+import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
 import scala.util.control.NonFatal
 
 class UnboundidLdapConnectionPoolProvider {
-
-  implicit val ldapUnboundIdBlockingSchedulerImplicit: Scheduler = ldapUnboundIdBlockingScheduler
 
   import UnboundidLdapConnectionPoolProvider._
 
@@ -67,8 +63,6 @@ class UnboundidLdapConnectionPoolProvider {
     Task
       .delay(createLdapConnectionPoolFrom(connectionConfig))
       .map(new UnboundidLdapConnectionPool(_, connectionConfig.bindRequestUser))
-      .executeOn(ldapUnboundIdBlockingSchedulerImplicit)
-      .asyncBoundary
   }
 
   private def createLdapConnectionPoolFrom(connectionConfig: LdapConnectionConfig) = {
@@ -80,7 +74,9 @@ class UnboundidLdapConnectionPoolProvider {
       connectionConfig.poolSize.value,
       null
     )
-    pool.setConnectionPoolName("ROR-unboundid-connection-pool")
+    pool.setConnectionPoolName(s"ROR-unboundid-connection-pool-${connectionConfig.poolName}")
+    pool.setRetryFailedOperationsDueToInvalidConnections(true)
+    pool.setCreateIfNecessary(true)
     pool
   }
 
@@ -88,7 +84,8 @@ class UnboundidLdapConnectionPoolProvider {
 
 object UnboundidLdapConnectionPoolProvider extends Logging {
 
-  final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
+  final case class LdapConnectionConfig(poolName: LdapService.Name,
+                                        connectionMethod: ConnectionMethod,
                                         poolSize: Int Refined Positive,
                                         connectionTimeout: PositiveFiniteDuration,
                                         requestTimeout: PositiveFiniteDuration,
@@ -157,7 +154,23 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
 
   }
 
-  def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
+  def connectWithOptionalBindingTest(poolProvider: UnboundidLdapConnectionPoolProvider,
+                                     connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, UnboundidLdapConnectionPool]] = {
+    val result = for {
+      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+        .recoverWith {
+          case error: ConnectionError =>
+            if (connectionConfig.ignoreLdapConnectivityProblems)
+              EitherT.rightT(())
+            else
+              EitherT.leftT(error)
+        }
+      connectionPool <- EitherT.right[ConnectionError](poolProvider.connect(connectionConfig))
+    } yield connectionPool
+    result.value
+  }
+
+  private def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
     val ldapBindingTask = for {
       _ <- resolveHostnames(connectionConfig)
       result <- testLdapBinding(connectionConfig)
@@ -169,8 +182,6 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
         logger.error("LDAP binding exception", ex)
         Left(toConnectionError(connectionConfig))
       }
-      .executeOn(ldapUnboundIdBlockingScheduler)
-      .asyncBoundary
   }
 
   private def resolveHostnames(connectionConfig: LdapConnectionConfig): EitherT[Task, ConnectionError, Unit] = {

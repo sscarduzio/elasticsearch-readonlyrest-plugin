@@ -23,6 +23,7 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.AuthTokenSendMethod.{UsingHeader, UsingQueryParam}
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config._
@@ -43,7 +44,8 @@ import scala.util.{Failure, Success, Try}
 trait ExternalAuthorizationService extends Item {
   override type Id = Name
   def id: Id
-  def grantsFor(userId: User.Id): Task[UniqueList[Group]]
+  def grantsFor(userId: User.Id)
+               (implicit requestId: RequestId): Task[UniqueList[Group]]
   def serviceTimeout: PositiveFiniteDuration
 
   override implicit def show: Show[Name] = Name.nameShow
@@ -64,7 +66,8 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
   extends ExternalAuthorizationService
   with Logging {
 
-  override def grantsFor(userId: User.Id): Task[UniqueList[Group]] = {
+  override def grantsFor(userId: User.Id)
+                        (implicit requestId: RequestId): Task[UniqueList[Group]] = {
     httpClient
       .send(createRequest(userId))
       .flatMap { response =>
@@ -219,11 +222,13 @@ final class CacheableExternalAuthorizationServiceDecorator(val underlying: Exter
                                                            val ttl: PositiveFiniteDuration)
   extends ExternalAuthorizationService {
 
-  private val cacheableGrantsFor = new CacheableAction[User.Id, UniqueList[Group]](ttl, underlying.grantsFor)
+  private val cacheableGrantsFor = new CacheableAction[User.Id, UniqueList[Group]](ttl,
+    (userId, requestId) => underlying.grantsFor(userId)(requestId))
 
   override val id: ExternalAuthorizationService#Id = underlying.id
 
-  override def grantsFor(userId: User.Id): Task[UniqueList[Group]] =
+  override def grantsFor(userId: User.Id)
+                        (implicit requestId: RequestId): Task[UniqueList[Group]] =
     cacheableGrantsFor.call(userId, serviceTimeout)
 
   override def serviceTimeout: PositiveFiniteDuration =

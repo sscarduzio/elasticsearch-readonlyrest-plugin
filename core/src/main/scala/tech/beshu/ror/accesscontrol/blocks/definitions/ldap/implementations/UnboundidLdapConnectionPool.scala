@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk._
 import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -29,13 +28,13 @@ import scala.jdk.CollectionConverters._
 
 class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
                                   bindRequestUser: BindRequestUser)
-                                 (implicit blockingScheduler: Scheduler)
   extends Logging {
 
   def asyncBind(request: BindRequest): Task[BindResult] = {
-    bind(request)
-      .executeOn(blockingScheduler)
-      .asyncBoundary
+    bindRequestUser match {
+      case BindRequestUser.Anonymous => Task(connectionPool.bind(request))
+      case BindRequestUser.CustomUser(_, _) => Task(connectionPool.bindAndRevertAuthentication(request))
+    }
   }
 
   def process(requestCreator: AsyncSearchResultListener => LDAPRequest,
@@ -43,28 +42,20 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
     val searchResultListener = new UnboundidLdapConnectionPool.UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
-      .executeOn(blockingScheduler)
       .flatMap { results =>
         results.asScala.toList match {
           case Nil => throw new IllegalStateException("LDAP - expected at least one result")
           case requestId :: _ =>
-            if(requestId.isCancelled) Task.now(Left(new SearchResult(requestId.get())))
+            if (requestId.isCancelled) Task.now(Left(new SearchResult(requestId.get())))
             else searchResultListener.result
         }
       }
-      .asyncBoundary
   }
 
   def close(): Task[Unit] = {
     Task.delay(connectionPool.close())
   }
 
-  private def bind(request: BindRequest) = {
-    bindRequestUser match {
-      case BindRequestUser.Anonymous => Task(connectionPool.bind(request))
-      case BindRequestUser.CustomUser(_, _) => Task(connectionPool.bindAndRevertAuthentication(request))
-    }
-  }
 }
 
 object UnboundidLdapConnectionPool {
