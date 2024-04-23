@@ -22,7 +22,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import java.io.{File, InputStream}
 import java.nio.file.Files
 
-private [patches] object DummyAuthorizationInAuthorizationService extends BytecodeJarModifier {
+private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)

@@ -40,6 +40,6 @@ private[patches] class Es80xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new XPackSecurityJarPatchCreator(
       DeactivateSecurityActionFilter,
       new MockAuthorizationInfoInAuthorizationService(esVersion),
-      DummyAuthorizationInAuthorizationService
+      DummyAuthorizeInAuthorizationService
     )
   )
