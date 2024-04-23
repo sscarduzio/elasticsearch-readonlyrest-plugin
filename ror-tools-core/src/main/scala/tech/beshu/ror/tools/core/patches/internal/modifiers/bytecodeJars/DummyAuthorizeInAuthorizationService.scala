@@ -29,7 +29,7 @@ private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJa
     val modifiedSecurityClass = loadAndProcessFileFromJar(
       jar = jar,
       classFileName = "org/elasticsearch/xpack/security/authz/AuthorizationService",
-      processFileContent = doMockAuthorizationInfo
+      processFileContent = doMakeAuthorizeMethodDummy
     )
     updateFileInJar(
       jar = jar,
@@ -39,7 +39,7 @@ private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJa
     Files.setOwner(jar.toPath, originalFileOwner)
   }
 
-  private def doMockAuthorizationInfo(moduleInputStream: InputStream) = {
+  private def doMakeAuthorizeMethodDummy(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
