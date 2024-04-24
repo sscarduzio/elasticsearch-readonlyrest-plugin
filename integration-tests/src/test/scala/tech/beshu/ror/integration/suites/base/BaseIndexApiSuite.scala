@@ -42,6 +42,7 @@ trait BaseIndexApiSuite
   private lazy val dev5IndexManager = new IndexManager(basicAuthClient("dev5", "test"), esVersionUsed)
   private lazy val dev6IndexManager = new IndexManager(basicAuthClient("dev6", "test"), esVersionUsed)
   private lazy val dev7IndexManager = new IndexManager(basicAuthClient("dev7", "test"), esVersionUsed)
+  private lazy val dev8IndexManager = new IndexManager(basicAuthClient("dev8", "test"), esVersionUsed)
 
   "ROR" when {
     "Get index API is used" should {
@@ -444,6 +445,109 @@ trait BaseIndexApiSuite
 
           result should have statusCode 404
         }
+      }
+    }
+    "Stats API is used" should {
+      "allow user to get index stats" when {
+        "he has access to it" when {
+          "the index is called explicitly" in {
+            val indexResponse = dev1IndexManager.stats("index1")
+
+            indexResponse should have statusCode 200
+            indexResponse.indexNames should be(Set("index1"))
+          }
+          "its alias is called" in {
+            val indexResponse = dev1IndexManager.stats("index1_alias")
+
+            indexResponse should have statusCode 200
+            indexResponse.indexNames should be(Set("index1"))
+          }
+          "the index name with wildcard is used" when {
+            "there is a matching index" in {
+              val indexResponse = dev1IndexManager.stats("index*")
+
+              indexResponse should have statusCode 200
+              indexResponse.indexNames should be(Set("index1"))
+            }
+          }
+          "the alias name with wildcard is used" when {
+            "there is a matching alias" in {
+              val indexResponse = dev1IndexManager.stats("index1_a*")
+
+              indexResponse should have statusCode 200
+              indexResponse.indexNames should be(Set("index1"))
+            }
+          }
+          "one of called indices doesn't exist" in {
+            val indexResponse = dev1IndexManager.stats("index1", "index3")
+
+            indexResponse should have statusCode 200
+            indexResponse.indexNames should be(Set("index1"))
+          }
+        }
+        "he has access to its alias" when {
+          "the alias is called" in {
+            val indexResponse = dev2IndexManager.stats("index2_alias")
+
+            indexResponse should have statusCode 200
+            indexResponse.indexNames should be(Set("index2"))
+          }
+        }
+      }
+      "allow user to get all stats" which {
+        "are only the indices the user is supposed to see" in {
+          val indexResponse = dev1IndexManager.stats()
+
+          indexResponse should have statusCode 200
+          indexResponse.indexNames should be(Set("index1"))
+        }
+        "are all indices because user has access to all of them" in {
+          val indexResponse = dev8IndexManager.stats()
+
+          indexResponse should have statusCode 200
+          indexResponse.indexNames should not be Set.empty
+        }
+      }
+      "return empty response" when {
+        "the index name with wildcard is used" when {
+          "there is no matching index" in {
+            val indexResponse = dev1IndexManager.stats("my_index*")
+
+            indexResponse should have statusCode 200
+            indexResponse.indexNames should be(Set.empty)
+          }
+        }
+        "the alias name with wildcard is used" when {
+          "there is no matching alias" in {
+            val indexResponse = dev1IndexManager.stats("my_index1_a*")
+
+            indexResponse should have statusCode 200
+            indexResponse.indexNames should be(Set.empty)
+          }
+        }
+      }
+      "pretend that index doesn't exist" when {
+        "called index really doesn't exist" in {
+          val indexResponse = dev1IndexManager.stats("index3")
+
+          indexResponse should have statusCode notFoundIndexStatusReturned
+        }
+        "called index exists, but the user has no access to it" in {
+          val indexResponse = dev1IndexManager.stats("index2")
+
+          indexResponse should have statusCode notFoundIndexStatusReturned
+        }
+        "the index is called explicitly when user has configured alias in indices rule" in {
+          val indexResponse = dev6IndexManager.stats("index2")
+
+          indexResponse should have statusCode notFoundIndexStatusReturned
+        }
+      }
+      "filter out one not allowed alias" in {
+        val indexResponse = dev7IndexManager.stats("index7*")
+
+        indexResponse should have statusCode 200
+        indexResponse.indexNames should be(Set("index7-000001", "index7-000002"))
       }
     }
   }
