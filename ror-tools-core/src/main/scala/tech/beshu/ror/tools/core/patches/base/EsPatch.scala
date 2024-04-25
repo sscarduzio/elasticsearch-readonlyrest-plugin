@@ -68,7 +68,7 @@ object EsPatch {
           override val message: String = s"Elasticsearch was patched using ROR $patchedByRorVersion patcher. It should be unpatched and patched again with current ROR patcher ($expectedRorVersion). ReadonlyREST cannot be started. For patching instructions see our docs: $patchingDocumentationUrl"
         }
         case object NotPatchedAtAll extends Cause {
-          override val message: String = s"Elasticsearch is not patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: $patchingDocumentationUrl"
+          override val message: String = s"Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: $patchingDocumentationUrl"
         }
       }
     }
