@@ -20,23 +20,15 @@ import org.objectweb.asm._
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
-import java.nio.file.Files
 
 private [patches] object ModifyPolicyUtilClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
-    val originalFileOwner = Files.getOwner(jar.toPath)
-    val modifiedSecurityClass = loadAndProcessFileFromJar(
+    modifyFileInJar(
       jar = jar,
-      classFileName = "org/elasticsearch/bootstrap/PolicyUtil",
+      filePathString = "org/elasticsearch/bootstrap/PolicyUtil.class",
       processFileContent = doGrantExclusivePermissionForRorPlugin
     )
-    updateFileInJar(
-      jar = jar,
-      destinationPathSting = "/org/elasticsearch/bootstrap/PolicyUtil.class",
-      newContent = modifiedSecurityClass
-    )
-    Files.setOwner(jar.toPath, originalFileOwner)
   }
 
   private def doGrantExclusivePermissionForRorPlugin(moduleInputStream: InputStream) = {
