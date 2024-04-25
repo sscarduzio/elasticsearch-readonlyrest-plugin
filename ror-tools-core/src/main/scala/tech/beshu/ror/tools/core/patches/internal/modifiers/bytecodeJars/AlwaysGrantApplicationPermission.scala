@@ -20,23 +20,15 @@ import org.objectweb.asm._
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
-import java.nio.file.Files
 
 private [patches] object AlwaysGrantApplicationPermission extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
-    val originalFileOwner = Files.getOwner(jar.toPath)
-    val modifiedSecurityClass = loadAndProcessFileFromJar(
+    modifyFileInJar(
       jar = jar,
-      classFileName = "org/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission",
+      filePathString = "org/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission.class",
       processFileContent = doAlwaysGrantApplicationPermission
     )
-    updateFileInJar(
-      jar = jar,
-      destinationPathSting = "org/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission.class",
-      newContent = modifiedSecurityClass
-    )
-    Files.setOwner(jar.toPath, originalFileOwner)
   }
 
   private def doAlwaysGrantApplicationPermission(moduleInputStream: InputStream) = {
