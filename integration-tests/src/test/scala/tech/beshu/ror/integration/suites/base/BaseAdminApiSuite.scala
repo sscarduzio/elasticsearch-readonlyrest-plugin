@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration.suites.base
 
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 import cats.data.NonEmptyList
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.concurrent.Eventually
@@ -358,7 +357,7 @@ trait BaseAdminApiSuite
         "should invalidate configuration when index removed" in {
           def forceReload(rorSettingsResource: String): Unit = {
             val testConfig = getResourceContent(rorSettingsResource)
-            val configTtl = FiniteDuration(30, TimeUnit.MINUTES)
+            val configTtl = 30.minutes
             updateRorTestConfig(rorClients.head, testConfig, configTtl)
 
             // check if config is present in index
@@ -691,7 +690,7 @@ trait BaseAdminApiSuite
 
           // second reload
           val rorSettingsResource = "/admin_api/readonlyrest_second_update_with_impersonation.yml"
-          val configTtl = FiniteDuration.apply(5, TimeUnit.SECONDS)
+          val configTtl = 5.seconds
           forceReload(
             rorSettingsResource = rorSettingsResource,
             configTtl = configTtl,

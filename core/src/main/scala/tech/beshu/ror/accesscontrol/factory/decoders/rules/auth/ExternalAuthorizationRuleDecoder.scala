@@ -17,8 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import cats.implicits._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
@@ -31,15 +29,14 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthorizationServicesDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-
-import scala.concurrent.duration.FiniteDuration
 
 class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
                                        impersonatorsDef: Option[Definitions[ImpersonatorDef]],
@@ -66,7 +63,7 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
           users <- c.downField("users").as[Option[UniqueNonEmptyList[User.Id]]]
           groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
           groupsOr <- c.downFields("groups_or", "groups").as[Option[GroupsLogic.Or]]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
+          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
         } yield (name, ttl, users, groupsOr, groupsAnd)
       }
       .toSyncDecoder
@@ -85,7 +82,7 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
   }
 
   private def createExternalAuthorizationSettings(name: ExternalAuthorizationService.Name,
-                                                ttl: Option[Refined[FiniteDuration, Positive]],
+                                                ttl: Option[PositiveFiniteDuration],
                                                 groupsLogic: GroupsLogic,
                                                 users: Option[UniqueNonEmptyList[User.Id]]) = {
     findAuthorizationService(authorizationServices.items, name)

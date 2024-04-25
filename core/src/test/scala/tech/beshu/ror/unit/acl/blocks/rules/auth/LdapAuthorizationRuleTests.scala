@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -26,9 +25,10 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
@@ -41,7 +41,9 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, Imper
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
@@ -52,7 +54,8 @@ class LdapAuthorizationRuleTests
   extends AnyWordSpec
     with Inside
     with MockFactory
-    with BlockContextAssertion {
+    with BlockContextAssertion
+    with WithDummyRequestIdSupport {
 
   "An LdapAuthorizationRule" should {
     "match" when {
@@ -185,7 +188,7 @@ class LdapAuthorizationRuleTests
       "user is not logged" in {
         assertNotMatchRule(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mock[LdapAuthorizationService],
+            ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
             permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
             ))
@@ -213,7 +216,7 @@ class LdapAuthorizationRuleTests
       "user current group is not permitted" in {
         assertNotMatchRule(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mock[LdapAuthorizationService],
+            ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
             permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g2"), GroupId("g1"))
             ))
@@ -323,7 +326,7 @@ class LdapAuthorizationRuleTests
           "admin is trying to impersonate user" in {
             assertNotMatchRule(
               settings = LdapAuthorizationRule.Settings(
-                ldap = mock[LdapAuthorizationService],
+                ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
                 permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
                 ))
@@ -394,34 +397,36 @@ class LdapAuthorizationRuleTests
   }
 
   private def mockLdapService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) = {
-    new LdapAuthorizationService {
+    new LdapAuthorizationService.WithoutGroupsFiltering {
       override def id: LdapService.Name = LdapService.Name(name)
 
-      override def groupsOf(id: User.Id): Task[UniqueList[Group]] = Task.delay {
+      override def groupsOf(id: User.Id)
+                           (implicit requestId: RequestId): Task[UniqueList[Group]] = Task.delay {
         groups.get(id) match {
           case Some(g) => UniqueList.fromIterable(g)
           case None => UniqueList.empty
         }
       }
 
-      override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
-        Task.raiseError(new IllegalStateException("Should not be called"))
+      override def ldapUsersService: LdapUsersService =
+        throw new IllegalStateException("Should not be called")
 
-      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(1 second)
+      override def serviceTimeout: PositiveFiniteDuration = Refined.unsafeApply(1 second)
     }
   }
 
   private def mockFailedLdapService(name: NonEmptyString, failure: Throwable) = {
-    new LdapAuthorizationService {
+    new LdapAuthorizationService.WithoutGroupsFiltering {
       override def id: LdapService.Name = LdapService.Name(name)
 
-      override def groupsOf(id: User.Id): Task[UniqueList[Group]] =
+      override def groupsOf(id: User.Id)
+                           (implicit requestId: RequestId): Task[UniqueList[Group]] =
         Task.raiseError(failure)
 
-      override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
-        Task.raiseError(new IllegalStateException("Should not be called"))
+      override def ldapUsersService: LdapUsersService =
+        throw new IllegalStateException("Should not be called")
 
-      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(1 second)
+      override def serviceTimeout: PositiveFiniteDuration = Refined.unsafeApply(1 second)
     }
   }
 

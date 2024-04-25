@@ -24,11 +24,12 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
 import tech.beshu.ror.utils.DurationOps._
+import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class CacheableActionWithKeyMappingTests extends AnyWordSpec with MockFactory {
+class CacheableActionWithKeyMappingTests extends AnyWordSpec with MockFactory with WithDummyRequestIdSupport {
 
   "A cache" should {
     "call provider only once and then cache the result" in {
@@ -87,7 +88,7 @@ class CacheableActionWithKeyMappingTests extends AnyWordSpec with MockFactory {
                                       ttl: FiniteDuration = 10 seconds) = {
     new CacheableActionWithKeyMapping[String, String, Int](
       ttl.toRefinedPositiveUnsafe,
-      dataProvider.getBy,
+      (str, _) => dataProvider.getBy(str),
       identity
     )
   }

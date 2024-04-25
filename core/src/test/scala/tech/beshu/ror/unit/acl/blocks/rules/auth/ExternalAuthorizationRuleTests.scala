@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -26,6 +25,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
@@ -39,8 +39,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impers
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, GroupIdLike, GroupsLogic, LoggedUser, PermittedGroupIds, User}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -495,13 +496,14 @@ class ExternalAuthorizationRuleTests
     new ExternalAuthorizationService {
       override def id: ExternalAuthorizationService.Name = ExternalAuthorizationService.Name(name)
 
-      override def grantsFor(userId: User.Id): Task[UniqueList[Group]] = Task.delay {
+      override def grantsFor(userId: User.Id)
+                            (implicit requestId: RequestId): Task[UniqueList[Group]] = Task.delay {
         groups.get(userId) match {
           case Some(g) => UniqueList.fromIterable(g)
           case None => UniqueList.empty
         }
       }
 
-      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(5 second)
+      override def serviceTimeout: PositiveFiniteDuration = Refined.unsafeApply(5 second)
     }
 }

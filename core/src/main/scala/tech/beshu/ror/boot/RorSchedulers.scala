@@ -44,8 +44,6 @@ object RorSchedulers {
 
   val restApiScheduler: Scheduler = Scheduler.fixedPool("ror-rest-api-executor", 10)
 
-  val ldapUnboundIdBlockingScheduler: Scheduler = Scheduler.cached("unboundid-executor", 10, 100)
-
   private def getInt(name: String, default: String) = (try System.getProperty(name, default) catch {
     case _: SecurityException => default
   }) match {

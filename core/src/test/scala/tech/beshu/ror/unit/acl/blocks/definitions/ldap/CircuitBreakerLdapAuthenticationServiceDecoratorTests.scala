@@ -26,10 +26,12 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
+import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -37,15 +39,16 @@ import scala.reflect.ClassTag
 
 class CircuitBreakerLdapAuthenticationServiceDecoratorTests
   extends AnyWordSpec
-    with MockFactory {
+    with MockFactory
+    with WithDummyRequestIdSupport {
 
   "An CircuitBreaker decorated LdapAuthenticationService" should {
     "close circuit breaker after 2 failed attempts" in {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService {
         val service = mock[LdapAuthenticationService]
         (() => service.id).expects().returning(Name("ldap-mock")).anyNumberOfTimes()
-        (service.authenticate _).expects(*, *).returning(authenticated).once()
-        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).twice()
+        (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId)).expects(*, *, *).returning(authenticated).once()
+        (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId)).expects(*, *, *).returning(timeoutLDAPException).twice()
         service
       }
 
@@ -59,9 +62,9 @@ class CircuitBreakerLdapAuthenticationServiceDecoratorTests
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService {
         val service = mock[LdapAuthenticationService]
         (() => service.id).expects().returning(LdapService.Name("ldap-mock")).anyNumberOfTimes()
-        (service.authenticate _).expects(*, *).returning(authenticated).once()
-        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).twice()
-        (service.authenticate _).expects(*, *).returning(authenticated).twice()
+        (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId)).expects(*, *, *).returning(authenticated).once()
+        (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId)).expects(*, *, *).returning(timeoutLDAPException).twice()
+        (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId)).expects(*, *, *).returning(authenticated).twice()
         service
       }
 
@@ -77,8 +80,8 @@ class CircuitBreakerLdapAuthenticationServiceDecoratorTests
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService {
         val service = mock[LdapAuthenticationService]
         (() => service.id).expects().returning(LdapService.Name("ldap-mock")).anyNumberOfTimes()
-        (service.authenticate _).expects(*, *).returning(authenticated).once()
-        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).repeat(3)
+        (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId)).expects(*, *, *).returning(authenticated).once()
+        (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId)).expects(*, *, *).returning(timeoutLDAPException).repeat(3)
         service
       }
 

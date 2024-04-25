@@ -16,9 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.http
 
-import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -129,7 +127,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def assertRule(sessionMaxIdle: FiniteDuration Refined Positive,
+  private def assertRule(sessionMaxIdle: PositiveFiniteDuration,
                          rawCookie: String = "",
                          setRawCookie: String,
                          loggedUser: Option[DirectlyLoggedUser],

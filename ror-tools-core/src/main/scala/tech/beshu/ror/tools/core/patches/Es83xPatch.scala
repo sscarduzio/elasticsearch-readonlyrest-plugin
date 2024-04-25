@@ -43,6 +43,7 @@ private[patches] class Es83xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new XPackSecurityJarPatchCreator(
       OpenModule,
       DeactivateSecurityActionFilter,
-      MockAuthorizationInfoDuringRetrievingUserPrivilegesInAuthorizationService
+      MockAuthorizationInfoDuringRetrievingUserPrivilegesInAuthorizationService,
+      DummyAuthorizeInAuthorizationService
     )
   )

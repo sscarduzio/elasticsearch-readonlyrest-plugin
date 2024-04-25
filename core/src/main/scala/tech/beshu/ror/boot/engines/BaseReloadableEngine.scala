@@ -18,8 +18,6 @@ package tech.beshu.ror.boot.engines
 
 import cats.data.EitherT
 import cats.implicits._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.atomic.{Atomic, AtomicAny}
@@ -37,7 +35,6 @@ import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.utils.DurationOps._
 
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -135,14 +132,14 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   protected def reloadEngine(newConfig: RawRorConfig,
-                             newConfigEngineTtl: FiniteDuration Refined Positive)
+                             newConfigEngineTtl: PositiveFiniteDuration)
                             (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, ReloadResult] = {
     reloadEngineWithConfiguredTtl(newConfig, UpdatedConfigExpiration.ByTtl(newConfigEngineTtl))
   }
 
   protected def reloadEngine(newConfig: RawRorConfig,
                              newConfigExpirationTime: Instant,
-                             configuredTtl: FiniteDuration Refined Positive)
+                             configuredTtl: PositiveFiniteDuration)
                             (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
     isStillValid(newConfigExpirationTime) match {
       case RemainingEngineTime.Valid(_) =>
@@ -413,8 +410,8 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   private def isStillValid(validTo: Instant) = {
-    FiniteDuration
-      .apply(validTo.minusMillis(environmentConfig.clock.instant().toEpochMilli).toEpochMilli, TimeUnit.MILLISECONDS)
+    validTo.minusMillis(environmentConfig.clock.instant().toEpochMilli)
+      .toEpochMilli.millis
       .toRefinedPositive
       .map(RemainingEngineTime.Valid)
       .getOrElse(RemainingEngineTime.Expired)
@@ -440,7 +437,7 @@ object BaseReloadableEngine {
   private[engines] final case class InvalidationResult(config: RawRorConfig,
                                                        expirationConfig: EngineExpirationConfig)
 
-  private[engines] final case class EngineExpirationConfig(ttl: FiniteDuration Refined Positive,
+  private[engines] final case class EngineExpirationConfig(ttl: PositiveFiniteDuration,
                                                            validTo: Instant)
 
   private[engines] final case class EngineWithConfig(engine: Engine,
@@ -464,14 +461,14 @@ object BaseReloadableEngine {
 
   private[BaseReloadableEngine] sealed trait UpdatedConfigExpiration
   private[BaseReloadableEngine] object UpdatedConfigExpiration {
-    final case class ByTtl(finiteDuration: FiniteDuration Refined Positive) extends UpdatedConfigExpiration
+    final case class ByTtl(finiteDuration: PositiveFiniteDuration) extends UpdatedConfigExpiration
     final case class ToTime(validTo: Instant,
-                            configuredTtl: FiniteDuration Refined Positive) extends UpdatedConfigExpiration
+                            configuredTtl: PositiveFiniteDuration) extends UpdatedConfigExpiration
   }
 
   private[BaseReloadableEngine] sealed trait RemainingEngineTime
   private[BaseReloadableEngine] object RemainingEngineTime {
-    final case class Valid(remainingEngineTtl: FiniteDuration Refined Positive) extends RemainingEngineTime
+    final case class Valid(remainingEngineTtl: PositiveFiniteDuration) extends RemainingEngineTime
     object Expired extends RemainingEngineTime
   }
 

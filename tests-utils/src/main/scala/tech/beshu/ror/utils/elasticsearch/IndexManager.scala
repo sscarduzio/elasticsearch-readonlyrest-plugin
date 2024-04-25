@@ -166,6 +166,10 @@ class IndexManager(client: RestClient,
     call(createCloseIndexRequest(indexName), new JsonResponse(_))
   }
 
+  def stats(indexNames: String*): StatsResponse = {
+    call(createStatsRequest(indexNames), new StatsResponse(_))
+  }
+
   private def getAliasRequest(indexOpt: Option[String] = None,
                               aliasOpt: Option[String] = None) = {
     val path = indexOpt match {
@@ -335,19 +339,26 @@ class IndexManager(client: RestClient,
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
       s"""
-        |{
-        |	"source": {
-        |		${sourceSection(source)}
-        |	},
-        |	"dest": {
-        |		"index": "$destIndexName"
-        |	}
-        |}""".stripMargin))
+         |{
+         |	"source": {
+         |		${sourceSection(source)}
+         |	},
+         |	"dest": {
+         |		"index": "$destIndexName"
+         |	}
+         |}""".stripMargin))
     request
   }
 
   private def createCloseIndexRequest(indexName: String) = {
     new HttpPost(client.from(s"/$indexName/_close"))
+  }
+
+  private def createStatsRequest(indexNames: Iterable[String]) = {
+    indexNames.toList match {
+      case Nil => new HttpGet(client.from(s"/_stats"))
+      case names => new HttpGet(client.from(s"/${names.mkString(",")}/_stats"))
+    }
   }
 
   class GetIndexResponse(response: HttpResponse) extends JsonResponse(response) {
@@ -392,6 +403,11 @@ class IndexManager(client: RestClient,
 
     sealed case class IndexDescription(name: String, aliases: List[String], attributes: List[String])
     sealed case class AliasDescription(name: String, indices: List[String])
+  }
+
+  class StatsResponse(response: HttpResponse) extends JsonResponse(response) {
+
+    lazy val indexNames: Set[String] = responseJson.obj("indices").obj.keys.toSet
   }
 }
 object IndexManager {
