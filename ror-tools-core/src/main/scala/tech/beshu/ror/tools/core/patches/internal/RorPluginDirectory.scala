@@ -42,11 +42,11 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
   }
 
   def backup(file: Path): Unit = {
-    os.copy(from = file, to = backupFolderPath / file.last)
+    os.copy(from = file, to = backupFolderPath / file.last, replaceExisting = true)
   }
 
   def restore(file: Path): Unit = {
-    os.copy(from =  backupFolderPath / file.last, to = file)
+    os.copy(from = backupFolderPath / file.last, to = file, replaceExisting = true)
   }
 
   def copyToPluginPath(file: Path): Unit = {
