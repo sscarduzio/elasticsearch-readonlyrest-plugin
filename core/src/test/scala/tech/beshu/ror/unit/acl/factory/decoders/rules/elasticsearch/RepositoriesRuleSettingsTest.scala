@@ -129,7 +129,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """repositories: null
                 |""".stripMargin)))
           }

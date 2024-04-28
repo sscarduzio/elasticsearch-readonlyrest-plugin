@@ -20,13 +20,16 @@ import cats.data.NonEmptyList
 import com.comcast.ip4s.{Cidr, Hostname}
 import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.TestSuite
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
+import tech.beshu.ror.mocks.MockHostnameResolver.*
 import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.ResolveResult.{ResolvedIps, Unresolvable}
 import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.{MockAlways, MockOnce, ResolveResult}
 
-object MockHostnameResolver extends MockFactory {
+trait MockHostnameResolver extends MockFactory {
+  this: TestSuite =>
 
   def create(scenario: NonEmptyList[Behaviour]): HostnameResolver = {
     val mockedResolver = mock[HostnameResolver]
@@ -41,7 +44,7 @@ object MockHostnameResolver extends MockFactory {
 
   private def mock(mockedResolver: HostnameResolver, hostname: String, resolveResult: ResolveResult) = {
     (mockedResolver.resolve _)
-      .expects(Address.Name(Hostname(hostname).get))
+      .expects(Address.Name(Hostname.fromString(hostname).get))
       .returning(resolvedIpsFrom(resolveResult))
   }
 
@@ -54,15 +57,21 @@ object MockHostnameResolver extends MockFactory {
     case Unresolvable =>
       Task.now(None)
   }
+}
 
+object MockHostnameResolver {
   sealed trait Behaviour
+
   object Behaviour {
     final case class MockAlways(hostname: String, result: ResolveResult) extends Behaviour
+
     final case class MockOnce(hostname: String, result: ResolveResult) extends Behaviour
 
     sealed trait ResolveResult
+
     object ResolveResult {
       final case class ResolvedIps(value: String, values: String*) extends ResolveResult
+
       case object Unresolvable extends ResolveResult
     }
   }

@@ -23,7 +23,6 @@ import cats.implicits._
 import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
@@ -38,6 +37,7 @@ import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.RefinedUtils._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -96,8 +96,8 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
   object LdapConnectionConfig {
 
     val defaultCircuitBreakerConfig: CircuitBreakerConfig = CircuitBreakerConfig(
-      maxFailures = 10,
-      resetDuration = Refined.unsafeApply(10 seconds)
+      maxFailures = positiveInt(10),
+      resetDuration = positiveFiniteDuration(10 seconds)
     )
 
     final case class LdapHost private(url: UrlWithAuthority) {

@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 import cats.implicits._
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
-import com.softwaremill.sttp._
+import sttp.model.Uri
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.RequestId
@@ -60,10 +60,10 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
 
   override def authenticate(credentials: Credentials)
                            (implicit requestId: RequestId): Task[Boolean] = {
-    val basicAuthHeader = BasicAuth(credentials).header
+    val basicAuthHeader = BasicAuth.fromCredentials(credentials).header
     httpClient
-      .send(sttp.get(uri).header(basicAuthHeader.name.value.value, basicAuthHeader.value.value))
-      .map(_.code === successStatusCode)
+      .send(sttp.client3.basicRequest.get(uri).header(basicAuthHeader.name.value.value, basicAuthHeader.value.value))
+      .map(_.code.code === successStatusCode)
   }
 }
 
@@ -77,8 +77,8 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
   override def authenticate(credentials: Credentials)
                            (implicit requestId: RequestId): Task[Boolean] = {
     httpClient
-      .send(sttp.get(uri).header(Header.Name.authorization.value.value, s"Bearer ${credentials.secret.value}"))
-      .map(_.code === successStatusCode)
+      .send(sttp.client3.basicRequest.get(uri).header(Header.Name.authorization.value.value, s"Bearer ${credentials.secret.value}"))
+      .map(_.code.code === successStatusCode)
   }
 }
 

@@ -22,6 +22,7 @@ import tech.beshu.ror.configuration.index.IndexConfigManager
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig}
 import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig, RorProperties, EnvironmentConfig}
 import tech.beshu.ror.es.IndexJsonContentService
+import tech.beshu.ror.configuration.loader.toDomain
 
 object RawRorConfigLoadingAction {
 

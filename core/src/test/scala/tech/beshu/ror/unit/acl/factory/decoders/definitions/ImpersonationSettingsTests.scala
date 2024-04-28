@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ImpersonationDefinitionsDecoderCreator}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ImpersonationSettingsTests extends BaseDecoderTest(
   new ImpersonationDefinitionsDecoderCreator(

@@ -38,6 +38,8 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFLSUpdater.FilterableBlockContextWithFieldsUpdater
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFLSUpdater.FilterableMultiRequestBlockContextWithFieldsUpdater
 
 class FieldsRule(val settings: Settings)
   extends RegularRule

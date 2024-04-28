@@ -106,7 +106,7 @@ class HeadersOrRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersOrRu
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """headers_or: null
                 |""".stripMargin
             )))
@@ -127,7 +127,7 @@ class HeadersOrRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersOrRu
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """|headers_or:
                  |- "~X-Some-Header1:one"
                  |- ":two"
@@ -150,7 +150,7 @@ class HeadersOrRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersOrRu
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """headers_or:
                 |- "~X-Some-Header1:one"
                 |- "~:two"
@@ -173,7 +173,7 @@ class HeadersOrRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersOrRu
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """headers_or:
                 |- "~X-Some-Header1:one"
                 |- "test:"
@@ -196,7 +196,7 @@ class HeadersOrRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersOrRu
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """headers_or:
                 |- "~X-Some-Header1:one"
                 |- "two"

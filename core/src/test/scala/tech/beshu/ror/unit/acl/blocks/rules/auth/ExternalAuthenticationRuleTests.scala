@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainT
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, impersonationHeader, impersonatorDefFrom, mocksProviderForExternalAuthnServiceFrom}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

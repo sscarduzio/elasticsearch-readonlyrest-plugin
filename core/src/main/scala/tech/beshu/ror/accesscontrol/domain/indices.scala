@@ -17,23 +17,24 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.constants
+import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.utils.RefinedUtils._
 
-import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZoneId}
 import scala.language.postfixOps
 import scala.util.{Failure, Random, Success, Try}
 
 sealed trait IndexName
 object IndexName {
 
-  val wildcard: IndexName.Pattern = IndexName.Pattern("*")
+  val wildcard: IndexName.Pattern = IndexName.Pattern.unsafeFromNes(nes("*"))
 
   final case class Full(name: NonEmptyString)
     extends IndexName
@@ -53,6 +54,7 @@ object IndexName {
           case str if str.contains("*") => Some(IndexName.Pattern(NonEmptyString.unsafeFrom(str)))
           case _ => None
         }
+    def unsafeFromNes(value: NonEmptyString): Pattern = Pattern(value)
   }
 
   def fromString(value: String): Option[IndexName] =
@@ -116,12 +118,12 @@ sealed trait ClusterIndexName {
 }
 object ClusterIndexName {
 
-  final case class Local private(value: IndexName) extends ClusterIndexName
+  final case class Local(value: IndexName) extends ClusterIndexName
   object Local {
 
     val wildcard: ClusterIndexName.Local = Local(IndexName.wildcard)
-    val devNullKibana: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(".kibana-devnull")))
-    val kibanaDefault: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(".kibana")))
+    val devNullKibana: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana-devnull"))))
+    val kibanaDefault: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana"))))
 
     def fromString(value: String): Option[ClusterIndexName.Local] = {
       IndexName
@@ -156,13 +158,16 @@ object ClusterIndexName {
             case str if str.contains("*") => Some(ClusterName.Pattern(NonEmptyString.unsafeFrom(str)))
             case _ => None
           }
+        def unsafeFromNes(value: NonEmptyString): Pattern = {
+          Pattern(value)
+        }
       }
 
       def fromString(value: String): Option[ClusterName] = {
         Pattern.fromString(value) orElse Full.fromString(value)
       }
 
-      val wildcard: ClusterName.Pattern = Pattern("*")
+      val wildcard: ClusterName.Pattern = Pattern.unsafeFromNes(nes("*"))
 
       implicit val matchableClusterName: Matchable[ClusterName] = Matchable.matchable(_.stringify)
 
@@ -315,11 +320,11 @@ object ClusterIndexName {
     }
 
     private def backingIndexWildcardNameFrom(nameStr: NonEmptyString) = {
-      IndexName.Pattern(NonEmptyString.unsafeFrom(s".ds-$nameStr-*.*.*-*"))
+      IndexName.Pattern.unsafeFromNes(NonEmptyString.unsafeFrom(s".ds-$nameStr-*.*.*-*"))
     }
 
     private def legacyBackingIndexWildcardNameFrom(nameStr: NonEmptyString) = {
-      IndexName.Pattern(NonEmptyString.unsafeFrom(s".ds-$nameStr-*"))
+      IndexName.Pattern.unsafeFromNes(NonEmptyString.unsafeFrom(s".ds-$nameStr-*"))
     }
   }
 
@@ -353,13 +358,13 @@ final case class AliasPlaceholder private(alias: ClusterIndexName) extends AnyVa
       ClusterIndexName.Local(IndexName.Full(NonEmptyString.unsafeFrom(replaced)))
     case ClusterIndexName.Local(IndexName.Pattern(_)) =>
       val replaced = alias.stringify.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
-      ClusterIndexName.Local(IndexName.Pattern(NonEmptyString.unsafeFrom(replaced)))
+      ClusterIndexName.Local(IndexName.Pattern.unsafeFromNes(NonEmptyString.unsafeFrom(replaced)))
     case i@ClusterIndexName.Remote(IndexName.Full(_), clusterName) =>
       val replaced = i.onlyIndexName.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
       ClusterIndexName.Remote(IndexName.Full(NonEmptyString.unsafeFrom(replaced)), clusterName)
     case i@ClusterIndexName.Remote(IndexName.Pattern(_), clusterName) =>
       val replaced = i.onlyIndexName.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
-      ClusterIndexName.Remote(IndexName.Pattern(NonEmptyString.unsafeFrom(replaced)), clusterName)
+      ClusterIndexName.Remote(IndexName.Pattern.unsafeFromNes(NonEmptyString.unsafeFrom(replaced)), clusterName)
   }
 }
 object AliasPlaceholder {
@@ -427,7 +432,7 @@ final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
   def conforms(index: IndexName): Boolean = {
     index match {
       case IndexName.Full(name) =>
-        Try(nameFormatter.parse(name.value.value)).isSuccess
+        Try(nameFormatter.parse(name.value)).isSuccess
       case IndexName.Pattern(_) =>
         IndexName
           .fromString(rawPattern)

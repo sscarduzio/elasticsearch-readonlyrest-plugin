@@ -17,7 +17,9 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.tranport
 
 import cats.data.{NonEmptyList, NonEmptySet, OptionT}
-import cats.implicits._
+import cats.implicits.*
+import com.comcast.ip4s.Host
+import com.comcast.ip4s.Host.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -25,12 +27,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.domain.Address.{Ip, Name}
-import tech.beshu.ror.implicits.{addressShow, ipShow}
-import tech.beshu.ror.utils.TaskOps._
+import tech.beshu.ror.implicits.addressShow
+import tech.beshu.ror.utils.TaskOps.*
 
 import scala.util.Success
 
-private [rules] abstract class BaseHostsRule(resolver: HostnameResolver)
+private[rules] abstract class BaseHostsRule(resolver: HostnameResolver)
   extends RegularRule with Logging {
 
   protected def checkAllowedAddresses(blockContext: BlockContext)
@@ -53,8 +55,9 @@ private [rules] abstract class BaseHostsRule(resolver: HostnameResolver)
 
   private def ipMatchesAddress(allowedHost: Address, address: Address, blockContext: BlockContext) = {
     val result = for {
-      allowedHostIps <- OptionT(resolveToIps(allowedHost))
+      //todo Scala3 - it seems that those 2 tasks were executed in parallel before library upgrades
       addressIps <- OptionT(resolveToIps(address))
+      allowedHostIps <- OptionT(resolveToIps(allowedHost))
       isMatching = addressIps.exists(ip => allowedHostIps.exists(_.contains(ip)))
       _ = logger.debug(s"[${blockContext.requestContext.id.show}] address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=$isMatching")
     } yield isMatching
@@ -69,7 +72,7 @@ private [rules] abstract class BaseHostsRule(resolver: HostnameResolver)
         resolver
           .resolve(address)
           .andThen {
-            case Success(None) => logger.warn(s"Cannot resolve hostname: ${address.value.show}")
+            case Success(None) => logger.warn(s"Cannot resolve hostname: ${(address.value: Host).show}")
           }
     }
 }

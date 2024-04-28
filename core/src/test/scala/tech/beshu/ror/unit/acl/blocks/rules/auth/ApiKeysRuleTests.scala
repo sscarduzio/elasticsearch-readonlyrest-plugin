@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.{ApiKey, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
 
@@ -73,7 +74,7 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
     val rule = new ApiKeysRule(ApiKeysRule.Settings(configuredApiKeys))
     val requestContext = mock[RequestContext]
     (() => requestContext.headers).expects().returning(requestHeaders)
-    (() => requestContext.uriPath).expects().returning(UriPath("/_cat/indices"))
+    (() => requestContext.uriPath).expects().returning(UriPath.from("/_cat/indices"))
     val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

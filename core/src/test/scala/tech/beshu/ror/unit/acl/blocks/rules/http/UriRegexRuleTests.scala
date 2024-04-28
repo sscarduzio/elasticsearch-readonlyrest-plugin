@@ -38,6 +38,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 
 import java.util.regex.Pattern
 import scala.util.Try
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class UriRegexRuleTests extends AnyWordSpec {
 
@@ -46,33 +47,33 @@ class UriRegexRuleTests extends AnyWordSpec {
       "configured pattern matches uri from request" in {
         assertMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/\d\d\w$""")),
-          uriPath = UriPath("/123")
+          uriPath = UriPath.from("/123")
         )
       }
       "second configured pattern on list matches uri from request" in {
         assertMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/\d$""", """^\/\d\d\d$""")),
-          uriPath = UriPath("/123")
+          uriPath = UriPath.from("/123")
         )
       }
       "configured pattern with variable matches uri from request when user is logged" in {
         assertMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/@{user}$""")),
-          uriPath = UriPath("/mia"),
+          uriPath = UriPath.from("/mia"),
           loggedUser = Some(User.Id("mia"))
         )
       }
       "configured pattern with variable containing namespace matches uri from request when user is logged" in {
         assertMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/@{acl:user}$""")),
-          uriPath = UriPath("/mia"),
+          uriPath = UriPath.from("/mia"),
           loggedUser = Some(User.Id("mia"))
         )
       }
       "second configured pattern with variable matches uri from request when user is logged" in {
         assertMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/mi\d$""", """^\/@{user}$""")),
-          uriPath = UriPath("/mia"),
+          uriPath = UriPath.from("/mia"),
           loggedUser = Some(User.Id("mia"))
         )
       }
@@ -81,25 +82,25 @@ class UriRegexRuleTests extends AnyWordSpec {
       "configured pattern doesn't match uri from request" in {
         assertNotMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""\/\d\d\d$""")),
-          uriPath = UriPath("/one")
+          uriPath = UriPath.from("/one")
         )
       }
       "none of configured patterns matches uri from request" in {
         assertNotMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""\/\d\d\d$""", """\/\d$""", """\/\w\w\d$""")),
-          uriPath = UriPath("/one")
+          uriPath = UriPath.from("/one")
         )
       }
       "configured pattern with variable doesn't match uri from request when user is not logged" in {
         assertNotMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/@{user}$""")),
-          uriPath = UriPath("/mia")
+          uriPath = UriPath.from("/mia")
         )
       }
       "configured pattern with variable isn't able to compile to pattern after resolve" in {
         assertNotMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/@{user}$""")),
-          uriPath = UriPath("/mia"),
+          uriPath = UriPath.from("/mia"),
           loggedUser = Some(User.Id("["))
         )
       }

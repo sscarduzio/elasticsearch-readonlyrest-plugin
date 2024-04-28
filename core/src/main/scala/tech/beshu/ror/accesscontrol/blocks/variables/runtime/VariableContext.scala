@@ -39,7 +39,7 @@ object VariableContext {
     trait Jwt extends VariableType
   }
 
-  sealed trait VariableUsage[+T <: Rule]
+  sealed trait VariableUsage[T <: Rule]
 
   object VariableUsage {
     trait UsingVariable[T <: Rule] extends VariableUsage[T] {
@@ -49,7 +49,7 @@ object VariableContext {
       def apply[T <: Rule](f: T => NonEmptyList[RuntimeResolvableVariable[_]]): UsingVariable[T] = f(_)
     }
 
-    case object NotUsingVariable extends VariableUsage[Nothing]
+    final case class NotUsingVariable[T <: Rule]() extends VariableUsage[T]
 
     implicit val dataStreamsRule: VariableUsage[DataStreamsRule] = UsingVariable[DataStreamsRule](rule => rule.settings.allowedDataStreams.toNonEmptyList)
     implicit val filterRule: VariableUsage[FilterRule] = UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
@@ -70,31 +70,31 @@ object VariableContext {
     implicit val xForwarderForRule: VariableUsage[XForwardedForRule] = UsingVariable[XForwardedForRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
     implicit val responseFieldsRule: VariableUsage[ResponseFieldsRule] = UsingVariable[ResponseFieldsRule](rule => rule.settings.responseFields.toNonEmptyList)
 
-    implicit val kibanaAccessRule: VariableUsage[KibanaAccessRule] = NotUsingVariable
-    implicit val actionsRule: VariableUsage[ActionsRule] = NotUsingVariable
-    implicit val apiKeyRule: VariableUsage[ApiKeysRule] = NotUsingVariable
-    implicit val authKeySha1Rule: VariableUsage[AuthKeySha1Rule] = NotUsingVariable
-    implicit val authKeySha256Rule: VariableUsage[AuthKeySha256Rule] = NotUsingVariable
-    implicit val authKeySha512Rule: VariableUsage[AuthKeySha512Rule] = NotUsingVariable
-    implicit val authKeyPBKDF2WithHmacSHA512Rule: VariableUsage[AuthKeyPBKDF2WithHmacSHA512Rule] = NotUsingVariable
-    implicit val authKeyRule: VariableUsage[AuthKeyRule] = NotUsingVariable
-    implicit val authKeyUnixRule: VariableUsage[AuthKeyUnixRule] = NotUsingVariable
-    implicit val externalAuthenticationRule: VariableUsage[ExternalAuthenticationRule] = NotUsingVariable
-    implicit val externalAuthorizationRule: VariableUsage[ExternalAuthorizationRule] = NotUsingVariable
-    implicit val fieldsRule: VariableUsage[FieldsRule] = NotUsingVariable
-    implicit val headersAndRule: VariableUsage[HeadersAndRule] = NotUsingVariable
-    implicit val headersOrRule: VariableUsage[HeadersOrRule] = NotUsingVariable
-    implicit val jwtAuthRule: VariableUsage[JwtAuthRule] = NotUsingVariable
-    implicit val kibanaHideAppsRule: VariableUsage[KibanaHideAppsRule] = NotUsingVariable
-    implicit val ldapAuthenticationRule: VariableUsage[LdapAuthenticationRule] = NotUsingVariable
-    implicit val ldapAuthorizationRule: VariableUsage[LdapAuthorizationRule] = NotUsingVariable
-    implicit val ldapAuthRule: VariableUsage[LdapAuthRule] = NotUsingVariable
-    implicit val maxBodyLengthRule: VariableUsage[MaxBodyLengthRule] = NotUsingVariable
-    implicit val methodsRule: VariableUsage[MethodsRule] = NotUsingVariable
-    implicit val proxyAuthRule: VariableUsage[ProxyAuthRule] = NotUsingVariable
-    implicit val rorKbnAuthRule: VariableUsage[RorKbnAuthRule] = NotUsingVariable
-    implicit val sessionMaxIdleRule: VariableUsage[SessionMaxIdleRule] = NotUsingVariable
-    implicit val tokenAuthenticationRule: VariableUsage[TokenAuthenticationRule] = NotUsingVariable
+    implicit val kibanaAccessRule: VariableUsage[KibanaAccessRule] = NotUsingVariable()
+    implicit val actionsRule: VariableUsage[ActionsRule] = NotUsingVariable()
+    implicit val apiKeyRule: VariableUsage[ApiKeysRule] = NotUsingVariable()
+    implicit val authKeySha1Rule: VariableUsage[AuthKeySha1Rule] = NotUsingVariable()
+    implicit val authKeySha256Rule: VariableUsage[AuthKeySha256Rule] = NotUsingVariable()
+    implicit val authKeySha512Rule: VariableUsage[AuthKeySha512Rule] = NotUsingVariable()
+    implicit val authKeyPBKDF2WithHmacSHA512Rule: VariableUsage[AuthKeyPBKDF2WithHmacSHA512Rule] = NotUsingVariable()
+    implicit val authKeyRule: VariableUsage[AuthKeyRule] = NotUsingVariable()
+    implicit val authKeyUnixRule: VariableUsage[AuthKeyUnixRule] = NotUsingVariable()
+    implicit val externalAuthenticationRule: VariableUsage[ExternalAuthenticationRule] = NotUsingVariable()
+    implicit val externalAuthorizationRule: VariableUsage[ExternalAuthorizationRule] = NotUsingVariable()
+    implicit val fieldsRule: VariableUsage[FieldsRule] = NotUsingVariable()
+    implicit val headersAndRule: VariableUsage[HeadersAndRule] = NotUsingVariable()
+    implicit val headersOrRule: VariableUsage[HeadersOrRule] = NotUsingVariable()
+    implicit val jwtAuthRule: VariableUsage[JwtAuthRule] = NotUsingVariable()
+    implicit val kibanaHideAppsRule: VariableUsage[KibanaHideAppsRule] = NotUsingVariable()
+    implicit val ldapAuthenticationRule: VariableUsage[LdapAuthenticationRule] = NotUsingVariable()
+    implicit val ldapAuthorizationRule: VariableUsage[LdapAuthorizationRule] = NotUsingVariable()
+    implicit val ldapAuthRule: VariableUsage[LdapAuthRule] = NotUsingVariable()
+    implicit val maxBodyLengthRule: VariableUsage[MaxBodyLengthRule] = NotUsingVariable()
+    implicit val methodsRule: VariableUsage[MethodsRule] = NotUsingVariable()
+    implicit val proxyAuthRule: VariableUsage[ProxyAuthRule] = NotUsingVariable()
+    implicit val rorKbnAuthRule: VariableUsage[RorKbnAuthRule] = NotUsingVariable()
+    implicit val sessionMaxIdleRule: VariableUsage[SessionMaxIdleRule] = NotUsingVariable()
+    implicit val tokenAuthenticationRule: VariableUsage[TokenAuthenticationRule] = NotUsingVariable()
   }
 
   final case class Context(currentRule: Rule,

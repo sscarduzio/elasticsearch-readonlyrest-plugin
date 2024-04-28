@@ -39,6 +39,7 @@ import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.reflect.ClassTag
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.Name)
 class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.DeprecatedName)
@@ -604,7 +605,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               s"""${ruleName.name.value}: null
                  |""".stripMargin
             )))
@@ -1166,7 +1167,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """auth_key:
                 |  key: "cartman:pass"
                 |""".stripMargin)))

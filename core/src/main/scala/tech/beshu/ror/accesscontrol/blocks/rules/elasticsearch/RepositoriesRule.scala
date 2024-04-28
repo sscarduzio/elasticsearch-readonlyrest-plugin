@@ -45,9 +45,9 @@ class RepositoriesRule(val settings: Settings)
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.RepositoryRequestBlockContextUpdater =>
-        checkRepositories(blockContext)
+        checkRepositories(blockContext): RuleResult[B]
       case BlockContextUpdater.SnapshotRequestBlockContextUpdater =>
-        checkSnapshotRepositories(blockContext)
+        checkSnapshotRepositories(blockContext): RuleResult[B]
       case _ =>
         Fulfilled(blockContext)
     }

@@ -35,7 +35,7 @@ tasks.withType(ScalaCompile).configureEach {
             "-Xfatal-warnings",
             "-Wunused:implicits",
             "-Wunused:explicits",
-            "-Wunused:imports",
+            "-Wunused:strict-no-implicit-warn",
             "-Wunused:locals",
             "-Wunused:params",
             "-Wunused:privates",

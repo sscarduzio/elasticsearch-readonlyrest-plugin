@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.http
 
-import com.softwaremill.sttp.Method
-import com.softwaremill.sttp.Method._
+import sttp.model.Method
+import sttp.model.Method._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
@@ -48,7 +48,7 @@ private object MethodsRuleDecoderHelper {
       .toSyncDecoder
       .emapE {
         case m@(GET | POST | PUT | DELETE | OPTIONS | HEAD) => Right(m)
-        case other => Left(RulesLevelCreationError(Message(s"Unknown/unsupported http method: ${other.m}")))
+        case other => Left(RulesLevelCreationError(Message(s"Unknown/unsupported http method: ${other.method}")))
       }
       .decoder
 }

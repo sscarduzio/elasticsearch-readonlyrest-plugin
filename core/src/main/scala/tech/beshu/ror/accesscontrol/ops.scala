@@ -19,12 +19,9 @@ package tech.beshu.ror.accesscontrol
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.{Order, Show}
-import com.softwaremill.sttp.{Method, Uri}
-import eu.timepit.refined.api.Validate
-import eu.timepit.refined.numeric.Greater
+import sttp.model.{Method, Uri}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.{Uri => LemonUri}
-import shapeless.Nat
 import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
@@ -66,7 +63,6 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.Base64
 import java.util.regex.{Pattern => RegexPattern}
-import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
 
@@ -99,7 +95,7 @@ object orders {
     case Address.Ip(value) => value.toString()
     case Address.Name(value) => value.toString
   }
-  implicit val methodOrder: Order[Method] = Order.by(_.m)
+  implicit val methodOrder: Order[Method] = Order.by(_.method)
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by {
     case KibanaApp.FullNameKibanaApp(name) => name.value
@@ -113,7 +109,10 @@ object orders {
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
   implicit val groupIdOrder: Order[GroupId] = Order.by(_.value)
-  implicit val groupIdLikeOrder: Order[GroupIdLike] = Order.by(_.value)
+  implicit val groupIdLikeOrder: Order[GroupIdLike] = Order.by {
+    case GroupId(value) => value
+    case GroupIdLike.GroupIdPattern(value) => value
+  }
   implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleDefinition[Rule]] = Order.by(_.rule)
   implicit val patternOrder: Order[RegexPattern] = Order.by(_.pattern)
   implicit val forbiddenCauseOrder: Order[ForbiddenCause] = Order.by {
@@ -163,7 +162,7 @@ object show {
       case Address.Name(value) => value.toString
     }
     implicit val ipShow: Show[Ip] = Show.show(_.value.toString())
-    implicit val methodShow: Show[Method] = Show.show(_.m)
+    implicit val methodShow: Show[Method] = Show.show(_.method)
     implicit val jsonPathShow: Show[JsonPath] = Show.show(_.rawPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val lemonUriShow: Show[LemonUri] = Show.show(_.toString())
@@ -428,14 +427,6 @@ object show {
     }
   }
   object logs extends LogsShowInstances
-}
-
-object refined {
-  implicit val finiteDurationValidate: Validate[FiniteDuration, Greater[Nat._0]] = Validate.fromPredicate(
-    (d: FiniteDuration) => d.length > 0,
-    (d: FiniteDuration) => s"$d is positive",
-    Greater(shapeless.nat._0)
-  )
 }
 
 object headerValues {

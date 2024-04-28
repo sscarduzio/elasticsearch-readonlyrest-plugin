@@ -102,8 +102,7 @@ class ConfigApi(rorInstance: RorInstance,
         case Right(config) =>
           ProvideIndexConfig.Config(config.raw)
         case Left(SpecializedError(error: IndexConfigNotExist.type)) =>
-          implicit val show = IndexConfigError.show.contramap(identity[IndexConfigNotExist.type])
-          ProvideIndexConfig.ConfigNotFound(error.show)
+          ProvideIndexConfig.ConfigNotFound((error: IndexConfigError).show)
         case Left(error) =>
           ProvideIndexConfig.Failure(error.show)
       }

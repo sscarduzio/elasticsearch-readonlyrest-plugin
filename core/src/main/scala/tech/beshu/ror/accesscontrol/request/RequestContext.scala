@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.request
 
 import cats.Show
 import cats.implicits._
-import com.softwaremill.sttp.Method
+import sttp.model.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.Level
@@ -115,6 +115,8 @@ object RequestContext extends Logging {
     def toRequestId: RequestId = RequestId(value)
   }
   object Id {
+    def fromString(value: String): Id = Id(value)
+    
     def from(sessionCorrelationId: CorrelationId, requestId: String): Id =
       new Id(s"${sessionCorrelationId.value.value}-$requestId")
 

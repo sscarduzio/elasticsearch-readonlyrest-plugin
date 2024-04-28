@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 trait IndicesRuleLocalIndexTests {
   this: BaseIndicesRuleTests =>

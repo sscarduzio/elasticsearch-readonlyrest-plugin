@@ -128,7 +128,7 @@ class DataStreamsRuleSettingsTest extends BaseRuleSettingsDecoderTest[DataStream
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """data_streams: null
                 |""".stripMargin)))
           }

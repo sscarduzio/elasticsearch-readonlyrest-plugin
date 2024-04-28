@@ -49,13 +49,15 @@ crossBuild {
     scalaVersionsCatalog = [
             '2.11': '2.11.12',
             '2.12': '2.12.19',
-            '2.13': '2.13.13'
+            '2.13': '2.13.13',
+            '3.3.0': '3.3.3'
     ]
 
     builds {
         v211
         v212
         v213
+        v3
     }
 }
 
@@ -64,7 +66,8 @@ dependencies {
     crossBuildV211Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.11.12'
     crossBuildV212Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.12.19'
     crossBuildV213Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.13'
-    compileOnly                    group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.13'
+    crossBuildV3Implementation     group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.3'
+    compileOnly                    group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.3'
 }
 
 test {
@@ -77,11 +80,15 @@ test {
 
 compileScala {
     options.compilerArgs.addAll(
-            "-unchecked",
-            "-Ywarn-macros:after",
             "-feature",
-            "-Ymacro-annotations",
             "-Xfatal-warnings",
+            "-Wunused:implicits",
+            "-Wunused:explicits",
+            "-Wunused:strict-no-implicit-warn",
+            "-Wunused:locals",
+            "-Wunused:params",
+            "-Wunused:privates",
+            "-Wunused:nowarn",
     )
 }
 

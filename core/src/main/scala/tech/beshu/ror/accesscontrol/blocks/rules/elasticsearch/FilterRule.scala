@@ -27,6 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFilterUpdater}
 import tech.beshu.ror.accesscontrol.domain.Filter
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.FilterableBlockContextWithFilterUpdater
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.FilterableMultiRequestBlockContextWithFilterUpdater
 
 /**
   * Document level security (DLS) rule.

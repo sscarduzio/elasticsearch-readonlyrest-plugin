@@ -18,7 +18,7 @@ package tech.beshu.ror.utils
 
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
-import com.softwaremill.sttp.Uri
+import sttp.model.Uri
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
@@ -114,7 +114,7 @@ object TestsUtils {
 
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
-  def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value.value).get
+  def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value).get
 
   def fullLocalIndexWithAliases(fullIndexName: IndexName.Full): FullLocalIndexWithAliases =
     fullLocalIndexWithAliases(fullIndexName, Set.empty)
@@ -137,7 +137,7 @@ object TestsUtils {
       backingIndices = Set(IndexName.Full(NonEmptyString.unsafeFrom(".ds-" + dataStreamName.value.value + "-2023")))
     )
 
-  def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value.value).get
+  def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value).get
 
   def indexName(str: NonEmptyString): IndexName = IndexName.fromString(str.value).get
 
@@ -326,7 +326,7 @@ object TestsUtils {
     }
   }
 
-  implicit class CurrentGroupToHeader(val group: GroupId) extends AnyVal {
+  implicit class CurrentGroupToHeader(group: GroupId) extends AnyVal {
     def toCurrentGroupHeader: Header = currentGroupHeader(group.value.value)
   }
 
@@ -348,9 +348,9 @@ object TestsUtils {
 
   def jsonPathFrom(value: String): JsonPath = JsonPath(value).get
 
-  def uriFrom(value: String): Uri = Uri.parse(value).get
+  def uriFrom(value: String): Uri = Uri.parse(value).toOption.get
 
-  implicit class NonEmptyListOps[T](val value: T) extends AnyVal {
+  implicit class NonEmptyListOps[T](value: T) extends AnyVal {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)
   }
 
@@ -376,7 +376,7 @@ object TestsUtils {
     File(getResourcePath(resource)).contentAsString
   }
 
-  implicit class ValueOrIllegalState[ERROR, SUCCESS](val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
+  implicit class ValueOrIllegalState[ERROR, SUCCESS](eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 
     def valueOrThrowIllegalState()(implicit scheduler: Scheduler): SUCCESS = {
       eitherT.value.runSyncUnsafe() match {
@@ -385,4 +385,6 @@ object TestsUtils {
       }
     }
   }
+  
+  implicit def unsafeNes(str: String): NonEmptyString = NonEmptyString.unsafeFrom(str)
 }

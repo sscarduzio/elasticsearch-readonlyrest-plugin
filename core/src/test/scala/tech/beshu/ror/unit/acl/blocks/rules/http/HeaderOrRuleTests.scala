@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils.{requiredHeaderFrom, _}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
 
@@ -175,8 +176,8 @@ class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
     val rule = new HeadersOrRule(HeadersOrRule.Settings(configuredHeaders))
     val requestContext = mock[RequestContext]
     (() => requestContext.headers).expects().returning(requestHeaders)
-    (() => requestContext.id).expects().returning(RequestContext.Id("1")).anyNumberOfTimes()
-    (() => requestContext.uriPath).expects().returning(UriPath("/_cat/indices"))
+    (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
+    (() => requestContext.uriPath).expects().returning(UriPath.from("/_cat/indices"))
     val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

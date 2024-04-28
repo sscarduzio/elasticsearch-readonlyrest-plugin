@@ -34,6 +34,7 @@ import tech.beshu.ror.utils.TestsUtils._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class SnapshotsRuleTests extends AnyWordSpec with Inside {
 

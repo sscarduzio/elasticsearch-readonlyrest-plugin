@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ProxyAuthRuleSettingsTests 
   extends BaseRuleSettingsDecoderTest[ProxyAuthRule] {
@@ -152,7 +153,7 @@ class ProxyAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """proxy_auth: null
                 |""".stripMargin)))
           }
@@ -177,7 +178,7 @@ class ProxyAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """proxy_auth:
                 |  proxy_auth_config: "proxy1"
                 |""".stripMargin
@@ -279,7 +280,7 @@ class ProxyAuthRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(
-              MalformedValue(
+              MalformedValue.fromString(
                 """desc: "proxy1"
                   |user_id_header: "X-Auth-Token2"
                   |""".stripMargin
@@ -307,7 +308,7 @@ class ProxyAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue("name: \"proxy1\"\n")))
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString("name: \"proxy1\"\n")))
           }
         )
       }

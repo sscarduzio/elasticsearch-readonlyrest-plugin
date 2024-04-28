@@ -38,7 +38,7 @@ object BlockValidator {
       validateOnlyOneAuthenticationRulePrinciple(rules),
       validateRequirementsForRulesUsingVariables(rules),
       validateKibanaRuleInContextOfOtherRules(rules),
-    ).mapN { case _ => () }
+    ).mapN { case (_, _, _, _) => () }
   }
 
   private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
@@ -145,12 +145,12 @@ object BlockValidator {
   private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])
                                                (ruleDefinition: RuleDefinition[Rule]): Validated[NonEmptyList[RuleDoesNotMeetRequirement], Unit] = {
     ruleDefinition match {
-      case RuleDefinition(_, NotUsingVariable, _, _) => Validated.Valid(())
+      case RuleDefinition(_, NotUsingVariable(), _, _) => Validated.Valid(())
       case RuleDefinition(rule, usingVariable: UsingVariable[Rule], _, _) =>
         val allNonCompliantResults = RequirementVerifier.verify(rule, usingVariable, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
         allNonCompliantResults match {
           case Nil => Validated.Valid(())
-          case head :: tail => Validated.Invalid(NonEmptyList(head, tail).map(RuleDoesNotMeetRequirement))
+          case head :: tail => Validated.Invalid(NonEmptyList(head, tail).map(RuleDoesNotMeetRequirement.apply))
         }
     }
   }

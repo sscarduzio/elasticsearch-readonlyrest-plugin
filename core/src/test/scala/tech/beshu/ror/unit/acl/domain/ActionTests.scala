@@ -19,6 +19,7 @@ package tech.beshu.ror.unit.acl.domain
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Action
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ActionTests extends AnyWordSpec with Matchers {
 

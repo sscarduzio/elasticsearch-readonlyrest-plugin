@@ -47,9 +47,9 @@ class DataStreamsRule(val settings: Settings)
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.DataStreamRequestBlockContextUpdater =>
-        checkDataStreams(blockContext)
+        checkDataStreams(blockContext): Rule.RuleResult[B]
       case _ =>
-        Fulfilled(blockContext)
+        Fulfilled(blockContext): Rule.RuleResult[B]
     }
   }
 

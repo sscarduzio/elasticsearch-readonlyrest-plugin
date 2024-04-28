@@ -37,8 +37,8 @@ object ConfigLoader {
     final case class SpecializedError[ERROR](error: ERROR) extends ConfigLoaderError[ERROR]
 
     implicit def show[E: Show]: Show[ConfigLoaderError[E]] = Show.show {
-      case ParsingError(error) => RawRorConfig.ParsingRorConfigError.show.show(error)
-      case SpecializedError(error) => error.show
+      case ParsingError(error) => (error: RawRorConfig.ParsingRorConfigError).show
+      case SpecializedError(error) => (error: E).show
     }
   }
 

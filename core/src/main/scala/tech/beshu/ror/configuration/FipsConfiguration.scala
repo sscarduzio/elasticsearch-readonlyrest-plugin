@@ -26,6 +26,7 @@ import tech.beshu.ror.configuration.loader.FileConfigLoader
 
 import java.io.{File => JFile}
 import java.nio.file.Path
+import tech.beshu.ror.configuration.loader.toDomain
 
 final case class FipsConfiguration(fipsMode: FipsMode)
 

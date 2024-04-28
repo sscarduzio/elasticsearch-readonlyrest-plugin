@@ -17,14 +17,11 @@
 package tech.beshu.ror.accesscontrol.utils
 
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.implicits.*
 import cats.{Applicative, Order}
-import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.*
 import io.circe.CursorOp.DownField
-import io.circe._
-import io.circe.generic.extras
-import io.circe.generic.extras.Configuration
-import io.circe.parser._
+import io.circe.parser.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.CreationError
@@ -33,19 +30,22 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{Reason, ValueLevelCreationError}
-import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult._
+import tech.beshu.ror.accesscontrol.orders.*
+import tech.beshu.ror.accesscontrol.show.logs.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.*
+import tech.beshu.ror.utils.CirceOps.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.collection.immutable.SortedSet
 
 object CirceOps {
 
+  type NonEmptyString = eu.timepit.refined.types.string.NonEmptyString
+
   object DecoderHelpers {
     val decodeStringLike: Decoder[String] = Decoder.decodeString.or(Decoder.decodeInt.map(_.show))
 
-    implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] = decodeStringLike.emap(NonEmptyString.from)
+    implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] = decodeStringLike.emap(eu.timepit.refined.types.string.NonEmptyString.from)
 
     implicit def decodeUniqueNonEmptyList[T](implicit decodeT: Decoder[T]): Decoder[UniqueNonEmptyList[T]] =
       Decoder.decodeNonEmptyList(decodeT).map(UniqueNonEmptyList.fromNonEmptyList)
@@ -258,7 +258,7 @@ object CirceOps {
         .map { error =>
           val updatedReason = error.reason match {
             case Message(value) => Message(updateErrorMessage(value))
-            case MalformedValue(value) => MalformedValue(updateErrorMessage(value))
+            case MalformedValue(value) => MalformedValue.fromString(updateErrorMessage(value))
           }
           val updatedError = error match {
             case e: CoreCreationError.GeneralReadonlyrestSettingsError => e.copy(updatedReason)
@@ -284,17 +284,42 @@ object CirceOps {
   }
 
   object AclCreationErrorCoders {
-    implicit val aclCreationErrorEncoder: Encoder[CoreCreationError] = {
-      implicit val config: Configuration = Configuration.default.withDiscriminator("type")
-      implicit val reasonEncoder = extras.semiauto.deriveConfiguredEncoder[Reason]
-      extras.semiauto.deriveConfiguredEncoder
-    }
-    implicit val aclCreationErrorDecoder: Decoder[CoreCreationError] = {
-      implicit val config: Configuration = Configuration.default.withDiscriminator("type")
-      implicit val reasonDecoder = extras.semiauto.deriveConfiguredDecoder[Reason]
-      extras.semiauto.deriveConfiguredDecoder
-    }
-
+    private implicit val reasonCodec: Codec[Reason] = codecWithTypeDiscriminator(
+      encode = {
+        case reason: Message =>
+          derivedEncoderWithType[Message]("Message")(reason)
+        case reason: MalformedValue =>
+          derivedEncoderWithType[MalformedValue]("MalformedValue")(reason)
+      },
+      decoders = Map(
+        "Message" -> derivedDecoderOfSubtype[Reason, Message],
+        "MalformedValue" -> derivedDecoderOfSubtype[Reason, MalformedValue],
+      )
+    )
+    implicit val aclCreationErrorCodec: Codec[CoreCreationError] = codecWithTypeDiscriminator(
+      encode = {
+        case error: CoreCreationError.GeneralReadonlyrestSettingsError =>
+          derivedEncoderWithType[CoreCreationError.GeneralReadonlyrestSettingsError]("GeneralReadonlyrestSettingsError")(error)
+        case error: CoreCreationError.DefinitionsLevelCreationError =>
+          derivedEncoderWithType[CoreCreationError.DefinitionsLevelCreationError]("DefinitionsLevelCreationError")(error)
+        case error: CoreCreationError.BlocksLevelCreationError =>
+          derivedEncoderWithType[CoreCreationError.BlocksLevelCreationError]("BlocksLevelCreationError")(error)
+        case error: CoreCreationError.RulesLevelCreationError =>
+          derivedEncoderWithType[CoreCreationError.RulesLevelCreationError]("RulesLevelCreationError")(error)
+        case error: ValueLevelCreationError =>
+          derivedEncoderWithType[CoreCreationError.ValueLevelCreationError]("ValueLevelCreationError")(error)
+        case error: CoreCreationError.AuditingSettingsCreationError =>
+          derivedEncoderWithType[CoreCreationError.AuditingSettingsCreationError]("AuditingSettingsCreationError")(error)
+      },
+      decoders = Map(
+        "GeneralReadonlyrestSettingsError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.GeneralReadonlyrestSettingsError],
+        "DefinitionsLevelCreationError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.DefinitionsLevelCreationError],
+        "BlocksLevelCreationError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.BlocksLevelCreationError],
+        "RulesLevelCreationError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.RulesLevelCreationError],
+        "ValueLevelCreationError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.ValueLevelCreationError],
+        "AuditingSettingsCreationError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.AuditingSettingsCreationError],
+      )
+    )
     def stringify(error: CoreCreationError): String = Encoder[CoreCreationError].apply(error).noSpaces
   }
 

@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.NonEmptySet
-import com.softwaremill.sttp.Method
+import sttp.model.Method
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
@@ -44,6 +44,7 @@ import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerato
 import tech.beshu.ror.mocks.{MockFilterableMultiRequestContext, MockGeneralIndexRequestContext, MockRequestContext, MockTemplateRequestContext}
 import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, fullDataStreamName, fullIndexName, fullLocalIndexWithAliases, indexPattern}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
 

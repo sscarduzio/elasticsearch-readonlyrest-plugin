@@ -46,7 +46,7 @@ class SnapshotsRule(val settings: Settings)
         checkAllowedSnapshots(
           resolveAll(settings.allowedSnapshots.toNonEmptyList, blockContext).toSet,
           blockContext
-        )
+        ): RuleResult[B]
       case _ =>
         Fulfilled(blockContext)
     }
@@ -63,7 +63,7 @@ class SnapshotsRule(val settings: Settings)
       ) match {
         case NotAltered =>
           Fulfilled(blockContext)
-        case Altered(filteredSnapshots) if filteredSnapshots.nonEmpty && blockContext.requestContext.isReadOnlyRequest =>
+        case Altered(filteredSnapshots: Set[SnapshotName]) if filteredSnapshots.nonEmpty && blockContext.requestContext.isReadOnlyRequest =>
           Fulfilled(blockContext.withSnapshots(filteredSnapshots))
         case Altered(_) =>
           Rejected()

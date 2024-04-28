@@ -26,6 +26,7 @@ import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig, Path}
 import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import scala.language.existentials
 

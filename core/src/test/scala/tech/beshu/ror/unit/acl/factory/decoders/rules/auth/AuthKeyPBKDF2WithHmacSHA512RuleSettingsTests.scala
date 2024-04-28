@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
   extends BaseRuleSettingsDecoderTest[AuthKeyPBKDF2WithHmacSHA512Rule] {
@@ -84,7 +85,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """auth_key_pbkdf2: null
                 |""".stripMargin
             )))
@@ -105,7 +106,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """auth_key_pbkdf2: ""
                 |""".stripMargin
             )))

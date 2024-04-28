@@ -18,15 +18,15 @@ package tech.beshu.ror.configuration
 
 import better.files.File
 import cats.Show
-import cats.implicits._
-import eu.timepit.refined.auto._
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.utils.DurationOps._
+import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.RefinedUtils.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
@@ -38,9 +38,9 @@ object RorProperties extends Logging {
   }
 
   object keys {
-    val rorConfig: NonEmptyString = "com.readonlyrest.settings.file.path"
-    val refreshInterval: NonEmptyString = "com.readonlyrest.settings.refresh.interval"
-    val loadingDelay: NonEmptyString = "com.readonlyrest.settings.loading.delay"
+    val rorConfig: NonEmptyString = nes("com.readonlyrest.settings.file.path")
+    val refreshInterval: NonEmptyString = nes("com.readonlyrest.settings.refresh.interval")
+    val loadingDelay: NonEmptyString = nes("com.readonlyrest.settings.loading.delay")
   }
 
   def rorConfigCustomFile(implicit propertiesProvider: PropertiesProvider): Option[File] =
@@ -109,13 +109,18 @@ object RorProperties extends Logging {
         throw new IllegalArgumentException(s"Cannot convert '$value' to finite positive duration")
     }
   }
-  final case class LoadingDelay(duration:PositiveFiniteDuration)
+
+  final case class LoadingDelay(duration: PositiveFiniteDuration)
+
   object LoadingDelay {
-    implicit val  showLoadingDelay:Show[LoadingDelay] = Show[FiniteDuration].contramap(_.duration.value)
+    implicit val showLoadingDelay: Show[LoadingDelay] = Show[FiniteDuration].contramap(_.duration.value)
   }
+
   sealed trait RefreshInterval
+
   object RefreshInterval {
     case object Disabled extends RefreshInterval
+
     final case class Enabled(interval: PositiveFiniteDuration) extends RefreshInterval
 
     implicit val show: Show[RefreshInterval] = Show.show {
