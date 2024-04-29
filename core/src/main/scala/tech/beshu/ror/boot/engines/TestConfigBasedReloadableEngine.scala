@@ -47,7 +47,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
   ) {
 
   def currentTestConfig()
-                       (implicit  requestId: RequestId): Task[TestConfig] = {
+                       (implicit requestId: RequestId): Task[TestConfig] = {
     Task.delay {
       currentEngineState match {
         case EngineState.NotStartedYet(None, _) | EngineState.Stopped =>

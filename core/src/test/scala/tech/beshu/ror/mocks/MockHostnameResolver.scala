@@ -61,17 +61,13 @@ trait MockHostnameResolver extends MockFactory {
 
 object MockHostnameResolver {
   sealed trait Behaviour
-
   object Behaviour {
     final case class MockAlways(hostname: String, result: ResolveResult) extends Behaviour
-
     final case class MockOnce(hostname: String, result: ResolveResult) extends Behaviour
 
     sealed trait ResolveResult
-
     object ResolveResult {
       final case class ResolvedIps(value: String, values: String*) extends ResolveResult
-
       case object Unresolvable extends ResolveResult
     }
   }

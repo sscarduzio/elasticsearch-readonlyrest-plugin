@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.utils
 
+import io.circe.*
 import io.circe.generic.semiauto.*
 import io.circe.syntax.EncoderOps
-import io.circe.*
 
 import scala.language.implicitConversions
 
@@ -35,7 +35,6 @@ object CirceOps {
   }
 
   implicit def toCirceErrorOps(error: io.circe.Error): CirceErrorOps = new CirceErrorOps(error)
-
 
   inline def derivedEncoderWithType[T](typeValue: String)(using inline t: scala.deriving.Mirror.Of[T]): Encoder[T] = {
     deriveEncoder[T].mapJson(_.deepMerge(Json.obj(("type", typeValue.asJson))))
@@ -58,9 +57,4 @@ object CirceOps {
     )
   }
 
-  inline def unwrappedCodec[T](typeValue: String)(using inline t: scala.deriving.Mirror.Of[T]): Encoder[T] = {
-    deriveEncoder[T].mapJson(_.deepMerge(Json.obj(("type", typeValue.asJson))))
-  }
-
 }
-

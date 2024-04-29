@@ -106,8 +106,3 @@ tasks.register('toJar', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from sourceSets.main.getOutput()
 }
-
-
-tasks.register('Jar', Jar) {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
