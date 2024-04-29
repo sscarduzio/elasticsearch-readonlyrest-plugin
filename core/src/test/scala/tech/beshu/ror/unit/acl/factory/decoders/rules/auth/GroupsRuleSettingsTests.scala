@@ -130,7 +130,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |  users:
                    |  - username: [cartman, "ca*"]
-                   |    groups: ["group1", "group3"]
+                   |    groups: "group1"
                    |    auth_key: "cartman:pass"
                    |
                    |""".stripMargin,
@@ -140,7 +140,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")), User.UserIdPattern(User.Id("ca*")))))
-                  localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))

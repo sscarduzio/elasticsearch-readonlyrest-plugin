@@ -243,16 +243,16 @@ object UsersDefinitionsDecoder {
     }
 
     // supported formats for 'groups' key:
-    // * array of strings (local group IDs) - simple groups mapping
-    // * array of objects (object with one key as local group ID - value is array of strings (external group IDs)) - advanced group mapping
-    // * array of objects (object with 'id' and 'name' keys) - simple groups mapping
-    // * array of objects (object with `local_group` and 'external_group_ids' keys) -> advanced group mapping
+    // * string or array of strings (local group IDs) - simple groups mapping
+    // * object or array of objects (object with one key as local group ID - value is array of strings (external group IDs)) - advanced group mapping
+    // * object or array of objects (object with 'id' and 'name' keys) - simple groups mapping
+    // * object or array of objects (object with `local_group` and 'external_group_ids' keys) -> advanced group mapping
     implicit lazy val groupMappingsDecoder: Decoder[GroupMappings] = Decoder.instance { c =>
       for {
-        mappingsJsons <- c.values
-          .toRight("Unknown format of `groups`")
-          .flatMap(values => NonEmptyList.fromList(values.toList).toRight("Non empty list of group mappings is required"))
-          .leftMap(msg => decodingFailure(Message(msg)))
+        mappingsJsons <- NonEmptyList
+            .fromList(c.values.getOrElse(c.value :: Nil).toList)
+            .toRight("Non empty list of groups is required")
+            .left.map(msg => decodingFailure(Message(msg)))
         mappingsDecoder = mappingsJsons match {
           case groupMappings if haveSimpleFormatWithGroupIds(groupMappings) =>
             groupsSimpleDecoder

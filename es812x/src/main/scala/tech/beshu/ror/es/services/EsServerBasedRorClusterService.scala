@@ -240,7 +240,7 @@ class EsServerBasedRorClusterService(nodeName: String,
 
   private def resolveAllRemoteDataStreams(remoteClusterName: ClusterName.Full,
                                           remoteClusterService: RemoteClusterService): Task[List[FullRemoteDataStreamWithAliases]] = {
-    getRemoteClusterClient(remoteClusterService, remoteClusterName)  match {
+    getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
       case Failure(_) =>
         logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
         Task.now(List.empty)
