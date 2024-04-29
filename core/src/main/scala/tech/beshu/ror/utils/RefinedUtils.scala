@@ -31,11 +31,11 @@ import scala.concurrent.duration.{FiniteDuration, TimeUnit}
 
 object RefinedUtils {
   inline def nes(inline str: String): NonEmptyString = {
-    inline if (str == "") error(s"NonEmptyString creation error, empty String") else NonEmptyString.unsafeFrom(str)
+    inline if (str == "") error("NonEmptyString creation error, empty String") else NonEmptyString.unsafeFrom(str)
   }
 
   inline def positiveInt(inline i: Int): Refined[Int, Positive] = {
-    inline if (i > 0) Refined.unsafeApply(i) else error(s"$i is not positive")
+    inline if (i > 0) Refined.unsafeApply(i) else error("Int is not positive")
   }
 
   inline def positiveFiniteDuration(inline length: Long, inline timeUnit: TimeUnit): Refined[FiniteDuration, Positive] = {
