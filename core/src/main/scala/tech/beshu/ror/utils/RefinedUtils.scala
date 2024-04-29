@@ -27,20 +27,19 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 
 import scala.compiletime.error
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{FiniteDuration, TimeUnit}
 
 object RefinedUtils {
   inline def nes(inline str: String): NonEmptyString = {
-    inline if (str == "") error(s"NonEmptyString creation error, empty String") else NonEmptyString.unsafeFrom(str) 
+    inline if (str == "") error(s"NonEmptyString creation error, empty String") else NonEmptyString.unsafeFrom(str)
   }
 
   inline def positiveInt(inline i: Int): Refined[Int, Positive] = {
     inline if (i > 0) Refined.unsafeApply(i) else error(s"$i is not positive")
   }
 
-  inline def positiveFiniteDuration(inline fd: FiniteDuration): Refined[FiniteDuration, Positive] = {
-    Refined.unsafeApply(fd)
-    //inline if (fd.length > 0) Refined.unsafeApply(fd) else error("FiniteDuration is not positive")
+  inline def positiveFiniteDuration(inline length: Long, inline timeUnit: TimeUnit): Refined[FiniteDuration, Positive] = {
+    inline if (length > 0) Refined.unsafeApply(FiniteDuration.apply(length, timeUnit)) else error("FiniteDuration is not positive")
   }
 
   def positiveDecoder[T: Decoder : Show](valueToLong: T => Long): Decoder[T Refined Positive] =

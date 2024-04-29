@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import com.comcast.ip4s.Port
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -26,28 +26,30 @@ import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.accesscontrol.utils._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Clock
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.utils.RefinedUtils._
+import tech.beshu.ror.utils.RefinedUtils.*
+
+import java.util.concurrent.TimeUnit
 
 object LdapServicesDecoder {
 
@@ -323,8 +325,8 @@ object LdapServicesDecoder {
           poolName,
           connectionMethod,
           poolSize.getOrElse(positiveInt(30)),
-          connectionTimeout.getOrElse(positiveFiniteDuration(10 second)),
-          requestTimeout.getOrElse(positiveFiniteDuration(10 second)),
+          connectionTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
+          requestTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
           trustAllCertsOps.getOrElse(false),
           bindRequestUser,
           ignoreLdapConnectivityProblems.getOrElse(false)

@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClie
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.{CopyOnWriteArrayList, TimeUnit}
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
@@ -55,8 +55,8 @@ object HttpClientsFactory {
 
   object Config {
     val default: Config = Config(
-      connectionTimeout = positiveFiniteDuration(2 seconds),
-      requestTimeout = positiveFiniteDuration(5 seconds),
+      connectionTimeout = positiveFiniteDuration(2, TimeUnit.SECONDS),
+      requestTimeout = positiveFiniteDuration(5, TimeUnit.SECONDS),
       connectionPoolSize = positiveInt(30),
       validate = true
     )
