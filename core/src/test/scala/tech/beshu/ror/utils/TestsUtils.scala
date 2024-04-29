@@ -17,11 +17,13 @@
 package tech.beshu.ror.utils
 
 import better.files.File
-import cats.data.NonEmptyList
+import cats.data.{EitherT, NonEmptyList}
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
+import monix.eval.Task
+import monix.execution.Scheduler
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
@@ -372,5 +374,15 @@ object TestsUtils {
 
   def getResourceContent(resource: String): String = {
     File(getResourcePath(resource)).contentAsString
+  }
+
+  implicit class ValueOrIllegalState[ERROR, SUCCESS](val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
+
+    def valueOrThrowIllegalState()(implicit scheduler: Scheduler): SUCCESS = {
+      eitherT.value.runSyncUnsafe() match {
+        case Right(value) => value
+        case Left(error) => throw new IllegalStateException(s"$error")
+      }
+    }
   }
 }

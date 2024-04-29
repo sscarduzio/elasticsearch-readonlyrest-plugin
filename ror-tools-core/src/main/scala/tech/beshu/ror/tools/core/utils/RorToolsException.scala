@@ -23,7 +23,7 @@ sealed trait RorToolsException {
 }
 object RorToolsException {
 
-  object EsNotPatchedException extends IllegalStateException("Elasticsearch is not patched yet") with RorToolsException
+  object EsNotPatchedException extends IllegalStateException("Elasticsearch is NOT patched yet") with RorToolsException
 
   object EsAlreadyPatchedException extends IllegalStateException("Elasticsearch is already patched") with RorToolsException
 

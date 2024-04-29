@@ -37,6 +37,7 @@ private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new XPackSecurityJarPatchCreator(
       DeactivateSecurityActionFilter,
       DeactivateSecurityServerTransportInterceptor,
-      new MockAuthorizationInfoInAuthorizationService(esVersion)
+      new MockAuthorizationInfoInAuthorizationService(esVersion),
+      DummyAuthorizeInAuthorizationService
     )
   )

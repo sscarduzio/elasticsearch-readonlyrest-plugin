@@ -28,6 +28,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
@@ -44,6 +45,7 @@ import tech.beshu.ror.accesscontrol.domain.{Jwt => _, _}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -54,7 +56,7 @@ import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 class JwtAuthRuleTests
-  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion with WithDummyRequestIdSupport {
 
   "A JwtAuthRule" should {
     "match" when {
@@ -71,9 +73,10 @@ class JwtAuthRuleTests
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+            )(blockContext)
         }
       }
       "token has valid RS256 signature" in {
@@ -89,9 +92,10 @@ class JwtAuthRuleTests
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+            )(blockContext)
         }
       }
       "token has no signature and external auth service returns true" in {
@@ -106,9 +110,10 @@ class JwtAuthRuleTests
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+            )(blockContext)
         }
       }
       "token has no signature and external auth service state is cached" in {
@@ -122,23 +127,26 @@ class JwtAuthRuleTests
           userClaim = None,
           groupsConfig = None
         )
-        def checkValidToken = assertMatchRule(
+
+        def checkValidToken(): Unit = assertMatchRule(
           configuredJwtDef = jwtDef,
           tokenHeader = bearerHeader(validJwt)
         ) {
-          blockContext => assertBlockContext(
-            jwt = Some(domain.Jwt.Payload(validJwt.defaultClaims()))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              jwt = Some(domain.Jwt.Payload(validJwt.defaultClaims()))
+            )(blockContext)
         }
-        def checkInvalidToken = assertNotMatchRule(
+
+        def checkInvalidToken(): Unit = assertNotMatchRule(
           configuredJwtDef = jwtDef,
           tokenHeader = bearerHeader(invalidJwt)
         )
 
-        checkValidToken
-        checkValidToken
-        checkInvalidToken
-        checkValidToken
+        checkValidToken()
+        checkValidToken()
+        checkInvalidToken()
+        checkValidToken()
       }
       "user claim name is defined and userId is passed in JWT token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
@@ -155,10 +163,11 @@ class JwtAuthRuleTests
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+            )(blockContext)
         }
       }
       "group IDs claim name is defined and groups are passed in JWT token claim (no preferred group)" in {
@@ -177,10 +186,11 @@ class JwtAuthRuleTests
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+            )(blockContext)
         }
       }
       "group IDs claim name is defined and groups are passed in JWT token claim (with preferred group)" in {
@@ -200,11 +210,12 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt),
           preferredGroupId = Some(GroupId("group1"))
         ) {
-          blockContext => assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            currentGroup = Some(GroupId("group1"))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("group1"))
+            )(blockContext)
         }
       }
       "group IDs claim name is defined as http address and groups are passed in JWT token claim" in {
@@ -223,10 +234,11 @@ class JwtAuthRuleTests
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+            )(blockContext)
         }
       }
       "group IDs claim name is defined and no groups field is passed in JWT token claim" in {
@@ -245,10 +257,11 @@ class JwtAuthRuleTests
           configuredGroups = Groups.NotDefined,
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+            )(blockContext)
         }
       }
       "group IDs claim path is defined and groups are passed in JWT token claim" in {
@@ -267,10 +280,11 @@ class JwtAuthRuleTests
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+            )(blockContext)
         }
       }
       "group names claim is defined and group names are passed in JWT token claim" in {
@@ -385,12 +399,13 @@ class JwtAuthRuleTests
           ))),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            currentGroup = Some(GroupId("group2")),
-            availableGroups = UniqueList.of(group("group2", "Group 2"))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("group2")),
+              availableGroups = UniqueList.of(group("group2", "Group 2"))
+            )(blockContext)
         }
       }
       "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is not empty (2)" in {
@@ -418,12 +433,13 @@ class JwtAuthRuleTests
           ))),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            currentGroup = Some(GroupId("group2")),
-            availableGroups = UniqueList.of(group("group2", "Group 2"))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("group2")),
+              availableGroups = UniqueList.of(group("group2", "Group 2"))
+            )(blockContext)
         }
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty (1)" in {
@@ -451,12 +467,13 @@ class JwtAuthRuleTests
           ))),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            currentGroup = Some(GroupId("group1")),
-            availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("group1")),
+              availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
+            )(blockContext)
         }
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty (2)" in {
@@ -484,12 +501,13 @@ class JwtAuthRuleTests
           ))),
           tokenHeader = bearerHeader(jwt)
         ) {
-          blockContext => assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            currentGroup = Some(GroupId("group1")),
-            availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("group1")),
+              availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
+            )(blockContext)
         }
       }
       "custom authorization header is used" in {
@@ -505,9 +523,10 @@ class JwtAuthRuleTests
           ),
           tokenHeader = bearerHeader("x-jwt-custom-header", jwt)
         ) {
-          blockContext => assertBlockContext(
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+            )(blockContext)
         }
       }
       "custom authorization token prefix is used" in {
@@ -526,9 +545,10 @@ class JwtAuthRuleTests
             NonEmptyString.unsafeFrom(s"MyPrefix ${jwt.stringify()}")
           )
         ) {
-          blockContext => assertBlockContext(
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-          )(blockContext)
+          blockContext =>
+            assertBlockContext(
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+            )(blockContext)
         }
       }
     }
@@ -749,20 +769,20 @@ class JwtAuthRuleTests
 
   private def authService(rawToken: String, authenticated: Boolean) = {
     val service = mock[ExternalAuthenticationService]
-    (service.authenticate _)
-      .expects(where { credentials: Credentials => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(rawToken)) })
+    (service.authenticate(_: Credentials)(_: RequestId))
+      .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(rawToken)) })
       .returning(Task.now(authenticated))
     service
   }
 
   private def cachedAuthService(authenticatedToken: String, unauthenticatedToken: String) = {
     val service = mock[ExternalAuthenticationService]
-    ((credentials: Credentials) => service.authenticate(credentials))
-      .expects(where { credentials: Credentials => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(authenticatedToken)) })
+    (service.authenticate(_: Credentials)(_: RequestId))
+      .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(authenticatedToken)) })
       .returning(Task.now(true))
       .once()
-    ((credentials: Credentials) => service.authenticate(credentials))
-      .expects(where { credentials: Credentials => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(unauthenticatedToken)) })
+    (service.authenticate(_: Credentials)(_: RequestId))
+      .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(unauthenticatedToken)) })
       .returning(Task.now(false))
       .once()
     (() => service.id)

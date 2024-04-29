@@ -24,15 +24,10 @@ import java.io.{File, InputStream}
 private [patches] object OpenModule extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
-    val updatedContentOfModuleInfo = loadAndProcessFileFromJar(
+    modifyFileInJar(
       jar = jar,
-      classFileName = "module-info",
+      filePathString = "module-info.class",
       processFileContent = doOpenModule
-    )
-    updateFileInJar(
-      jar = jar,
-      destinationPathSting = "/module-info.class",
-      newContent = updatedContentOfModuleInfo
     )
   }
 

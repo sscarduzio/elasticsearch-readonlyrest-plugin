@@ -22,29 +22,48 @@ import java.nio.file.{FileSystems, Files, Paths, StandardCopyOption}
 import java.util.jar.JarFile
 import scala.jdk.CollectionConverters._
 
-private [patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = false)
+private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = false)
   extends FileModifier with AsmDebug {
 
-  protected def loadAndProcessFileFromJar(jar: File,
-                                          classFileName: String,
-                                          processFileContent: InputStream => Array[Byte]): Array[Byte] = {
+  protected def modifyFileInJar(jar: File,
+                                filePathString: String,
+                                processFileContent: InputStream => Array[Byte]): Unit = {
+    val originalFileOwner = Files.getOwner(jar.toPath)
+    val originalFilePermissions = Files.getPosixFilePermissions(jar.toPath)
+    val modifiedFileContent = loadAndProcessFileFromJar(
+      jar = jar,
+      filePathString = filePathString,
+      processFileContent = processFileContent
+    )
+    updateFileInJar(
+      jar = jar,
+      destinationPathSting = filePathString,
+      newContent = modifiedFileContent
+    )
+    Files.setOwner(jar.toPath, originalFileOwner)
+    Files.setPosixFilePermissions(jar.toPath, originalFilePermissions)
+  }
+
+  private def loadAndProcessFileFromJar(jar: File,
+                                        filePathString: String,
+                                        processFileContent: InputStream => Array[Byte]): Array[Byte] = {
     Option(new JarFile(jar))
       .flatMap { jarFile =>
         try {
-          findFileInJar(jarFile, classFileName)
+          findFileInJar(jarFile, filePathString)
             .map(processFileContent)
         } finally {
           jarFile.close()
         }
       }
       .getOrElse {
-        throw new IllegalStateException(s"Cannot find ${classFileName}.class in ${jar.toString}")
+        throw new IllegalStateException(s"Cannot find $filePathString in ${jar.toString}")
       }
   }
 
-  protected def updateFileInJar(jar: File,
-                                destinationPathSting: String,
-                                newContent: Array[Byte]): Unit = {
+  private def updateFileInJar(jar: File,
+                              destinationPathSting: String,
+                              newContent: Array[Byte]): Unit = {
     if (debugEnabled) debug(newContent)
     Option(FileSystems.newFileSystem(
       URI.create("jar:" + jar.toURI),
@@ -54,7 +73,7 @@ private [patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fal
         Files.copy(
           new ByteArrayInputStream(newContent),
           zipfs.getPath(destinationPathSting),
-          StandardCopyOption.REPLACE_EXISTING
+          StandardCopyOption.REPLACE_EXISTING,
         )
       } finally {
         zipfs.close()
@@ -62,10 +81,10 @@ private [patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fal
     }
   }
 
-  private def findFileInJar(jarFile: JarFile, classFileName: String) = {
+  private def findFileInJar(jarFile: JarFile, filePathString: String) = {
     jarFile
       .entries().asScala
-      .find { entry => s"$classFileName.class" == entry.getName }
+      .find { entry => filePathString == entry.getName }
       .map(jarFile.getInputStream)
   }
 

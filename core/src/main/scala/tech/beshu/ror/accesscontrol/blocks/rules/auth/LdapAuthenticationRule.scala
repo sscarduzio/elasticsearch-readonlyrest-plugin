@@ -39,7 +39,8 @@ final class LdapAuthenticationRule(val settings: Settings,
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
-  override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
+  override protected def authenticateUsing(credentials: Credentials)
+                                          (implicit requestId: RequestId): Task[Boolean] =
     settings.ldap.authenticate(credentials.user, credentials.secret)
 
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)

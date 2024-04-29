@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es
 
+import cats.implicits._
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
@@ -182,12 +183,12 @@ class IndexLevelActionFilter(nodeName: String,
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {
-    logger.warn(s"[${esContext.requestContextId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
+    logger.warn(s"[${esContext.correlationId.show}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
     rorNotAvailableRequestHandler.handleRorNotReadyYet(esContext)
   }
 
   private def handleRorFailedToStart(esContext: EsContext): Unit = {
-    logger.error(s"[${esContext.requestContextId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
+    logger.error(s"[${esContext.correlationId.show}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
     rorNotAvailableRequestHandler.handleRorFailedToStart(esContext)
   }
 

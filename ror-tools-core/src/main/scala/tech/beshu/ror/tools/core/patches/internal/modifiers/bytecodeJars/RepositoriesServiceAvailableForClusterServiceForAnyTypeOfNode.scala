@@ -22,7 +22,6 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.es790
 
 import java.io.{File, InputStream}
-import java.nio.file.Files
 
 /*
   RepositoriesService is not updated with cluster events for certain type of nodes. ROR needs the up-to-date
@@ -33,18 +32,11 @@ private [patches] class RepositoriesServiceAvailableForClusterServiceForAnyTypeO
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
-    val originalFileOwner = Files.getOwner(jar.toPath)
-    val modifiedSecurityClass = loadAndProcessFileFromJar(
+    modifyFileInJar(
       jar = jar,
-      classFileName = "org/elasticsearch/repositories/RepositoriesService",
+      filePathString = "org/elasticsearch/repositories/RepositoriesService.class",
       processFileContent = enableClusterEventsHandling
     )
-    updateFileInJar(
-      jar = jar,
-      destinationPathSting = "org/elasticsearch/repositories/RepositoriesService.class",
-      newContent = modifiedSecurityClass
-    )
-    Files.setOwner(jar.toPath, originalFileOwner)
   }
 
   private def enableClusterEventsHandling(moduleInputStream: InputStream) = {

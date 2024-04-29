@@ -24,9 +24,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.utils.GraphNodeAncestorsExplorer
+import tech.beshu.ror.RequestId
+import tech.beshu.ror.utils.{GraphNodeAncestorsExplorer, WithDummyRequestIdSupport}
 
-class GraphNodeAncestorsExplorerTest extends AnyWordSpec with Matchers with MockFactory {
+class GraphNodeAncestorsExplorerTest extends AnyWordSpec with Matchers with MockFactory with WithDummyRequestIdSupport {
 
   "Parents of 1 are" in {
     val graph = createDynamicallyTraversableGraph(nestedLevels = 2)
@@ -60,14 +61,14 @@ class GraphNodeAncestorsExplorerTest extends AnyWordSpec with Matchers with Mock
        │7│
        └─┘
      */
-    val mock = mockFunction[String, Task[Set[String]]]
-    mock.expects("1").returns(Task.delay(Set("2", "3"))).noMoreThanOnce()
-    mock.expects("2").returns(Task.delay(Set("4"))).noMoreThanOnce()
-    mock.expects("3").returns(Task.delay(Set("6"))).noMoreThanOnce()
-    mock.expects("4").returns(Task.delay(Set("5", "6"))).noMoreThanOnce()
-    mock.expects("5").returns(Task.delay(Set.empty)).noMoreThanOnce()
-    mock.expects("6").returns(Task.delay(Set("7"))).noMoreThanOnce()
-    mock.expects("7").returns(Task.delay(Set.empty)).noMoreThanOnce()
+    val mock = mockFunction[String, RequestId, Task[Set[String]]]
+    mock.expects("1", *).returns(Task.delay(Set("2", "3"))).noMoreThanOnce()
+    mock.expects("2", *).returns(Task.delay(Set("4"))).noMoreThanOnce()
+    mock.expects("3", *).returns(Task.delay(Set("6"))).noMoreThanOnce()
+    mock.expects("4", *).returns(Task.delay(Set("5", "6"))).noMoreThanOnce()
+    mock.expects("5", *).returns(Task.delay(Set.empty)).noMoreThanOnce()
+    mock.expects("6", *).returns(Task.delay(Set("7"))).noMoreThanOnce()
+    mock.expects("7", *).returns(Task.delay(Set.empty)).noMoreThanOnce()
     mock
   }
 }

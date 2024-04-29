@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
+import cats.data.EitherT
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -23,14 +24,15 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
-import tech.beshu.ror.utils.SingletonLdapContainers
+import tech.beshu.ror.utils.TestsUtils.ValueOrIllegalState
+import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 import tech.beshu.ror.utils.containers.LdapContainer
 
 import java.time.Clock
@@ -43,7 +45,7 @@ class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsUidTests extends Un
 }
 
 class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsCnTests extends UnboundidLdapAuthenticationServiceTests {
-  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.Cn
+  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.OptimizedCn
   override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
 }
 
@@ -52,7 +54,8 @@ abstract class UnboundidLdapAuthenticationServiceTests
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with ForAllTestContainer
-    with Inside {
+    with Inside
+    with WithDummyRequestIdSupport {
 
   private val ldapContainer = LdapContainer.create("LDAP3", "test_example.ldif")
   private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
@@ -87,36 +90,51 @@ abstract class UnboundidLdapAuthenticationServiceTests
       }
     }
   }
-  
+
   private def createSimpleAuthenticationService() = {
     implicit val clock: Clock = Clock.systemUTC()
-    UnboundidLdapAuthenticationService
-      .create(
-        Name("ldap"),
-        ldapConnectionPoolProvider,
-        LdapConnectionConfig(
-          ConnectionMethod.SingleServer(
-            LdapHost
-              .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
-              .get
-          ),
-          poolSize = 1,
-          connectionTimeout = Refined.unsafeApply(5 seconds),
-          requestTimeout = Refined.unsafeApply(5 seconds),
-          trustAllCerts = false,
-          BindRequestUser.CustomUser(
-            Dn("cn=admin,dc=example,dc=com"),
-            PlainTextSecret("password")
-          ),
-          ignoreLdapConnectivityProblems = false,
-        ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
-      )
-      .runSyncUnsafe()
-      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
+    val ldapId = Name("ldap")
+    val ldapConnectionConfig = createLdapConnectionConfig(ldapId)
+    val result = for {
+      usersService <- EitherT(UnboundidLdapUsersService.create(
+        id = ldapId,
+        poolProvider = ldapConnectionPoolProvider,
+        connectionConfig = ldapConnectionConfig,
+        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
+      ))
+      authenticationService <- EitherT(UnboundidLdapAuthenticationService
+        .create(
+          id = ldapId,
+          ldapUsersService = usersService,
+          poolProvider = ldapConnectionPoolProvider,
+          connectionConfig = ldapConnectionConfig
+        ))
+    } yield authenticationService
+    result.valueOrThrowIllegalState()
   }
-  
+
+  private def createLdapConnectionConfig(poolName: LdapService.Name) = {
+    LdapConnectionConfig(
+      poolName = poolName,
+      connectionMethod = ConnectionMethod.SingleServer(
+        LdapHost
+          .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
+          .get
+      ),
+      poolSize = 1,
+      connectionTimeout = Refined.unsafeApply(5 seconds),
+      requestTimeout = Refined.unsafeApply(5 seconds),
+      trustAllCerts = false,
+      bindRequestUser = BindRequestUser.CustomUser(
+        Dn("cn=admin,dc=example,dc=com"),
+        PlainTextSecret("password")
+      ),
+      ignoreLdapConnectivityProblems = false
+    )
+  }
+
   protected def userIdAttribute: UserIdAttribute
+
   protected def morganUserId: User.Id
 
 }

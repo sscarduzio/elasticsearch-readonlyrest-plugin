@@ -19,26 +19,18 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 import just.semver.SemVer
 import org.objectweb.asm._
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es700, es800, es810, es820, es830}
+import tech.beshu.ror.tools.core.utils.EsUtil._
 
 import java.io.{File, InputStream}
-import java.nio.file.Files
 
 private [patches] class MockAuthorizationInfoInAuthorizationService(esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
-    val originalFileOwner = Files.getOwner(jar.toPath)
-    val modifiedSecurityClass = loadAndProcessFileFromJar(
+    modifyFileInJar(
       jar = jar,
-      classFileName = "org/elasticsearch/xpack/security/authz/AuthorizationService",
+      filePathString = "org/elasticsearch/xpack/security/authz/AuthorizationService.class",
       processFileContent = doMockAuthorizationInfo
     )
-    updateFileInJar(
-      jar = jar,
-      destinationPathSting = "org/elasticsearch/xpack/security/authz/AuthorizationService.class",
-      newContent = modifiedSecurityClass
-    )
-    Files.setOwner(jar.toPath, originalFileOwner)
   }
 
   private def doMockAuthorizationInfo(moduleInputStream: InputStream) = {

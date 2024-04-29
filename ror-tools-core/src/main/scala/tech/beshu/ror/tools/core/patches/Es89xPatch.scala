@@ -41,7 +41,8 @@ private[patches] class Es89xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new XPackSecurityJarPatchCreator(
       OpenModule,
       DeactivateSecurityActionFilter,
-      DeactivateAuthenticationServiceInHttpTransport
+      DeactivateAuthenticationServiceInHttpTransport,
+      DummyAuthorizeInAuthorizationService
     )
 
   )

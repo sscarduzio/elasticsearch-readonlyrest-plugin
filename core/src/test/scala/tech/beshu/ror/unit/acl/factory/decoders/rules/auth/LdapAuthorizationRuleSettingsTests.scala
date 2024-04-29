@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroupIds}
@@ -57,9 +56,8 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )
       }
@@ -87,10 +85,9 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-            rule.settings.permittedGroupsLogic should be (GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
+            rule.settings.permittedGroupsLogic should be(GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
             rule.settings.permittedGroupsLogic.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )
       }
@@ -116,13 +113,45 @@ class LdapAuthorizationRuleSettingsTests
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    sever_side_groups_filtering: false
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
             rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
             )))
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
+          }
+        )
+      }
+      "there is LDAP service with server side groups filtering defined" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |    ldap_authorization:
+               |      name: "ldap1"
+               |      groups_or: ["group3", "group4*"]
+               |
+               |  ldaps:
+               |
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    sever_side_groups_filtering: true
+               |""".stripMargin,
+          assertion = rule => {
+            rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(
+              UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
+            )))
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = true)
           }
         )
       }
@@ -151,9 +180,8 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CacheableLdapAuthorizationServiceDecorator]
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false, withRuleLevelCaching = true)
           }
         )
       }
