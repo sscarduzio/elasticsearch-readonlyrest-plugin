@@ -54,15 +54,17 @@ private[rules] abstract class BaseHostsRule(resolver: HostnameResolver)
   }
 
   private def ipMatchesAddress(allowedHost: Address, address: Address, blockContext: BlockContext) = {
+    val parallelyResolved = Task.parMap2(resolveToIps(allowedHost), resolveToIps(address))(ParallellyResolvedIps.apply)
     val result = for {
-      //todo Scala3 - it seems that those 2 tasks were executed in parallel before library upgrades
-      addressIps <- OptionT(resolveToIps(address))
-      allowedHostIps <- OptionT(resolveToIps(allowedHost))
+      allowedHostIps <- OptionT(parallelyResolved.map(_.allowedHost))
+      addressIps <- OptionT(parallelyResolved.map(_.address))
       isMatching = addressIps.exists(ip => allowedHostIps.exists(_.contains(ip)))
       _ = logger.debug(s"[${blockContext.requestContext.id.show}] address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=$isMatching")
     } yield isMatching
     result.value.map(_.getOrElse(false))
   }
+
+  private sealed case class ParallellyResolvedIps(allowedHost: Option[NonEmptyList[Ip]], address: Option[NonEmptyList[Ip]])
 
   private def resolveToIps(address: Address) =
     address match {
