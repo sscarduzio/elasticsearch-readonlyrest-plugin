@@ -24,17 +24,17 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars._
 
 import scala.language.postfixOps
 
-private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
+private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion),
       new SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
-    new OptionalXPackCoreJarPatchCreator(
+    new XPackCoreJarPatchCreator(
       AlwaysGrantApplicationPermission,
       GetAuthenticationFromHeaderWhenMissingInTransient
     ),
-    new OptionalXPackSecurityJarPatchCreator(
+    new XPackSecurityJarPatchCreator(
       DeactivateSecurityActionFilter,
       DeactivateSecurityServerTransportInterceptor,
       new MockAuthorizationInfoInAuthorizationService(esVersion),

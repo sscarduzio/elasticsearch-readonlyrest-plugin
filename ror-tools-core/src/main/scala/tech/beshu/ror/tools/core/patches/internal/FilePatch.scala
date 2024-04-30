@@ -21,21 +21,28 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
 
 import scala.language.postfixOps
 
-private [patches] abstract class FilePatch(rorPluginDirectory: RorPluginDirectory,
-                                           fileToPatchPath: Path,
-                                           patchingSteps: Iterable[FileModifier]) {
+private [patches] abstract class FilePatch(val fileToPatchPath: Path) {
+  def backup(): Unit
+  def patch(): Unit
+  def restore(): Unit
+}
 
-  def backup(): Unit = {
+private [patches] abstract class FileModifiersBasedPatch(val rorPluginDirectory: RorPluginDirectory,
+                                                         override val fileToPatchPath: Path,
+                                                         patchingSteps: Iterable[FileModifier])
+  extends FilePatch(fileToPatchPath) {
+
+  override def backup(): Unit = {
     rorPluginDirectory.backup(fileToPatchPath)
   }
 
-  def patch(): Unit = {
+  override def patch(): Unit = {
     patchingSteps.foreach { step =>
       step(fileToPatchPath toIO)
     }
   }
 
-  def restore(): Unit = {
+  override def restore(): Unit = {
     rorPluginDirectory.restore(fileToPatchPath)
   }
 }
@@ -53,4 +60,23 @@ private [patches] class MultiFilePatch(filePatches: FilePatch*) {
   def restore(): Unit = {
     filePatches.foreach(_.restore())
   }
+}
+
+private [patches] class OptionalFilePatchDecorator[FP <: FilePatch](underlying: FP)
+  extends FilePatch(underlying.fileToPatchPath) {
+
+  private val chosenFilePatch = {
+    if(os.exists(fileToPatchPath)) underlying
+    else NoOpFilePatch
+  }
+
+  override def backup(): Unit = chosenFilePatch.backup()
+  override def patch(): Unit = chosenFilePatch.patch()
+  override def restore(): Unit = chosenFilePatch.restore()
+}
+
+private [patches] object NoOpFilePatch extends FilePatch(os.root){
+  override def backup(): Unit = ()
+  override def patch(): Unit = ()
+  override def restore(): Unit = ()
 }
