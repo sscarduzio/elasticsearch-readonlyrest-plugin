@@ -18,7 +18,7 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
-import tech.beshu.ror.tools.core.patches.internal.{FilePatch, RorPluginDirectory}
+import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, FilePatch, RorPluginDirectory}
 
 private[patches] class ElasticsearchJarPatchCreator(patchingSteps: FileModifier*)
   extends FilePatchCreator[ElasticsearchJarPatch] {
@@ -31,7 +31,7 @@ private[patches] class ElasticsearchJarPatchCreator(patchingSteps: FileModifier*
 private[patches] class ElasticsearchJarPatch(rorPluginDirectory: RorPluginDirectory,
                                              esVersion: SemVer,
                                              patchingSteps: Iterable[FileModifier])
-  extends FilePatch(
+  extends FileModifiersBasedPatch(
     rorPluginDirectory = rorPluginDirectory,
     fileToPatchPath = rorPluginDirectory.esDirectory.libPath / s"elasticsearch-${esVersion.render}.jar",
     patchingSteps = patchingSteps

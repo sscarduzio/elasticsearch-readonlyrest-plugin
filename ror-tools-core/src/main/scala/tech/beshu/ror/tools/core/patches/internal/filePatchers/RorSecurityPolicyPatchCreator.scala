@@ -18,7 +18,7 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
-import tech.beshu.ror.tools.core.patches.internal.{FilePatch, RorPluginDirectory}
+import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, FilePatch, RorPluginDirectory}
 
 private[patches] class RorSecurityPolicyPatchCreator(patchingSteps: FileModifier*)
   extends FilePatchCreator[RorSecurityPolicyPatch] {
@@ -30,7 +30,7 @@ private[patches] class RorSecurityPolicyPatchCreator(patchingSteps: FileModifier
 
 private[patches] class RorSecurityPolicyPatch(rorPluginDirectory: RorPluginDirectory,
                                               patchingSteps: Iterable[FileModifier])
-  extends FilePatch(
+  extends FileModifiersBasedPatch(
     rorPluginDirectory = rorPluginDirectory,
     fileToPatchPath = rorPluginDirectory.securityPolicyPath,
     patchingSteps = patchingSteps

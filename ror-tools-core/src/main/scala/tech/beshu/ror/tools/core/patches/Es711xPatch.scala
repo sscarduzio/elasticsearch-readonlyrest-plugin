@@ -19,19 +19,25 @@ package tech.beshu.ror.tools.core.patches
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
-import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, OptionalXPackSecurityJarPatchCreator, XPackSecurityJarPatchCreator}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.{DeactivateSecurityActionFilter, DeactivateSecurityServerTransportInterceptor, DummyAuthorizeInAuthorizationService, RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode}
+import tech.beshu.ror.tools.core.patches.internal.filePatchers._
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars._
 
 import scala.language.postfixOps
 
-private[patches] class Es68xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
+private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion),
+      new SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
-    new OptionalXPackSecurityJarPatchCreator(
+    new XPackCoreJarPatchCreator(
+      AlwaysGrantApplicationPermission,
+      GetAuthenticationFromHeaderWhenMissingInTransient
+    ),
+    new XPackSecurityJarPatchCreator(
       DeactivateSecurityActionFilter,
       DeactivateSecurityServerTransportInterceptor,
+      new MockAuthorizationInfoInAuthorizationService(esVersion),
       DummyAuthorizeInAuthorizationService
     )
   )

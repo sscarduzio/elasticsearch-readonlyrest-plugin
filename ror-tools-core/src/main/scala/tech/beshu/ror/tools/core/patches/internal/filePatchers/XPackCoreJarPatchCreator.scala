@@ -17,21 +17,34 @@
 package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.core.patches.internal.{FilePatch, RorPluginDirectory}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
+import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, OptionalFilePatchDecorator, RorPluginDirectory}
 
 private[patches] class XPackCoreJarPatchCreator(patchingSteps: FileModifier*)
   extends FilePatchCreator[XPackCoreJarPatch] {
 
   override def create(rorPluginDirectory: RorPluginDirectory,
-                      esVersion: SemVer): XPackCoreJarPatch =
+                      esVersion: SemVer): XPackCoreJarPatch = {
     new XPackCoreJarPatch(rorPluginDirectory, esVersion, patchingSteps)
+  }
+}
+
+private[patches] class OptionalXPackCoreJarPatchCreator(patchingSteps: FileModifier*)
+  extends FilePatchCreator[OptionalFilePatchDecorator[XPackCoreJarPatch]] {
+
+  override def create(rorPluginDirectory: RorPluginDirectory,
+                      esVersion: SemVer): OptionalFilePatchDecorator[XPackCoreJarPatch] = {
+    new OptionalFilePatchDecorator(
+      new XPackCoreJarPatch(rorPluginDirectory, esVersion, patchingSteps)
+    )
+  }
 }
 
 private[patches] class XPackCoreJarPatch(rorPluginDirectory: RorPluginDirectory,
-                                             esVersion: SemVer,
-                                             patchingSteps: Iterable[FileModifier])
-  extends FilePatch(
+                                         esVersion: SemVer,
+                                         patchingSteps: Iterable[FileModifier],
+                                        )
+  extends FileModifiersBasedPatch(
     rorPluginDirectory = rorPluginDirectory,
     fileToPatchPath = rorPluginDirectory.esDirectory.modulesPath / "x-pack-core" / s"x-pack-core-${esVersion.render}.jar",
     patchingSteps = patchingSteps
