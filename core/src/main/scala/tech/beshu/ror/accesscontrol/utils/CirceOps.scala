@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.utils
 import cats.data.NonEmptySet
 import cats.implicits.*
 import cats.{Applicative, Order}
+import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.CursorOp.DownField
 import io.circe.parser.*
@@ -40,12 +41,10 @@ import scala.collection.immutable.SortedSet
 
 object CirceOps {
 
-  type NonEmptyString = eu.timepit.refined.types.string.NonEmptyString
-
   object DecoderHelpers {
     val decodeStringLike: Decoder[String] = Decoder.decodeString.or(Decoder.decodeInt.map(_.show))
 
-    implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] = decodeStringLike.emap(eu.timepit.refined.types.string.NonEmptyString.from)
+    implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] = decodeStringLike.emap(NonEmptyString.from)
 
     implicit def decodeUniqueNonEmptyList[T](implicit decodeT: Decoder[T]): Decoder[UniqueNonEmptyList[T]] =
       Decoder.decodeNonEmptyList(decodeT).map(UniqueNonEmptyList.fromNonEmptyList)

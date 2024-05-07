@@ -83,6 +83,7 @@ compileScala {
             "-feature",
             "-Xfatal-warnings",
             "-Wunused:implicits",
+            "-Wunused:imports",
             "-Wunused:explicits",
             "-Wunused:strict-no-implicit-warn",
             "-Wunused:locals",

@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.tranport
 
+import cats.Show
 import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.implicits.*
 import com.comcast.ip4s.Host
@@ -74,7 +75,7 @@ private[rules] abstract class BaseHostsRule(resolver: HostnameResolver)
         resolver
           .resolve(address)
           .andThen {
-            case Success(None) => logger.warn(s"Cannot resolve hostname: ${(address.value: Host).show}")
+            case Success(None) => logger.warn(s"Cannot resolve hostname: ${Show[Host].show(address.value)}")
           }
     }
 }

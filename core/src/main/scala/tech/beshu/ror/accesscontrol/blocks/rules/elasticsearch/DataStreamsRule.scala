@@ -17,14 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
@@ -47,13 +47,14 @@ class DataStreamsRule(val settings: Settings)
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.DataStreamRequestBlockContextUpdater =>
-        checkDataStreams(blockContext): Rule.RuleResult[B]
+        checkDataStreams(blockContext)
       case _ =>
-        Fulfilled(blockContext): Rule.RuleResult[B]
+        Fulfilled(blockContext)
     }
   }
 
-  private def checkDataStreams(blockContext: DataStreamRequestBlockContext): RuleResult[DataStreamRequestBlockContext] = {
+  private def checkDataStreams[B <: BlockContext](blockContext: DataStreamRequestBlockContext)
+                                                 (implicit ev: DataStreamRequestBlockContext <:< B): RuleResult[B] = {
     checkAllowedDataStreams(
       resolveAll(settings.allowedDataStreams.toNonEmptyList, blockContext).toSet,
       blockContext.dataStreams,
