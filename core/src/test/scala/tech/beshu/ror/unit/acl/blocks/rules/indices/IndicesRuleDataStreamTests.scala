@@ -22,6 +22,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, fullDataStreamName, fullIndexName, fullLocalDataStreamWithAliases, fullLocalIndexWithAliases}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 trait IndicesRuleDataStreamTests {
   this: BaseIndicesRuleTests =>

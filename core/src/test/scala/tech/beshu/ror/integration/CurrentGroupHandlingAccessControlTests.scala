@@ -30,6 +30,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class CurrentGroupHandlingAccessControlTests
   extends AnyWordSpec

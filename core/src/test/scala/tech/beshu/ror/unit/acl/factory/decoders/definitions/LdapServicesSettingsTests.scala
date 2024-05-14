@@ -21,7 +21,7 @@ import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.joor.Reflect.on
 import org.scalatest.compatible.Assertion
-import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
+import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.{Assertions, BeforeAndAfterAll, Checkpoints}
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
@@ -37,6 +37,7 @@ import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Clock
 import scala.annotation.tailrec
@@ -44,6 +45,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
   extends BaseDecoderTest(
@@ -105,16 +107,16 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer3 => ldapServiceLayer3 matchUnboundidLdapUsersService(
+              ldapServiceLayer3 => ldapServiceLayer3.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -123,34 +125,34 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer3.matchUnboundidLdapAuthenticationService (
                   name = expectedLdapServiceName
                   )
             )
 
             assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
+                ldapServiceLayer3.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   defaultGroupSearch = DefaultGroupSearch(
@@ -203,16 +205,16 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer3 => ldapServiceLayer3 matchUnboundidLdapUsersService(
+              ldapServiceLayer3 => ldapServiceLayer3.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -221,34 +223,34 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer3.matchUnboundidLdapAuthenticationService (
                   name = expectedLdapServiceName
                   )
             )
 
             assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthorizationService.WithGroupsFilteringDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthorizationService.WithGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithGroupsFilteringDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering(
+                ldapServiceLayer3.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   defaultGroupSearch = DefaultGroupSearch(
@@ -299,16 +301,16 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(3, (2 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(3), (2 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer3 => ldapServiceLayer3 matchUnboundidLdapUsersService(
+              ldapServiceLayer3 => ldapServiceLayer3.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -317,34 +319,34 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(3, (2 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(3), (2 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer3.matchUnboundidLdapAuthenticationService (
                   name = expectedLdapServiceName
                   )
             )
 
             assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(3, (2 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(3), (2 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
+                ldapServiceLayer3.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   defaultGroupSearch = DefaultGroupSearch(
@@ -422,12 +424,12 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(ldapService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer2.matchUnboundidLdapAuthenticationService (
                   name = expectedLdapServiceName
                   )
             )
@@ -437,11 +439,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(unboundidLdapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -476,11 +478,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -489,24 +491,24 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer2.matchUnboundidLdapAuthenticationService (
                   name = expectedLdapServiceName
                   )
             )
 
             assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
+                ldapServiceLayer2.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   defaultGroupSearch = DefaultGroupSearch(
@@ -718,11 +720,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -731,24 +733,24 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer2.matchUnboundidLdapAuthenticationService (
                   name = expectedLdapServiceName
                   )
             )
 
             assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchUnboundidLdapGroupsFromUserEntryAuthorizationService(
+                ldapServiceLayer2.matchUnboundidLdapGroupsFromUserEntryAuthorizationService(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   groupsFromUserEntry = GroupsFromUserEntry(
@@ -796,11 +798,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
               assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
-                ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+                ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -809,24 +811,24 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
               assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
                 ldapServiceLayer2 =>
-                  ldapServiceLayer2 matchUnboundidLdapAuthenticationService (
+                  ldapServiceLayer2.matchUnboundidLdapAuthenticationService (
                     name = expectedLdapServiceName
                     )
               )
 
               assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
                 ldapServiceLayer2 =>
-                  ldapServiceLayer2 matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
+                  ldapServiceLayer2.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
                     name = expectedLdapServiceName,
                     serviceTimeout = 10 second,
                     defaultGroupSearch = DefaultGroupSearch(
@@ -838,7 +840,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                       serverSideGroupsFiltering = false
                     ),
                     nestedGroupsConfig = Some(NestedGroupsConfig(
-                      nestedLevels = 5,
+                      nestedLevels = positiveInt(5),
                       Dn("ou=Groups,dc=example,dc=com"),
                       GroupSearchFilter("(objectClass=*)"),
                       UniqueMemberAttribute("uniqueMember"),
@@ -882,11 +884,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
               assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
-                ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+                ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -895,24 +897,24 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
               assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
                 ldapServiceLayer2 =>
-                  ldapServiceLayer2 matchUnboundidLdapAuthenticationService (
+                  ldapServiceLayer2.matchUnboundidLdapAuthenticationService (
                     name = expectedLdapServiceName
                     )
               )
 
               assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
                 ldapServiceLayer2 =>
-                  ldapServiceLayer2 matchUnboundidLdapGroupsFromUserEntryAuthorizationService(
+                  ldapServiceLayer2.matchUnboundidLdapGroupsFromUserEntryAuthorizationService(
                     name = expectedLdapServiceName,
                     serviceTimeout = 10 second,
                     groupsFromUserEntry = GroupsFromUserEntry(
@@ -922,7 +924,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                       GroupsFromUserAttribute("memberOf")
                     ),
                     nestedGroupsConfig = Some(NestedGroupsConfig(
-                      nestedLevels = 5,
+                      nestedLevels = positiveInt(5),
                       Dn("ou=Groups,dc=example,dc=com"),
                       GroupSearchFilter("(objectClass=*)"),
                       UniqueMemberAttribute("uniqueMember"),
@@ -963,11 +965,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(unboundidLdapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), UserIdAttribute.OptimizedCn)
@@ -1005,11 +1007,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(unboundidLdapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("cn"))

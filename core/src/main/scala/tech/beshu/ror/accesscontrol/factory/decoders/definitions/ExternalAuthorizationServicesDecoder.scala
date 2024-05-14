@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import cats.implicits._
-import com.softwaremill.sttp.Uri
+import sttp.model.Uri
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config._
 import tech.beshu.ror.accesscontrol.blocks.definitions._

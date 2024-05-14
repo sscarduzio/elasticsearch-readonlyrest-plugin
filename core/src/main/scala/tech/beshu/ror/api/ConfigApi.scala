@@ -16,16 +16,17 @@
  */
 package tech.beshu.ror.api
 
+import cats.Show
 import cats.data.EitherT
-import cats.implicits._
+import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.api.ConfigApi.ConfigRequest.Type
-import tech.beshu.ror.api.ConfigApi.ConfigResponse._
-import tech.beshu.ror.api.ConfigApi._
+import tech.beshu.ror.api.ConfigApi.ConfigResponse.*
+import tech.beshu.ror.api.ConfigApi.*
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -102,8 +103,7 @@ class ConfigApi(rorInstance: RorInstance,
         case Right(config) =>
           ProvideIndexConfig.Config(config.raw)
         case Left(SpecializedError(error: IndexConfigNotExist.type)) =>
-          implicit val show = IndexConfigError.show.contramap(identity[IndexConfigNotExist.type])
-          ProvideIndexConfig.ConfigNotFound(error.show)
+          ProvideIndexConfig.ConfigNotFound(Show[IndexConfigError].show(error))
         case Left(error) =>
           ProvideIndexConfig.Failure(error.show)
       }

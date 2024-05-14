@@ -20,7 +20,8 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.{StringPatternsMatcherJava, ZeroKnowledgeIndexFilter}
 
-import scala.jdk.CollectionConverters._
+import java.util
+import scala.jdk.CollectionConverters.*
 
 class ZeroKnowledgeRemoteIndexFilterScalaAdapter {
 
@@ -31,7 +32,7 @@ class ZeroKnowledgeRemoteIndexFilterScalaAdapter {
     val result = underlying.alterIndicesIfNecessaryAndCheck(
       indices.map(_.stringify).asJava,
       new StringPatternsMatcherJava(matcher),
-      processedIndices.addAll _
+      (t: util.Set[String]) => processedIndices.addAll(t)
     )
     if(result) CheckResult.Ok(processedIndices.asScala.flatMap(ClusterIndexName.Remote.fromString).toSet)
     else CheckResult.Failed

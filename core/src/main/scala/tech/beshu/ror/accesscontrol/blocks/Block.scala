@@ -137,10 +137,10 @@ object Block {
       extends HistoryItem[B]
   }
 
-  final case class RuleDefinition[+T <: Rule](rule: T,
-                                              variableUsage: VariableUsage[T],
-                                              localUsersSupport: LocalUsersSupport[T],
-                                              impersonationWarnings: ImpersonationWarningSupport[T])
+  final case class RuleDefinition[T <: Rule](rule: T,
+                                             variableUsage: VariableUsage[T],
+                                             localUsersSupport: LocalUsersSupport[T],
+                                             impersonationWarnings: ImpersonationWarningSupport[T])
   object RuleDefinition {
     def create[T <: Rule : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport](rule: T): RuleDefinition[T] = {
       new RuleDefinition(

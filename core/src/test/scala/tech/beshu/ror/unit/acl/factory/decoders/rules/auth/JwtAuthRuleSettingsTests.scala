@@ -39,6 +39,7 @@ import tech.beshu.ror.accesscontrol.domain
 
 import java.security.KeyPairGenerator
 import java.util.Base64
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class JwtAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[JwtAuthRule]
@@ -615,7 +616,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """jwt_auth: null
                 |""".stripMargin
             )))
@@ -682,7 +683,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """jwt_auth:
                 |  roles:
                 |  - "group1"
@@ -744,7 +745,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                 |""".stripMargin
             )))
@@ -819,7 +820,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "jwt1"
                 |""".stripMargin
             )))
@@ -845,7 +846,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "jwt1"
                 |  signature_algo: "RSA"
                 |""".stripMargin

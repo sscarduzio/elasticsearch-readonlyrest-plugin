@@ -17,14 +17,34 @@
 package tech.beshu.ror.configuration.loader.distributed.internode.dto
 
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.generic.extras.ConfiguredJsonCodec
+import io.circe.*
+import io.circe.syntax.EncoderOps
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
+import tech.beshu.ror.utils.CirceOps.*
 
-@ConfiguredJsonCodec
+import scala.collection.immutable.Map
+
 sealed trait LoadedConfigDTO
 
 object LoadedConfigDTO {
+
+  implicit val codec: Codec[LoadedConfigDTO] = codecWithTypeDiscriminator(
+    encode = {
+      case dto: IndexConfigDTO =>
+        derivedEncoderWithType[IndexConfigDTO]("IndexConfigDTO")(dto)
+      case dto: FileConfigDTO =>
+        derivedEncoderWithType[FileConfigDTO]("FileConfigDTO")(dto)
+      case dto: ForcedFileConfigDTO =>
+        derivedEncoderWithType[ForcedFileConfigDTO]("ForcedFileConfigDTO")(dto)
+    },
+    decoders = Map(
+      "IndexConfigDTO" -> derivedDecoderOfSubtype[LoadedConfigDTO, IndexConfigDTO],
+      "FileConfigDTO" -> derivedDecoderOfSubtype[LoadedConfigDTO, FileConfigDTO],
+      "ForcedFileConfigDTO" -> derivedDecoderOfSubtype[LoadedConfigDTO, ForcedFileConfigDTO],
+    )
+  )
+
   def create(o: LoadedRorConfig[String]): LoadedConfigDTO = o match {
     case o: LoadedRorConfig.FileConfig[String] => FileConfigDTO.create(o)
     case o: LoadedRorConfig.ForcedFileConfig[String] => ForcedFileConfigDTO.create(o)

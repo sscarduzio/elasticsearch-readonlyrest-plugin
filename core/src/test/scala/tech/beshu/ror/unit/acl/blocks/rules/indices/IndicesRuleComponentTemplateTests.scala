@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingComponentTem
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.clusterIndexName
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 private [indices] trait IndicesRuleComponentTemplateTests {
   this: BaseIndicesRuleTests =>

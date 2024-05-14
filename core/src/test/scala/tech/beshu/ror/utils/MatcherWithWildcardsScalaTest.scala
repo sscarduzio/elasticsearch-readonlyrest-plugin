@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalactic.anyvals.{NonEmptyString, PosInt}
 import org.scalatest.wordspec.AnyWordSpec
@@ -25,7 +25,9 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
-import tech.beshu.ror.utils.MatcherWithWildcardsScalaTest._
+import tech.beshu.ror.utils.MatcherWithWildcardsScalaTest.*
+
+import scala.annotation.nowarn
 
 class MatcherWithWildcardsScalaTest
   extends AnyWordSpec
@@ -175,7 +177,7 @@ class MatcherWithWildcardsScalaTest
     testMatchersMatchHaystack(matchers, haystack, result = false)
 
   private def testMatchersMatchHaystack(matchers: List[String], haystack: String, result: Boolean): Unit = {
-    s"$haystack should${if (!result) "n't"} match $matchers" in {
+    s"$haystack should${if (!result) "n't" else ""} match $matchers" in {
       val matcher = PatternsMatcher.create(matchers)(caseSensitiveStringMatchable)
       matcher.`match`(haystack) shouldBe result
     }
@@ -197,7 +199,7 @@ object MatcherWithWildcardsScalaTest {
       .map(_.toList.toNel)
       .filter(_.isDefined)
       .map(_.get)
-      .map(WildcardPattern)
+      .map(WildcardPattern.apply)
   }
 
   def genLiteralString(wildcardPattern: WildcardPattern,
@@ -222,8 +224,9 @@ object MatcherWithWildcardsScalaTest {
   implicit val arbPatternAndValue: Arbitrary[PatternAndMatch] = Arbitrary(genPatternAndValue)
 
   implicit val arbCaseVulnerableString: Arbitrary[CaseVulnerableString] =
-    Arbitrary(Gen.asciiPrintableStr.filter(s => s.neqv(s.toLowerCase())).map(CaseVulnerableString))
+    Arbitrary(Gen.asciiPrintableStr.filter(s => s.neqv(s.toLowerCase())).map(CaseVulnerableString.apply))
 
+  @nowarn
   implicit def arbIterator[A](implicit arb: Arbitrary[A]): Arbitrary[Iterator[A]] =
     Arbitrary(Gen.infiniteStream(arb.arbitrary).map(_.iterator))
 

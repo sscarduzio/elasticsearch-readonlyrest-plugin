@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.{StartupResolvableV
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
 

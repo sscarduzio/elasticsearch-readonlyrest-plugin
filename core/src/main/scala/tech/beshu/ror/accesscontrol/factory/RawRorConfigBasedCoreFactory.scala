@@ -40,8 +40,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.Eligibl
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError._
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{Attributes, CoreCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.*
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
@@ -267,7 +267,7 @@ class RawRorConfigBasedCoreFactory()
   private def localUsersForRule[R <: Rule](rule: RuleDefinition[R]) = {
     rule.localUsersSupport match {
       case users: LocalUsersSupport.AvailableLocalUsers[R] => users.definedLocalUsers(rule.rule)
-      case LocalUsersSupport.NotAvailableLocalUsers => LocalUsers.empty
+      case LocalUsersSupport.NotAvailableLocalUsers() => LocalUsers.empty
     }
   }
 
@@ -446,6 +446,8 @@ object RawRorConfigBasedCoreFactory {
       final case class Message(value: String) extends Reason
       final case class MalformedValue private(value: String) extends Reason
       object MalformedValue {
+        def fromString(str: String): MalformedValue = MalformedValue(str)
+        
         def apply(json: Json): MalformedValue = from(json)
 
         def from(json: Json): MalformedValue = MalformedValue {
@@ -478,9 +480,9 @@ object RawRorConfigBasedCoreFactory {
     private def impersonationWarningForRule(rule: RuleDefinition[R])
                                            (implicit requestId: RequestId): List[ImpersonationWarning] = {
       rule.impersonationWarnings match {
-        case extractor: ImpersonationWarningSupport.ImpersonationWarningExtractor[R] =>
+        case extractor: ImpersonationWarningSupport.ImpersonationWarningExtractor[_] =>
           extractor.warningFor(rule.rule, blockName).toList
-        case ImpersonationWarningSupport.NotSupported =>
+        case ImpersonationWarningSupport.NotSupported() =>
           List.empty
       }
     }

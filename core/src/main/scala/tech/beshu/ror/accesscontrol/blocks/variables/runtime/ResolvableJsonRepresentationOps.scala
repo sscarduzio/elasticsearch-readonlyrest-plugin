@@ -56,7 +56,7 @@ object ResolvableJsonRepresentationOps {
               variableCreator
                 .createSingleResolvableVariableFrom(nonEmptyString)
                 .map(resolvableString =>
-                  JsonTree.Value(resolvableString.map(StringValue))
+                  JsonTree.Value(resolvableString.map(StringValue.apply))
                 )
             case None =>
               Right(JsonTree.Value(AlreadyResolved.create(StringValue(value))))

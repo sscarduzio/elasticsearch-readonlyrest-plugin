@@ -87,10 +87,12 @@ object GroupIdLike {
 
   object GroupIdPattern {
     implicit val matchable: Matchable[GroupIdPattern] = Matchable.matchable(_.value.value)
+    
+    def fromNes(value: NonEmptyString): GroupIdPattern = GroupIdPattern(value)
   }
 
   def from(value: NonEmptyString): GroupIdLike =
-    if (value.contains("*")) GroupIdPattern(value)
+    if (value.contains("*")) GroupIdPattern.fromNes(value)
     else GroupId(value)
 
   implicit val eq: Eq[GroupIdLike] = Eq.by {

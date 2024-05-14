@@ -17,11 +17,15 @@
 package tech.beshu.ror.unit.acl.domain
 
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
+import org.scalatest.matchers.must.Matchers.*
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Address
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AddressTests extends AnyWordSpec {
-  import org.scalatest.matchers.should.Matchers._
+
+  import org.scalatest.matchers.should.Matchers.*
 
   "address" when {
     "passed expected ipv4" should {
@@ -53,11 +57,11 @@ class AddressTests extends AnyWordSpec {
     }
   }
 
-  private def hostname(name:String) = {
-    Address.Name(Hostname(name).get)
+  private def hostname(name: String) = {
+    Address.Name(Hostname.fromString(name).get)
   }
 
-  private def ip(ip:String) =
-    IpAddress(ip).map(Cidr(_, 32)).map(Address.Ip).get
+  private def ip(ip: String) =
+    IpAddress.fromString(ip).map(Cidr(_, 32)).map(Address.Ip.apply).get
 
 }

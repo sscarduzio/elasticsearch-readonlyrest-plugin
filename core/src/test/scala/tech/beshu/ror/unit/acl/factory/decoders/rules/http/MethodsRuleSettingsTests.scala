@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules.http
 
 import cats.data.NonEmptySet
-import com.softwaremill.sttp.Method
+import sttp.model.Method
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
@@ -80,7 +80,7 @@ class MethodsRuleSettingsTests extends BaseRuleSettingsDecoderTest[MethodsRule] 
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """methods: null
                 |""".stripMargin
             )))

@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, indexPattern}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 private [indices] trait IndicesRuleIndexTemplateTests {
   this: BaseIndicesRuleTests =>

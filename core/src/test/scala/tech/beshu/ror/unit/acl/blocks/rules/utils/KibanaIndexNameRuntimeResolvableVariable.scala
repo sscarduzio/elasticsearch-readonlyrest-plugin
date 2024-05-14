@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName}
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 object KibanaIndexNameRuntimeResolvableVariable {
   private val variableCreator: RuntimeResolvableVariableCreator =

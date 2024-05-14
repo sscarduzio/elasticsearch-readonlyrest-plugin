@@ -17,11 +17,12 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.js.JsCompiler
 
 import java.util.regex
@@ -39,7 +40,7 @@ object CaseSensitivity {
 
 final case class RorAuditLoggerName(value: NonEmptyString)
 object RorAuditLoggerName {
-  val default: RorAuditLoggerName = RorAuditLoggerName("readonlyrest_audit")
+  val default: RorAuditLoggerName = RorAuditLoggerName(nes("readonlyrest_audit"))
 }
 
 sealed trait AccessRequirement[T] {

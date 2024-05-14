@@ -41,6 +41,7 @@ import tech.beshu.ror.utils.containers.NonStoppableLdapContainer
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import java.util.Base64
 

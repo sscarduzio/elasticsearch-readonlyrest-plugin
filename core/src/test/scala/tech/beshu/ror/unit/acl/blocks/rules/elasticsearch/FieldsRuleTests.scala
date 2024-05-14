@@ -41,6 +41,7 @@ import tech.beshu.ror.mocks.{MockRequestContext, MockSimpleRequestContext}
 import tech.beshu.ror.unit.acl.blocks.rules.elasticsearch.FieldsRuleTests.{BlockContextCreator, Configuration, Fields, RequestContextCreator}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
 
@@ -115,7 +116,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
               ),
               requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
               incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField")))),
-              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField("notAllowedField")))
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField.fromString("notAllowedField")))
             )
           }
         }
@@ -150,7 +151,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
               ),
               requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
               incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField")))),
-              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField("notAllowedField")))
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField.fromString("notAllowedField")))
             )
           }
         }
@@ -230,7 +231,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
         val requestContext = mock[RequestContext]
         val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
-        (() => requestContext.uriPath).expects().returning(UriPath("/_search"))
+        (() => requestContext.uriPath).expects().returning(UriPath.from("/_search"))
         (() => requestContext.action).expects().returning(MockRequestContext.roAction).anyNumberOfTimes()
 
         inside(rule.check(incomingBlockContext).runSyncStep) {

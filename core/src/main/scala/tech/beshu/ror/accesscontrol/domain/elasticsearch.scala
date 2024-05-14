@@ -145,7 +145,13 @@ final case class DocumentWithIndex(index: ClusterIndexName, documentId: Document
 sealed trait RepositoryName
 object RepositoryName {
   final case class Full private(value: NonEmptyString) extends RepositoryName
+  object Full {
+    def fromNes(value: NonEmptyString): Full = Full(value)
+  }
   final case class Pattern private(value: NonEmptyString) extends RepositoryName
+  object Pattern {
+    def fromNes(value: NonEmptyString): Pattern = Pattern(value)
+  }
   case object All extends RepositoryName
   case object Wildcard extends RepositoryName
 
@@ -157,8 +163,8 @@ object RepositoryName {
     NonEmptyString.unapply(value).map {
       case Refined("_all") => All
       case Refined("*") => Wildcard
-      case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
-      case v => Full(NonEmptyString.unsafeFrom(v))
+      case v if v.contains("*") => Pattern.fromNes(NonEmptyString.unsafeFrom(v))
+      case v => Full.fromNes(NonEmptyString.unsafeFrom(v))
     }
   }
 
@@ -181,7 +187,13 @@ object RepositoryName {
 sealed trait SnapshotName
 object SnapshotName {
   final case class Full private(value: NonEmptyString) extends SnapshotName
+  object Full {
+    def fromNes(value: NonEmptyString): Full = Full(value)
+  }
   final case class Pattern private(value: NonEmptyString) extends SnapshotName
+  object Pattern {
+    def fromNes(value: NonEmptyString): Pattern = Pattern(value)
+  }
   case object All extends SnapshotName
   case object Wildcard extends SnapshotName
 
@@ -193,8 +205,8 @@ object SnapshotName {
     NonEmptyString.unapply(value).map {
       case Refined("_all") => All
       case Refined("*") => Wildcard
-      case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
-      case v => Full(NonEmptyString.unsafeFrom(v))
+      case v if v.contains("*") => Pattern.fromNes(NonEmptyString.unsafeFrom(v))
+      case v => Full.fromNes(NonEmptyString.unsafeFrom(v))
     }
   }
 
@@ -219,11 +231,19 @@ object DataStreamName {
   final case class Full private(value: NonEmptyString) extends DataStreamName
   object Full {
     def fromString(value: String): Option[DataStreamName.Full] = {
-      NonEmptyString.unapply(value).map(DataStreamName.Full.apply)
+      NonEmptyString.unapply(value).map(fromNes)
+    }
+
+    def fromNes(value: NonEmptyString): DataStreamName.Full = {
+      DataStreamName.Full(value)
     }
   }
 
   final case class Pattern private(value: NonEmptyString) extends DataStreamName
+  object Pattern {
+    def fromNes(value: NonEmptyString): Pattern = Pattern(value)
+  }
+
   case object All extends DataStreamName
   case object Wildcard extends DataStreamName
 
@@ -235,8 +255,8 @@ object DataStreamName {
     NonEmptyString.unapply(value).map {
       case Refined("_all") => All
       case Refined("*") => Wildcard
-      case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
-      case v => Full(NonEmptyString.unsafeFrom(v))
+      case v if v.contains("*") => Pattern.fromNes(NonEmptyString.unsafeFrom(v))
+      case v => Full.fromNes(NonEmptyString.unsafeFrom(v))
     }
   }
 
@@ -348,18 +368,22 @@ object FieldLevelSecurity {
       final case class SpecificField private(value: String) extends UsedField
 
       object SpecificField {
+        def fromString(value: String): SpecificField = SpecificField(value)
         implicit class Ops(val specificField: SpecificField) extends AnyVal {
           def obfuscate: ObfuscatedRandomField = ObfuscatedRandomField(specificField)
         }
       }
 
       final case class FieldWithWildcard private(value: String) extends UsedField
+      object FieldWithWildcard {
+        def fromString(value: String): FieldWithWildcard = FieldWithWildcard(value)
+      }
 
       def apply(value: String): UsedField = {
         if (hasWildcard(value))
-          FieldWithWildcard(value)
+          FieldWithWildcard.fromString(value)
         else
-          SpecificField(value)
+          SpecificField.fromString(value)
       }
 
       private def hasWildcard(fieldName: String): Boolean = fieldName.contains("*")

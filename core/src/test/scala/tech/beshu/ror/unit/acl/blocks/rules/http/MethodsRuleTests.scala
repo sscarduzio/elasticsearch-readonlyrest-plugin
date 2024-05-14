@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.http
 
 import cats.data.NonEmptySet
-import com.softwaremill.sttp.Method
+import sttp.model.Method
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class MethodsRuleTests extends AnyWordSpec with MockFactory {
 

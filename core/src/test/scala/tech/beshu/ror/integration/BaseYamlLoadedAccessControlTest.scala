@@ -29,6 +29,7 @@ import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvi
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 

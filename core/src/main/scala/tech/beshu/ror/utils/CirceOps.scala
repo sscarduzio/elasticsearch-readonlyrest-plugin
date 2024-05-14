@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.utils
 
-import io.circe.{CursorOp, DecodingFailure, ParsingFailure}
+import io.circe.*
+import io.circe.generic.semiauto.*
+import io.circe.syntax.EncoderOps
 
 import scala.language.implicitConversions
 
@@ -33,5 +35,26 @@ object CirceOps {
   }
 
   implicit def toCirceErrorOps(error: io.circe.Error): CirceErrorOps = new CirceErrorOps(error)
-}
 
+  inline def derivedEncoderWithType[T](typeValue: String)(using inline t: scala.deriving.Mirror.Of[T]): Encoder[T] = {
+    deriveEncoder[T].mapJson(_.deepMerge(Json.obj(("type", typeValue.asJson))))
+  }
+
+  inline def derivedDecoderOfSubtype[T, TT <: T](using inline t: scala.deriving.Mirror.Of[TT]): Decoder[T] = {
+    Decoder.instance[T](c => deriveDecoder[TT].decodeJson(c.value))
+  }
+
+  def codecWithTypeDiscriminator[T](encode: T => Json, decoders: Map[String, Decoder[T]]): Codec[T] = {
+    Codec.from[T](
+      Decoder.instance { c =>
+        c.downField("type").as[String] match
+          case Right(typeValue) => decoders.get(typeValue) match
+            case Some(decoder) => decoder.decodeJson(c.value)
+            case None => Left(DecodingFailure(s"Missing decoder for type $typeValue", Nil))
+          case Left(error) => Left(error)
+      },
+      Encoder.instance(encode)
+    )
+  }
+
+}

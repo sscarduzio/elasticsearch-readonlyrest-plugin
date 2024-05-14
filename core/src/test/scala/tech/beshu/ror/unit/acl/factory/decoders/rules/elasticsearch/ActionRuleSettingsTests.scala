@@ -79,7 +79,7 @@ class ActionRuleSettingsTests extends BaseRuleSettingsDecoderTest[ActionsRule] {
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """actions: null
                 |""".stripMargin
             )))

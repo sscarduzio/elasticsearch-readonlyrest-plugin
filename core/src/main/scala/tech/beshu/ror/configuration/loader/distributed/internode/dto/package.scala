@@ -17,11 +17,7 @@
 package tech.beshu.ror.configuration.loader.distributed.internode
 
 import io.circe.{Codec, Decoder, Encoder}
-import io.circe.generic.extras.Configuration
 
 package object dto {
-  implicit val config: Configuration = Configuration.default.withDiscriminator("type")
-
   implicit def codecEither[A: Decoder : Encoder, B: Decoder : Encoder]: Codec[Either[A, B]] = io.circe.generic.semiauto.deriveCodec
-
 }

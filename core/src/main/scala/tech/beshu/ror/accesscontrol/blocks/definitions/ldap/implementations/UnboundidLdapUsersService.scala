@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 import cats.implicits.toShow
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -32,6 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.User
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils._
 
 class UnboundidLdapUsersService private(override val id: LdapService#Id,
                                         connectionPool: UnboundidLdapConnectionPool,
@@ -145,19 +145,19 @@ object UserGroupsSearchFilterConfig {
 
     final case class GroupSearchFilter(value: NonEmptyString)
     object GroupSearchFilter {
-      val default: GroupSearchFilter = GroupSearchFilter("(objectClass=*)")
+      val default: GroupSearchFilter = GroupSearchFilter(nes("(objectClass=*)"))
     }
     final case class GroupIdAttribute(value: NonEmptyString)
     object GroupIdAttribute {
-      val default: GroupIdAttribute = GroupIdAttribute("cn")
+      val default: GroupIdAttribute = GroupIdAttribute(nes("cn"))
     }
     final case class UniqueMemberAttribute(value: NonEmptyString)
     object UniqueMemberAttribute {
-      val default: UniqueMemberAttribute = UniqueMemberAttribute("uniqueMember")
+      val default: UniqueMemberAttribute = UniqueMemberAttribute(nes("uniqueMember"))
     }
     final case class GroupsFromUserAttribute(value: NonEmptyString)
     object GroupsFromUserAttribute {
-      val default: GroupsFromUserAttribute = GroupsFromUserAttribute("memberOf")
+      val default: GroupsFromUserAttribute = GroupsFromUserAttribute(nes("memberOf"))
     }
 
     final case class NestedGroupsConfig(nestedLevels: Int Refined Positive,

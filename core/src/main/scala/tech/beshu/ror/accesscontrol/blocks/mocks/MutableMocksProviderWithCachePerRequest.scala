@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.mocks
 
-import com.github.blemale.scaffeine.{Cache, Scaffeine}
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
 import tech.beshu.ror.RequestId
@@ -24,8 +24,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
+import java.time.{Duration => JavaDuration}
 
 class MutableMocksProviderWithCachePerRequest(initial: AuthServicesMocks)
                                              (implicit scheduler: Scheduler)
@@ -34,8 +34,8 @@ class MutableMocksProviderWithCachePerRequest(initial: AuthServicesMocks)
   private val currentMockProvider = Atomic(CurrentMocksProviderConfiguration(SimpleMocksProvider(initial)))
 
   private lazy val cache: Cache[RequestId, MocksProvider] =
-    Scaffeine()
-      .expireAfterWrite(1 minute)
+    Caffeine.newBuilder()
+      .expireAfterWrite(JavaDuration.ofMinutes(1))
       .executor(scheduler)
       .build()
 

@@ -39,6 +39,7 @@ import java.time._
 import java.util.UUID
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
 

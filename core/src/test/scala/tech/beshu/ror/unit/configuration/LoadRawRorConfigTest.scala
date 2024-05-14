@@ -27,6 +27,7 @@ import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFi
 import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig}
 import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import java.nio.file.Paths
 import scala.language.existentials
