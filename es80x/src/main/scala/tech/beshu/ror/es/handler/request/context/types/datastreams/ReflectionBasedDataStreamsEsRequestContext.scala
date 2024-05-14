@@ -61,12 +61,12 @@ object ReflectionBasedDataStreamsEsRequestContext {
   }
 
 
-  private[datastreams] sealed trait MatchResult[+A]
+  private[datastreams] sealed trait MatchResult[A]
 
   private[datastreams] object MatchResult {
     final case class Matched[A](extracted: Set[A]) extends MatchResult[A]
 
-    object NotMatched extends MatchResult[Nothing]
+    final case class NotMatched[A]() extends MatchResult[A]
   }
 
   final case class ClassCanonicalName(value: String) extends AnyVal
@@ -108,7 +108,7 @@ object ReflectionBasedDataStreamsEsRequestContext {
               .flatMap((value: String) => toDomain(value))
           }
         }
-        .getOrElse(NotMatched)
+        .getOrElse(NotMatched())
     }
 
   }

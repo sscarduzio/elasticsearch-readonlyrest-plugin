@@ -28,7 +28,7 @@ object RRAuditEventActionType {
   val name: String = RorAction.RorAuditEventAction.value
   val instance = new RRAuditEventActionType()
 
-  final case object RRAuditEventActionTypeBeTransported extends Exception
+  case object RRAuditEventActionTypeBeTransported extends Exception
 
   private [rrauditevent] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAuditEventActionTypeBeTransported
 }

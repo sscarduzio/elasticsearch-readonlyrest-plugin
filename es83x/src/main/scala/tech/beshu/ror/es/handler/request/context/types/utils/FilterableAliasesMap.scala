@@ -30,7 +30,7 @@ import scala.language.implicitConversions
 
 class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
 
-  import FilterableAliasesMap._
+  import FilterableAliasesMap.{conversion, matchable}
 
   def filterOutNotAllowedAliases(allowedAliases: NonEmptyList[ClusterIndexName]): AliasesMap = {
     ImmutableOpenMapOps.from {

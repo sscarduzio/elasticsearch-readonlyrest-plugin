@@ -24,14 +24,14 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 
-import scala.annotation.nowarn
+import scala.annotation.unused
 
 class TransportRRAuditEventAction(settings: Settings,
                                   threadPool: ThreadPool,
                                   transportService: TransportService,
                                   actionFilters: ActionFilters,
                                   indexNameExpressionResolver: IndexNameExpressionResolver,
-                                  @nowarn("cat=unused") constructorDiscriminator: Unit)
+                                  @unused constructorDiscriminator: Unit)
   extends HandledTransportAction[RRAuditEventRequest, RRAuditEventResponse](
     settings, RRAuditEventActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRAuditEventRequest
   ) {

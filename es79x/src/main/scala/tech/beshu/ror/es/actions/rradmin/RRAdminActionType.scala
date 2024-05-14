@@ -28,7 +28,7 @@ class RRAdminActionType extends ActionType[RRAdminResponse](
 object RRAdminActionType {
   val name: String = RorAction.RorOldConfigAction.value
   val instance = new RRAdminActionType()
-  final case object RRAdminActionCannotBeTransported extends Exception
+  case object RRAdminActionCannotBeTransported extends Exception
   def exceptionReader[A]: Writeable.Reader[A] =
     _ => throw RRAdminActionCannotBeTransported
 }
