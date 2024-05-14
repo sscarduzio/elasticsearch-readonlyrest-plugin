@@ -18,7 +18,7 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
-import tech.beshu.ror.tools.core.patches.internal.{FilePatch, RorPluginDirectory}
+import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, FilePatch, RorPluginDirectory}
 
 private[patches] class XPackIlmJarPatchCreator(patchingSteps: FileModifier*)
   extends FilePatchCreator[XPackIlmJarPatch] {
@@ -31,7 +31,7 @@ private[patches] class XPackIlmJarPatchCreator(patchingSteps: FileModifier*)
 private[patches] class XPackIlmJarPatch(rorPluginDirectory: RorPluginDirectory,
                                              esVersion: SemVer,
                                              patchingSteps: Iterable[FileModifier])
-  extends FilePatch(
+  extends FileModifiersBasedPatch(
     rorPluginDirectory = rorPluginDirectory,
     fileToPatchPath = rorPluginDirectory.esDirectory.modulesPath / "x-pack-ilm" / s"x-pack-ilm-${esVersion.render}.jar",
     patchingSteps = patchingSteps

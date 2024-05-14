@@ -18,7 +18,7 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
-import tech.beshu.ror.tools.core.patches.internal.{FilePatch, RorPluginDirectory}
+import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, FilePatch, OptionalFilePatchDecorator, RorPluginDirectory}
 
 private[patches] class XPackSecurityJarPatchCreator(patchingSteps: FileModifier*)
   extends FilePatchCreator[XPackSecurityJarPatch] {
@@ -28,10 +28,21 @@ private[patches] class XPackSecurityJarPatchCreator(patchingSteps: FileModifier*
     new XPackSecurityJarPatch(rorPluginDirectory, esVersion, patchingSteps)
 }
 
+private[patches] class OptionalXPackSecurityJarPatchCreator(patchingSteps: FileModifier*)
+  extends FilePatchCreator[OptionalFilePatchDecorator[XPackSecurityJarPatch]] {
+
+  override def create(rorPluginDirectory: RorPluginDirectory,
+                      esVersion: SemVer): OptionalFilePatchDecorator[XPackSecurityJarPatch] = {
+    new OptionalFilePatchDecorator(
+      new XPackSecurityJarPatch(rorPluginDirectory, esVersion, patchingSteps)
+    )
+  }
+}
+
 private[patches] class XPackSecurityJarPatch(rorPluginDirectory: RorPluginDirectory,
                                              esVersion: SemVer,
                                              patchingSteps: Iterable[FileModifier])
-  extends FilePatch(
+  extends FileModifiersBasedPatch(
     rorPluginDirectory = rorPluginDirectory,
     fileToPatchPath = rorPluginDirectory.esDirectory.modulesPath / "x-pack-security" / s"x-pack-security-${esVersion.render}.jar",
     patchingSteps = patchingSteps

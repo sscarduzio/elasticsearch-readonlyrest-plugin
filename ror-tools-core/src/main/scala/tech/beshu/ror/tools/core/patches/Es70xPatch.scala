@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
-import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, XPackCoreJarPatchCreator, XPackSecurityJarPatchCreator}
+import tech.beshu.ror.tools.core.patches.internal.filePatchers._
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars._
 
 import scala.language.postfixOps
@@ -30,11 +30,11 @@ private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion),
       new SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
-    new XPackCoreJarPatchCreator(
+    new OptionalXPackCoreJarPatchCreator(
       AlwaysGrantApplicationPermission,
       GetAuthenticationFromHeaderWhenMissingInTransient
     ),
-    new XPackSecurityJarPatchCreator(
+    new OptionalXPackSecurityJarPatchCreator(
       DeactivateSecurityActionFilter,
       DeactivateSecurityServerTransportInterceptor,
       new MockAuthorizationInfoInAuthorizationService(esVersion),
