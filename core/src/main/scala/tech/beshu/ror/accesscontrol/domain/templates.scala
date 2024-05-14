@@ -16,13 +16,14 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import cats.implicits._
-import eu.timepit.refined.auto._
+import cats.implicits.*
+import eu.timepit.refined.auto.*
 import cats.Eq
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.matchers.{TemplateNamePatternMatcher, UniqueIdentifierGenerator}
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 sealed trait Template {
@@ -107,7 +108,7 @@ final case class TemplateNamePattern(value: NonEmptyString) {
 }
 object TemplateNamePattern {
   implicit val matchableTemplateNamePattern: Matchable[TemplateNamePattern] = Matchable.matchable(_.value.value)
-  val wildcard: TemplateNamePattern = TemplateNamePattern("*")
+  val wildcard: TemplateNamePattern = TemplateNamePattern(nes("*"))
 
   def fromString(value: String): Option[TemplateNamePattern] = {
     NonEmptyString
@@ -119,7 +120,7 @@ object TemplateNamePattern {
 
   def generateNonExistentBasedOn(templateNamePattern: TemplateNamePattern)
                                 (implicit identifierGenerator: UniqueIdentifierGenerator): TemplateNamePattern = {
-    val nonexistentTemplateNamePattern = s"${templateNamePattern.value}_ROR_${identifierGenerator.generate(10)}"
+    val nonexistentTemplateNamePattern = s"${templateNamePattern.value}_ROR_${identifierGenerator.generate(positiveInt(10))}"
     TemplateNamePattern(NonEmptyString.unsafeFrom(nonexistentTemplateNamePattern))
   }
 

@@ -20,7 +20,6 @@ import java.io.{File => JFile}
 import java.nio.file.Path
 import better.files.File
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import monix.eval.Task
@@ -28,12 +27,13 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers._
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
+import tech.beshu.ror.utils.RefinedUtils.*
 
 final case class RorIndexNameConfiguration(index: RorConfigurationIndex)
 
 object RorIndexNameConfiguration extends Logging {
 
-  private val defaultIndexName = IndexName.Full(".readonlyrest")
+  private val defaultIndexName = IndexName.Full(nes(".readonlyrest"))
 
   def load(esConfigFolderPath: Path)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = {

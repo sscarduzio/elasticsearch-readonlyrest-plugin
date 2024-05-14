@@ -17,7 +17,7 @@
 package tech.beshu.ror.mocks
 
 import java.time.{Clock, Instant}
-import com.softwaremill.sttp.Method
+import sttp.model.Method
 import eu.timepit.refined.auto._
 import monix.eval.Task
 import squants.information.{Bytes, Information}
@@ -31,6 +31,9 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.mocks.MockRequestContext.roAction
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
+
+import scala.annotation.nowarn
 
 object MockRequestContext {
 
@@ -79,7 +82,7 @@ object MockRequestContext {
 
 final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
-                                                override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                                override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                                 override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                 override val `type`: Type = Type("default-type"),
                                                 override val action: Action = roAction,
@@ -87,7 +90,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                 override val localAddress: Address = Address.from("localhost").get,
                                                 override val method: Method = Method("GET"),
-                                                override val uriPath: UriPath = UriPath("_search"),
+                                                override val uriPath: UriPath = UriPath.from("_search"),
                                                 override val contentLength: Information = Bytes(0),
                                                 override val content: String = "",
                                                 override val indexAttributes: Set[IndexAttribute] = Set.empty,
@@ -111,7 +114,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
 
 final case class MockFilterableMultiRequestContext(override val timestamp: Instant,
                                                    override val taskId: Long = 0L,
-                                                   override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                                   override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                                    override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                    override val `type`: Type = Type("default-type"),
                                                    override val action: Action = roAction,
@@ -146,7 +149,7 @@ final case class MockFilterableMultiRequestContext(override val timestamp: Insta
 
 final case class MockGeneralNonIndexRequestContext(override val timestamp: Instant,
                                                    override val taskId: Long = 0L,
-                                                   override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                                   override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                                    override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                    override val `type`: Type = Type("default-type"),
                                                    override val action: Action = roAction,
@@ -177,7 +180,7 @@ final case class MockGeneralNonIndexRequestContext(override val timestamp: Insta
 
 final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val taskId: Long = 0L,
-                                          override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                          override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                           override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                           override val `type`: Type = Type("default-type"),
                                           override val action: Action = roAction,
@@ -209,7 +212,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
 
 final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
-                                                override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                                override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                                 override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                 override val `type`: Type = Type("default-type"),
                                                 override val action: Action = Action.RorAction.RorUserMetadataAction,
@@ -240,7 +243,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
 
 final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val taskId: Long = 0L,
-                                             override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                             override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                              override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                              override val `type`: Type = Type("default-type"),
                                              override val action: Action = roAction,
@@ -271,7 +274,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
 
 final case class MockDataStreamsRequestContext(override val timestamp: Instant,
                                                override val taskId: Long = 0L,
-                                               override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                               override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                                override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                override val `type`: Type = Type("default-type"),
                                                override val action: Action = roAction,
@@ -302,7 +305,7 @@ final case class MockDataStreamsRequestContext(override val timestamp: Instant,
 
 final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
-                                                override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                                override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                                 override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                 override val `type`: Type = Type("default-type"),
                                                 override val action: Action = roAction,
@@ -332,7 +335,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
 
 final case class MockTemplateRequestContext(override val timestamp: Instant,
                                             override val taskId: Long = 0L,
-                                            override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                            override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                             override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                             override val `type`: Type = Type("default-type"),
                                             override val action: Action = Action("default-action"),
@@ -363,7 +366,7 @@ final case class MockTemplateRequestContext(override val timestamp: Instant,
 
 abstract class MockSimpleRequestContext[BC <: BlockContext](override val timestamp: Instant = Instant.now(),
                                                             override val taskId: Long = 0L,
-                                                            override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                                            override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                                             override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                             override val `type`: Type = Type("default-type"),
                                                             override val action: Action = roAction,
@@ -371,7 +374,7 @@ abstract class MockSimpleRequestContext[BC <: BlockContext](override val timesta
                                                             override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                             override val localAddress: Address = Address.from("localhost").get,
                                                             override val method: Method = Method("GET"),
-                                                            override val uriPath: UriPath = UriPath("PATH"),
+                                                            override val uriPath: UriPath = UriPath.from("PATH"),
                                                             override val contentLength: Information = Bytes(0),
                                                             override val content: String = "",
                                                             override val indexAttributes: Set[IndexAttribute] = Set.empty,
@@ -391,6 +394,6 @@ object MockSimpleRequestContext {
   def apply[BC <: BlockContext](blockContextCreator: RequestContext => BC,
                                 customAction: Action): MockSimpleRequestContext[BC] = new MockSimpleRequestContext[BC] {
     override val initialBlockContext: BC = blockContextCreator(this)
-    override val action: Action = customAction
+    @nowarn override val action: Action = customAction
   }
 }

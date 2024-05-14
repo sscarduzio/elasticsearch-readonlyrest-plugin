@@ -18,16 +18,16 @@ package tech.beshu.ror.utils
 
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
-import com.softwaremill.sttp.Uri
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
+import sttp.model.Uri
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
@@ -43,12 +43,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
@@ -114,7 +114,7 @@ object TestsUtils {
 
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
-  def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value.value).get
+  def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value).get
 
   def fullLocalIndexWithAliases(fullIndexName: IndexName.Full): FullLocalIndexWithAliases =
     fullLocalIndexWithAliases(fullIndexName, Set.empty)
@@ -137,7 +137,7 @@ object TestsUtils {
       backingIndices = Set(IndexName.Full(NonEmptyString.unsafeFrom(".ds-" + dataStreamName.value.value + "-2023")))
     )
 
-  def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value.value).get
+  def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value).get
 
   def indexName(str: NonEmptyString): IndexName = IndexName.fromString(str.value).get
 
@@ -326,7 +326,7 @@ object TestsUtils {
     }
   }
 
-  implicit class CurrentGroupToHeader(val group: GroupId) extends AnyVal {
+  implicit class CurrentGroupToHeader(group: GroupId) extends AnyVal {
     def toCurrentGroupHeader: Header = currentGroupHeader(group.value.value)
   }
 
@@ -348,9 +348,10 @@ object TestsUtils {
 
   def jsonPathFrom(value: String): JsonPath = JsonPath(value).get
 
-  def uriFrom(value: String): Uri = Uri.parse(value).get
+  def uriFrom(value: String): Uri = Uri.parse(value)
+    .left.map(errorMsg => throw new IllegalArgumentException(s"Cannot parse $value to sttp.model.Uri: $errorMsg")).merge
 
-  implicit class NonEmptyListOps[T](val value: T) extends AnyVal {
+  implicit class NonEmptyListOps[T](value: T) extends AnyVal {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)
   }
 
@@ -376,7 +377,7 @@ object TestsUtils {
     File(getResourcePath(resource)).contentAsString
   }
 
-  implicit class ValueOrIllegalState[ERROR, SUCCESS](val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
+  implicit class ValueOrIllegalState[ERROR, SUCCESS](eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 
     def valueOrThrowIllegalState()(implicit scheduler: Scheduler): SUCCESS = {
       eitherT.value.runSyncUnsafe() match {
@@ -385,4 +386,6 @@ object TestsUtils {
       }
     }
   }
+  
+  implicit def unsafeNes(str: String): NonEmptyString = NonEmptyString.unsafeFrom(str)
 }

@@ -39,6 +39,7 @@ import tech.beshu.ror.utils.TestsUtils._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class TokenAuthenticationRuleTests
   extends AnyWordSpec with Inside with BlockContextAssertion {

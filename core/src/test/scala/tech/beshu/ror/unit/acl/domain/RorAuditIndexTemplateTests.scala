@@ -25,6 +25,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class RorAuditIndexTemplateTests extends AnyWordSpec with Inside {
 

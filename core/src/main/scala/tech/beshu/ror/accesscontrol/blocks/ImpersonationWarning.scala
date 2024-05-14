@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks
 
 import cats.implicits.catsSyntaxOptionId
-import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor.noWarnings
@@ -34,6 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, Kiban
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{HostsRule, LocalHostsRule}
 
 import scala.annotation.nowarn
+import tech.beshu.ror.utils.RefinedUtils._
 
 final case class ImpersonationWarning(block: Block.Name,
                                       ruleName: Rule.Name,
@@ -41,10 +41,10 @@ final case class ImpersonationWarning(block: Block.Name,
                                       hint: String)
 
 object ImpersonationWarning {
-  sealed trait ImpersonationWarningSupport[+T <: Rule]
+  sealed trait ImpersonationWarningSupport[T <: Rule]
 
   object ImpersonationWarningSupport {
-    object NotSupported extends ImpersonationWarningSupport[Nothing]
+    final case class NotSupported[T <: Rule]() extends ImpersonationWarningSupport[T]
 
     trait ImpersonationWarningExtractor[T <: Rule with ImpersonationSupport] extends ImpersonationWarningSupport[T] {
       def warningFor(rule: T, blockName: Block.Name)
@@ -66,30 +66,30 @@ object ImpersonationWarning {
       }
     }
 
-    implicit val actionsRule: ImpersonationWarningSupport[ActionsRule] = NotSupported
-    implicit val apiKeyRule: ImpersonationWarningSupport[ApiKeysRule] = NotSupported
-    implicit val dataStreamsRule: ImpersonationWarningSupport[DataStreamsRule] = NotSupported
-    implicit val fieldsRule: ImpersonationWarningSupport[FieldsRule] = NotSupported
-    implicit val filterRule: ImpersonationWarningSupport[FilterRule] = NotSupported
-    implicit val headersAndRule: ImpersonationWarningSupport[HeadersAndRule] = NotSupported
-    implicit val headersOrRule: ImpersonationWarningSupport[HeadersOrRule] = NotSupported
-    implicit val hostsRule: ImpersonationWarningSupport[HostsRule] = NotSupported
-    implicit val indicesRule: ImpersonationWarningSupport[IndicesRule] = NotSupported
-    implicit val kibanaUserDataRule: ImpersonationWarningSupport[KibanaUserDataRule] = NotSupported
-    implicit val kibanaAccessRule: ImpersonationWarningSupport[KibanaAccessRule] = NotSupported
-    implicit val kibanaHideAppsRule: ImpersonationWarningSupport[KibanaHideAppsRule] = NotSupported
-    implicit val kibanaIndexRule: ImpersonationWarningSupport[KibanaIndexRule] = NotSupported
-    implicit val kibanaTemplateIndexRule: ImpersonationWarningSupport[KibanaTemplateIndexRule] = NotSupported
-    implicit val localHostsRule: ImpersonationWarningSupport[LocalHostsRule] = NotSupported
-    implicit val maxBodyLengthRule: ImpersonationWarningSupport[MaxBodyLengthRule] = NotSupported
-    implicit val methodsRule: ImpersonationWarningSupport[MethodsRule] = NotSupported
-    implicit val repositoriesRule: ImpersonationWarningSupport[RepositoriesRule] = NotSupported
-    implicit val responseFieldsRule: ImpersonationWarningSupport[ResponseFieldsRule] = NotSupported
-    implicit val sessionMaxIdleRule: ImpersonationWarningSupport[SessionMaxIdleRule] = NotSupported
-    implicit val snapshotsRule: ImpersonationWarningSupport[SnapshotsRule] = NotSupported
-    implicit val uriRegexRule: ImpersonationWarningSupport[UriRegexRule] = NotSupported
-    implicit val usersRule: ImpersonationWarningSupport[UsersRule] = NotSupported
-    implicit val xForwarderForRule: ImpersonationWarningSupport[XForwardedForRule] = NotSupported
+    implicit val actionsRule: ImpersonationWarningSupport[ActionsRule] = NotSupported()
+    implicit val apiKeyRule: ImpersonationWarningSupport[ApiKeysRule] = NotSupported()
+    implicit val dataStreamsRule: ImpersonationWarningSupport[DataStreamsRule] = NotSupported()
+    implicit val fieldsRule: ImpersonationWarningSupport[FieldsRule] = NotSupported()
+    implicit val filterRule: ImpersonationWarningSupport[FilterRule] = NotSupported()
+    implicit val headersAndRule: ImpersonationWarningSupport[HeadersAndRule] = NotSupported()
+    implicit val headersOrRule: ImpersonationWarningSupport[HeadersOrRule] = NotSupported()
+    implicit val hostsRule: ImpersonationWarningSupport[HostsRule] = NotSupported()
+    implicit val indicesRule: ImpersonationWarningSupport[IndicesRule] = NotSupported()
+    implicit val kibanaUserDataRule: ImpersonationWarningSupport[KibanaUserDataRule] = NotSupported()
+    implicit val kibanaAccessRule: ImpersonationWarningSupport[KibanaAccessRule] = NotSupported()
+    implicit val kibanaHideAppsRule: ImpersonationWarningSupport[KibanaHideAppsRule] = NotSupported()
+    implicit val kibanaIndexRule: ImpersonationWarningSupport[KibanaIndexRule] = NotSupported()
+    implicit val kibanaTemplateIndexRule: ImpersonationWarningSupport[KibanaTemplateIndexRule] = NotSupported()
+    implicit val localHostsRule: ImpersonationWarningSupport[LocalHostsRule] = NotSupported()
+    implicit val maxBodyLengthRule: ImpersonationWarningSupport[MaxBodyLengthRule] = NotSupported()
+    implicit val methodsRule: ImpersonationWarningSupport[MethodsRule] = NotSupported()
+    implicit val repositoriesRule: ImpersonationWarningSupport[RepositoriesRule] = NotSupported()
+    implicit val responseFieldsRule: ImpersonationWarningSupport[ResponseFieldsRule] = NotSupported()
+    implicit val sessionMaxIdleRule: ImpersonationWarningSupport[SessionMaxIdleRule] = NotSupported()
+    implicit val snapshotsRule: ImpersonationWarningSupport[SnapshotsRule] = NotSupported()
+    implicit val uriRegexRule: ImpersonationWarningSupport[UriRegexRule] = NotSupported()
+    implicit val usersRule: ImpersonationWarningSupport[UsersRule] = NotSupported()
+    implicit val xForwarderForRule: ImpersonationWarningSupport[XForwardedForRule] = NotSupported()
 
     implicit val authKeyPBKDF2WithHmacSHA512Rule: ImpersonationWarningExtractor[AuthKeyPBKDF2WithHmacSHA512Rule] = ImpersonationWarningExtractor[AuthKeyPBKDF2WithHmacSHA512Rule](fromHashedCredentials)
     implicit val authKeyRule: ImpersonationWarningExtractor[AuthKeyRule] = noWarnings[AuthKeyRule]
@@ -151,13 +151,13 @@ object ImpersonationWarning {
 
     private def fromHashedCredentials[R <: BasicAuthenticationRule[HashedCredentials]](rule: R,
                                                                                        blockName: Block.Name,
-                                                                                       @nowarn("cat=unused") requestId: RequestId): Option[ImpersonationWarning] = {
+                                                                                       @nowarn requestId: RequestId): Option[ImpersonationWarning] = {
       rule.settings.credentials match {
         case _: HashedCredentials.HashedUserAndPassword =>
           Some(ImpersonationWarning(
             block = blockName,
             ruleName = rule.name,
-            message = "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
+            message = nes("The rule contains fully hashed username and password. It doesn't support impersonation in this configuration"),
             hint = s"You can use second version of the rule and use not hashed username. Like that: `${rule.name.value}: USER_NAME:hash(PASSWORD)"
           ))
         case _: HashedCredentials.HashedOnlyPassword =>
@@ -169,7 +169,7 @@ object ImpersonationWarning {
       ImpersonationWarning(
         block = blockName,
         ruleName = rule.name,
-        message = "Impersonation is not supported by this rule",
+        message = nes("Impersonation is not supported by this rule"),
         hint = "We plan to support it in the future"
       )
 

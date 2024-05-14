@@ -17,14 +17,16 @@ package tech.beshu.ror.configuration.loader.distributed.internode.dto
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-import cats.implicits._
-import io.circe.generic.extras.ConfiguredJsonCodec
+import cats.implicits.*
+import io.circe.Codec
+import io.circe.generic.semiauto.deriveCodec
 import tech.beshu.ror.configuration.loader.distributed.NodeConfig
 
-
-@ConfiguredJsonCodec
 final case class NodeConfigDTO(loadedConfig: Either[LoadedConfigErrorDto, LoadedConfigDTO])
+
 object NodeConfigDTO {
+
+  implicit val codec: Codec[NodeConfigDTO] = deriveCodec
 
   def create(o: NodeConfig): NodeConfigDTO =
     new NodeConfigDTO(

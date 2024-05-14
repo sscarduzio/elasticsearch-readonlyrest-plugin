@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.SingletonLdapContainers
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthRule] {

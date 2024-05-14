@@ -16,10 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
-import com.softwaremill.sttp.asynchttpclient.cats.AsyncHttpClientCatsBackend
-import com.softwaremill.sttp.{MonadError, Request, Response, SttpBackend}
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import io.netty.util.HashedWheelTimer
 import monix.eval.Task
@@ -28,12 +25,17 @@ import org.apache.logging.log4j.scala.Logging
 import org.asynchttpclient.Dsl.asyncHttpClient
 import org.asynchttpclient.netty.channel.DefaultChannelPool
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig}
+import sttp.capabilities
+import sttp.client3.asynchttpclient.cats.AsyncHttpClientCatsBackend
+import sttp.client3.{Request, Response, SttpBackend}
+import sttp.monad.MonadError
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
-import tech.beshu.ror.utils.DurationOps._
+import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.RefinedUtils.*
 
-import java.util.concurrent.CopyOnWriteArrayList
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import java.util.concurrent.{CopyOnWriteArrayList, TimeUnit}
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
 trait HttpClientsFactory {
@@ -44,17 +46,18 @@ trait HttpClientsFactory {
 }
 
 object HttpClientsFactory {
-  type HttpClient = SttpBackend[Task, Nothing]
+  type HttpClient = SttpBackend[Task, Any]
 
   final case class Config(connectionTimeout: PositiveFiniteDuration,
                           requestTimeout: PositiveFiniteDuration,
                           connectionPoolSize: Int Refined Positive,
                           validate: Boolean)
+
   object Config {
     val default: Config = Config(
-      connectionTimeout = (2 seconds).toRefinedPositiveUnsafe,
-      requestTimeout = (5 seconds).toRefinedPositiveUnsafe,
-      connectionPoolSize = 30,
+      connectionTimeout = positiveFiniteDuration(2, TimeUnit.SECONDS),
+      requestTimeout = positiveFiniteDuration(5, TimeUnit.SECONDS),
+      connectionPoolSize = positiveInt(30),
       validate = true
     )
   }
@@ -71,7 +74,7 @@ class AsyncHttpClientsFactory extends HttpClientsFactory {
     if (isWorking.get()) {
       val asyncHttpClient = newAsyncHttpClient(config)
       existingClients.add(asyncHttpClient)
-      new LoggingSttpBackend[Task, Nothing](AsyncHttpClientCatsBackend.usingClient(asyncHttpClient))
+      new LoggingSttpBackend[Task, Any](AsyncHttpClientCatsBackend.usingClient[Task](asyncHttpClient))
     } else {
       throw new IllegalStateException("Cannot create http client - factory was closed")
     }
@@ -95,11 +98,11 @@ class AsyncHttpClientsFactory extends HttpClientsFactory {
   }
 }
 
-private class LoggingSttpBackend[R[_], S](delegate: SttpBackend[R, S])
-  extends SttpBackend[R, S]
+private class LoggingSttpBackend[F[_], +P](delegate: SttpBackend[F, P])
+  extends SttpBackend[F, P]
     with Logging {
 
-  override def send[T](request: Request[T, S]): R[Response[T]] = {
+  override def send[T, R >: P with capabilities.Effect[F]](request: Request[T, R]): F[Response[T]] = {
     responseMonad
       .map(
         responseMonad
@@ -118,7 +121,7 @@ private class LoggingSttpBackend[R[_], S](delegate: SttpBackend[R, S])
       }
   }
 
-  override def close(): Unit = delegate.close()
+  override def close(): F[Unit] = delegate.close()
 
-  override def responseMonad: MonadError[R] = delegate.responseMonad
+  override def responseMonad: MonadError[F] = delegate.responseMonad
 }

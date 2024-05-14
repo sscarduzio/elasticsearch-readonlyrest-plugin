@@ -16,14 +16,38 @@
  */
 package tech.beshu.ror.configuration.loader.external.dto
 
-import cats.implicits._
-import io.circe.generic.extras.{Configuration, ConfiguredJsonCodec}
+import cats.implicits.*
+import io.circe.Codec
 import tech.beshu.ror.configuration.loader.distributed.Summary
 import tech.beshu.ror.configuration.loader.distributed.Summary.{NodeForcedFileConfig, NodeReturnedDifferentConfig}
+import tech.beshu.ror.utils.CirceOps.*
 
-@ConfiguredJsonCodec
 sealed trait NodesResponseWaringDTO
+
 object NodesResponseWaringDTO {
+
+  implicit val codec: Codec[NodesResponseWaringDTO] = codecWithTypeDiscriminator(
+    encode = {
+      case dto: NODE_RETURNED_DIFFERENT_CONFIG =>
+        derivedEncoderWithType[NODE_RETURNED_DIFFERENT_CONFIG]("NODE_RETURNED_DIFFERENT_CONFIG")(dto)
+      case dto: NODE_FORCED_FILE_CONFIG =>
+        derivedEncoderWithType[NODE_FORCED_FILE_CONFIG]("NODE_FORCED_FILE_CONFIG")(dto)
+      case dto: NODE_RETURNED_CONFIG_ERROR =>
+        derivedEncoderWithType[NODE_RETURNED_CONFIG_ERROR]("NODE_RETURNED_CONFIG_ERROR")(dto)
+      case dto: NODE_RETURNED_UNKNOWN_ERROR =>
+        derivedEncoderWithType[NODE_RETURNED_UNKNOWN_ERROR]("NODE_RETURNED_UNKNOWN_ERROR")(dto)
+      case dto: NODE_RESPONSE_TIMEOUT_ERROR =>
+        derivedEncoderWithType[NODE_RESPONSE_TIMEOUT_ERROR]("NODE_RESPONSE_TIMEOUT_ERROR")(dto)
+    },
+    decoders = Map(
+      "NODE_RETURNED_DIFFERENT_CONFIG" -> derivedDecoderOfSubtype[NodesResponseWaringDTO, NODE_RETURNED_DIFFERENT_CONFIG],
+      "NODE_FORCED_FILE_CONFIG" -> derivedDecoderOfSubtype[NodesResponseWaringDTO, NODE_FORCED_FILE_CONFIG],
+      "NODE_RETURNED_CONFIG_ERROR" -> derivedDecoderOfSubtype[NodesResponseWaringDTO, NODE_RETURNED_CONFIG_ERROR],
+      "NODE_RETURNED_UNKNOWN_ERROR" -> derivedDecoderOfSubtype[NodesResponseWaringDTO, NODE_RETURNED_UNKNOWN_ERROR],
+      "NODE_RESPONSE_TIMEOUT_ERROR" -> derivedDecoderOfSubtype[NodesResponseWaringDTO, NODE_RESPONSE_TIMEOUT_ERROR],
+    )
+  )
+
   def create(warning: Summary.Warning): NodesResponseWaringDTO = warning match {
     case w: Summary.NodeReturnedConfigError => NODE_RETURNED_CONFIG_ERROR.create(w)
     case w: Summary.NodeReturnedUnknownError => NODE_RETURNED_UNKNOWN_ERROR.create(w)
@@ -69,8 +93,6 @@ object NodesResponseWaringDTO {
         nodeId = o.nodeId.value,
       )
   }
-
-  implicit val configuration: Configuration = Configuration.default.withDiscriminator("type")
 }
 
 

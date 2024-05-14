@@ -54,6 +54,7 @@ import java.security.Key
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class JwtAuthRuleTests
   extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion with WithDummyRequestIdSupport {

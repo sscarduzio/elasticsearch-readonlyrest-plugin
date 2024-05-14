@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ExternalAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ExternalAuthenticationRule] with MockFactory {
@@ -215,7 +216,7 @@ class ExternalAuthenticationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """external_authentication:
                 |  service: "ext1"
                 |""".stripMargin
@@ -244,7 +245,7 @@ class ExternalAuthenticationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """external_authentication: null
                 |""".stripMargin
             )))
@@ -296,7 +297,7 @@ class ExternalAuthenticationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- authentication_endpoint: "http://localhost:8080/auth1"
                 |  success_status_code: 200
                 |  cache_ttl_in_sec: 60
@@ -356,7 +357,7 @@ class ExternalAuthenticationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "ext1"
                 |  success_status_code: 200
                 |  cache_ttl_in_sec: 60
@@ -409,7 +410,7 @@ class ExternalAuthenticationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "ext1"
                 |  authentication_endpoint: "http://localhost:8080/auth1"
                 |  success_status_code: "success"

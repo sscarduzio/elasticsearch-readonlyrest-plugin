@@ -21,6 +21,7 @@ import eu.timepit.refined.auto._
 import org.scalatest.freespec.AnyFreeSpecLike
 import org.scalatest.matchers.should.Matchers
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class TemplateNamePatternTests extends AnyFreeSpecLike with Matchers {
 

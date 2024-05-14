@@ -40,6 +40,10 @@ final case class BasicAuth private(credentials: Credentials) {
   )
 }
 object BasicAuth extends Logging {
+  def fromCredentials(credentials: Credentials) = {
+    BasicAuth(credentials)
+  }
+  
   def fromHeader(header: Header): Option[BasicAuth] = {
     header.name match {
       case name if name === Header.Name.authorization => parse(header.value)

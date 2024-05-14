@@ -72,13 +72,16 @@ docker {
 
 tasks.withType(ScalaCompile).configureEach {
     scalaCompileOptions.additionalParameters = [
-            "-unchecked",
-            "-Ywarn-macros:after",
             "-feature",
-            "-Ymacro-annotations",
             "-Xfatal-warnings",
-            "-Ywarn-unused",
-            "-Wunused:nowarn"
+            "-Wunused:implicits",
+            "-Wunused:imports",
+            "-Wunused:explicits",
+            "-Wunused:strict-no-implicit-warn",
+            "-Wunused:locals",
+            "-Wunused:params",
+            "-Wunused:privates",
+            "-Wunused:nowarn",
     ]
 }
 

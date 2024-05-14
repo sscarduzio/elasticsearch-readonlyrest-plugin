@@ -105,7 +105,7 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """hosts_local: null
                 |""".stripMargin)))
           }

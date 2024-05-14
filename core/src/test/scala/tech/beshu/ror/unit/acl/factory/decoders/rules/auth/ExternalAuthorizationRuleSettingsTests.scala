@@ -39,6 +39,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ExternalAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ExternalAuthorizationRule] with MockFactory with Inside {
@@ -505,7 +506,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """groups_provider_authorization:
                 |  groups:
                 |  - "group3"
@@ -624,7 +625,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- groups_endpoint: "http://localhost:8080/groups"
                 |  auth_token_name: "user"
                 |  auth_token_passed_as: "QUERY_PARAM"
@@ -696,7 +697,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "GroupsService1"
                 |  auth_token_name: "user"
                 |  auth_token_passed_as: "QUERY_PARAM"
@@ -759,7 +760,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "GroupsService1"
                 |  groups_endpoint: "http://localhost:8080/groups"
                 |  auth_token_name: "user"
@@ -971,7 +972,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "GroupsService1"
                 |  groups_endpoint: "http://localhost:8080/groups"
                 |  auth_token_passed_as: "QUERY_PARAM"

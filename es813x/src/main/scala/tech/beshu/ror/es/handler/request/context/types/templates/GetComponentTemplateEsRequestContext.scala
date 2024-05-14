@@ -36,6 +36,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.RefinedUtils._
 
 import scala.jdk.CollectionConverters._
 
@@ -54,7 +55,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
         .flatMap(TemplateNamePattern.fromString)
     }
     .getOrElse {
-      NonEmptyList.one(TemplateNamePattern("*"))
+      NonEmptyList.one(TemplateNamePattern(nes("*")))
     }
 
   override protected def templateOperationFrom(request: GetComponentTemplateAction.Request): GettingComponentTemplates = {
@@ -76,7 +77,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
                | component templates [${namePatterns.show}]""".stripMargin)
         }
         actionRequest.name(namePatterns.head.value.value)
-        updateResponse(using = blockContext)
+        updateResponse(usingContext = blockContext)
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
@@ -85,13 +86,13 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
     }
   }
 
-  private def updateResponse(using: TemplateRequestBlockContext) = {
+  private def updateResponse(usingContext: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetComponentTemplateAction.Response =>
         Task.now(new GetComponentTemplateAction.Response(
           filter(
             templates = r.getComponentTemplates.asSafeMap,
-            using = using.responseTemplateTransformation
+            usingTemplate = usingContext.responseTemplateTransformation
           )
         ))
       case other =>
@@ -100,7 +101,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
   }
 
   private def filter(templates: Map[String, MetadataComponentTemplate],
-                     using: Set[Template] => Set[Template]) = {
+                     usingTemplate: Set[Template] => Set[Template]) = {
     val templatesMap = templates
       .flatMap { case (name, componentTemplate) =>
         toComponentTemplate(name, componentTemplate) match {
@@ -113,7 +114,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
             None
         }
       }
-    val filteredTemplates = using(templatesMap.keys.toSet)
+    val filteredTemplates = usingTemplate(templatesMap.keys.toSet)
     templatesMap
       .flatMap { case (template, (name, componentTemplate)) =>
         filteredTemplates

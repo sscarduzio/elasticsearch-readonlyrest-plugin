@@ -17,7 +17,8 @@
 package tech.beshu.ror.utils
 
 import cats.data.NonEmptyList
-import com.comcast.ip4s.Cidr
+import cats.effect.Blocker
+import com.comcast.ip4s.{Cidr, Dns}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.Address.{Ip, Name}
@@ -26,6 +27,11 @@ class Ip4sBasedHostnameResolver extends HostnameResolver {
 
   // fixme: (improvements) blocking resolving (shift to another EC)
   def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]] = {
-    hostname.value.resolveAll[Task].map(_.map(_.map(ip => Ip(Cidr(ip, 32)))))
+    Blocker[Task].use { implicit blocker =>
+      implicit val dns: Dns[Task] = Dns.forSync[Task]
+      hostname.value
+        .resolveAll[Task]
+        .map(NonEmptyList.fromList(_).map(_.map(ip => Ip(Cidr(ip, 32)))))
+    }
   }
 }

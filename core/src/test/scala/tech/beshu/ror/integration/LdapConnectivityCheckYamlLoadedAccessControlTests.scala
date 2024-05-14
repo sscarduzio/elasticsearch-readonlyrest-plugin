@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests
   extends AnyWordSpec

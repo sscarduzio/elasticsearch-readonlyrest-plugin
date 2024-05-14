@@ -21,6 +21,7 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, fullIndexName, fullLocalIndexWithAliases}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 trait IndicesRuleRemoteIndexTests {
   this: BaseIndicesRuleTests =>

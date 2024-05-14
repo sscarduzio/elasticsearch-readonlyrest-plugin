@@ -16,18 +16,18 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.variables.transformation
 
-import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{Function, FunctionDefinition}
+import tech.beshu.ror.utils.RefinedUtils._
 
 final case class SupportedVariablesFunctions(functions: Seq[FunctionDefinition])
 
 object SupportedVariablesFunctions {
   val default: SupportedVariablesFunctions = SupportedVariablesFunctions(
     Seq(
-      FunctionDefinition[Function.ReplaceAll]("replace_all"),
-      FunctionDefinition[Function.ReplaceFirst]("replace_first"),
-      FunctionDefinition[Function.ToLowerCase]("to_lowercase"),
-      FunctionDefinition[Function.ToUpperCase]("to_uppercase"),
+      FunctionDefinition[Function.ReplaceAll](nes("replace_all")),
+      FunctionDefinition[Function.ReplaceFirst](nes("replace_first")),
+      FunctionDefinition[Function.ToLowerCase](nes("to_lowercase")),
+      FunctionDefinition[Function.ToUpperCase](nes("to_uppercase")),
     )
   )
 }

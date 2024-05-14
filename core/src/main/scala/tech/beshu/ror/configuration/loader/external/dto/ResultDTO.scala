@@ -16,8 +16,9 @@
  */
 package tech.beshu.ror.configuration.loader.external.dto
 
-import cats.implicits._
+import cats.implicits.*
 import io.circe.Codec
+import io.circe.generic.semiauto.deriveCodec
 import tech.beshu.ror.configuration.loader.distributed.Summary
 import tech.beshu.ror.configuration.loader.distributed.Summary.{Error, Result}
 
@@ -41,5 +42,5 @@ object ResultDTO {
     ResultDTO(None, Nil, message.some)
   }
 
-  implicit val codec: Codec[ResultDTO] = io.circe.generic.extras.semiauto.deriveConfiguredCodec
+  implicit val codec: Codec[ResultDTO] = deriveCodec
 }

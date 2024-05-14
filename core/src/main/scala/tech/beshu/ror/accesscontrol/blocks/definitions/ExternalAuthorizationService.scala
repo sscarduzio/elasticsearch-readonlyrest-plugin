@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import cats.implicits._
 import cats.{Eq, Show}
-import com.softwaremill.sttp._
+import sttp.model.Uri
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorization
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config._
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService._
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
@@ -81,14 +82,14 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
   }
 
   private def createRequest(userId: User.Id) = {
-    val uriWithParams = config.uri.params(queryParams(userId))
+    val uriWithParams = config.uri.addParams(queryParams(userId))
     config.method match {
       case SupportedHttpMethod.Get =>
-        sttp
+        sttp.client3.basicRequest
           .get(uriWithParams)
           .headers(headersMap(userId))
       case SupportedHttpMethod.Post =>
-        sttp
+        sttp.client3.basicRequest
           .post(uriWithParams)
           .headers(headersMap(userId))
     }
@@ -182,6 +183,8 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
 }
 
 object HttpExternalAuthorizationService {
+
+  import Config.*
 
   final case class Config(uri: Uri,
                           method: SupportedHttpMethod,

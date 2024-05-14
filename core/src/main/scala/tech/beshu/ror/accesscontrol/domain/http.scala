@@ -16,17 +16,18 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import eu.timepit.refined.auto._
-import cats.{Eq, Show}
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits.*
+import cats.{Eq, Show}
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.constants
-import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError._
+import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.*
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.show.logs.*
+import tech.beshu.ror.constants
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.{Locale, UUID}
 import scala.util.Try
@@ -42,20 +43,20 @@ final case class Header(name: Header.Name, value: NonEmptyString)
 object Header {
   final case class Name(value: NonEmptyString)
   object Name {
-    val authorization = Name("Authorization")
-    val xApiKeyHeaderName = Header.Name("X-Api-Key")
-    val xForwardedFor = Name("X-Forwarded-For")
-    val xForwardedUser = Name("X-Forwarded-User")
-    val cookie = Name("Cookie")
-    val setCookie = Name("Set-Cookie")
-    val transientFields = Name("_fields")
-    val userAgent = Name("User-Agent")
+    val authorization = Name(nes("Authorization"))
+    val xApiKeyHeaderName = Header.Name(nes("X-Api-Key"))
+    val xForwardedFor = Name(nes("X-Forwarded-For"))
+    val xForwardedUser = Name(nes("X-Forwarded-User"))
+    val cookie = Name(nes("Cookie"))
+    val setCookie = Name(nes("Set-Cookie"))
+    val transientFields = Name(nes("_fields"))
+    val userAgent = Name(nes("User-Agent"))
 
-    val xUserOrigin = Name("x-ror-origin")
-    val kibanaRequestPath = Name("x-ror-kibana-request-path")
-    val currentGroup = Name("x-ror-current-group")
-    val impersonateAs = Name("x-ror-impersonating")
-    val correlationId = Name("x-ror-correlation-id")
+    val xUserOrigin = Name(nes("x-ror-origin"))
+    val kibanaRequestPath = Name(nes("x-ror-kibana-request-path"))
+    val currentGroup = Name(nes("x-ror-current-group"))
+    val impersonateAs = Name(nes("x-ror-impersonating"))
+    val correlationId = Name(nes("x-ror-correlation-id"))
 
     implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))
   }
@@ -133,7 +134,7 @@ object Header {
   }
 
   private def headerFrom(value: String) = {
-    import tech.beshu.ror.utils.StringWiseSplitter._
+    import tech.beshu.ror.utils.StringWiseSplitter.*
     value
       .toNonEmptyStringsTuple
       .bimap(
@@ -149,7 +150,7 @@ object Header {
     final case class RorMetadataInvalidFormat(value: String, message: String) extends AuthorizationValueError
   }
 
-  implicit val eqHeader: Eq[Header] = Eq.by(header => (header.name, header.value.value))
+  implicit val eqHeader: Eq[Header] = Eq.by[Header, (String, String)](header => (header.name.value, header.value.value))
 }
 
 sealed trait Address
@@ -169,10 +170,10 @@ object Address {
     Cidr.fromString(value).map(Address.Ip.apply)
 
   private def parseHostname(value: String) =
-    Hostname(value).map(Address.Name.apply)
+    Hostname.fromString(value).map(Address.Name.apply)
 
   private def parseIpAddress(value: String) =
-    (cutOffZoneIndex _ andThen IpAddress.apply andThen (_.map(createAddressIp))) (value)
+    (cutOffZoneIndex _ andThen IpAddress.fromString andThen (_.map(createAddressIp))) (value)
 
   private def createAddressIp(ip: IpAddress) =
     Address.Ip(Cidr(ip, 32))
@@ -210,7 +211,7 @@ final case class UriPath private(value: NonEmptyString) {
 object UriPath {
   val currentUserMetadataPath = UriPath(NonEmptyString.unsafeFrom(constants.CURRENT_USER_METADATA_PATH))
   val auditEventPath = UriPath(NonEmptyString.unsafeFrom(constants.AUDIT_EVENT_COLLECTOR_PATH))
-  val slashPath = UriPath("/")
+  val slashPath = UriPath(nes("/"))
 
   implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
 

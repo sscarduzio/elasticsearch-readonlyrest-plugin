@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
-import eu.timepit.refined.auto._
-import tech.beshu.ror.accesscontrol.domain.{Action, ClusterIndexName, DataStreamName, IndexName}
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
+import tech.beshu.ror.accesscontrol.domain.{Action, ClusterIndexName, DataStreamName, IndexName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.utils.RefinedUtils.*
 
 object KibanaActionMatchers {
 
@@ -108,9 +108,9 @@ object KibanaActionMatchers {
   val indicesWriteAction: PatternsMatcher[Action] = PatternsMatcher.create(Set(Action("indices:data/write/*")))
 
   val kibanaSampleDataIndexMatcher: PatternsMatcher[ClusterIndexName] = PatternsMatcher.create(
-    Set(Local(IndexName.Pattern("kibana_sample_data_*")))
+    Set(Local(IndexName.Pattern.unsafeFromNes(nes("kibana_sample_data_*"))))
   )
   val kibanaSampleDataStreamMatcher: PatternsMatcher[DataStreamName] = PatternsMatcher.create(
-    Set(DataStreamName.Pattern("kibana_sample_data_*"))
+    Set(DataStreamName.Pattern.fromNes(nes("kibana_sample_data_*")))
   )
 }

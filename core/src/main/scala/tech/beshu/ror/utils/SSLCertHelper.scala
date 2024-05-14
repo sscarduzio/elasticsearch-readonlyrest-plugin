@@ -286,10 +286,10 @@ object SSLCertHelper extends Logging {
       .use { certificateChainFile =>
         IO {
           val certFactory = CertificateFactory.getInstance("X.509")
-          certFactory.generateCertificates(certificateChainFile).asScala.toArray.map {
+          certFactory.generateCertificates(certificateChainFile).asScala.map {
             case cc: X509Certificate => cc
             case _ => throw MalformedSslSettings(s"Certificate chain in $file contains invalid X509 certificate")
-          }
+          }.toArray[X509Certificate]
         }
       }
   }
