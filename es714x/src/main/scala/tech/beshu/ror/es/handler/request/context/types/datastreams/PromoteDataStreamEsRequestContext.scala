@@ -55,7 +55,7 @@ object PromoteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsCon
     ) match {
       case MatchResult.Matched(dataStreams) =>
         Some(new PromoteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
-      case MatchResult.NotMatched =>
+      case MatchResult.NotMatched() =>
         None
     }
   }

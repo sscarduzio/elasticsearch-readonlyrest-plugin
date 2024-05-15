@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.handler.request.context
 
-import com.softwaremill.sttp.Method
+import sttp.model.Method
 import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.RCUtils
+import tech.beshu.ror.utils.RefinedUtils._
 
 import java.time.Instant
 import scala.jdk.CollectionConverters._
@@ -79,7 +80,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   override lazy val uriPath: UriPath =
     UriPath
       .from(restRequest.path())
-      .getOrElse(UriPath("/"))
+      .getOrElse(UriPath.from(nes("/")))
 
   override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
 

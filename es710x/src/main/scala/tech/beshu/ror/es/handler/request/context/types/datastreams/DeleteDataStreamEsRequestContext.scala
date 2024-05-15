@@ -69,7 +69,7 @@ object DeleteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsCont
     ) match {
       case MatchResult.Matched(dataStreams) =>
         Some(new DeleteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
-      case MatchResult.NotMatched =>
+      case MatchResult.NotMatched() =>
         None
     }
   }

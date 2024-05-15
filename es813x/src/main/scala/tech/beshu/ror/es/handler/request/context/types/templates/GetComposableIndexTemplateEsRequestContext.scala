@@ -76,7 +76,7 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
           if (namePatterns.tail.isEmpty) namePatterns.head
           else TemplateNamePattern.findMostGenericTemplateNamePatten(namePatterns)
         updateRequest(templateNamePatternToUse)
-        updateResponse(usingContext = blockContext)
+        updateResponse(`using` = blockContext)
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
@@ -90,14 +90,14 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
     on(actionRequest).set("name", templateNamePattern.value.value)
   }
 
-  private def updateResponse(usingContext: TemplateRequestBlockContext) = {
+  private def updateResponse(`using`: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetComposableIndexTemplateAction.Response =>
         Task.now(new GetComposableIndexTemplateAction.Response(
           GetComposableIndexTemplateEsRequestContext
             .filter(
               templates = r.indexTemplates().asSafeMap,
-              usingTemplate = usingContext.responseTemplateTransformation
+              usingTemplate = `using`.responseTemplateTransformation
             )
             .asJava
         ))

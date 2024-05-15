@@ -58,7 +58,7 @@ object MigrateToDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsC
     ) match {
       case MatchResult.Matched(indices) =>
         Some(new MigrateToDataStreamEsRequestContext(arg.esContext.actionRequest, indices, arg.esContext, arg.clusterService, arg.threadPool))
-      case MatchResult.NotMatched =>
+      case MatchResult.NotMatched() =>
         None
     }
   }

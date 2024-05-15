@@ -170,3 +170,5 @@ tasks.withType(AbstractPublishToMaven.class).configureEach {
     def signingTasks = tasks.withType(Sign.class)
     mustRunAfter(signingTasks)
 }
+
+jar.duplicatesStrategy = DuplicatesStrategy.EXCLUDE

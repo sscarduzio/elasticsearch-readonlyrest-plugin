@@ -57,7 +57,7 @@ private[datastreams] object CreateDataStreamEsRequestContext extends ReflectionB
     ) match {
       case MatchResult.Matched(dataStreams) =>
         Some(new CreateDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
-      case MatchResult.NotMatched =>
+      case MatchResult.NotMatched() =>
         None
     }
   }

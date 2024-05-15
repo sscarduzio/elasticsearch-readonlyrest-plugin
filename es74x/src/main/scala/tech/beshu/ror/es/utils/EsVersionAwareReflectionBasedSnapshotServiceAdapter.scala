@@ -34,7 +34,7 @@ class EsVersionAwareReflectionBasedSnapshotServiceAdapter(snapshotsService: Snap
   }
 
   private def getRepositoriesDataForPostEs76x(repository: RepositoryName): RepositoryData = {
-    val repositoryData: RepositoryData = PlainActionFuture.get { fut: PlainActionFuture[RepositoryData] =>
+    val repositoryData: RepositoryData = PlainActionFuture.get { (fut: PlainActionFuture[RepositoryData]) =>
       doPrivileged {
         on(snapshotsService).call("getRepositoryData", RepositoryName.toString(repository), fut)
       }

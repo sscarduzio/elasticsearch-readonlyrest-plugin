@@ -57,7 +57,7 @@ object SearchRequestOps extends Logging {
     }
 
     private def provideNewQueryWithAppliedFilter(queryBuilder: Option[QueryBuilder],
-                                                 filterQuery: QueryBuilder) = {
+                                                 filterQuery: QueryBuilder): AbstractQueryBuilder[_] = {
       queryBuilder match {
         case Some(requestedQuery) =>
           QueryBuilders.boolQuery()
