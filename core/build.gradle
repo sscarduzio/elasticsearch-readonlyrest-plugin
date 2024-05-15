@@ -112,7 +112,7 @@ dependencies {
     api group: 'com.lihaoyi',               name: 'upickle_2.13',                           version: '3.1.0'
     // https://www.bouncycastle.org/latest_releases.html#1.0.2.4-NONCERT
     api group: 'org.bouncycastle',          name: 'bc-noncert',                             version: '1.0.2.4'
-    api(group: 'org.bouncycastle',          name: 'bctls-fips',                             version: '1.0.17') {
+    api(group: 'org.bouncycastle',          name: 'bctls-fips',                             version: '1.0.19') {
         exclude group: 'org.bouncycastle', module: 'bc-fips'
     }
     api(group: 'org.bouncycastle',          name: 'bcpkix-fips',                            version: '1.0.7') {
