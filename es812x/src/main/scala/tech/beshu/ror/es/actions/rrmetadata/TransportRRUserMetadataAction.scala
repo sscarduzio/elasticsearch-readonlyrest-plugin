@@ -24,12 +24,12 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 
 import java.util.concurrent.Executor
-import scala.annotation.nowarn
+import scala.annotation.unused
 
 class TransportRRUserMetadataAction(transportService: TransportService,
                                     actionFilters: ActionFilters,
                                     executor: Executor,
-                                    @nowarn("cat=unused") constructorDiscriminator: Unit)
+                                    @unused constructorDiscriminator: Unit)
   extends HandledTransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
     RRUserMetadataActionType.name, transportService, actionFilters, RRUserMetadataActionType.exceptionReader[RRUserMetadataRequest], executor
   ) {

@@ -81,7 +81,12 @@ tasks.withType(ScalaCompile).configureEach {
             "-Wunused:locals",
             "-Wunused:params",
             "-Wunused:privates",
-            "-Wunused:nowarn",
+            // There are multiple reports of issues with `-Wunused:nowarn` flag when using Scala 3.3.X
+            // It seems that this problem occurs in es{version}x modules when using deprecated `org.elasticsearch.index.query.CommonTermsQueryBuilder`
+            // - https://github.com/scala/scala3/issues/19992
+            // - https://github.com/scala/scala3/issues/18341
+            // - https://users.scala-lang.org/t/wunused-on-scala-3-3-0/9401
+            // "-Wunused:nowarn",
     ]
 }
 

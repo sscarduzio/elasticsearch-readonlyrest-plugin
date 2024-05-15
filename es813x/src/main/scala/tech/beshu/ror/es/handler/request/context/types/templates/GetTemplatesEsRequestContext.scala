@@ -72,7 +72,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
     blockContext.templateOperation match {
       case GettingLegacyTemplates(namePatterns) =>
         updateRequest(namePatterns)
-        updateResponse(usingContext = blockContext)
+        updateResponse(`using` = blockContext)
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
@@ -86,14 +86,14 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
     on(actionRequest).set("names", templateNamePatterns.map(_.value.value).toList.toArray)
   }
 
-  private def updateResponse(usingContext: TemplateRequestBlockContext) = {
+  private def updateResponse(`using`: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetIndexTemplatesResponse =>
         Task.now(new GetIndexTemplatesResponse(
           GetTemplatesEsRequestContext
             .filter(
               templates = r.getIndexTemplates.asSafeList,
-              usingTemplate = usingContext.responseTemplateTransformation
+              usingTemplate = `using`.responseTemplateTransformation
             )
             .asJava
         ))

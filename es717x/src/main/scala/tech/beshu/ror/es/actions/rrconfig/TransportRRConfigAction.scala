@@ -30,10 +30,11 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
+import tech.beshu.ror.configuration.loader._
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
 
-import scala.annotation.nowarn
+import scala.annotation.unused
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -48,7 +49,7 @@ class TransportRRConfigAction(actionName: String,
                               nodeRequest: Writeable.Reader[RRConfigRequest],
                               nodeExecutor: String,
                               nodeResponseClass: Class[RRConfig],
-                              @nowarn("cat=unused") constructorDiscriminator: Unit)
+                              @unused constructorDiscriminator: Unit)
   extends TransportNodesAction[RRConfigsRequest, RRConfigsResponse, RRConfigRequest, RRConfig](
     actionName,
     threadPool,

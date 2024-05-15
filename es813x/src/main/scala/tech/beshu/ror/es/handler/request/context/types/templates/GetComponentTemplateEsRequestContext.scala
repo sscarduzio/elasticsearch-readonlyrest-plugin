@@ -77,7 +77,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
                | component templates [${namePatterns.show}]""".stripMargin)
         }
         actionRequest.name(namePatterns.head.value.value)
-        updateResponse(usingContext = blockContext)
+        updateResponse(`using` = blockContext)
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
@@ -86,13 +86,13 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
     }
   }
 
-  private def updateResponse(usingContext: TemplateRequestBlockContext) = {
+  private def updateResponse(`using`: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetComponentTemplateAction.Response =>
         Task.now(new GetComponentTemplateAction.Response(
           filter(
             templates = r.getComponentTemplates.asSafeMap,
-            usingTemplate = usingContext.responseTemplateTransformation
+            usingTemplate = `using`.responseTemplateTransformation
           )
         ))
       case other =>
