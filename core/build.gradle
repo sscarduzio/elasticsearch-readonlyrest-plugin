@@ -119,7 +119,7 @@ dependencies {
 
     testImplementation  project(':tests-utils')
     testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                 version: '2.23.1'
-    testRuntimeOnly     group: 'ch.qos.logback',             name: 'logback-classic',            version: '1.5.6'
+    testRuntimeOnly     group: 'ch.qos.logback',             name: 'logback-classic',            version: '1.3.14'
     testRuntimeOnly     group: 'org.pegdown',                name: 'pegdown',                    version: '1.4.2'
     testImplementation  group: 'com.typesafe.scala-logging', name: 'scala-logging_3',            version: '3.9.5'
     testImplementation  group: 'org.scalamock',              name: 'scalamock_3',                version: '6.0.0'
