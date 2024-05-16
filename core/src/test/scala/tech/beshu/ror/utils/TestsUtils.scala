@@ -24,7 +24,7 @@ import io.jsonwebtoken.JwtBuilder
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.matchers.should.Matchers.*
-import sttp.model.Uri
+import io.lemonlabs.uri.Url
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
@@ -60,6 +60,7 @@ import java.time.Duration
 import java.util.Base64
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
+import scala.util.{Failure, Success}
 
 object TestsUtils {
 
@@ -348,8 +349,10 @@ object TestsUtils {
 
   def jsonPathFrom(value: String): JsonPath = JsonPath(value).get
 
-  def uriFrom(value: String): Uri = Uri.parse(value)
-    .left.map(errorMsg => throw new IllegalArgumentException(s"Cannot parse $value to sttp.model.Uri: $errorMsg")).merge
+  def urlFrom(value: String): Url = Url.parseTry(value) match {
+    case Success(url) => url
+    case Failure(ex) => throw new IllegalArgumentException(s"Cannot parse $value to Url: ${ex.getMessage}")
+  }
 
   implicit class NonEmptyListOps[T](value: T) extends AnyVal {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)

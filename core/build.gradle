@@ -71,9 +71,7 @@ dependencies {
     api project(path: ':audit', configuration: 'default')
     api project(path: ':ror-shadowed-libs', configuration: 'shadow')
 
-    api(group: 'com.softwaremill.sttp.client3',     name: 'async-http-client-backend-cats-ce2_3',    version: '3.5.2') {
-        exclude group: 'io.netty', module: 'netty-tcnative-classes'
-    }
+    api group: 'org.asynchttpclient',           name: 'async-http-client',                   version: '2.10.5'
     api group: 'com.github.pathikrit',          name: 'better-files_3',                      version: '3.9.2'
     api group: 'io.circe',                      name: 'circe-core_3',                        version: '0.14.6'
     api group: 'io.circe',                      name: 'circe-generic_3',                     version: '0.14.6'
@@ -81,7 +79,6 @@ dependencies {
     api group: 'io.circe',                      name: 'circe-refined_3',                     version: '0.14.6'
     api group: 'commons-codec',                 name: 'commons-codec',                       version: '1.15'
     api group: 'org.typelevel',                 name: 'cats-free_3',                         version: '2.10.0'
-    api group: 'com.softwaremill.sttp.client3', name: 'core_3',                              version: '3.5.2'
     api group: 'com.beachape',                  name: 'enumeratum_3',                        version: '1.7.3'
     api group: 'com.hrakaroo',                  name: 'glob',                                version: '0.9.0'
     api group: 'com.comcast',                   name: 'ip4s-core_3',                         version: '2.0.4'

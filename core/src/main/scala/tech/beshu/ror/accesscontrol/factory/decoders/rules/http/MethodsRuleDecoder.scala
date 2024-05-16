@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.http
 
-import sttp.model.Method
-import sttp.model.Method._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
@@ -26,8 +24,9 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.http.MethodsRuleDecoderHelper.methodDecoder
-import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.orders.*
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 
 object MethodsRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[MethodsRule] {
@@ -44,11 +43,11 @@ private object MethodsRuleDecoderHelper {
     Decoder
       .decodeString
       .map(_.toUpperCase)
-      .map(Method.apply)
+      .map(Method.fromStringUnsafe)
       .toSyncDecoder
       .emapE {
-        case m@(GET | POST | PUT | DELETE | OPTIONS | HEAD) => Right(m)
-        case other => Left(RulesLevelCreationError(Message(s"Unknown/unsupported http method: ${other.method}")))
+        case m@(Method.GET | Method.POST | Method.PUT | Method.DELETE | Method.OPTIONS | Method.HEAD) => Right(m)
+        case other => Left(RulesLevelCreationError(Message(s"Unknown/unsupported http method: ${other.value}")))
       }
       .decoder
 }

@@ -17,11 +17,10 @@
 package tech.beshu.ror.accesscontrol
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import cats.{Order, Show}
-import sttp.model.{Method, Uri}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.lemonlabs.uri.{Uri => LemonUri}
+import io.lemonlabs.uri.Uri
 import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
@@ -30,15 +29,15 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks._
+import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, GroupsFromUserAttribute, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
@@ -51,18 +50,19 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.Base64
-import java.util.regex.{Pattern => RegexPattern}
+import java.util.regex.Pattern as RegexPattern
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
 
@@ -95,7 +95,7 @@ object orders {
     case Address.Ip(value) => value.toString()
     case Address.Name(value) => value.toString
   }
-  implicit val methodOrder: Order[Method] = Order.by(_.method)
+  implicit val methodOrder: Order[Method] = Order.by(_.value)
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by {
     case KibanaApp.FullNameKibanaApp(name) => name.value
@@ -162,10 +162,9 @@ object show {
       case Address.Name(value) => value.toString
     }
     implicit val ipShow: Show[Ip] = Show.show(_.value.toString())
-    implicit val methodShow: Show[Method] = Show.show(_.method)
+    implicit val methodShow: Show[Method] = Show.show(_.value)
     implicit val jsonPathShow: Show[JsonPath] = Show.show(_.rawPath)
-    implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
-    implicit val lemonUriShow: Show[LemonUri] = Show.show(_.toString())
+    implicit val uriShow: Show[Uri] = Show.show(_.toJavaURI.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show {
       case KibanaApp.FullNameKibanaApp(name) => name.value

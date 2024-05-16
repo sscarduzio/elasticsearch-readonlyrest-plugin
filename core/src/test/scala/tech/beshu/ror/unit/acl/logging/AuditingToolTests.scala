@@ -18,7 +18,7 @@ package tech.beshu.ror.unit.acl.logging
 
 import better.files._
 import cats.data.{NonEmptyList, NonEmptySet}
-import sttp.model.Method
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import monix.execution.Scheduler.Implicits.global
 import org.json.JSONObject
 import org.scalamock.scalatest.MockFactory

@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import cats.implicits._
-import sttp.model.Uri
+import io.lemonlabs.uri.Url
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
@@ -44,27 +44,27 @@ object ExternalAuthenticationServicesDecoder {
 
   private implicit def basicAuthExternalAuthenticationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthenticationService] = {
     cacheableAuthenticationServiceDecoder(
-      (id: ExternalAuthenticationService#Id, uri: Uri, successStatusCode: Int, requestTimeout: PositiveFiniteDuration, httpClient: HttpClient) =>
-        new BasicAuthHttpExternalAuthenticationService(id, uri, successStatusCode, requestTimeout, httpClient),
+      (id: ExternalAuthenticationService#Id, url: Url, successStatusCode: Int, requestTimeout: PositiveFiniteDuration, httpClient: HttpClient) =>
+        new BasicAuthHttpExternalAuthenticationService(id, url, successStatusCode, requestTimeout, httpClient),
       httpClientFactory
     )
   }
 
   implicit def jwtExternalAuthenticationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthenticationService] = {
     cacheableAuthenticationServiceDecoder(
-      (id: ExternalAuthenticationService#Id, uri: Uri, successStatusCode: Int, requestTimeout: PositiveFiniteDuration, httpClient: HttpClient) =>
-        new JwtExternalAuthenticationService(id, uri, successStatusCode, requestTimeout, httpClient),
+      (id: ExternalAuthenticationService#Id, url: Url, successStatusCode: Int, requestTimeout: PositiveFiniteDuration, httpClient: HttpClient) =>
+        new JwtExternalAuthenticationService(id, url, successStatusCode, requestTimeout, httpClient),
       httpClientFactory
     )
   }
 
-  private def cacheableAuthenticationServiceDecoder(creator: (ExternalAuthenticationService#Id, Uri, Int, PositiveFiniteDuration, HttpClient) => ExternalAuthenticationService,
+  private def cacheableAuthenticationServiceDecoder(creator: (ExternalAuthenticationService#Id, Url, Int, PositiveFiniteDuration, HttpClient) => ExternalAuthenticationService,
                                                     httpClientFactory: HttpClientsFactory) = {
     SyncDecoderCreator
       .instance { c =>
         for {
           name <- c.downField("name").as[ExternalAuthenticationService.Name]
-          url <- c.downFields("authentication_endpoint", "url").as[Uri]
+          url <- c.downFields("authentication_endpoint", "url").as[Url]
           httpSuccessCode <- c.downField("success_status_code").as[Option[Int]]
           cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
           validate <- c.downField("validate").as[Option[Boolean]]
