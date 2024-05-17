@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.NonEmptySet
-import sttp.model.Method
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
@@ -137,7 +137,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
       .copy(
         indexPacks = indexPacks,
         action = Action("indices:data/read/mget"),
-        method = Method("POST"),
+        method = Method.POST,
         allIndicesAndAliases = Set(
           fullLocalIndexWithAliases(fullIndexName("test1"), Set.empty),
           fullLocalIndexWithAliases(fullIndexName("test2"), Set.empty),

@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import cats.implicits._
 import cats.{Eq, Show}
-import sttp.model.Uri
+import io.lemonlabs.uri.Url
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -65,34 +65,26 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
                                              val config: HttpExternalAuthorizationService.Config,
                                              httpClient: HttpClient)
   extends ExternalAuthorizationService
-  with Logging {
+    with Logging {
 
   override def grantsFor(userId: User.Id)
                         (implicit requestId: RequestId): Task[UniqueList[Group]] = {
     httpClient
       .send(createRequest(userId))
-      .flatMap { response =>
-        response.body match {
-          case Right(body) =>
-            Task.now(groupsFromResponseBody(body))
-          case Left(_) =>
-            Task.raiseError(InvalidResponse(s"Invalid response from external authorization service '${id.show}' - ${response.statusText}"))
-        }
-      }
+      .map(response => groupsFromResponseBody(response.body))
   }
 
   private def createRequest(userId: User.Id) = {
-    val uriWithParams = config.uri.addParams(queryParams(userId))
-    config.method match {
-      case SupportedHttpMethod.Get =>
-        sttp.client3.basicRequest
-          .get(uriWithParams)
-          .headers(headersMap(userId))
-      case SupportedHttpMethod.Post =>
-        sttp.client3.basicRequest
-          .post(uriWithParams)
-          .headers(headersMap(userId))
+    val uriWithParams = config.url.addParams(queryParams(userId))
+    val method = config.method match {
+      case SupportedHttpMethod.Get => HttpClient.Method.Get
+      case SupportedHttpMethod.Post => HttpClient.Method.Post
     }
+    HttpClient.Request(
+      method = method,
+      url = uriWithParams,
+      headers = headersMap(userId),
+    )
   }
 
   private def queryParams(userId: User.Id): Map[String, String] = {
@@ -187,7 +179,7 @@ object HttpExternalAuthorizationService {
 
   import Config.*
 
-  final case class Config(uri: Uri,
+  final case class Config(url: Url,
                           method: SupportedHttpMethod,
                           tokenName: AuthTokenName,
                           groupsConfig: GroupsConfig,
