@@ -21,7 +21,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import sttp.model.Method
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -185,7 +185,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
         val request = MockRequestContext.indices.copy(
           headers = Set(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
           uriPath = UriPath.from("/.kibana_ror_custom/_doc/dashboard:d3d40550-b889-11eb-a1e1-914af9365d47"),
-          method = Method("PUT"),
+          method = Method.PUT,
           action = Action("indices:data/write/index"),
           filteredIndices = Set(clusterIndexName(".kibana_ror_custom"))
         )
@@ -239,7 +239,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             currentGroupHeader("Administrators")
           ),
           uriPath = UriPath.from("/.kibana_admins/_create/index-pattern:3b2fa1b0-bcb2-11eb-a20e-8daf1d07a2b2"),
-          method = Method("PUT"),
+          method = Method.PUT,
           action = Action("indices:data/write/index"),
           filteredIndices = Set(clusterIndexName(".kibana_admins"))
         )

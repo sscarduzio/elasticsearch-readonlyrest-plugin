@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules.http
 
 import cats.data.NonEmptySet
-import sttp.model.Method
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}

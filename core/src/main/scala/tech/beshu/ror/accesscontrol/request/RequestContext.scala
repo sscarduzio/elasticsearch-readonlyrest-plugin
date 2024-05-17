@@ -17,8 +17,7 @@
 package tech.beshu.ror.accesscontrol.request
 
 import cats.Show
-import cats.implicits._
-import sttp.model.Method
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.Level
@@ -28,15 +27,15 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.request.RequestContext.Id
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.accesscontrol.request.RequestContext.{Id, Method}
+import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
+import tech.beshu.ror.accesscontrol.show.logs.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.Instant
 import scala.language.implicitConversions
@@ -200,6 +199,19 @@ object RequestContext extends Logging {
       "indices:admin/resolve/index",
       "indices:admin/index_template/get"
     ).map(Action.apply)
+  }
+
+  final case class Method private(value: String) extends AnyVal
+
+  object Method {
+    val GET: Method = Method.fromStringUnsafe("GET")
+    val POST: Method = Method.fromStringUnsafe("POST")
+    val PUT: Method = Method.fromStringUnsafe("PUT")
+    val DELETE: Method = Method.fromStringUnsafe("DELETE")
+    val OPTIONS: Method = Method.fromStringUnsafe("OPTIONS")
+    val HEAD: Method = Method.fromStringUnsafe("HEAD")
+
+    def fromStringUnsafe(str: String): Method = new Method(str.toUpperCase)
   }
 }
 

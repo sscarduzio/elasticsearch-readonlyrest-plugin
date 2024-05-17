@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.handler.request.context
 
-import sttp.model.Method
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -73,7 +73,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .flatMap(Address.from)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
 
-  override lazy val method: Method = Method(restRequest.method().name())
+  override lazy val method: Method = Method.fromStringUnsafe(restRequest.method().name())
 
   override lazy val uriPath: UriPath =
     UriPath

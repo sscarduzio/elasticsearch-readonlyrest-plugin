@@ -77,7 +77,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
               service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -133,7 +133,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
               service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user2"),
                 groupsConfig = GroupsConfig(
@@ -187,7 +187,7 @@ class ExternalAuthorizationRuleSettingsTests
               cachableService.underlying shouldBe a[HttpExternalAuthorizationService]
               val httpService = cachableService.underlying.asInstanceOf[HttpExternalAuthorizationService]
               httpService.config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -235,7 +235,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
               service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -285,7 +285,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
               service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -337,7 +337,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
               service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -396,7 +396,7 @@ class ExternalAuthorizationRuleSettingsTests
               cacheableService.underlying shouldBe a[HttpExternalAuthorizationService]
               val underlyingService = cacheableService.underlying.asInstanceOf[HttpExternalAuthorizationService]
               underlyingService.config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Post,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -460,7 +460,7 @@ class ExternalAuthorizationRuleSettingsTests
               cacheableService.underlying shouldBe a[HttpExternalAuthorizationService]
               val underlyingService = cacheableService.underlying.asInstanceOf[HttpExternalAuthorizationService]
               underlyingService.config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Post,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(

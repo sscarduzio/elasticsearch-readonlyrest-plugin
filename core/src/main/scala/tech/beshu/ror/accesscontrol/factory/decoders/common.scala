@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
-import cats.implicits._
+import cats.implicits.*
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -24,31 +24,31 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.show.logs.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
-import tech.beshu.ror.utils.LoggerOps._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.LoggerOps.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.js.JsCompiler
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.RefinedUtils._
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.net.URI
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
 object common extends Logging {
@@ -100,12 +100,12 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val sttpUriDecoder: Decoder[sttp.model.Uri] =
+  implicit val lemonlabsUrlDecoder: Decoder[io.lemonlabs.uri.Url] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { value =>
-        Try(new URI(value)) match {
-          case Success(javaUri) => Right(sttp.model.Uri(javaUri))
+        Try(new URI(value)).flatMap(uri => io.lemonlabs.uri.Url.parseTry(uri.toString)) match {
+          case Success(url) => Right(url)
           case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to url")))
         }
       }

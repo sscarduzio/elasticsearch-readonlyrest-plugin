@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.http
 
 import cats.data.NonEmptySet
-import sttp.model.Method
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
