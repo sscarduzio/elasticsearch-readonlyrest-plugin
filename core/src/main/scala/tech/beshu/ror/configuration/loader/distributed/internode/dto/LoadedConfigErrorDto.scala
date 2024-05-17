@@ -20,6 +20,8 @@ import io.circe.{Codec, Decoder, Encoder}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.utils.CirceOps.*
 
+import java.nio.file.Paths
+
 sealed trait LoadedConfigErrorDto
 
 object LoadedConfigErrorDto {

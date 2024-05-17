@@ -82,7 +82,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
         implicit val _clock: Clock = fixedClock
         val rule = new SessionMaxIdleRule(Settings(positive(1 minute)), CaseSensitivity.Enabled)
         val requestContext = mock[RequestContext]
-        (() => requestContext.id).expects().returning(RequestContext.Id("dummy")).anyNumberOfTimes()
+        (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
@@ -141,7 +141,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
       case Some(cookieHeader) => Set(headerFrom("Cookie" -> cookieHeader.value))
       case None => Set.empty[Header]
     }
-    (() => requestContext.id).expects().returning(RequestContext.Id("dummy")).anyNumberOfTimes()
+    (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
     (() => requestContext.headers).expects().returning(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,

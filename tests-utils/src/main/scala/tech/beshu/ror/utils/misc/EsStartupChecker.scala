@@ -35,10 +35,10 @@ class EsStartupChecker private(name: String,
   extends LazyLogging {
 
   def waitForStart(): Boolean = {
-    retryBackoff(clusterIsReady(client), maxRetries = 30, interval = 2 seconds)
+    retryBackoff(clusterIsReady(client), maxRetries = 150, interval = 2 seconds)
       .map((_: Unit) => true)
       .onErrorRecover(_ => false)
-      .runSyncUnsafe(2 minutes)
+      .runSyncUnsafe(5 minutes)
   }
 
   private def retryBackoff[A](source: Task[A],

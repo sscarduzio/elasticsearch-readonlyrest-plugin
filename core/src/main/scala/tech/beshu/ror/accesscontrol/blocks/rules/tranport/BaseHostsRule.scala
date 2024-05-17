@@ -60,6 +60,7 @@ private[rules] abstract class BaseHostsRule(resolver: HostnameResolver)
                                address: Address,
                                blockContext: BlockContext)
                               (implicit requestId: RequestId)= {
+    val parallelyResolved = Task.parMap2(resolveToIps(allowedHost), resolveToIps(address))(ParallellyResolvedIps.apply)
     val result = for {
       allowedHostIps <- OptionT(parallelyResolved.map(_.allowedHost))
       addressIps <- OptionT(parallelyResolved.map(_.address))

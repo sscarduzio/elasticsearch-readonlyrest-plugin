@@ -33,7 +33,6 @@ import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.index.{IndexConfigError, SavingIndexConfigError}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.loader.toDomain
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig, RorProperties}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 

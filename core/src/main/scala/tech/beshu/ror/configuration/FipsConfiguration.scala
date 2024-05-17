@@ -26,7 +26,6 @@ import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.es.EsEnv
 
 import java.nio.file.Path
-import tech.beshu.ror.configuration.loader.toDomain
 
 final case class FipsConfiguration(fipsMode: FipsMode)
 

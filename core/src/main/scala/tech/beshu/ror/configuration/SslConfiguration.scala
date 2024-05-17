@@ -28,7 +28,6 @@ import tech.beshu.ror.utils.SSLCertHelper
 
 import java.io.{File => JFile}
 import java.nio.file.{Path, Paths}
-import tech.beshu.ror.configuration.loader.toDomain
 
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
                         interNodeSsl: Option[InternodeSslConfiguration])
