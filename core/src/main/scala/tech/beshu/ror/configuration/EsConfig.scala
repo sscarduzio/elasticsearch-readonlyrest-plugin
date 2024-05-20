@@ -27,6 +27,7 @@ import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.utils.yaml.{JsonFile, YamlKeyDecoder}
 
 import java.nio.file.Path
+import scala.language.implicitConversions
 
 final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
                           ssl: RorSsl,
@@ -40,16 +41,24 @@ object EsConfig {
     val configFile = File(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
     (for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
-      esSettings <- parse(configFile)
+      esSettings <- parse(configFile, isOssDistribution(esConfigFolderPath))
       ssl <- loadSslSettings(esConfigFolderPath, configFile, esSettings.xpackSettings)
       rorIndex <- loadRorIndexNameConfiguration(configFile)
       fipsConfiguration <- loadFipsConfiguration(esConfigFolderPath, configFile, esSettings.xpackSettings)
     } yield EsConfig(esSettings.rorSettings, ssl, rorIndex, fipsConfiguration)).value
   }
 
-  private def parse(configFile: File): EitherT[Task, LoadEsConfigError, EsSettings] = {
-    import decoders._
-    EitherT.fromEither[Task](new JsonFile(configFile).parse[EsSettings].left.map(MalformedContent(configFile, _)))
+  private def parse(configFile: File, ossDistribution: Boolean): EitherT[Task, LoadEsConfigError, EsSettings] = {
+    implicit val decoder: Decoder[EsSettings] = decoders.esSettingsDecoder(ossDistribution)
+    EitherT.fromEither[Task](
+      new JsonFile(configFile)
+        .parse[EsSettings]
+        .left.map(MalformedContent(configFile, _))
+    )
+  }
+
+  private def isOssDistribution(esConfigFolderPath: Path): Boolean = {
+    !esConfigFolderPath.resolve("../modules/x-pack-security").toFile.exists()
   }
 
   private def loadSslSettings(esConfigFolderPath: Path, configFile: File, xpackSettings: XpackSettings)
@@ -123,10 +132,12 @@ object EsConfig {
       (booleanDecoder or stringDecoder) map XpackSettings.apply
     }
 
-    implicit val esSettingsDecoder: Decoder[EsSettings] = {
+    implicit def esSettingsDecoder(isOssDistribution: Boolean): Decoder[EsSettings] = {
       for {
         rorEsLevelSettings <- Decoder[RorEsLevelSettings]
-        xpackSettings <- Decoder[XpackSettings]
+        xpackSettings <-
+          if(isOssDistribution) Decoder.const(XpackSettings(securityEnabled = false))
+          else Decoder[XpackSettings]
       } yield EsSettings(rorEsLevelSettings, xpackSettings)
     }
   }
