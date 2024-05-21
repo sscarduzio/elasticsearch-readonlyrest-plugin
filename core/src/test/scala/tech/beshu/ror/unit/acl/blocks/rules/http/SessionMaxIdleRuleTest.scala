@@ -139,6 +139,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
       case Some(cookieHeader) => Set(headerFrom("Cookie" -> cookieHeader.value))
       case None => Set.empty[Header]
     }
+    (() => requestContext.id).expects().returning(RequestContext.Id("dummy"))
     (() => requestContext.headers).expects().returning(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,
