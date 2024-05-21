@@ -20,6 +20,7 @@ import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -36,6 +37,7 @@ private [rules] abstract class BaseHostsRule(resolver: HostnameResolver)
   protected def checkAllowedAddresses(blockContext: BlockContext)
                                      (allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
                                       addressToCheck: Address): Task[Boolean] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     allowedAddresses
       .foldLeft(Task.now(false)) {
         case (result, host) =>
@@ -51,7 +53,8 @@ private [rules] abstract class BaseHostsRule(resolver: HostnameResolver)
       }
   }
 
-  private def ipMatchesAddress(allowedHost: Address, address: Address, blockContext: BlockContext) = {
+  private def ipMatchesAddress(allowedHost: Address, address: Address, blockContext: BlockContext)
+                              (implicit requestId: RequestId) = {
     val result = for {
       allowedHostIps <- OptionT(resolveToIps(allowedHost))
       addressIps <- OptionT(resolveToIps(address))
@@ -61,7 +64,8 @@ private [rules] abstract class BaseHostsRule(resolver: HostnameResolver)
     result.value.map(_.getOrElse(false))
   }
 
-  private def resolveToIps(address: Address) =
+  private def resolveToIps(address: Address)
+                          (implicit requestId: RequestId) =
     address match {
       case address: Address.Ip =>
         Task.now(Some(NonEmptyList.one(address)))
@@ -69,7 +73,7 @@ private [rules] abstract class BaseHostsRule(resolver: HostnameResolver)
         resolver
           .resolve(address)
           .andThen {
-            case Success(None) => logger.warn(s"Cannot resolve hostname: ${address.value.show}")
+            case Success(None) => logger.warn(s"[${requestId.show}] Cannot resolve hostname: ${address.value.show}")
           }
     }
 }

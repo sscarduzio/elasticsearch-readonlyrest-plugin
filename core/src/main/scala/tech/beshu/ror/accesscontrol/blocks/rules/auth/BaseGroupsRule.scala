@@ -159,7 +159,7 @@ abstract class BaseGroupsRule(val settings: Settings)
           None
       }
       .onErrorRecover { case ex =>
-        logger.debug(s"Authentication error; req=${blockContext.requestContext.id.show}", ex)
+        logger.debug(s"[${blockContext.requestContext.id.show}] Authentication error", ex)
         None
       }
   }
@@ -183,7 +183,7 @@ abstract class BaseGroupsRule(val settings: Settings)
           None
       }
       .onErrorRecover { case ex =>
-        logger.debug(s"Authentication & Authorization error; req=${blockContext.requestContext.id.show}", ex)
+        logger.debug(s"[${blockContext.requestContext.id.show}] Authentication & Authorization error", ex)
         None
       }
   }
@@ -219,7 +219,7 @@ abstract class BaseGroupsRule(val settings: Settings)
           None
       }
       .onErrorRecover { case ex =>
-        logger.debug(s"Authentication & Authorization error; req=${blockContext.requestContext.id.show}", ex)
+        logger.debug(s"[${blockContext.requestContext.id.show}] Authentication & Authorization error", ex)
         Option.empty[B]
       }
   }
