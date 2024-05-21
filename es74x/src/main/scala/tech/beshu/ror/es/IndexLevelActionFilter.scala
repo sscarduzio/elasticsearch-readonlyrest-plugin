@@ -87,7 +87,9 @@ class IndexLevelActionFilter(nodeName: String,
     threadPool
   )
 
-  private val startingTaskCancellable = startRorInstance()
+  private val startingTaskCancellable = doPrivileged {
+    startRorInstance()
+  }
 
   private def auditSinkCreator: AuditSinkCreator = {
     case AuditCluster.LocalAuditCluster =>
