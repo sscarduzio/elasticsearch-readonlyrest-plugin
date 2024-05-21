@@ -28,6 +28,8 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
+import tech.beshu.ror.es.IndexJsonContentService
+import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.annotation.nowarn
