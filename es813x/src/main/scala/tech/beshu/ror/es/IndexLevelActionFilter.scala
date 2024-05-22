@@ -67,7 +67,7 @@ class IndexLevelActionFilter(nodeName: String,
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
     auditSinkCreator,
-    env.configFile
+    EsEnv(env.configFile(), env.modulesFile())
   )
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =

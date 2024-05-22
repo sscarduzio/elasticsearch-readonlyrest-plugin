@@ -21,31 +21,32 @@ import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.ConfigLoading._
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.FileConfig
 import tech.beshu.ror.configuration.{EsConfig, RawRorConfig}
+import tech.beshu.ror.es.EsEnv
 
 object LoadRawRorConfig {
 
   type LoadResult = ErrorOr[LoadedRorConfig[RawRorConfig]]
 
-  def load(esConfigPath: Path,
+  def load(env: EsEnv,
            esConfig: EsConfig,
            configurationIndex: RorConfigurationIndex): LoadRorConfig[LoadResult] = {
     LoadRawRorConfig.load(
       isLoadingFromFileForced = esConfig.rorEsLevelSettings.forceLoadRorFromFile,
-      esConfigPath = esConfigPath,
+      env = env,
       configIndex = configurationIndex,
       indexLoadingAttempts = 5,
     )
   }
 
   def load(isLoadingFromFileForced: Boolean,
-           esConfigPath: Path,
+           env: EsEnv,
            configIndex: RorConfigurationIndex,
            indexLoadingAttempts: Int): LoadRorConfig[LoadResult] = {
     for {
       loadedFileOrIndex <- if (isLoadingFromFileForced) {
-        forceLoadRorConfigFromFile(esConfigPath)
+        forceLoadRorConfigFromFile(env.configPath)
       } else {
-        attemptLoadingConfigFromIndex(configIndex, indexLoadingAttempts, loadRorConfigFromFile(esConfigPath))
+        attemptLoadingConfigFromIndex(configIndex, indexLoadingAttempts, loadRorConfigFromFile(env.configPath))
       }
     } yield loadedFileOrIndex
   }

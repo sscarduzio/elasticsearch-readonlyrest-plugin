@@ -44,7 +44,7 @@ import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
-import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
+import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
 import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils._
@@ -1338,7 +1338,7 @@ class ReadonlyRestStartingTests
       factory,
       indexJsonContentService,
       _ => mock[AuditSinkService],
-      getResourcePath(configPath)
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath))
     )
   }
 

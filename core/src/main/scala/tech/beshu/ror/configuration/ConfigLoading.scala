@@ -19,7 +19,10 @@ package tech.beshu.ror.configuration
 import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.{LoadedRorConfig, Path}
+import tech.beshu.ror.configuration.loader.LoadedRorConfig
+import tech.beshu.ror.es.EsEnv
+
+import java.nio.file.Path
 
 object ConfigLoading {
   type ErrorOr[A] = LoadedRorConfig.Error Either A
@@ -27,7 +30,7 @@ object ConfigLoading {
   type LoadRorConfig[A] = Free[LoadConfigAction, A]
   sealed trait LoadConfigAction[A]
   object LoadConfigAction {
-    final case class LoadEsConfig(path: Path) extends LoadConfigAction[ErrorOr[EsConfig]]
+    final case class LoadEsConfig(env: EsEnv) extends LoadConfigAction[ErrorOr[EsConfig]]
     final case class ForceLoadRorConfigFromFile(path: Path) extends LoadConfigAction[ErrorOr[ForcedFileConfig[RawRorConfig]]]
     final case class LoadRorConfigFromFile(path: Path) extends LoadConfigAction[ErrorOr[FileConfig[RawRorConfig]]]
     final case class LoadRorConfigFromIndex(index: RorConfigurationIndex) extends LoadConfigAction[IndexErrorOr[IndexConfig[RawRorConfig]]]
@@ -39,8 +42,8 @@ object ConfigLoading {
   def loadRorConfigFromFile(path: Path): LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]] =
     Free.liftF(LoadConfigAction.LoadRorConfigFromFile(path))
 
-  def loadEsConfig(path: Path): LoadRorConfig[ErrorOr[EsConfig]] =
-    Free.liftF(LoadConfigAction.LoadEsConfig(path))
+  def loadEsConfig(env: EsEnv): LoadRorConfig[ErrorOr[EsConfig]] =
+    Free.liftF(LoadConfigAction.LoadEsConfig(env))
 
   def forceLoadRorConfigFromFile(path: Path): LoadRorConfig[ErrorOr[ForcedFileConfig[RawRorConfig]]] =
     Free.liftF(LoadConfigAction.ForceLoadRorConfigFromFile(path))

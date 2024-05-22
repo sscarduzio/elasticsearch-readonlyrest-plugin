@@ -18,7 +18,9 @@ package tech.beshu.ror.configuration.loader.distributed.internode.dto
 
 import io.circe.generic.extras.ConfiguredJsonCodec
 import io.circe.{Codec, Decoder, Encoder}
-import tech.beshu.ror.configuration.loader.{LoadedRorConfig, Path}
+import tech.beshu.ror.configuration.loader.LoadedRorConfig
+
+import java.nio.file.Paths
 
 
 @ConfiguredJsonCodec
@@ -66,11 +68,11 @@ object LoadedConfigErrorDto {
   object FileNotExistDTO {
     def create(o: LoadedRorConfig.FileNotExist): FileNotExistDTO =
       new FileNotExistDTO(
-        path = o.path.value,
+        path = o.path.toString,
       )
 
     def fromDto(o: FileNotExistDTO): LoadedRorConfig.FileNotExist = LoadedRorConfig.FileNotExist(
-      path = Path(o.path),
+      path = Paths.get(o.path),
     )
     implicit class Ops(o: FileNotExistDTO) {
       implicit def fromDto: LoadedRorConfig.FileNotExist = FileNotExistDTO.fromDto(o)
@@ -81,11 +83,11 @@ object LoadedConfigErrorDto {
   object EsFileNotExistDTO {
     def create(o: LoadedRorConfig.EsFileNotExist): EsFileNotExistDTO =
       new EsFileNotExistDTO(
-        path = o.path.value,
+        path = o.path.toString,
       )
 
     def fromDto(o: EsFileNotExistDTO): LoadedRorConfig.EsFileNotExist = LoadedRorConfig.EsFileNotExist(
-      path = Path(o.path),
+      path = Paths.get(o.path),
     )
     implicit class Ops(o: EsFileNotExistDTO) {
       implicit def fromDto: LoadedRorConfig.EsFileNotExist = EsFileNotExistDTO.fromDto(o)
@@ -96,12 +98,12 @@ object LoadedConfigErrorDto {
   object EsFileMalformedDTO {
     def create(o: LoadedRorConfig.EsFileMalformed): EsFileMalformedDTO =
       new EsFileMalformedDTO(
-        path = o.path.value,
+        path = o.path.toString,
         message = o.message,
       )
 
     def fromDto(o: EsFileMalformedDTO): LoadedRorConfig.EsFileMalformed = LoadedRorConfig.EsFileMalformed(
-      path = Path(o.path),
+      path = Paths.get(o.path),
       message = o.message,
     )
     implicit class Ops(o: EsFileMalformedDTO) {

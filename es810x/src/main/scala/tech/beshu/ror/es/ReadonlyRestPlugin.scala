@@ -108,7 +108,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
   private val rorEsConfig = ReadonlyRestEsConfig
-    .load(environment.configFile)
+    .load(EsEnv(environment.configFile(), environment.modulesFile()))
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener

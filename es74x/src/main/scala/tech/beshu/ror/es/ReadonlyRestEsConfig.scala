@@ -21,20 +21,18 @@ import monix.eval.Task
 import tech.beshu.ror.configuration.{EnvironmentConfig, FipsConfiguration, MalformedSettings, RorBootConfiguration, RorSsl}
 import tech.beshu.ror.utils.ScalaOps._
 
-import java.nio.file.Path
-
 final case class ReadonlyRestEsConfig(bootConfig: RorBootConfiguration,
                                       sslConfig: RorSsl,
                                       fipsConfig: FipsConfiguration)
 
 object ReadonlyRestEsConfig {
-  def load(esConfigFolderPath: Path)
+  def load(esEnv: EsEnv)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, ReadonlyRestEsConfig]] = {
     value {
       for {
-        bootConfig <- EitherT(RorBootConfiguration.load(esConfigFolderPath))
-        sslConfig <- EitherT(RorSsl.load(esConfigFolderPath))
-        fipsConfig <- EitherT(FipsConfiguration.load(esConfigFolderPath))
+        bootConfig <- EitherT(RorBootConfiguration.load(esEnv))
+        sslConfig <- EitherT(RorSsl.load(esEnv))
+        fipsConfig <- EitherT(FipsConfiguration.load(esEnv))
       } yield ReadonlyRestEsConfig(bootConfig, sslConfig, fipsConfig)
     }
   }

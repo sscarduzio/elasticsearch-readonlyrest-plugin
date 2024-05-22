@@ -83,7 +83,7 @@ class RorInstance private(boot: ReadonlyRest,
   private val configRestApi = new ConfigApi(
     rorInstance = this,
     boot.indexConfigManager,
-    new FileConfigLoader(boot.esConfigPath),
+    new FileConfigLoader(boot.esEnv.configPath),
     rorConfigurationIndex
   )
 

@@ -24,9 +24,9 @@ import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInacti
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent, RorSettingsInactiveWhenXpackSecurityIsEnabled}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.yaml.{JsonFile, YamlKeyDecoder}
 
-import java.nio.file.Path
 import scala.language.implicitConversions
 
 final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
@@ -36,15 +36,15 @@ final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
 
 object EsConfig {
 
-  def from(esConfigFolderPath: Path)
+  def from(esEnv: EsEnv)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[LoadEsConfigError, EsConfig]] = {
-    val configFile = File(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
+    val configFile = esEnv.elasticsearchConfig
     (for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
-      esSettings <- parse(configFile, isOssDistribution(esConfigFolderPath))
-      ssl <- loadSslSettings(esConfigFolderPath, configFile, esSettings.xpackSettings)
+      esSettings <- parse(configFile, esEnv.isOssDistribution)
+      ssl <- loadSslSettings(esEnv, esSettings.xpackSettings)
       rorIndex <- loadRorIndexNameConfiguration(configFile)
-      fipsConfiguration <- loadFipsConfiguration(esConfigFolderPath, configFile, esSettings.xpackSettings)
+      fipsConfiguration <- loadFipsConfiguration(esEnv, esSettings.xpackSettings)
     } yield EsConfig(esSettings.rorSettings, ssl, rorIndex, fipsConfiguration)).value
   }
 
@@ -57,14 +57,10 @@ object EsConfig {
     )
   }
 
-  private def isOssDistribution(esConfigFolderPath: Path): Boolean = {
-    !esConfigFolderPath.resolve("../modules/x-pack-security").toFile.exists()
-  }
-
-  private def loadSslSettings(esConfigFolderPath: Path, configFile: File, xpackSettings: XpackSettings)
+  private def loadSslSettings(esEnv: EsEnv, xpackSettings: XpackSettings)
                              (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, RorSsl] = {
-    EitherT(RorSsl.load(esConfigFolderPath))
-      .leftMap(error => MalformedContent(configFile, error.message))
+    EitherT(RorSsl.load(esEnv))
+      .leftMap(error => MalformedContent(esEnv.elasticsearchConfig, error.message))
       .subflatMap { rorSsl =>
         if(rorSsl != RorSsl.noSsl && xpackSettings.securityEnabled) {
           Left(RorSettingsInactiveWhenXpackSecurityIsEnabled(SettingsType.Ssl))
@@ -79,10 +75,10 @@ object EsConfig {
     EitherT(RorIndexNameConfiguration.load(configFile).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
-  private def loadFipsConfiguration(esConfigFolderPath: Path, configFile: File, xpackSettings: XpackSettings)
+  private def loadFipsConfiguration(esEnv: EsEnv, xpackSettings: XpackSettings)
                                    (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
-    EitherT(FipsConfiguration.load(esConfigFolderPath))
-      .leftMap(error => MalformedContent(configFile, error.message))
+    EitherT(FipsConfiguration.load(esEnv))
+      .leftMap(error => MalformedContent(esEnv.elasticsearchConfig, error.message))
       .subflatMap { fipsConfiguration =>
         fipsConfiguration.fipsMode match {
           case FipsMode.SslOnly if xpackSettings.securityEnabled =>
