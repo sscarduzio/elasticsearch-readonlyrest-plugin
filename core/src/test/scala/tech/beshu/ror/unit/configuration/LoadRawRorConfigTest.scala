@@ -24,9 +24,11 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig, Path}
+import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig}
 import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
+import tech.beshu.ror.es.EsEnv
 
+import java.nio.file.Paths
 import scala.language.existentials
 
 class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
@@ -34,10 +36,10 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
   "Free monad loader program" should {
     "load forced file" in {
       val steps = List(
-        (ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(filePath), Right(ForcedFileConfig(rawRorConfig))),
+        (ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(esEnv.configPath), Right(ForcedFileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = true, filePath, rorConfigurationIndex, indexLoadingAttempts = 0)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = true, esEnv, rorConfigurationIndex, indexLoadingAttempts = 0)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, ForcedFileConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -47,7 +49,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Right(IndexConfig(rorConfigurationIndex, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, rorConfigurationIndex, indexLoadingAttempts = 1)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, indexLoadingAttempts = 1)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -58,7 +60,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Right(IndexConfig(rorConfigurationIndex, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, rorConfigurationIndex, indexLoadingAttempts = 5)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -70,10 +72,10 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Left(LoadedRorConfig.IndexNotExist)),
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Left(LoadedRorConfig.IndexNotExist)),
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Left(LoadedRorConfig.IndexNotExist)),
-        (ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(filePath), Right(FileConfig(rawRorConfig))),
+        (ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(esEnv.configPath), Right(FileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, rorConfigurationIndex, indexLoadingAttempts = 5)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
       result.toOption.get shouldBe FileConfig(rawRorConfig)
     }
@@ -82,7 +84,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Left(LoadedRorConfig.IndexUnknownStructure)),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, rorConfigurationIndex, indexLoadingAttempts = 5)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
       result shouldBe a[Left[LoadedRorConfig.IndexUnknownStructure.type, _]]
     }
@@ -91,7 +93,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Left(LoadedRorConfig.IndexParsingError("error"))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, rorConfigurationIndex, indexLoadingAttempts = 5)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
       result shouldBe a[Left[LoadedRorConfig.IndexParsingError, _]]
       result.left.value.asInstanceOf[LoadedRorConfig.IndexParsingError].message shouldBe "error"
@@ -100,7 +102,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
 }
 object LoadRawRorConfigTest {
   import eu.timepit.refined.auto._
-  private val filePath = Path("unused_file_path")
+  private val esEnv = EsEnv(Paths.get("unused_file_path"), Paths.get("unused_file_path"))
   private val rawRorConfig = RawRorConfig(Json.False, "forced file config")
   private val rorConfigurationIndex = RorConfigurationIndex(IndexName.Full("rorConfigurationIndex"))
 

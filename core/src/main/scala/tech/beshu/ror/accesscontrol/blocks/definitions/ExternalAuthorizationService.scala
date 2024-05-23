@@ -110,14 +110,15 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
       })
   }
 
-  private def groupsFromResponseBody(body: String): UniqueList[Group] = {
+  private def groupsFromResponseBody(body: String)
+                                    (implicit requestId: RequestId): UniqueList[Group] = {
     val groupsFromBody = groupsFrom(body)
     groupsFromBody match {
       case Success(groups) =>
-        logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
+        logger.debug(s"[${requestId.show}] Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
         UniqueList.fromIterable(groups)
       case Failure(ex) =>
-        logger.debug(s"Group based authorization response exception - provider '${id.show}'", ex)
+        logger.debug(s"[${requestId.show}] Group based authorization response exception - provider '${id.show}'", ex)
         UniqueList.empty
     }
   }

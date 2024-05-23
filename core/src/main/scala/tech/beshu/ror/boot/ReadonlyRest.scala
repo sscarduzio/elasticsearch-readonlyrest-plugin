@@ -34,10 +34,9 @@ import tech.beshu.ror.configuration.TestConfigLoading._
 import tech.beshu.ror.configuration._
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader._
-import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
+import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
-import java.nio.file.Path
 import java.time.Instant
 
 class ReadonlyRest(coreFactory: CoreFactory,
@@ -45,7 +44,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                    val indexConfigManager: IndexConfigManager,
                    val indexTestConfigManager: IndexTestConfigManager,
                    val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
-                   val esConfigPath: Path)
+                   val esEnv: EsEnv)
                   (implicit environmentConfig: EnvironmentConfig,
                    scheduler: Scheduler) extends Logging {
 
@@ -59,12 +58,12 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def loadEsConfig() = {
-    val action = ConfigLoading.loadEsConfig(esConfigPath)
+    val action = ConfigLoading.loadEsConfig(esEnv)
     runStartingFailureProgram(action)
   }
 
   private def loadRorConfig(esConfig: EsConfig) = {
-    val action = LoadRawRorConfig.load(esConfigPath, esConfig, esConfig.rorIndex.index)
+    val action = LoadRawRorConfig.load(esEnv, esConfig, esConfig.rorIndex.index)
     runStartingFailureProgram(action)
   }
 
@@ -90,11 +89,11 @@ class ReadonlyRest(coreFactory: CoreFactory,
       case LoadedRorConfig.FileParsingError(message) =>
         StartingFailure(message)
       case LoadedRorConfig.FileNotExist(path) =>
-        StartingFailure(s"Cannot find settings file: ${path.value}")
+        StartingFailure(s"Cannot find settings file: ${path.toString}")
       case LoadedRorConfig.EsFileNotExist(path) =>
-        StartingFailure(s"Cannot find elasticsearch settings file: [${path.value}]")
+        StartingFailure(s"Cannot find elasticsearch settings file: [${path.toString}]")
       case LoadedRorConfig.EsFileMalformed(path, message) =>
-        StartingFailure(s"Settings file is malformed: [${path.value}], $message")
+        StartingFailure(s"Settings file is malformed: [${path.toString}], $message")
       case LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled(typeOfConfiguration) =>
         StartingFailure(s"Cannot use ROR $typeOfConfiguration when XPack Security is enabled")
       case LoadedRorConfig.IndexParsingError(message) =>
@@ -296,23 +295,23 @@ object ReadonlyRest {
 
   def create(indexContentService: IndexJsonContentService,
              auditSinkCreator: AuditSinkCreator,
-             esConfigPath: Path)
+             env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory()
-    create(coreFactory, indexContentService, auditSinkCreator, esConfigPath)
+    create(coreFactory, indexContentService, auditSinkCreator, env)
   }
 
   def create(coreFactory: CoreFactory,
              indexContentService: IndexJsonContentService,
              auditSinkCreator: AuditSinkCreator,
-             esConfigPath: Path)
+             env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
     val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
     val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
-    new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, indexTestConfigManager, mocksProvider, esConfigPath)
+    new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env)
   }
 }

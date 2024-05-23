@@ -19,12 +19,7 @@ package tech.beshu.ror.configuration
 import cats.Functor
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 
-import language.implicitConversions
-
 package object loader {
-  implicit def toJava(path: tech.beshu.ror.configuration.loader.Path): java.nio.file.Path = java.nio.file.Paths.get(path.value)
-
-  implicit def toDomain(path: java.nio.file.Path): tech.beshu.ror.configuration.loader.Path = tech.beshu.ror.configuration.loader.Path(path.toString)
 
   implicit class LoadedConfigOps[A](fa: LoadedRorConfig[A]) {
     lazy val value: A = fa match {

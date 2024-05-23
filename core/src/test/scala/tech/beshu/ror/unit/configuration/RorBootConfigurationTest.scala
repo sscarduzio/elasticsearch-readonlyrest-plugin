@@ -21,7 +21,8 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
-import tech.beshu.ror.configuration.{MalformedSettings, RorBootConfiguration, EnvironmentConfig}
+import tech.beshu.ror.configuration.{EnvironmentConfig, MalformedSettings, RorBootConfiguration}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.TestsUtils.getResourcePath
 
 class RorBootConfigurationTest
@@ -33,7 +34,7 @@ class RorBootConfigurationTest
     "be loaded from elasticsearch config file" when {
       "configuration contains not started response code" in {
         val config = RorBootConfiguration
-          .load(getResourcePath("/boot_tests/boot_config/not_started_code_defined/"))
+          .load(esEnvFrom("/boot_tests/boot_config/not_started_code_defined/"))
           .runSyncUnsafe()
 
         config.map(_.rorNotStartedResponse) should be(Right(
@@ -42,7 +43,7 @@ class RorBootConfigurationTest
       }
       "configuration contains failed to start response code" in {
         val config = RorBootConfiguration
-          .load(getResourcePath("/boot_tests/boot_config/failed_to_start_code_defined/"))
+          .load(esEnvFrom("/boot_tests/boot_config/failed_to_start_code_defined/"))
           .runSyncUnsafe()
 
         config.map(_.rorFailedToStartResponse) should be(Right(
@@ -51,7 +52,7 @@ class RorBootConfigurationTest
       }
       "configuration contains all codes" in {
         val config = RorBootConfiguration
-          .load(getResourcePath("/boot_tests/boot_config/all_codes_defined/"))
+          .load(esEnvFrom("/boot_tests/boot_config/all_codes_defined/"))
           .runSyncUnsafe()
 
         config should be(Right(RorBootConfiguration(
@@ -62,7 +63,7 @@ class RorBootConfigurationTest
     }
     "there is no response codes defined in config, default values should be used" in {
       val config = RorBootConfiguration
-        .load(getResourcePath("/boot_tests/boot_config/"))
+        .load(esEnvFrom("/boot_tests/boot_config/"))
         .runSyncUnsafe()
 
       config should be(Right(RorBootConfiguration(
@@ -76,7 +77,7 @@ class RorBootConfigurationTest
       val configFolderPath = "/boot_tests/boot_config/not_started_code_malformed/"
       val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
 
-      RorBootConfiguration.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
+      RorBootConfiguration.load(esEnvFrom(configFolderPath)).runSyncUnsafe() shouldBe Left {
         MalformedSettings(
           s"Cannot load ROR boot configuration from file $expectedFilePath. " +
           s"Cause: Unsupported response code [200] for readonlyrest.not_started_response_code. Supported response codes are: 403, 503."
@@ -87,7 +88,7 @@ class RorBootConfigurationTest
       val configFolderPath = "/boot_tests/boot_config/failed_to_start_code_malformed/"
       val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
 
-      RorBootConfiguration.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
+      RorBootConfiguration.load(esEnvFrom(configFolderPath)).runSyncUnsafe() shouldBe Left {
         MalformedSettings(
           s"Cannot load ROR boot configuration from file $expectedFilePath. " +
           s"Cause: Unsupported response code [200] for readonlyrest.failed_to_start_response_code. Supported response codes are: 403, 503."
@@ -96,4 +97,7 @@ class RorBootConfigurationTest
     }
   }
 
+  private def esEnvFrom(configFolderPath: String) = {
+    EsEnv(getResourcePath(configFolderPath), getResourcePath(configFolderPath))
+  }
 }

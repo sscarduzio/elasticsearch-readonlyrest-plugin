@@ -74,9 +74,9 @@ object LoggableLdapAuthorizationService {
         .groupsOf(userId)
         .andThen {
           case Success(groups) =>
-            logger.debug(s"LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
+            logger.debug(s"[${requestId.show}] LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
           case Failure(ex) =>
-            logger.debug(s"Fetching LDAP user's groups failed:", ex)
+            logger.debug(s"[${requestId.show}] Fetching LDAP user's groups failed:", ex)
         }
     }
 
@@ -93,7 +93,7 @@ object LoggableLdapAuthorizationService {
 
     override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])
                          (implicit requestId: RequestId): Task[UniqueList[Group]] = {
-      logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that filtered group IDs are [${filteringGroupIds.map(_.show).mkString(",")}])")
+      logger.debug(s"[${requestId.show}] Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that filtered group IDs are [${filteringGroupIds.map(_.show).mkString(",")}])")
       underlying
         .groupsOf(userId, filteringGroupIds)
         .andThen {

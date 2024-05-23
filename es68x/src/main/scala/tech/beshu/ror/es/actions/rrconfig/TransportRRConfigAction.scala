@@ -30,8 +30,9 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
-import tech.beshu.ror.es.IndexJsonContentService
+import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.es.services.EsIndexJsonContentService
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.annotation.nowarn
 import scala.concurrent.duration._
@@ -102,10 +103,11 @@ class TransportRRConfigAction(setting: Settings,
   override def newNodeRequest(nodeId: String, request: RRConfigsRequest): RRConfigRequest =
     new RRConfigRequest(nodeId, request.getNodeConfigRequest)
 
-  private def loadConfig() =
+  private def loadConfig() = doPrivileged {
     RawRorConfigLoadingAction
-      .load(env.configFile(), indexContentProvider)
+      .load(EsEnv(env.configFile(), env.modulesFile()), indexContentProvider)
       .map(_.map(_.map(_.raw)))
+  }
 
   override def nodeOperation(request: RRConfigRequest): RRConfig = {
     val nodeRequest = request.getNodeConfigRequest

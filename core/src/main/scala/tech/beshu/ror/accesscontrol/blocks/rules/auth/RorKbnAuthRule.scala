@@ -20,6 +20,7 @@ import cats.implicits._
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -76,7 +77,7 @@ final class RorKbnAuthRule(val settings: Settings,
     val authHeaderName = Header.Name.authorization
     blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {
       case None =>
-        logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
+        logger.debug(s"[${blockContext.requestContext.id.show}] Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
         Rejected()
       case Some(token) =>
         process(token, blockContext)
@@ -84,6 +85,7 @@ final class RorKbnAuthRule(val settings: Settings,
   }
 
   private def process[B <: BlockContext : BlockContextUpdater](token: Jwt.Token, blockContext: B): RuleResult[B] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     jwtTokenData(token) match {
       case Left(_) =>
         Rejected()
@@ -101,7 +103,8 @@ final class RorKbnAuthRule(val settings: Settings,
     }
   }
 
-  private def jwtTokenData(token: Jwt.Token) = {
+  private def jwtTokenData(token: Jwt.Token)
+                          (implicit requestId: RequestId) = {
     claimsFrom(token)
       .map { tokenPayload =>
         (
@@ -113,11 +116,12 @@ final class RorKbnAuthRule(val settings: Settings,
       }
   }
 
-  private def claimsFrom(token: Jwt.Token) = {
+  private def claimsFrom(token: Jwt.Token)
+                        (implicit requestId: RequestId) = {
     Try(parser.parseClaimsJws(token.value.value).getBody)
       .toEither
       .map(Jwt.Payload.apply)
-      .left.map { ex => logger.debug(s"JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
+      .left.map { ex => logger.debug(s"[${requestId.show}] JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
   }
 
   private def handleUserClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,

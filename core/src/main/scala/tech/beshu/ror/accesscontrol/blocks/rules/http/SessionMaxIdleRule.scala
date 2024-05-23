@@ -16,8 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
+import cats.implicits.toShow
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
@@ -44,7 +46,8 @@ final class SessionMaxIdleRule(val settings: Settings,
       case Some(user) =>
         checkCookieFor(user, blockContext)
       case None =>
-        logger.warn("Cannot state the logged in user, put the authentication rule on top of the block!")
+        implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
+        logger.warn(s"[${requestId.show}] Cannot state the logged in user, put the authentication rule on top of the block!")
         Rejected()
     }
   }

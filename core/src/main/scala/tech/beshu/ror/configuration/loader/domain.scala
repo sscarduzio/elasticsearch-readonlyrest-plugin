@@ -18,6 +18,8 @@ package tech.beshu.ror.configuration.loader
 
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 
+import java.nio.file.Path
+
 sealed trait LoadedRorConfig[A]
 object LoadedRorConfig {
   final case class FileConfig[A](value: A) extends LoadedRorConfig[A]
@@ -36,7 +38,6 @@ object LoadedRorConfig {
   case object IndexUnknownStructure extends LoadedRorConfig.Error with LoadingIndexError
   case object IndexNotExist extends LoadingIndexError
 }
-final case class Path(value: String) extends AnyVal
 
 sealed trait LoadedTestRorConfig[A]
 object LoadedTestRorConfig {

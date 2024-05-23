@@ -40,15 +40,15 @@ object ConfigLoadingInterpreter extends Logging {
              inIndexLoadingDelay: LoadingDelay)
             (implicit environmentConfig: EnvironmentConfig): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
     override def apply[A](fa: LoadConfigAction[A]): Task[A] = fa match {
-      case ConfigLoading.LoadConfigAction.LoadEsConfig(esConfigPath) =>
-        logger.info(s"Loading Elasticsearch settings from file: ${esConfigPath.value}")
+      case ConfigLoading.LoadConfigAction.LoadEsConfig(env) =>
+        logger.info(s"Loading Elasticsearch settings from file: ${env.elasticsearchConfig.toString}")
         EsConfig
-          .from(esConfigPath)
+          .from(env)
           .map(_.left.map {
             case LoadEsConfigError.FileNotFound(file) =>
-              EsFileNotExist(Path(file.pathAsString))
+              EsFileNotExist(file.path)
             case LoadEsConfigError.MalformedContent(file, msg) =>
-              EsFileMalformed(Path(file.pathAsString), msg)
+              EsFileMalformed(file.path, msg)
             case LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled(aType) =>
               CannotUseRorConfigurationWhenXpackSecurityIsEnabled(
                 aType match {
@@ -58,7 +58,7 @@ object ConfigLoadingInterpreter extends Logging {
               )
           })
       case ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(path) =>
-        logger.info(s"Loading ReadonlyREST settings forced loading from file: ${path.value}")
+        logger.info(s"Loading ReadonlyREST settings forced loading from file from: ${path.toString}")
         EitherT(new FileConfigLoader(path).load())
           .bimap(convertFileError, ForcedFileConfig(_))
           .leftMap { error =>
@@ -66,7 +66,7 @@ object ConfigLoadingInterpreter extends Logging {
             error
           }.value
       case ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(path) =>
-        logger.info(s"Loading ReadonlyREST settings from file: ${path.value}, because index not exist")
+        logger.info(s"Loading ReadonlyREST settings from file from: ${path.toString}, because index not exist")
         EitherT(new FileConfigLoader(path).load())
           .bimap(convertFileError, FileConfig(_))
           .leftMap { error =>
@@ -111,7 +111,7 @@ object ConfigLoadingInterpreter extends Logging {
       case ParsingError(error) =>
         val show = error.show
         LoadedRorConfig.FileParsingError(show)
-      case SpecializedError(FileConfigError.FileNotExist(file)) => LoadedRorConfig.FileNotExist(Path(file.pathAsString))
+      case SpecializedError(FileConfigError.FileNotExist(file)) => LoadedRorConfig.FileNotExist(file.path)
     }
   }
 

@@ -23,23 +23,26 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode.NonFips
 import tech.beshu.ror.configuration.loader.FileConfigLoader
+import tech.beshu.ror.es.EsEnv
 
-import java.io.{File => JFile}
 import java.nio.file.Path
 
 final case class FipsConfiguration(fipsMode: FipsMode)
 
 object FipsConfiguration extends Logging {
 
-  def load(esConfigFolderPath: Path)
+  def load(esEnv: EsEnv)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
-    val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
+    val esConfig = esEnv.elasticsearchConfig
     loadFipsConfigFromFile(esConfig)
       .fold(
         error => Left(error),
         {
-          case FipsConfiguration(FipsMode.NonFips) => fallbackToRorConfig(esConfigFolderPath)
-          case ssl => Right(ssl)
+          case FipsConfiguration(FipsMode.NonFips) =>
+            logger.info(s"Cannot find FIPS configuration in ${esConfig.toString()} ...")
+            fallbackToRorConfig(esEnv.configPath)
+          case ssl =>
+            Right(ssl)
         }
       )
   }
@@ -47,7 +50,7 @@ object FipsConfiguration extends Logging {
   private def fallbackToRorConfig(esConfigFolderPath: Path)
                                  (implicit environmentConfig: EnvironmentConfig) = {
     val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
-    logger.info(s"Cannot find FIPS configuration in elasticsearch.yml, trying: ${rorConfig.pathAsString}")
+    logger.info(s"... trying: ${rorConfig.pathAsString}")
     if (rorConfig.exists) {
       loadFipsConfigFromFile(rorConfig)
     } else {
