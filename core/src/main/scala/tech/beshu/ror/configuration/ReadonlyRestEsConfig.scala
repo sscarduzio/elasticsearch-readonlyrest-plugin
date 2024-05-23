@@ -14,11 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.configuration
 
 import cats.data.EitherT
 import monix.eval.Task
-import tech.beshu.ror.configuration.{EnvironmentConfig, FipsConfiguration, MalformedSettings, RorBootConfiguration, RorSsl}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.ScalaOps._
 
 final case class ReadonlyRestEsConfig(bootConfig: RorBootConfiguration,

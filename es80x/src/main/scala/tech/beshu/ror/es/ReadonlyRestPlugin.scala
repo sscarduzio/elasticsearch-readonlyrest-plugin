@@ -49,7 +49,7 @@ import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
-import tech.beshu.ror.configuration.EnvironmentConfig
+import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
