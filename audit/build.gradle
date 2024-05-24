@@ -157,6 +157,12 @@ publishing {
             artifact javadocJar
             pom ror_pom
         }
+        crossBuildV3(MavenPublication) {
+            artifact crossBuildV3Jar
+            artifact sourcesJar
+            artifact javadocJar
+            pom ror_pom
+        }
     }
 }
 
