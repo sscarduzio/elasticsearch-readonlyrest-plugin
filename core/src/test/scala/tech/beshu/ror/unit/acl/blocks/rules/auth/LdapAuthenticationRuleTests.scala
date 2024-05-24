@@ -38,6 +38,7 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainT
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with WithDummyRequestIdSupport {
 

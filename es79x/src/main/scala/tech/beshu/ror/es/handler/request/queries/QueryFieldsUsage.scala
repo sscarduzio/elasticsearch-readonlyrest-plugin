@@ -97,7 +97,6 @@ object QueryFieldsUsage extends Logging {
         CannotExtractFields
     }
 
-    @nowarn("cat=unused")
     private def resolveFieldsUsageForLeafQuery[QUERY <: QueryBuilder : QueryFieldsUsage : Leaf](leafQuery: QUERY) = {
       leafQuery.fieldsUsage
     }

@@ -31,12 +31,15 @@ tasks.withType(ScalaCompile).configureEach {
 
     // Add whatever flags you typically add
     parameters += [
-            "-unchecked",
-            "-Ywarn-macros:after",
             "-feature",
-            "-Ymacro-annotations",
             "-Xfatal-warnings",
-            "-Ywarn-unused",
+            "-Wunused:implicits",
+            "-Wunused:imports",
+            "-Wunused:explicits",
+            "-Wunused:strict-no-implicit-warn",
+            "-Wunused:locals",
+            "-Wunused:params",
+            "-Wunused:privates",
             "-Wunused:nowarn"
     ]
 
@@ -45,8 +48,7 @@ tasks.withType(ScalaCompile).configureEach {
 }
 
 dependencies {
-    api group: 'com.github.pathikrit',           name: 'better-files_2.13',                 version: '3.9.2'
-    api group: 'com.github.cb372',               name: 'cats-retry-core_2.13',              version: '0.3.2'
+    api group: 'com.github.pathikrit',           name: 'better-files_3',                    version: '3.9.2'
     api group: 'commons-io',                     name: 'commons-io',                        version: '2.6'
     api group: 'org.apache.commons',             name: 'commons-lang3',                     version: '3.9'
     api group: 'commons-lang',                   name: 'commons-lang',                      version: '2.6'
@@ -62,17 +64,17 @@ dependencies {
     api group: 'io.jsonwebtoken',                name: 'jjwt-orgjson',                      version: '0.11.2'
     api group: 'org.jooq',                       name: 'joor-java-8',                       version: '0.9.13'
     api group: 'com.jayway.jsonpath',            name: 'json-path',                         version: '2.9.0'
-    api group: 'io.monix',                       name: 'monix_2.13',                        version: '3.4.1'
-    api group: 'com.lihaoyi',                    name: 'os-lib_2.13',                       version: '0.9.0'
-    api group: 'eu.timepit',                     name: 'refined_2.13',                      version: '0.10.1'
-    api group: 'org.scala-lang',                 name: 'scala-library',                     version: '2.13.13'
-    api group: 'org.scala-lang.modules'  ,       name: 'scala-parallel-collections_2.13',   version: '1.0.4'
-    api group: 'com.typesafe.scala-logging',     name: 'scala-logging_2.13',                version: '3.9.2'
-    api group: 'org.scalatest',                  name: 'scalatest_2.13',                    version: '3.2.9'
-    api group: 'com.dimafeng',                   name: 'testcontainers-scala_2.13',         version: '0.40.17'
+    api group: 'io.monix',                       name: 'monix_3',                           version: '3.4.1'
+    api group: 'com.lihaoyi',                    name: 'os-lib_3',                          version: '0.9.3'
+    api group: 'eu.timepit',                     name: 'refined_3',                         version: '0.11.1'
+    api group: 'org.scala-lang',                 name: 'scala3-library_3',                  version: '3.3.3'
+    api group: 'org.scala-lang.modules'  ,       name: 'scala-parallel-collections_3',      version: '1.0.4'
+    api group: 'com.typesafe.scala-logging',     name: 'scala-logging_3',                   version: '3.9.5'
+    api group: 'org.scalatest',                  name: 'scalatest_3',                       version: '3.2.18'
+    api group: 'com.dimafeng',                   name: 'testcontainers-scala_3',            version: '0.40.17'
     api group: 'org.testcontainers',             name: 'testcontainers',                    version: "1.18.3"
     api group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                    version: "2.1.4"
     api group: 'com.unboundid',                  name: 'unboundid-ldapsdk',                 version: '6.0.11'
     api group: 'com.mashape.unirest',            name: 'unirest-java',                      version: '1.4.9'
-    api group: 'com.lihaoyi',                    name: 'upickle_2.13',                      version: '3.1.0'
+    api group: 'com.lihaoyi',                    name: 'upickle_3',                         version: '3.2.0'
 }

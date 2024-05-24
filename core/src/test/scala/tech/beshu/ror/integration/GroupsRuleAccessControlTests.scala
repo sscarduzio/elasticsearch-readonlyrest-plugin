@@ -33,6 +33,7 @@ import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.util.Base64
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class GroupsRuleAccessControlTests
   extends AnyWordSpec

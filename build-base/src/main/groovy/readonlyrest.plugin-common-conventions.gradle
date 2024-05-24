@@ -72,13 +72,21 @@ docker {
 
 tasks.withType(ScalaCompile).configureEach {
     scalaCompileOptions.additionalParameters = [
-            "-unchecked",
-            "-Ywarn-macros:after",
             "-feature",
-            "-Ymacro-annotations",
             "-Xfatal-warnings",
-            "-Ywarn-unused",
-            "-Wunused:nowarn"
+            "-Wunused:implicits",
+            "-Wunused:imports",
+            "-Wunused:explicits",
+            "-Wunused:strict-no-implicit-warn",
+            "-Wunused:locals",
+            "-Wunused:params",
+            "-Wunused:privates",
+            // There are multiple reports of issues with `-Wunused:nowarn` flag when using Scala 3.3.X
+            // It seems that this problem occurs in es{version}x modules when using deprecated `org.elasticsearch.index.query.CommonTermsQueryBuilder`
+            // - https://github.com/scala/scala3/issues/19992
+            // - https://github.com/scala/scala3/issues/18341
+            // - https://users.scala-lang.org/t/wunused-on-scala-3-3-0/9401
+            // "-Wunused:nowarn",
     ]
 }
 

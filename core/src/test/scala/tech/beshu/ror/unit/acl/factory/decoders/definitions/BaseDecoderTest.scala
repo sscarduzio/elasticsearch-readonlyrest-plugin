@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.utils.ADecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.utils.yaml
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 abstract class BaseDecoderTest[F[_] : Comonad, A, B](decoder: ADecoder[F, A])
   extends AnyWordSpec with Inside {

@@ -22,10 +22,10 @@ import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.transport.{RemoteClusterService, TransportService}
 
-import scala.annotation.nowarn
+import scala.annotation.unused
 
 class TransportServiceInterceptor(transportService: TransportService,
-                                  @nowarn("cat=unused") constructorDiscriminator: Unit)
+                                  @unused constructorDiscriminator: Unit)
   extends AbstractLifecycleComponent() {
 
   @Inject

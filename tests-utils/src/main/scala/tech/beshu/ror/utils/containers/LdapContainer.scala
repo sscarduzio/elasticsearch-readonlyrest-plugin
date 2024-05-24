@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.containers
 
+import better.files.Dispose.FlatMap.Implicits
 import better.files.{Disposable, Dispose, File, Resource}
 import com.dimafeng.testcontainers.GenericContainer
 import com.typesafe.scalalogging.LazyLogging
@@ -26,10 +27,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 import tech.beshu.ror.utils.containers.LdapContainer.{InitScriptSource, defaults}
-import tech.beshu.ror.utils.misc.ScalaUtils._
+import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 import java.io.{BufferedReader, InputStreamReader}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 
 class LdapContainer private[containers] (name: String, ldapInitScript: InitScriptSource)
@@ -122,7 +123,8 @@ object NonStoppableLdapContainer {
 private class LdapWaitStrategy(name: String,
                                ldapInitScript: InitScriptSource)
   extends HostPortWaitStrategy()
-    with LazyLogging {
+    with LazyLogging 
+    with Implicits {
 
   override def waitUntilReady(): Unit = {
     super.waitUntilReady()

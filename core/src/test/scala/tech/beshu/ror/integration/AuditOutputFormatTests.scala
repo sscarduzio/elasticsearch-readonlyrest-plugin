@@ -34,6 +34,7 @@ import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest {
 
@@ -79,7 +80,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "task_id":0,
              |  "type":"default-type",
              |  "req_method":"GET",
-             |  "path":"_search",
+             |  "path":"/_search",
              |  "indices":[],
              |  "@timestamp":"2020-01-01T00:00:00Z",
              |  "content_len_kb":0,
@@ -116,7 +117,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "task_id":0,
              |  "type":"default-type",
              |  "req_method":"GET",
-             |  "path":"_search",
+             |  "path":"/_search",
              |  "indices":[],
              |  "@timestamp":"2020-01-01T00:00:00Z",
              |  "content_len_kb":0,

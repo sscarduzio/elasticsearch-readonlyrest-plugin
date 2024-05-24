@@ -26,8 +26,6 @@ import tech.beshu.ror.es.handler.request.queries.QueryType.instances._
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 
-import scala.annotation.nowarn
-
 trait QueryFieldsUsage[QUERY <: QueryBuilder] {
   def fieldsIn(query: QUERY): RequestFieldsUsage
 }
@@ -93,7 +91,6 @@ object QueryFieldsUsage extends Logging {
         CannotExtractFields
     }
 
-    @nowarn("cat=unused")
     private def resolveFieldsUsageForLeafQuery[QUERY <: QueryBuilder : QueryFieldsUsage : Leaf](leafQuery: QUERY) = {
       leafQuery.fieldsUsage
     }

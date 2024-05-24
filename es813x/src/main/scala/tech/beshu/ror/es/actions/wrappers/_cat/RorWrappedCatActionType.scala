@@ -25,7 +25,7 @@ object RorWrappedCatActionType {
   val name = "cat_action"
   val instance = new RorWrappedCatActionType()
 
-  final case object ArtificialCatActionCannotBeTransported extends Exception
+  case object ArtificialCatActionCannotBeTransported extends Exception
 
   private [_cat] def exceptionReader[A]: Writeable.Reader[A] = _ => throw ArtificialCatActionCannotBeTransported
 }

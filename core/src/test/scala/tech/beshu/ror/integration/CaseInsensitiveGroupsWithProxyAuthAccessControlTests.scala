@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest with Inside {

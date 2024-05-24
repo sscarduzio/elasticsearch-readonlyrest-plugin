@@ -16,17 +16,44 @@
  */
 package tech.beshu.ror.configuration.loader.distributed.internode.dto
 
-import io.circe.generic.extras.ConfiguredJsonCodec
 import io.circe.{Codec, Decoder, Encoder}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
+import tech.beshu.ror.utils.CirceOps.*
 
 import java.nio.file.Paths
 
-
-@ConfiguredJsonCodec
 sealed trait LoadedConfigErrorDto
 
 object LoadedConfigErrorDto {
+
+  implicit val codec: Codec[LoadedConfigErrorDto] = codecWithTypeDiscriminator(
+    encode = {
+      case dto: FileParsingErrorDTO =>
+        derivedEncoderWithType[FileParsingErrorDTO]("FileParsingErrorDTO")(dto)
+      case dto: FileNotExistDTO =>
+        derivedEncoderWithType[FileNotExistDTO]("FileNotExistDTO")(dto)
+      case dto: EsFileNotExistDTO =>
+        derivedEncoderWithType[EsFileNotExistDTO]("EsFileNotExistDTO")(dto)
+      case dto: EsFileMalformedDTO =>
+        derivedEncoderWithType[EsFileMalformedDTO]("EsFileMalformedDTO")(dto)
+      case dto: CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO =>
+        derivedEncoderWithType[CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO]("CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO")(dto)
+      case dto: IndexParsingErrorDTO =>
+        derivedEncoderWithType[IndexParsingErrorDTO]("FileParsingErrorDTO")(dto)
+      case IndexUnknownStructureDTO =>
+        derivedEncoderWithType[IndexUnknownStructureDTO.type]("IndexUnknownStructureDTO")(IndexUnknownStructureDTO)
+    },
+    decoders = Map(
+      "FileParsingErrorDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, FileParsingErrorDTO],
+      "FileNotExistDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, FileNotExistDTO],
+      "EsFileNotExistDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, EsFileNotExistDTO],
+      "EsFileMalformedDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, EsFileMalformedDTO],
+      "CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO],
+      "FileParsingErrorDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, FileParsingErrorDTO],
+      "IndexUnknownStructureDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, IndexUnknownStructureDTO.type],
+    )
+  )
+
   def create(error: LoadedRorConfig.Error): LoadedConfigErrorDto = error match {
     case o: LoadedRorConfig.FileParsingError => FileParsingErrorDTO.create(o)
     case o: LoadedRorConfig.FileNotExist => FileNotExistDTO.create(o)

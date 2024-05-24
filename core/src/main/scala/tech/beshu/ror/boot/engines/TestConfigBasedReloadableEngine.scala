@@ -36,8 +36,6 @@ import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, TestRorCon
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
 
-import scala.annotation.nowarn
-
 private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
                                                             initialEngine: InitialEngine,
                                                             reloadInProgress: Semaphore[Task],
@@ -49,7 +47,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
   ) {
 
   def currentTestConfig()
-                       (implicit @nowarn("cat=unused") requestId: RequestId): Task[TestConfig] = {
+                       (implicit requestId: RequestId): Task[TestConfig] = {
     Task.delay {
       currentEngineState match {
         case EngineState.NotStartedYet(None, _) | EngineState.Stopped =>

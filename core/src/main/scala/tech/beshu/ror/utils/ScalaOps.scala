@@ -37,7 +37,7 @@ import scala.util.Try
 
 object ScalaOps {
 
-  implicit class IterableeOnceOps[T](val iterable: IterableOnce[T]) extends AnyVal {
+  implicit class IterableeOnceOps[T](iterable: IterableOnce[T]) extends AnyVal {
 
     def mkStringOrEmptyString(start: String, sep: String, end: String): String = {
       if(iterable.iterator.isEmpty) ""
@@ -45,30 +45,30 @@ object ScalaOps {
     }
   }
 
-  implicit class TryOps[T](val `try`: Try[T]) extends AnyVal {
+  implicit class TryOps[T](`try`: Try[T]) extends AnyVal {
 
     def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)
   }
 
-  implicit class JavaMapOps[K : ClassTag, V : ClassTag](val map: java.util.Map[K, V]) {
+  implicit class JavaMapOps[K : ClassTag, V : ClassTag](map: java.util.Map[K, V]) {
     def asSafeMap: Map[K, V] = Option(map).map(_.asScala.toMap).getOrElse(Map.empty)
     def asSafeKeys: Set[K] = asSafeMap.keys.toSet[K]
     def asSafeValues: Set[V] = asSafeMap.values.toSet
   }
 
-  implicit class JavaMapFactoryMethod(val mapObject: Map.type) {
+  implicit class JavaMapFactoryMethod(mapObject: Map.type) {
     def asEmptyJavaMap[K, V]: java.util.Map[K, V] = Map.empty[K, V].asJava
   }
 
-  implicit class JavaListOps[T : ClassTag](val list: java.util.List[T]) {
+  implicit class JavaListOps[T : ClassTag](list: java.util.List[T]) {
     def asSafeList: List[T] = Option(list).map(_.asScala.toList).getOrElse(Nil)
   }
 
-  implicit class JavaSetOps[T : ClassTag](val set: java.util.Set[T]) {
+  implicit class JavaSetOps[T : ClassTag](set: java.util.Set[T]) {
     def asSafeSet: Set[T] = Option(set).map(_.asScala.toSet).getOrElse(Set.empty)
   }
 
-  implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
+  implicit class ArrayOps[T : ClassTag](array: Array[T]) {
     def asSafeSet: Set[T] = safeArray.toSet
     def asSafeList: List[T] = safeArray.toList
 
@@ -87,11 +87,11 @@ object ScalaOps {
     def asSafeIterable: Iterable[T] = Option(value).map(_.asScala).getOrElse(Iterable.empty)
   }
 
-  implicit class ToSetOps[T](val value: T) extends AnyVal {
+  implicit class ToSetOps[T](value: T) extends AnyVal {
     def asSafeSet: Set[T] = Option(value).toSet
   }
 
-  implicit class ListOps[T](val list: List[T]) extends AnyVal {
+  implicit class ListOps[T](list: List[T]) extends AnyVal {
 
     def findDuplicates: List[T] =
       findDuplicates(identity)
@@ -103,14 +103,14 @@ object ScalaOps {
         .toList
   }
 
-  implicit class MapOps[K, V](val map: Map[K, V]) extends AnyVal {
+  implicit class MapOps[K, V](map: Map[K, V]) extends AnyVal {
     def asStringMap: Map[String, String] =
       map.collect {
         case (key: String, value: String) => (key, value)
       }
   }
 
-  implicit class ListOfListOps[T](val lists: List[List[T]]) extends AnyVal {
+  implicit class ListOfListOps[T](lists: List[List[T]]) extends AnyVal {
 
     def cartesian: List[List[T]] = {
       lists.foldRight(List(List.empty[T])) {
@@ -123,14 +123,14 @@ object ScalaOps {
     }
   }
 
-  implicit class NonEmptyListOfNonEmptyListOps[T](val lists: NonEmptyList[NonEmptyList[T]]) extends AnyVal {
+  implicit class NonEmptyListOfNonEmptyListOps[T](lists: NonEmptyList[NonEmptyList[T]]) extends AnyVal {
 
     def cartesian: NonEmptyList[NonEmptyList[T]] = {
       NonEmptyList.fromListUnsafe(new ListOfListOps(lists.map(_.toList).toList).cartesian.map(NonEmptyList.fromListUnsafe))
     }
   }
 
-  implicit class ListOfEitherOps[A, B](val either: List[Either[A, B]]) extends AnyVal {
+  implicit class ListOfEitherOps[A, B](either: List[Either[A, B]]) extends AnyVal {
 
     def partitionEither: (List[A], List[B]) = {
       either.partitionMap(identity)
@@ -175,7 +175,7 @@ object ScalaOps {
     IO.fromFuture(IO(t.runToFuture))
   }
 
-  implicit class AutoCloseableOps[A <: AutoCloseable](val value: A) extends AnyVal {
+  implicit class AutoCloseableOps[A <: AutoCloseable](value: A) extends AnyVal {
     def bracket[B](convert: A => B): B = {
       try {
         convert(value)
@@ -185,19 +185,19 @@ object ScalaOps {
     }
   }
 
-  implicit class AutoClosableMOps[A <: AutoCloseable, M[_]: Functor](val value: M[A]) {
+  implicit class AutoClosableMOps[A <: AutoCloseable, M[_]: Functor](value: M[A]) {
     def bracket[B](convert: A => B): M[B] = {
       import cats.implicits._
       value.map(v => AutoCloseableOps(v).bracket(convert))
     }
   }
 
-  implicit class NonEmptySetOps[T](val value: NonEmptySet[T]) extends AnyVal {
+  implicit class NonEmptySetOps[T](value: NonEmptySet[T]) extends AnyVal {
     import cats.implicits._
     def widen[S >: T : Ordering]: NonEmptySet[S] = NonEmptySet.fromSetUnsafe(SortedSet.empty[S] ++ value.toList.widen[S].toSet)
   }
 
-  implicit class StringOps(val value: String) extends AnyVal {
+  implicit class StringOps(value: String) extends AnyVal {
     def splitByFirst(char: Char): Option[(String, String)] = {
       value.split(char).toList match {
         case Nil => None
@@ -227,7 +227,7 @@ object ScalaOps {
     }
   }
 
-  implicit class PositiveFiniteDurationAdd(val duration: PositiveFiniteDuration) {
+  implicit class PositiveFiniteDurationAdd(duration: PositiveFiniteDuration) {
 
     def +(duration: PositiveFiniteDuration): PositiveFiniteDuration = {
       Refined.unsafeApply(this.duration.value + duration.value)

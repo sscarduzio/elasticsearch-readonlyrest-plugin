@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits._
-import eu.timepit.refined.auto._
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -41,6 +40,7 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.util.Try
+import tech.beshu.ror.utils.RefinedUtils._
 
 final class JwtAuthRule(val settings: JwtAuthRule.Settings,
                         override val userIdCaseSensitivity: CaseSensitivity)
@@ -116,7 +116,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
               case NoCheck(service) =>
                 implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
                 service
-                  .authenticate(Credentials(User.Id("jwt"), PlainTextSecret(token.value)))
+                  .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
                   .map(RuleResult.resultBasedOnCondition(modifiedBlockContext)(_))
               case Hmac(_) | Rsa(_) | Ec(_) =>
                 Task.now(Fulfilled(modifiedBlockContext))

@@ -39,6 +39,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ExternalAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ExternalAuthorizationRule] with MockFactory with Inside {
@@ -76,7 +77,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
               service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -132,7 +133,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
               service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user2"),
                 groupsConfig = GroupsConfig(
@@ -186,7 +187,7 @@ class ExternalAuthorizationRuleSettingsTests
               cachableService.underlying shouldBe a[HttpExternalAuthorizationService]
               val httpService = cachableService.underlying.asInstanceOf[HttpExternalAuthorizationService]
               httpService.config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -234,7 +235,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
               service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -284,7 +285,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
               service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -336,7 +337,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
               service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -395,7 +396,7 @@ class ExternalAuthorizationRuleSettingsTests
               cacheableService.underlying shouldBe a[HttpExternalAuthorizationService]
               val underlyingService = cacheableService.underlying.asInstanceOf[HttpExternalAuthorizationService]
               underlyingService.config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Post,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -459,7 +460,7 @@ class ExternalAuthorizationRuleSettingsTests
               cacheableService.underlying shouldBe a[HttpExternalAuthorizationService]
               val underlyingService = cacheableService.underlying.asInstanceOf[HttpExternalAuthorizationService]
               underlyingService.config should be(Config(
-                uri = uriFrom("http://localhost:8080/groups"),
+                url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Post,
                 tokenName = AuthTokenName("user"),
                 groupsConfig = GroupsConfig(
@@ -505,7 +506,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """groups_provider_authorization:
                 |  groups:
                 |  - "group3"
@@ -624,7 +625,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- groups_endpoint: "http://localhost:8080/groups"
                 |  auth_token_name: "user"
                 |  auth_token_passed_as: "QUERY_PARAM"
@@ -696,7 +697,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "GroupsService1"
                 |  auth_token_name: "user"
                 |  auth_token_passed_as: "QUERY_PARAM"
@@ -759,7 +760,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "GroupsService1"
                 |  groups_endpoint: "http://localhost:8080/groups"
                 |  auth_token_name: "user"
@@ -971,7 +972,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "GroupsService1"
                 |  groups_endpoint: "http://localhost:8080/groups"
                 |  auth_token_passed_as: "QUERY_PARAM"

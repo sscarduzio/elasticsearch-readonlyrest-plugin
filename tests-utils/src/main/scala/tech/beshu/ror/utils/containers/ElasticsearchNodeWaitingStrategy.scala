@@ -23,7 +23,6 @@ import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{EsStartupChecker, Version}
 
-import scala.concurrent.duration._
 import scala.util.Try
 
 class ElasticsearchNodeWaitingStrategy(esVersion: String,
@@ -34,7 +33,6 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
     with StrictLogging {
 
   override def waitUntilReady(): Unit = {
-    implicit val startupThreshold: FiniteDuration = startupTimeout.toMillis.millis
     val client = restClient.runAttempt().fold(throw _, identity)
     val checker =
       if (Version.greaterOrEqualThan(esVersion, 8, 3, 0)) {

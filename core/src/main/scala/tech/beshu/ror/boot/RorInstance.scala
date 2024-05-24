@@ -142,7 +142,7 @@ class RorInstance private(boot: ReadonlyRest,
   }
 
   private def scheduleEnginesReload(interval: PositiveFiniteDuration): Cancelable = {
-    val reloadTask = { requestId: RequestId =>
+    val reloadTask = { (requestId: RequestId) =>
       Task.sequence {
         Seq(
           tryMainEngineReload(requestId).map(result => (ConfigType.Main, result)),

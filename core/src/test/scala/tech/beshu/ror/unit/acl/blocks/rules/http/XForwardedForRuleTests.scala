@@ -36,8 +36,12 @@ import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.ResolveResult.{Resolv
 import tech.beshu.ror.mocks.{MockHostnameResolver, MockRequestContext}
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
-class XForwardedForRuleTests extends AnyWordSpec {
+import scala.concurrent.duration.*
+import scala.language.postfixOps
+
+class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
 
   "A XForwardedForRule" should {
     "match" when {
@@ -118,7 +122,7 @@ class XForwardedForRuleTests extends AnyWordSpec {
         }
       }
       "hostname can be resolved when rule is created but not during request handling" in {
-        val mockedResolver = MockHostnameResolver.create(NonEmptyList.of(
+        val mockedResolver = create(NonEmptyList.of(
           MockOnce("es-pub7", Unresolvable),
           MockOnce("google.com", ResolvedIps("192.168.0.1/24"))
         ))
@@ -151,7 +155,7 @@ class XForwardedForRuleTests extends AnyWordSpec {
       case None => MockRequestContext.indices
     }
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-    rule.check(blockContext).runSyncStep shouldBe Right {
+    rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()
     }

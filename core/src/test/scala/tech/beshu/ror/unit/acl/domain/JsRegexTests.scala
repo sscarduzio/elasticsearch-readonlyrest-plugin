@@ -23,6 +23,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.JsRegex
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class JsRegexTests extends AnyWordSpec with Matchers with EitherValues {
 

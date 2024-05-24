@@ -18,7 +18,7 @@ package tech.beshu.ror.unit.acl.logging
 
 import better.files._
 import cats.data.{NonEmptyList, NonEmptySet}
-import com.softwaremill.sttp.Method
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import monix.execution.Scheduler.Implicits.global
 import org.json.JSONObject
 import org.scalamock.scalatest.MockFactory
@@ -42,6 +42,7 @@ import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import java.time._
 import java.util.UUID
@@ -93,7 +94,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               auditSinkServiceCreator = _ => auditSink
             ).get
 
-            val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+            val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = ForbiddenBy(
               requestContext,
               new Block(
@@ -117,7 +118,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               auditSinkServiceCreator = _ => auditSink
             ).get
 
-            val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+            val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = Forbidden(requestContext, Vector.empty)
 
             auditingTool.audit(responseContext).runSyncUnsafe()
@@ -131,7 +132,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               auditSinkServiceCreator = _ => auditSink
             ).get
 
-            val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+            val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = Errored(requestContext, new Exception("error"))
 
             auditingTool.audit(responseContext).runSyncUnsafe()
@@ -152,7 +153,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             auditSinkServiceCreator = _ => mock[AuditSinkService]
           ).get
 
-          val requestContextId = RequestContext.Id(UUID.randomUUID().toString)
+          val requestContextId = RequestContext.Id.fromString(UUID.randomUUID().toString)
           val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = requestContextId)
           val responseContext = Errored(requestContext, new Exception("error"))
 
@@ -187,7 +188,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   private lazy val someday = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
 
   private def createAllowedResponseContext(policy: Block.Policy, verbosity: Block.Verbosity) = {
-    val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+    val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
     AllowedBy(
       requestContext,
       new Block(

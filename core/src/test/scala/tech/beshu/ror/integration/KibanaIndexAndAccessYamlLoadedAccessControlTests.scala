@@ -16,22 +16,22 @@
  */
 package tech.beshu.ror.integration
 
-import com.softwaremill.sttp.Method
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest
@@ -120,7 +120,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           val request = MockRequestContext.nonIndices.copy(
             headers = Set(basicAuthHeader("john:dev")),
             action = Action("cluster:admin/component_template/put"),
-            uriPath = UriPath("/_component_template/test")
+            uriPath = UriPath.from("/_component_template/test")
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -140,7 +140,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           val request = MockRequestContext.nonIndices.copy(
             headers = Set(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
             action = Action("cluster:admin/component_template/put"),
-            uriPath = UriPath("/_component_template/test")
+            uriPath = UriPath.from("/_component_template/test")
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -162,7 +162,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           val request = MockRequestContext.nonIndices.copy(
             headers = Set(basicAuthHeader("john:dev")),
             action = Action("cluster:admin/component_template/put"),
-            uriPath = UriPath("/_component_template/test")
+            uriPath = UriPath.from("/_component_template/test")
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -184,8 +184,8 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
       "allow to proceed" in {
         val request = MockRequestContext.indices.copy(
           headers = Set(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
-          uriPath = UriPath("/.kibana_ror_custom/_doc/dashboard:d3d40550-b889-11eb-a1e1-914af9365d47"),
-          method = Method("PUT"),
+          uriPath = UriPath.from("/.kibana_ror_custom/_doc/dashboard:d3d40550-b889-11eb-a1e1-914af9365d47"),
+          method = Method.PUT,
           action = Action("indices:data/write/index"),
           filteredIndices = Set(clusterIndexName(".kibana_ror_custom"))
         )
@@ -216,23 +216,21 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
         val loginResult = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
 
         inside(loginResult.result) { case UserMetadataRequestResult.Allow(metadata, _) =>
-          metadata should be(UserMetadata(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),
-            currentGroupId = Some(GroupId("Administrators")),
-            availableGroups = UniqueList.of(group("Administrators"), group("Infosec")),
-            kibanaIndex = Some(kibanaIndexName(".kibana_admins")),
-            kibanaTemplateIndex = None,
-            hiddenKibanaApps = Set(
-              FullNameKibanaApp("Enterprise Search|Overview"),
-              FullNameKibanaApp("Observability"),
-              kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
-            ),
-            allowedKibanaApiPaths = Set.empty,
-            kibanaAccess = Some(KibanaAccess.Admin),
-            kibanaMetadata = None,
-            userOrigin = None,
-            jwtToken = None
-          ))
+          metadata should be(
+            UserMetadata.empty
+              .withLoggedUser(DirectlyLoggedUser(User.Id("admin")))
+              .withCurrentGroupId(GroupId("Administrators"))
+              .withAvailableGroups(UniqueList.of(group("Administrators"), group("Infosec")))
+              .withHiddenKibanaApps(
+                UniqueNonEmptyList.of(
+                  FullNameKibanaApp("Enterprise Search|Overview"),
+                  FullNameKibanaApp("Observability"),
+                  kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
+                )
+              )
+              .withKibanaIndex(kibanaIndexName(".kibana_admins"))
+              .withKibanaAccess(KibanaAccess.Admin)
+          )
         }
 
         val request = MockRequestContext.indices.copy(
@@ -240,8 +238,8 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             basicAuthHeader("admin:dev"),
             currentGroupHeader("Administrators")
           ),
-          uriPath = UriPath("/.kibana_admins/_create/index-pattern:3b2fa1b0-bcb2-11eb-a20e-8daf1d07a2b2"),
-          method = Method("PUT"),
+          uriPath = UriPath.from("/.kibana_admins/_create/index-pattern:3b2fa1b0-bcb2-11eb-a20e-8daf1d07a2b2"),
+          method = Method.PUT,
           action = Action("indices:data/write/index"),
           filteredIndices = Set(clusterIndexName(".kibana_admins"))
         )

@@ -25,8 +25,8 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.unit.utils.ReleasablePoolTest.Counter
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
-import scala.annotation.nowarn
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -108,7 +108,6 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
 
   private def createReleaseablePool(counter: Counter): ReleseablePool[M, counter.ReleasableResource, Unit] = {
 
-    @nowarn("cat=unused")
     def acquireR(counter: Counter)(unit: Unit): M[counter.ReleasableResource] = acquire(counter)
 
     def releaseR(resource: counter.ReleasableResource): M[Unit] = release(counter)(resource)

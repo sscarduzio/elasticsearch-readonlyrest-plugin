@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.AllClusterIndices
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates.AllTemplateIndices
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -37,6 +37,12 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, B
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndicesUpdater.GeneralIndexRequestBlockContextWithIndicesUpdater
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndexPacksUpdater.MultiIndexRequestBlockContextWithIndexPacksUpdater
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndexPacksUpdater.FilterableMultiRequestBlockContextWithIndexPacksUpdater
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndicesUpdater.FilterableRequestBlockContextWithIndicesUpdater
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks.indexPacksFromMultiIndexBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks.indexPacksFromFilterableMultiBlockContext
 
 class IndicesRule(override val settings: Settings,
                   override val identifierGenerator: UniqueIdentifierGenerator)
@@ -78,7 +84,7 @@ class IndicesRule(override val settings: Settings,
       val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
       processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices, blockContext.userMetadata.kibanaIndex)
         .map {
-          case ProcessResult.Ok(filteredIndices) =>
+          case ProcessResult.Ok(filteredIndices: Set[ClusterIndexName]) =>
             Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices))
           case ProcessResult.Failed(cause) => Rejected(cause)
         }
@@ -105,7 +111,7 @@ class IndicesRule(override val settings: Settings,
                   indices,
                   blockContext.userMetadata.kibanaIndex
                 ) map {
-                  case ProcessResult.Ok(narrowedIndices) => Right(currentList :+ Indices.Found(narrowedIndices))
+                  case ProcessResult.Ok(narrowedIndices: Set[ClusterIndexName]) => Right(currentList :+ Indices.Found(narrowedIndices))
                   case ProcessResult.Failed(Some(Cause.IndexNotFound)) => Right(currentList :+ Indices.NotFound)
                   case ProcessResult.Failed(cause) => Left(cause)
                 }
@@ -134,7 +140,7 @@ class IndicesRule(override val settings: Settings,
         aliasesResult <- processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.aliases, blockContext.userMetadata.kibanaIndex)
       } yield {
         (indicesResult, aliasesResult) match {
-          case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
+          case (ProcessResult.Ok(indices: Set[ClusterIndexName]), ProcessResult.Ok(aliases: Set[ClusterIndexName])) =>
             Fulfilled(blockContext.withIndices(indices).withAliases(aliases))
           case (ProcessResult.Failed(cause), _) => Rejected(cause)
           case (_, ProcessResult.Failed(Some(Cause.IndexNotFound))) => Rejected(Some(Cause.AliasNotFound))

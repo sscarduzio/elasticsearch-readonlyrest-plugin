@@ -28,6 +28,7 @@ import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class CacheableActionWithKeyMappingTests extends AnyWordSpec with MockFactory with WithDummyRequestIdSupport {
 

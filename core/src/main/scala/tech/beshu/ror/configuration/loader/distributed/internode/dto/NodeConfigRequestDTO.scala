@@ -16,13 +16,15 @@
  */
 package tech.beshu.ror.configuration.loader.distributed.internode.dto
 
-import io.circe.generic.extras.ConfiguredJsonCodec
+import io.circe.Codec
+import io.circe.generic.semiauto.deriveCodec
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
 
-@ConfiguredJsonCodec
 final case class NodeConfigRequestDTO(nanos: Long)
 
 object NodeConfigRequestDTO {
+  implicit val codec: Codec[NodeConfigRequestDTO] = deriveCodec
+
   def create(o: NodeConfigRequest): NodeConfigRequestDTO =
     new NodeConfigRequestDTO(
       nanos = o.timeout.nanos,

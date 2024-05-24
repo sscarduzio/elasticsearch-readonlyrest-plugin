@@ -74,7 +74,7 @@ object UnboundidLdapConnectionPool {
     }
 
     override def searchEntryReturned(searchEntry: SearchResultEntry): Unit = {
-      searchResultEntries.getAndUpdate { searchResultEntries: List[SearchResultEntry] =>
+      searchResultEntries.getAndUpdate { (searchResultEntries: List[SearchResultEntry]) =>
         searchEntry :: searchResultEntries
       }
     }

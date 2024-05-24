@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Funct
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.VariableTransformationAliasesDefinitionsDecoder
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class VariableTransformationAliasesTests
   extends BaseDecoderTest(VariableTransformationAliasesDefinitionsDecoder.create(SupportedVariablesFunctions.default)) {

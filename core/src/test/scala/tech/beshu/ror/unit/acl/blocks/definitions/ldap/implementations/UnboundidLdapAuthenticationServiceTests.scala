@@ -34,6 +34,8 @@ import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.TestsUtils.ValueOrIllegalState
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Clock
 import scala.concurrent.duration._
@@ -121,7 +123,7 @@ abstract class UnboundidLdapAuthenticationServiceTests
           .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
           .get
       ),
-      poolSize = 1,
+      poolSize = positiveInt(1),
       connectionTimeout = Refined.unsafeApply(5 seconds),
       requestTimeout = Refined.unsafeApply(5 seconds),
       trustAllCerts = false,

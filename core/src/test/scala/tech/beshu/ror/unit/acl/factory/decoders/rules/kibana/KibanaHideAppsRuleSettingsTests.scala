@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.kibanaAppRegex
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaHideAppsRule] {
 
@@ -84,7 +85,7 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """kibana_hide_apps:
                 |- ""
                 |""".stripMargin)))
@@ -105,7 +106,7 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """kibana_hide_apps: null
                 |""".stripMargin)))
           }
@@ -125,7 +126,7 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
+            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
               """kibana_hide_apps:
                 |- "/^(?!(Analytics\\|Management).*$).*$/"
                 |- "/^(?!(Analytics\\|Maps).*$.*$/"

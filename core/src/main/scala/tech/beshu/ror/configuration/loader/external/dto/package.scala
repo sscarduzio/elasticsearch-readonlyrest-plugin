@@ -17,11 +17,9 @@
 package tech.beshu.ror.configuration.loader.external
 
 import cats.Show
-import io.circe.generic.extras.Configuration
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 
 package object dto {
-  implicit val configuration: Configuration = Configuration.default.withDiscriminator("type")
   implicit val showLoadedConfigError: Show[LoadedRorConfig.Error] = Show.show {
     {
       case LoadedRorConfig.FileNotExist(path) => s"""file not exist: ${path.toString}"""

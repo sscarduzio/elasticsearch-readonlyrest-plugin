@@ -32,6 +32,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -99,7 +101,7 @@ class CircuitBreakerLdapAuthenticationServiceDecoratorTests
     new CircuitBreakerLdapAuthenticationServiceDecorator(
       authenticationService,
       CircuitBreakerConfig(
-        maxFailures = 2,
+        maxFailures = positiveInt(2),
         resetDuration = Refined.unsafeApply(1 second))
     )
   }

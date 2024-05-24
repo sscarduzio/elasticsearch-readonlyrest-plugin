@@ -26,7 +26,7 @@ object RRTestConfigActionType {
   val name: String = RorAction.RorTestConfigAction.value
   val instance = new RRTestConfigActionType()
 
-  final case object RRTestConfigActionCannotBeTransported extends Exception
+  case object RRTestConfigActionCannotBeTransported extends Exception
 
   private [rrtestconfig] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRTestConfigActionCannotBeTransported
 }

@@ -48,15 +48,15 @@ class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
     "ROR does not started yet" should {
       "return not started response with http code 403" when {
         "403 configured" in withTestEsContainerManager(Map(notStartedResponseCodeKey -> "403")) { esContainer =>
-          testRorStartup(using = esContainer, expectedResponseCode = 403)
+          testRorStartup(usingManager = esContainer, expectedResponseCode = 403)
         }
         "no option configured" in withTestEsContainerManager(Map.empty) { esContainer =>
-          testRorStartup(using = esContainer, expectedResponseCode = 403)
+          testRorStartup(usingManager = esContainer, expectedResponseCode = 403)
         }
       }
       "return not started response with http code 503" when {
         "503 configured" in withTestEsContainerManager(Map(notStartedResponseCodeKey -> "503")) { esContainer =>
-          testRorStartup(using = esContainer, expectedResponseCode = 503)
+          testRorStartup(usingManager = esContainer, expectedResponseCode = 503)
         }
       }
     }
@@ -80,9 +80,9 @@ class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
     }
   }
 
-  private def testRorStartup(using: TestEsContainerManager, expectedResponseCode: Int): Task[Unit] = {
+  private def testRorStartup(usingManager: TestEsContainerManager, expectedResponseCode: Int): Task[Unit] = {
     for {
-      restClient <- using.createRestClient
+      restClient <- usingManager.createRestClient
       searchTestResults <- searchTest(client = restClient, searchAttemptsCount = 200)
       result <- handleResults(searchTestResults, expectedResponseCode)
     } yield result

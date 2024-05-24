@@ -29,6 +29,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.RefinedUtils._
 
 class PutComposableIndexTemplateEsRequestContext(actionRequest: TransportPutComposableIndexTemplateAction.Request,
                                                  esContext: EsContext,

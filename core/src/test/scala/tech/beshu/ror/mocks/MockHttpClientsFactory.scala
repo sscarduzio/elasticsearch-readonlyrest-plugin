@@ -16,19 +16,16 @@
  */
 package tech.beshu.ror.mocks
 
-import com.softwaremill.sttp.impl.cats.CatsMonadError
-import com.softwaremill.sttp.{MonadError, Request, Response, SttpBackend}
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
+import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 
 object MockHttpClientsFactory extends HttpClientsFactory {
-
-  override def create(config: HttpClientsFactory.Config): HttpClient = new SttpBackend[Task, Nothing] {
-    override def send[T](request: Request[T, Nothing]): Task[Response[T]] =
+  override def create(config: HttpClientsFactory.Config): HttpClient = new SimpleHttpClient[Task] {
+    override def send(request: HttpClient.Request): Task[HttpClient.Response] =
       throw new IllegalStateException("Cannot use it. It's just a mock")
-    override def close(): Unit = ()
-    override def responseMonad: MonadError[Task] = new CatsMonadError[Task]
+
+    override def close(): Task[Unit] = Task.unit
   }
   override def shutdown(): Unit = {}
 }

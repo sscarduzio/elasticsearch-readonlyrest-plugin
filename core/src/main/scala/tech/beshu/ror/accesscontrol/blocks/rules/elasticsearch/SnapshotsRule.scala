@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -52,8 +52,9 @@ class SnapshotsRule(val settings: Settings)
     }
   }
 
-  private def checkAllowedSnapshots(allowedSnapshots: Set[SnapshotName],
-                                    blockContext: SnapshotRequestBlockContext): RuleResult[SnapshotRequestBlockContext] = {
+  private def checkAllowedSnapshots[B <: BlockContext](allowedSnapshots: Set[SnapshotName],
+                                                       blockContext: SnapshotRequestBlockContext)
+                                                      (implicit ev: SnapshotRequestBlockContext <:< B): RuleResult[B] = {
     if (allowedSnapshots.contains(SnapshotName.All) || allowedSnapshots.contains(SnapshotName.Wildcard)) {
       Fulfilled(blockContext)
     } else {
@@ -61,7 +62,7 @@ class SnapshotsRule(val settings: Settings)
         blockContext.snapshots,
         PatternsMatcher.create(allowedSnapshots)
       ) match {
-        case NotAltered =>
+        case NotAltered() =>
           Fulfilled(blockContext)
         case Altered(filteredSnapshots) if filteredSnapshots.nonEmpty && blockContext.requestContext.isReadOnlyRequest =>
           Fulfilled(blockContext.withSnapshots(filteredSnapshots))
