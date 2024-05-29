@@ -271,7 +271,7 @@ object LdapServicesDecoder {
         groupIdAttribute <- c.downField("group_name_attribute").as[Option[GroupIdAttribute]]
         uniqueMemberAttribute <- c.downField("unique_member_attribute").as[Option[UniqueMemberAttribute]]
         groupAttributeIsDN <- c.downField("group_attribute_is_dn").as[Option[Boolean]]
-        serverSideGroupsFiltering <- c.downField("sever_side_groups_filtering").as[Option[Boolean]]
+        serverSideGroupsFiltering <- c.downFields("server_side_groups_filtering", "sever_side_groups_filtering").as[Option[Boolean]]
       } yield DefaultGroupSearch(
         searchGroupBaseDn,
         groupSearchFilter.getOrElse(GroupSearchFilter.default),
