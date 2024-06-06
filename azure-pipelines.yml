@@ -30,6 +30,21 @@ pool:
 
 stages:
 
+  - stage: TEST_BUILD
+    dependsOn: [ ]
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              ./gradlew clean buildRorPlugin -PesVersion=8.14.0
+            continueOnError: true
+            env:
+              ROR_TASK: cve_check
+
   - stage: CVE
     dependsOn: [ ]
     jobs:
