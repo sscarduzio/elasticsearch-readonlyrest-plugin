@@ -1,4 +1,4 @@
-FROM openjdk:21-jdk
+FROM openjdk:22-jdk
 
 COPY ./ /ror
 WORKDIR /ror

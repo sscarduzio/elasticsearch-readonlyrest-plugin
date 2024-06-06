@@ -10,5 +10,11 @@ fi
 ES_VERSIONS=$*
 
 docker buildx build --no-cache --progress=plain --load -t ror-builder-tmp -f ror-builder/Dockerfile-ror-builder ../
+
+cleanup() {
+  docker rmi -f ror-builder-tmp
+}
+
+trap cleanup EXIT
+
 docker run --rm -v "$(pwd)"/../builds:/ror/builds ror-builder-tmp "$ES_VERSIONS"
-docker rmi -f ror-builder-tmp
