@@ -17,7 +17,8 @@
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import cats.Comonad
-import cats.implicits._
+import cats.data.NonEmptyList
+import cats.implicits.*
 import io.circe.DecodingFailure
 import org.scalatest.Inside
 import org.scalatest.wordspec.AnyWordSpec
@@ -29,6 +30,17 @@ import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 abstract class BaseDecoderTest[F[_] : Comonad, A, B](decoder: ADecoder[F, A])
   extends AnyWordSpec with Inside {
+
+
+  def assertDecodingSuccess(yamls: NonEmptyList[String],
+                            assertion: A => Unit): Unit = {
+    yamls
+      .toList
+      .foreach { yaml =>
+        println(s"Testing yaml: $yaml")
+        assertDecodingSuccess(yaml, assertion)
+      }
+  }
 
   def assertDecodingSuccess(yaml: String,
                             assertion: A => Unit): Unit = {

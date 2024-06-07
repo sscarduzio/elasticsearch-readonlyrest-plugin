@@ -52,14 +52,14 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
       .flatMap {
         case Right(results) =>
           Task.delay {
-            results.flatMap(_.toLdapGroup(config.groupIdAttribute)).toSet
+            results.flatMap(_.toLdapGroup(config.groupIdAttribute, config.groupNameAttribute)).toSet
           }
         case Left(errorResult) =>
-          logger.error(s"[${requestId.show}] LDAP getting groups of [${group.id.show}] group returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          logger.error(s"[${requestId.show}] LDAP getting groups of [${group.group.show}] group returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
-        Task(logger.errorEx(s"[${requestId.show}] LDAP getting groups of [${group.id.show}] group returned error", ex))
+        Task(logger.errorEx(s"[${requestId.show}] LDAP getting groups of [${group.group.show}] group returned error", ex))
       }
   }
 
@@ -69,9 +69,10 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
     val baseDn = config.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = searchFilterFrom(config.groupSearchFilter, config.memberAttribute, ldapGroup)
-    val attribute = config.groupIdAttribute.value.value
-    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
-    new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
+    val groupIdAttribute = config.groupIdAttribute.value.value
+    val groupNameAttribute = config.groupNameAttribute.value.value
+    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $groupIdAttribute;$groupNameAttribute]")
+    new SearchRequest(listener, baseDn, scope, searchFilter, groupIdAttribute, groupNameAttribute)
   }
 
   private def searchFilterFrom(groupSearchFilter: GroupSearchFilter,

@@ -123,6 +123,8 @@ readonlyrest:
       search_groups_base_DN: "ou=Groups,dc=example,dc=com"
       user_id_attribute: "uid"                                  # default "uid"
       unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      group_id_attribute: "cn"                                  # default "cn"  
+      group_name_attribute: "o"                                 # default group_id_attribute
       connection_pool_size: 10                                  # default 30
       connection_timeout: 10s                                   # default 1
       request_timeout: 10s                                      # default 1

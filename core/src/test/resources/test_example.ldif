@@ -96,6 +96,8 @@ dn: cn=group1,ou=Groups,dc=example,dc=com
 objectClass: top
 objectClass: groupOfUniqueNames
 cn: group1
+o: Group 1
+description: Group 1 description
 uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
 uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
 
@@ -103,6 +105,8 @@ dn: cn=group2,ou=Groups,dc=example,dc=com
 objectClass: top
 objectClass: groupOfUniqueNames
 cn: group2
+o: Group 2
+description: Group 2 description
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
 uniqueMember: cn=Bìlbö Bággįnš,ou=People,dc=example,dc=com
 
@@ -110,6 +114,8 @@ dn: cn=group3,ou=Groups,dc=example,dc=com
 objectClass: top
 objectClass: groupOfUniqueNames
 cn: group3
+o: Group 3
+description: Group 3 description
 uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
 uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
@@ -118,6 +124,8 @@ dn: cn=groupAll,ou=Groups,dc=example,dc=com
 objectClass: top
 objectClass: groupOfUniqueNames
 cn: groupAll
+o: Group All
+description: Group All description
 uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
 uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
@@ -213,6 +221,8 @@ dn: cn=it,ou=Roles,dc=example,dc=com
 objectClass: top
 objectClass: groupOfUniqueNames
 cn: it
+o: IT group
+description: IT
 uniqueMember: cn=UserDevOps,ou=Users,dc=example,dc=com
 uniqueMember: cn=developers,ou=Roles,dc=example,dc=com
 
@@ -220,6 +230,8 @@ dn: cn=developers,ou=Roles,dc=example,dc=com
 objectClass: top
 objectClass: groupOfUniqueNames
 cn: developers
+o: Developers group
+description: Devs
 uniqueMember: cn=UserDev,ou=Users,dc=example,dc=com
 uniqueMember: cn=speakers (external),ou=Roles,dc=example,dc=com
 
@@ -227,4 +239,6 @@ dn: cn=speakers (external),ou=Roles,dc=example,dc=com
 objectClass: top
 objectClass: groupOfUniqueNames
 cn: speakers (external)
+o: Speakers group
+description: Speakers
 uniqueMember: cn=UserSpeaker (ext),ou=Users,dc=example,dc=com

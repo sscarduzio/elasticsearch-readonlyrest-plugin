@@ -17,8 +17,8 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.Group
 
 private [implementations] object domain {
-  case class LdapGroup(id: GroupId, dn: Dn)
+  final case class LdapGroup(group: Group, dn: Dn)
 }

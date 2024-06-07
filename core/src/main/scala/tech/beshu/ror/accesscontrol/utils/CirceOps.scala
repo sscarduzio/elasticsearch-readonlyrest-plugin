@@ -46,6 +46,12 @@ object CirceOps {
 
     implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] = decodeStringLike.emap(NonEmptyString.from)
 
+    def decodeNonEmptyStringField: Decoder[NonEmptyString] =
+      SyncDecoderCreator
+        .from(decodeStringLikeNonEmpty)
+        .withError(ValueLevelCreationError(Message("field cannot be empty")))
+        .decoder
+
     implicit def decodeUniqueNonEmptyList[T](implicit decodeT: Decoder[T]): Decoder[UniqueNonEmptyList[T]] =
       Decoder.decodeNonEmptyList(decodeT).map(UniqueNonEmptyList.fromNonEmptyList)
 
@@ -352,6 +358,13 @@ object CirceOps {
     def downFieldAs[T: Decoder](name: String): Decoder.Result[T] = {
       value.downField(name).as[T].adaptError {
         case error: DecodingFailure => error.modifyError(errorMessage => s"Error for field '$name': $errorMessage")
+      }
+    }
+
+    def downFieldsAs[T: Decoder](field: String, fields: String*): Decoder.Result[T] = {
+      val (cursor, key) = downFieldsWithKey(field, fields*)
+      cursor.as[T].adaptError {
+        case error: DecodingFailure => error.modifyError(errorMessage => s"Error for field '$key': $errorMessage")
       }
     }
 

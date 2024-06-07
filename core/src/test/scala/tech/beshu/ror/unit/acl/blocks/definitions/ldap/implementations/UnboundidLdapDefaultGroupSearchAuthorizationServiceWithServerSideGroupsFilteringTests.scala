@@ -84,7 +84,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSide
         "user has groups" in {
           eventually {
             peopleAndGroupsLdapAuthorizationService.groupsOf(morganUserId, Set(GroupIdLike.from("*All"))).runSyncUnsafe() should be {
-              UniqueList.of(group("groupAll"))
+              UniqueList.of(group("groupAll", "Group All"))
             }
           }
         }
@@ -92,7 +92,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSide
       "resolve nested groups properly" in {
         eventually {
           usersAndRolesLdapAuthorizationService.groupsOf(userSpeakerUserId, Set(GroupIdLike.from("*ers*"))).runSyncUnsafe() should be {
-            UniqueList.of(group("developers"), group("speakers (external)"))
+            UniqueList.of(group("developers", "Developers group"), group("speakers (external)", "Speakers group"))
           }
         }
       }
@@ -146,6 +146,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSide
                 Dn("ou=Groups,dc=example,dc=com"),
                 GroupSearchFilter("(cn=*)"),
                 GroupIdAttribute("cn"),
+                GroupNameAttribute("o"),
                 UniqueMemberAttribute("uniqueMember"),
                 groupAttributeIsDN = true,
                 serverSideGroupsFiltering = true
@@ -181,6 +182,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSide
                 Dn("ou=Roles,dc=example,dc=com"),
                 GroupSearchFilter("(cn=*)"),
                 GroupIdAttribute("cn"),
+                GroupNameAttribute("o"),
                 UniqueMemberAttribute("uniqueMember"),
                 groupAttributeIsDN = true,
                 serverSideGroupsFiltering = true
@@ -191,6 +193,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSide
                 GroupSearchFilter("(cn=*)"),
                 UniqueMemberAttribute("uniqueMember"),
                 GroupIdAttribute("cn"),
+                GroupNameAttribute("o"),
               ))
             )
           )

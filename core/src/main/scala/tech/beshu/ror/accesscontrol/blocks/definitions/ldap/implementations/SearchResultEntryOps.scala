@@ -20,22 +20,26 @@ import cats.implicits._
 import com.unboundid.ldap.sdk.{DN, SearchResultEntry}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupsFromUserEntry}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupNameAttribute, GroupsFromUserEntry}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupName}
 
 import scala.util.Try
 
 private [implementations] object SearchResultEntryOps {
 
   implicit class ToLdapGroup(val entry: SearchResultEntry) extends AnyVal {
-    def toLdapGroup(groupIdAttribute: GroupIdAttribute): Option[LdapGroup] = {
+    def toLdapGroup(groupIdAttribute: GroupIdAttribute, groupNameAttribute: GroupNameAttribute): Option[LdapGroup] = {
       for {
         groupId <- Option(entry.getAttributeValue(groupIdAttribute.value.value))
           .flatMap(NonEmptyString.unapply)
           .map(GroupId.apply)
+        groupName <- Option(entry.getAttributeValue(groupNameAttribute.value.value))
+          .flatMap(NonEmptyString.unapply)
+          .map(GroupName.apply)
         dn <- Option(entry.getDN).flatMap(NonEmptyString.unapply).map(Dn.apply)
-      } yield LdapGroup(groupId, dn)
+      } yield LdapGroup(Group(groupId, groupName), dn)
     }
 
     def toLdapGroups(mode: GroupsFromUserEntry): List[LdapGroup] = {
@@ -55,7 +59,7 @@ private [implementations] object SearchResultEntryOps {
             .map(_.getValue)
             .headOption
         }.toOption.flatten.flatMap(NonEmptyString.unapply)
-          .map { groupId => LdapGroup(GroupId(groupId), Dn(dnString)) }
+          .map { groupId => LdapGroup(Group.from(GroupId(groupId)), Dn(dnString)) }
       } else {
         None
       }

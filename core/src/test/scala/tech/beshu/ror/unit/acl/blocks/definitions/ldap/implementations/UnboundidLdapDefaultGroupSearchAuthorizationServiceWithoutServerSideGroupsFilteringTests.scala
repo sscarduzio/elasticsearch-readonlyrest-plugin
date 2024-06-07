@@ -84,7 +84,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
         "user has groups" in {
           eventually {
             peopleAndGroupsLdapAuthorizationService.groupsOf(morganUserId).runSyncUnsafe() should be {
-              UniqueList.of(group("groupAll"), group("group3"), group("group2"))
+              UniqueList.of(group("groupAll", "Group All"), group("group3", "Group 3"), group("group2", "Group 2"))
             }
           }
         }
@@ -92,7 +92,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
       "resolve nested groups properly" in {
         eventually {
           usersAndRolesLdapAuthorizationService.groupsOf(userSpeakerUserId).runSyncUnsafe() should be {
-            UniqueList.of(group("developers"), group("speakers (external)"))
+            UniqueList.of(group("developers", "Developers group"), group("speakers (external)", "Speakers group"))
           }
         }
       }
@@ -134,6 +134,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
                 Dn("ou=Groups,dc=example,dc=com"),
                 GroupSearchFilter("(cn=*)"),
                 GroupIdAttribute("cn"),
+                GroupNameAttribute("o"),
                 UniqueMemberAttribute("uniqueMember"),
                 groupAttributeIsDN = true,
                 serverSideGroupsFiltering = false
@@ -169,6 +170,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
                 Dn("ou=Roles,dc=example,dc=com"),
                 GroupSearchFilter("(cn=*)"),
                 GroupIdAttribute("cn"),
+                GroupNameAttribute("o"),
                 UniqueMemberAttribute("uniqueMember"),
                 groupAttributeIsDN = true,
                 serverSideGroupsFiltering = false
@@ -179,6 +181,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
                 GroupSearchFilter("(cn=*)"),
                 UniqueMemberAttribute("uniqueMember"),
                 GroupIdAttribute("cn"),
+                GroupNameAttribute("o"),
               ))
             )
           )

@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser, LdapUsersService}
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TaskOps._
@@ -78,16 +77,15 @@ class UnboundidLdapGroupsFromUserEntryAuthorizationService private(override val 
           } flatMap { mainGroups =>
             enrichWithNestedGroupsIfNecessary(mainGroups)
           } map { allGroups =>
-            UniqueList.fromIterable(allGroups.map(_.id))
+            UniqueList.fromIterable(allGroups.map(_.group))
           }
         case Left(errorResult) if errorResult.getResultCode == ResultCode.NO_SUCH_OBJECT && !user.confirmed =>
           logger.error(s"[${requestId.show}] LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
-          Task.now(UniqueList.empty[GroupId])
+          Task.now(UniqueList.empty[Group])
         case Left(errorResult) =>
           logger.error(s"[${requestId.show}] LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
-      .map(asGroups)
   }
 
   private def searchUserGroupsLdapRequest(listener: AsyncSearchResultListener,
@@ -108,10 +106,6 @@ class UnboundidLdapGroupsFromUserEntryAuthorizationService private(override val 
       case Some(service) => service.fetchNestedGroupsOf(mainGroups).map(_ ++ mainGroups)
       case None => Task.delay(mainGroups)
     }
-  }
-
-  private def asGroups(groupIds: UniqueList[GroupId]) = {
-    UniqueList.fromIterable(groupIds.toList.map(Group.from))
   }
 }
 

@@ -76,17 +76,16 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
       .flatMap {
         case Right(results) =>
           Task {
-            results.flatMap(_.toLdapGroup(mode.groupIdAttribute)).toSet
+            results.flatMap(_.toLdapGroup(mode.groupIdAttribute, mode.groupNameAttribute)).toSet
           } flatMap { mainGroups =>
             enrichWithNestedGroupsIfNecessary(mainGroups)
           } map { allGroups =>
-            UniqueList.fromIterable(allGroups.map(_.id))
+            UniqueList.fromIterable(allGroups.map(_.group))
           }
         case Left(errorResult) =>
           logger.error(s"[${requestId.show}] LDAP getting user groups returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
-      .map(asGroups)
   }
 
   private def searchUserGroupsLdapRequest(listener: AsyncSearchResultListener,
@@ -97,9 +96,10 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
     val baseDn = mode.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = searchUserGroupsLdapFilerFrom(mode, user, filteringGroupIds)
-    val attribute = mode.groupIdAttribute.value.value
-    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
-    new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
+    val groupIdAttribute = mode.groupIdAttribute.value.value
+    val groupNameAttribute = mode.groupNameAttribute.value.value
+    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $groupIdAttribute;$groupNameAttribute]")
+    new SearchRequest(listener, baseDn, scope, searchFilter, groupIdAttribute, groupNameAttribute)
   }
 
   private def searchUserGroupsLdapFilerFrom(mode: DefaultGroupSearch,
@@ -128,10 +128,6 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
       case Some(service) => service.fetchNestedGroupsOf(mainGroups).map(_ ++ mainGroups)
       case None => Task.delay(mainGroups)
     }
-  }
-
-  private def asGroups(groupIds: UniqueList[GroupId]) = {
-    UniqueList.fromIterable(groupIds.toList.map(Group.from))
   }
 }
 
