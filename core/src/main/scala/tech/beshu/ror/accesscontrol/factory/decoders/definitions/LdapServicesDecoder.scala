@@ -39,13 +39,13 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderOps, *}
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
 
 import java.time.Clock
-import scala.language.{existentials, postfixOps}
+import scala.language.postfixOps
 import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.util.concurrent.TimeUnit

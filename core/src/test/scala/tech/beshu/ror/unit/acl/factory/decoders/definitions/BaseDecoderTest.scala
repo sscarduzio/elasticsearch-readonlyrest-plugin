@@ -31,7 +31,6 @@ import tech.beshu.ror.utils.TestsUtils.unsafeNes
 abstract class BaseDecoderTest[F[_] : Comonad, A, B](decoder: ADecoder[F, A])
   extends AnyWordSpec with Inside {
 
-
   def assertDecodingSuccess(yamls: NonEmptyList[String],
                             assertion: A => Unit): Unit = {
     yamls
