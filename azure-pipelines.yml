@@ -82,7 +82,7 @@ stages:
               ROR_TASK: core_tests
       - job:
         condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
-        container: maven:3.8.1-openjdk-17-slim
+        container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -108,6 +108,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es814x:
+              ROR_TASK: integration_es814x
             IT_es813x:
               ROR_TASK: integration_es813x
             IT_es812x:
@@ -136,7 +138,7 @@ stages:
               ROR_TASK: integration_es80x
       - job:
         condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
-        container: maven:3.8.1-openjdk-17-slim
+        container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -162,8 +164,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es813x:
-              ROR_TASK: integration_es813x
+            IT_es814x:
+              ROR_TASK: integration_es814x
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
