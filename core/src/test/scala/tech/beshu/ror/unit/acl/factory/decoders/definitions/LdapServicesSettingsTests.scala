@@ -1260,7 +1260,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://localhost:12345")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with 'ldap1' LDAP connection to: ldaps://localhost:12345")))
           }
         )
       }
@@ -1276,7 +1276,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
              """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://dummy-host:12345")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with resolving 'ldap1' LDAP hosts: ldaps://dummy-host:12345")))
           }
         )
       }
@@ -1294,7 +1294,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    connection_timeout_in_sec: 2
             """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://ssl-ldap2.foo.com:836,ldaps://ssl-ldap3.foo.com:836")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with 'ldap1' LDAP connection to: ldaps://ssl-ldap2.foo.com:836,ldaps://ssl-ldap3.foo.com:836")))
           }
         )
       }

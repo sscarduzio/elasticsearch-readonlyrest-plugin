@@ -30,13 +30,14 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{BindingTestError, CannotConnectError, HostResolvingError, UnexpectedConnectionError}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.{Address, PlainTextSecret}
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
+import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.concurrent.duration._
@@ -75,7 +76,6 @@ class UnboundidLdapConnectionPoolProvider {
       null
     )
     pool.setConnectionPoolName(s"ROR-unboundid-connection-pool-${connectionConfig.poolName}")
-    pool.setRetryFailedOperationsDueToInvalidConnections(true)
     pool.setCreateIfNecessary(true)
     pool
   }
@@ -157,30 +157,13 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
   def connectWithOptionalBindingTest(poolProvider: UnboundidLdapConnectionPoolProvider,
                                      connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, UnboundidLdapConnectionPool]] = {
     val result = for {
-      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
-        .recoverWith {
-          case error: ConnectionError =>
-            if (connectionConfig.ignoreLdapConnectivityProblems)
-              EitherT.rightT(())
-            else
-              EitherT.leftT(error)
-        }
+      _ <- optionalTestLdapBinding(connectionConfig)
       connectionPool <- EitherT.right[ConnectionError](poolProvider.connect(connectionConfig))
     } yield connectionPool
-    result.value
-  }
-
-  private def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
-    val ldapBindingTask = for {
-      _ <- resolveHostnames(connectionConfig)
-      result <- testLdapBinding(connectionConfig)
-    } yield result
-
-    ldapBindingTask
+    result
       .value
       .recover { case NonFatal(ex) =>
-        logger.error("LDAP binding exception", ex)
-        Left(toConnectionError(connectionConfig))
+        Left(UnexpectedConnectionError(connectionConfig.poolName, ex))
       }
   }
 
@@ -206,7 +189,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
         .map {
           case (notResolvedLdapHosts, _) =>
             NonEmptyList.fromList(notResolvedLdapHosts)
-              .map(HostConnectionError.apply)
+              .map(HostResolvingError(connectionConfig.poolName, _))
               .toRight(())
               .swap
         }
@@ -230,31 +213,41 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
       .getOrElse(Task.pure(HostnameResolutionResult.Resolved)) // we cannot assume here that the LDAP host is invalid, so we pass it to the next validation step
   }
 
-  private def testLdapBinding(connectionConfig: LdapConnectionConfig): EitherT[Task, ConnectionError, Unit] = {
-    val maxRetries = if (connectionConfig.ignoreLdapConnectivityProblems) 0 else 2
-    val connectionEstablishmentTimeout: FiniteDuration =
-      connectionConfig.connectionTimeout.value.plus(3 seconds)
-    val ldapConnection =
-      Resource.make(
-        getLdapConnection(connectionConfig).timeout(connectionEstablishmentTimeout)
-      ) { conn =>
-        Task(conn.close())
-      }
-    EitherT {
-      retryBackoff(
-        source = ldapConnection.use { connection =>
-          testBinding(connection, connectionConfig)
-        },
-        maxRetries = maxRetries,
-        firstDelay = 500 millis,
-        backOffScaler = 1
-      )
+  private def optionalTestLdapBinding(connectionConfig: LdapConnectionConfig): EitherT[Task, ConnectionError, Unit] = {
+    if(connectionConfig.ignoreLdapConnectivityProblems) {
+      EitherT.pure(())
+    } else {
+      for {
+        _ <- resolveHostnames(connectionConfig)
+        ldapConnection <- establishLdapConnection(connectionConfig)
+        _ <- EitherT {
+          retryBackoffEither(
+            source = ldapConnection.use { connection =>
+              testBinding(connection, connectionConfig)
+            },
+            maxRetries = 2,
+            firstDelay = 500 millis,
+            backOffScaler = 1
+          )
+        }
+      } yield ()
     }
   }
 
-  private def getLdapConnection(connectionConfig: LdapConnectionConfig) = {
-    val serverSet = createLdapServerSet(connectionConfig)
-    Task(serverSet.getConnection)
+  private def establishLdapConnection(connectionConfig: LdapConnectionConfig) = {
+    EitherT {
+      val serverSet = createLdapServerSet(connectionConfig)
+      val connectionTimeout = connectionConfig.connectionTimeout.value.plus(3 seconds)
+      Task {
+        Either
+          .catchOnly[LDAPException](serverSet.getConnection)
+          .map(conn => Resource.make(Task(conn))(c => Task.delay(c.close())))
+          .left.map { ex =>
+          logger.warnEx("Problem during getting LDAP connection", ex)
+          CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod)
+        }
+      }.timeout(connectionTimeout)
+    }
   }
 
   private def createLdapServerSet(connectionConfig: LdapConnectionConfig) = {
@@ -324,7 +317,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
         Either.cond(
           bindResult.getResultCode == ResultCode.SUCCESS,
           (),
-          toConnectionError(connectionConfig)
+          BindingTestError(connectionConfig.poolName)
         )
       }
   }
@@ -334,19 +327,13 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
     case BindRequestUser.CustomUser(dn, password) => new SimpleBindRequest(dn.value.value, password.value.value)
   }
 
-  private def toConnectionError(connectionConfig: LdapConnectionConfig): ConnectionError = {
-    connectionConfig.connectionMethod match {
-      case ConnectionMethod.SingleServer(host) => HostConnectionError(NonEmptyList.one(host))
-      case ConnectionMethod.SeveralServers(hosts, _) => HostConnectionError(hosts)
-      case ConnectionMethod.ServerDiscovery(recordName, providerUrl, _, _) => ServerDiscoveryConnectionError(recordName, providerUrl)
-    }
-  }
-
   sealed trait ConnectionError
   object ConnectionError {
-    final case class HostConnectionError(hosts: NonEmptyList[LdapHost]) extends ConnectionError
-    final case class ServerDiscoveryConnectionError(recordName: Option[String],
-                                                    providerUrl: Option[String]) extends ConnectionError
+    final case class CannotConnectError(ldap: LdapService.Name, connectionMethod: ConnectionMethod) extends ConnectionError
+    final case class HostResolvingError(ldap: LdapService.Name, hosts: NonEmptyList[LdapHost]) extends ConnectionError
+    final case class BindingTestError(ldap: LdapService.Name) extends ConnectionError
+
+    final case class UnexpectedConnectionError(ldap: LdapService.Name, cause: Throwable) extends ConnectionError
   }
   case object ClosedLdapPool extends Exception
 

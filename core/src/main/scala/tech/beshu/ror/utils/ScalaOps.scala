@@ -40,7 +40,7 @@ object ScalaOps {
   implicit class IterableeOnceOps[T](val iterable: IterableOnce[T]) extends AnyVal {
 
     def mkStringOrEmptyString(start: String, sep: String, end: String): String = {
-      if(iterable.iterator.isEmpty) ""
+      if (iterable.iterator.isEmpty) ""
       else iterable.iterator.mkString(start, sep, end)
     }
   }
@@ -50,9 +50,11 @@ object ScalaOps {
     def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)
   }
 
-  implicit class JavaMapOps[K : ClassTag, V : ClassTag](val map: java.util.Map[K, V]) {
+  implicit class JavaMapOps[K: ClassTag, V: ClassTag](val map: java.util.Map[K, V]) {
     def asSafeMap: Map[K, V] = Option(map).map(_.asScala.toMap).getOrElse(Map.empty)
+
     def asSafeKeys: Set[K] = asSafeMap.keys.toSet[K]
+
     def asSafeValues: Set[V] = asSafeMap.values.toSet
   }
 
@@ -60,25 +62,27 @@ object ScalaOps {
     def asEmptyJavaMap[K, V]: java.util.Map[K, V] = Map.empty[K, V].asJava
   }
 
-  implicit class JavaListOps[T : ClassTag](val list: java.util.List[T]) {
+  implicit class JavaListOps[T: ClassTag](val list: java.util.List[T]) {
     def asSafeList: List[T] = Option(list).map(_.asScala.toList).getOrElse(Nil)
   }
 
-  implicit class JavaSetOps[T : ClassTag](val set: java.util.Set[T]) {
+  implicit class JavaSetOps[T: ClassTag](val set: java.util.Set[T]) {
     def asSafeSet: Set[T] = Option(set).map(_.asScala.toSet).getOrElse(Set.empty)
   }
 
-  implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
+  implicit class ArrayOps[T: ClassTag](val array: Array[T]) {
     def asSafeSet: Set[T] = safeArray.toSet
+
     def asSafeList: List[T] = safeArray.toList
 
     private def safeArray = Option(array).getOrElse(Array.empty[T])
   }
 
-  implicit class SetOps[T : Order](value: Set[T]) {
+  implicit class SetOps[T: Order](value: Set[T]) {
     def toNonEmptySet: Option[NonEmptySet[T]] = {
       NonEmptySet.fromSet[T](SortedSet.empty[T] ++ value)
     }
+
     def unsafeToNonEmptySet: NonEmptySet[T] =
       toNonEmptySet.getOrElse(throw new IllegalArgumentException(s"Cannot convert $value to non empty set"))
   }
@@ -160,6 +164,27 @@ object ScalaOps {
     }
   }
 
+  def retryBackoffEither[A, E](source: Task[Either[E, A]],
+                               maxRetries: Int,
+                               firstDelay: FiniteDuration,
+                               backOffScaler: Int): Task[Either[E, A]] = {
+    def doRetry() = {
+      retryBackoffEither(source, maxRetries - 1, firstDelay * backOffScaler, backOffScaler)
+        .delayExecution(firstDelay)
+    }
+
+    source
+      .flatMap {
+        case right@Right(_) => Task.now(right)
+        case Left(_) if maxRetries > 0 => doRetry()
+        case Left(error) => Task.now(Left(error))
+      }
+      .onErrorHandleWith {
+        case _: Exception if maxRetries > 0 => doRetry()
+        case ex => Task.raiseError(ex)
+      }
+  }
+
   def repeat[A](maxRetries: Int, delay: FiniteDuration)(source: Task[A]): Task[Unit] = {
     source
       .delayExecution(delay)
@@ -185,7 +210,7 @@ object ScalaOps {
     }
   }
 
-  implicit class AutoClosableMOps[A <: AutoCloseable, M[_]: Functor](val value: M[A]) {
+  implicit class AutoClosableMOps[A <: AutoCloseable, M[_] : Functor](val value: M[A]) {
     def bracket[B](convert: A => B): M[B] = {
       import cats.implicits._
       value.map(v => AutoCloseableOps(v).bracket(convert))
@@ -193,7 +218,9 @@ object ScalaOps {
   }
 
   implicit class NonEmptySetOps[T](val value: NonEmptySet[T]) extends AnyVal {
+
     import cats.implicits._
+
     def widen[S >: T : Ordering]: NonEmptySet[S] = NonEmptySet.fromSetUnsafe(SortedSet.empty[S] ++ value.toList.widen[S].toSet)
   }
 
@@ -205,25 +232,29 @@ object ScalaOps {
         case one :: _ => Some((one, value.substring(one.length + 1)))
       }
     }
+
     def splitBy(str: String): (String, Option[String]) = {
       value.indexOf(str) match {
         case -1 =>
           (value, None)
         case idx =>
           val endOfStrIndex = idx + str.length
-          (value.substring(0, idx), Some(if(endOfStrIndex < value.length) value.substring(endOfStrIndex) else ""))
+          (value.substring(0, idx), Some(if (endOfStrIndex < value.length) value.substring(endOfStrIndex) else ""))
       }
     }
+
     def decodeBase64: Option[String] = {
       Try(new String(Base64.getDecoder.decode(value), "UTF-8")).toOption
     }
+
     def safeNonEmpty: Option[NonEmptyString] = {
       Option(value).flatMap(NonEmptyString.unapply)
     }
+
     def oneLiner: String = value.stripMargin.replaceAll("\n", "")
 
     def addTrailingSlashIfNotPresent(): String = {
-      if(value.endsWith("/")) value else s"$value/"
+      if (value.endsWith("/")) value else s"$value/"
     }
   }
 
