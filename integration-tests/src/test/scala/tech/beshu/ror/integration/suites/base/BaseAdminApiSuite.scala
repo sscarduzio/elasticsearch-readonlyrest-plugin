@@ -140,7 +140,7 @@ trait BaseAdminApiSuite
             """
               |{
               |  "status": "ko",
-              |  "message": "Cannot reload new settings: Errors:\nThere was a problem with LDAP connection to: ldap://localhost:389"
+              |  "message": "Cannot reload new settings: Errors:\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
               |}
               |""".stripMargin
           ))
@@ -263,7 +263,7 @@ trait BaseAdminApiSuite
             """
               |{
               |  "status": "ko",
-              |  "message": "Cannot reload new settings: Errors:\nThere was a problem with LDAP connection to: ldap://localhost:389"
+              |  "message": "Cannot reload new settings: Errors:\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
               |}
               |""".stripMargin
           ))
@@ -845,7 +845,7 @@ trait BaseAdminApiSuite
               s"""
                  |{
                  |  "status": "FAILED",
-                 |  "message": "Cannot reload new settings: Errors:\\nThere was a problem with LDAP connection to: ldap://localhost:389"
+                 |  "message": "Cannot reload new settings: Errors:\\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
                  |}
                  |""".stripMargin
             ))
