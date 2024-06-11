@@ -132,7 +132,7 @@ object LdapServicesDecoder extends Logging {
           case Left(error) => Task.now(Left(error))
           case Right(task) => task.map {
             case Left(error: ConnectionError) =>
-              connectionErrorDecodingFailureFrom(error)
+              Left(connectionErrorDecodingFailureFrom(error))
             case Right(ldapUsersService) =>
               Right {
                 CacheableLdapUsersServiceDecorator.create(
@@ -166,7 +166,7 @@ object LdapServicesDecoder extends Logging {
           case Left(error) => Task.now(Left(error))
           case Right(task) => task.map {
             case Left(error: ConnectionError) =>
-              connectionErrorDecodingFailureFrom(error)
+              Left(connectionErrorDecodingFailureFrom(error))
             case Right(ldapAuthenticationService) =>
               Right {
                 CacheableLdapAuthenticationServiceDecorator.create(
@@ -200,7 +200,7 @@ object LdapServicesDecoder extends Logging {
             Task.now(Left(error))
           case Right(task) => task.map {
             case Left(error: ConnectionError) =>
-              connectionErrorDecodingFailureFrom(error)
+              Left(connectionErrorDecodingFailureFrom(error))
             case Right(ldapAuthorizationService) =>
               Right {
                 CacheableLdapAuthorizationService.create(
