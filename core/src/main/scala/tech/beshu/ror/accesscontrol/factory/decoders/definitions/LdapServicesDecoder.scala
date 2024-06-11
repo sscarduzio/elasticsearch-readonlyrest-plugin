@@ -214,12 +214,12 @@ object LdapServicesDecoder extends Logging {
       .mapError(DefinitionsLevelCreationError.apply)
 
   private def connectionErrorDecodingFailureFrom(error: ConnectionError) = {
-    def connectionErrorFrom(message: Message) = {
-      DecodingFailureOps.fromError(DefinitionsLevelCreationError(message))
-    }
+    def connectionErrorFrom(message: String) =
+      DecodingFailureOps.fromError(DefinitionsLevelCreationError(Message(message)))
+
     error match
       case CannotConnectError(ldap, connectionMethod) =>
-        connectionErrorFrom(Message(
+        connectionErrorFrom(
           connectionMethod match {
             case SingleServer(host) =>
               s"There was a problem with '${ldap.value}' LDAP connection to: ${host.url.toString()}"
@@ -230,20 +230,20 @@ object LdapServicesDecoder extends Logging {
                 s"Connection details: recordName=${recordName.getOrElse("default")}, " +
                 s"providerUrl=${providerUrl.getOrElse("default")}"
           }
-        ))
+        )
       case HostResolvingError(ldap, hosts) =>
-        connectionErrorFrom(Message(
+        connectionErrorFrom(
           s"There was a problem with resolving '${ldap.value}' LDAP hosts: ${hosts.map(_.url.toString()).toList.mkString(",")}"
-        ))
+        )
       case BindingTestError(ldap) =>
-        connectionErrorFrom(Message(
+        connectionErrorFrom(
           s"There was a problem with test binding in case of '${ldap.value}' LDAP connector}"
-        ))
+        )
       case UnexpectedConnectionError(ldap, cause) =>
         logger.error(s"Unexpected '${ldap.value}' LDAP connection error", cause)
-        connectionErrorFrom(Message(
+        connectionErrorFrom(
           s"Unexpected '${ldap.value}' LDAP connection error: '${cause.getMessage}'}"
-        ))
+        )
   }
 
   private val userSearchFilerConfigDecoder: Decoder[UserSearchFilterConfig] =

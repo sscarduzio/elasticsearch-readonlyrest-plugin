@@ -216,7 +216,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
   }
 
   private def optionalTestLdapBinding(connectionConfig: LdapConnectionConfig): EitherT[Task, ConnectionError, Unit] = {
-    if(connectionConfig.ignoreLdapConnectivityProblems) {
+    if (connectionConfig.ignoreLdapConnectivityProblems) {
       EitherT.pure(())
     } else {
       for {
@@ -244,10 +244,11 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
         Either
           .catchOnly[LDAPException](serverSet.getConnection)
           .map(conn => Resource.make(Task(conn))(c => Task.delay(c.close())))
-          .left.map { ex =>
-          logger.warnEx("Problem during getting LDAP connection", ex)
-          CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod)
-        }
+          .left
+          .map { ex =>
+            logger.warnEx("Problem during getting LDAP connection", ex)
+            CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod)
+          }
       }.timeout(connectionTimeout)
     }
   }
