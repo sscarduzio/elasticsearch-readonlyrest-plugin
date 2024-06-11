@@ -17,40 +17,40 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import com.comcast.ip4s.Port
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.refined._
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.accesscontrol.utils._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Clock
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
+import tech.beshu.ror.utils.RefinedUtils.*
+
+import java.util.concurrent.TimeUnit
 
 object LdapServicesDecoder extends Logging {
 
@@ -304,7 +304,7 @@ object LdapServicesDecoder extends Logging {
         "When you configure 'skip_user_search: true' in the LDAP connector, the 'user_id_attribute' has to be 'cn'"
       )))
       case Some(name) => Right(UserIdAttribute.CustomAttribute(name))
-      case None => Right(UserIdAttribute.CustomAttribute("uid"))
+      case None => Right(UserIdAttribute.CustomAttribute(nes("uid")))
     }
   }
 
@@ -316,7 +316,7 @@ object LdapServicesDecoder extends Logging {
         groupIdAttribute <- c.downField("group_name_attribute").as[Option[GroupIdAttribute]]
         uniqueMemberAttribute <- c.downField("unique_member_attribute").as[Option[UniqueMemberAttribute]]
         groupAttributeIsDN <- c.downField("group_attribute_is_dn").as[Option[Boolean]]
-        serverSideGroupsFiltering <- c.downField("sever_side_groups_filtering").as[Option[Boolean]]
+        serverSideGroupsFiltering <- c.downFields("server_side_groups_filtering", "sever_side_groups_filtering").as[Option[Boolean]]
       } yield DefaultGroupSearch(
         searchGroupBaseDn,
         groupSearchFilter.getOrElse(GroupSearchFilter.default),
@@ -354,7 +354,7 @@ object LdapServicesDecoder extends Logging {
     }
 
   private val connectionConfigDecoder: Decoder[LdapConnectionConfig] = {
-    implicit val positiveIntDecoder: Decoder[Int Refined Positive] = positiveValueDecoder[Int]
+    implicit val positiveIntDecoder: Decoder[Int Refined Positive] = positiveDecoder[Int](_.toLong)
     Decoder
       .instance { c =>
         for {
@@ -369,9 +369,9 @@ object LdapServicesDecoder extends Logging {
         } yield LdapConnectionConfig(
           poolName,
           connectionMethod,
-          poolSize.getOrElse(refineV[Positive].unsafeFrom(30)),
-          connectionTimeout.getOrElse(refineV[Positive].unsafeFrom(10 second)),
-          requestTimeout.getOrElse(refineV[Positive].unsafeFrom(10 second)),
+          poolSize.getOrElse(positiveInt(30)),
+          connectionTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
+          requestTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
           trustAllCertsOps.getOrElse(false),
           bindRequestUser,
           ignoreLdapConnectivityProblems.getOrElse(false)
@@ -490,7 +490,7 @@ object LdapServicesDecoder extends Logging {
             sslEnabledOpt <- c.downField("ssl_enabled").as[Option[Boolean]]
           } yield {
             val sslEnabled = sslEnabledOpt.getOrElse(true)
-            val port = portOpt.getOrElse(Port(389).get)
+            val port = portOpt.getOrElse(Port.fromInt(389).get)
             LdapHost.from(s"${if (sslEnabled) "ldaps" else "ldap"}://$host:$port")
           }
         }

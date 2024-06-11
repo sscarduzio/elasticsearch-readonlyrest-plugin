@@ -27,6 +27,7 @@ import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.{headerNameFrom, tokenFrom}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class TokenAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[TokenAuthenticationRule] {
@@ -135,7 +136,7 @@ class TokenAuthenticationRuleSettingsTests
                |""".stripMargin,
           assertion = { errors =>
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """token_authentication:
                 |  token: "Bearer abc123XYZ"
                 |""".stripMargin
@@ -157,7 +158,7 @@ class TokenAuthenticationRuleSettingsTests
                |""".stripMargin,
           assertion = { errors =>
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """token_authentication:
                 |  username: "john"
                 |""".stripMargin

@@ -44,6 +44,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 
 import scala.util.{Failure, Success, Try}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class KibanaUserDataRuleTests
   extends BaseKibanaAccessBasedTests[KibanaUserDataRule, KibanaUserDataRule.Settings] {

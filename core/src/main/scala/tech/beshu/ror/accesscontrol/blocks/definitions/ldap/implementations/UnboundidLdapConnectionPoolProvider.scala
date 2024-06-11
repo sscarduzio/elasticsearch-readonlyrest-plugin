@@ -19,11 +19,10 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 import cats.Order
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.Resource
-import cats.implicits._
-import com.unboundid.ldap.sdk._
+import cats.implicits.*
+import com.unboundid.ldap.sdk.*
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
@@ -37,10 +36,12 @@ import tech.beshu.ror.accesscontrol.domain.{Address, PlainTextSecret}
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
+import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
-import tech.beshu.ror.utils.ScalaOps._
 
-import scala.concurrent.duration._
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -76,6 +77,7 @@ class UnboundidLdapConnectionPoolProvider {
       null
     )
     pool.setConnectionPoolName(s"ROR-unboundid-connection-pool-${connectionConfig.poolName}")
+    pool.setRetryFailedOperationsDueToInvalidConnections(true)
     pool.setCreateIfNecessary(true)
     pool
   }
@@ -96,8 +98,8 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
   object LdapConnectionConfig {
 
     val defaultCircuitBreakerConfig: CircuitBreakerConfig = CircuitBreakerConfig(
-      maxFailures = 10,
-      resetDuration = Refined.unsafeApply(10 seconds)
+      maxFailures = positiveInt(10),
+      resetDuration = positiveFiniteDuration(10, TimeUnit.SECONDS)
     )
 
     final case class LdapHost private(url: UrlWithAuthority) {

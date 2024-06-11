@@ -23,6 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration}
 import tech.beshu.ror.configuration.loader.FileConfigLoader
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.SSLCertHelper
 
 import java.io.{File => JFile}
@@ -35,16 +36,19 @@ object RorSsl extends Logging {
 
   val noSsl: RorSsl = RorSsl(None, None)
 
-  def load(esConfigFolderPath: Path)
+  def load(esEnv: EsEnv)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorSsl]] = Task {
-    implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
-    val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
+    implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esEnv.configPath)
+    val esConfig = esEnv.elasticsearchConfig
     loadSslConfigFromFile(esConfig)
       .fold(
         error => Left(error),
         {
-          case RorSsl(None, None) => fallbackToRorConfig(esConfigFolderPath)
-          case ssl => Right(ssl)
+          case RorSsl(None, None) =>
+            logger.info(s"Cannot find SSL configuration in ${esConfig.toString()} ...")
+            fallbackToRorConfig(esEnv.configPath)
+          case ssl =>
+            Right(ssl)
         }
       )
   }
@@ -53,7 +57,7 @@ object RorSsl extends Logging {
                                  (implicit rorSslDecoder: Decoder[RorSsl],
                                   environmentConfig: EnvironmentConfig) = {
     val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
-    logger.info(s"Cannot find SSL configuration in elasticsearch.yml, trying: ${rorConfig.pathAsString}")
+    logger.info(s"... trying: ${rorConfig.pathAsString}")
     if (rorConfig.exists) {
       loadSslConfigFromFile(rorConfig)
     } else {
@@ -169,13 +173,13 @@ private object SslDecoders extends Logging {
 
   private def clientCertificateConfigurationDecoder(basePath: Path): Decoder[Option[ClientCertificateConfiguration]] = {
     val jFileDecoder: Decoder[JFile] = fileDecoder(basePath)
-    implicit val truststoreFileDecoder = jFileDecoder.map(TruststoreFile)
-    implicit val clientTrustedCertificateFileDecoder = jFileDecoder.map(ClientTrustedCertificateFile)
+    implicit val truststoreFileDecoder = jFileDecoder.map(TruststoreFile.apply)
+    implicit val clientTrustedCertificateFileDecoder = jFileDecoder.map(ClientTrustedCertificateFile.apply)
 
     val truststoreBasedClientCertificateConfigurationDecoder: Decoder[ClientCertificateConfiguration] =
       Decoder.forProduct2(consts.truststoreFile, consts.truststorePass)(ClientCertificateConfiguration.TruststoreBasedConfiguration.apply)
     val fileBasedClientCertificateConfigurationDecoder: Decoder[ClientCertificateConfiguration] =
-      Decoder.forProduct1(consts.clientTrustedCertificateFile)(ClientCertificateConfiguration.FileBasedConfiguration)
+      Decoder.forProduct1(consts.clientTrustedCertificateFile)(ClientCertificateConfiguration.FileBasedConfiguration.apply)
     Decoder.instance { c =>
       val truststoreBasedKeys = Set(consts.truststoreFile, consts.truststorePass)
       val fileBasedKeys = Set(consts.clientTrustedCertificateFile)
@@ -204,9 +208,9 @@ private object SslDecoders extends Logging {
 
   private def serverCertificateConfigurationDecoder(basePath: Path): Decoder[ServerCertificateConfiguration] = {
     val jFileDecoder: Decoder[JFile] = fileDecoder(basePath)
-    implicit val keystoreFileDecoder = jFileDecoder.map(KeystoreFile)
-    implicit val serverCertificateFileDecoder = jFileDecoder.map(ServerCertificateFile)
-    implicit val serverCertificateKeyFileDecoder = jFileDecoder.map(ServerCertificateKeyFile)
+    implicit val keystoreFileDecoder = jFileDecoder.map(KeystoreFile.apply)
+    implicit val serverCertificateFileDecoder = jFileDecoder.map(ServerCertificateFile.apply)
+    implicit val serverCertificateKeyFileDecoder = jFileDecoder.map(ServerCertificateKeyFile.apply)
     val keystoreBasedServerCertificateConfigurationDecoder: Decoder[ServerCertificateConfiguration] =
       Decoder.forProduct4(consts.keystoreFile, consts.keystorePass, consts.keyAlias, consts.keyPass)(ServerCertificateConfiguration.KeystoreBasedConfiguration.apply)
     val fileBasedServerCertificateConfigurationDecoder: Decoder[ServerCertificateConfiguration] =

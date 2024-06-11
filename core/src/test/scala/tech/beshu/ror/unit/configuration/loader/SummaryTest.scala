@@ -26,6 +26,7 @@ import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.configuration.loader.distributed.Summary.CurrentNodeHaveToProduceResult
 import tech.beshu.ror.configuration.loader.distributed.{NodesResponse, Summary}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import scala.language.postfixOps
 

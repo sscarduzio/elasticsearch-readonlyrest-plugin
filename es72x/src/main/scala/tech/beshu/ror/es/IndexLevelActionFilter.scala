@@ -34,7 +34,7 @@ import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.configuration.EnvironmentConfig
+import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
@@ -67,7 +67,7 @@ class IndexLevelActionFilter(nodeName: String,
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
     auditSinkCreator,
-    env.configFile
+    EsEnv(env.configFile(), env.modulesFile())
   )
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
@@ -87,7 +87,9 @@ class IndexLevelActionFilter(nodeName: String,
     threadPool
   )
 
-  private val startingTaskCancellable = startRorInstance()
+  private val startingTaskCancellable = doPrivileged {
+    startRorInstance()
+  }
 
   private def auditSinkCreator: AuditSinkCreator = {
     case AuditCluster.LocalAuditCluster =>

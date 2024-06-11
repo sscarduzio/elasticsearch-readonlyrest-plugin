@@ -268,11 +268,11 @@ class EsServerBasedRorClusterService(nodeName: String,
             val dataStreamAliases =
               aliasesPerIndex
                 .getOrElse(dataStreamName, Set.empty)
-                .map(index => DataStreamName.Full(index.name))
+                .map(index => DataStreamName.Full.fromNes(index.name))
 
             FullRemoteDataStreamWithAliases(
               clusterName = remoteClusterName,
-              dataStreamName = DataStreamName.Full(dataStreamName.name),
+              dataStreamName = DataStreamName.Full.fromNes(dataStreamName.name),
               aliasesNames = dataStreamAliases,
               backingIndices = backingIndices
             )
@@ -373,7 +373,7 @@ class EsServerBasedRorClusterService(nodeName: String,
   private def snapshotsBy(repositoryName: RepositoryName) = {
     repositoriesServiceSupplier.get() match {
       case Some(repositoriesService) =>
-        val repositoryData: RepositoryData = PlainActionFuture.get { fut: PlainActionFuture[RepositoryData] =>
+        val repositoryData: RepositoryData = PlainActionFuture.get { (fut: PlainActionFuture[RepositoryData]) =>
           repositoriesService.getRepositoryData(RepositoryName.toString(repositoryName), fut)
         }
         repositoryData

@@ -137,7 +137,7 @@ object GetDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContext
     ) match {
       case MatchResult.Matched(dataStreams) =>
         Some(new GetDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
-      case MatchResult.NotMatched =>
+      case MatchResult.NotMatched() =>
         None
     }
   }

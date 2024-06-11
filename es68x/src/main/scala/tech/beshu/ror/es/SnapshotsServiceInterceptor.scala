@@ -23,11 +23,11 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.snapshots.SnapshotsService
 
-import scala.annotation.nowarn
+import scala.annotation.unused
 
 class SnapshotsServiceInterceptor(settings: Settings,
                                   snapshotsService: SnapshotsService,
-                                  @nowarn("cat=unused") constructorDiscriminator: Unit)
+                                  @unused constructorDiscriminator: Unit)
   extends AbstractLifecycleComponent() {
 
   @Inject

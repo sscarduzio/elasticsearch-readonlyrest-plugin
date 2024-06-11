@@ -62,7 +62,7 @@ configurations {
 
 dependencies {
     implementation project(path: ':ror-tools-core')
-    implementation group: 'com.github.scopt',              name: 'scopt_2.13',                       version: '4.0.1'
+    implementation group: 'com.github.scopt',              name: 'scopt_3',                       version: '4.1.0'
 }
 
 java {
@@ -73,18 +73,21 @@ java {
 
 compileScala {
     options.compilerArgs.addAll(
-            "-unchecked",
-            "-Ywarn-macros:after",
             "-feature",
-            "-Ymacro-annotations",
             "-Xfatal-warnings",
-            "-Ywarn-unused",
-            "-Wunused:nowarn"
+            "-Wunused:implicits",
+            "-Wunused:imports",
+            "-Wunused:explicits",
+            "-Wunused:strict-no-implicit-warn",
+            "-Wunused:locals",
+            "-Wunused:params",
+            "-Wunused:privates",
+            "-Wunused:nowarn",
     )
 }
 
 tasks.withType(ScalaCompile).configureEach {
-    scalaCompileOptions.additionalParameters = ["-Ywarn-macros:after", "-feature", "-Xfatal-warnings"]
+    scalaCompileOptions.additionalParameters = ["-feature", "-Xfatal-warnings"]
 }
 
 shadowJar {

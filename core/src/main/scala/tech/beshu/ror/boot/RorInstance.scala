@@ -83,7 +83,7 @@ class RorInstance private(boot: ReadonlyRest,
   private val configRestApi = new ConfigApi(
     rorInstance = this,
     boot.indexConfigManager,
-    new FileConfigLoader(boot.esConfigPath),
+    new FileConfigLoader(boot.esEnv.configPath),
     rorConfigurationIndex
   )
 
@@ -142,7 +142,7 @@ class RorInstance private(boot: ReadonlyRest,
   }
 
   private def scheduleEnginesReload(interval: PositiveFiniteDuration): Cancelable = {
-    val reloadTask = { requestId: RequestId =>
+    val reloadTask = { (requestId: RequestId) =>
       Task.sequence {
         Seq(
           tryMainEngineReload(requestId).map(result => (ConfigType.Main, result)),

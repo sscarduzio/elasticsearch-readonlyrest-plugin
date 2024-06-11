@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits._
-import eu.timepit.refined.auto._
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -41,6 +40,7 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.util.Try
+import tech.beshu.ror.utils.RefinedUtils._
 
 final class JwtAuthRule(val settings: JwtAuthRule.Settings,
                         override val userIdCaseSensitivity: CaseSensitivity)
@@ -81,7 +81,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   private def authorizeUsingJwtToken[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     jwtTokenFrom(blockContext.requestContext) match {
       case None =>
-        logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
+        logger.debug(s"[${blockContext.requestContext.id.show}] Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
         Task.now(Rejected())
       case Some(token) =>
         process(token, blockContext)
@@ -96,12 +96,13 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 
   private def process[B <: BlockContext : BlockContextUpdater](token: Jwt.Token,
                                                                blockContext: B): Task[RuleResult[B]] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     userAndGroupsFromJwtToken(token) match {
       case Left(_) =>
         Task.now(Rejected())
       case Right((tokenPayload, user, groups)) =>
         if (logger.delegate.isDebugEnabled) {
-          logClaimSearchResults(user, groups)
+          logClaimSearchResults(user, groups)(blockContext.requestContext.id.toRequestId)
         }
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
@@ -115,7 +116,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
               case NoCheck(service) =>
                 implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
                 service
-                  .authenticate(Credentials(User.Id("jwt"), PlainTextSecret(token.value)))
+                  .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
                   .map(RuleResult.resultBasedOnCondition(modifiedBlockContext)(_))
               case Hmac(_) | Rsa(_) | Ec(_) =>
                 Task.now(Fulfilled(modifiedBlockContext))
@@ -125,10 +126,11 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   }
 
   private def logClaimSearchResults(user: Option[ClaimSearchResult[User.Id]],
-                                    groups: Option[ClaimSearchResult[UniqueList[Group]]]): Unit = {
+                                    groups: Option[ClaimSearchResult[UniqueList[Group]]])
+                                   (implicit requestId: RequestId): Unit = {
     (settings.jwt.userClaim, user) match {
       case (Some(userClaim), Some(u)) =>
-        logger.debug(s"JWT resolved user for claim ${userClaim.name.rawPath}: ${u.show}")
+        logger.debug(s"[${requestId.show}] JWT resolved user for claim ${userClaim.name.rawPath}: ${u.show}")
       case _ =>
     }
     (settings.jwt.groupsConfig, groups) match {
@@ -137,18 +139,20 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
           case Some(namesClaim) => s"claims (id:'${groupsConfig.idsClaim.name.show}',name:'${namesClaim.name.show}')"
           case None => s"claim '${groupsConfig.idsClaim.name.show}'"
         }
-        logger.debug(s"JWT resolved groups for $claimsDescription: ${g.show}")
+        logger.debug(s"[${requestId.show}] JWT resolved groups for $claimsDescription: ${g.show}")
       case _ =>
     }
   }
 
-  private def userAndGroupsFromJwtToken(token: Jwt.Token) = {
+  private def userAndGroupsFromJwtToken(token: Jwt.Token)
+                                       (implicit requestId: RequestId) = {
     claimsFrom(token).map { decodedJwtToken =>
       (decodedJwtToken, userIdFrom(decodedJwtToken), groupsFrom(decodedJwtToken))
     }
   }
 
-  private def logBadToken(ex: Throwable, token: Jwt.Token): Unit = {
+  private def logBadToken(ex: Throwable, token: Jwt.Token)
+                         (implicit requestId: RequestId): Unit = {
     val tokenParts = token.show.split("\\.")
     val printableToken = if (!logger.delegate.isDebugEnabled && tokenParts.length === 3) {
       // signed JWT, last block is the cryptographic digest, which should be treated as a secret.
@@ -157,10 +161,11 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     else {
       token.show
     }
-    logger.debug(s"JWT token '$printableToken' parsing error: " + ex.getClass.getSimpleName + " " + ex.getMessage)
+    logger.debug(s"[${requestId.show}] JWT token '$printableToken' parsing error: " + ex.getClass.getSimpleName + " " + ex.getMessage)
   }
 
-  private def claimsFrom(token: Jwt.Token) = {
+  private def claimsFrom(token: Jwt.Token)
+                        (implicit requestId: RequestId) = {
     settings.jwt.checkMethod match {
       case NoCheck(_) =>
         token.value.value.split("\\.").toList match {

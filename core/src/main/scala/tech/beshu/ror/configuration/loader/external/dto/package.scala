@@ -17,16 +17,14 @@
 package tech.beshu.ror.configuration.loader.external
 
 import cats.Show
-import io.circe.generic.extras.Configuration
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 
 package object dto {
-  implicit val configuration: Configuration = Configuration.default.withDiscriminator("type")
   implicit val showLoadedConfigError: Show[LoadedRorConfig.Error] = Show.show {
     {
-      case LoadedRorConfig.FileNotExist(path) => s"""file not exist: ${path.value}"""
+      case LoadedRorConfig.FileNotExist(path) => s"""file not exist: ${path.toString}"""
       case LoadedRorConfig.FileParsingError(message) => s"""file parsing error: $message"""
-      case LoadedRorConfig.EsFileNotExist(path) => s"""ES file not exist: ${path.value}"""
+      case LoadedRorConfig.EsFileNotExist(path) => s"""ES file not exist: ${path.toString}"""
       case LoadedRorConfig.EsFileMalformed(path, message) => s"""ES file malformed: $path $message"""
       case LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled(typeOfConfiguration) =>
         s"""ROR $typeOfConfiguration cannot be used when XPack Security is enabled"""

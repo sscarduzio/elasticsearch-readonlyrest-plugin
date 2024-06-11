@@ -37,12 +37,14 @@ import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.TestsUtils.ValueOrIllegalState
 import tech.beshu.ror.utils.containers.{LdapContainer, ToxiproxyContainer}
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.reflect.{ClassTag, classTag}
 import scala.util.{Failure, Success, Try}
+import tech.beshu.ror.utils.RefinedUtils.*
 
 class UnboundidLdapUsersServiceNetworkRelatedTests
   extends AnyFreeSpec
@@ -199,7 +201,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
     LdapConnectionConfig(
       poolName = poolName,
       connectionMethod = connectionMethod,
-      poolSize = 1,
+      poolSize = positiveInt(1),
       connectionTimeout = Refined.unsafeApply(5 seconds),
       requestTimeout = Refined.unsafeApply(5 seconds),
       trustAllCerts = false,

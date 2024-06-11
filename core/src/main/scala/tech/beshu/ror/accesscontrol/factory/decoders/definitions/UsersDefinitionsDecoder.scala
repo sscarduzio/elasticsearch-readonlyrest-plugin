@@ -256,14 +256,14 @@ object UsersDefinitionsDecoder {
         mappingsDecoder = mappingsJsons match {
           case groupMappings if haveSimpleFormatWithGroupIds(groupMappings) =>
             groupsSimpleDecoder
-              .map(GroupMappings.Simple)
+              .map(GroupMappings.Simple.apply)
               .widen[GroupMappings]
           case groupMappings if haveAdvancedFormatWithStructuredGroups(groupMappings) =>
             advancedGroupMappingsDecoder(structuredLocalGroupToExternalGroupsMappingDecoder)
               .widen[GroupMappings]
           case groupMappings if haveSimpleFormatWithStructuredGroups(groupMappings) =>
             structuredGroupsDecoder
-              .map(GroupMappings.Simple)
+              .map(GroupMappings.Simple.apply)
               .widen[GroupMappings]
           case _ =>
             advancedGroupMappingsDecoder(localGroupToExternalGroupsMappingDecoder)

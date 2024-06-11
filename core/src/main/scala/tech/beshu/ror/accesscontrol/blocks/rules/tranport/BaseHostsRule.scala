@@ -16,26 +16,31 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.tranport
 
+import cats.Show
 import cats.data.{NonEmptyList, NonEmptySet, OptionT}
-import cats.implicits._
+import cats.implicits.*
+import com.comcast.ip4s.Host
+import com.comcast.ip4s.Host.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.domain.Address.{Ip, Name}
-import tech.beshu.ror.implicits.{addressShow, ipShow}
-import tech.beshu.ror.utils.TaskOps._
+import tech.beshu.ror.implicits.addressShow
+import tech.beshu.ror.utils.TaskOps.*
 
 import scala.util.Success
 
-private [rules] abstract class BaseHostsRule(resolver: HostnameResolver)
+private[rules] abstract class BaseHostsRule(resolver: HostnameResolver)
   extends RegularRule with Logging {
 
   protected def checkAllowedAddresses(blockContext: BlockContext)
                                      (allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
                                       addressToCheck: Address): Task[Boolean] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     allowedAddresses
       .foldLeft(Task.now(false)) {
         case (result, host) =>
@@ -51,17 +56,24 @@ private [rules] abstract class BaseHostsRule(resolver: HostnameResolver)
       }
   }
 
-  private def ipMatchesAddress(allowedHost: Address, address: Address, blockContext: BlockContext) = {
+  private def ipMatchesAddress(allowedHost: Address,
+                               address: Address,
+                               blockContext: BlockContext)
+                              (implicit requestId: RequestId)= {
+    val parallelyResolved = Task.parMap2(resolveToIps(allowedHost), resolveToIps(address))(ParallellyResolvedIps.apply)
     val result = for {
-      allowedHostIps <- OptionT(resolveToIps(allowedHost))
-      addressIps <- OptionT(resolveToIps(address))
+      allowedHostIps <- OptionT(parallelyResolved.map(_.allowedHost))
+      addressIps <- OptionT(parallelyResolved.map(_.address))
       isMatching = addressIps.exists(ip => allowedHostIps.exists(_.contains(ip)))
       _ = logger.debug(s"[${blockContext.requestContext.id.show}] address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=$isMatching")
     } yield isMatching
     result.value.map(_.getOrElse(false))
   }
 
-  private def resolveToIps(address: Address) =
+  private sealed case class ParallellyResolvedIps(allowedHost: Option[NonEmptyList[Ip]], address: Option[NonEmptyList[Ip]])
+
+  private def resolveToIps(address: Address)
+                          (implicit requestId: RequestId)=
     address match {
       case address: Address.Ip =>
         Task.now(Some(NonEmptyList.one(address)))
@@ -69,7 +81,7 @@ private [rules] abstract class BaseHostsRule(resolver: HostnameResolver)
         resolver
           .resolve(address)
           .andThen {
-            case Success(None) => logger.warn(s"Cannot resolve hostname: ${address.value.show}")
+            case Success(None) => logger.warn(s"[${requestId.show}] Cannot resolve hostname: ${Show[Host].show(address.value)}")
           }
     }
 }

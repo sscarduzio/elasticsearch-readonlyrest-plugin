@@ -209,7 +209,7 @@ object AuditingSettingsDecoder extends Logging {
     SyncDecoderCreator
       .from(Decoder.decodeNonEmptyList[Uri])
       .withError(AuditingSettingsCreationError(Message("Non empty list of valid URI is required")))
-      .map(AuditCluster.RemoteAuditCluster)
+      .map(AuditCluster.RemoteAuditCluster.apply)
       .decoder
 
   private def toDecodingFailure(error: CoreCreationError) = {

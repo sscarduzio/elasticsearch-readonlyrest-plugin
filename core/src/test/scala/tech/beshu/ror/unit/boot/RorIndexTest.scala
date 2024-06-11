@@ -32,8 +32,8 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, EnvironmentConfig}
-import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
+import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
 import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils._
@@ -238,7 +238,7 @@ class RorIndexTest extends AnyWordSpec
       factory,
       indexJsonContentService,
       _ => mock[AuditSinkService],
-      getResourcePath(configPath)
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath))
     )
   }
 

@@ -36,10 +36,12 @@ import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.RefinedUtils.*
 
 class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringWhenUserIdAttributeIsUidTests
   extends UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFilteringTests {
@@ -172,7 +174,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
                 serverSideGroupsFiltering = false
               ),
               nestedGroupsConfig = Some(NestedGroupsConfig(
-                nestedLevels = 1,
+                nestedLevels = positiveInt(1),
                 Dn("ou=Roles,dc=example,dc=com"),
                 GroupSearchFilter("(cn=*)"),
                 UniqueMemberAttribute("uniqueMember"),
@@ -193,7 +195,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerS
           .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
           .get
       ),
-      poolSize = 1,
+      poolSize = positiveInt(1),
       connectionTimeout = Refined.unsafeApply(5 seconds),
       requestTimeout = Refined.unsafeApply(5 seconds),
       trustAllCerts = false,

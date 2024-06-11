@@ -20,9 +20,11 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeDataStreamsFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.{StringPatternsMatcherJava, ZeroKnowledgeIndexFilter}
 
-import scala.jdk.CollectionConverters._
+import java.util
+import java.util.function.Consumer
+import scala.jdk.CollectionConverters.*
 
-class ZeroKnowledgeDataStreamsFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter)  {
+class ZeroKnowledgeDataStreamsFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter) {
 
   def check(dataStreams: Set[DataStreamName], matcher: PatternsMatcher[DataStreamName]): CheckResult = {
     val processedDataStreams: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
@@ -34,7 +36,7 @@ class ZeroKnowledgeDataStreamsFilterScalaAdapter(underlying: ZeroKnowledgeIndexF
         }
         .asJava,
       new StringPatternsMatcherJava(matcher),
-      processedDataStreams.addAll _
+      (t: util.Set[String]) => processedDataStreams.addAll(t)
     )
     if (result) CheckResult.Ok(processedDataStreams.asScala.flatMap(DataStreamName.fromString).toSet)
     else CheckResult.Failed

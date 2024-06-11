@@ -70,7 +70,7 @@ object DataStreamsStatsEsRequestContext extends ReflectionBasedDataStreamsEsCont
     ) match {
       case MatchResult.Matched(dataStreams) =>
         Some(new DataStreamsStatsEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
-      case MatchResult.NotMatched =>
+      case MatchResult.NotMatched() =>
         None
     }
   }

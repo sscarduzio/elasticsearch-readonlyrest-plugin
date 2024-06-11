@@ -413,7 +413,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     validTo.minusMillis(environmentConfig.clock.instant().toEpochMilli)
       .toEpochMilli.millis
       .toRefinedPositive
-      .map(RemainingEngineTime.Valid)
+      .map(RemainingEngineTime.Valid.apply)
       .getOrElse(RemainingEngineTime.Expired)
   }
 }

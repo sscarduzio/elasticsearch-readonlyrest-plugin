@@ -39,6 +39,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.{LdapContainer, WireMockContainer, WireMockScalaAdapter}
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class CurrentUserMetadataAccessControlTests
   extends AnyWordSpec
@@ -290,8 +291,8 @@ class CurrentUserMetadataAccessControlTests
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user2_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(FullNameKibanaApp("user2_app1"), FullNameKibanaApp("user2_app2")))
             userMetadata.allowedKibanaApiPaths should be (Set(
-              KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex("^/api/spaces/.*$")),
-              KibanaAllowedApiPath(AllowedHttpMethod.Specific(HttpMethod.Get), JavaRegex("""^/api/spaces\?test\=12\.2$"""))
+              KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex.compile("^/api/spaces/.*$").get),
+              KibanaAllowedApiPath(AllowedHttpMethod.Specific(HttpMethod.Get), JavaRegex.compile("""^/api/spaces\?test\=12\.2$""").get)
             ))
             userMetadata.kibanaAccess should be (Some(KibanaAccess.RO))
             userMetadata.userOrigin should be (None)

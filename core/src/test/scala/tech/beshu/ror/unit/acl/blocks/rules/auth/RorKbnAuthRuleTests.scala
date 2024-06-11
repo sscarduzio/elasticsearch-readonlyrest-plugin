@@ -44,6 +44,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import java.security.Key
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class RorKbnAuthRuleTests
   extends AnyWordSpec with Inside with BlockContextAssertion {

@@ -37,6 +37,7 @@ import tech.beshu.ror.utils.TestsUtils._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
   extends AnyWordSpec with Inside with BlockContextAssertion {
@@ -139,77 +140,77 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
-        uriPath = UriPath("/.custom_kibana/index-pattern/job")
+        uriPath = UriPath.from("/.custom_kibana/index-pattern/job")
       )
     }
     "non strict operations (2)" in {
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/delete"),
-        uriPath = UriPath("/.custom_kibana/index-pattern/nilb-auh-filebeat-*")
+        uriPath = UriPath.from("/.custom_kibana/index-pattern/nilb-auh-filebeat-*")
       )
     }
     "non strict operations (3)" in {
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:admin/template/put"),
-        uriPath = UriPath("/_template/kibana_index_template%3A.kibana")
+        uriPath = UriPath.from("/_template/kibana_index_template%3A.kibana")
       )
     }
     "non strict operations (4)" in {
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
-        uriPath = UriPath("/.custom_kibana/doc/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b/_update?")
+        uriPath = UriPath.from("/.custom_kibana/doc/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b/_update?")
       )
     }
     "non strict operations (5)" in {
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
-        uriPath = UriPath("/.custom_kibana/doc/telemetry%3Atelemetry?refresh=wait_for")
+        uriPath = UriPath.from("/.custom_kibana/doc/telemetry%3Atelemetry?refresh=wait_for")
       )
     }
     "non strict operations (6)" in {
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
-        uriPath = UriPath("/.custom_kibana/doc/url1234/_update?")
+        uriPath = UriPath.from("/.custom_kibana/doc/url1234/_update?")
       )
     }
     "non strict operations (7)" in {
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
-        uriPath = UriPath("/.custom_kibana/url/1234/")
+        uriPath = UriPath.from("/.custom_kibana/url/1234/")
       )
     }
     "non strict operations (8)" in {
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
-        uriPath = UriPath("/.custom_kibana/config/1234/_create/something")
+        uriPath = UriPath.from("/.custom_kibana/config/1234/_create/something")
       )
     }
     "non strict operations (9)" in {
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
-        uriPath = UriPath("/.custom_kibana/_update/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b")
+        uriPath = UriPath.from("/.custom_kibana/_update/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b")
       )
     }
     "non strict operations (10)" in {
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
-        uriPath = UriPath("/.custom_kibana/_update/url1234")
+        uriPath = UriPath.from("/.custom_kibana/_update/url1234")
       )
     }
     "non strict operations (11)" in {
       testNonStrictOperations(
         customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
-        uriPath = UriPath("/.custom_kibana/_create/url:710d2a92ef849fc282bcb8a216f39046")
+        uriPath = UriPath.from("/.custom_kibana/_create/url:710d2a92ef849fc282bcb8a216f39046")
       )
     }
     "RW can change cluster settings" in {
@@ -217,13 +218,13 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
         settingsOf(RO),
         Action("cluster:admin/settings/update"),
         requestedIndices = Set.empty,
-        uriPath = Some(UriPath("/_cluster/settings"))
+        uriPath = Some(UriPath.from("/_cluster/settings"))
       )
       assertMatchRuleUsingIndicesRequest(
         settingsOf(RW),
         Action("cluster:admin/settings/update"),
         requestedIndices = Set.empty,
-        uriPath = Some(UriPath("/_cluster/settings"))
+        uriPath = Some(UriPath.from("/_cluster/settings"))
       ) {
         assertBlockContext(
           kibanaIndex = Some(kibanaIndexFrom(None)),
@@ -237,7 +238,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           settingsOf(access),
           Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"),
           requestedIndices = Set.empty,
-          uriPath = Some(UriPath("/_ccr/auto_follow"))
+          uriPath = Some(UriPath.from("/_ccr/auto_follow"))
         ) {
           assertBlockContext(
             kibanaIndex = Some(kibanaIndexFrom(None)),
@@ -263,7 +264,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           settingsOf(RW),
           Action("indices:data/write/bulk"),
           requestedIndices = Set(clusterIndexName(".kibana_8.8.0")),
-          uriPath = Some(UriPath("/_bulk"))
+          uriPath = Some(UriPath.from("/_bulk"))
         ) {
           assertBlockContext(
             kibanaIndex = Some(kibanaIndexName(".kibana")),
@@ -277,7 +278,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           settingsOf(RW),
           Action("indices:data/write/bulk"),
           requestedIndices = Set(clusterIndexName(".kibana_analytics_8.8.0")),
-          uriPath = Some(UriPath("/_bulk"))
+          uriPath = Some(UriPath.from("/_bulk"))
         ) {
           assertBlockContext(
             kibanaIndex = Some(kibanaIndexName(".kibana")),
@@ -291,7 +292,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           settingsOf(RW),
           Action("indices:data/write/bulk"),
           requestedIndices = Set(clusterIndexName(".kibana"), clusterIndexName(".kibana_analytics_8.8.0")),
-          uriPath = Some(UriPath("/_bulk"))
+          uriPath = Some(UriPath.from("/_bulk"))
         ) {
           assertBlockContext(
             kibanaIndex = Some(kibanaIndexName(".kibana")),
@@ -307,7 +308,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           settingsOf(RW),
           Action("indices:admin/data_stream/create"),
           requestedDataStreams = Set(fullDataStreamName("kibana_sample_data_logs")),
-          uriPath = Some(UriPath("/_data_stream/kibana_sample_data_logs"))
+          uriPath = Some(UriPath.from("/_data_stream/kibana_sample_data_logs"))
         ) {
           assertBlockContext(
             kibanaIndex = Some(kibanaIndexName(".kibana")),
@@ -386,7 +387,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
     val requestContext = MockRequestContext.indices.copy(
       action = action,
       filteredIndices = requestedIndices,
-      uriPath = uriPath.getOrElse(UriPath("/undefined"))
+      uriPath = uriPath.getOrElse(UriPath.from("/undefined"))
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
@@ -408,7 +409,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
     val requestContext = MockRequestContext.dataStreams.copy(
       action = action,
       dataStreams = requestedDataStreams,
-      uriPath = uriPath.getOrElse(UriPath("/undefined"))
+      uriPath = uriPath.getOrElse(UriPath.from("/undefined"))
     )
     val blockContext = DataStreamRequestBlockContext(
       requestContext = requestContext,

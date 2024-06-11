@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.rules.utils.KibanaIndexNameRuntimeResolvableVariable
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class KibanaTemplateIndexRuleTests
   extends AnyWordSpec {

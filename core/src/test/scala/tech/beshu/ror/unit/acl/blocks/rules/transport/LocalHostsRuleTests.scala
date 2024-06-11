@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -30,9 +30,13 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.Address
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
+
+import scala.concurrent.duration.*
+import scala.language.postfixOps
 
 class LocalHostsRuleTests extends AnyWordSpec with MockFactory {
 
@@ -80,7 +84,7 @@ class LocalHostsRuleTests extends AnyWordSpec with MockFactory {
     )
     val requestContext = MockRequestContext.metadata.copy(localAddress = localAddress)
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-    rule.check(blockContext).runSyncStep shouldBe Right {
+    rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()
     }

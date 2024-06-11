@@ -62,7 +62,8 @@ configurations {
 
 tasks.withType(ScalaCompile).configureEach {
     scalaCompileOptions.additionalParameters = [
-            "-Wunused:-nowarn" // depending on es version, some methods are deprecated or not
+            // The "-Wunused:nowarn" flag is unused for now, see plugin-common-conventions.gradle for details
+            //"-Wunused:-nowarn" // depending on es version, some methods are deprecated or not
     ]
 }
 

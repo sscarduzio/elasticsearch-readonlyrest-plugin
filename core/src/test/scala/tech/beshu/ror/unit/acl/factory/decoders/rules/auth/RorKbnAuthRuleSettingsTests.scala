@@ -33,6 +33,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.security.KeyPairGenerator
 import java.util.Base64
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class RorKbnAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] {
@@ -283,7 +284,7 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """ror_kbn_auth: null
                 |""".stripMargin
             )))
@@ -350,7 +351,7 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
               """ror_kbn_auth:
                 |  roles:
                 |  - "group1"
@@ -378,7 +379,7 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                 |""".stripMargin
             )))
@@ -462,7 +463,7 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "kbn1"
                 |""".stripMargin
             )))
@@ -488,7 +489,7 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
               """- name: "kbn1"
                 |  signature_algo: "RSA"
                 |""".stripMargin
