@@ -68,8 +68,9 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |      ssl_trust_all_certs: true                                 # default false
        |      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
        |      bind_password: "password"                                 # skip for anonymous bind
-       |      search_user_base_DN: "ou=People,dc=example,dc=com"
-       |      user_id_attribute: "uid"                                  # default "uid
+       |      users:
+       |        search_user_base_DN: "ou=People,dc=example,dc=com"
+       |        user_id_attribute: "uid"                                # default "uid
        |
        |    - name: ldap2
        |      host: "${SingletonLdapContainers.ldap2.ldapHost}"
@@ -79,8 +80,9 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |      ssl_trust_all_certs: true                                 # default false
        |      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
        |      bind_password: "password"                                 # skip for anonymous bind
-       |      search_user_base_DN: "ou=People,dc=example,dc=com"
-       |      user_id_attribute: "uid"                                  # default "uid
+       |      users:
+       |        search_user_base_DN: "ou=People,dc=example,dc=com"
+       |        user_id_attribute: "uid"                                # default "uid
        |
        |    - name: nonreachable_ldap
        |      host: "localhost"
@@ -90,8 +92,9 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |      ssl_trust_all_certs: true                                 # default false
        |      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
        |      bind_password: "password"                                 # skip for anonymous bind
-       |      search_user_base_DN: "ou=People,dc=example,dc=com"
-       |      user_id_attribute: "uid"                                  # default "uid
+       |      users:
+       |        search_user_base_DN: "ou=People,dc=example,dc=com"
+       |        user_id_attribute: "uid"                                # default "uid
        |""".stripMargin
 
   override protected def afterAll(): Unit = {

@@ -48,9 +48,11 @@ readonlyrest:
 
       bind_dn: "uid=admin,ou=people,dc=example,dc=com"
       bind_password: "password"
-      search_user_base_DN: "ou=People,dc=example,dc=com"
+
+      users:
+        search_user_base_DN: "ou=People,dc=example,dc=com"
+        user_id_attribute: "uid"
       search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      user_id_attribute: "uid"                                  
       unique_member_attribute: "uniqueMember"
 
       cache_ttl: 60s

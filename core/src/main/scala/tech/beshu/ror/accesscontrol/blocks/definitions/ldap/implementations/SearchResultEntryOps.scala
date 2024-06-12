@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.implicits._
+import cats.implicits.*
 import com.unboundid.ldap.sdk.{DN, SearchResultEntry}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupNameAttribute, GroupsFromUserEntry}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupAttribute, GroupsFromUserEntry}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName}
@@ -30,12 +30,12 @@ import scala.util.Try
 private [implementations] object SearchResultEntryOps {
 
   implicit class ToLdapGroup(val entry: SearchResultEntry) extends AnyVal {
-    def toLdapGroup(groupIdAttribute: GroupIdAttribute, groupNameAttribute: GroupNameAttribute): Option[LdapGroup] = {
+    def toLdapGroup(groupAttribute: GroupAttribute): Option[LdapGroup] = {
       for {
-        groupId <- Option(entry.getAttributeValue(groupIdAttribute.value.value))
+        groupId <- Option(entry.getAttributeValue(groupAttribute.id.value.value))
           .flatMap(NonEmptyString.unapply)
           .map(GroupId.apply)
-        groupName <- Option(entry.getAttributeValue(groupNameAttribute.value.value))
+        groupName <- Option(entry.getAttributeValue(groupAttribute.name.value.value))
           .flatMap(NonEmptyString.unapply)
           .map(GroupName.apply)
         dn <- Option(entry.getDN).flatMap(NonEmptyString.unapply).map(Dn.apply)

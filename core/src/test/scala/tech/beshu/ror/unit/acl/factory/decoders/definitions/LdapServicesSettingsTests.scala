@@ -180,8 +180,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("cn"),
-                    GroupNameAttribute("cn"),
+                    GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = false
@@ -301,8 +300,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("cn"),
-                    GroupNameAttribute("cn"),
+                    GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = true
@@ -422,8 +420,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("cn"),
-                    GroupNameAttribute("cn"),
+                    GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = true
@@ -544,8 +541,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("o"),
-                    GroupNameAttribute("o"),
+                    GroupAttribute(GroupIdAttribute("o"), GroupNameAttribute("o")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = false
@@ -667,8 +663,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("o"),
-                    GroupNameAttribute("description"),
+                    GroupAttribute(GroupIdAttribute("o"), GroupNameAttribute("description")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = false
@@ -788,8 +783,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("cn"),
-                    GroupNameAttribute("cn"),
+                    GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = false
@@ -975,8 +969,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("cn"),
-                    GroupNameAttribute("cn"),
+                    GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = false
@@ -1426,8 +1419,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                     defaultGroupSearch = DefaultGroupSearch(
                       Dn("ou=Groups,dc=example,dc=com"),
                       GroupSearchFilter("(objectClass=*)"),
-                      GroupIdAttribute("cn"),
-                      GroupNameAttribute("cn"),
+                      GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                       UniqueMemberAttribute("uniqueMember"),
                       groupAttributeIsDN = true,
                       serverSideGroupsFiltering = false
@@ -1437,8 +1429,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                       Dn("ou=Groups,dc=example,dc=com"),
                       GroupSearchFilter("(objectClass=*)"),
                       UniqueMemberAttribute("uniqueMember"),
-                      GroupIdAttribute("cn"),
-                      GroupNameAttribute("cn")
+                      GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     ))
                   )
               )
@@ -1559,8 +1550,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                       Dn("ou=Groups,dc=example,dc=com"),
                       GroupSearchFilter("(objectClass=*)"),
                       UniqueMemberAttribute("uniqueMember"),
-                      GroupIdAttribute("cn"),
-                      GroupNameAttribute("cn")
+                      GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn"))
                     ))
                   )
               )

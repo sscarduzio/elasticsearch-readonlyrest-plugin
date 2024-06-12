@@ -26,7 +26,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.utils.ADecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.utils.yaml
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+
+import scala.util.{Failure, Try}
 
 abstract class BaseDecoderTest[F[_] : Comonad, A, B](decoder: ADecoder[F, A])
   extends AnyWordSpec with Inside {
@@ -36,8 +37,11 @@ abstract class BaseDecoderTest[F[_] : Comonad, A, B](decoder: ADecoder[F, A])
     yamls
       .toList
       .foreach { yaml =>
-        println(s"Testing yaml: $yaml")
-        assertDecodingSuccess(yaml, assertion)
+        Try(assertDecodingSuccess(yaml, assertion))
+          .recoverWith {
+            ex => Failure(IllegalStateException(s"Assertion failed for yaml: $yaml", ex))
+          }
+          .get
       }
   }
 

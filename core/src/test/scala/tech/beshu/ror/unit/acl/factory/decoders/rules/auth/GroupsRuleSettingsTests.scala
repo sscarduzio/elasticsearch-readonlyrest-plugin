@@ -304,8 +304,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                  |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                  |    ssl_enabled: false
-                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
-                 |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                  |
                  |  user_groups_providers:
                  |  - name: GroupsService1
@@ -374,8 +376,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                  |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                  |    ssl_enabled: false
-                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
-                 |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                  |
                  |""".stripMargin,
             assertion = rule => {
@@ -428,8 +432,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                  |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                  |    ssl_enabled: false
-                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
-                 |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                  |
                  |  user_groups_providers:
                  |  - name: GroupsService1
@@ -498,8 +504,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                  |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                  |    ssl_enabled: false
-                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
-                 |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                  |
                  |  user_groups_providers:
                  |  - name: GroupsService1
@@ -776,8 +784,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
                |  user_groups_providers:
                |  - name: GroupsService1
@@ -821,8 +831,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
                |  user_groups_providers:
                |  - name: GroupsService1
@@ -869,8 +881,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
                |  user_groups_providers:
                |  - name: GroupsService1
@@ -917,8 +931,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
                |  user_groups_providers:
                |  - name: GroupsService1
@@ -965,8 +981,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
                |  user_groups_providers:
                |  - name: GroupsService1
@@ -1041,8 +1059,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
                |  user_groups_providers:
                |  - name: GroupsService1
@@ -1084,8 +1104,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
                |""".stripMargin,
           assertion = errors => {
@@ -1125,8 +1147,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
                |  user_groups_providers:
                |  - name: GroupsService1

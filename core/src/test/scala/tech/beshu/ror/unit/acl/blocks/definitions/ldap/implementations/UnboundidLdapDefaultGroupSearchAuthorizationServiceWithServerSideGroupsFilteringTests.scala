@@ -145,8 +145,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSide
               mode = DefaultGroupSearch(
                 Dn("ou=Groups,dc=example,dc=com"),
                 GroupSearchFilter("(cn=*)"),
-                GroupIdAttribute("cn"),
-                GroupNameAttribute("o"),
+                GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("o")),
                 UniqueMemberAttribute("uniqueMember"),
                 groupAttributeIsDN = true,
                 serverSideGroupsFiltering = true
@@ -181,8 +180,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSide
               mode = DefaultGroupSearch(
                 Dn("ou=Roles,dc=example,dc=com"),
                 GroupSearchFilter("(cn=*)"),
-                GroupIdAttribute("cn"),
-                GroupNameAttribute("o"),
+                GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("o")),
                 UniqueMemberAttribute("uniqueMember"),
                 groupAttributeIsDN = true,
                 serverSideGroupsFiltering = true
@@ -192,8 +190,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSide
                 Dn("ou=Roles,dc=example,dc=com"),
                 GroupSearchFilter("(cn=*)"),
                 UniqueMemberAttribute("uniqueMember"),
-                GroupIdAttribute("cn"),
-                GroupNameAttribute("o"),
+                GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("o")),
               ))
             )
           )

@@ -308,19 +308,18 @@ object LdapServicesDecoder {
         groupAttributeIsDN <- c.downFieldAs[Option[Boolean]]("group_attribute_is_dn")
         serverSideGroupsFiltering <- c.downFieldsAs[Option[Boolean]]("server_side_groups_filtering", "sever_side_groups_filtering")
       } yield {
-        val (groupId, groupName) = (maybeGroupIdAttribute, maybeGroupNameAttribute) match {
-          case (Some(id), Some(name)) => (id, name)
-          case (Some(id), None) => (id, GroupNameAttribute.from(id))
+        val groupAttribute = (maybeGroupIdAttribute, maybeGroupNameAttribute) match {
+          case (Some(id), Some(name)) => GroupAttribute(id, name)
+          case (Some(id), None) => GroupAttribute(id, GroupNameAttribute.from(id))
           case (None, Some(name)) =>
             // When only group_name_attribute is defined, we treat it as group ID (backward compatibility)
-            (GroupIdAttribute(name.value), name)
-          case (None, None) => (GroupIdAttribute.default, GroupNameAttribute.from(GroupIdAttribute.default))
+            GroupAttribute(GroupIdAttribute(name.value), name)
+          case (None, None) => GroupAttribute(GroupIdAttribute.default, GroupNameAttribute.from(GroupIdAttribute.default))
         }
         DefaultGroupSearch(
           searchGroupBaseDn,
           groupSearchFilter.getOrElse(GroupSearchFilter.default),
-          groupId,
-          groupName,
+          groupAttribute,
           uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
           groupAttributeIsDN.getOrElse(true),
           serverSideGroupsFiltering.getOrElse(false)
@@ -336,7 +335,7 @@ object LdapServicesDecoder {
           maybeGroupIdAttribute <- c.downFieldAs[Option[GroupIdAttribute]]("group_id_attribute")
           maybeGroupNameAttribute <- c.downFieldAs[Option[GroupNameAttribute]]("group_name_attribute")
           groupsFromUserAttribute <- c.downFieldAs[Option[GroupsFromUserAttribute]]("groups_from_user_attribute")
-          groupId <- (maybeGroupIdAttribute, maybeGroupNameAttribute) match {
+          groupIdAttribute <- (maybeGroupIdAttribute, maybeGroupNameAttribute) match {
             case (Some(id), Some(_)) =>
               Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(Message(s"Group names (group_name_attribute) are not supported when the group search in user entries is used [ldap ${serviceName.value.value}]. If you intend to use this feature, please get in touch with us."))))
             case (Some(id), None) => Right(id)
@@ -349,7 +348,7 @@ object LdapServicesDecoder {
           GroupsFromUserEntry(
             searchGroupBaseDn,
             groupSearchFilter.getOrElse(GroupSearchFilter.default),
-            groupId,
+            groupIdAttribute,
             groupsFromUserAttribute.getOrElse(GroupsFromUserAttribute.default)
           )
         }
@@ -552,7 +551,7 @@ object LdapServicesDecoder {
 
   private def nestedGroupsConfigDecoder(searchMode: UserGroupsSearchMode) = {
     searchMode match {
-      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, groupNameAttribute, uniqueMemberAttribute, _, _) =>
+      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupAttribute, uniqueMemberAttribute, _, _) =>
         Decoder.instance { c =>
           for {
             nestedGroupsDepthOpt <- c.downFieldAs[Option[Int Refined Positive]]("nested_groups_depth")
@@ -562,8 +561,7 @@ object LdapServicesDecoder {
               searchGroupBaseDN,
               groupSearchFilter,
               uniqueMemberAttribute,
-              groupIdAttribute,
-              groupNameAttribute
+              groupAttribute
             ))
           }
         }
@@ -578,8 +576,7 @@ object LdapServicesDecoder {
               searchGroupBaseDN,
               groupSearchFilter,
               uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
-              groupIdAttribute,
-              GroupNameAttribute.from(groupIdAttribute),
+              GroupAttribute(groupIdAttribute, GroupNameAttribute.from(groupIdAttribute))
             ))
           }
         }

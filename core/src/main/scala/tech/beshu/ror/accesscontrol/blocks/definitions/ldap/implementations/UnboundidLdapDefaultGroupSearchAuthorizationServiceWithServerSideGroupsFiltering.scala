@@ -76,7 +76,7 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
       .flatMap {
         case Right(results) =>
           Task {
-            results.flatMap(_.toLdapGroup(mode.groupIdAttribute, mode.groupNameAttribute)).toSet
+            results.flatMap(_.toLdapGroup(mode.groupAttribute)).toSet
           } flatMap { mainGroups =>
             enrichWithNestedGroupsIfNecessary(mainGroups)
           } map { allGroups =>
@@ -96,10 +96,9 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
     val baseDn = mode.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = searchUserGroupsLdapFilerFrom(mode, user, filteringGroupIds)
-    val groupIdAttribute = mode.groupIdAttribute.value.value
-    val groupNameAttribute = mode.groupNameAttribute.value.value
-    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $groupIdAttribute;$groupNameAttribute]")
-    new SearchRequest(listener, baseDn, scope, searchFilter, groupIdAttribute, groupNameAttribute)
+    val groupAttributes = attributesFrom(mode.groupAttribute)
+    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: ${groupAttributes.mkString(",")}]")
+    new SearchRequest(listener, baseDn, scope, searchFilter, groupAttributes.toSeq*)
   }
 
   private def searchUserGroupsLdapFilerFrom(mode: DefaultGroupSearch,
@@ -108,18 +107,18 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
     val userAttributeValue = if (mode.groupAttributeIsDN) user.dn.value else user.id.value
     val serverSideGroupsFiltering = filteringGroupIds.toList match {
       case Nil => ""
-      case oneGroup :: Nil => s"(${filterPartGroupId(mode.groupIdAttribute, oneGroup)})"
-      case manyGroups => manyGroups.map(filterPartGroupId(mode.groupIdAttribute, _)).map(g => s"($g)").sorted.mkString("(|", "", ")")
+      case oneGroup :: Nil => s"(${filterPartGroupId(mode.groupAttribute, oneGroup)})"
+      case manyGroups => manyGroups.map(filterPartGroupId(mode.groupAttribute, _)).map(g => s"($g)").sorted.mkString("(|", "", ")")
     }
     s"(&${mode.groupSearchFilter.value}$serverSideGroupsFiltering(${mode.uniqueMemberAttribute.value}=${Filter.encodeValue(userAttributeValue.value)}))"
   }
 
-  private def filterPartGroupId(groupIdAttribute: GroupIdAttribute, groupId: GroupIdLike) = {
+  private def filterPartGroupId(groupAttribute: GroupAttribute, groupId: GroupIdLike) = {
     val groupIdString = groupId match {
       case GroupId(value) => value.value
       case GroupIdLike.GroupIdPattern(value) => value.value
     }
-    s"${groupIdAttribute.value.value}=$groupIdString"
+    s"${groupAttribute.id.value.value}=$groupIdString"
   }
 
   private def enrichWithNestedGroupsIfNecessary(mainGroups: Set[LdapGroup])
@@ -128,6 +127,10 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
       case Some(service) => service.fetchNestedGroupsOf(mainGroups).map(_ ++ mainGroups)
       case None => Task.delay(mainGroups)
     }
+  }
+
+  private def attributesFrom(groupAttribute: GroupAttribute) = {
+    Set(groupAttribute.id.value.value, groupAttribute.name.value.value)
   }
 }
 
