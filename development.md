@@ -58,10 +58,9 @@ Currently eshome support debugging only es8x modules.
 * Docker
 
 ## Running tests
-* unit tests: `./gradlew test ror`
+* unit tests: `./gradlew core:test`
 * integration tests for specific module (at the moment we have two modules with integration tests): 
-  * `./gradlew integration-tests:test '-PesModule=es70x'` 
-  * `./gradlew integration-tests-scala:test '-PesModule=es70x'`
+  * `./gradlew integration-tests:test -PesModule=es70x`
 ## Adding license headers to newly created files:
 * `./gradlew licenseFormatMain`
 * `./gradlew licenseFormatTest`

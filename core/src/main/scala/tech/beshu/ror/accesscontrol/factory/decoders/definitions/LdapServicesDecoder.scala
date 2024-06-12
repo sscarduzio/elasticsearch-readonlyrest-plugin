@@ -24,33 +24,33 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
-import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.value
 
 import java.time.Clock
-import scala.language.postfixOps
-import tech.beshu.ror.utils.RefinedUtils.*
-
 import java.util.concurrent.TimeUnit
+import scala.language.postfixOps
 
-object LdapServicesDecoder {
+object LdapServicesDecoder extends Logging {
 
   given nameDecoder: Decoder[LdapService.Name] = DecoderHelpers.decodeNonEmptyStringField.map(LdapService.Name.apply)
 
@@ -121,7 +121,7 @@ object LdapServicesDecoder {
         userSearchFilter
       )
     )
-      .leftMap(toDecodingFailure)
+      .leftMap(connectionErrorDecodingFailureFrom)
       .map { ldapUsersService =>
         CacheableLdapUsersServiceDecorator.create(
           ldapUsersService = new CircuitBreakerLdapUsersServiceDecorator(ldapUsersService, circuitBreakerConfig),
@@ -144,7 +144,7 @@ object LdapServicesDecoder {
         connectionConfig
       )
     )
-      .leftMap(toDecodingFailure)
+      .leftMap(connectionErrorDecodingFailureFrom)
       .map { ldapAuthenticationService =>
         CacheableLdapAuthenticationServiceDecorator.create(
           ldapAuthenticationService = new CircuitBreakerLdapAuthenticationServiceDecorator(
@@ -207,7 +207,7 @@ object LdapServicesDecoder {
         userGroupsSearchFilter
       )
     )
-      .leftMap(toDecodingFailure)
+      .leftMap(connectionErrorDecodingFailureFrom)
       .map { ldapAuthorizationService =>
         CacheableLdapAuthorizationService.create(
           ldapService = CircuitBreakerLdapAuthorizationService.create(ldapAuthorizationService, circuitBreakerConfig),
@@ -244,26 +244,37 @@ object LdapServicesDecoder {
     }
   }
 
-  private def toDecodingFailure(connectionError: ConnectionError) = connectionError match {
-    case error: HostConnectionError =>
-      hostConnectionErrorDecodingFailureFrom(error)
-    case error: ServerDiscoveryConnectionError =>
-      serverDiscoveryConnectionDecodingFailureFrom(error)
-  }
+  private def connectionErrorDecodingFailureFrom(error: ConnectionError) = {
+    def connectionErrorFrom(message: String) =
+      DecodingFailureOps.fromError(DefinitionsLevelCreationError(Message(message)))
 
-  private def hostConnectionErrorDecodingFailureFrom(error: HostConnectionError) = {
-    val connectionErrorMessage = Message(
-      s"There was a problem with LDAP connection to: ${error.hosts.map(_.url.toString()).toList.mkString(",")}"
-    )
-    DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))
-  }
-
-  private def serverDiscoveryConnectionDecodingFailureFrom(error: ServerDiscoveryConnectionError) = {
-    val connectionErrorMessage = Message(
-      s"There was a problem with LDAP connection in discovery mode. " +
-        s"Connection details: recordName=${error.recordName.getOrElse("default")}, " +
-        s"providerUrl=${error.providerUrl.getOrElse("default")}")
-    DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))
+    error match
+      case CannotConnectError(ldap, connectionMethod) =>
+        connectionErrorFrom(
+          connectionMethod match {
+            case SingleServer(host) =>
+              s"There was a problem with '${ldap.value}' LDAP connection to: ${host.url.toString()}"
+            case SeveralServers(hosts, _) =>
+              s"There was a problem with '${ldap.value}' LDAP connection to: ${hosts.map(_.url.toString()).toList.mkString(",")}"
+            case ConnectionMethod.ServerDiscovery(recordName, providerUrl, _, _) =>
+              s"There was a problem with '${ldap.value}' LDAP connection in discovery mode. " +
+                s"Connection details: recordName=${recordName.getOrElse("default")}, " +
+                s"providerUrl=${providerUrl.getOrElse("default")}"
+          }
+        )
+      case HostResolvingError(ldap, hosts) =>
+        connectionErrorFrom(
+          s"There was a problem with resolving '${ldap.value}' LDAP hosts: ${hosts.map(_.url.toString()).toList.mkString(",")}"
+        )
+      case BindingTestError(ldap) =>
+        connectionErrorFrom(
+          s"There was a problem with test binding in case of '${ldap.value}' LDAP connector}"
+        )
+      case UnexpectedConnectionError(ldap, cause) =>
+        logger.error(s"Unexpected '${ldap.value}' LDAP connection error", cause)
+        connectionErrorFrom(
+          s"Unexpected '${ldap.value}' LDAP connection error: '${cause.getMessage}'}"
+        )
   }
 
   private given Decoder[UserSearchFilterConfig] =
