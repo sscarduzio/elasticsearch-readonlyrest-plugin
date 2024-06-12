@@ -24,10 +24,12 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
@@ -51,7 +53,7 @@ import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.util.concurrent.TimeUnit
 
-object LdapServicesDecoder {
+object LdapServicesDecoder extends Logging {
 
   implicit val nameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
@@ -129,10 +131,8 @@ object LdapServicesDecoder {
         ldapServiceDecodingResult match {
           case Left(error) => Task.now(Left(error))
           case Right(task) => task.map {
-            case Left(error: HostConnectionError) =>
-              Left(hostConnectionErrorDecodingFailureFrom(error))
-            case Left(error: ServerDiscoveryConnectionError) =>
-              Left(serverDiscoveryConnectionDecodingFailureFrom(error))
+            case Left(error: ConnectionError) =>
+              Left(connectionErrorDecodingFailureFrom(error))
             case Right(ldapUsersService) =>
               Right {
                 CacheableLdapUsersServiceDecorator.create(
@@ -165,10 +165,8 @@ object LdapServicesDecoder {
         ldapServiceDecodingResult match {
           case Left(error) => Task.now(Left(error))
           case Right(task) => task.map {
-            case Left(error: HostConnectionError) =>
-              Left(hostConnectionErrorDecodingFailureFrom(error))
-            case Left(error: ServerDiscoveryConnectionError) =>
-              Left(serverDiscoveryConnectionDecodingFailureFrom(error))
+            case Left(error: ConnectionError) =>
+              Left(connectionErrorDecodingFailureFrom(error))
             case Right(ldapAuthenticationService) =>
               Right {
                 CacheableLdapAuthenticationServiceDecorator.create(
@@ -201,10 +199,8 @@ object LdapServicesDecoder {
           case Left(error) =>
             Task.now(Left(error))
           case Right(task) => task.map {
-            case Left(error: HostConnectionError) =>
-              Left(hostConnectionErrorDecodingFailureFrom(error))
-            case Left(error: ServerDiscoveryConnectionError) =>
-              Left(serverDiscoveryConnectionDecodingFailureFrom(error))
+            case Left(error: ConnectionError) =>
+              Left(connectionErrorDecodingFailureFrom(error))
             case Right(ldapAuthorizationService) =>
               Right {
                 CacheableLdapAuthorizationService.create(
@@ -217,19 +213,37 @@ object LdapServicesDecoder {
       }
       .mapError(DefinitionsLevelCreationError.apply)
 
-  private def hostConnectionErrorDecodingFailureFrom(error: HostConnectionError) = {
-    val connectionErrorMessage = Message(
-      s"There was a problem with LDAP connection to: ${error.hosts.map(_.url.toString()).toList.mkString(",")}"
-    )
-    DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))
-  }
+  private def connectionErrorDecodingFailureFrom(error: ConnectionError) = {
+    def connectionErrorFrom(message: String) =
+      DecodingFailureOps.fromError(DefinitionsLevelCreationError(Message(message)))
 
-  private def serverDiscoveryConnectionDecodingFailureFrom(error: ServerDiscoveryConnectionError) = {
-    val connectionErrorMessage = Message(
-      s"There was a problem with LDAP connection in discovery mode. " +
-        s"Connection details: recordName=${error.recordName.getOrElse("default")}, " +
-        s"providerUrl=${error.providerUrl.getOrElse("default")}")
-    DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))
+    error match
+      case CannotConnectError(ldap, connectionMethod) =>
+        connectionErrorFrom(
+          connectionMethod match {
+            case SingleServer(host) =>
+              s"There was a problem with '${ldap.value}' LDAP connection to: ${host.url.toString()}"
+            case SeveralServers(hosts, _) =>
+              s"There was a problem with '${ldap.value}' LDAP connection to: ${hosts.map(_.url.toString()).toList.mkString(",")}"
+            case ConnectionMethod.ServerDiscovery(recordName, providerUrl, _, _) =>
+              s"There was a problem with '${ldap.value}' LDAP connection in discovery mode. " +
+                s"Connection details: recordName=${recordName.getOrElse("default")}, " +
+                s"providerUrl=${providerUrl.getOrElse("default")}"
+          }
+        )
+      case HostResolvingError(ldap, hosts) =>
+        connectionErrorFrom(
+          s"There was a problem with resolving '${ldap.value}' LDAP hosts: ${hosts.map(_.url.toString()).toList.mkString(",")}"
+        )
+      case BindingTestError(ldap) =>
+        connectionErrorFrom(
+          s"There was a problem with test binding in case of '${ldap.value}' LDAP connector}"
+        )
+      case UnexpectedConnectionError(ldap, cause) =>
+        logger.error(s"Unexpected '${ldap.value}' LDAP connection error", cause)
+        connectionErrorFrom(
+          s"Unexpected '${ldap.value}' LDAP connection error: '${cause.getMessage}'}"
+        )
   }
 
   private val userSearchFilerConfigDecoder: Decoder[UserSearchFilterConfig] =
