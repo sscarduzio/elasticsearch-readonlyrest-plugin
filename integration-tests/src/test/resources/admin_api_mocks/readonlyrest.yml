@@ -81,7 +81,6 @@ readonlyrest:
         search_groups_base_DN: "ou=Groups,dc=example,dc=com"
         unique_member_attribute: "uniqueMember"                 # default "uniqueMember"
 
-
     - name: ldap2
       host: {LDAP2_HOST}
       port: {LDAP2_PORT}                                        # default 389
@@ -99,7 +98,6 @@ readonlyrest:
       groups:
         search_groups_base_DN: "ou=Groups,dc=example,dc=com"
         unique_member_attribute: "uniqueMember"                 # default "uniqueMember"
-
 
   external_authentication_service_configs:
 

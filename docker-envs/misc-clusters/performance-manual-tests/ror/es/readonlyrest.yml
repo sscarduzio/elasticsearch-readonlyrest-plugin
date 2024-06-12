@@ -52,7 +52,8 @@ readonlyrest:
       users:
         search_user_base_DN: "ou=People,dc=example,dc=com"
         user_id_attribute: "uid"
-      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      unique_member_attribute: "uniqueMember"
+      groups:
+        search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+        unique_member_attribute: "uniqueMember"
 
       cache_ttl: 60s
