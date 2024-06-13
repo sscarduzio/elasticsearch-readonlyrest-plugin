@@ -206,14 +206,16 @@ class CurrentUserMetadataAccessControlTests
       |    ssl_trust_all_certs: true                                 # default false
       |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
       |    bind_password: "password"                                 # skip for anonymous bind
-      |    search_user_base_DN: "ou=People,dc=example,dc=com"
-      |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      |    user_id_attribute: "uid"                                  # default "uid"
-      |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
       |    connection_pool_size: 10                                  # default 30
       |    connection_timeout_in_sec: 10                             # default 1
       |    request_timeout_in_sec: 10                                # default 1
       |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+      |    users:
+      |      search_user_base_DN: "ou=People,dc=example,dc=com"
+      |      user_id_attribute: "uid"                                # default "uid"
+      |    groups:
+      |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      |      unique_member_attribute: "uniqueMember"                 # default "uniqueMember"
       |
       |  - name: Ldap2
       |    host: "${ldap2.ldapHost}"
@@ -222,14 +224,16 @@ class CurrentUserMetadataAccessControlTests
       |    ssl_trust_all_certs: true                                 # default false
       |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
       |    bind_password: "password"                                 # skip for anonymous bind
-      |    search_user_base_DN: "ou=People,dc=example,dc=com"
-      |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      |    user_id_attribute: "uid"                                  # default "uid"
-      |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
       |    connection_pool_size: 10                                  # default 30
       |    connection_timeout_in_sec: 10                             # default 1
       |    request_timeout_in_sec: 10                                # default 1
       |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+      |    users:
+      |      search_user_base_DN: "ou=People,dc=example,dc=com"
+      |      user_id_attribute: "uid"                                # default "uid"
+      |    groups:
+      |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      |      unique_member_attribute: "uniqueMember"                 # default "uniqueMember"
       |
     """.stripMargin
 

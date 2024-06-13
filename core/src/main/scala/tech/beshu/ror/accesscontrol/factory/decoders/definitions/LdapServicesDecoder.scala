@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
-import cats.data.NonEmptyList
+import cats.data.{EitherT, NonEmptyList}
 import cats.implicits.*
 import com.comcast.ip4s.Port
 import eu.timepit.refined.api.Refined
@@ -26,192 +26,223 @@ import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
-import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.value
 
 import java.time.Clock
-import scala.concurrent.duration.*
-import scala.language.postfixOps
-import tech.beshu.ror.utils.RefinedUtils.*
-
 import java.util.concurrent.TimeUnit
+import scala.language.postfixOps
 
 object LdapServicesDecoder extends Logging {
 
-  implicit val nameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
+  given nameDecoder: Decoder[LdapService.Name] = DecoderHelpers.decodeNonEmptyStringField.map(LdapService.Name.apply)
 
-  def ldapServicesDefinitionsDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                                     clock: Clock): AsyncDecoder[Definitions[LdapService]] = {
+  def ldapServicesDefinitionsDecoder(using UnboundidLdapConnectionPoolProvider, Clock): AsyncDecoder[Definitions[LdapService]] = {
     AsyncDecoderCreator.instance { c =>
       DefinitionsBaseDecoder.instance[Task, LdapService]("ldaps").apply(c)
     }
   }
 
-  private implicit def cachableLdapServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                                                  clock: Clock): AsyncDecoder[LdapService] =
-    AsyncDecoderCreator.instance { c =>
-      val result = for {
-        circuitBreakerConfig <- circuitBreakerDecoder(c)
-        cacheTTl <- c.downFields("cache_ttl", "cache_ttl_in_sec").as[Option[PositiveFiniteDuration]]
-      } yield {
-        decodeLdapService(c, circuitBreakerConfig, cacheTTl)
+  private given ldapServiceDecoder(using UnboundidLdapConnectionPoolProvider, Clock): AsyncDecoder[LdapService] = {
+    AsyncDecoderCreator
+      .instance { c =>
+        value {
+          for {
+            serviceName <- c.downFieldAs[LdapService.Name]("name").toEitherT[Task]
+            circuitBreakerConfig <- c.as[CircuitBreakerConfig].toEitherT[Task]
+            cacheTTl <- c.downFieldsAs[Option[PositiveFiniteDuration]]("cache_ttl", "cache_ttl_in_sec").toEitherT[Task]
+            connectionConfig <- connectionConfigDecoder(serviceName)(c).toEitherT[Task]
+            ldapService <- decodeLdapService(c, serviceName, connectionConfig, circuitBreakerConfig, cacheTTl)
+          } yield ldapService
+        }
       }
-      result.fold(error => Task.now(Left(error)), identity)
-    }
+      .mapError(DefinitionsLevelCreationError.apply)
+  }
 
   private def decodeLdapService(cursor: HCursor,
+                                serviceName: LdapService.Name,
+                                connectionConfig: LdapConnectionConfig,
                                 circuitBreakerConfig: CircuitBreakerConfig,
                                 ttl: Option[PositiveFiniteDuration])
-                               (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                                clock: Clock): Task[Either[DecodingFailure, LdapService]] = {
-    ldapUsersServiceDecoder(circuitBreakerConfig, ttl)
-      .apply(cursor)
-      .flatMap {
-        case Right(ldapUsersService) =>
-          doDecodeLdap(cursor, ldapUsersService, circuitBreakerConfig, ttl)
-        case Left(decodingFailure) =>
-          Task.delay(Left(decodingFailure))
+                               (using UnboundidLdapConnectionPoolProvider, Clock): EitherT[Task, DecodingFailure, LdapService] = {
+    cursor.downField("users").success match {
+      case Some(usersCursor) =>
+        // new format
+        for {
+          userSearchFilter <- usersCursor.as[UserSearchFilterConfig].toEitherT[Task]
+          ldapUsersService <- createLdapUsersService(serviceName, connectionConfig, userSearchFilter, circuitBreakerConfig, ttl)
+          ldapAuthenticationService <- createLdapAuthenticationService(serviceName, ldapUsersService, connectionConfig, circuitBreakerConfig, ttl)
+          maybeLdapAuthorizationService <- decodeOptionalLdapAuthorizationService(cursor, serviceName, ldapUsersService, connectionConfig, circuitBreakerConfig, ttl)
+        } yield maybeLdapAuthorizationService match {
+          case Some(ldapAuthorizationService) =>
+            createComposedLdapService(ldapUsersService, ldapAuthenticationService, ldapAuthorizationService)
+          case None =>
+            ldapAuthenticationService
+        }
+      case None =>
+        // old format
+        for {
+          userSearchFilter <- cursor.as[UserSearchFilterConfig].toEitherT[Task]
+          ldapUsersService <- createLdapUsersService(serviceName, connectionConfig, userSearchFilter, circuitBreakerConfig, ttl)
+          ldapService <- deprecatedDecodeLdapService(cursor, serviceName, ldapUsersService, connectionConfig, circuitBreakerConfig, ttl)
+        } yield ldapService
+    }
+  }
+
+
+  private def createLdapUsersService(serviceName: LdapService.Name,
+                                     connectionConfig: LdapConnectionConfig,
+                                     userSearchFilter: UserSearchFilterConfig,
+                                     circuitBreakerConfig: CircuitBreakerConfig,
+                                     ttl: Option[PositiveFiniteDuration]
+                                    )(using UnboundidLdapConnectionPoolProvider): EitherT[Task, DecodingFailure, LdapUsersService] = {
+    EitherT(
+      UnboundidLdapUsersService.create(
+        serviceName,
+        summon[UnboundidLdapConnectionPoolProvider],
+        connectionConfig,
+        userSearchFilter
+      )
+    )
+      .leftMap(connectionErrorDecodingFailureFrom)
+      .map { ldapUsersService =>
+        CacheableLdapUsersServiceDecorator.create(
+          ldapUsersService = new CircuitBreakerLdapUsersServiceDecorator(ldapUsersService, circuitBreakerConfig),
+          ttl = ttl
+        )
       }
   }
 
-  private def doDecodeLdap(cursor: HCursor,
-                           ldapUsersService: LdapUsersService,
-                           circuitBreakerConfig: CircuitBreakerConfig,
-                           ttl: Option[PositiveFiniteDuration])
-                          (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                           clock: Clock): Task[Either[DecodingFailure, LdapService]] = {
-    for {
-      authenticationService <- (authenticationServiceDecoder(ldapUsersService, circuitBreakerConfig, ttl): AsyncDecoder[LdapAuthenticationService])(cursor)
-      authorizationService <- (authorizationServiceDecoder(ldapUsersService, circuitBreakerConfig, ttl): AsyncDecoder[LdapAuthorizationService])(cursor)
-    } yield (authenticationService, authorizationService) match {
-      case (Right(authn), Right(authz)) => Right {
-        ComposedLdapAuthService.create(ldapUsersService, authn, authz) match {
-          case Right(composedService) => composedService
-          case Left(message) => throw new IllegalStateException(message)
-        }
+  private def createLdapAuthenticationService(serviceName: LdapService.Name,
+                                              ldapUsersService: LdapUsersService,
+                                              connectionConfig: LdapConnectionConfig,
+                                              circuitBreakerConfig: CircuitBreakerConfig,
+                                              ttl: Option[PositiveFiniteDuration])
+                                             (using UnboundidLdapConnectionPoolProvider, Clock) = {
+    EitherT(
+      UnboundidLdapAuthenticationService.create(
+        serviceName,
+        ldapUsersService,
+        summon[UnboundidLdapConnectionPoolProvider],
+        connectionConfig
+      )
+    )
+      .leftMap(connectionErrorDecodingFailureFrom)
+      .map { ldapAuthenticationService =>
+        CacheableLdapAuthenticationServiceDecorator.create(
+          ldapAuthenticationService = new CircuitBreakerLdapAuthenticationServiceDecorator(
+            ldapAuthenticationService, circuitBreakerConfig
+          ),
+          ttl = ttl
+        )
       }
+  }
+
+  private def decodeOptionalLdapAuthorizationService(cursor: HCursor,
+                                                     serviceName: LdapService.Name,
+                                                     ldapUsersService: LdapUsersService,
+                                                     connectionConfig: LdapConnectionConfig,
+                                                     circuitBreakerConfig: CircuitBreakerConfig,
+                                                     ttl: Option[PositiveFiniteDuration])
+                                                    (using UnboundidLdapConnectionPoolProvider, Clock): EitherT[Task, DecodingFailure, Option[LdapAuthorizationService]] = {
+    cursor
+      .downField("groups")
+      .success
+      .map { groupsCursor =>
+        decodeLdapAuthorizationService(groupsCursor, serviceName, ldapUsersService, connectionConfig, circuitBreakerConfig, ttl)
+      }
+      .sequence
+  }
+
+  private def decodeLdapAuthorizationService(cursor: HCursor,
+                                             serviceName: LdapService.Name,
+                                             ldapUsersService: LdapUsersService,
+                                             connectionConfig: LdapConnectionConfig,
+                                             circuitBreakerConfig: CircuitBreakerConfig,
+                                             ttl: Option[PositiveFiniteDuration])
+                                            (using UnboundidLdapConnectionPoolProvider, Clock): EitherT[Task, DecodingFailure, LdapAuthorizationService] = {
+    for {
+      userGroupsSearchFilter <- userGroupsSearchFilterConfigDecoder(serviceName)(cursor).toEitherT[Task]
+      ldapAuthorizationService <- createLdapAuthorizationService(
+        serviceName,
+        ldapUsersService,
+        connectionConfig,
+        userGroupsSearchFilter,
+        circuitBreakerConfig,
+        ttl
+      )
+    } yield ldapAuthorizationService
+  }
+
+  private def createLdapAuthorizationService(serviceName: LdapService.Name,
+                                             ldapUsersService: LdapUsersService,
+                                             connectionConfig: LdapConnectionConfig,
+                                             userGroupsSearchFilter: UserGroupsSearchFilterConfig,
+                                             circuitBreakerConfig: CircuitBreakerConfig,
+                                             ttl: Option[PositiveFiniteDuration]
+                                            )(using UnboundidLdapConnectionPoolProvider, Clock): EitherT[Task, DecodingFailure, LdapAuthorizationService] = {
+    EitherT(
+      UnboundidLdapAuthorizationService.create(
+        serviceName,
+        ldapUsersService,
+        summon[UnboundidLdapConnectionPoolProvider],
+        connectionConfig,
+        userGroupsSearchFilter
+      )
+    )
+      .leftMap(connectionErrorDecodingFailureFrom)
+      .map { ldapAuthorizationService =>
+        CacheableLdapAuthorizationService.create(
+          ldapService = CircuitBreakerLdapAuthorizationService.create(ldapAuthorizationService, circuitBreakerConfig),
+          ttl = ttl
+        )
+      }
+  }
+
+  private def createComposedLdapService(ldapUsersService: LdapUsersService, authn: LdapAuthenticationService, authz: LdapAuthorizationService) = {
+    ComposedLdapAuthService.create(ldapUsersService, authn, authz) match {
+      case Right(composedService) => composedService
+      case Left(message) => throw new IllegalStateException(message)
+    }
+  }
+
+  private def deprecatedDecodeLdapService(cursor: HCursor,
+                                          serviceName: LdapService.Name,
+                                          ldapUsersService: LdapUsersService,
+                                          connectionConfig: LdapConnectionConfig,
+                                          circuitBreakerConfig: CircuitBreakerConfig,
+                                          ttl: Option[PositiveFiniteDuration])
+                                         (using UnboundidLdapConnectionPoolProvider, Clock): EitherT[Task, DecodingFailure, LdapService] = EitherT {
+    for {
+      authenticationServiceOrError <- createLdapAuthenticationService(serviceName, ldapUsersService, connectionConfig, circuitBreakerConfig, ttl).value
+      authorizationServiceOrError <- decodeLdapAuthorizationService(cursor, serviceName, ldapUsersService, connectionConfig, circuitBreakerConfig, ttl).value
+    } yield (authenticationServiceOrError, authorizationServiceOrError) match {
+      // We don't know the user's intention of what service he would like to create
+      // this method based on decoding failure may cause the start of service with a different type than expected
+      // method is left for backward compatibility
+      case (Right(authn), Right(authz)) => Right(createComposedLdapService(ldapUsersService, authn, authz))
       case (authn@Right(_), _) => authn
       case (_, authz@Right(_)) => authz
       case (error@Left(_), _) => error
     }
   }
-
-  private def ldapUsersServiceDecoder(circuitBreakerConfig: CircuitBreakerConfig,
-                                      ttl: Option[PositiveFiniteDuration])
-                                     (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapUsersService] = {
-    AsyncDecoderCreator
-      .instance[LdapUsersService] { c =>
-        val ldapServiceDecodingResult = for {
-          name <- c.downField("name").as[LdapService.Name]
-          connectionConfig <- connectionConfigDecoder(c)
-          userSearchFiler <- userSearchFilerConfigDecoder(c)
-        } yield UnboundidLdapUsersService.create(
-          name,
-          ldapConnectionPoolProvider,
-          connectionConfig,
-          userSearchFiler
-        )
-        ldapServiceDecodingResult match {
-          case Left(error) => Task.now(Left(error))
-          case Right(task) => task.map {
-            case Left(error: ConnectionError) =>
-              Left(connectionErrorDecodingFailureFrom(error))
-            case Right(ldapUsersService) =>
-              Right {
-                CacheableLdapUsersServiceDecorator.create(
-                  ldapUsersService = new CircuitBreakerLdapUsersServiceDecorator(ldapUsersService, circuitBreakerConfig),
-                  ttl = ttl
-                )
-              }
-          }
-        }
-      }
-      .mapError(DefinitionsLevelCreationError.apply)
-  }
-
-  private def authenticationServiceDecoder(ldapUsersService: LdapUsersService,
-                                           circuitBreakerConfig: CircuitBreakerConfig,
-                                           ttl: Option[PositiveFiniteDuration])
-                                          (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                                           clock: Clock): AsyncDecoder[LdapAuthenticationService] =
-    AsyncDecoderCreator
-      .instance[LdapAuthenticationService] { c =>
-        val ldapServiceDecodingResult = for {
-          name <- c.downField("name").as[LdapService.Name]
-          connectionConfig <- connectionConfigDecoder(c)
-        } yield UnboundidLdapAuthenticationService.create(
-          name,
-          ldapUsersService,
-          ldapConnectionPoolProvider,
-          connectionConfig
-        )
-        ldapServiceDecodingResult match {
-          case Left(error) => Task.now(Left(error))
-          case Right(task) => task.map {
-            case Left(error: ConnectionError) =>
-              Left(connectionErrorDecodingFailureFrom(error))
-            case Right(ldapAuthenticationService) =>
-              Right {
-                CacheableLdapAuthenticationServiceDecorator.create(
-                  ldapAuthenticationService = new CircuitBreakerLdapAuthenticationServiceDecorator(
-                    ldapAuthenticationService, circuitBreakerConfig
-                  ),
-                  ttl = ttl
-                )
-              }
-          }
-        }
-      }
-      .mapError(DefinitionsLevelCreationError.apply)
-
-  private def authorizationServiceDecoder(ldapUsersService: LdapUsersService,
-                                          circuitBreakerConfig: CircuitBreakerConfig,
-                                          ttl: Option[PositiveFiniteDuration])
-                                         (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                                          clock: Clock): AsyncDecoder[LdapAuthorizationService] =
-    AsyncDecoderCreator
-      .instance[LdapAuthorizationService] { c =>
-        val ldapServiceDecodingResult = for {
-          name <- c.downField("name").as[LdapService.Name]
-          connectionConfig <- connectionConfigDecoder(c)
-          userGroupsSearchFilter <- userGroupsSearchFilterConfigDecoder(c)
-        } yield UnboundidLdapAuthorizationService.create(
-          name, ldapUsersService, ldapConnectionPoolProvider, connectionConfig, userGroupsSearchFilter
-        )
-        ldapServiceDecodingResult match {
-          case Left(error) =>
-            Task.now(Left(error))
-          case Right(task) => task.map {
-            case Left(error: ConnectionError) =>
-              Left(connectionErrorDecodingFailureFrom(error))
-            case Right(ldapAuthorizationService) =>
-              Right {
-                CacheableLdapAuthorizationService.create(
-                  ldapService = CircuitBreakerLdapAuthorizationService.create(ldapAuthorizationService, circuitBreakerConfig),
-                  ttl = ttl
-                )
-              }
-          }
-        }
-      }
-      .mapError(DefinitionsLevelCreationError.apply)
 
   private def connectionErrorDecodingFailureFrom(error: ConnectionError) = {
     def connectionErrorFrom(message: String) =
@@ -246,13 +277,13 @@ object LdapServicesDecoder extends Logging {
         )
   }
 
-  private val userSearchFilerConfigDecoder: Decoder[UserSearchFilterConfig] =
+  private given Decoder[UserSearchFilterConfig] =
     SyncDecoderCreator
       .instance { c =>
         for {
-          searchUserBaseDn <- c.downField("search_user_base_DN").as[Dn]
+          searchUserBaseDn <- c.downFieldAs[Dn]("search_user_base_DN")
           userIdAttributeName <- c.downNonEmptyOptionalField("user_id_attribute")
-          skipUserSearch <- c.downField("skip_user_search").as[Option[Boolean]]
+          skipUserSearch <- c.downFieldAs[Option[Boolean]]("skip_user_search")
         } yield {
           userIdAttributeFrom(userIdAttributeName, skipUserSearch)
             .map(UserSearchFilterConfig(searchUserBaseDn, _))
@@ -278,65 +309,103 @@ object LdapServicesDecoder extends Logging {
   }
 
   private val defaultGroupsSearchModeDecoder: Decoder[UserGroupsSearchMode] =
-    Decoder.instance { c =>
+    SyncDecoderCreator.instance { c =>
       for {
-        searchGroupBaseDn <- c.downField("search_groups_base_DN").as[Dn]
-        groupSearchFilter <- c.downField("group_search_filter").as[Option[GroupSearchFilter]]
-        groupIdAttribute <- c.downField("group_name_attribute").as[Option[GroupIdAttribute]]
-        uniqueMemberAttribute <- c.downField("unique_member_attribute").as[Option[UniqueMemberAttribute]]
-        groupAttributeIsDN <- c.downField("group_attribute_is_dn").as[Option[Boolean]]
-        serverSideGroupsFiltering <- c.downFields("server_side_groups_filtering", "sever_side_groups_filtering").as[Option[Boolean]]
-      } yield DefaultGroupSearch(
-        searchGroupBaseDn,
-        groupSearchFilter.getOrElse(GroupSearchFilter.default),
-        groupIdAttribute.getOrElse(GroupIdAttribute.default),
-        uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
-        groupAttributeIsDN.getOrElse(true),
-        serverSideGroupsFiltering.getOrElse(false)
-      )
-    }
+        searchGroupBaseDn <- c.downFieldAs[Dn]("search_groups_base_DN")
+        groupSearchFilter <- c.downFieldAs[Option[GroupSearchFilter]]("group_search_filter")
+        maybeGroupIdAttribute <- c.downFieldAs[Option[GroupIdAttribute]]("group_id_attribute")
+        maybeGroupNameAttribute <- c.downFieldAs[Option[GroupNameAttribute]]("group_name_attribute")
+        uniqueMemberAttribute <- c.downFieldAs[Option[UniqueMemberAttribute]]("unique_member_attribute")
+        groupAttributeIsDN <- c.downFieldAs[Option[Boolean]]("group_attribute_is_dn")
+        serverSideGroupsFiltering <- c.downFieldsAs[Option[Boolean]]("server_side_groups_filtering", "sever_side_groups_filtering")
+      } yield {
+        val groupAttribute = (maybeGroupIdAttribute, maybeGroupNameAttribute) match {
+          case (Some(id), Some(name)) => GroupAttribute(id, name)
+          case (Some(id), None) => GroupAttribute(id, GroupNameAttribute.from(id))
+          case (None, Some(name)) =>
+            // When only group_name_attribute is defined, we treat it as group ID (backward compatibility)
+            GroupAttribute(GroupIdAttribute(name.value), name)
+          case (None, None) => GroupAttribute(GroupIdAttribute.default, GroupNameAttribute.from(GroupIdAttribute.default))
+        }
+        DefaultGroupSearch(
+          searchGroupBaseDn,
+          groupSearchFilter.getOrElse(GroupSearchFilter.default),
+          groupAttribute,
+          uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
+          groupAttributeIsDN.getOrElse(true),
+          serverSideGroupsFiltering.getOrElse(false)
+        ): UserGroupsSearchMode
+      }
+    }.decoder
 
-  private val groupsFromUserAttributeModeDecoder: Decoder[UserGroupsSearchMode] =
-    Decoder.instance { c =>
-      for {
-        searchGroupBaseDn <- c.downField("search_groups_base_DN").as[Dn]
-        groupSearchFilter <- c.downField("group_search_filter").as[Option[GroupSearchFilter]]
-        groupIdAttribute <- c.downField("group_name_attribute").as[Option[GroupIdAttribute]]
-        groupsFromUserAttribute <- c.downField("groups_from_user_attribute").as[Option[GroupsFromUserAttribute]]
-      } yield GroupsFromUserEntry(
-        searchGroupBaseDn,
-        groupSearchFilter.getOrElse(GroupSearchFilter.default),
-        groupIdAttribute.getOrElse(GroupIdAttribute.default),
-        groupsFromUserAttribute.getOrElse(GroupsFromUserAttribute.default)
-      )
-    }
+  private def groupsFromUserAttributeModeDecoder(serviceName: LdapService.Name): Decoder[UserGroupsSearchMode] =
+    SyncDecoderCreator.instance { c =>
+        for {
+          searchGroupBaseDn <- c.downFieldAs[Dn]("search_groups_base_DN")
+          groupSearchFilter <- c.downFieldAs[Option[GroupSearchFilter]]("group_search_filter")
+          maybeGroupIdAttribute <- c.downFieldAs[Option[GroupIdAttribute]]("group_id_attribute")
+          maybeGroupNameAttribute <- c.downFieldAs[Option[GroupNameAttribute]]("group_name_attribute")
+          groupsFromUserAttribute <- c.downFieldAs[Option[GroupsFromUserAttribute]]("groups_from_user_attribute")
+          groupIdAttribute <- (maybeGroupIdAttribute, maybeGroupNameAttribute) match {
+            case (Some(id), Some(_)) =>
+              Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(Message(s"Group names (group_name_attribute) are not supported when the group search in user entries is used [ldap ${serviceName.value.value}]. If you intend to use this feature, please get in touch with us."))))
+            case (Some(id), None) => Right(id)
+            case (None, Some(name)) =>
+              // When only group_name_attribute is defined, we treat it as group ID (backward compatibility)
+              Right(GroupIdAttribute(name.value))
+            case (None, None) => Right(GroupIdAttribute.default)
+          }
+        } yield {
+          GroupsFromUserEntry(
+            searchGroupBaseDn,
+            groupSearchFilter.getOrElse(GroupSearchFilter.default),
+            groupIdAttribute,
+            groupsFromUserAttribute.getOrElse(GroupsFromUserAttribute.default)
+          )
+        }
+      }
+      .decoder
 
-  private val userGroupsSearchFilterConfigDecoder: Decoder[UserGroupsSearchFilterConfig] =
+  private def userGroupsSearchFilterConfigDecoder(serviceName: LdapService.Name): Decoder[UserGroupsSearchFilterConfig] =
     Decoder.instance { c =>
       for {
-        useGroupsFromUser <- c.downField("groups_from_user").as[Option[Boolean]]
-        groupConfig <-
-          if (useGroupsFromUser.getOrElse(false)) groupsFromUserAttributeModeDecoder.tryDecode(c)
-          else defaultGroupsSearchModeDecoder.tryDecode(c)
-        nestedGroupsConfig <- nestedGroupsConfigDecoder(groupConfig).tryDecode(c)
+        deprecatedGroupsSearchMode <-
+          c.downFieldAs[Option[Boolean]]("groups_from_user")
+            .map {
+              _.map {
+                case true => GroupsSearchMode.SearchInUserEntries
+                case false => GroupsSearchMode.SearchInGroupEntries
+              }
+            }
+        groupsSearchMode <- c.downFieldAs[Option[GroupsSearchMode]]("mode")
+        groupConfig <- (groupsSearchMode, deprecatedGroupsSearchMode) match {
+          case (Some(_), Some(_)) => Left(DecodingFailureOps.fromError(
+            DefinitionsLevelCreationError(Message("Cannot accept groups search attributes groups_from_user/mode at the same time"))
+          ))
+          case (maybeSearchMode, maybeDeprecatedSearchMode) =>
+            maybeSearchMode.orElse(maybeDeprecatedSearchMode).getOrElse(GroupsSearchMode.SearchInGroupEntries) match
+              case GroupsSearchMode.SearchInUserEntries =>
+                groupsFromUserAttributeModeDecoder(serviceName)(c)
+              case GroupsSearchMode.SearchInGroupEntries =>
+                defaultGroupsSearchModeDecoder(c)
+        }
+        nestedGroupsConfig <- nestedGroupsConfigDecoder(groupConfig)(c)
       } yield UserGroupsSearchFilterConfig(groupConfig, nestedGroupsConfig)
     }
 
-  private val connectionConfigDecoder: Decoder[LdapConnectionConfig] = {
-    implicit val positiveIntDecoder: Decoder[Int Refined Positive] = positiveDecoder[Int](_.toLong)
-    Decoder
+  private def connectionConfigDecoder(serviceName: LdapService.Name): Decoder[LdapConnectionConfig] = {
+    SyncDecoderCreator
       .instance { c =>
         for {
-          connectionMethod <- connectionMethodDecoder.tryDecode(c)
-          poolName <- c.downField("name").as[LdapService.Name]
-          poolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
-          connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[PositiveFiniteDuration]]
-          requestTimeout <- c.downFields("request_timeout_in_sec", "request_timeout").as[Option[PositiveFiniteDuration]]
-          trustAllCertsOps <- c.downField("ssl_trust_all_certs").as[Option[Boolean]]
-          ignoreLdapConnectivityProblems <- c.downField("ignore_ldap_connectivity_problems").as[Option[Boolean]]
-          bindRequestUser <- bindRequestUserDecoder.tryDecode(c)
+          connectionMethod <- c.as[ConnectionMethod]
+          poolSize <- c.downFieldAs[Option[Int Refined Positive]]("connection_pool_size")
+          connectionTimeout <- c.downFieldsAs[Option[PositiveFiniteDuration]]("connection_timeout_in_sec", "connection_timeout")
+          requestTimeout <- c.downFieldsAs[Option[PositiveFiniteDuration]]("request_timeout_in_sec", "request_timeout")
+          trustAllCertsOps <- c.downFieldAs[Option[Boolean]]("ssl_trust_all_certs")
+          ignoreLdapConnectivityProblems <- c.downFieldAs[Option[Boolean]]("ignore_ldap_connectivity_problems")
+          bindRequestUser <- c.as[BindRequestUser]
         } yield LdapConnectionConfig(
-          poolName,
+          serviceName,
           connectionMethod,
           poolSize.getOrElse(positiveInt(30)),
           connectionTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
@@ -346,31 +415,33 @@ object LdapServicesDecoder extends Logging {
           ignoreLdapConnectivityProblems.getOrElse(false)
         )
       }
+      .decoder
   }
 
-  private lazy val circuitBreakerDecoder: Decoder[CircuitBreakerConfig] =
+  private given Decoder[CircuitBreakerConfig] =
     SyncDecoderCreator
       .instance { c =>
-        val circuitBreaker = c.downField("circuit_breaker")
-        if (circuitBreaker.failed) {
-          Right(defaultCircuitBreakerConfig)
-        } else {
-          for {
-            maxRetries <- circuitBreaker.downField("max_retries").as[Int Refined Positive]
-            resetDuration <- circuitBreaker.downField("reset_duration").as[PositiveFiniteDuration]
-          } yield CircuitBreakerConfig(maxRetries, resetDuration)
-        }
+        c
+          .downField("circuit_breaker")
+          .success
+          .map { circuitBreakerCursor =>
+            for {
+              maxRetries <- circuitBreakerCursor.downFieldAs[Int Refined Positive]("max_retries")
+              resetDuration <- circuitBreakerCursor.downFieldAs[PositiveFiniteDuration]("reset_duration")
+            } yield CircuitBreakerConfig(maxRetries, resetDuration)
+          }
+          .getOrElse(Right(defaultCircuitBreakerConfig))
       }
       .withError(DefinitionsLevelCreationError(Message(s"At least proper values for max_retries and reset_duration are required for circuit breaker configuration")))
       .decoder
 
-  private lazy val connectionMethodDecoder: Decoder[ConnectionMethod] =
+  private given Decoder[ConnectionMethod] =
     SyncDecoderCreator
       .instance { c =>
         for {
-          hostOpt <- ldapHostDecoder.tryDecode(c).map(Some.apply).recover { case _ => None }
-          hostsOpt <- c.downFields("hosts", "servers").as[Option[List[LdapHost]]]
-          haMethod <- c.downField("ha").as[Option[HaMethod]]
+          hostOpt <- Decoder[LdapHost].apply(c).map(Some.apply).recover { case _ => None }
+          hostsOpt <- c.downFieldsAs[Option[List[LdapHost]]]("hosts", "servers")
+          haMethod <- c.downFieldAs[Option[HaMethod]]("ha")
           serverDiscovery <- c.getOrElse[Option[ConnectionMethod.ServerDiscovery]]("server_discovery")(fallback = None)
         } yield (hostOpt, hostsOpt, serverDiscovery) match {
           case (Some(host), None, None) =>
@@ -400,7 +471,7 @@ object LdapServicesDecoder extends Logging {
       .emapE[ConnectionMethod](identity)
       .decoder
 
-  private implicit val serverDiscoveryDecoder: Decoder[Option[ConnectionMethod.ServerDiscovery]] = {
+  private given Decoder[Option[ConnectionMethod.ServerDiscovery]] = {
     val booleanDiscoverySettingDecoder =
       SyncDecoderCreator
         .from(Decoder.decodeBoolean)
@@ -414,10 +485,10 @@ object LdapServicesDecoder extends Logging {
       SyncDecoderCreator
         .instance { c =>
           for {
-            recordName <- c.downField("record_name").as[Option[String]]
-            dnsUrl <- c.downField("dns_url").as[Option[String]]
-            ttl <- c.downField("ttl").as[Option[PositiveFiniteDuration]]
-            useSsl <- c.downField("use_ssl").as[Option[Boolean]]
+            recordName <- c.downFieldAs[Option[String]]("record_name")
+            dnsUrl <- c.downFieldAs[Option[String]]("dns_url")
+            ttl <- c.downFieldAs[Option[PositiveFiniteDuration]]("ttl")
+            useSsl <- c.downFieldAs[Option[Boolean]]("use_ssl")
           } yield ConnectionMethod.ServerDiscovery(recordName, dnsUrl, ttl, useSsl.getOrElse(false))
         }
         .map(Option.apply)
@@ -428,7 +499,7 @@ object LdapServicesDecoder extends Logging {
 
   private def allHostsWithTheSameSchema(hosts: NonEmptyList[LdapHost]) = hosts.map(_.isSecure).distinct.length == 1
 
-  private implicit val haMethodDecoder: Decoder[HaMethod] =
+  private given Decoder[HaMethod] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .map(_.toUpperCase)
@@ -439,7 +510,7 @@ object LdapServicesDecoder extends Logging {
       }
       .decoder
 
-  private implicit lazy val ldapHostDecoder: Decoder[LdapHost] = {
+  private given Decoder[LdapHost] = {
     def withLdapHostCreationError(decoder: Decoder[Option[LdapHost]]): Decoder[LdapHost] = {
       decoder
         .toSyncDecoder
@@ -454,9 +525,9 @@ object LdapServicesDecoder extends Logging {
       Decoder
         .instance { c =>
           for {
-            host <- c.downField("host").as[String]
-            portOpt <- c.downField("port").as[Option[Port]]
-            sslEnabledOpt <- c.downField("ssl_enabled").as[Option[Boolean]]
+            host <- c.downFieldAs[String]("host")
+            portOpt <- c.downFieldAs[Option[Port]]("port")
+            sslEnabledOpt <- c.downFieldAs[Option[Boolean]]("ssl_enabled")
           } yield {
             val sslEnabled = sslEnabledOpt.getOrElse(true)
             val port = portOpt.getOrElse(Port.fromInt(389).get)
@@ -472,60 +543,63 @@ object LdapServicesDecoder extends Logging {
     ldapHostFromTwoFieldsDecoder or hostSocketAddressFromOneFieldDecoder
   }
 
-  private implicit lazy val dnDecoder: Decoder[Dn] = DecoderHelpers.decodeStringLikeNonEmpty.map(Dn.apply)
+  private given Decoder[Dn] = DecoderHelpers.decodeNonEmptyStringField.map(Dn.apply)
 
-  private implicit lazy val groupSearchFilterDecoder: Decoder[GroupSearchFilter] =
-    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupSearchFilter.apply)
+  private given Decoder[GroupSearchFilter] =
+    DecoderHelpers.decodeNonEmptyStringField.map(GroupSearchFilter.apply)
 
-  private implicit lazy val groupIdAttributeDecoder: Decoder[GroupIdAttribute] =
-    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupIdAttribute.apply)
+  private given Decoder[GroupIdAttribute] =
+    DecoderHelpers.decodeNonEmptyStringField.map(GroupIdAttribute.apply)
 
-  private implicit lazy val uniqueMemberAttributeDecoder: Decoder[UniqueMemberAttribute] =
-    DecoderHelpers.decodeStringLikeNonEmpty.map(UniqueMemberAttribute.apply)
+  private given Decoder[GroupNameAttribute] =
+    DecoderHelpers.decodeNonEmptyStringField.map(GroupNameAttribute.apply)
 
-  private implicit lazy val groupsFromUserAttributeDecoder: Decoder[GroupsFromUserAttribute] =
-    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupsFromUserAttribute.apply)
+  private given Decoder[UniqueMemberAttribute] =
+    DecoderHelpers.decodeNonEmptyStringField.map(UniqueMemberAttribute.apply)
+
+  private given Decoder[GroupsFromUserAttribute] =
+    DecoderHelpers.decodeNonEmptyStringField.map(GroupsFromUserAttribute.apply)
 
   private def nestedGroupsConfigDecoder(searchMode: UserGroupsSearchMode) = {
     searchMode match {
-      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, uniqueMemberAttribute, _, _) =>
+      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupAttribute, uniqueMemberAttribute, _, _) =>
         Decoder.instance { c =>
           for {
-            nestedGroupsDepthOpt <- c.downField("nested_groups_depth").as[Option[Int Refined Positive]]
+            nestedGroupsDepthOpt <- c.downFieldAs[Option[Int Refined Positive]]("nested_groups_depth")
           } yield {
             nestedGroupsDepthOpt.map(nestedGroupsDepth => NestedGroupsConfig(
               nestedLevels = nestedGroupsDepth,
               searchGroupBaseDN,
               groupSearchFilter,
               uniqueMemberAttribute,
-              groupIdAttribute
+              groupAttribute
             ))
           }
         }
       case GroupsFromUserEntry(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, _) =>
         Decoder.instance { c =>
           for {
-            nestedGroupsDepthOpt <- c.downField("nested_groups_depth").as[Option[Int Refined Positive]]
-            uniqueMemberAttribute <- c.downField("unique_member_attribute").as[Option[UniqueMemberAttribute]]
+            nestedGroupsDepthOpt <- c.downFieldAs[Option[Int Refined Positive]]("nested_groups_depth")
+            uniqueMemberAttribute <- c.downFieldAs[Option[UniqueMemberAttribute]]("unique_member_attribute")
           } yield {
             nestedGroupsDepthOpt.map(nestedGroupsDepth => NestedGroupsConfig(
               nestedLevels = nestedGroupsDepth,
               searchGroupBaseDN,
               groupSearchFilter,
               uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
-              groupIdAttribute
+              GroupAttribute(groupIdAttribute, GroupNameAttribute.from(groupIdAttribute))
             ))
           }
         }
     }
   }
 
-  private lazy val bindRequestUserDecoder: Decoder[BindRequestUser] = {
+  private given Decoder[BindRequestUser] = {
     Decoder
       .instance { c =>
         for {
-          dnOpt <- c.downField("bind_dn").as[Option[Dn]]
-          secretOpt <- c.downField("bind_password").as[Option[NonEmptyString]]
+          dnOpt <- c.downFieldAs[Option[Dn]]("bind_dn")
+          secretOpt <- c.downFieldAs[Option[NonEmptyString]]("bind_password")
         } yield (dnOpt, secretOpt)
       }
       .toSyncDecoder
@@ -535,6 +609,25 @@ object LdapServicesDecoder extends Logging {
         case (_, _) => Left(DefinitionsLevelCreationError(Message(s"'bind_dn' & 'bind_password' should be both present or both absent")))
       }
       .decoder
+  }
+
+  private sealed trait GroupsSearchMode
+  private object GroupsSearchMode {
+    case object SearchInUserEntries extends GroupsSearchMode
+    case object SearchInGroupEntries extends GroupsSearchMode
+
+    given Decoder[GroupsSearchMode] =
+      Decoder
+        .decodeString
+        .toSyncDecoder
+        .emapE[GroupsSearchMode] {
+          case "search_groups_in_user_entries" => Right(SearchInUserEntries)
+          case "search_groups_in_group_entries" => Right(SearchInGroupEntries)
+          case other => Left(DefinitionsLevelCreationError(Message(
+            s"Unknown mode of groups search: $other. Supported modes are search_groups_in_user_entries, search_groups_in_group_entries"
+          )))
+
+        }.decoder
   }
 
 }

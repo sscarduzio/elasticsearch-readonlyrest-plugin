@@ -171,7 +171,7 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
               Dn("ou=Roles,dc=example,dc=com"),
               GroupSearchFilter("(objectClass=*)"),
               UniqueMemberAttribute("uniqueMember"),
-              GroupIdAttribute("cn"),
+              GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
             ))
           )
       )

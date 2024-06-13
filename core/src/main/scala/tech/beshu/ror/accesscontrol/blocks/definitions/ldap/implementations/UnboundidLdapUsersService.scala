@@ -131,7 +131,7 @@ object UserGroupsSearchFilterConfig {
 
     final case class DefaultGroupSearch(searchGroupBaseDN: Dn,
                                         groupSearchFilter: GroupSearchFilter,
-                                        groupIdAttribute: GroupIdAttribute,
+                                        groupAttribute: GroupAttribute,
                                         uniqueMemberAttribute: UniqueMemberAttribute,
                                         groupAttributeIsDN: Boolean,
                                         serverSideGroupsFiltering: Boolean)
@@ -147,9 +147,16 @@ object UserGroupsSearchFilterConfig {
     object GroupSearchFilter {
       val default: GroupSearchFilter = GroupSearchFilter(nes("(objectClass=*)"))
     }
+    final case class GroupAttribute(id: GroupIdAttribute,
+                                    name: GroupNameAttribute)
+
     final case class GroupIdAttribute(value: NonEmptyString)
     object GroupIdAttribute {
       val default: GroupIdAttribute = GroupIdAttribute(nes("cn"))
+    }
+    final case class GroupNameAttribute(value: NonEmptyString)
+    object GroupNameAttribute {
+      def from(groupIdAttribute: GroupIdAttribute): GroupNameAttribute = GroupNameAttribute(groupIdAttribute.value)
     }
     final case class UniqueMemberAttribute(value: NonEmptyString)
     object UniqueMemberAttribute {
@@ -164,6 +171,6 @@ object UserGroupsSearchFilterConfig {
                                         searchGroupBaseDN: Dn,
                                         groupSearchFilter: GroupSearchFilter,
                                         memberAttribute: UniqueMemberAttribute,
-                                        groupIdAttribute: GroupIdAttribute)
+                                        groupAttribute: GroupAttribute)
   }
 }
