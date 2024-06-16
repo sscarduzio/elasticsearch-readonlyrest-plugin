@@ -27,7 +27,8 @@ import scala.language.postfixOps
 private[patches] class Es717xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion),
+      new SecurityManagerShouldAllowReadingEsConfigFile(esVersion)
     ),
     new XPackCoreJarPatchCreator(
       AlwaysGrantApplicationPermission
