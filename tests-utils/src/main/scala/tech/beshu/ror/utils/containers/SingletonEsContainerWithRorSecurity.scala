@@ -31,7 +31,7 @@ object SingletonEsContainerWithRorSecurity
     with EsModulePatterns {
 
   val singleton: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings.create(
+    EsClusterSettings.create(Patc
       clusterName = "ROR_SINGLE",
       securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default)
     )

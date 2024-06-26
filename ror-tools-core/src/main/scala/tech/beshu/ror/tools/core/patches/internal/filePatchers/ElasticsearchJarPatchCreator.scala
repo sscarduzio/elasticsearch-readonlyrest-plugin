@@ -18,7 +18,7 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
-import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, FilePatch, RorPluginDirectory}
+import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, RorPluginDirectory}
 
 private[patches] class ElasticsearchJarPatchCreator(patchingSteps: FileModifier*)
   extends FilePatchCreator[ElasticsearchJarPatch] {

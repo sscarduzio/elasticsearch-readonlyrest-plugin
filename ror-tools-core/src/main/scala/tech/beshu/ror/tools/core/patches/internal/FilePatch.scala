@@ -60,6 +60,9 @@ private [patches] class MultiFilePatch(filePatches: FilePatch*) {
   def restore(): Unit = {
     filePatches.foreach(_.restore())
   }
+
+  def files: Seq[Path] = filePatches.map(_.fileToPatchPath)
+
 }
 
 private [patches] class OptionalFilePatchDecorator[FP <: FilePatch](underlying: FP)

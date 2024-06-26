@@ -22,12 +22,12 @@ import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonl
 
 private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
-  private val path: Path = readonlyrestPluginPath(esDirectory.path)
-  private val backupFolderPath: Path = path / "patch_backup"
+  private val rorPath: Path = readonlyrestPluginPath(esDirectory.path)
+  private val backupFolderPath: Path = rorPath / "patch_backup"
   private val patchedByFilePath: Path = backupFolderPath / "patched_by"
-  private val pluginPropertiesFilePath = path / "plugin-descriptor.properties"
+  private val pluginPropertiesFilePath = rorPath / "plugin-descriptor.properties"
 
-  val securityPolicyPath: Path = path / "plugin-security.policy"
+  val securityPolicyPath: Path = rorPath / "plugin-security.policy"
 
   def doesBackupFolderExist: Boolean = {
     os.exists(backupFolderPath)
@@ -50,15 +50,15 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
   }
 
   def copyToPluginPath(file: Path): Unit = {
-    os.copy(from = file, to = path / file.last)
+    os.copy(from = file, to = rorPath / file.last)
   }
 
   def isTransportNetty4PresentInRorPluginPath: Boolean = {
-    findTransportNetty4JarIn(path).isDefined
+    findTransportNetty4JarIn(rorPath).isDefined
   }
 
   def findTransportNetty4Jar: Option[Path] = {
-    findTransportNetty4JarIn(path)
+    findTransportNetty4JarIn(rorPath)
   }
 
   def readPatchedByRorVersion(): Option[String] = {
@@ -82,5 +82,11 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
       }
       .headOption
       .getOrElse(throw new IllegalStateException(s"Cannot read ROR version from ${pluginPropertiesFilePath}"))
+  }
+
+  def isRorPluginPath(path: Path): Boolean = {
+    println(s"ROR path: $rorPath")
+    println(s"PATH: $path")
+    path.startsWith(rorPath)
   }
 }
