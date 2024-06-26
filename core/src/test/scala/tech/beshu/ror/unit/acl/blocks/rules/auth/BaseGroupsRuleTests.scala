@@ -55,6 +55,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextAssertion {
 

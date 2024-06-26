@@ -56,7 +56,7 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
         val usersKey = "users"
         for {
           impersonatorPatterns <- c.downField(impersonatorKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
-          impersonatedUsers <- c.downField(usersKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply).map(ImpersonatorDef.ImpersonatedUsers)
+          impersonatedUsers <- c.downField(usersKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply).map(ImpersonatorDef.ImpersonatedUsers.apply)
           _ <- verifyIntersection(impersonatorPatterns, impersonatedUsers)
           authRuleDecoder = authenticationRulesDecoder(impersonatorPatterns)
           authRule <- authRuleDecoder.tryDecode(c.withoutKeys(Set(impersonatorKey, usersKey)))

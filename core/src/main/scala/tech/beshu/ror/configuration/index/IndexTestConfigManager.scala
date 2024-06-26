@@ -153,7 +153,8 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
   private implicit val mocksCodec: Codec[AuthServicesMocks] = {
     implicit val nonEmptyStringCodec: Codec[NonEmptyString] =
       Codec.from(Decoder.decodeString.emap(NonEmptyString.from), Encoder.encodeString.contramap(_.value))
-    implicit val userIdCodec: Codec[User.Id] = io.circe.generic.extras.semiauto.deriveUnwrappedCodec
+    implicit val userIdCodec: Codec[User.Id] =
+      Codec.from(nonEmptyStringCodec.map(User.Id.apply), nonEmptyStringCodec.contramap(_.value))
     implicit val groupIdCodec: Codec[GroupId] =
       Codec.from(
         nonEmptyStringCodec.map(GroupId.apply),

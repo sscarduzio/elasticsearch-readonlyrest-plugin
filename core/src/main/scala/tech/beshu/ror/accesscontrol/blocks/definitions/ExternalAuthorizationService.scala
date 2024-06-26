@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import cats.implicits._
 import cats.{Eq, Show}
-import com.softwaremill.sttp._
+import io.lemonlabs.uri.Url
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorization
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config._
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService._
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
@@ -64,34 +65,26 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
                                              val config: HttpExternalAuthorizationService.Config,
                                              httpClient: HttpClient)
   extends ExternalAuthorizationService
-  with Logging {
+    with Logging {
 
   override def grantsFor(userId: User.Id)
                         (implicit requestId: RequestId): Task[UniqueList[Group]] = {
     httpClient
       .send(createRequest(userId))
-      .flatMap { response =>
-        response.body match {
-          case Right(body) =>
-            Task.now(groupsFromResponseBody(body))
-          case Left(_) =>
-            Task.raiseError(InvalidResponse(s"Invalid response from external authorization service '${id.show}' - ${response.statusText}"))
-        }
-      }
+      .map(response => groupsFromResponseBody(response.body))
   }
 
   private def createRequest(userId: User.Id) = {
-    val uriWithParams = config.uri.params(queryParams(userId))
-    config.method match {
-      case SupportedHttpMethod.Get =>
-        sttp
-          .get(uriWithParams)
-          .headers(headersMap(userId))
-      case SupportedHttpMethod.Post =>
-        sttp
-          .post(uriWithParams)
-          .headers(headersMap(userId))
+    val uriWithParams = config.url.addParams(queryParams(userId))
+    val method = config.method match {
+      case SupportedHttpMethod.Get => HttpClient.Method.Get
+      case SupportedHttpMethod.Post => HttpClient.Method.Post
     }
+    HttpClient.Request(
+      method = method,
+      url = uriWithParams,
+      headers = headersMap(userId),
+    )
   }
 
   private def queryParams(userId: User.Id): Map[String, String] = {
@@ -110,14 +103,15 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
       })
   }
 
-  private def groupsFromResponseBody(body: String): UniqueList[Group] = {
+  private def groupsFromResponseBody(body: String)
+                                    (implicit requestId: RequestId): UniqueList[Group] = {
     val groupsFromBody = groupsFrom(body)
     groupsFromBody match {
       case Success(groups) =>
-        logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
+        logger.debug(s"[${requestId.show}] Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
         UniqueList.fromIterable(groups)
       case Failure(ex) =>
-        logger.debug(s"Group based authorization response exception - provider '${id.show}'", ex)
+        logger.debug(s"[${requestId.show}] Group based authorization response exception - provider '${id.show}'", ex)
         UniqueList.empty
     }
   }
@@ -183,7 +177,9 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
 
 object HttpExternalAuthorizationService {
 
-  final case class Config(uri: Uri,
+  import Config.*
+
+  final case class Config(url: Url,
                           method: SupportedHttpMethod,
                           tokenName: AuthTokenName,
                           groupsConfig: GroupsConfig,

@@ -23,8 +23,10 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.CatManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import tech.beshu.ror.utils.misc.JwtUtils._
-import scala.jdk.CollectionConverters._
+import tech.beshu.ror.utils.misc.JwtUtils.*
+
+import scala.jdk.CollectionConverters.*
+import scala.language.implicitConversions
 
 //TODO change test names. Current names are copies from old java integration tests
 class JwtAuthSuite

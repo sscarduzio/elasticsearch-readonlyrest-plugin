@@ -29,7 +29,7 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'org.scala-lang',     name: 'scala-library',      version: '2.13.13'
+    implementation group: 'org.scala-lang',     name: 'scala3-library_3',      version: '3.3.3'
 }
 
 tasks.withType(ScalaCompile).configureEach {

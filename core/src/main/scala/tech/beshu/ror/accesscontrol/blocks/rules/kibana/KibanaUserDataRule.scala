@@ -23,16 +23,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
-import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.show.logs.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaUserDataRule(override val settings: Settings)
-  extends BaseKibanaRule(settings)  {
+  extends BaseKibanaRule(settings) {
 
   override val name: Rule.Name = KibanaUserDataRule.Name.name
 
@@ -51,15 +51,15 @@ class KibanaUserDataRule(override val settings: Settings)
     }
   }
 
-  private def updateUserMetadata(using: BlockContext) = {
+  private def updateUserMetadata(context: BlockContext) = {
     applyToUserMetadata(Some(settings.access))(
       _.withKibanaAccess(_)
     ) andThen {
-      applyToUserMetadata(Some(resolveKibanaIndex(using)))(
+      applyToUserMetadata(Some(resolveKibanaIndex(context)))(
         _.withKibanaIndex(_)
       )
     } andThen {
-      applyToUserMetadata(resolveKibanaIndexTemplate(using))(
+      applyToUserMetadata(resolveKibanaIndexTemplate(context))(
         _.withKibanaTemplateIndex(_)
       )
     } andThen {
@@ -71,24 +71,24 @@ class KibanaUserDataRule(override val settings: Settings)
         _.withAllowedKibanaApiPaths(_)
       )
     } andThen {
-      applyToUserMetadata(resolvedKibanaMetadata(using))(
+      applyToUserMetadata(resolvedKibanaMetadata(context))(
         _.withKibanaMetadata(_)
       )
     }
   }
 
-  private def resolveKibanaIndex(using: BlockContext) =
-    settings.kibanaIndex.resolve(using).toTry.get
+  private def resolveKibanaIndex(context: BlockContext) =
+    settings.kibanaIndex.resolve(context).toTry.get
 
-  private def resolveKibanaIndexTemplate(using: BlockContext) =
+  private def resolveKibanaIndexTemplate(context: BlockContext) =
     settings
       .kibanaTemplateIndex
       .flatMap {
-        _.resolve(using) match {
+        _.resolve(context) match {
           case Right(resolvedKibanaIndexTemplate) =>
             Some(resolvedKibanaIndexTemplate)
           case Left(error) =>
-            logger.warn(s"[${using.requestContext.id.show}] Cannot resolve variable(s) used in Kibana template index name; error: ${error.show}")
+            logger.warn(s"[${context.requestContext.id.show}] Cannot resolve variable(s) used in Kibana template index name; error: ${error.show}")
             None
         }
       }
@@ -99,15 +99,15 @@ class KibanaUserDataRule(override val settings: Settings)
   private lazy val resolveAllowedApiPaths =
     UniqueNonEmptyList.fromIterable(settings.allowedApiPaths)
 
-  private def resolvedKibanaMetadata(using: BlockContext) =
+  private def resolvedKibanaMetadata(context: BlockContext) =
     settings
       .metadata
       .flatMap {
-        _.resolve(using) match {
+        _.resolve(context) match {
           case Right(resolvedKibanaMetadata) =>
             Some(resolvedKibanaMetadata)
           case Left(error) =>
-            logger.warn(s"[${using.requestContext.id.show}] Cannot resolve variable(s) used in Kibana metadata; error: ${error.show}")
+            logger.warn(s"[${context.requestContext.id.show}] Cannot resolve variable(s) used in Kibana metadata; error: ${error.show}")
             None
         }
       }

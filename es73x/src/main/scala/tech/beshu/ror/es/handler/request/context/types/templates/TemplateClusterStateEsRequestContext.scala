@@ -35,6 +35,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.RefinedUtils._
 
 import scala.jdk.CollectionConverters._
 
@@ -63,7 +64,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
     actionRequest, esContext, clusterService, threadPool
   ) {
 
-  private lazy val allTemplatesNamePattern = TemplateNamePattern("*")
+  private lazy val allTemplatesNamePattern = TemplateNamePattern(nes("*"))
 
   override protected def templateOperationFrom(request: ClusterStateRequest): GettingLegacyTemplates = {
     GettingLegacyTemplates(NonEmptyList.one(allTemplatesNamePattern))

@@ -77,7 +77,7 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
     val filteredStreams =
       response
         .getDataStreams.asSafeList
-        .filter { dataStreamInfo: Response.DataStreamInfo =>
+        .filter { (dataStreamInfo: Response.DataStreamInfo) =>
           backingIndiesMatchesAllowedIndices(dataStreamInfo, allowedIndicesMatcher)
         }
     new GetDataStreamAction.Response(filteredStreams.asJava)

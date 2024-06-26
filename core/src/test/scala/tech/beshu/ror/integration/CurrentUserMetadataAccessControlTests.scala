@@ -39,6 +39,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.{LdapContainer, WireMockContainer, WireMockScalaAdapter}
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class CurrentUserMetadataAccessControlTests
   extends AnyWordSpec
@@ -205,14 +206,16 @@ class CurrentUserMetadataAccessControlTests
       |    ssl_trust_all_certs: true                                 # default false
       |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
       |    bind_password: "password"                                 # skip for anonymous bind
-      |    search_user_base_DN: "ou=People,dc=example,dc=com"
-      |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      |    user_id_attribute: "uid"                                  # default "uid"
-      |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
       |    connection_pool_size: 10                                  # default 30
       |    connection_timeout_in_sec: 10                             # default 1
       |    request_timeout_in_sec: 10                                # default 1
       |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+      |    users:
+      |      search_user_base_DN: "ou=People,dc=example,dc=com"
+      |      user_id_attribute: "uid"                                # default "uid"
+      |    groups:
+      |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      |      unique_member_attribute: "uniqueMember"                 # default "uniqueMember"
       |
       |  - name: Ldap2
       |    host: "${ldap2.ldapHost}"
@@ -221,14 +224,16 @@ class CurrentUserMetadataAccessControlTests
       |    ssl_trust_all_certs: true                                 # default false
       |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
       |    bind_password: "password"                                 # skip for anonymous bind
-      |    search_user_base_DN: "ou=People,dc=example,dc=com"
-      |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      |    user_id_attribute: "uid"                                  # default "uid"
-      |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
       |    connection_pool_size: 10                                  # default 30
       |    connection_timeout_in_sec: 10                             # default 1
       |    request_timeout_in_sec: 10                                # default 1
       |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+      |    users:
+      |      search_user_base_DN: "ou=People,dc=example,dc=com"
+      |      user_id_attribute: "uid"                                # default "uid"
+      |    groups:
+      |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      |      unique_member_attribute: "uniqueMember"                 # default "uniqueMember"
       |
     """.stripMargin
 
@@ -290,8 +295,8 @@ class CurrentUserMetadataAccessControlTests
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user2_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(FullNameKibanaApp("user2_app1"), FullNameKibanaApp("user2_app2")))
             userMetadata.allowedKibanaApiPaths should be (Set(
-              KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex("^/api/spaces/.*$")),
-              KibanaAllowedApiPath(AllowedHttpMethod.Specific(HttpMethod.Get), JavaRegex("""^/api/spaces\?test\=12\.2$"""))
+              KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex.compile("^/api/spaces/.*$").get),
+              KibanaAllowedApiPath(AllowedHttpMethod.Specific(HttpMethod.Get), JavaRegex.compile("""^/api/spaces\?test\=12\.2$""").get)
             ))
             userMetadata.kibanaAccess should be (Some(KibanaAccess.RO))
             userMetadata.userOrigin should be (None)

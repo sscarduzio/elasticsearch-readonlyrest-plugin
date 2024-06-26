@@ -26,16 +26,18 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.utils.{GraphNodeAncestorsExplorer, WithDummyRequestIdSupport}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.RefinedUtils.*
 
 class GraphNodeAncestorsExplorerTest extends AnyWordSpec with Matchers with MockFactory with WithDummyRequestIdSupport {
 
   "Parents of 1 are" in {
-    val graph = createDynamicallyTraversableGraph(nestedLevels = 2)
+    val graph = createDynamicallyTraversableGraph(nestedLevels = positiveInt(2))
     graph.findAllAncestorsOf(Set("1")).runSyncUnsafe() should be (Set("2", "3", "4", "6"))
   }
 
   "Parents of 2 are" in {
-    val graph = createDynamicallyTraversableGraph(nestedLevels = 1)
+    val graph = createDynamicallyTraversableGraph(nestedLevels = positiveInt(1))
     graph.findAllAncestorsOf(Set("2")).runSyncUnsafe() should be (Set("4"))
   }
 

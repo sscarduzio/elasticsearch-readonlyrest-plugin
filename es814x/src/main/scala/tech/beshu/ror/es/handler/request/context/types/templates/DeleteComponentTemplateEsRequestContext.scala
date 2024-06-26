@@ -31,6 +31,7 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.RefinedUtils._
 
 class DeleteComponentTemplateEsRequestContext(actionRequest: TransportDeleteComponentTemplateAction.Request,
                                               esContext: EsContext,

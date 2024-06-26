@@ -38,6 +38,7 @@ import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.jdk.CollectionConverters._
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
 

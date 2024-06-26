@@ -22,10 +22,11 @@ import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
+import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext

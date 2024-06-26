@@ -24,12 +24,12 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 
 import java.util.concurrent.Executor
-import scala.annotation.nowarn
+import scala.annotation.unused
 
 class TransportRRTestConfigAction(transportService: TransportService,
                                   actionFilters: ActionFilters,
                                   executor: Executor,
-                                  @nowarn("cat=unused") constructorDiscriminator: Unit)
+                                  @unused constructorDiscriminator: Unit)
   extends HandledTransportAction[RRTestConfigRequest, RRTestConfigResponse](
     RRTestConfigActionType.name, transportService, actionFilters, RRTestConfigActionType.exceptionReader[RRTestConfigRequest], executor
   ) {

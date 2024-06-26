@@ -40,6 +40,7 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ImpersonationRuleDecoratorTests
   extends AnyWordSpec

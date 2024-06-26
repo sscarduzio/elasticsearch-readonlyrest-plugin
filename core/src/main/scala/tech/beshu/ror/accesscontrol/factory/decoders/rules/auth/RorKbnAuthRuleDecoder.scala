@@ -70,14 +70,14 @@ private object RorKbnAuthRuleDecoder {
             val (cursor, key) = c.downFieldsWithKey("roles", "groups", "groups_or")
             cursor.as[Option[PermittedGroupIds]]
               .map {
-                _.map(GroupsLogic.Or).map(Groups.Defined).map((_, key))
+                _.map(GroupsLogic.Or.apply).map(Groups.Defined.apply).map((_, key))
               }
           }
           groupsAndLogic <- {
             val (cursor, key) = c.downFieldsWithKey("roles_and", "groups_and")
             cursor.as[Option[PermittedGroupIds]]
               .map {
-                _.map(GroupsLogic.And).map(Groups.Defined).map((_, key))
+                _.map(GroupsLogic.And.apply).map(Groups.Defined.apply).map((_, key))
               }
           }
         } yield (rorKbnDefName, groupsOrLogic, groupsAndLogic)

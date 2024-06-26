@@ -23,6 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class FieldsPolicyTests extends AnyWordSpec {
 

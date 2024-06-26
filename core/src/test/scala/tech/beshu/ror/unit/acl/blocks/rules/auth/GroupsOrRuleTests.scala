@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class GroupsOrRuleTests extends BaseGroupsRuleTests {
 

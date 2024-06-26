@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
-import cats.implicits._
+import cats.implicits.*
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
-import com.softwaremill.sttp._
 import eu.timepit.refined.types.string.NonEmptyString
+import io.lemonlabs.uri.Url
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.CacheableExternalAuthenticationServiceDecorator.HashedUserCredentials
@@ -52,7 +52,7 @@ object ExternalAuthenticationService {
 }
 
 class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
-                                                 uri: Uri,
+                                                 url: Url,
                                                  successStatusCode: Int,
                                                  override val serviceTimeout: PositiveFiniteDuration,
                                                  httpClient: HttpClient)
@@ -60,15 +60,21 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
 
   override def authenticate(credentials: Credentials)
                            (implicit requestId: RequestId): Task[Boolean] = {
-    val basicAuthHeader = BasicAuth(credentials).header
+    val basicAuthHeader = BasicAuth.fromCredentials(credentials).header
     httpClient
-      .send(sttp.get(uri).header(basicAuthHeader.name.value.value, basicAuthHeader.value.value))
-      .map(_.code === successStatusCode)
+      .send(
+        HttpClient.Request(
+          method = HttpClient.Method.Get,
+          url = url,
+          headers = Map(basicAuthHeader.name.value.value -> basicAuthHeader.value.value)
+        )
+      )
+      .map(response => response.status == successStatusCode)
   }
 }
 
 class JwtExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
-                                       uri: Uri,
+                                       url: Url,
                                        successStatusCode: Int,
                                        override val serviceTimeout: PositiveFiniteDuration,
                                        httpClient: HttpClient)
@@ -77,8 +83,14 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
   override def authenticate(credentials: Credentials)
                            (implicit requestId: RequestId): Task[Boolean] = {
     httpClient
-      .send(sttp.get(uri).header(Header.Name.authorization.value.value, s"Bearer ${credentials.secret.value}"))
-      .map(_.code === successStatusCode)
+      .send(
+        HttpClient.Request(
+          method = HttpClient.Method.Get,
+          url = url,
+          headers = Map(Header.Name.authorization.value.value -> s"Bearer ${credentials.secret.value}")
+        )
+      )
+      .map(response => response.status == successStatusCode)
   }
 }
 

@@ -18,8 +18,6 @@ package tech.beshu.ror.utils
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
-import tech.beshu.ror.accesscontrol.refined._
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -30,7 +28,7 @@ object DurationOps {
   implicit class RefinedDurationOps(val duration: Duration) extends AnyVal {
     def toRefinedPositive: Either[String, PositiveFiniteDuration] = duration match {
       case v: FiniteDuration if v.toMillis > 0 =>
-        refineV[Positive](v)
+        Right(Refined.unsafeApply(v))
       case _ =>
         Left(s"Cannot map '${duration.toString}' to finite duration.")
     }

@@ -24,7 +24,9 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError.FileNotExist
-import tech.beshu.ror.configuration.{RawRorConfig, RorProperties, EnvironmentConfig}
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorProperties}
+
+import java.nio.file.Path
 
 class FileConfigLoader(esConfigPath: Path)
                       (implicit environmentConfig: EnvironmentConfig)

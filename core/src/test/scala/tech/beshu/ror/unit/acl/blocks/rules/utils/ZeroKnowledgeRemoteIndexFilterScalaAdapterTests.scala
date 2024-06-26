@@ -22,6 +22,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ZeroKnowledgeRemoteIndexFilterScalaAdapterTests extends AnyWordSpec {
 

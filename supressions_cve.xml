@@ -79,6 +79,27 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
+   file name: bctls-fips-1.0.17.jar
+   ]]></notes>
+        <sha1>353dc73006f5135f0816872f4437e1b459ff7cf7</sha1>
+        <cve>CVE-2024-34447</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: circe-refined_3-0.14.6.jar
+   ]]></notes>
+        <sha1>7bff5294e89eba178f7c29b0bfb0d976ad264c65</sha1>
+        <cve>CVE-2021-34364</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: refined_3-0.11.1.jar
+   ]]></notes>
+        <sha1>c2f32c0e56e9e23ab6ccbd587931a804c7818e5d</sha1>
+        <cve>CVE-2021-34364</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
    file name: bc-noncert-1.0.2.4.jar
    ]]></notes>
         <sha1>ab0203590a39ad2fe4c225ddfad70e6a552c8445</sha1>

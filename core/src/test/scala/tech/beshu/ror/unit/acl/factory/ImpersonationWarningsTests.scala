@@ -100,8 +100,10 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
              |    host: ${SingletonLdapContainers.ldap1.ldapHost}
              |    port: ${SingletonLdapContainers.ldap1.ldapPort}
              |    ssl_enabled: false
-             |    search_user_base_DN: "ou=People,dc=example,dc=com"
-             |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+             |    users:
+             |      search_user_base_DN: "ou=People,dc=example,dc=com"
+             |    groups:
+             |      search_groups_base_DN: "ou=People,dc=example,dc=com"
              |""".stripMargin
 
         impersonationWarningsReader(config, mocksProvider).read() should be(noWarnings)
@@ -211,8 +213,10 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
              |    host: ${SingletonLdapContainers.ldap1.ldapHost}
              |    port: ${SingletonLdapContainers.ldap1.ldapPort}
              |    ssl_enabled: false
-             |    search_user_base_DN: "ou=People,dc=example,dc=com"
-             |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+             |    users:
+             |      search_user_base_DN: "ou=People,dc=example,dc=com"
+             |    groups:
+             |      search_groups_base_DN: "ou=People,dc=example,dc=com"
              |""".stripMargin
 
         val hint = "Configure a mock of an LDAP service with ID [ldap1]"

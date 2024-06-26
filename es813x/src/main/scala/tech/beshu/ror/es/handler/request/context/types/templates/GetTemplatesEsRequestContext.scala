@@ -37,6 +37,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.RefinedUtils._
 
 import scala.jdk.CollectionConverters._
 
@@ -56,7 +57,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
         .flatMap(TemplateNamePattern.fromString)
         .toList
     )
-    .getOrElse(NonEmptyList.one(TemplateNamePattern("*")))
+    .getOrElse(NonEmptyList.one(TemplateNamePattern(nes("*"))))
 
   override protected def templateOperationFrom(request: GetIndexTemplatesRequest): GettingLegacyTemplates =
     GettingLegacyTemplates(requestTemplateNamePatterns)
@@ -71,7 +72,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
     blockContext.templateOperation match {
       case GettingLegacyTemplates(namePatterns) =>
         updateRequest(namePatterns)
-        updateResponse(using = blockContext)
+        updateResponse(`using` = blockContext)
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
@@ -85,14 +86,14 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
     on(actionRequest).set("names", templateNamePatterns.map(_.value.value).toList.toArray)
   }
 
-  private def updateResponse(using: TemplateRequestBlockContext) = {
+  private def updateResponse(`using`: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetIndexTemplatesResponse =>
         Task.now(new GetIndexTemplatesResponse(
           GetTemplatesEsRequestContext
             .filter(
               templates = r.getIndexTemplates.asSafeList,
-              using = using.responseTemplateTransformation
+              usingTemplate = `using`.responseTemplateTransformation
             )
             .asJava
         ))
@@ -106,7 +107,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
 private[templates] object GetTemplatesEsRequestContext extends Logging {
 
   def filter(templates: List[IndexTemplateMetadata],
-             using: Set[Template] => Set[Template])
+             usingTemplate: Set[Template] => Set[Template])
             (implicit requestContextId: RequestContext.Id): List[IndexTemplateMetadata] = {
     val templatesMap = templates
       .flatMap { metadata =>
@@ -121,7 +122,7 @@ private[templates] object GetTemplatesEsRequestContext extends Logging {
         }
       }
       .toMap
-    val filteredTemplates = using(templatesMap.keys.toSet)
+    val filteredTemplates = usingTemplate(templatesMap.keys.toSet)
     templatesMap
       .flatMap { case (template, metadata) =>
         filteredTemplates

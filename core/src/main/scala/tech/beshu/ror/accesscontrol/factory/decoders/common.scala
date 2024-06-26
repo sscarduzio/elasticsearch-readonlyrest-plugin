@@ -16,42 +16,39 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
-import cats.Show
-import cats.implicits._
+import cats.implicits.*
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
-import com.softwaremill._
-import eu.timepit.refined.api.{Refined, Validate}
+import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
-import tech.beshu.ror.accesscontrol.refined._
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.show.logs.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
-import tech.beshu.ror.utils.LoggerOps._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.LoggerOps.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.js.JsCompiler
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.net.URI
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
 object common extends Logging {
@@ -89,18 +86,8 @@ object common extends Logging {
 
   implicit val positiveFiniteDurationDecoder: Decoder[PositiveFiniteDuration] = {
     implicit val finiteDurationDecoder: Decoder[FiniteDuration] = finiteDurationStringDecoder.or(finiteDurationInSecondsDecoder)
-    positiveValueDecoder[FiniteDuration]
+    positiveDecoder[FiniteDuration](_.length)
   }
-
-  implicit def positiveValueDecoder[V: Decoder: Show](implicit v: Validate[V, Positive]): Decoder[V Refined Positive] =
-    SyncDecoderCreator
-      .from(Decoder[V])
-      .emapE { value =>
-        refineV[Positive](value)
-          .left
-          .map(_ => ValueLevelCreationError(Message(s"Only positive values allowed. Found: ${value.show}")))
-      }
-      .decoder
 
   implicit val lemonLabsUriDecoder: Decoder[Uri] =
     SyncDecoderCreator
@@ -113,12 +100,12 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val sttpUriDecoder: Decoder[sttp.Uri] =
+  implicit val lemonlabsUrlDecoder: Decoder[io.lemonlabs.uri.Url] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { value =>
-        Try(new URI(value)) match {
-          case Success(javaUri) => Right(sttp.Uri(javaUri))
+        Try(new URI(value)).flatMap(uri => io.lemonlabs.uri.Url.parseTry(uri.toString)) match {
+          case Success(url) => Right(url)
           case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to url")))
         }
       }
@@ -243,7 +230,7 @@ object common extends Logging {
       .decodeString
       .toSyncDecoder
       .emapE { str =>
-        IpAddress(str) match {
+        IpAddress.fromString(str) match {
           case Some(ip) => Right(ip)
           case None => Left(ValueLevelCreationError(Message(s"Cannot create IP address from $str")))
         }
@@ -255,7 +242,7 @@ object common extends Logging {
       .decodeInt
       .toSyncDecoder
       .emapE { int =>
-        Port(int) match {
+        Port.fromInt(int) match {
           case Some(ip) => Right(ip)
           case None => Left(ValueLevelCreationError(Message(s"Cannot create port from $int")))
         }
@@ -267,12 +254,16 @@ object common extends Logging {
       .decodeString
       .toSyncDecoder
       .emapE { str =>
-        SocketAddress.fromString(str) match {
+        SocketAddress.fromStringIp(str) match {
           case Some(socketAddress) => Right(socketAddress)
           case None => Left(ValueLevelCreationError(Message(s"Cannot create socket address from $str")))
         }
       }
       .decoder
+
+  implicit val positiveIntDecoder: Decoder[Int Refined Positive] = {
+    positiveDecoder[Int](_.toLong)
+  }
 
   implicit val httpClientConfigDecoder: Decoder[HttpClientsFactory.Config] =
     Decoder.instance { c =>

@@ -25,7 +25,7 @@ object RRAuthMockActionType {
   val name: String = RorAction.RorAuthMockAction.value
   val instance = new RRAuthMockActionType()
 
-  final case object RRAuthMockActionCannotBeTransported extends Exception
+  case object RRAuthMockActionCannotBeTransported extends Exception
 
   private [rrauthmock] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAuthMockActionCannotBeTransported
 }

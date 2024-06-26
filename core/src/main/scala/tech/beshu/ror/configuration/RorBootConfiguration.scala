@@ -22,21 +22,18 @@ import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
-
-import java.io.{File => JFile}
-import java.nio.file.Path
 
 final case class RorBootConfiguration(rorNotStartedResponse: RorNotStartedResponse,
                                       rorFailedToStartResponse: RorFailedToStartResponse)
 
 object RorBootConfiguration extends Logging {
 
-  def load(esConfigFolderPath: Path)
+  def load(env: EsEnv)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorBootConfiguration]] = Task {
-    val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     implicit val rorBootConfigurationDecoder: Decoder[RorBootConfiguration] = Decoders.decoder
-    loadRorBootstrapConfig(esConfig)
+    loadRorBootstrapConfig(env.elasticsearchConfig)
   }
 
   private def loadRorBootstrapConfig(configFile: File)

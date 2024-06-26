@@ -317,7 +317,7 @@ class EsServerBasedRorClusterService(nodeName: String,
   private def snapshotsBy(repositoryName: RepositoryName) = {
     repositoriesServiceSupplier.get() match {
       case Some(repositoriesService) =>
-        val repositoryData: RepositoryData = PlainActionFuture.get { fut: PlainActionFuture[RepositoryData] =>
+        val repositoryData: RepositoryData = PlainActionFuture.get { (fut: PlainActionFuture[RepositoryData]) =>
           repositoriesService.getRepositoryData(RepositoryName.toString(repositoryName), fut)
         }
         repositoryData

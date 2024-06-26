@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.SingletonLdapContainers
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthRule] {
@@ -78,7 +79,7 @@ class LdapAuthRuleSettingsTests
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |    sever_side_groups_filtering: true
+               |    server_side_groups_filtering: true
                |""".stripMargin,
           assertion = rule => {
             assertLdapAuthNServiceLayerTypes(rule.authentication.settings.ldap, withRuleLevelCaching = true)

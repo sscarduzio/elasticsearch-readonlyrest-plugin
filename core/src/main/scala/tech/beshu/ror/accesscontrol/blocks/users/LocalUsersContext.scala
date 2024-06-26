@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.domain.LocalUsers
 
 object LocalUsersContext {
 
-  sealed trait LocalUsersSupport[+T <: Rule]
+  sealed trait LocalUsersSupport[T <: Rule]
 
   object LocalUsersSupport {
     trait AvailableLocalUsers[T <: Rule] extends LocalUsersSupport[T] {
@@ -43,40 +43,40 @@ object LocalUsersContext {
       def apply[T <: Rule](f: T => LocalUsers): AvailableLocalUsers[T] = f(_)
     }
 
-    object NotAvailableLocalUsers extends LocalUsersSupport[Nothing]
+    final case class NotAvailableLocalUsers[T <: Rule]() extends LocalUsersSupport[T]
 
-    implicit val actionsRule: LocalUsersSupport[ActionsRule] = NotAvailableLocalUsers
-    implicit val apiKeyRule: LocalUsersSupport[ApiKeysRule] = NotAvailableLocalUsers
-    implicit val dataStreamsRule: LocalUsersSupport[DataStreamsRule] = NotAvailableLocalUsers
-    implicit val externalAuthenticationRule: LocalUsersSupport[ExternalAuthenticationRule] = NotAvailableLocalUsers
-    implicit val externalAuthorizationRule: LocalUsersSupport[ExternalAuthorizationRule] = NotAvailableLocalUsers
-    implicit val fieldsRule: LocalUsersSupport[FieldsRule] = NotAvailableLocalUsers
-    implicit val filterRule: LocalUsersSupport[FilterRule] = NotAvailableLocalUsers
-    implicit val groupsOrRule: LocalUsersSupport[GroupsOrRule] = NotAvailableLocalUsers
-    implicit val groupsAndRule: LocalUsersSupport[GroupsAndRule] = NotAvailableLocalUsers
-    implicit val headersAndRule: LocalUsersSupport[HeadersAndRule] = NotAvailableLocalUsers
-    implicit val headersOrRule: LocalUsersSupport[HeadersOrRule] = NotAvailableLocalUsers
-    implicit val hostsRule: LocalUsersSupport[HostsRule] = NotAvailableLocalUsers
-    implicit val indicesRule: LocalUsersSupport[IndicesRule] = NotAvailableLocalUsers
-    implicit val jwtAuthRule: LocalUsersSupport[JwtAuthRule] = NotAvailableLocalUsers
-    implicit val kibanaUserDataRule: LocalUsersSupport[KibanaUserDataRule] = NotAvailableLocalUsers
-    implicit val kibanaAccessRule: LocalUsersSupport[KibanaAccessRule] = NotAvailableLocalUsers
-    implicit val kibanaHideAppsRule: LocalUsersSupport[KibanaHideAppsRule] = NotAvailableLocalUsers
-    implicit val kibanaIndexRule: LocalUsersSupport[KibanaIndexRule] = NotAvailableLocalUsers
-    implicit val kibanaTemplateIndexRule: LocalUsersSupport[KibanaTemplateIndexRule] = NotAvailableLocalUsers
-    implicit val ldapAuthenticationRule: LocalUsersSupport[LdapAuthenticationRule] = NotAvailableLocalUsers
-    implicit val ldapAuthorizationRule: LocalUsersSupport[LdapAuthorizationRule] = NotAvailableLocalUsers
-    implicit val ldapAuthRule: LocalUsersSupport[LdapAuthRule] = NotAvailableLocalUsers
-    implicit val localHostsRule: LocalUsersSupport[LocalHostsRule] = NotAvailableLocalUsers
-    implicit val maxBodyLengthRule: LocalUsersSupport[MaxBodyLengthRule] = NotAvailableLocalUsers
-    implicit val methodsRule: LocalUsersSupport[MethodsRule] = NotAvailableLocalUsers
-    implicit val repositoriesRule: LocalUsersSupport[RepositoriesRule] = NotAvailableLocalUsers
-    implicit val responseFieldsRule: LocalUsersSupport[ResponseFieldsRule] = NotAvailableLocalUsers
-    implicit val rorKbnAuthRule: LocalUsersSupport[RorKbnAuthRule] = NotAvailableLocalUsers
-    implicit val sessionMaxIdleRule: LocalUsersSupport[SessionMaxIdleRule] = NotAvailableLocalUsers
-    implicit val snapshotsRule: LocalUsersSupport[SnapshotsRule] = NotAvailableLocalUsers
-    implicit val uriRegexRule: LocalUsersSupport[UriRegexRule] = NotAvailableLocalUsers
-    implicit val xForwarderForRule: LocalUsersSupport[XForwardedForRule] = NotAvailableLocalUsers
+    implicit val actionsRule: LocalUsersSupport[ActionsRule] = NotAvailableLocalUsers()
+    implicit val apiKeyRule: LocalUsersSupport[ApiKeysRule] = NotAvailableLocalUsers()
+    implicit val dataStreamsRule: LocalUsersSupport[DataStreamsRule] = NotAvailableLocalUsers()
+    implicit val externalAuthenticationRule: LocalUsersSupport[ExternalAuthenticationRule] = NotAvailableLocalUsers()
+    implicit val externalAuthorizationRule: LocalUsersSupport[ExternalAuthorizationRule] = NotAvailableLocalUsers()
+    implicit val fieldsRule: LocalUsersSupport[FieldsRule] = NotAvailableLocalUsers()
+    implicit val filterRule: LocalUsersSupport[FilterRule] = NotAvailableLocalUsers()
+    implicit val groupsOrRule: LocalUsersSupport[GroupsOrRule] = NotAvailableLocalUsers()
+    implicit val groupsAndRule: LocalUsersSupport[GroupsAndRule] = NotAvailableLocalUsers()
+    implicit val headersAndRule: LocalUsersSupport[HeadersAndRule] = NotAvailableLocalUsers()
+    implicit val headersOrRule: LocalUsersSupport[HeadersOrRule] = NotAvailableLocalUsers()
+    implicit val hostsRule: LocalUsersSupport[HostsRule] = NotAvailableLocalUsers()
+    implicit val indicesRule: LocalUsersSupport[IndicesRule] = NotAvailableLocalUsers()
+    implicit val jwtAuthRule: LocalUsersSupport[JwtAuthRule] = NotAvailableLocalUsers()
+    implicit val kibanaUserDataRule: LocalUsersSupport[KibanaUserDataRule] = NotAvailableLocalUsers()
+    implicit val kibanaAccessRule: LocalUsersSupport[KibanaAccessRule] = NotAvailableLocalUsers()
+    implicit val kibanaHideAppsRule: LocalUsersSupport[KibanaHideAppsRule] = NotAvailableLocalUsers()
+    implicit val kibanaIndexRule: LocalUsersSupport[KibanaIndexRule] = NotAvailableLocalUsers()
+    implicit val kibanaTemplateIndexRule: LocalUsersSupport[KibanaTemplateIndexRule] = NotAvailableLocalUsers()
+    implicit val ldapAuthenticationRule: LocalUsersSupport[LdapAuthenticationRule] = NotAvailableLocalUsers()
+    implicit val ldapAuthorizationRule: LocalUsersSupport[LdapAuthorizationRule] = NotAvailableLocalUsers()
+    implicit val ldapAuthRule: LocalUsersSupport[LdapAuthRule] = NotAvailableLocalUsers()
+    implicit val localHostsRule: LocalUsersSupport[LocalHostsRule] = NotAvailableLocalUsers()
+    implicit val maxBodyLengthRule: LocalUsersSupport[MaxBodyLengthRule] = NotAvailableLocalUsers()
+    implicit val methodsRule: LocalUsersSupport[MethodsRule] = NotAvailableLocalUsers()
+    implicit val repositoriesRule: LocalUsersSupport[RepositoriesRule] = NotAvailableLocalUsers()
+    implicit val responseFieldsRule: LocalUsersSupport[ResponseFieldsRule] = NotAvailableLocalUsers()
+    implicit val rorKbnAuthRule: LocalUsersSupport[RorKbnAuthRule] = NotAvailableLocalUsers()
+    implicit val sessionMaxIdleRule: LocalUsersSupport[SessionMaxIdleRule] = NotAvailableLocalUsers()
+    implicit val snapshotsRule: LocalUsersSupport[SnapshotsRule] = NotAvailableLocalUsers()
+    implicit val uriRegexRule: LocalUsersSupport[UriRegexRule] = NotAvailableLocalUsers()
+    implicit val xForwarderForRule: LocalUsersSupport[XForwardedForRule] = NotAvailableLocalUsers()
 
     implicit val authKeyRule: LocalUsersSupport[AuthKeyRule] = AvailableLocalUsers[AuthKeyRule](fromEligibleUsers)
     implicit val authKeyPBKDF2WithHmacSHA512Rule: LocalUsersSupport[AuthKeyPBKDF2WithHmacSHA512Rule] = AvailableLocalUsers[AuthKeyPBKDF2WithHmacSHA512Rule](fromEligibleUsers)

@@ -22,7 +22,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers.{be, convertToAnyShouldWrapper}
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
@@ -34,9 +34,11 @@ import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.TestsUtils.ValueOrIllegalState
 import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.utils.RefinedUtils.*
 
 class UnboundIdLdapUsersServiceTests
   extends AnyFreeSpec
@@ -102,7 +104,7 @@ class UnboundIdLdapUsersServiceTests
     result.valueOrThrowIllegalState()
   }
 
-  private def createLdapConnectionConfig(poolName: LdapService.Name) = {
+  private def createLdapConnectionConfig(poolName: LdapService.Name): LdapConnectionConfig = {
     LdapConnectionConfig(
       poolName = poolName,
       connectionMethod = ConnectionMethod.SingleServer(
@@ -110,7 +112,7 @@ class UnboundIdLdapUsersServiceTests
           .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
           .get
       ),
-      poolSize = 1,
+      poolSize = positiveInt(1),
       connectionTimeout = Refined.unsafeApply(5 seconds),
       requestTimeout = Refined.unsafeApply(5 seconds),
       trustAllCerts = false,

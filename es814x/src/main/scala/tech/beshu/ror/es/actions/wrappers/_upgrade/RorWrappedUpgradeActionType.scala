@@ -26,7 +26,7 @@ object RorWrappedUpgradeActionType {
   val name = new RestUpgradeActionDeprecated().getName
   val instance = new RorWrappedUpgradeActionType()
 
-  final case object ArtificialUpgradeActionCannotBeTransported extends Exception
+  case object ArtificialUpgradeActionCannotBeTransported extends Exception
 
   private [_upgrade] def exceptionReader[A]: Writeable.Reader[A] = _ => throw ArtificialUpgradeActionCannotBeTransported
 }

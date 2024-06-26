@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeySha1Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AuthKeySha1RuleTests extends BasicAuthenticationTestTemplate(supportingImpersonation = false) {
 

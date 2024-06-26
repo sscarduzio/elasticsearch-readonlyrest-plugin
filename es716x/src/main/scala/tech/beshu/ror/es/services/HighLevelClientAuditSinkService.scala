@@ -38,7 +38,8 @@ import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import scala.annotation.nowarn
 import scala.collection.parallel.CollectionConverters._
 
-class HighLevelClientAuditSinkService private(@nowarn("cat=deprecation") clients: NonEmptyList[RestHighLevelClient])
+@nowarn("cat=deprecation")
+class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
                                              (implicit scheduler: Scheduler)
   extends AuditSinkService
     with Logging {
@@ -68,6 +69,7 @@ class HighLevelClientAuditSinkService private(@nowarn("cat=deprecation") clients
 
 object HighLevelClientAuditSinkService {
 
+  @nowarn("cat=deprecation")
   def create(remoteCluster: AuditCluster.RemoteAuditCluster)
             (implicit scheduler: Scheduler): HighLevelClientAuditSinkService = {
     val highLevelClients = remoteCluster.uris.map(createEsHighLevelClient)

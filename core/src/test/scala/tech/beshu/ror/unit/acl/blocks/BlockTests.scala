@@ -17,12 +17,12 @@
 package tech.beshu.ror.unit.acl.blocks
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.{Inside, TestSuite}
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
@@ -36,14 +36,14 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpd
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.unit.acl.blocks.BlockTests.{notPassingRule, passingRule, throwingRule}
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Failure
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
-class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
+class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with BlockTestsMockFactory {
 
   "A block execution result" should {
     "be mismatched and contain all history, up to mismatched rule" when {
@@ -207,9 +207,9 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
   }
 }
 
-object BlockTests extends MockFactory {
+trait BlockTestsMockFactory extends MockFactory { this: TestSuite =>
 
-  private def passingRule(ruleName: String,
+  protected def passingRule(ruleName: String,
                           modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity) =
     new RegularRule {
       override val name: Rule.Name = Rule.Name(ruleName)
@@ -221,14 +221,14 @@ object BlockTests extends MockFactory {
         }
     }
 
-  private def notPassingRule(ruleName: String) = new RegularRule {
+  protected def notPassingRule(ruleName: String) = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
     override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       Task.now(Rejected())
   }
 
-  private def throwingRule(ruleName: String) = new RegularRule {
+  protected def throwingRule(ruleName: String) = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
     override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =

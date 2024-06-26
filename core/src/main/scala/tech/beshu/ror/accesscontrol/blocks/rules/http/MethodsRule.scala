@@ -17,12 +17,12 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import cats.data.NonEmptySet
-import com.softwaremill.sttp.Method
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 
 class MethodsRule(val settings: Settings)
   extends RegularRule {

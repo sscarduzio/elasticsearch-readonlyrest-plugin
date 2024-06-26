@@ -16,17 +16,16 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-import com.github.benmanes.caffeine.cache.RemovalCause
-import com.github.blemale.scaffeine.Scaffeine
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine, RemovalCause}
 import monix.catnap.Semaphore
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.annotation.nowarn
-import scala.concurrent.ExecutionContext._
+import scala.concurrent.ExecutionContext.*
 
 class CacheableAction[K, V](ttl: PositiveFiniteDuration,
                             action: (K, RequestId) => Task[V])
@@ -38,11 +37,12 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: PositiveFiniteDuration,
 
   private val keySemaphoresMap = new ConcurrentHashMap[K1, Semaphore[Task]]()
 
-  private val cache = Scaffeine()
-    .executor(global)
-    .expireAfterWrite(ttl.value)
-    .removalListener(onRemoveHook)
-    .build[K1, V]()
+  private val cache: Cache[K1, V] =
+    Caffeine.newBuilder()
+      .executor(global)
+      .expireAfterWrite(ttl.value.toMillis, TimeUnit.MILLISECONDS)
+      .removalListener(onRemoveHook)
+      .build[K1, V]()
 
   def call(key: K, requestTimeout: PositiveFiniteDuration)
           (implicit requestId: RequestId): Task[V] = {
@@ -61,7 +61,7 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: PositiveFiniteDuration,
 
   private def getFromCacheOrRunAction(key: K, mappedKey: K1)(implicit requestId: RequestId): Task[V] = {
     for {
-      cachedValue <- Task.delay(cache.getIfPresent(mappedKey))
+      cachedValue <- Task.delay(Option(cache.getIfPresent(mappedKey)))
       result <- cachedValue match {
         case Some(value) =>
           Task.now(value)
@@ -77,8 +77,8 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: PositiveFiniteDuration,
   }
 
   private def onRemoveHook(mappedKey: K1,
-                           @nowarn("cat=unused") value: V,
-                           @nowarn("cat=unused") cause: RemovalCause): Unit = {
+                           @nowarn value: V,
+                           @nowarn cause: RemovalCause): Unit = {
     keySemaphoresMap.remove(mappedKey)
   }
 

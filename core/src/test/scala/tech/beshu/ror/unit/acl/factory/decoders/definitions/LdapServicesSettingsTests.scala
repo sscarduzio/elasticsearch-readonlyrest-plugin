@@ -16,20 +16,21 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
+import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.joor.Reflect.on
 import org.scalatest.compatible.Assertion
-import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.must.Matchers.mustBe
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{Assertions, BeforeAndAfterAll, Checkpoints}
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
@@ -37,17 +38,19 @@ import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Clock
 import scala.annotation.tailrec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
   extends BaseDecoderTest(
-    LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider, Clock.systemUTC())
+    LdapServicesDecoder.ldapServicesDefinitionsDecoder(using ldapConnectionPoolProvider, Clock.systemUTC())
   )
     with BeforeAndAfterAll
     with ForAllTestContainer
@@ -70,9 +73,9 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
   "An LdapService" should {
     "be able to be loaded from config" when {
-      "one LDAP service is declared (without sever_side_groups_filtering)" in {
+      "one LDAP service is declared (without server_side_groups_filtering)" in {
         assertDecodingSuccess(
-          yaml =
+          yamls = NonEmptyList.of(
             s"""
                |  ldaps:
                |  - name: ldap1
@@ -82,15 +85,36 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    ssl_trust_all_certs: true
                |    bind_dn: "cn=admin,dc=example,dc=com"
                |    bind_password: "password"
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-               |    user_id_attribute: "uid"
-               |    unique_member_attribute: "uniqueMember"
                |    connection_pool_size: 10
                |    connection_timeout: 10 sec
                |    request_timeout: 10 sec
                |    cache_ttl: 60 sec
-           """.stripMargin,
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "uid"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      unique_member_attribute: "uniqueMember"
+            """.stripMargin,
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "uid"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    unique_member_attribute: "uniqueMember"
+            """.stripMargin,
+          ),
           assertion = { definitions =>
             val expectedLdapServiceName = LdapService.Name("ldap1")
 
@@ -105,16 +129,16 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer3 => ldapServiceLayer3 matchUnboundidLdapUsersService(
+              ldapServiceLayer3 => ldapServiceLayer3.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -123,40 +147,40 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer3.matchUnboundidLdapAuthenticationService(
                   name = expectedLdapServiceName
-                  )
+                )
             )
 
             assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
+                ldapServiceLayer3.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("cn"),
+                    GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = false
@@ -167,9 +191,9 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
-      "one LDAP service is declared (with sever_side_groups_filtering)" in {
+      "one LDAP service is declared (with sever_side_groups_filtering /with typo in the name/)" in {
         assertDecodingSuccess(
-          yaml =
+          yamls = NonEmptyList.of(
             s"""
                |  ldaps:
                |  - name: ldap1
@@ -179,16 +203,38 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    ssl_trust_all_certs: true
                |    bind_dn: "cn=admin,dc=example,dc=com"
                |    bind_password: "password"
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-               |    sever_side_groups_filtering: true
-               |    user_id_attribute: "uid"
-               |    unique_member_attribute: "uniqueMember"
                |    connection_pool_size: 10
                |    connection_timeout: 10 sec
                |    request_timeout: 10 sec
                |    cache_ttl: 60 sec
-           """.stripMargin,
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "uid"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      unique_member_attribute: "uniqueMember"
+               |      sever_side_groups_filtering: true
+            """.stripMargin,
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "uid"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    unique_member_attribute: "uniqueMember"
+               |    sever_side_groups_filtering: true
+            """.stripMargin,
+          ),
           assertion = { definitions =>
             val expectedLdapServiceName = LdapService.Name("ldap1")
 
@@ -203,16 +249,16 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer3 => ldapServiceLayer3 matchUnboundidLdapUsersService(
+              ldapServiceLayer3 => ldapServiceLayer3.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -221,40 +267,40 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer3.matchUnboundidLdapAuthenticationService(
                   name = expectedLdapServiceName
-                  )
+                )
             )
 
             assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthorizationService.WithGroupsFilteringDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthorizationService.WithGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithGroupsFilteringDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering(
+                ldapServiceLayer3.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("cn"),
+                    GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = true
@@ -265,9 +311,9 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
-      "one LDAP service with circuit breaker is declared" in {
+      "one LDAP service is declared (with server_side_groups_filtering)" in {
         assertDecodingSuccess(
-          yaml =
+          yamls = NonEmptyList.of(
             s"""
                |  ldaps:
                |  - name: ldap1
@@ -277,10 +323,369 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    ssl_trust_all_certs: true
                |    bind_dn: "cn=admin,dc=example,dc=com"
                |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "uid"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      unique_member_attribute: "uniqueMember"
+               |      server_side_groups_filtering: true
+            """.stripMargin,
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    server_side_groups_filtering: true
                |    user_id_attribute: "uid"
                |    unique_member_attribute: "uniqueMember"
+            """.stripMargin,
+          ),
+          assertion = { definitions =>
+            val expectedLdapServiceName = LdapService.Name("ldap1")
+
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService shouldBe a[ComposedLdapAuthService]
+            val composedLdapAuthService = ldapService.asInstanceOf[ComposedLdapAuthService]
+
+            composedLdapAuthService.ldapAuthenticationService.ldapUsersService should equal {
+              composedLdapAuthService.ldapAuthorizationService.ldapUsersService
+            }
+
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
+                  name = expectedLdapServiceName,
+                  ttl = 60 second
+                ),
+              ldapServiceLayer2 =>
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer3 => ldapServiceLayer3.matchUnboundidLdapUsersService(
+                name = expectedLdapServiceName,
+                serviceTimeout = 10 second,
+                userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+              )
+            )
+
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
+                  name = expectedLdapServiceName,
+                  ttl = 60 second
+                ),
+              ldapServiceLayer2 =>
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer3 =>
+                ldapServiceLayer3.matchUnboundidLdapAuthenticationService(
+                  name = expectedLdapServiceName
+                )
+            )
+
+            assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthorizationService.WithGroupsFilteringDecorator](
+                  name = expectedLdapServiceName,
+                  ttl = 60 second
+                ),
+              ldapServiceLayer2 =>
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithGroupsFilteringDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer3 =>
+                ldapServiceLayer3.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering(
+                  name = expectedLdapServiceName,
+                  serviceTimeout = 10 second,
+                  defaultGroupSearch = DefaultGroupSearch(
+                    Dn("ou=Groups,dc=example,dc=com"),
+                    GroupSearchFilter("(objectClass=*)"),
+                    GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
+                    UniqueMemberAttribute("uniqueMember"),
+                    groupAttributeIsDN = true,
+                    serverSideGroupsFiltering = true
+                  ),
+                  nestedGroupsConfig = None
+                )
+            )
+          }
+        )
+      }
+      "one LDAP service is declared (with group name attribute)" in {
+        assertDecodingSuccess(
+          yamls = NonEmptyList.of(
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "uid"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      unique_member_attribute: "uniqueMember"
+               |      group_name_attribute: "o"
+            """.stripMargin,
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "uid"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    unique_member_attribute: "uniqueMember"
+               |    group_name_attribute: "o"
+            """.stripMargin,
+          )
+          ,
+          assertion = { definitions =>
+            val expectedLdapServiceName = LdapService.Name("ldap1")
+
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService shouldBe a[ComposedLdapAuthService]
+            val composedLdapAuthService = ldapService.asInstanceOf[ComposedLdapAuthService]
+
+            composedLdapAuthService.ldapAuthenticationService.ldapUsersService should equal {
+              composedLdapAuthService.ldapAuthorizationService.ldapUsersService
+            }
+
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
+                  name = expectedLdapServiceName,
+                  ttl = 60 second
+                ),
+              ldapServiceLayer2 =>
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer3 => ldapServiceLayer3.matchUnboundidLdapUsersService(
+                name = expectedLdapServiceName,
+                serviceTimeout = 10 second,
+                userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+              )
+            )
+
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
+                  name = expectedLdapServiceName,
+                  ttl = 60 second
+                ),
+              ldapServiceLayer2 =>
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer3 =>
+                ldapServiceLayer3.matchUnboundidLdapAuthenticationService(
+                  name = expectedLdapServiceName
+                )
+            )
+
+            assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                  name = expectedLdapServiceName,
+                  ttl = 60 second
+                ),
+              ldapServiceLayer2 =>
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer3 =>
+                ldapServiceLayer3.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
+                  name = expectedLdapServiceName,
+                  serviceTimeout = 10 second,
+                  defaultGroupSearch = DefaultGroupSearch(
+                    Dn("ou=Groups,dc=example,dc=com"),
+                    GroupSearchFilter("(objectClass=*)"),
+                    GroupAttribute(GroupIdAttribute("o"), GroupNameAttribute("o")),
+                    UniqueMemberAttribute("uniqueMember"),
+                    groupAttributeIsDN = true,
+                    serverSideGroupsFiltering = false
+                  ),
+                  nestedGroupsConfig = None
+                )
+            )
+          }
+        )
+      }
+      "one LDAP service is declared (with group ID and group name attributes)" in {
+        assertDecodingSuccess(
+          yamls = NonEmptyList.of(
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "uid"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      unique_member_attribute: "uniqueMember"
+               |      group_id_attribute: "o"
+               |      group_name_attribute: "description"
+            """.stripMargin,
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "uid"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    unique_member_attribute: "uniqueMember"
+               |    group_id_attribute: "o"
+               |    group_name_attribute: "description"
+            """.stripMargin,
+          ),
+          assertion = { definitions =>
+            val expectedLdapServiceName = LdapService.Name("ldap1")
+
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService shouldBe a[ComposedLdapAuthService]
+            val composedLdapAuthService = ldapService.asInstanceOf[ComposedLdapAuthService]
+
+            composedLdapAuthService.ldapAuthenticationService.ldapUsersService should equal {
+              composedLdapAuthService.ldapAuthorizationService.ldapUsersService
+            }
+
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
+                  name = expectedLdapServiceName,
+                  ttl = 60 second
+                ),
+              ldapServiceLayer2 =>
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer3 => ldapServiceLayer3.matchUnboundidLdapUsersService(
+                name = expectedLdapServiceName,
+                serviceTimeout = 10 second,
+                userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+              )
+            )
+
+            assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
+                  name = expectedLdapServiceName,
+                  ttl = 60 second
+                ),
+              ldapServiceLayer2 =>
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer3 =>
+                ldapServiceLayer3.matchUnboundidLdapAuthenticationService(
+                  name = expectedLdapServiceName
+                )
+            )
+
+            assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                  name = expectedLdapServiceName,
+                  ttl = 60 second
+                ),
+              ldapServiceLayer2 =>
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer3 =>
+                ldapServiceLayer3.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
+                  name = expectedLdapServiceName,
+                  serviceTimeout = 10 second,
+                  defaultGroupSearch = DefaultGroupSearch(
+                    Dn("ou=Groups,dc=example,dc=com"),
+                    GroupSearchFilter("(objectClass=*)"),
+                    GroupAttribute(GroupIdAttribute("o"), GroupNameAttribute("description")),
+                    UniqueMemberAttribute("uniqueMember"),
+                    groupAttributeIsDN = true,
+                    serverSideGroupsFiltering = false
+                  ),
+                  nestedGroupsConfig = None
+                )
+            )
+          }
+        )
+      }
+      "one LDAP service with circuit breaker is declared" in {
+        assertDecodingSuccess(
+          yamls = NonEmptyList.of(
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
                |    connection_pool_size: 10
                |    connection_timeout: 10 sec
                |    request_timeout: 10 sec
@@ -288,7 +693,35 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    circuit_breaker:
                |      max_retries: 3
                |      reset_duration: 2
-           """.stripMargin,
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "uid"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      unique_member_attribute: "uniqueMember"
+            """.stripMargin,
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    circuit_breaker:
+               |      max_retries: 3
+               |      reset_duration: 2
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "uid"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    unique_member_attribute: "uniqueMember"
+            """.stripMargin,
+          ),
           assertion = { definitions =>
             val expectedLdapServiceName = LdapService.Name("ldap1")
 
@@ -299,16 +732,16 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(3, (2 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(3), (2 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer3 => ldapServiceLayer3 matchUnboundidLdapUsersService(
+              ldapServiceLayer3 => ldapServiceLayer3.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -317,40 +750,40 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(3, (2 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(3), (2 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer3.matchUnboundidLdapAuthenticationService(
                   name = expectedLdapServiceName
-                  )
+                )
             )
 
             assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCacheableDecorator[CacheableLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer1.matchCacheableDecorator[CacheableLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
                   ttl = 60 second
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer2.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(3, (2 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(3), (2 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer3 =>
-                ldapServiceLayer3 matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
+                ldapServiceLayer3.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("cn"),
+                    GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = false
@@ -373,10 +806,12 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    ssl_trust_all_certs: true
                |    bind_dn: "cn=admin,dc=example,dc=com"
                |    bind_password: "password"
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-               |    user_id_attribute: "uid"
-               |    unique_member_attribute: "uniqueMember"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "uid"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      unique_member_attribute: "uniqueMember"
                |
                |  - name: ldap2
                |    host: ${SingletonLdapContainers.ldap1Backup.ldapHost}
@@ -389,7 +824,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    user_id_attribute: "uid"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    unique_member_attribute: "uniqueMember"
-           """.stripMargin,
+            """.stripMargin,
           assertion = { definitions =>
             definitions.items should have size 2
             val ldap1Service = definitions.items.head
@@ -404,15 +839,25 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
       }
       "LDAP authentication service definition is declared only using required fields" in {
         assertDecodingSuccess(
-          yaml =
+          yamls = NonEmptyList.of(
             s"""
                |  ldaps:
                |  - name: ldap1
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapSSLPort}
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
-           """.stripMargin,
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+            """.stripMargin,
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapSSLPort}
+               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+            """.stripMargin,
+          ),
           assertion = { definitions =>
             val expectedLdapServiceName = LdapService.Name("ldap1")
 
@@ -422,14 +867,14 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(ldapService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer2.matchUnboundidLdapAuthenticationService(
                   name = expectedLdapServiceName
-                  )
+                )
             )
 
             val unboundidLdapAuthenticationService = getMostBottomLdapService(ldapService)
@@ -437,11 +882,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(unboundidLdapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -452,16 +897,28 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
       }
       "LDAP authorization service definition is declared only using required fields" in {
         assertDecodingSuccess(
-          yaml =
+          yamls = NonEmptyList.of(
             s"""
                |  ldaps:
                |  - name: ldap1
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapSSLPort}
+               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+            """.stripMargin,
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapSSLPort}
+               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
-           """.stripMargin,
+            """.stripMargin,
+          ),
           assertion = { definitions =>
             val expectedLdapServiceName = LdapService.Name("ldap1")
 
@@ -476,11 +933,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -489,30 +946,30 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer2.matchUnboundidLdapAuthenticationService(
                   name = expectedLdapServiceName
-                  )
+                )
             )
 
             assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
+                ldapServiceLayer2.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   defaultGroupSearch = DefaultGroupSearch(
                     Dn("ou=Groups,dc=example,dc=com"),
                     GroupSearchFilter("(objectClass=*)"),
-                    GroupIdAttribute("cn"),
+                    GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     UniqueMemberAttribute("uniqueMember"),
                     groupAttributeIsDN = true,
                     serverSideGroupsFiltering = false
@@ -525,17 +982,29 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
       }
       "Unreachable host is configured, but connection check on startup is disabled" in {
         assertDecodingSuccess(
-          yaml =
+          yamls = NonEmptyList.of(
             s"""
                |  ldaps:
                |  - name: ldap1
                |    host: 192.168.123.123
                |    port: 234
-               |    ignore_ldap_connectivity_problems: true
-               |    connection_timeout: 500 ms
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
-           """.stripMargin,
+               |    connection_timeout: 500 ms
+               |    ignore_ldap_connectivity_problems: true
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+            """.stripMargin,
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: 192.168.123.123
+               |    port: 234
+               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
+               |    connection_timeout: 500 ms
+               |    ignore_ldap_connectivity_problems: true
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+            """.stripMargin,
+          ),
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
@@ -546,17 +1015,29 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
       }
       "Unknown host is configured, but connection check on startup is disabled" in {
         assertDecodingSuccess(
-          yaml =
+          yamls = NonEmptyList.of(
             s"""
                |  ldaps:
                |  - name: ldap1
                |    host: dummy-host
                |    port: 234
-               |    ignore_ldap_connectivity_problems: true
-               |    connection_timeout: 500 ms
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
-           """.stripMargin,
+               |    connection_timeout: 500 ms
+               |    ignore_ldap_connectivity_problems: true
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+            """.stripMargin,
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: dummy-host
+               |    port: 234
+               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
+               |    connection_timeout: 500 ms
+               |    ignore_ldap_connectivity_problems: true
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+             """.stripMargin,
+          ),
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
@@ -632,8 +1113,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |  ldaps:
                |  - name: ldap1
                |    server_discovery:
-               |        dns_url: "dns://localhost:${ldapWithDnsContainer.dnsPort}"
-               |        ttl: "3 hours"
+               |      dns_url: "dns://localhost:${ldapWithDnsContainer.dnsPort}"
+               |      ttl: "3 hours"
                |    ssl_enabled: false
                |    ssl_trust_all_certs: true
                |    bind_dn: "cn=admin,dc=example,dc=com"
@@ -688,7 +1169,43 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
       }
       "groups from user attribute mode is used" in {
         assertDecodingSuccess(
-          yaml =
+          yamls = NonEmptyList.of(
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    hosts:
+               |    - "ldap://${SingletonLdapContainers.ldap1Backup.ldapHost}:${SingletonLdapContainers.ldap1Backup.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}"
+               |    ha: ROUND_ROBIN
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      mode: search_groups_in_user_entries
+            """.stripMargin,
+            // deprecated field groups_from_user
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    hosts:
+               |    - "ldap://${SingletonLdapContainers.ldap1Backup.ldapHost}:${SingletonLdapContainers.ldap1Backup.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}"
+               |    ha: ROUND_ROBIN
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      groups_from_user: true
+            """.stripMargin,
+            // deprecated field groups_from_user
             s"""
                |  ldaps:
                |  - name: ldap1
@@ -703,7 +1220,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    groups_from_user: true
-           """.stripMargin,
+            """.stripMargin,
+          ),
           assertion = { definitions =>
             val expectedLdapServiceName = LdapService.Name("ldap1")
 
@@ -718,11 +1236,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -731,24 +1249,24 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchUnboundidLdapAuthenticationService (
+                ldapServiceLayer2.matchUnboundidLdapAuthenticationService(
                   name = expectedLdapServiceName
-                  )
+                )
             )
 
             assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
               ldapServiceLayer2 =>
-                ldapServiceLayer2 matchUnboundidLdapGroupsFromUserEntryAuthorizationService(
+                ldapServiceLayer2.matchUnboundidLdapGroupsFromUserEntryAuthorizationService(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   groupsFromUserEntry = GroupsFromUserEntry(
@@ -764,9 +1282,60 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
         )
       }
       "nested groups are enabled" when {
-        "used with `groups_from_user: false`" in {
+        "used with groups from group entries" in {
           assertDecodingSuccess(
-            yaml =
+            yamls = NonEmptyList.of(
+              s"""
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                 |    ssl_enabled: false
+                 |    ssl_trust_all_certs: true
+                 |    bind_dn: "cn=admin,dc=example,dc=com"
+                 |    bind_password: "password"
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |      user_id_attribute: "uid"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+                 |      mode: search_groups_in_group_entries
+                 |      nested_groups_depth: 5
+              """.stripMargin,
+              s"""
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                 |    ssl_enabled: false
+                 |    ssl_trust_all_certs: true
+                 |    bind_dn: "cn=admin,dc=example,dc=com"
+                 |    bind_password: "password"
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |      user_id_attribute: "uid"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+                 |      nested_groups_depth: 5
+              """.stripMargin,
+              // deprecated field groups_from_user
+              s"""
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                 |    ssl_enabled: false
+                 |    ssl_trust_all_certs: true
+                 |    bind_dn: "cn=admin,dc=example,dc=com"
+                 |    bind_password: "password"
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |      user_id_attribute: "uid"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+                 |      groups_from_user: false
+                 |      nested_groups_depth: 5
+              """.stripMargin,
               s"""
                  |  ldaps:
                  |  - name: ldap1
@@ -781,7 +1350,25 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                  |
                  |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                  |    nested_groups_depth: 5
-           """.stripMargin,
+              """.stripMargin,
+              // deprecated field groups_from_user
+              s"""
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                 |    ssl_enabled: false
+                 |    ssl_trust_all_certs: true
+                 |    bind_dn: "cn=admin,dc=example,dc=com"
+                 |    bind_password: "password"
+                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    user_id_attribute: "uid"
+                 |
+                 |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+                 |    groups_from_user: false
+                 |    nested_groups_depth: 5
+              """.stripMargin,
+            ),
             assertion = { definitions =>
               val expectedLdapServiceName = LdapService.Name("ldap1")
 
@@ -796,11 +1383,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
               assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
-                ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+                ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -809,49 +1396,85 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
               assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
                 ldapServiceLayer2 =>
-                  ldapServiceLayer2 matchUnboundidLdapAuthenticationService (
+                  ldapServiceLayer2.matchUnboundidLdapAuthenticationService(
                     name = expectedLdapServiceName
-                    )
+                  )
               )
 
               assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
                 ldapServiceLayer2 =>
-                  ldapServiceLayer2 matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
+                  ldapServiceLayer2.matchUnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(
                     name = expectedLdapServiceName,
                     serviceTimeout = 10 second,
                     defaultGroupSearch = DefaultGroupSearch(
                       Dn("ou=Groups,dc=example,dc=com"),
                       GroupSearchFilter("(objectClass=*)"),
-                      GroupIdAttribute("cn"),
+                      GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                       UniqueMemberAttribute("uniqueMember"),
                       groupAttributeIsDN = true,
                       serverSideGroupsFiltering = false
                     ),
                     nestedGroupsConfig = Some(NestedGroupsConfig(
-                      nestedLevels = 5,
+                      nestedLevels = positiveInt(5),
                       Dn("ou=Groups,dc=example,dc=com"),
                       GroupSearchFilter("(objectClass=*)"),
                       UniqueMemberAttribute("uniqueMember"),
-                      GroupIdAttribute("cn"),
+                      GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
                     ))
                   )
               )
             }
           )
         }
-        "used with `groups_from_user: true`" in {
+        "used with groups from user entries" in {
           assertDecodingSuccess(
-            yaml =
+            yamls = NonEmptyList.of(
+              s"""
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                 |    ssl_enabled: false
+                 |    ssl_trust_all_certs: true
+                 |    bind_dn: "cn=admin,dc=example,dc=com"
+                 |    bind_password: "password"
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |      user_id_attribute: "uid"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+                 |      mode: search_groups_in_user_entries
+                 |      nested_groups_depth: 5
+              """.stripMargin,
+              // deprecated field groups_from_user
+              s"""
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                 |    ssl_enabled: false
+                 |    ssl_trust_all_certs: true
+                 |    bind_dn: "cn=admin,dc=example,dc=com"
+                 |    bind_password: "password"
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |      user_id_attribute: "uid"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+                 |      groups_from_user: true
+                 |      nested_groups_depth: 5
+              """.stripMargin,
+              // deprecated field groups_from_user
               s"""
                  |  ldaps:
                  |  - name: ldap1
@@ -867,7 +1490,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                  |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                  |    groups_from_user: true
                  |    nested_groups_depth: 5
-           """.stripMargin,
+              """.stripMargin,
+            ),
             assertion = { definitions =>
               val expectedLdapServiceName = LdapService.Name("ldap1")
 
@@ -882,11 +1506,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
               assertLdapService(composedLdapAuthService.ldapAuthenticationService.ldapUsersService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
-                ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+                ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                   name = expectedLdapServiceName,
                   serviceTimeout = 10 second,
                   userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
@@ -895,24 +1519,24 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
               assertLdapService(composedLdapAuthService.ldapAuthenticationService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
                 ldapServiceLayer2 =>
-                  ldapServiceLayer2 matchUnboundidLdapAuthenticationService (
+                  ldapServiceLayer2.matchUnboundidLdapAuthenticationService(
                     name = expectedLdapServiceName
-                    )
+                  )
               )
 
               assertLdapService(composedLdapAuthService.ldapAuthorizationService)(
                 ldapServiceLayer1 =>
-                  ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
+                  ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator](
                     name = expectedLdapServiceName,
-                    circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                    circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                   ),
                 ldapServiceLayer2 =>
-                  ldapServiceLayer2 matchUnboundidLdapGroupsFromUserEntryAuthorizationService(
+                  ldapServiceLayer2.matchUnboundidLdapGroupsFromUserEntryAuthorizationService(
                     name = expectedLdapServiceName,
                     serviceTimeout = 10 second,
                     groupsFromUserEntry = GroupsFromUserEntry(
@@ -922,11 +1546,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                       GroupsFromUserAttribute("memberOf")
                     ),
                     nestedGroupsConfig = Some(NestedGroupsConfig(
-                      nestedLevels = 5,
+                      nestedLevels = positiveInt(5),
                       Dn("ou=Groups,dc=example,dc=com"),
                       GroupSearchFilter("(objectClass=*)"),
                       UniqueMemberAttribute("uniqueMember"),
-                      GroupIdAttribute("cn"),
+                      GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn"))
                     ))
                   )
               )
@@ -936,7 +1560,21 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
       }
       "User ID attribute is configured to be CN and skipping user search is enabled" in {
         assertDecodingSuccess(
-          yaml =
+          yamls = NonEmptyList.of(
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "cn"
+               |      skip_user_search: true
+           """.stripMargin,
             s"""
                |  ldaps:
                |  - name: ldap1
@@ -951,6 +1589,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    user_id_attribute: "cn"
                |    skip_user_search: true
            """.stripMargin,
+          ),
           assertion = { definitions =>
             val expectedLdapServiceName = LdapService.Name("ldap1")
 
@@ -963,11 +1602,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(unboundidLdapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), UserIdAttribute.OptimizedCn)
@@ -978,7 +1617,21 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
       }
       "User ID attribute is configured to be CN but skipping user search is disabled" in {
         assertDecodingSuccess(
-          yaml =
+          yamls = NonEmptyList.of(
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "cn"
+               |      skip_user_search: false
+           """.stripMargin,
             s"""
                |  ldaps:
                |  - name: ldap1
@@ -993,6 +1646,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    user_id_attribute: "cn"
                |    skip_user_search: false
            """.stripMargin,
+          ),
           assertion = { definitions =>
             val expectedLdapServiceName = LdapService.Name("ldap1")
 
@@ -1005,15 +1659,87 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
             assertLdapService(unboundidLdapAuthenticationService.ldapUsersService)(
               ldapServiceLayer1 =>
-                ldapServiceLayer1 matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
                   name = expectedLdapServiceName,
-                  circuitBreakerConfig = CircuitBreakerConfig(10, (10 second).toRefinedPositiveUnsafe)
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
                 ),
-              ldapServiceLayer2 => ldapServiceLayer2 matchUnboundidLdapUsersService(
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
                 name = expectedLdapServiceName,
                 serviceTimeout = 10 second,
                 userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("cn"))
               )
+            )
+          }
+        )
+      }
+      "groups related param is malformed when deprecated config format is used" in {
+        assertDecodingSuccess(
+          yamls = NonEmptyList.of(
+            // empty search_groups_base_DN which is required
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "uid"
+               |
+               |    search_groups_base_DN: ""
+               |    nested_groups_depth: 5
+            """.stripMargin,
+            // empty group_id_attribute
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "uid"
+               |
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    group_id_attribute: ""
+               |    nested_groups_depth: 5
+            """.stripMargin,
+          ),
+          assertion = { definitions =>
+            val expectedLdapServiceName = LdapService.Name("ldap1")
+
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService shouldBe a[CircuitBreakerLdapAuthenticationServiceDecorator]
+            val ldapAuthenticationService = ldapService.asInstanceOf[CircuitBreakerLdapAuthenticationServiceDecorator]
+
+            assertLdapService(ldapAuthenticationService.ldapUsersService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapUsersServiceDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer2 => ldapServiceLayer2.matchUnboundidLdapUsersService(
+                name = expectedLdapServiceName,
+                serviceTimeout = 10 second,
+                userSearchFilterConfig = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+              )
+            )
+
+            assertLdapService(ldapAuthenticationService)(
+              ldapServiceLayer1 =>
+                ldapServiceLayer1.matchCircuitBreakerDecorator[CircuitBreakerLdapAuthenticationServiceDecorator](
+                  name = expectedLdapServiceName,
+                  circuitBreakerConfig = CircuitBreakerConfig(positiveInt(10), (10 second).toRefinedPositiveUnsafe)
+                ),
+              ldapServiceLayer2 =>
+                ldapServiceLayer2.matchUnboundidLdapAuthenticationService(
+                  name = expectedLdapServiceName
+                )
             )
           }
         )
@@ -1086,11 +1812,161 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
             error should be(CoreCreationError.DefinitionsLevelCreationError(Message("ldaps definitions must have unique identifiers. Duplicates: ldap1")))
+          }
+        )
+      }
+      "unknown groups search mode used" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      mode: unknown_mode
+             """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message(
+              "Error for field 'mode': Unknown mode of groups search: unknown_mode. Supported modes are search_groups_in_user_entries, search_groups_in_group_entries"
+            )))
+          }
+        )
+      }
+      "mode and group_from_user attributes used at the same time" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      mode: search_groups_in_user_entries
+               |      groups_from_user: true
+             """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message(
+              "Cannot accept groups search attributes groups_from_user/mode at the same time"
+            )))
+          }
+        )
+      }
+      "group id attribute is empty" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "uid"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      unique_member_attribute: "uniqueMember"
+               |      group_id_attribute: ""
+               |      group_name_attribute: "description"
+            """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message(
+              "Error for field 'group_id_attribute': field cannot be empty"
+            )))
+          }
+        )
+      }
+      "group name attribute is empty" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "uid"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      unique_member_attribute: "uniqueMember"
+               |      group_id_attribute: "cn"
+               |      group_name_attribute: ""
+            """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message(
+              "Error for field 'group_name_attribute': field cannot be empty"
+            )))
+          }
+        )
+      }
+      "group name attribute used in mode with groups from user entries" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    cache_ttl: 60 sec
+               |    users:
+               |      search_user_base_DN: "ou=People,dc=example,dc=com"
+               |      user_id_attribute: "uid"
+               |    groups:
+               |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |      mode: search_groups_in_user_entries
+               |      unique_member_attribute: "uniqueMember"
+               |      group_id_attribute: "cn"
+               |      group_name_attribute: "o"
+            """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message(
+              "Group names (group_name_attribute) are not supported when the group search in user entries is used [ldap ldap1]. If you intend to use this feature, please get in touch with us."
+            )))
           }
         )
       }
@@ -1107,7 +1983,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    cache_ttl_in_sec: infinity
            """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.ValueLevelCreationError(Message("Cannot convert value '\"infinity\"' to duration")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'cache_ttl_in_sec': Cannot convert value '\"infinity\"' to duration")))
           }
         )
       }
@@ -1124,7 +2000,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    cache_ttl_in_sec: -10
            """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.ValueLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'cache_ttl_in_sec': Only positive values allowed. Found: -10 seconds")))
           }
         )
       }
@@ -1244,7 +2120,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Unknown HA method 'RANDOM'")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'ha': Unknown HA method 'RANDOM'")))
           }
         )
       }
@@ -1260,7 +2136,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://localhost:12345")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with 'ldap1' LDAP connection to: ldaps://localhost:12345")))
           }
         )
       }
@@ -1276,7 +2152,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
              """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://dummy-host:12345")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with resolving 'ldap1' LDAP hosts: ldaps://dummy-host:12345")))
           }
         )
       }
@@ -1294,7 +2170,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    connection_timeout_in_sec: 2
             """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://ssl-ldap2.foo.com:836,ldaps://ssl-ldap3.foo.com:836")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with 'ldap1' LDAP connection to: ldaps://ssl-ldap2.foo.com:836,ldaps://ssl-ldap3.foo.com:836")))
           }
         )
       }
@@ -1327,7 +2203,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    connection_pool_size: -10
            """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'connection_pool_size': Only positive values allowed. Found: -10")))
           }
         )
       }
@@ -1344,7 +2220,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    connection_timeout_in_sec: -10
            """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'connection_timeout_in_sec': Only positive values allowed. Found: -10 seconds")))
           }
         )
       }
@@ -1361,7 +2237,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    request_timeout_in_sec: -10
            """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'request_timeout_in_sec': Only positive values allowed. Found: -10 seconds")))
           }
         )
       }

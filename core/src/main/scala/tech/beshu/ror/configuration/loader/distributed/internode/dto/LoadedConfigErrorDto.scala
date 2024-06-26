@@ -16,15 +16,44 @@
  */
 package tech.beshu.ror.configuration.loader.distributed.internode.dto
 
-import io.circe.generic.extras.ConfiguredJsonCodec
 import io.circe.{Codec, Decoder, Encoder}
-import tech.beshu.ror.configuration.loader.{LoadedRorConfig, Path}
+import tech.beshu.ror.configuration.loader.LoadedRorConfig
+import tech.beshu.ror.utils.CirceOps.*
 
+import java.nio.file.Paths
 
-@ConfiguredJsonCodec
 sealed trait LoadedConfigErrorDto
 
 object LoadedConfigErrorDto {
+
+  implicit val codec: Codec[LoadedConfigErrorDto] = codecWithTypeDiscriminator(
+    encode = {
+      case dto: FileParsingErrorDTO =>
+        derivedEncoderWithType[FileParsingErrorDTO]("FileParsingErrorDTO")(dto)
+      case dto: FileNotExistDTO =>
+        derivedEncoderWithType[FileNotExistDTO]("FileNotExistDTO")(dto)
+      case dto: EsFileNotExistDTO =>
+        derivedEncoderWithType[EsFileNotExistDTO]("EsFileNotExistDTO")(dto)
+      case dto: EsFileMalformedDTO =>
+        derivedEncoderWithType[EsFileMalformedDTO]("EsFileMalformedDTO")(dto)
+      case dto: CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO =>
+        derivedEncoderWithType[CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO]("CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO")(dto)
+      case dto: IndexParsingErrorDTO =>
+        derivedEncoderWithType[IndexParsingErrorDTO]("FileParsingErrorDTO")(dto)
+      case IndexUnknownStructureDTO =>
+        derivedEncoderWithType[IndexUnknownStructureDTO.type]("IndexUnknownStructureDTO")(IndexUnknownStructureDTO)
+    },
+    decoders = Map(
+      "FileParsingErrorDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, FileParsingErrorDTO],
+      "FileNotExistDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, FileNotExistDTO],
+      "EsFileNotExistDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, EsFileNotExistDTO],
+      "EsFileMalformedDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, EsFileMalformedDTO],
+      "CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO],
+      "FileParsingErrorDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, FileParsingErrorDTO],
+      "IndexUnknownStructureDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, IndexUnknownStructureDTO.type],
+    )
+  )
+
   def create(error: LoadedRorConfig.Error): LoadedConfigErrorDto = error match {
     case o: LoadedRorConfig.FileParsingError => FileParsingErrorDTO.create(o)
     case o: LoadedRorConfig.FileNotExist => FileNotExistDTO.create(o)
@@ -66,11 +95,11 @@ object LoadedConfigErrorDto {
   object FileNotExistDTO {
     def create(o: LoadedRorConfig.FileNotExist): FileNotExistDTO =
       new FileNotExistDTO(
-        path = o.path.value,
+        path = o.path.toString,
       )
 
     def fromDto(o: FileNotExistDTO): LoadedRorConfig.FileNotExist = LoadedRorConfig.FileNotExist(
-      path = Path(o.path),
+      path = Paths.get(o.path),
     )
     implicit class Ops(o: FileNotExistDTO) {
       implicit def fromDto: LoadedRorConfig.FileNotExist = FileNotExistDTO.fromDto(o)
@@ -81,11 +110,11 @@ object LoadedConfigErrorDto {
   object EsFileNotExistDTO {
     def create(o: LoadedRorConfig.EsFileNotExist): EsFileNotExistDTO =
       new EsFileNotExistDTO(
-        path = o.path.value,
+        path = o.path.toString,
       )
 
     def fromDto(o: EsFileNotExistDTO): LoadedRorConfig.EsFileNotExist = LoadedRorConfig.EsFileNotExist(
-      path = Path(o.path),
+      path = Paths.get(o.path),
     )
     implicit class Ops(o: EsFileNotExistDTO) {
       implicit def fromDto: LoadedRorConfig.EsFileNotExist = EsFileNotExistDTO.fromDto(o)
@@ -96,12 +125,12 @@ object LoadedConfigErrorDto {
   object EsFileMalformedDTO {
     def create(o: LoadedRorConfig.EsFileMalformed): EsFileMalformedDTO =
       new EsFileMalformedDTO(
-        path = o.path.value,
+        path = o.path.toString,
         message = o.message,
       )
 
     def fromDto(o: EsFileMalformedDTO): LoadedRorConfig.EsFileMalformed = LoadedRorConfig.EsFileMalformed(
-      path = Path(o.path),
+      path = Paths.get(o.path),
       message = o.message,
     )
     implicit class Ops(o: EsFileMalformedDTO) {

@@ -53,8 +53,8 @@ dependencies {
     api group: 'org.ow2.asm',                   name: 'asm',                              version: '9.6'
     api group: 'org.ow2.asm',                   name: 'asm-util',                         version: '9.6'
 
-    api group: 'io.kevinlee',                   name: 'just-semver_2.13',                 version: '0.5.0'
-    api group: 'com.lihaoyi',                   name: 'os-lib_2.13',                      version: '0.8.1'
+    api group: 'io.kevinlee',                   name: 'just-semver_3',                    version: '0.5.0'
+    api group: 'com.lihaoyi',                   name: 'os-lib_3',                         version: '0.10.0'
 }
 
 java {
@@ -65,13 +65,16 @@ java {
 
 compileScala {
     options.compilerArgs.addAll(
-            "-unchecked",
-            "-Ywarn-macros:after",
             "-feature",
-            "-Ymacro-annotations",
             "-Xfatal-warnings",
-            "-Ywarn-unused",
-            "-Wunused:nowarn"
+            "-Wunused:implicits",
+            "-Wunused:imports",
+            "-Wunused:explicits",
+            "-Wunused:strict-no-implicit-warn",
+            "-Wunused:locals",
+            "-Wunused:params",
+            "-Wunused:privates",
+            "-Wunused:nowarn",
     )
 }
 

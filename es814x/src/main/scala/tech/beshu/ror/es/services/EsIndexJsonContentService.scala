@@ -31,11 +31,11 @@ import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService._
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.annotation.nowarn
+import scala.annotation.unused
 import scala.jdk.CollectionConverters._
 
 class EsIndexJsonContentService(client: NodeClient,
-                                @nowarn("cat=unused") constructorDiscriminator: Unit)
+                                @unused constructorDiscriminator: Unit)
   extends IndexJsonContentService
     with Logging {
 

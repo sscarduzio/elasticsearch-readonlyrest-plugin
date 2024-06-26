@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.implicits._
-import com.unboundid.ldap.sdk._
+import cats.implicits.*
+import com.unboundid.ldap.sdk.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupAttribute, GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.show.logs.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.GraphNodeAncestorsExplorer
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
@@ -52,14 +52,14 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
       .flatMap {
         case Right(results) =>
           Task.delay {
-            results.flatMap(_.toLdapGroup(config.groupIdAttribute)).toSet
+            results.flatMap(_.toLdapGroup(config.groupAttribute)).toSet
           }
         case Left(errorResult) =>
-          logger.error(s"[${requestId.show}] LDAP getting groups of [${group.id.show}] group returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          logger.error(s"[${requestId.show}] LDAP getting groups of [${group.group.show}] group returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
-        Task(logger.errorEx(s"[${requestId.show}] LDAP getting groups of [${group.id.show}] group returned error", ex))
+        Task(logger.errorEx(s"[${requestId.show}] LDAP getting groups of [${group.group.show}] group returned error", ex))
       }
   }
 
@@ -69,15 +69,19 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
     val baseDn = config.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = searchFilterFrom(config.groupSearchFilter, config.memberAttribute, ldapGroup)
-    val attribute = config.groupIdAttribute.value.value
-    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
-    new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
+    val groupAttributes = attributesFrom(config.groupAttribute)
+    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: ${groupAttributes.mkString(",")}]")
+    new SearchRequest(listener, baseDn, scope, searchFilter, groupAttributes.toSeq*)
   }
 
   private def searchFilterFrom(groupSearchFilter: GroupSearchFilter,
                                memberAttribute: UniqueMemberAttribute,
                                group: LdapGroup) = {
     s"(&${groupSearchFilter.value.value}(${Filter.encodeValue(memberAttribute.value.value)}=${Filter.encodeValue(group.dn.value.value)}))"
+  }
+
+  private def attributesFrom(groupAttribute: GroupAttribute) = {
+    Set(groupAttribute.id.value.value, groupAttribute.name.value.value)
   }
 
 }

@@ -20,6 +20,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule.Settings
@@ -40,7 +41,8 @@ class ActionsRule(val settings: Settings)
     if (matcher.`match`(requestContext.action)) {
       RuleResult.Fulfilled(blockContext)
     } else {
-      logger.debug(s"This request uses the action '${requestContext.action.show}' and none of them is on the list.")
+      implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
+      logger.debug(s"[${requestId.show}] This request uses the action '${requestContext.action.show}' and none of them is on the list.")
       RuleResult.Rejected()
     }
   }

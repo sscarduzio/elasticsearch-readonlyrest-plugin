@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AuthKeyYamlLoadedAccessControlTests
   extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {

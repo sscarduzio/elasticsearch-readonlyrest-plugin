@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import cats.implicits._
-import com.softwaremill.sttp.Uri
+import io.lemonlabs.uri.Url
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config._
 import tech.beshu.ror.accesscontrol.blocks.definitions._
@@ -48,7 +48,7 @@ object ExternalAuthorizationServicesDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[ExternalAuthorizationService.Name]
-          url <- c.downFields("groups_endpoint", "url").as[Uri]
+          url <- c.downFields("groups_endpoint", "url").as[Url]
           authTokenName <- c.downField("auth_token_name").as[AuthTokenName]
           sendUsing <- c.downField("auth_token_passed_as").as[AuthTokenSendMethod]
           httpMethod <- c.downField("http_method").as[Option[SupportedHttpMethod]]
@@ -64,7 +64,7 @@ object ExternalAuthorizationServicesDecoder {
               id = name,
               serviceTimeout = httpClientConfig.requestTimeout,
               config = HttpExternalAuthorizationService.Config(
-                uri = url,
+                url = url,
                 method = httpMethod.getOrElse(defaults.httpMethod),
                 tokenName = authTokenName,
                 groupsConfig = groupsConfig,

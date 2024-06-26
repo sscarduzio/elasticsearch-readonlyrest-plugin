@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthorizationRule] {
@@ -113,7 +114,7 @@ class LdapAuthorizationRuleSettingsTests
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |    sever_side_groups_filtering: false
+               |    server_side_groups_filtering: false
                |""".stripMargin,
           assertion = rule => {
             rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroupIds(
@@ -145,7 +146,7 @@ class LdapAuthorizationRuleSettingsTests
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |    sever_side_groups_filtering: true
+               |    server_side_groups_filtering: true
                |""".stripMargin,
           assertion = rule => {
             rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(

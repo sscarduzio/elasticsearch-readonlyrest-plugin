@@ -17,12 +17,12 @@
 package tech.beshu.ror.unit.acl.factory
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
@@ -32,9 +32,9 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.{RawRorConfig, EnvironmentConfig}
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 
 class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
 
@@ -172,7 +172,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |
             |""".stripMargin)
         val acl = createCore(config)
-        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(MalformedValue(
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(MalformedValue.fromString(
           """type: "allow"
             |auth_key: "admin:container"
             |""".stripMargin

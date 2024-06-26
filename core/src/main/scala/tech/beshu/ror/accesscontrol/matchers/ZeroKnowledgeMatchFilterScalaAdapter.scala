@@ -30,7 +30,7 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
       new StringPatternsMatcherJava(matcher)
     )) match {
       case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.flatMap(ClusterIndexName.fromString).toSet)
-      case None => AlterResult.NotAltered
+      case None => AlterResult.NotAltered()
     }
   }
 
@@ -45,7 +45,7 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
       new StringPatternsMatcherJava(matcher)
     )) match {
       case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.flatMap(RepositoryName.from).toSet)
-      case None => AlterResult.NotAltered
+      case None => AlterResult.NotAltered()
     }
   }
 
@@ -60,15 +60,15 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
       new StringPatternsMatcherJava(matcher)
     )) match {
       case Some(alteredSnapshots) => AlterResult.Altered(alteredSnapshots.asScala.flatMap(SnapshotName.from).toSet)
-      case None => AlterResult.NotAltered
+      case None => AlterResult.NotAltered()
     }
   }
 }
 
 object ZeroKnowledgeMatchFilterScalaAdapter {
-  sealed trait AlterResult[+T]
+  sealed trait AlterResult[T]
   object AlterResult {
-    case object NotAltered extends AlterResult[Nothing]
+    final case class NotAltered[T]() extends AlterResult[T]
     final case class Altered[T](values: Set[T]) extends AlterResult[T]
   }
 }

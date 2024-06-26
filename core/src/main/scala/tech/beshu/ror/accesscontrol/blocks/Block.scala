@@ -73,7 +73,7 @@ class Block(val name: Name,
     val ruleResult = rule
       .check[B](blockContext)
       .recover { case e =>
-        logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
+        logger.error(s"[${blockContext.requestContext.id.show}] ${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
         RuleResult.Rejected[B]()
       }
     lift[B](ruleResult)
@@ -137,10 +137,10 @@ object Block {
       extends HistoryItem[B]
   }
 
-  final case class RuleDefinition[+T <: Rule](rule: T,
-                                              variableUsage: VariableUsage[T],
-                                              localUsersSupport: LocalUsersSupport[T],
-                                              impersonationWarnings: ImpersonationWarningSupport[T])
+  final case class RuleDefinition[T <: Rule](rule: T,
+                                             variableUsage: VariableUsage[T],
+                                             localUsersSupport: LocalUsersSupport[T],
+                                             impersonationWarnings: ImpersonationWarningSupport[T])
   object RuleDefinition {
     def create[T <: Rule : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport](rule: T): RuleDefinition[T] = {
       new RuleDefinition(

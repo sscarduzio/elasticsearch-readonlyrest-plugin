@@ -28,7 +28,7 @@ object RRUserMetadataActionType {
   val name: String = RorAction.RorUserMetadataAction.value
   val instance = new RRUserMetadataActionType()
 
-  final case object RRUserMetadataActionCannotBeTransported extends Exception
+  case object RRUserMetadataActionCannotBeTransported extends Exception
 
   private [rrmetadata] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRUserMetadataActionCannotBeTransported
 }
