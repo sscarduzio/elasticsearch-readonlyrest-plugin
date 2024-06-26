@@ -84,9 +84,5 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
       .getOrElse(throw new IllegalStateException(s"Cannot read ROR version from ${pluginPropertiesFilePath}"))
   }
 
-  def isRorPluginPath(path: Path): Boolean = {
-    println(s"ROR path: $rorPath")
-    println(s"PATH: $path")
-    path.startsWith(rorPath)
-  }
+  def isRorPluginPath(path: Path): Boolean = path.startsWith(rorPath)
 }
