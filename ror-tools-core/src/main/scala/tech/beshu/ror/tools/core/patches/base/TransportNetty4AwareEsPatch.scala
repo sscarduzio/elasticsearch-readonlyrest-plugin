@@ -35,10 +35,20 @@ private [patches] abstract class TransportNetty4AwareEsPatch(rorPluginDirectory:
   )
 
   override def isPatched: IsPatched = {
-    if (rorPluginDirectory.doesBackupFolderExist && rorPluginDirectory.isTransportNetty4PresentInRorPluginPath) {
+    val backupExists = rorPluginDirectory.doesBackupFolderExist
+    val transportNetty4FoundInRorDir = rorPluginDirectory.isTransportNetty4PresentInRorPluginPath
+    if (backupExists && transportNetty4FoundInRorDir) {
       checkWithPatchedByFile(rorPluginDirectory)
-    } else {
+    } else if (!backupExists && !transportNetty4FoundInRorDir) {
       No(Cause.NotPatchedAtAll)
+    } else {
+      val possiblyCorruptedEsFiles = filePatches.files.filterNot(rorPluginDirectory.isRorPluginPath).map(_.toIO)
+      throw new IllegalStateException(
+        s"""
+          |ES Corrupted! Something went wrong during patching/unpatching and the current state of ES installation is corrupted.
+          |To recover from this state, please uninstall ReadonlyREST plugin and copy the corrupted files from ES sources (https://www.elastic.co/downloads/elasticsearch):
+          |${possiblyCorruptedEsFiles.map(_.toString).map(f => s"- $f").mkString("\n")}
+          |""".stripMargin)
     }
   }
 
