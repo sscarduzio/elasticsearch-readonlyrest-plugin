@@ -318,7 +318,7 @@ stages:
       )
     jobs:
       - job:
-        timeoutInMinutes: 180
+        timeoutInMinutes: 600
         steps:
           - checkout: self
             fetchDepth: 1
@@ -334,6 +334,7 @@ stages:
 
               echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
+            timeoutInMinutes: 600
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
