@@ -24,14 +24,16 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.SecurityType.{RorWithXpackSecurity, XPackSecurity}
-import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DataStreamManager, DocumentManager, IndexManager, IndexTemplateManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import org.scalatest.matchers.should.Matchers._
 
-import scala.concurrent.duration._
+import java.time.Instant
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class CrossClusterCallsSuite
@@ -109,6 +111,11 @@ class CrossClusterCallsSuite
           val result = user1SearchManager.search("etl2:test1_index")
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
+        }
+        "he queries remote data streams only" in {
+          val result = user1SearchManager.search("etl2:test1_ds")
+          result should have statusCode 200
+          result.searchHits.arr.size should be(3) // todo: check index and docs
         }
         "he queries remote xpack cluster indices" in {
           val result = user5SearchManager.search("xpack:xpack*")
@@ -215,6 +222,11 @@ class CrossClusterCallsSuite
           val result = user1SearchManager.asyncSearch("etl2:test1_index")
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
+        }
+        "he queries remote indices only" excludeES(allEs6x, allEs7xBelowEs77x) in {
+          val result = user1SearchManager.asyncSearch("etl2:test1_ds")
+          result should have statusCode 200
+          result.searchHits.arr.size should be(3) // todo: check index and docs
         }
         "he queries remote index which is not forbidden in 'pub' remote cluster" excludeES(allEs6x, allEs7xBelowEs77x) in {
           val result = user4SearchManager.asyncSearch("pu*:*logs*")
@@ -467,10 +479,16 @@ object CrossClusterCallsSuite extends StrictLogging {
 
   def privateRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
+    val templateManager = new IndexTemplateManager(adminRestClient, esVersion)
+    val dataStreamManager = new DataStreamManager(adminRestClient, esVersion)
+
     documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test1_index", 2, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test2_index", 2, ujson.read("""{"hello":"world"}""")).force()
+
+    createDataStream(templateManager, dataStreamManager, "test1_ds", "it_test1_ds")
+    createDocsInDataStream(documentManager, "test1_ds", count = 3)
 
     documentManager.createDoc("etl_usage_2020-03-26", 1, ujson.read("""{"usage":"ROR"}""")).force()
     documentManager.createDoc("etl_usage_2020-03-27", 1, ujson.read("""{"usage":"ROR"}""")).force()
@@ -481,6 +499,45 @@ object CrossClusterCallsSuite extends StrictLogging {
 
     val indexManager = new IndexManager(adminRestClient, esVersion)
     indexManager.createAliasOf("c02-logs-smg-stats-*", "c02-logs-smg-stats").force()
+  }
+
+  private def createDataStream(adminTemplateManager: IndexTemplateManager,
+                               adminDataStreamManager: DataStreamManager,
+                               dataStreamName: String,
+                               indexTemplateName: String): Unit = {
+    adminTemplateManager.createTemplate(indexTemplateName, indexTemplate(dataStreamName)).force()
+    adminDataStreamManager.createDataStream(dataStreamName)
+  }
+
+  private def indexTemplate(dataStreamName: String) = ujson.read(
+    s"""
+       |{
+       |  "index_patterns": ["$dataStreamName*"],
+       |  "data_stream": { },
+       |  "priority": 500,
+       |  "template": {
+       |    "mappings": {
+       |      "properties": {
+       |        "@timestamp": {
+       |          "type": "date",
+       |          "format": "date_optional_time||epoch_millis"
+       |        },
+       |        "message": {
+       |          "type": "wildcard"
+       |        }
+       |      }
+       |    }
+       |  }
+       |}
+       |""".stripMargin
+  )
+
+  private def createDocsInDataStream(adminDocumentManager: DocumentManager, streamName: String, count: Int): Unit = {
+    def format(instant: Instant) = instant.toString
+    List.range(0, count).foreach { c =>
+      val doc = ujson.read(s"""{ "message":"test$c", "@timestamp": "${format(Instant.now())}"}""")
+      adminDocumentManager.createDocWithGeneratedId(streamName, doc).force()
+    }
   }
 
   def publicRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
