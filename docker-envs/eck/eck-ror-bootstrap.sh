@@ -1,13 +1,12 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+set -e
 
-if ! command -v kind &> /dev/null
-then
-    echo "Cannot find 'kind' tool. Please follow the installation steps: https://github.com/kubernetes-sigs/kind#installation-and-usage" 
-    exit 1
+if ! command -v kind &> /dev/null; then
+  echo "Cannot find 'kind' tool. Please follow the installation steps: https://github.com/kubernetes-sigs/kind#installation-and-usage"
+  exit 1
 fi
 
-if ! command -v docker &> /dev/null
-then
+if ! command -v docker &> /dev/null; then
   echo "Cannot find 'docker'. Please follow the installation steps: https://docs.docker.com/engine/install/"
   exit 2
 fi

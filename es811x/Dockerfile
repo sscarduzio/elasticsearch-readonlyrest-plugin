@@ -27,3 +27,5 @@ RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tm
 USER root
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]
+
+USER elasticsearch
