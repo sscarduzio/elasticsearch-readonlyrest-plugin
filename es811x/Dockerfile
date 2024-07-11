@@ -28,4 +28,4 @@ USER root
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]
 
-USER elasticsearch
+USER 1000:0
