@@ -68,6 +68,10 @@ class SearchManager(client: RestClient,
     call(createAsyncSearchRequest(indexName :: Nil, Some(body)), new AsyncSearchResult(_))
   }
 
+  def asyncSearchStatus(searchId: String): SimpleResponse = {
+    call(createAsyncSearchStatusRequest(searchId), new SimpleResponse(_))
+  }
+  
   def mSearchUnsafe(lines: String*): MSearchResult = {
     lines.toList match {
       case Nil => throw new IllegalArgumentException("At least one line should be passed to mSearch query")
@@ -159,6 +163,10 @@ class SearchManager(client: RestClient,
       case None =>
     }
     request
+  }
+  
+  private def createAsyncSearchStatusRequest(searchId: String) = {
+    new HttpGet(client.from(s"/_async_search/status/$searchId"))
   }
 
   private def createMultiSearchRequest(payload: String) = {
