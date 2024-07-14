@@ -13,11 +13,10 @@ spec:
             - name: elasticsearch
               image: coutopl/elasticsearch-readonlyrest:8.11.3-ror-latest
               imagePullPolicy: Always
-#              securityContext:
-#                runAsNonRoot: false
-#                runAsUser: 0
-#                runAsGroup: 0
-#                allowPrivilegeEscalation: true
+              securityContext:
+                runAsNonRoot: false
+                runAsUser: 0
+                runAsGroup: 0
               env:
                 - name: I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING
                   value: "yes"

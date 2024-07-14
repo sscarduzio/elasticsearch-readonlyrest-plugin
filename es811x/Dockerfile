@@ -16,7 +16,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     gosu nobody true
 
-USER elasticsearch
+USER 1000
 
 COPY readonlyrest-${ROR_VERSION}_es${ES_VERSION}.zip /tmp/readonlyrest.zip
 COPY init-readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
@@ -24,8 +24,4 @@ COPY ror-entrypoint.sh /usr/local/bin/ror-entrypoint.sh
 
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/readonlyrest.zip
 
-USER root
-
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]
-
-USER 1000:0
