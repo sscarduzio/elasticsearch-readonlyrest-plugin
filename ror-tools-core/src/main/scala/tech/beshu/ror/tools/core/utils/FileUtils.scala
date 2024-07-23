@@ -50,5 +50,9 @@ object FileUtils {
     }
   }
 
-  private def isWindows = System.getProperty("os.name").toLowerCase.contains("win")
+  private def isWindows = {
+    Option(System.getProperty("os.name")) match
+      case Some(osName) => osName.toLowerCase.contains("win")
+      case None => false
+  }
 }
