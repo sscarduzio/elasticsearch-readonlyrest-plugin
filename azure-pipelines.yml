@@ -221,6 +221,8 @@ stages:
               ROR_TASK: integration_es70x
             IT_es68x:
               ROR_TASK: integration_es68x
+            IT_es67x:
+              ROR_TASK: integration_es67x
       - job:
         condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         timeoutInMinutes: 120
@@ -254,8 +256,8 @@ stages:
               ROR_TASK: integration_es710x
             IT_es70x:
               ROR_TASK: integration_es70x
-            IT_es68x:
-              ROR_TASK: integration_es68x
+            IT_es67x:
+              ROR_TASK: integration_es67x
 
   - stage: BUILD_ROR
     dependsOn:

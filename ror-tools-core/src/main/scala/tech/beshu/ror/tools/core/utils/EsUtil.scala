@@ -37,6 +37,7 @@ object EsUtil {
   val es780: SemVer = SemVer.unsafeParse("7.8.0")
   val es700: SemVer = SemVer.unsafeParse("7.0.0")
   val es680: SemVer = SemVer.unsafeParse("6.8.0")
+  val es670: SemVer = SemVer.unsafeParse("6.7.0")
 
   def readEsVersion(esDirectory: EsDirectory): SemVer = {
     os

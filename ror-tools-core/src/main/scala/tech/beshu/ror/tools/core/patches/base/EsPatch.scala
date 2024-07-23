@@ -97,6 +97,7 @@ object EsPatch {
         case esVersion if esVersion >= es7110 => new Es711xPatch(rorPluginDirectory, esVersion)
         case esVersion if esVersion >= es700 => new Es70xPatch(rorPluginDirectory, esVersion)
         case esVersion if esVersion >= es680 => new Es68xPatch(rorPluginDirectory, esVersion)
+        case esVersion if esVersion >= es670 => new Es67xPatch(rorPluginDirectory, esVersion)
         case esVersion => new EsNotRequirePatch(esVersion)
       }
     )
