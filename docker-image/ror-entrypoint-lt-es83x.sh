@@ -5,12 +5,7 @@ INVOKE_ROR_TOOLS="/usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elastics
 if $INVOKE_ROR_TOOLS verify | grep -q "Elasticsearch is NOT patched"; then
 
   if [ -n "$I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING" ] && [[ "${I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING,,}" == *"yes"* ]]; then
-    if [ "$(id -u)" -ne 0 ]; then
-        echo "This script must be run as root." # todo:
-        exit 1
-    else
-      $INVOKE_ROR_TOOLS patch
-    fi
+    $INVOKE_ROR_TOOLS patch
   else
     echo "Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation:" \
          "https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch. In this Docker image, the patching step" \
@@ -23,4 +18,4 @@ else
   echo "Elasticsearch is already patched. We can continue ..."
 fi
 
-gosu elasticsearch /usr/local/bin/docker-entrypoint.sh "$@"
+/usr/local/bin/docker-entrypoint.sh "$@"

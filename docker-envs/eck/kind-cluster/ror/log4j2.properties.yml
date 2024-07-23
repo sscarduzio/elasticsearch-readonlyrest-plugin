@@ -71,7 +71,7 @@ data:
     appender.header_warning.name = header_warning
   
     logger.ror.name=tech.beshu.ror.accesscontrol
-    logger.ror.level=debug
+    logger.ror.level=info
 kind: ConfigMap
 metadata:
   name: config-log4j2.properties.yml

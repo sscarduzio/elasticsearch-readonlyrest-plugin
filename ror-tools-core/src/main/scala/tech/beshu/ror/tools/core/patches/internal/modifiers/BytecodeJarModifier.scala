@@ -28,18 +28,24 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
   protected def modifyFileInJar(jar: File,
                                 filePathString: String,
                                 processFileContent: InputStream => Array[Byte]): Unit = {
+    withMaintainingOriginalPermissionsAndOwner(jar) { jar =>
+      val modifiedFileContent = loadAndProcessFileFromJar(
+        jar = jar,
+        filePathString = filePathString,
+        processFileContent = processFileContent
+      )
+      updateFileInJar(
+        jar = jar,
+        destinationPathSting = filePathString,
+        newContent = modifiedFileContent
+      )
+    }
+  }
+  
+  private def withMaintainingOriginalPermissionsAndOwner(jar: File)(modifyJar: File => Unit) = {
     val originalFileOwner = Files.getOwner(jar.toPath)
     val originalFilePermissions = Files.getPosixFilePermissions(jar.toPath)
-    val modifiedFileContent = loadAndProcessFileFromJar(
-      jar = jar,
-      filePathString = filePathString,
-      processFileContent = processFileContent
-    )
-    updateFileInJar(
-      jar = jar,
-      destinationPathSting = filePathString,
-      newContent = modifiedFileContent
-    )
+    modifyJar(jar)
     Files.setOwner(jar.toPath, originalFileOwner)
     Files.setPosixFilePermissions(jar.toPath, originalFilePermissions)
   }
