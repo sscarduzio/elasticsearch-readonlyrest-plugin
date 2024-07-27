@@ -29,6 +29,7 @@ import tech.beshu.ror.utils.containers.images.Elasticsearch
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
+import com.github.dockerjava.api.command.CreateContainerCmd
 
 import java.util.function.Consumer
 import scala.concurrent.duration._
@@ -43,7 +44,11 @@ abstract class EsContainer(val esVersion: String,
     with ClientProvider
     with StrictLogging {
 
-  override implicit val container: GenericContainer[_] = new org.testcontainers.containers.GenericContainer(image)
+  override implicit val container: GenericContainer[_] =
+    new org.testcontainers.containers.GenericContainer(image)
+      .withCreateContainerCmdModifier((cmd: CreateContainerCmd) => {
+        cmd.getHostConfig.withMemory(768 * 1024 * 1024L)
+      })
 
   def sslEnabled: Boolean
 
