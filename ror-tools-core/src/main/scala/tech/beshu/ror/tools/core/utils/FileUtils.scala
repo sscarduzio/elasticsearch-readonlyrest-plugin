@@ -16,9 +16,12 @@
  */
 package tech.beshu.ror.tools.core.utils
 
+import org.apache.commons.lang3.SystemUtils
+
 import java.io.File
 import java.nio.file.attribute.{DosFileAttributeView, PosixFilePermission}
 import java.nio.file.{Files, Path}
+import scala.jdk.CollectionConverters.*
 
 object FileUtils {
 
@@ -51,7 +54,14 @@ object FileUtils {
   }
 
   private def isWindows = {
-    Option(System.getProperty("os.name")) match
+    System.getProperties.stringPropertyNames().asScala
+      .find { name =>
+        // I have no idea why name == "os.name" doesn't work!
+        name.length == 7 && name.indexOf("o") == 0 && name.endsWith("s.name")
+      }
+      .flatMap { osNamePropName =>
+        Option(System.getProperty(osNamePropName))
+      } match
       case Some(osName) => osName.toLowerCase.contains("win")
       case None => false
   }
