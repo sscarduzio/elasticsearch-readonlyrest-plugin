@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.tools.core.utils
 
-import org.apache.commons.lang3.SystemUtils
-
 import java.io.File
 import java.nio.file.attribute.{DosFileAttributeView, PosixFilePermission}
 import java.nio.file.{Files, Path}
