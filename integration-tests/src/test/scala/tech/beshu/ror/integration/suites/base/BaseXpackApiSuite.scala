@@ -94,6 +94,13 @@ trait BaseXpackApiSuite
         Set("test3_index_a", "test3_index_b")
       )
     }
+
+    "status is properly handled" excludeES(allEs6x, allEs7xBelowEs77x) in {
+      val notExistingSearchId = "FmRldE8zREVEUzA2ZVpUeGs2ejJFUFEaMkZ5QTVrSTZSaVN3WlNFVmtlWHJsdzoxMDc="
+      val result = dev1SearchManager.asyncSearchStatus(notExistingSearchId)
+
+      result should have statusCode 404
+    }
   }
 
   "Mustache lang" when {

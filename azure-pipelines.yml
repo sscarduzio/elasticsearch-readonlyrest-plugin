@@ -263,7 +263,7 @@ stages:
     condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
     jobs:
       - job:
-        timeoutInMinutes: 60
+        timeoutInMinutes: 120
         steps:
           - checkout: self
             fetchDepth: 1
