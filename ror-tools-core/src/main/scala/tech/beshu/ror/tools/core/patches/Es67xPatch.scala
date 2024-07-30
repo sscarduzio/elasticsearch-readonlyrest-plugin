@@ -24,7 +24,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.{Deacti
 
 import scala.language.postfixOps
 
-private[patches] class Es68xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
+private[patches] class Es67xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)

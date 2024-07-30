@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 public class RorTaskFinder extends DefaultTask {
 
-  private final static VersionNumber oldestEsVersionSupported = VersionNumber.parse("6.8.0");
+  private final static VersionNumber oldestEsVersionSupported = VersionNumber.parse("6.7.0");
 
   @TaskAction
   public void runRorPluginBuilder() {
