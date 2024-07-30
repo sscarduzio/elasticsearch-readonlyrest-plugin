@@ -154,8 +154,8 @@ if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es70x" ]]; then
   run_integration_tests "es70x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es68x" ]]; then
-  run_integration_tests "es68x"
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es67x" ]]; then
+  run_integration_tests "es67x"
 fi
 
 if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then
