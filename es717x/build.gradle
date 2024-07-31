@@ -26,8 +26,8 @@ plugins {
 def pluginFullName = pluginName + '-' + version
 def projectJavaLanguageVersion = JavaLanguageVersion.of(11)
 def moduleEsVersion = project.property('esVersion') != null ? project.property('esVersion') : project.property('latestSupportedEsVersion')
-def dockerImageLatest = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
-def dockerImageVersion = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
+def dockerImageLatest = 'coutopl/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
+def dockerImageVersion = 'coutopl/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
 
 java {
     toolchain {

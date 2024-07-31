@@ -20,7 +20,7 @@ USER elasticsearch
 
 COPY readonlyrest-${ROR_VERSION}_es${ES_VERSION}.zip /tmp/readonlyrest.zip
 COPY init-readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
-COPY ror-entrypoint-lt-es83x.sh /usr/local/bin/ror-entrypoint.sh
+COPY ror-entrypoint.sh /usr/local/bin/ror-entrypoint.sh
 
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/readonlyrest.zip
 

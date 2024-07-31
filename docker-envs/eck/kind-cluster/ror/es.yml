@@ -3,8 +3,8 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 8.0.0
-  image: coutopl/elasticsearch-readonlyrest:8.0.0-ror-latest
+  version: 8.4.0
+  image: coutopl/elasticsearch-readonlyrest:8.4.0-ror-latest
   nodeSets:
     - name: default
       count: 2
@@ -12,10 +12,10 @@ spec:
         spec:
           containers:
             - name: elasticsearch
-#              securityContext:
-#                runAsNonRoot: false
-#                runAsUser: 0
-#                runAsGroup: 0
+              securityContext:
+                runAsNonRoot: false
+                runAsUser: 0
+                runAsGroup: 0
               env:
                 - name: I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING
                   value: "yes"
@@ -29,16 +29,16 @@ spec:
                     secretKeyRef:
                       name: quickstart-es-internal-users
                       key: elastic-internal-probe
-                - name: KIBANA_SERVICE_ACCOUNT_TOKEN
-                  valueFrom:
-                    secretKeyRef:
-                      name: quickstart-kibana-user
-                      key: token
-                - name: ADMIN_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: admin-password-secret
-                      key: ADMIN_PASSWORD
+#                - name: KIBANA_SERVICE_ACCOUNT_TOKEN
+#                  valueFrom:
+#                    secretKeyRef:
+#                      name: quickstart-kibana-user
+#                      key: token
+#                - name: ADMIN_PASSWORD
+#                  valueFrom:
+#                    secretKeyRef:
+#                      name: admin-password-secret
+#                      key: ADMIN_PASSWORD
                 - name: ES_JAVA_OPTS
                   value: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888
               volumeMounts:

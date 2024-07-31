@@ -4,12 +4,6 @@ data:
      readonlyrest:
        access_control_rules:
        
-       - name: "Kibana service account"
-         verbosity: error
-         token_authentication:
-           token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}" 
-           username: service_account
-     
        - name: "PROBE"
          verbosity: error
          auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
@@ -18,9 +12,16 @@ data:
          verbosity: error
          auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
 
-       - name: "Admin access"
-         type: allow
-         auth_key: "admin:${ADMIN_PASSWORD}"
+#       - name: "Kibana service account"
+#         verbosity: error
+#         token_authentication:
+#           token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}"
+#           username: service_account
+#
+
+#       - name: "Admin access"
+#         type: allow
+#         auth_key: "admin:${ADMIN_PASSWORD}"
 
 kind: ConfigMap
 metadata:
