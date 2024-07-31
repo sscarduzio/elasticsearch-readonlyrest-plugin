@@ -12,10 +12,10 @@ spec:
         spec:
           containers:
             - name: elasticsearch
-              securityContext:
-                runAsNonRoot: false
-                runAsUser: 0
-                runAsGroup: 0
+#              securityContext:
+#                runAsNonRoot: false
+#                runAsUser: 0
+#                runAsGroup: 0
               env:
                 - name: I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING
                   value: "yes"
