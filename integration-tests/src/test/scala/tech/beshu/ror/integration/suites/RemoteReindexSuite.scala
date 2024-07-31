@@ -45,7 +45,7 @@ class RemoteReindexSuite
     EsClusterSettings.create(
       clusterName = "ROR_SOURCE_ES",
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
-      esVersion = EsVersion.SpecificVersion("es68x"),
+      esVersion = EsVersion.SpecificVersion("es67x"),
       securityType = SecurityType.RorSecurity(
         ReadonlyRestPlugin.Config.Attributes.default.copy(
           rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName,

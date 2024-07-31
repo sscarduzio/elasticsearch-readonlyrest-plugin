@@ -219,8 +219,8 @@ stages:
               ROR_TASK: integration_es72x
             IT_es70x:
               ROR_TASK: integration_es70x
-            IT_es68x:
-              ROR_TASK: integration_es68x
+            IT_es67x:
+              ROR_TASK: integration_es67x
       - job:
         condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         timeoutInMinutes: 120
@@ -254,8 +254,8 @@ stages:
               ROR_TASK: integration_es710x
             IT_es70x:
               ROR_TASK: integration_es70x
-            IT_es68x:
-              ROR_TASK: integration_es68x
+            IT_es67x:
+              ROR_TASK: integration_es67x
 
   - stage: BUILD_ROR
     dependsOn:
@@ -263,7 +263,7 @@ stages:
     condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
     jobs:
       - job:
-        timeoutInMinutes: 60
+        timeoutInMinutes: 120
         steps:
           - checkout: self
             fetchDepth: 1
