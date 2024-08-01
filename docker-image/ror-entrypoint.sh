@@ -6,8 +6,16 @@ if $INVOKE_ROR_TOOLS verify | grep -q "Elasticsearch is NOT patched"; then
 
   if [ -n "$I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING" ] && [[ "${I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING,,}" == *"yes"* ]]; then
     if [ "$(id -u)" -ne 0 ]; then
+<<<<<<< HEAD
         echo "This script must be run as root." # todo:
         exit 1
+=======
+      echo "Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation:" \
+           "https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch. To patch Elasticsearch the container " \
+           "has to be run as root. Then, after the patching step, the Elasticsearch process will be run as 'elasticsearch' " \
+           "user. "
+      exit 1
+>>>>>>> origin/develop
     else
       $INVOKE_ROR_TOOLS patch
     fi

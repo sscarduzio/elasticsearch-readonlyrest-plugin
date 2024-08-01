@@ -16,7 +16,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     gosu nobody true
 
-USER elasticsearch
+USER 1000
 
 COPY readonlyrest-${ROR_VERSION}_es${ES_VERSION}.zip /tmp/readonlyrest.zip
 COPY init-readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml

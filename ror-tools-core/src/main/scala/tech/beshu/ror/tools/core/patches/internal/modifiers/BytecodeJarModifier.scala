@@ -16,11 +16,14 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers
 
+import tech.beshu.ror.tools.core.utils.FileUtils
+import tech.beshu.ror.tools.core.utils.FileUtils.modifyFileWithMaintainingOriginalPermissionsAndOwner
+
 import java.io.{ByteArrayInputStream, File, InputStream}
 import java.net.URI
 import java.nio.file.{FileSystems, Files, Paths, StandardCopyOption}
 import java.util.jar.JarFile
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = false)
   extends FileModifier with AsmDebug {
@@ -28,20 +31,18 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
   protected def modifyFileInJar(jar: File,
                                 filePathString: String,
                                 processFileContent: InputStream => Array[Byte]): Unit = {
-    val originalFileOwner = Files.getOwner(jar.toPath)
-    val originalFilePermissions = Files.getPosixFilePermissions(jar.toPath)
-    val modifiedFileContent = loadAndProcessFileFromJar(
-      jar = jar,
-      filePathString = filePathString,
-      processFileContent = processFileContent
-    )
-    updateFileInJar(
-      jar = jar,
-      destinationPathSting = filePathString,
-      newContent = modifiedFileContent
-    )
-    Files.setOwner(jar.toPath, originalFileOwner)
-    Files.setPosixFilePermissions(jar.toPath, originalFilePermissions)
+    modifyFileWithMaintainingOriginalPermissionsAndOwner(jar) { file =>
+      val modifiedFileContent = loadAndProcessFileFromJar(
+        jar = file,
+        filePathString = filePathString,
+        processFileContent = processFileContent
+      )
+      updateFileInJar(
+        jar = file,
+        destinationPathSting = filePathString,
+        newContent = modifiedFileContent
+      )
+    }
   }
 
   private def loadAndProcessFileFromJar(jar: File,

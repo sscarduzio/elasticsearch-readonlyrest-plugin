@@ -52,7 +52,6 @@ test {
 dependencies {
     api group: 'org.ow2.asm',                   name: 'asm',                              version: '9.6'
     api group: 'org.ow2.asm',                   name: 'asm-util',                         version: '9.6'
-
     api group: 'io.kevinlee',                   name: 'just-semver_3',                    version: '0.5.0'
     api group: 'com.lihaoyi',                   name: 'os-lib_3',                         version: '0.10.0'
 }
