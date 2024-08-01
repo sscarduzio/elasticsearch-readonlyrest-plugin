@@ -29,16 +29,16 @@ spec:
                     secretKeyRef:
                       name: quickstart-es-internal-users
                       key: elastic-internal-probe
-#                - name: KIBANA_SERVICE_ACCOUNT_TOKEN
-#                  valueFrom:
-#                    secretKeyRef:
-#                      name: quickstart-kibana-user
-#                      key: token
-#                - name: ADMIN_PASSWORD
-#                  valueFrom:
-#                    secretKeyRef:
-#                      name: admin-password-secret
-#                      key: ADMIN_PASSWORD
+                - name: KIBANA_SERVICE_ACCOUNT_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: quickstart-kibana-user
+                      key: token
+                - name: ADMIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: admin-password-secret
+                      key: ADMIN_PASSWORD
                 - name: ES_JAVA_OPTS
                   value: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888
               volumeMounts:

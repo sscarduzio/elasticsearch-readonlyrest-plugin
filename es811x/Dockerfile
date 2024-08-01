@@ -24,8 +24,4 @@ COPY ror-entrypoint.sh /usr/local/bin/ror-entrypoint.sh
 
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/readonlyrest.zip
 
-<<<<<<< HEAD
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]
-=======
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]
->>>>>>> origin/develop
