@@ -3,11 +3,13 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 8.4.0
-  image: coutopl/elasticsearch-readonlyrest:8.4.0-ror-latest
+  version: 8.14.0
+  image: beshultd/elasticsearch-readonlyrest:8.14.0-ror-1.59.0
   nodeSets:
     - name: default
       count: 2
+      config:
+        node.store.allow_mmap: false
       podTemplate:
         spec:
           containers:
@@ -40,7 +42,7 @@ spec:
                       name: admin-password-secret
                       key: ADMIN_PASSWORD
                 - name: ES_JAVA_OPTS
-                  value: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888
+                  value: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888 -Dbootstrap.system_call_filter=false
               volumeMounts:
                 - name: config-ror
                   mountPath: /usr/share/elasticsearch/config/readonlyrest.yml
