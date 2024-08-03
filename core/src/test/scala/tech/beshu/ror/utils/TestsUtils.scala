@@ -44,7 +44,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
@@ -135,7 +136,15 @@ object TestsUtils {
     FullLocalDataStreamWithAliases(
       dataStreamName = dataStreamName,
       aliasesNames = aliasesNames,
-      backingIndices = Set(IndexName.Full(NonEmptyString.unsafeFrom(".ds-" + dataStreamName.value.value + "-2023")))
+      backingIndices = Set(IndexName.Full(NonEmptyString.unsafeFrom(".ds-" + dataStreamName.value.value)))
+    )
+
+  def fullRemoteDataStream(clusterName: ClusterName.Full, dataStreamName: DataStreamName.Full): FullRemoteDataStreamWithAliases =
+    FullRemoteDataStreamWithAliases(
+      clusterName = clusterName,
+      dataStreamName = dataStreamName,
+      aliasesNames = Set.empty,
+      backingIndices = Set(IndexName.Full(NonEmptyString.unsafeFrom(".ds-" + dataStreamName.value.value)))
     )
 
   def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value).get

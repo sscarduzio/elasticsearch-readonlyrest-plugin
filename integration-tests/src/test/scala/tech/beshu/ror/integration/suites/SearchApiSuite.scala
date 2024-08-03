@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DataStreamManager, DocumentManager, IndexManager, IndexTemplateManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
@@ -51,33 +51,100 @@ class SearchApiSuite
 
   "_search" should {
     "be allowed" when {
-      "data stream is being searched by full name" excludeES (allEs7xBelowEs77x) in {
-        val result = user1SearchManager.search("logs-0001")
+      "old fashioned data stream (alias) is being searched" when {
+        "full name passed" excludeES (allEs7xBelowEs77x) in {
+          val result = user1SearchManager.search("logs-0001")
 
-        result should have statusCode 200
-        result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001"))
-        result.searchHits.map(_("_id").str).sorted should be(List("1", "2"))
+          result should have statusCode 200
+          result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001"))
+          result.searchHits.map(_("_id").str).sorted should be(List("1", "2"))
+        }
+        "name with wildcard passed" excludeES (allEs7xBelowEs77x) in {
+          val result = user1SearchManager.search("logs-*2")
+
+          result should have statusCode 200
+          result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0002"))
+          result.searchHits.map(_("_id").str).sorted should be(List("1"))
+        }
+        "full alias name passed" excludeES (allEs7xBelowEs77x) in {
+          val result = user1SearchManager.search("all-logs")
+
+          result should have statusCode 200
+          result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001", "logs-0002"))
+          result.searchHits.map(_("_id").str).sorted should be(List("1", "1", "2"))
+        }
+        "alias name with wildcard passed" excludeES (allEs7xBelowEs77x) in {
+          val result = user1SearchManager.search("all-*")
+
+          result should have statusCode 200
+          result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001", "logs-0002"))
+          result.searchHits.map(_("_id").str).sorted should be(List("1", "1", "2"))
+        }
       }
-      "data stream is being searched by name with wildcard" excludeES (allEs7xBelowEs77x) in {
-        val result = user1SearchManager.search("logs-*2")
+      "data stream is being searched" when {
+        "full name passed" excludeES (allEs7xBelowEs77x) in {
+          val result = user1SearchManager.search("test_logs_ds")
 
-        result should have statusCode 200
-        result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0002"))
-        result.searchHits.map(_("_id").str).sorted should be(List("1"))
-      }
-      "data stream is being searched by full alias name" excludeES (allEs7xBelowEs77x) in {
-        val result = user1SearchManager.search("all-logs")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("test0", "test1","test2", "test3", "test4"))
+        }
+        "name with wildcard passed" excludeES (allEs7xBelowEs77x) in {
+          val result = user1SearchManager.search("test*")
 
-        result should have statusCode 200
-        result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001", "logs-0002"))
-        result.searchHits.map(_("_id").str).sorted should be(List("1", "1", "2"))
-      }
-      "data stream is being searched by alias name with wildcard" excludeES (allEs7xBelowEs77x) in {
-        val result = user1SearchManager.search("all-*")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("test0", "test1","test2", "test3", "test4"))
+        }
+        "full alias name passed" excludeES (allEs7xBelowEs77x) in {
+          val result = user1SearchManager.search("alias_ds")
 
-        result should have statusCode 200
-        result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001", "logs-0002"))
-        result.searchHits.map(_("_id").str).sorted should be(List("1", "1", "2"))
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("test0", "test1","test2", "test3", "test4"))
+        }
+        "alias name with wildcard passed" excludeES (allEs7xBelowEs77x) in {
+          val result = user1SearchManager.search("alias*")
+
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("test0", "test1","test2", "test3", "test4"))
+        }
+        "backing index name passed" excludeES (allEs7xBelowEs77x) in {
+          val backingIndices =
+            adminIndexManager.resolve("test_logs_ds")
+              .dataStreams
+              .find(_.name == "test_logs_ds")
+              .toList
+              .flatMap(_.backingIndices.sorted)
+
+          backingIndices.size should be(5)
+          val results = backingIndices
+            .flatMap { backingIndex =>
+              val result = user1SearchManager.search(backingIndex)
+              result should have statusCode 200
+              result.searchHits.map(_("_index").str).sorted.distinct should be(List(backingIndex))
+              result.searchHits.map(_("_source").obj("message").str)
+            }
+          results.sorted should be(List("test0", "test1","test2", "test3", "test4"))
+        }
+        "backing index name with wildcard passed" excludeES (allEs7xBelowEs77x) in {
+          val backingIndices =
+            adminIndexManager.resolve("test_logs_ds")
+              .dataStreams
+              .find(_.name == "test_logs_ds")
+              .toList
+              .flatMap(_.backingIndices.sorted)
+
+          backingIndices.size should be(5)
+          val result = user1SearchManager.search(".ds-test_logs_ds*")
+
+          result should have statusCode 200
+          result.searchHits.map(_("_index").str).sorted.distinct should be(backingIndices)
+
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("test0", "test1","test2", "test3", "test4"))
+        }
       }
     }
   }
@@ -204,13 +271,69 @@ object SearchApiSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient, esVersion)
+    val templateManager = new IndexTemplateManager(adminRestClient, esVersion)
+    val dataStreamManager = new DataStreamManager(adminRestClient, esVersion)
 
-    createDataStreamWithAlias(indexManager, documentManager)
+    createDataStream(templateManager, dataStreamManager, "test_logs_ds", "test_logs_ds_index_template")
+    createDocsInDataStream(documentManager, indexManager, "test_logs_ds", 5)
+
+    indexManager
+      .updateAliases(
+        AliasAction.Add(index = "test_logs_ds", alias = "alias_ds"),
+      )
+      .force()
+
+    createOldFashionedDataStream(indexManager, documentManager)
     createRealLifeTestsDocumentsAndAliases(indexManager, documentManager)
   }
 
-  private def createDataStreamWithAlias(indexManager: IndexManager,
-                                        documentManager: DocumentManager) = {
+  private def createDataStream(adminTemplateManager: IndexTemplateManager,
+                               adminDataStreamManager: DataStreamManager,
+                               dataStreamName: String,
+                               indexTemplateName: String): Unit = {
+    adminTemplateManager.createTemplate(indexTemplateName, indexTemplate(dataStreamName)).force()
+    adminDataStreamManager.createDataStream(dataStreamName)
+  }
+
+  private def indexTemplate(dataStreamName: String) = ujson.read(
+    s"""
+       |{
+       |  "index_patterns": ["$dataStreamName*"],
+       |  "data_stream": { },
+       |  "priority": 500,
+       |  "template": {
+       |    "mappings": {
+       |      "properties": {
+       |        "@timestamp": {
+       |          "type": "date",
+       |          "format": "date_optional_time||epoch_millis"
+       |        },
+       |        "message": {
+       |          "type": "wildcard"
+       |        }
+       |      }
+       |    }
+       |  }
+       |}
+       |""".stripMargin
+  )
+
+  private def createDocsInDataStream(adminDocumentManager: DocumentManager, indexManager: IndexManager, streamName: String, count: Int): Unit = {
+    def format(instant: Instant) = instant.toString
+
+    def createDoc(c: Int): Unit = {
+      val doc = ujson.read(s"""{ "message":"test$c", "@timestamp": "${format(Instant.now())}"}""")
+      adminDocumentManager.createDocWithGeneratedId(streamName, doc).force()
+    }
+
+    List.range(1, count).foldLeft(createDoc(0)) { case (_, c) =>
+      indexManager.rollover(streamName)
+      createDoc(c)
+    }
+  }
+
+  private def createOldFashionedDataStream(indexManager: IndexManager,
+                                           documentManager: DocumentManager) = {
     documentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
     documentManager.createDoc("logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
     documentManager.createDoc("logs-0002", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))

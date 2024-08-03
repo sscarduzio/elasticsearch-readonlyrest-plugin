@@ -176,6 +176,35 @@ class DataStreamApiSuite
               response.totalHits should be(expectedHits)
             }
         }
+        "allow to search by data stream index when data stream name configured" excludeES(allEs6x, allEs7xBelowEs79x) in {
+          List(
+            ("data-stream-admin", 4),
+            ("data-stream-dev", 2),
+            ("data-stream-test", 1)
+          )
+            .foreach { case (dataStream, docsCount) =>
+              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDocsInDataStream(dataStream, docsCount)
+            }
+
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
+
+          val dsAdminSearch = searchManager.searchAll("data-stream-admin")
+          dsAdminSearch should have statusCode 401
+
+          val getAllResponse = adminDataStreamManager.getAllDataStreams().force()
+          def findIndicesForDataStream(name: String) =
+            getAllResponse.backingIndicesByDataStream(name)
+
+          findIndicesForDataStream("data-stream-dev").foreach { indexName =>
+            val response = searchManager.searchAll(indexName)
+            response.totalHits should be(2)
+          }
+          findIndicesForDataStream("data-stream-test").foreach { indexName =>
+            val response = searchManager.searchAll(indexName)
+            response.totalHits should be(1)
+          }
+        }
         "allow to search by data stream name with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
           List(
             ("data-stream-admin", 4),
@@ -268,6 +297,36 @@ class DataStreamApiSuite
               val response = searchManager.searchAll(dataStreamIndexPattern)
               response.totalHits should be(expectedHits)
             }
+        }
+        "allow to search by data stream index when data stream name with wildcard configured" excludeES(allEs6x, allEs7xBelowEs79x) in {
+          List(
+            (adminDataStream, 4),
+            (devDataStream, 2),
+            (testDataStream, 1)
+          )
+            .foreach { case (dataStream, docsCount) =>
+              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDocsInDataStream(dataStream, docsCount)
+            }
+
+          val searchManager = new SearchManager(user5Client, esVersionUsed)
+          val getAllResponse = adminDataStreamManager.getAllDataStreams().force()
+
+          def findIndicesForDataStream(name: String) =
+            getAllResponse.backingIndicesByDataStream(name)
+
+          findIndicesForDataStream(adminDataStream).foreach { indexName =>
+            val response = searchManager.searchAll(indexName)
+            response should have statusCode 401
+          }
+          findIndicesForDataStream(devDataStream).foreach { indexName =>
+            val response = searchManager.searchAll(indexName)
+            response.totalHits should be(2)
+          }
+          findIndicesForDataStream(testDataStream).foreach { indexName =>
+            val response = searchManager.searchAll(indexName)
+            response.totalHits should be(1)
+          }
         }
         "allow to search by data stream index" excludeES(allEs6x, allEs7xBelowEs79x) in {
           List(

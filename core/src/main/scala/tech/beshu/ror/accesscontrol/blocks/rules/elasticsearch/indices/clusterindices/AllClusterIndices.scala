@@ -52,7 +52,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       case (None, Some(nonEmptyRequestedRemoteIndices)) =>
         processRemoteIndices(requestContext, allAllowedRemoteIndices, nonEmptyRequestedRemoteIndices, determinedKibanaIndex)
       case (None, None) =>
-        if (requestContext.allIndicesAndAliases.nonEmpty) {
+        if (requestContext.allIndicesAndAliases.nonEmpty || requestContext.allDataStreamsAndAliases.nonEmpty) {
           Task.now(ProcessResult.Ok(allAllowedIndices))
         } else {
           Task.now(ProcessResult.Failed(Some(Cause.IndexNotFound)))

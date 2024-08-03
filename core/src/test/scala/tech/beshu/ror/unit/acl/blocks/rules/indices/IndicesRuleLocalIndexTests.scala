@@ -85,14 +85,14 @@ trait IndicesRuleLocalIndexTests {
           found = Set(clusterIndexName("test"))
         )
       }
-      "two full name indexes passed, the same two full name indexes configured" in {
+      "two full name indexes passed, the same two full name indexes configured, no real indices" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1"), indexNameVar("test2")),
           requestIndices = Set(clusterIndexName("test2"), clusterIndexName("test1")),
           found = Set(clusterIndexName("test2"), clusterIndexName("test1"))
         )
       }
-      "two full name indexes passed, one the same, one different index configured" in {
+      "two full name indexes passed, one the same, one different index configured, no real indices" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1"), indexNameVar("test2")),
           requestIndices = Set(clusterIndexName("test1"), clusterIndexName("test3")),

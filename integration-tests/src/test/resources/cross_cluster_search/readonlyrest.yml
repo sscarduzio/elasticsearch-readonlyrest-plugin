@@ -11,22 +11,22 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "test1"
-      indices: ["test1_index", "etl2:test1_index"]
+      indices: ["test1_index", "private2:test1_index", "test1_ds", "private2:test1_ds"]
       auth_key: dev1:test
 
     - name: "test2"
-      indices: ["test2_index", "etl3:test1_index"]
+      indices: ["test2_index", "other_cluster:test1_index"]
       auth_key: dev2:test
 
     - name: "real life case"
-      indices: ["metrics_monitoring*", "etl1:etl_*"]
+      indices: ["metrics*", "private1:audit_*"]
       auth_key: dev3:test
 
-    - name: "Dev4 cannot access some logs indices on local cluster and etl* remote clusters"
+    - name: "Dev4 cannot access some logs indices on local cluster and private* remote clusters"
       type: forbid
       auth_key: dev4:test
       indices:
-        patterns: ["*-logs-smg-stats-*", "etl*:*-logs-smg-stats-*"]
+        patterns: ["*-logs-*", "private*:*-logs-*"]
         must_involve_indices: true
 
     - name: "Dev4 can access other indices"
