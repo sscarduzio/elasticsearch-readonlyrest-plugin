@@ -76,7 +76,7 @@ class RemoteIndicesManager(requestContext: RequestContext,
       }
   }
 
-  override def indicesPerDataStreamMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
+  override def backingIndicesPerDataStreamMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
     remoteDataStreams(requestContext.indexAttributes)
       .map {
         _.foldLeft(Map.empty[RemoteIndexName, Set[RemoteIndexName]]) {

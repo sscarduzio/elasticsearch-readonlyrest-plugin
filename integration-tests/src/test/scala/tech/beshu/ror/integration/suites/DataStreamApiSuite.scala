@@ -51,6 +51,9 @@ class DataStreamApiSuite
   private lazy val adminIndexManager = new IndexManager(client, esVersionUsed)
   private lazy val adminSearchManager = new SearchManager(client, esVersionUsed)
   private lazy val adminTemplateManager = new IndexTemplateManager(client, esVersionUsed)
+  private lazy val adminEnhancedDataStreamManager = new EnhancedDataStreamManager(
+    adminDataStreamManager, adminDocumentManager, adminIndexManager, adminTemplateManager
+  )
 
   private val adminDataStream = DataStreamNameGenerator.next("admin")
   private val devDataStream = DataStreamNameGenerator.next("dev")
@@ -60,7 +63,7 @@ class DataStreamApiSuite
     "Search API" - {
       "without rules should" - {
         "allow to search by data stream name" excludeES(allEs6x, allEs7xBelowEs79x) in {
-          createDataStream(adminDataStream, IndexTemplateNameGenerator.next)
+          createDataStream(adminDataStream)
           createDocsInDataStream(adminDataStream, 2)
 
           val searchResponse = adminSearchManager.search(adminDataStream)
@@ -91,7 +94,7 @@ class DataStreamApiSuite
             }
         }
         "allow to search by data stream alias" excludeES(allEs6x, allEs7xBelowEs714x) in {
-          createDataStream(adminDataStream, IndexTemplateNameGenerator.next)
+          createDataStream(adminDataStream)
           createDocsInDataStream(adminDataStream, 2)
 
           adminIndexManager
@@ -102,9 +105,9 @@ class DataStreamApiSuite
           searchResponse.totalHits should be(2)
         }
         "allow to search by data stream alias with wildcard" excludeES(allEs6x, allEs7xBelowEs714x) in {
-          createDataStream(adminDataStream, IndexTemplateNameGenerator.next)
+          createDataStream(adminDataStream)
           createDocsInDataStream(adminDataStream, 2)
-          createDataStream(devDataStream, IndexTemplateNameGenerator.next)
+          createDataStream(devDataStream)
           createDocsInDataStream(devDataStream, 1)
 
           adminIndexManager
@@ -118,7 +121,7 @@ class DataStreamApiSuite
           response.totalHits should be(3)
         }
         "allow to search by data stream backing index name" excludeES(allEs6x, allEs7xBelowEs79x) in {
-          createDataStream(adminDataStream, IndexTemplateNameGenerator.next)
+          createDataStream(adminDataStream)
           createDocsInDataStream(adminDataStream, 1)
           adminIndexManager.rollover(adminDataStream).force()
           createDocsInDataStream(adminDataStream, 1)
@@ -133,7 +136,7 @@ class DataStreamApiSuite
           }
         }
         "allow to search by data stream backing index with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
-          createDataStream(adminDataStream, IndexTemplateNameGenerator.next)
+          createDataStream(adminDataStream)
           createDocsInDataStream(adminDataStream, 1)
           adminIndexManager.rollover(adminDataStream)
           createDocsInDataStream(adminDataStream, 1)
@@ -158,7 +161,7 @@ class DataStreamApiSuite
             ("data-stream-test", 1)
           )
             .foreach { case (dataStream, docsCount) =>
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
               createDocsInDataStream(dataStream, docsCount)
             }
 
@@ -183,7 +186,7 @@ class DataStreamApiSuite
             ("data-stream-test", 1)
           )
             .foreach { case (dataStream, docsCount) =>
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
               createDocsInDataStream(dataStream, docsCount)
             }
 
@@ -212,7 +215,7 @@ class DataStreamApiSuite
             ("data-stream-test", 1)
           )
             .foreach { case (dataStream, docsCount) =>
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
               createDocsInDataStream(dataStream, docsCount)
             }
 
@@ -236,7 +239,7 @@ class DataStreamApiSuite
             ("data-stream-test", 1)
           )
             .foreach { case (dataStream, docsCount) =>
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
               createDocsInDataStream(dataStream, docsCount)
             }
 
@@ -259,7 +262,7 @@ class DataStreamApiSuite
             ("data-stream-test", 1)
           )
             .foreach { case (dataStream, docsCount) =>
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
               createDocsInDataStream(dataStream, docsCount)
             }
 
@@ -282,7 +285,7 @@ class DataStreamApiSuite
             (testDataStream, 1)
           )
             .foreach { case (dataStream, docsCount) =>
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
               createDocsInDataStream(dataStream, docsCount)
             }
 
@@ -305,7 +308,7 @@ class DataStreamApiSuite
             (testDataStream, 1)
           )
             .foreach { case (dataStream, docsCount) =>
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
               createDocsInDataStream(dataStream, docsCount)
             }
 
@@ -335,7 +338,7 @@ class DataStreamApiSuite
             (testDataStream, 1)
           )
             .foreach { case (dataStream, docsCount) =>
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
               createDocsInDataStream(dataStream, docsCount)
             }
 
@@ -364,7 +367,7 @@ class DataStreamApiSuite
       "without indices rule should" - {
         "allow to add documents to data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val dataStream = DataStreamNameGenerator.next("admin")
-          createDataStream(dataStream, IndexTemplateNameGenerator.next)
+          createDataStream(dataStream)
           createDocsInDataStream(dataStream, 1)
         }
       }
@@ -377,7 +380,7 @@ class DataStreamApiSuite
               "data-stream-test"
             )
               .foreach { dataStream =>
-                createDataStream(dataStream, IndexTemplateNameGenerator.next)
+                createDataStream(dataStream)
               }
 
             val documentManager = new DocumentManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
@@ -400,7 +403,7 @@ class DataStreamApiSuite
               "data-stream-test"
             )
               .foreach { dataStream =>
-                createDataStream(dataStream, IndexTemplateNameGenerator.next)
+                createDataStream(dataStream)
               }
 
             val documentManager = new DocumentManager(clients.head.basicAuthClient("user10", "pass"), esVersionUsed)
@@ -422,12 +425,12 @@ class DataStreamApiSuite
     }
     "allow to add documents to data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
       val dataStream = DataStreamNameGenerator.next("admin")
-      createDataStream(dataStream, IndexTemplateNameGenerator.next)
+      createDataStream(dataStream)
       createDocsInDataStream(dataStream, 1)
     }
     "should allow to rollover data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
       val dataStream = DataStreamNameGenerator.next("admin")
-      createDataStream(dataStream, IndexTemplateNameGenerator.next)
+      createDataStream(dataStream)
 
       List.range(0, 2).foreach { _ =>
         createDocsInDataStream(dataStream, 1)
@@ -446,7 +449,7 @@ class DataStreamApiSuite
       "without data_streams rule should" - {
         "allow to create data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val dataStream = adminDataStream
-          createDataStream(dataStream, IndexTemplateNameGenerator.next)
+          createDataStream(dataStream)
         }
       }
       "with data_streams rule should" - {
@@ -489,8 +492,8 @@ class DataStreamApiSuite
             val dataStream1 = DataStreamNameGenerator.next("admin")
             val dataStream2 = DataStreamNameGenerator.next("dev")
 
-            createDataStream(dataStream1, IndexTemplateNameGenerator.next)
-            createDataStream(dataStream2, IndexTemplateNameGenerator.next)
+            createDataStream(dataStream1)
+            createDataStream(dataStream2)
 
             val response = adminDataStreamManager.getAllDataStreams()
             response should have statusCode 200
@@ -501,8 +504,8 @@ class DataStreamApiSuite
           "allow to get only allowed data streams when" - {
             "exact data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
               val dataStream = "data-stream-prod"
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
-              createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
+              createDataStream(DataStreamNameGenerator.next("dev"))
 
               val dsm = new DataStreamManager(user2Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
@@ -512,10 +515,10 @@ class DataStreamApiSuite
             "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
               val dataStream1 = DataStreamNameGenerator.next("test")
               val dataStream2 = DataStreamNameGenerator.next("test")
-              createDataStream(dataStream1, IndexTemplateNameGenerator.next)
-              createDataStream(dataStream2, IndexTemplateNameGenerator.next)
-              createDataStream("data-stream-prod", IndexTemplateNameGenerator.next)
-              createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
+              createDataStream(dataStream1)
+              createDataStream(dataStream2)
+              createDataStream("data-stream-prod")
+              createDataStream(DataStreamNameGenerator.next("dev"))
 
               val dsm = new DataStreamManager(user1Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
@@ -530,8 +533,8 @@ class DataStreamApiSuite
               val dataStream1 = DataStreamNameGenerator.next("admin")
               val dataStream2 = DataStreamNameGenerator.next("dev")
 
-              createDataStream(dataStream1, IndexTemplateNameGenerator.next)
-              createDataStream(dataStream2, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream1)
+              createDataStream(dataStream2)
 
               val dsm = new DataStreamManager(user4Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
@@ -542,8 +545,8 @@ class DataStreamApiSuite
               val dataStream1 = DataStreamNameGenerator.next("admin")
               val dataStream2 = DataStreamNameGenerator.next("dev")
 
-              createDataStream(dataStream1, IndexTemplateNameGenerator.next)
-              createDataStream(dataStream2, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream1)
+              createDataStream(dataStream2)
 
               val dsm = new DataStreamManager(user4Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
@@ -555,9 +558,9 @@ class DataStreamApiSuite
               val dataStream2 = DataStreamNameGenerator.next("test")
               val dataStream3 = DataStreamNameGenerator.next("admin")
 
-              createDataStream(dataStream1, IndexTemplateNameGenerator.next)
-              createDataStream(dataStream2, IndexTemplateNameGenerator.next)
-              createDataStream(dataStream3, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream1)
+              createDataStream(dataStream2)
+              createDataStream(dataStream3)
 
               val dsm = new DataStreamManager(user3Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
@@ -565,9 +568,9 @@ class DataStreamApiSuite
               response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
             }
             "in the allowed indices list there is only the name of the stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
-              createDataStream("user11_index1", IndexTemplateNameGenerator.next)
-              createDataStream("user11_index200", IndexTemplateNameGenerator.next)
-              createDataStream("user11_index300", IndexTemplateNameGenerator.next)
+              createDataStream("user11_index1")
+              createDataStream("user11_index200")
+              createDataStream("user11_index300")
 
               val dsm = new DataStreamManager(user11Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
@@ -579,7 +582,7 @@ class DataStreamApiSuite
           "return empty list of data streams when" - {
             "the user has no access to any backing indices" excludeES(allEs6x, allEs7xBelowEs79x) in {
               val dataStream = DataStreamNameGenerator.next("admin")
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
 
               val dsm = new DataStreamManager(user1Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
@@ -595,8 +598,8 @@ class DataStreamApiSuite
             val dataStream1 = DataStreamNameGenerator.next("admin")
             val dataStream2 = DataStreamNameGenerator.next("dev")
 
-            createDataStream(dataStream1, IndexTemplateNameGenerator.next)
-            createDataStream(dataStream2, IndexTemplateNameGenerator.next)
+            createDataStream(dataStream1)
+            createDataStream(dataStream2)
 
             val response = adminDataStreamManager.getDataStream(dataStream1)
             response should have statusCode 200
@@ -606,8 +609,8 @@ class DataStreamApiSuite
         "with data_streams rule should" - {
           "exact data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
             val dataStream = "data-stream-prod"
-            createDataStream(dataStream, IndexTemplateNameGenerator.next)
-            createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
+            createDataStream(dataStream)
+            createDataStream(DataStreamNameGenerator.next("dev"))
 
             val dsm = new DataStreamManager(user2Client, esVersionUsed)
             val response = dsm.getDataStream(dataStream)
@@ -617,10 +620,10 @@ class DataStreamApiSuite
           "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
             val dataStream1 = DataStreamNameGenerator.next("test")
             val dataStream2 = DataStreamNameGenerator.next("test")
-            createDataStream(dataStream1, IndexTemplateNameGenerator.next)
-            createDataStream(dataStream2, IndexTemplateNameGenerator.next)
-            createDataStream("data-stream-prod", IndexTemplateNameGenerator.next)
-            createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
+            createDataStream(dataStream1)
+            createDataStream(dataStream2)
+            createDataStream("data-stream-prod")
+            createDataStream(DataStreamNameGenerator.next("dev"))
 
             val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val response = dsm.getDataStream(dataStream1)
@@ -632,7 +635,7 @@ class DataStreamApiSuite
           "allow to get data stream when" - {
             "the index name does match the allowed indices" excludeES(allEs6x, allEs7xBelowEs79x) in {
               val dataStream = DataStreamNameGenerator.next("test")
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
 
               val dsm = new DataStreamManager(user3Client, esVersionUsed)
               val response = dsm.getDataStream(dataStream)
@@ -643,7 +646,7 @@ class DataStreamApiSuite
           "return empty data streams when" - {
             "the index name does not match the allowed indices" excludeES(allEs6x, allEs7xBelowEs79x) in {
               val dataStream = DataStreamNameGenerator.next("admin")
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDataStream(dataStream)
 
               val dsm = new DataStreamManager(user3Client, esVersionUsed)
               val response = dsm.getDataStream(dataStream)
@@ -659,9 +662,9 @@ class DataStreamApiSuite
         "allow to get data stream stats" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val dataStream1 = DataStreamNameGenerator.next("admin")
           val dataStream2 = DataStreamNameGenerator.next("admin")
-          createDataStream(dataStream1, IndexTemplateNameGenerator.next)
+          createDataStream(dataStream1)
           createDocsInDataStream(dataStream1, 1)
-          createDataStream(dataStream2, IndexTemplateNameGenerator.next)
+          createDataStream(dataStream2)
           createDocsInDataStream(dataStream2, 2)
           val response = adminDataStreamManager.getDataStreamStats("*")
           response should have statusCode 200
@@ -673,7 +676,7 @@ class DataStreamApiSuite
         "allow to get data stream stats when" - {
           "the data stream name does match the allowed data stream names" excludeES(allEs6x, allEs7xBelowEs79x) in {
             val dataStream = DataStreamNameGenerator.next("test")
-            createDataStream(dataStream, IndexTemplateNameGenerator.next)
+            createDataStream(dataStream)
 
             val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val response = dsm.getDataStreamStats(dataStream)
@@ -685,7 +688,7 @@ class DataStreamApiSuite
         "forbid to get data stream stats when" - {
           "the data stream name does not match the allowed data stream names" excludeES(allEs6x, allEs7xBelowEs79x) in {
             val dataStream = DataStreamNameGenerator.next("admin")
-            createDataStream(dataStream, IndexTemplateNameGenerator.next)
+            createDataStream(dataStream)
 
             val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val response = dsm.getDataStreamStats(dataStream)
@@ -698,7 +701,7 @@ class DataStreamApiSuite
       "without data_streams rule should" - {
         "allow to delete all data streams" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val dataStream1 = DataStreamNameGenerator.next("admin")
-          createDataStream(dataStream1, IndexTemplateNameGenerator.next)
+          createDataStream(dataStream1)
           val response = adminDataStreamManager.deleteDataStream(dataStream1)
           response should have statusCode 200
         }
@@ -707,8 +710,8 @@ class DataStreamApiSuite
         "allow to delete only allowed data streams when" - {
           "exact data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
             val dataStream = "data-stream-prod"
-            createDataStream(dataStream, IndexTemplateNameGenerator.next)
-            createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
+            createDataStream(dataStream)
+            createDataStream(DataStreamNameGenerator.next("dev"))
 
             val dsm = new DataStreamManager(user2Client, esVersionUsed)
             val response = dsm.deleteDataStream(dataStream)
@@ -717,10 +720,10 @@ class DataStreamApiSuite
           "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
             val dataStream1 = DataStreamNameGenerator.next("test")
             val dataStream2 = DataStreamNameGenerator.next("test")
-            createDataStream(dataStream1, IndexTemplateNameGenerator.next)
-            createDataStream(dataStream2, IndexTemplateNameGenerator.next)
-            createDataStream("data-stream-prod", IndexTemplateNameGenerator.next)
-            createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
+            createDataStream(dataStream1)
+            createDataStream(dataStream2)
+            createDataStream("data-stream-prod")
+            createDataStream(DataStreamNameGenerator.next("dev"))
 
             val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val response = dsm.deleteDataStream(dataStream1)
@@ -801,7 +804,7 @@ class DataStreamApiSuite
       "without data_streams rule should" - {
         "allow to modify data streams" excludeES(allEs6x, allEs7xBelowEs716x) in {
           val dataStream = DataStreamNameGenerator.next("admin")
-          createDataStream(dataStream, IndexTemplateNameGenerator.next)
+          createDataStream(dataStream)
 
           List.range(0, 2).foreach { _ =>
             createDocsInDataStream(dataStream, 1)
@@ -831,7 +834,7 @@ class DataStreamApiSuite
         "allow to modify only allowed data streams when" - {
           "exact data stream matching" excludeES(allEs6x, allEs7xBelowEs716x) in {
             val dataStream = "data-stream-prod"
-            createDataStream(dataStream, IndexTemplateNameGenerator.next)
+            createDataStream(dataStream)
 
             List.range(0, 2).foreach { _ =>
               createDocsInDataStream(dataStream, 1)
@@ -858,7 +861,7 @@ class DataStreamApiSuite
           }
           "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs716x) in {
             val dataStream = DataStreamNameGenerator.next("test")
-            createDataStream(dataStream, IndexTemplateNameGenerator.next)
+            createDataStream(dataStream)
             List.range(0, 2).foreach { _ =>
               createDocsInDataStream(dataStream, 1)
               adminIndexManager.rollover(dataStream).force()
@@ -887,7 +890,7 @@ class DataStreamApiSuite
         "forbid to modify data streams when" - {
           "the data stream name does not match the allowed data stream names" excludeES(allEs6x, allEs7xBelowEs716x) in {
             val dataStream = DataStreamNameGenerator.next("admin")
-            createDataStream(dataStream, IndexTemplateNameGenerator.next)
+            createDataStream(dataStream)
             List.range(0, 2).foreach { _ =>
               createDocsInDataStream(dataStream, 1)
               adminIndexManager.rollover(dataStream).force()
@@ -914,11 +917,11 @@ class DataStreamApiSuite
           }
           "one of the data streams does not match the allowed data stream names" excludeES(allEs6x, allEs7xBelowEs716x) in {
             val dataStream = DataStreamNameGenerator.next("test")
-            createDataStream(dataStream, IndexTemplateNameGenerator.next)
+            createDataStream(dataStream)
             val dsIndices = dataStreamBackingIndices(dataStream)
             dsIndices.length should be(1)
             val forbiddenDataStream = DataStreamNameGenerator.next("admin")
-            createDataStream(forbiddenDataStream, IndexTemplateNameGenerator.next)
+            createDataStream(forbiddenDataStream)
             val forbiddenDsIndices = dataStreamBackingIndices(forbiddenDataStream)
             forbiddenDsIndices.length should be(1)
 
@@ -950,7 +953,7 @@ class DataStreamApiSuite
         "allow to modify only data streams when" - {
           "backing index name matches allowed indices" excludeES(allEs6x, allEs7xBelowEs716x) in {
             val dataStream = DataStreamNameGenerator.next("test")
-            createDataStream(dataStream, IndexTemplateNameGenerator.next)
+            createDataStream(dataStream)
 
             List.range(0, 2).foreach { _ =>
               createDocsInDataStream(dataStream, 1)
@@ -979,7 +982,7 @@ class DataStreamApiSuite
         "forbid to modify data stream when" - {
           "backing index name does not match allowed indices" excludeES(allEs6x, allEs7xBelowEs716x) in {
             val dataStream = DataStreamNameGenerator.next("admin")
-            createDataStream(dataStream, IndexTemplateNameGenerator.next)
+            createDataStream(dataStream)
 
             List.range(0, 2).foreach { _ =>
               createDocsInDataStream(dataStream, 1)
@@ -1009,16 +1012,13 @@ class DataStreamApiSuite
     }
   }
 
-  private def createDataStream(dataStreamName: String, indexTemplateName: String): Unit = {
-    adminTemplateManager.createTemplate(indexTemplateName, indexTemplate(dataStreamName)).force()
-    val createDataStreamResponse = adminDataStreamManager.createDataStream(dataStreamName)
-    createDataStreamResponse should have statusCode 200
+  private def createDataStream(dataStreamName: String): Unit = {
+    adminEnhancedDataStreamManager.createDataStream(dataStreamName)
   }
 
   private def createDocsInDataStream(streamName: String, count: Int): Unit = {
     List.range(0, count).foreach { c =>
-      val doc = ujson.read(s"""{ "message":"test$c", "@timestamp": "${format(Instant.now())}"}""")
-      adminDocumentManager.createDocWithGeneratedId(streamName, doc).force()
+      adminEnhancedDataStreamManager.createDocInDataStream(streamName, message = s"test$c")
     }
   }
 

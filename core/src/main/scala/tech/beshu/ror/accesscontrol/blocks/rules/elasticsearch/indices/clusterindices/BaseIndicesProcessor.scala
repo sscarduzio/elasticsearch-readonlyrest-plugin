@@ -177,7 +177,7 @@ trait BaseIndicesProcessor {
 
   private def filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable](requestedIndices: UniqueNonEmptyList[T])(implicit indicesManager: IndicesManager[T]) = {
     indicesManager
-      .indicesPerDataStreamMap
+      .backingIndicesPerDataStreamMap
       .map { backingIndicesPerDataStream =>
         val requestedBackingIndicesMatcher = PatternsMatcher.create(requestedIndices)
 
@@ -258,7 +258,7 @@ trait BaseIndicesProcessor {
                                                                                                                  (implicit indicesManager: IndicesManager[T]): Task[Set[T]] = {
     for {
       allDataStreams <- indicesManager.allDataStreams
-      backingIndicesPerDataStream <- indicesManager.indicesPerDataStreamMap
+      backingIndicesPerDataStream <- indicesManager.backingIndicesPerDataStreamMap
     } yield {
       val requestedDataStreamsNames = requestedIndices
       val requestedDataStreams = PatternsMatcher.create(requestedDataStreamsNames).filter(allDataStreams)
@@ -360,7 +360,7 @@ object BaseIndicesProcessor {
 
     def dataStreamsPerAliasMap: Task[Map[T, Set[T]]]
 
-    def indicesPerDataStreamMap: Task[Map[T, Set[T]]]
+    def backingIndicesPerDataStreamMap: Task[Map[T, Set[T]]]
 
     def allowedIndicesMatcher: PatternsMatcher[T]
   }

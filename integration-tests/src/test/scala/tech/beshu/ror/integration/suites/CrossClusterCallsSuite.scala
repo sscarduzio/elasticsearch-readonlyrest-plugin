@@ -27,13 +27,10 @@ import tech.beshu.ror.utils.containers.SecurityType.{RorWithXpackSecurity, XPack
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
-import tech.beshu.ror.utils.elasticsearch.{DataStreamManager, DocumentManager, IndexManager, IndexTemplateManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{EnhancedDataStreamManager, DataStreamManager, DocumentManager, IndexManager, IndexTemplateManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
-import org.scalatest.matchers.should.Matchers.*
-import tech.beshu.ror.utils.containers.SingletonEsContainerWithRorSecurity.{allEs6x, allEs7xBelowEs77x}
 
-import java.time.Instant
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -97,7 +94,7 @@ class CrossClusterCallsSuite
   private lazy val user3SearchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
   private lazy val user4SearchManager = new SearchManager(basicAuthClient("dev4", "test"), esVersionUsed)
   private lazy val user5SearchManager = new SearchManager(basicAuthClient("dev5", "test"), esVersionUsed)
-  private lazy val indexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
+  private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {
@@ -117,35 +114,31 @@ class CrossClusterCallsSuite
         "he queries remote data streams only by data stream name" excludeES (allEs7xBelowEs77x) in {
           val result = user1SearchManager.search("private2:test1_ds")
           result should have statusCode 200
-          result.searchHits.arr.size should be(3)
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
-          searchResults.sorted should be(List("test0", "test1", "test2"))
+          searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote data streams only by data stream name with wildcard" excludeES (allEs7xBelowEs77x) in {
           val result = user1SearchManager.search("private2:test1_d*")
           result should have statusCode 200
-          result.searchHits.arr.size should be(3)
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
-          searchResults.sorted should be(List("test0", "test1", "test2"))
+          searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote data streams only by data stream backing indices" excludeES (allEs7xBelowEs77x) in {
-          val resolveIndexResponse = indexManager.resolve("private2:test1_ds")
+          val resolveIndexResponse = user1IndexManager.resolve("private2:test1_ds")
           resolveIndexResponse.dataStreams.size should be(1)
           val dataStream = resolveIndexResponse.dataStreams.head
           val searchResults = dataStream.backingIndices.flatMap { backingIndex =>
             val result = user1SearchManager.search(s"private2:$backingIndex")
             result should have statusCode 200
-            result.searchHits.arr.size should be(1)
             result.searchHits.map(_("_source").obj("message").str)
           }
-          searchResults.sorted should be(List("test0", "test1", "test2"))
+          searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote data streams only by data stream backing index with wildcard" excludeES (allEs7xBelowEs77x) in {
           val result = user1SearchManager.search(s"private2:.ds-test1_ds*")
           result should have statusCode 200
-          result.searchHits.arr.size should be(3)
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
-          searchResults.sorted should be(List("test0", "test1", "test2"))
+          searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote xpack cluster indices" in {
           val result = user5SearchManager.search("xpack:xpack*")
@@ -256,35 +249,31 @@ class CrossClusterCallsSuite
         "he queries remote data streams by data stream name" excludeES(allEs6x, allEs7xBelowEs77x) in {
           val result = user1SearchManager.asyncSearch("private2:test1_ds")
           result should have statusCode 200
-          result.searchHits.arr.size should be(3)
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
-          searchResults.sorted should be(List("test0", "test1", "test2"))
+          searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote data streams only by data stream name with wildcard" excludeES (allEs7xBelowEs77x) in {
           val result = user1SearchManager.asyncSearch("private2:test1_d*")
           result should have statusCode 200
-          result.searchHits.arr.size should be(3)
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
-          searchResults.sorted should be(List("test0", "test1", "test2"))
+          searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote data streams only by data stream backing indices" excludeES (allEs7xBelowEs77x) in {
-          val resolveIndexResponse = indexManager.resolve("private2:test1_ds")
+          val resolveIndexResponse = user1IndexManager.resolve("private2:test1_ds")
           resolveIndexResponse.dataStreams.size should be(1)
           val dataStream = resolveIndexResponse.dataStreams.head
           val searchResults = dataStream.backingIndices.flatMap { backingIndex =>
             val result = user1SearchManager.asyncSearch(s"private2:$backingIndex")
             result should have statusCode 200
-            result.searchHits.arr.size should be(1)
             result.searchHits.map(_("_source").obj("message").str)
           }
-          searchResults.sorted should be(List("test0", "test1", "test2"))
+          searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote data streams only by data stream backing index with wildcard" excludeES (allEs7xBelowEs77x) in {
           val result = user1SearchManager.asyncSearch(s"private2:.ds-test1_ds*")
           result should have statusCode 200
-          result.searchHits.arr.size should be(3)
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
-          searchResults.sorted should be(List("test0", "test1", "test2"))
+          searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote index which is not forbidden in 'pub' remote cluster" excludeES(allEs6x, allEs7xBelowEs77x) in {
           val result = user4SearchManager.asyncSearch("pu*:*logs*")
@@ -556,53 +545,13 @@ object CrossClusterCallsSuite extends StrictLogging {
     if (Version.greaterOrEqualThan(esVersion, 7, 9, 0)) {
       val templateManager = new IndexTemplateManager(adminRestClient, esVersion)
       val dataStreamManager = new DataStreamManager(adminRestClient, esVersion)
-      createDataStream(templateManager, dataStreamManager, "test1_ds", "it_test1_ds")
-      createDocsInDataStream(documentManager, indexManager, "test1_ds", count = 3)
-    }
-  }
-
-  private def createDataStream(adminTemplateManager: IndexTemplateManager,
-                               adminDataStreamManager: DataStreamManager,
-                               dataStreamName: String,
-                               indexTemplateName: String): Unit = {
-    adminTemplateManager.createTemplate(indexTemplateName, indexTemplate(dataStreamName)).force()
-    adminDataStreamManager.createDataStream(dataStreamName)
-  }
-
-  private def indexTemplate(dataStreamName: String) = ujson.read(
-    s"""
-       |{
-       |  "index_patterns": ["$dataStreamName*"],
-       |  "data_stream": { },
-       |  "priority": 500,
-       |  "template": {
-       |    "mappings": {
-       |      "properties": {
-       |        "@timestamp": {
-       |          "type": "date",
-       |          "format": "date_optional_time||epoch_millis"
-       |        },
-       |        "message": {
-       |          "type": "wildcard"
-       |        }
-       |      }
-       |    }
-       |  }
-       |}
-       |""".stripMargin
-  )
-
-  private def createDocsInDataStream(adminDocumentManager: DocumentManager, indexManager: IndexManager, streamName: String, count: Int): Unit = {
-    def format(instant: Instant) = instant.toString
-
-    def createDoc(c: Int): Unit = {
-      val doc = ujson.read(s"""{ "message":"test$c", "@timestamp": "${format(Instant.now())}"}""")
-      adminDocumentManager.createDocWithGeneratedId(streamName, doc).force()
-    }
-
-    List.range(1, count).foldLeft(createDoc(0)) { case (_, c) =>
-      indexManager.rollover(streamName)
-      createDoc(c)
+      val enhancedDataStreamManager = new EnhancedDataStreamManager(dataStreamManager, documentManager, indexManager, templateManager)
+      enhancedDataStreamManager.createDataStream("test1_ds")
+      enhancedDataStreamManager.createDocsInDataStream(
+        name = "test1_ds",
+        messages = NonEmptyList.of("message1", "message2", "message3"),
+        rolloverAfterEachDoc = true
+      )
     }
   }
 
