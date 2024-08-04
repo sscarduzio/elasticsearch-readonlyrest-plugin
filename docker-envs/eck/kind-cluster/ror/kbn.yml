@@ -3,8 +3,8 @@ kind: Kibana
 metadata:
   name: quickstart
 spec:
-  version: 8.0.0
-  image: beshultd/kibana-readonlyrest:8.0.0-ror-latest
+  version: ${KBN_VERSION}
+  image: beshultd/kibana-readonlyrest:${KBN_VERSION}-ror-latest
   count: 2
   elasticsearchRef:
     name: quickstart
