@@ -83,14 +83,14 @@ class SearchApiSuite
         }
       }
       "data stream is being searched" when {
-        "full name passed" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "full name passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search("test_logs_ds")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search("test*")
 
           result should have statusCode 200
@@ -111,7 +111,7 @@ class SearchApiSuite
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "backing index name passed" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "backing index name passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val backingIndices =
             adminIndexManager.resolve("test_logs_ds")
               .dataStreams
@@ -128,7 +128,7 @@ class SearchApiSuite
             }
           results.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "backing index name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "backing index name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val backingIndices =
             adminIndexManager.resolve("test_logs_ds")
               .dataStreams

@@ -111,19 +111,19 @@ class CrossClusterCallsSuite
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
         }
-        "he queries remote data streams only by data stream name" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote data streams only by data stream name" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search("private2:test1_ds")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream name with wildcard" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote data streams only by data stream name with wildcard" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search("private2:test1_d*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream backing indices" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote data streams only by data stream backing indices" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val resolveIndexResponse = user1IndexManager.resolve("private2:test1_ds")
           resolveIndexResponse.dataStreams.size should be(1)
           val dataStream = resolveIndexResponse.dataStreams.head
@@ -134,7 +134,7 @@ class CrossClusterCallsSuite
           }
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream backing index with wildcard" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote data streams only by data stream backing index with wildcard" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search(s"private2:.ds-test1_ds*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
@@ -246,19 +246,19 @@ class CrossClusterCallsSuite
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
         }
-        "he queries remote data streams by data stream name" excludeES(allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote data streams by data stream name" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.asyncSearch("private2:test1_ds")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream name with wildcard" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote data streams only by data stream name with wildcard" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.asyncSearch("private2:test1_d*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream backing indices" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote data streams only by data stream backing indices" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val resolveIndexResponse = user1IndexManager.resolve("private2:test1_ds")
           resolveIndexResponse.dataStreams.size should be(1)
           val dataStream = resolveIndexResponse.dataStreams.head
@@ -269,7 +269,7 @@ class CrossClusterCallsSuite
           }
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream backing index with wildcard" excludeES (allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote data streams only by data stream backing index with wildcard" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.asyncSearch(s"private2:.ds-test1_ds*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
