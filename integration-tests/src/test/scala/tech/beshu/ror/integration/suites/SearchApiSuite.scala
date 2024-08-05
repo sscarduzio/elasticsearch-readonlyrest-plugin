@@ -83,35 +83,35 @@ class SearchApiSuite
         }
       }
       "data stream is being searched" when {
-        "full name passed" excludeES (allEs7xBelowEs77x) in {
+        "full name passed" excludeES (allEs6x, allEs7xBelowEs77x) in {
           val result = user1SearchManager.search("test_logs_ds")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "name with wildcard passed" excludeES (allEs7xBelowEs77x) in {
+        "name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs77x) in {
           val result = user1SearchManager.search("test*")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "full alias name passed" excludeES (allEs7xBelowEs77x) in {
+        "full alias name passed" excludeES (allEs6x, allEs7xBelowEs714x) in {
           val result = user1SearchManager.search("alias_ds")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "alias name with wildcard passed" excludeES (allEs7xBelowEs77x) in {
+        "alias name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs714x) in {
           val result = user1SearchManager.search("alias*")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "backing index name passed" excludeES (allEs7xBelowEs77x) in {
+        "backing index name passed" excludeES (allEs6x, allEs7xBelowEs77x) in {
           val backingIndices =
             adminIndexManager.resolve("test_logs_ds")
               .dataStreams
@@ -128,7 +128,7 @@ class SearchApiSuite
             }
           results.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "backing index name with wildcard passed" excludeES (allEs7xBelowEs77x) in {
+        "backing index name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs77x) in {
           val backingIndices =
             adminIndexManager.resolve("test_logs_ds")
               .dataStreams
@@ -276,7 +276,7 @@ object SearchApiSuite {
       val dataStreamManager = new DataStreamManager(adminRestClient, esVersion)
       val templateManager = new IndexTemplateManager(adminRestClient, esVersion)
       val enhancedDataStreamManager = new EnhancedDataStreamManager(dataStreamManager, documentManager, indexManager, templateManager)
-      createDataStreamAndDocuments(enhancedDataStreamManager, indexManager)
+      createDataStreamAndDocuments(enhancedDataStreamManager, indexManager, esVersion)
     }
 
     createOldFashionedDataStream(indexManager, documentManager)
@@ -284,7 +284,8 @@ object SearchApiSuite {
   }
 
   private def createDataStreamAndDocuments(enhancedDataStreamManager: EnhancedDataStreamManager,
-                                      indexManager: IndexManager): Unit = {
+                                           indexManager: IndexManager,
+                                           esVersion: String): Unit = {
     enhancedDataStreamManager.createDataStream("test_logs_ds")
     enhancedDataStreamManager.createDocsInDataStream(
       name = "test_logs_ds",
@@ -292,11 +293,13 @@ object SearchApiSuite {
       rolloverAfterEachDoc = true
     )
 
-    indexManager
-      .updateAliases(
-        AliasAction.Add(index = "test_logs_ds", alias = "alias_ds"),
-      )
-      .force()
+    if (Version.greaterOrEqualThan(esVersion, 7, 14, 0)) {
+      indexManager
+        .updateAliases(
+          AliasAction.Add(index = "test_logs_ds", alias = "alias_ds"),
+        )
+        .force()
+    }
   }
 
   private def createOldFashionedDataStream(indexManager: IndexManager,
