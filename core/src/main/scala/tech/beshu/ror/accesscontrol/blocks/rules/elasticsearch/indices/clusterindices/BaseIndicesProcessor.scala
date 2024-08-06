@@ -136,7 +136,7 @@ trait BaseIndicesProcessor {
         // indices requested
         filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(requestedIndices) ::
           filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured() ::
-          filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured() ::
+          filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured(requestedIndices) ::
           // aliases requested
           filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(requestedIndices) ::
           filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured(requestedIndices) ::
@@ -175,9 +175,44 @@ trait BaseIndicesProcessor {
     Task.now(Set.empty[T])
   }
 
-  private def filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName]() = {
-    // this case already handled by 'allIndices' - it already contains backing indices of data streams
-    Task.now(Set.empty[T])
+  private def filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable](requestedIndices: UniqueNonEmptyList[T])(implicit indicesManager: IndicesManager[T]) = {
+    indicesManager
+      .backingIndicesPerDataStreamMap
+      .map { backingIndicesPerDataStream =>
+        val requestedBackingIndicesMatcher = PatternsMatcher.create(requestedIndices)
+
+        val requestedBackingIndicesPerDataStream: Map[T, UniqueNonEmptyList[T]] =
+          backingIndicesPerDataStream
+            .flatMap {
+              case (dataStreamName, backingIndices) =>
+                // we skip the backing indices for a given data stream when the data stream name matches the indices pattern too
+                // (for indices pattern like (e.g. `*logs*`) the query would be exploded to logs_ds, .ds-logs_ds_0001, .ds-logs_ds_0002, etc.
+                // passing the data stream name for such case is enough
+                if (!requestedBackingIndicesMatcher.`match`(dataStreamName)) {
+                  UniqueNonEmptyList.fromIterable(
+                      requestedBackingIndicesMatcher.filter(backingIndices)
+                    )
+                    .map(indices => (dataStreamName, indices))
+                } else {
+                  Option.empty[(T, UniqueNonEmptyList[T])]
+                }
+            }
+        val allowedMatcher = indicesManager.allowedIndicesMatcher
+        val backingIndicesMatchedByAllowedDataStreamName =
+          requestedBackingIndicesPerDataStream
+            .filter {
+              case (dataStreamName, backingIndices) => allowedMatcher.`match`(dataStreamName)
+            }
+            .values
+            .flatten
+        val backingIndicesMatchedByAllowedBackingIndices =
+          requestedBackingIndicesPerDataStream
+            .flatMap {
+              case (dataStreamName, backingIndices) => allowedMatcher.filter(backingIndices)
+            }
+            .toSet
+        backingIndicesMatchedByAllowedDataStreamName ++ backingIndicesMatchedByAllowedBackingIndices
+      }
   }
 
   private def filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured[T <: ClusterIndexName : Matchable](requestedIndices: UniqueNonEmptyList[T])
@@ -223,11 +258,21 @@ trait BaseIndicesProcessor {
                                                                                                                  (implicit indicesManager: IndicesManager[T]): Task[Set[T]] = {
     for {
       allDataStreams <- indicesManager.allDataStreams
-      backingIndicesPerDataStream <- indicesManager.indicesPerDataStreamMap
+      backingIndicesPerDataStream <- indicesManager.backingIndicesPerDataStreamMap
     } yield {
       val requestedDataStreamsNames = requestedIndices
       val requestedDataStreams = PatternsMatcher.create(requestedDataStreamsNames).filter(allDataStreams)
-      val indicesOfRequestedDataStream = requestedDataStreams.flatMap(backingIndicesPerDataStream.getOrElse(_, Set.empty))
+      val allowedDataStreamsMatcher = indicesManager.allowedIndicesMatcher
+
+      val indicesOfRequestedDataStream =
+        requestedDataStreams
+          .flatMap { dataStreamName =>
+            if (!allowedDataStreamsMatcher.`match`(dataStreamName)) {
+              backingIndicesPerDataStream.getOrElse(dataStreamName, Set.empty)
+            } else {
+              Set.empty[T]
+            }
+          }
       indicesManager.allowedIndicesMatcher.filter(indicesOfRequestedDataStream)
     }
   }
@@ -315,7 +360,7 @@ object BaseIndicesProcessor {
 
     def dataStreamsPerAliasMap: Task[Map[T, Set[T]]]
 
-    def indicesPerDataStreamMap: Task[Map[T, Set[T]]]
+    def backingIndicesPerDataStreamMap: Task[Map[T, Set[T]]]
 
     def allowedIndicesMatcher: PatternsMatcher[T]
   }

@@ -73,7 +73,7 @@ class LocalIndicesManager(requestContext: RequestContext,
       }
   }
 
-  override def indicesPerDataStreamMap: Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
+  override def backingIndicesPerDataStreamMap: Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
     dataStreams(requestContext.indexAttributes)
       .foldLeft(Map.empty[LocalIndexName, Set[LocalIndexName]]) {
         case (acc, fullDataStream) =>

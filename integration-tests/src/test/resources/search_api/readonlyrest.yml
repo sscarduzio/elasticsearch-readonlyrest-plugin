@@ -11,7 +11,7 @@ readonlyrest:
 
     - name: "_search test"
       auth_key: user1:test
-      indices: ["all-logs", "logs-*"]
+      indices: ["all-logs", "logs-*", "test_logs_ds", "alias_ds"]
 
     - name: "::GETTER::"
       auth_key: "unrestricted:dev"

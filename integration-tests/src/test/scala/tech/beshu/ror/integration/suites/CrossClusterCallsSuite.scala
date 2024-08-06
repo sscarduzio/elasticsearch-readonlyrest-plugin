@@ -24,14 +24,14 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.SecurityType.{RorWithXpackSecurity, XPackSecurity}
-import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{EnhancedDataStreamManager, DataStreamManager, DocumentManager, IndexManager, IndexTemplateManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class CrossClusterCallsSuite
@@ -94,21 +94,51 @@ class CrossClusterCallsSuite
   private lazy val user3SearchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
   private lazy val user4SearchManager = new SearchManager(basicAuthClient("dev4", "test"), esVersionUsed)
   private lazy val user5SearchManager = new SearchManager(basicAuthClient("dev5", "test"), esVersionUsed)
+  private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
         "he queries local and remote indices" in eventually {
-          val result = user3SearchManager.search("etl1:etl*", "metrics*")
+          val result = user3SearchManager.search("private1:audit*", "metrics*")
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(
-            Set("metrics_monitoring_2020-03-26", "metrics_monitoring_2020-03-27", "etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
+            Set("metrics_2020-03-26", "metrics_2020-03-27", "private1:audit_2020-03-26", "private1:audit_2020-03-27")
           )
         }
         "he queries remote indices only" in {
-          val result = user1SearchManager.search("etl2:test1_index")
+          val result = user1SearchManager.search("private2:test1_index")
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
+        }
+        "he queries remote data streams only by data stream name" excludeES (allEs6x, allEs7xBelowEs79x) in {
+          val result = user1SearchManager.search("private2:test1_ds")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream name with wildcard" excludeES (allEs6x, allEs7xBelowEs79x) in {
+          val result = user1SearchManager.search("private2:test1_d*")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream backing indices" excludeES (allEs6x, allEs7xBelowEs79x) in {
+          val resolveIndexResponse = user1IndexManager.resolve("private2:test1_ds")
+          resolveIndexResponse.dataStreams.size should be(1)
+          val dataStream = resolveIndexResponse.dataStreams.head
+          val searchResults = dataStream.backingIndices.flatMap { backingIndex =>
+            val result = user1SearchManager.search(s"private2:$backingIndex")
+            result should have statusCode 200
+            result.searchHits.map(_("_source").obj("message").str)
+          }
+          searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream backing index with wildcard" excludeES (allEs6x, allEs7xBelowEs79x) in {
+          val result = user1SearchManager.search(s"private2:.ds-test1_ds*")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote xpack cluster indices" in {
           val result = user5SearchManager.search("xpack:xpack*")
@@ -136,12 +166,12 @@ class CrossClusterCallsSuite
     "return empty response" when {
       "user has no permission to do so" when {
         "he queries local and remote indices patterns" in {
-          val result = user2SearchManager.search("etl1:etl*", "metrics*")
+          val result = user2SearchManager.search("private1:audit*", "metrics*")
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
         "he queries remote indices patterns only" in {
-          val result = user2SearchManager.search("etl1:etl*")
+          val result = user2SearchManager.search("private1:audit*")
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
@@ -150,11 +180,11 @@ class CrossClusterCallsSuite
     "return 404" when {
       "user has no permission to do so" when {
         "he queries local and remote indices" in {
-          val result = user2SearchManager.search("etl1:etl_usage_2020-03-26", "metrics_monitoring_2020-03-26")
+          val result = user2SearchManager.search("private:audit_2020-03-26", "metrics_2020-03-26")
           result should have statusCode 404
         }
         "he queries remote indices only" in {
-          val result = user2SearchManager.search("etl2:test1_index")
+          val result = user2SearchManager.search("private2:test1_index")
           result should have statusCode 404
         }
       }
@@ -163,37 +193,37 @@ class CrossClusterCallsSuite
       "we want to forbid certain names of indices for a given user" when {
         "local indices are used" when {
           "requested index name with wildcard is the same as configured index name with wildcard" in {
-            val result = user4SearchManager.search("*-logs-smg-stats-*")
+            val result = user4SearchManager.search("*-logs-*")
             result should have statusCode 403
           }
           "requested index name with wildcard is more general version of the configured index name with wildcard" in {
-            val result = user4SearchManager.search("*-logs-smg-*")
+            val result = user4SearchManager.search("*-log*")
             result should have statusCode 403
           }
           "requested index name with wildcard is more specialized version of the configured index name with wildcard" in {
-            val result = user4SearchManager.search("*-logs-smg-stats-2020*")
+            val result = user4SearchManager.search("*-logs-2020*")
             result should have statusCode 403
           }
           "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" in {
-            val result = user4SearchManager.search("c0*")
+            val result = user4SearchManager.search("service1*")
             result should have statusCode 403
           }
         }
         "remote indices are used" when {
           "requested index name with wildcard is the same as configured index name with wildcard" in {
-            val result = user4SearchManager.search("e*:*-logs-smg-stats-*")
+            val result = user4SearchManager.search("p*:*-logs-*")
             result should have statusCode 403
           }
           "requested index name with wildcard is more general version of the configured index name with wildcard" in {
-            val result = user4SearchManager.search("e*:*-logs-smg-*")
+            val result = user4SearchManager.search("p*:*-log*")
             result should have statusCode 403
           }
           "requested index name with wildcard is more specialized version of the configured index name with wildcard" in {
-            val result = user4SearchManager.search("e*:*-logs-smg-stats-2020*")
+            val result = user4SearchManager.search("p*:*-logs-2020*")
             result should have statusCode 403
           }
           "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" in {
-            val result = user4SearchManager.search("e*:c0*")
+            val result = user4SearchManager.search("p*:service2*")
             result should have statusCode 403
           }
         }
@@ -205,16 +235,45 @@ class CrossClusterCallsSuite
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
         "he queries local and remote indices" excludeES(allEs6x, allEs7xBelowEs77x) in {
-          val result = user3SearchManager.asyncSearch("etl1:etl*", "metrics*")
+          val result = user3SearchManager.asyncSearch("private1:audit*", "metrics*")
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(
-            Set("metrics_monitoring_2020-03-26", "metrics_monitoring_2020-03-27", "etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
+            Set("metrics_2020-03-26", "metrics_2020-03-27", "private1:audit_2020-03-26", "private1:audit_2020-03-27")
           )
         }
         "he queries remote indices only" excludeES(allEs6x, allEs7xBelowEs77x) in {
-          val result = user1SearchManager.asyncSearch("etl2:test1_index")
+          val result = user1SearchManager.asyncSearch("private2:test1_index")
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
+        }
+        "he queries remote data streams by data stream name" excludeES(allEs6x, allEs7xBelowEs79x) in {
+          val result = user1SearchManager.asyncSearch("private2:test1_ds")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream name with wildcard" excludeES (allEs6x, allEs7xBelowEs79x) in {
+          val result = user1SearchManager.asyncSearch("private2:test1_d*")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream backing indices" excludeES (allEs6x, allEs7xBelowEs79x) in {
+          val resolveIndexResponse = user1IndexManager.resolve("private2:test1_ds")
+          resolveIndexResponse.dataStreams.size should be(1)
+          val dataStream = resolveIndexResponse.dataStreams.head
+          val searchResults = dataStream.backingIndices.flatMap { backingIndex =>
+            val result = user1SearchManager.asyncSearch(s"private2:$backingIndex")
+            result should have statusCode 200
+            result.searchHits.map(_("_source").obj("message").str)
+          }
+          searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream backing index with wildcard" excludeES (allEs6x, allEs7xBelowEs79x) in {
+          val result = user1SearchManager.asyncSearch(s"private2:.ds-test1_ds*")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote index which is not forbidden in 'pub' remote cluster" excludeES(allEs6x, allEs7xBelowEs77x) in {
           val result = user4SearchManager.asyncSearch("pu*:*logs*")
@@ -226,12 +285,12 @@ class CrossClusterCallsSuite
     "return empty response" when {
       "user has no permission to do so" when {
         "he queries local and remote indices patterns" excludeES(allEs6x, allEs7xBelowEs77x) in {
-          val result = user2SearchManager.asyncSearch("etl1:etl*", "metrics*")
+          val result = user2SearchManager.asyncSearch("private:audit*", "metrics*")
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
         "he queries remote indices patterns only" excludeES(allEs6x, allEs7xBelowEs77x) in {
-          val result = user2SearchManager.asyncSearch("etl1:etl*")
+          val result = user2SearchManager.asyncSearch("private:audit*")
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
@@ -240,11 +299,11 @@ class CrossClusterCallsSuite
     "return 404" when {
       "user has no permission to do so" when {
         "he queries local and remote indices" excludeES(allEs6x, allEs7xBelowEs77x) in {
-          val result = user2SearchManager.asyncSearch("etl1:etl_usage_2020-03-26", "metrics_monitoring_2020-03-26")
+          val result = user2SearchManager.asyncSearch("private:audit_2020-03-26", "metrics_2020-03-26")
           result should have statusCode 404
         }
         "he queries remote indices only" excludeES(allEs6x, allEs7xBelowEs77x) in {
-          val result = user2SearchManager.asyncSearch("etl2:test1_index")
+          val result = user2SearchManager.asyncSearch("private2:test1_index")
           result should have statusCode 404
         }
       }
@@ -253,37 +312,37 @@ class CrossClusterCallsSuite
       "we want to forbid certain names of indices for a given user" when {
         "local indices are used" when {
           "requested index name with wildcard is the same as configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
-            val result = user4SearchManager.asyncSearch("*-logs-smg-stats-*")
+            val result = user4SearchManager.asyncSearch("*-logs-*")
             result should have statusCode 403
           }
           "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
-            val result = user4SearchManager.asyncSearch("*-logs-smg-*")
+            val result = user4SearchManager.asyncSearch("*-log*")
             result should have statusCode 403
           }
           "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
-            val result = user4SearchManager.asyncSearch("*-logs-smg-stats-2020*")
+            val result = user4SearchManager.asyncSearch("*-logs-2020*")
             result should have statusCode 403
           }
           "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES(allEs6x, allEs7xBelowEs77x) in {
-            val result = user4SearchManager.asyncSearch("c0*")
+            val result = user4SearchManager.asyncSearch("service1*")
             result should have statusCode 403
           }
         }
         "remote indices are used" when {
           "requested index name with wildcard is the same as configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
-            val result = user4SearchManager.asyncSearch("e*:*-logs-smg-stats-*")
+            val result = user4SearchManager.asyncSearch("p*:*-logs-*")
             result should have statusCode 403
           }
           "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
-            val result = user4SearchManager.asyncSearch("e*:*-logs-smg-*")
+            val result = user4SearchManager.asyncSearch("p*:*-logs-*")
             result should have statusCode 403
           }
           "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
-            val result = user4SearchManager.asyncSearch("e*:*-logs-smg-stats-2020*")
+            val result = user4SearchManager.asyncSearch("p*:*-logs-2020*")
             result should have statusCode 403
           }
           "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES(allEs6x, allEs7xBelowEs77x) in {
-            val result = user4SearchManager.asyncSearch("e*:c0*")
+            val result = user4SearchManager.asyncSearch("p*:service2*")
             result should have statusCode 403
           }
         }
@@ -298,30 +357,30 @@ class CrossClusterCallsSuite
           val result = user3SearchManager.mSearch(
             """{"index":"metrics*"}""",
             """{"query" : {"match_all" : {}}}""",
-            """{"index":"etl1:etl*"}""",
+            """{"index":"private1:audit*"}""",
             """{"query" : {"match_all" : {}}}"""
           )
           result should have statusCode 200
           result.responseJson("responses").arr.size should be(2)
           val firstQueryResponse = result.responseJson("responses")(0)
           firstQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be(
-            Set("metrics_monitoring_2020-03-26", "metrics_monitoring_2020-03-27")
+            Set("metrics_2020-03-26", "metrics_2020-03-27")
           )
           val secondQueryResponse = result.responseJson("responses")(1)
           secondQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be(
-            Set("etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
+            Set("private1:audit_2020-03-26", "private1:audit_2020-03-27")
           )
         }
         "he queries remote indices only" in {
           val result = user3SearchManager.mSearch(
-            """{"index":"etl1:etl*"}""",
+            """{"index":"private1:audit*"}""",
             """{"query" : {"match_all" : {}}}"""
           )
           result should have statusCode 200
           result.responseJson("responses").arr.size should be(1)
           val secondQueryResponse = result.responseJson("responses")(0)
           secondQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be(
-            Set("etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
+            Set("private1:audit_2020-03-26", "private1:audit_2020-03-27")
           )
         }
       }
@@ -330,7 +389,7 @@ class CrossClusterCallsSuite
           val result = user3SearchManager.mSearch(
             """{"index":"test1*"}""",
             """{"query" : {"match_all" : {}}}""",
-            """{"index":"etl1:etl*"}""",
+            """{"index":"private1:audit*"}""",
             """{"query" : {"match_all" : {}}}"""
           )
           result should have statusCode 200
@@ -339,14 +398,14 @@ class CrossClusterCallsSuite
           firstQueryResponse("hits")("hits").arr.toSet should be(Set.empty)
           val secondQueryResponse = result.responseJson("responses")(1)
           secondQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be(
-            Set("etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
+            Set("private1:audit_2020-03-26", "private1:audit_2020-03-27")
           )
         }
         "both requests contain full name indices" in {
           val result = user3SearchManager.mSearch(
             """{"index":"test1"}""",
             """{"query" : {"match_all" : {}}}""",
-            """{"index":"etl1:etl_usage_2020-03-26"}""",
+            """{"index":"private1:audit_2020-03-26"}""",
             """{"query" : {"match_all" : {}}}"""
           )
           result should have statusCode 200
@@ -356,7 +415,7 @@ class CrossClusterCallsSuite
           val secondQueryResponse = result.responseJson("responses")(1)
           secondQueryResponse("status").num should be(200)
           secondQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be(
-            Set("etl1:etl_usage_2020-03-26")
+            Set("private1:audit_2020-03-26")
           )
         }
       }
@@ -365,9 +424,9 @@ class CrossClusterCallsSuite
       "user has no permission to do so" when {
         "he queries local and remote indices patterns" in {
           val result = user3SearchManager.mSearch(
-            """{"index":"metrics_etl*"}""",
+            """{"index":"metrics_audit*"}""",
             """{"query" : {"match_all" : {}}}""",
-            """{"index":"etl2:*"}""",
+            """{"index":"private2:*"}""",
             """{"query" : {"match_all" : {}}}"""
           )
           result should have statusCode 200
@@ -379,7 +438,7 @@ class CrossClusterCallsSuite
         }
         "he queries remote indices only" in {
           val result = user3SearchManager.mSearch(
-            """{"index":"etl2:*"}""",
+            """{"index":"private2:*"}""",
             """{"query" : {"match_all" : {}}}"""
           )
           result should have statusCode 200
@@ -396,7 +455,7 @@ class CrossClusterCallsSuite
       "user has permission to do so" when {
         "he queries local and remote indices" in {
           val result = user3SearchManager.fieldCaps(
-            indices = List("metrics*", "etl1:etl*"),
+            indices = List("metrics*", "private1:audit*"),
             fields = List("counter1", "usage")
           )
           result should have statusCode 200
@@ -404,7 +463,7 @@ class CrossClusterCallsSuite
         }
         "he queries remote indices only" in {
           val result = user3SearchManager.fieldCaps(
-            indices = List("etl1:etl*"),
+            indices = List("private1:audit*"),
             fields = List("counter1", "usage")
           )
           result should have statusCode 200
@@ -414,7 +473,7 @@ class CrossClusterCallsSuite
       "user has permission to do only one request" when {
         "both requests contain index patterns" in {
           val result = user3SearchManager.fieldCaps(
-            indices = List("test1*", "etl1:etl*"),
+            indices = List("test1*", "private1:audit*"),
             fields = List("hello", "usage")
           )
           result should have statusCode 200
@@ -422,7 +481,7 @@ class CrossClusterCallsSuite
         }
         "both requests contain full name indices" in {
           val result = user3SearchManager.fieldCaps(
-            indices = List("test1", "etl1:etl_usage_2020-03-26"),
+            indices = List("test1", "private1:audit_2020-03-26"),
             fields = List("hello", "usage")
           )
           result should have statusCode 200
@@ -434,7 +493,7 @@ class CrossClusterCallsSuite
       "user has no permission to do so" when {
         "he queries local and remote indices patterns" in {
           val result = user3SearchManager.fieldCaps(
-            indices = List("metrics_etl*", "etl2:*"),
+            indices = List("metrics_audit*", "private2:*"),
             fields = List("hello", "usage", "counter1")
           )
           result should have statusCode 200
@@ -442,7 +501,7 @@ class CrossClusterCallsSuite
         }
         "he queries remote indices only" in {
           val result = user3SearchManager.fieldCaps(
-            indices = List("etl2:*"),
+            indices = List("private2:*"),
             fields = List("hello", "usage", "counter1")
           )
           result should have statusCode 200
@@ -457,40 +516,53 @@ object CrossClusterCallsSuite extends StrictLogging {
 
   def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createFirstDoc("metrics_monitoring_2020-03-26", ujson.read("""{"counter1":"100"}""")).force()
-    documentManager.createFirstDoc("metrics_monitoring_2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("metrics_2020-03-26", ujson.read("""{"counter1":"100"}""")).force()
+    documentManager.createFirstDoc("metrics_2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
 
-    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service1-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service1-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service1-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
   }
 
   def privateRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
+    val indexManager = new IndexManager(adminRestClient, esVersion)
+
     documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test1_index", 2, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test2_index", 2, ujson.read("""{"hello":"world"}""")).force()
 
-    documentManager.createDoc("etl_usage_2020-03-26", 1, ujson.read("""{"usage":"ROR"}""")).force()
-    documentManager.createDoc("etl_usage_2020-03-27", 1, ujson.read("""{"usage":"ROR"}""")).force()
+    documentManager.createDoc("audit_2020-03-26", 1, ujson.read("""{"usage":"ROR"}""")).force()
+    documentManager.createDoc("audit_2020-03-27", 1, ujson.read("""{"usage":"ROR"}""")).force()
 
-    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service2-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service2-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service2-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
 
-    val indexManager = new IndexManager(adminRestClient, esVersion)
-    indexManager.createAliasOf("c02-logs-smg-stats-*", "c02-logs-smg-stats").force()
+    indexManager.createAliasOf("service2-logs-*", "service2-logs").force()
+
+    if (Version.greaterOrEqualThan(esVersion, 7, 9, 0)) {
+      val templateManager = new IndexTemplateManager(adminRestClient, esVersion)
+      val dataStreamManager = new DataStreamManager(adminRestClient, esVersion)
+      val enhancedDataStreamManager = new EnhancedDataStreamManager(dataStreamManager, documentManager, indexManager, templateManager)
+      enhancedDataStreamManager.createDataStream("test1_ds")
+      enhancedDataStreamManager.createDocsInDataStream(
+        name = "test1_ds",
+        messages = NonEmptyList.of("message1", "message2", "message3"),
+        rolloverAfterEachDoc = true
+      )
+    }
   }
 
   def publicRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service3-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service3-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service3-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
 
     val indexManager = new IndexManager(adminRestClient, esVersion)
-    indexManager.createAliasOf("c03-logs-smg-stats-*", "c03-logs-smg-stats").force()
+    indexManager.createAliasOf("service3-logs-*", "service3-logs").force()
   }
 
   def xpackRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
@@ -501,9 +573,9 @@ object CrossClusterCallsSuite extends StrictLogging {
 
   def remoteClusterSetup(): SetupRemoteCluster = (remoteClusters: NonEmptyList[EsClusterContainer]) => {
     List(
-      ("etl1", findRemoteClusterByName(name = "ROR_R1", remoteClusters)),
-      ("etl2", findRemoteClusterByName(name = "ROR_R1", remoteClusters)),
-      ("pub", findRemoteClusterByName(name = "ROR_R2", remoteClusters)),
+      ("private1", findRemoteClusterByName(name = "ROR_R1", remoteClusters)),
+      ("private2", findRemoteClusterByName(name = "ROR_R1", remoteClusters)),
+      ("public", findRemoteClusterByName(name = "ROR_R2", remoteClusters)),
       ("xpack", findRemoteClusterByName(name = "XPACK", remoteClusters))
     ) collect { case (name, Some(foundCluster)) => (name, foundCluster) } toMap
   }

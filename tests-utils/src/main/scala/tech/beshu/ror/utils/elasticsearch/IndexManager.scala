@@ -401,8 +401,20 @@ class IndexManager(client: RestClient,
           )
         }
 
+    lazy val dataStreams: List[DataStreamDescription] =
+      responseJson
+        .obj.toMap.get("data_streams")
+        .map(_.arr.toList).getOrElse(List.empty)
+        .map { vJson =>
+          DataStreamDescription(
+            vJson("name").str,
+            vJson.obj.get("backing_indices").map(_.arr.toList).getOrElse(List.empty).map(_.str)
+          )
+        }
+
     sealed case class IndexDescription(name: String, aliases: List[String], attributes: List[String])
     sealed case class AliasDescription(name: String, indices: List[String])
+    sealed case class DataStreamDescription(name: String, backingIndices: List[String])
   }
 
   class StatsResponse(response: HttpResponse) extends JsonResponse(response) {

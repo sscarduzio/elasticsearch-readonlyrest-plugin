@@ -60,7 +60,6 @@ class RemoteIndicesManager(requestContext: RequestContext,
     remoteDataStreams(requestContext.indexAttributes).map(_.map(_.dataStream))
   }
 
-
   override def allDataStreamAliases: Task[Set[RemoteIndexName]] = {
     requestContext
       .allRemoteIndicesAndAliases.map(_.flatMap(_.aliases))
@@ -77,12 +76,13 @@ class RemoteIndicesManager(requestContext: RequestContext,
       }
   }
 
-  override def indicesPerDataStreamMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
+  override def backingIndicesPerDataStreamMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
     remoteDataStreams(requestContext.indexAttributes)
       .map {
         _.foldLeft(Map.empty[RemoteIndexName, Set[RemoteIndexName]]) {
           case (acc, fullRemoteDataStream) =>
-            val backingIndicesPerDataStream = Map(fullRemoteDataStream.dataStream -> fullRemoteDataStream.aliases)
+            val backingIndicesPerDataStream =
+              Map(fullRemoteDataStream.dataStream -> fullRemoteDataStream.backingIndices.map(index => RemoteIndexName(index, fullRemoteDataStream.clusterName)))
             mapMonoid.combine(acc, backingIndicesPerDataStream)
         }
       }
