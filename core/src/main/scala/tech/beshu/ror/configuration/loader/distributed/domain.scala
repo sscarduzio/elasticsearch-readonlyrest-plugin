@@ -25,5 +25,5 @@ final case class NodeConfig(loadedConfig: Either[LoadedRorConfig.Error, LoadedRo
 final case class Timeout(nanos: Long) extends AnyVal
 final case class NodeConfigRequest(timeout: Timeout)
 object NodeConfigRequest {
-  val defaultTimeout: Timeout = Timeout(nanos = (1 minute).toNanos)
+  val defaultTimeout: Timeout = Timeout(nanos = (10 seconds).toNanos)
 }
