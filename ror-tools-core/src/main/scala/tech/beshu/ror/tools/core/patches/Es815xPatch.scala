@@ -30,7 +30,7 @@ private[patches] class Es815xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     new ElasticsearchJarPatchCreator(
       OpenModule,
       ModifyPolicyUtilClass,
-      new SecurityManagerShouldAllowReadingEsConfigFile(esVersion), // todo:
+      new SecurityManagerShouldAllowReadingEsConfigFile(esVersion),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
