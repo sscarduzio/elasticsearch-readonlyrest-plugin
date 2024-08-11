@@ -288,7 +288,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(GeneralReadonlyrestSettingsError(Message("Unknown fls engine: 'something'. Supported: 'es_with_lucene', 'es'.")))
+            errors.head should be(GeneralReadonlyrestSettingsError(Message("Unknown fls engine: 'something'. Supported: 'lucene', 'es', 'es_with_lucene'(default).")))
           }
         )
       }

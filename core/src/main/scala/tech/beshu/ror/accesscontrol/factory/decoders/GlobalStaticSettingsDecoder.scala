@@ -35,11 +35,11 @@ object GlobalStaticSettingsDecoder {
           flsEngine <- c.downField("fls_engine").as[GlobalSettings.FlsEngine](flsEngineDecoder)
           caseMapping <- c.downField("username_case_sensitivity").as[CaseSensitivity]
         } yield new GlobalSettings(
-          basicAuthPrompt.getOrElse(true),
-          forbiddenMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
-          flsEngine,
-          rorConfigurationIndex,
-          caseMapping
+          showBasicAuthPrompt = basicAuthPrompt.getOrElse(false),
+          forbiddenRequestMessage = forbiddenMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
+          flsEngine = flsEngine,
+          configurationIndex = rorConfigurationIndex,
+          userIdCaseSensitivity = caseMapping
         )
       }
   }
@@ -56,10 +56,12 @@ object GlobalStaticSettingsDecoder {
   implicit private val usernameCaseMappingDecoder: Decoder[CaseSensitivity] = {
     Decoder.decodeOption[String]
       .toSyncDecoder
-      .emap[CaseSensitivity] {
+      .emapE[CaseSensitivity] {
         case Some("case_insensitive") => Right(CaseSensitivity.Disabled)
         case Some("case_sensitive") | None => Right(CaseSensitivity.Enabled)
-        case Some(other) => Left(s"Unknown username case mapping: '$other'. Supported: 'case_insensitive', 'case_sensitive'(default).")
+        case Some(other) => Left(CoreCreationError.GeneralReadonlyrestSettingsError(Message(
+          s"Unknown username case mapping: '$other'. Supported: 'case_insensitive', 'case_sensitive'(default)."
+        )))
       }
       .decoder
   }
@@ -70,7 +72,9 @@ object GlobalStaticSettingsDecoder {
     case Some(definedFlsEngine) =>
       flsEngineFromString(definedFlsEngine)
         .left
-        .map(unknown => CoreCreationError.GeneralReadonlyrestSettingsError(Message(s"Unknown fls engine: '${unknown.value}'. Supported: 'es_with_lucene', 'es'.")))
+        .map((unknown: UnknownFlsEngine) => CoreCreationError.GeneralReadonlyrestSettingsError(Message(
+          s"Unknown fls engine: '${unknown.value}'. Supported: 'lucene', 'es', 'es_with_lucene'(default)."
+        )))
   }
 
   private def flsEngineFromString(str: String): Either[UnknownFlsEngine, FlsEngine] = str match {

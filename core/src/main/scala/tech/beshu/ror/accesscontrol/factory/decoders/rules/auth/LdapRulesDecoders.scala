@@ -197,7 +197,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
             userIdCaseSensitivity,
             impersonatorsDef.toImpersonation(mocksProvider)
           ),
-          new LdapAuthorizationRule(
+          new LdapAuthorizationRule( 
             LdapAuthorizationRule.Settings(
               LoggableLdapAuthorizationService.create(
                 CacheableLdapAuthorizationService.create(ldapService.ldapAuthorizationService, ttl)

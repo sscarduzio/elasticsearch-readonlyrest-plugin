@@ -1,5 +1,7 @@
 readonlyrest:
 
+  prompt_for_basic_auth: true
+
   access_control_rules:
     - name: "CONTAINER ADMIN - file"
       verbosity: "error"

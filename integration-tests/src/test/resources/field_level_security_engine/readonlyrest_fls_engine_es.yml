@@ -1,5 +1,6 @@
 readonlyrest:
 
+  prompt_for_basic_auth: true
   fls_engine: "es"
 
   access_control_rules:
