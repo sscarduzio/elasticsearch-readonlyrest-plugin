@@ -115,17 +115,17 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def createComponents(services: Plugin.PluginServices): util.Collection[_] = {
     doPrivileged {
-      val client = services.client()
+      val nodeClient = services.client().asInstanceOf[NodeClient]
       val repositoriesServiceSupplier = new Supplier[RepositoriesService] {
         override def get(): RepositoriesService = services.repositoriesService()
       }
       ilaf = new IndexLevelActionFilter(
-        client.settings().get("node.name"),
+        nodeClient.settings().get("node.name"),
         services.clusterService(),
-        client.asInstanceOf[NodeClient],
+        nodeClient,
         services.threadPool(),
         environment,
-        new RemoteClusterServiceSupplier(repositoriesServiceSupplier),
+        new RemoteClusterServiceSupplier(nodeClient),
         () => Some(repositoriesServiceSupplier.get()),
         esInitListener,
         rorEsConfig

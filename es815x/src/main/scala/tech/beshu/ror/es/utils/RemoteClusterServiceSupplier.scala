@@ -17,42 +17,28 @@
 package tech.beshu.ror.es.utils
 
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.repositories.{RepositoriesService, VerifyNodeRepositoryAction}
-import org.elasticsearch.transport.{RemoteClusterService, TransportService}
+import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.transport.RemoteClusterService
 import org.joor.Reflect.on
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.util.function.Supplier
 import scala.util.{Failure, Success, Try}
 
-class RemoteClusterServiceSupplier(repositoriesServiceSupplier: Supplier[RepositoriesService])
+class RemoteClusterServiceSupplier(nodeClient: NodeClient)
   extends Supplier[Option[RemoteClusterService]] with Logging {
 
   override def get(): Option[RemoteClusterService] = {
-    for {
-      repositoriesService <- Option(repositoriesServiceSupplier.get())
-      remoteClusterService <- extractTransportServiceFrom(repositoriesService) match {
-        case Success(transportService) =>
-          Option(transportService.getRemoteClusterService)
-        case Failure(ex) =>
-          logger.error("Cannot extract RemoteClusterService from RepositoriesService", ex)
-          None
-      }
-    } yield remoteClusterService
+    extractRemoteClusterService() match {
+      case Success(remoteClusterService) =>
+        remoteClusterService
+      case Failure(ex) =>
+        logger.error("Cannot extract RemoteClusterService from NodeClient", ex)
+        None
+    }
   }
 
-  private def extractTransportServiceFrom(repositoriesService: RepositoriesService) = doPrivileged {
-    for {
-      action <- getVerifyNodeRepositoryActionFrom(repositoriesService)
-      transportService <- getTransportServiceFrom(action)
-    } yield transportService
-  }
-
-  private def getVerifyNodeRepositoryActionFrom(repositoriesService: RepositoriesService) = Try {
-    on(repositoriesService).get[VerifyNodeRepositoryAction]("verifyAction")
-  }
-
-  private def getTransportServiceFrom(action: VerifyNodeRepositoryAction)  = Try {
-    on(action).get[TransportService]("transportService")
+  private def extractRemoteClusterService(): Try[Option[RemoteClusterService]] = doPrivileged {
+    Try(Option(on(nodeClient).get[RemoteClusterService]("remoteClusterService")))
   }
 }
