@@ -26,8 +26,8 @@ import java.io.{File, InputStream}
 private[patches] class SecurityManagerShouldAllowReadingEsConfigFile(esVersion: SemVer)
   extends BytecodeJarModifier {
 
-  private val modifyPermissionsForElasticsearchYmlInSecurityClass = new ModifyPermissionsForElasticsearchYmlInSecurityClass()
-  private val modifyPermissionsForElasticsearchYmlInEsPolicyClass = new ModifyPermissionsForElasticsearchYmlInEsPolicyClass()
+  private lazy val modifyPermissionsForElasticsearchYmlInSecurityClass = new ModifyPermissionsForElasticsearchYmlInSecurityClass()
+  private lazy val modifyPermissionsForElasticsearchYmlInEsPolicyClass = new ModifyPermissionsForElasticsearchYmlInEsPolicyClass()
 
   override def apply(jar: File): Unit = {
     esVersion match {
@@ -106,84 +106,103 @@ private class ModifyPermissionsForElasticsearchYmlInEsPolicyClass
   }
 
   private class CreateSecuredFilesForRorMethod(classVisitor: ClassVisitor) {
-    private val methodVisitor = classVisitor.visitMethod(Opcodes.ACC_PRIVATE, "createSecuredFilesForRor", "(Ljava/util/Map;)Ljava/util/Map;", "(Ljava/util/Map<Ljava/lang/String;Ljava/util/Set<Ljava/net/URL;>;>;)Ljava/util/Map<Ljava/io/FilePermission;Ljava/util/Set<Ljava/net/URL;>;>;", null);
-    methodVisitor.visitCode();
-    val label0 = new Label();
-    methodVisitor.visitLabel(label0);
-    methodVisitor.visitTypeInsn(Opcodes.NEW, "java/util/HashMap");
-    methodVisitor.visitInsn(Opcodes.DUP);
-    methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/util/HashMap", "<init>", "()V", false);
-    methodVisitor.visitVarInsn(Opcodes.ASTORE, 2);
-    val label1 = new Label();
-    methodVisitor.visitLabel(label1);
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 1);
-    methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map", "entrySet", "()Ljava/util/Set;", true);
-    methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Set", "iterator", "()Ljava/util/Iterator;", true);
-    methodVisitor.visitVarInsn(Opcodes.ASTORE, 3);
-    val label2 = new Label();
-    methodVisitor.visitLabel(label2);
-    methodVisitor.visitFrame(Opcodes.F_APPEND, 2, Array("java/util/Map", "java/util/Iterator"), 0, null);
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 3);
-    methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z", true);
-    val label3 = new Label();
-    methodVisitor.visitJumpInsn(Opcodes.IFEQ, label3);
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 3);
-    methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;", true);
-    methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, "java/util/Map$Entry");
-    methodVisitor.visitVarInsn(Opcodes.ASTORE, 4);
-    val label4 = new Label();
-    methodVisitor.visitLabel(label4);
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 4);
-    methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map$Entry", "getKey", "()Ljava/lang/Object;", true);
-    methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, "java/lang/String");
-    methodVisitor.visitVarInsn(Opcodes.ASTORE, 5);
-    val label5 = new Label();
-    methodVisitor.visitLabel(label5);
-    methodVisitor.visitTypeInsn(Opcodes.NEW, "java/io/FilePermission");
-    methodVisitor.visitInsn(Opcodes.DUP);
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 5);
-    methodVisitor.visitLdcInsn("elasticsearch.yml");
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 5);
-    methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false);
-    val label6 = new Label();
-    methodVisitor.visitJumpInsn(Opcodes.IFEQ, label6);
-    methodVisitor.visitLdcInsn("write,delete,execute");
-    val label7 = new Label();
-    methodVisitor.visitJumpInsn(Opcodes.GOTO, label7);
-    methodVisitor.visitLabel(label6);
-    methodVisitor.visitFrame(Opcodes.F_FULL, 6, Array("org/elasticsearch/bootstrap/ESPolicy", "java/util/Map", "java/util/Map", "java/util/Iterator", "java/util/Map$Entry", "java/lang/String"), 3, Array(label5, label5, "java/lang/String"));
-    methodVisitor.visitLdcInsn("write,delete,execute");
-    methodVisitor.visitLabel(label7);
-    methodVisitor.visitFrame(Opcodes.F_FULL, 6, Array("org/elasticsearch/bootstrap/ESPolicy", "java/util/Map", "java/util/Map", "java/util/Iterator", "java/util/Map$Entry", "java/lang/String"), 4, Array(label5, label5, "java/lang/String", "java/lang/String"));
-    methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/io/FilePermission", "<init>", "(Ljava/lang/String;Ljava/lang/String;)V", false);
-    methodVisitor.visitVarInsn(Opcodes.ASTORE, 6);
-    val label8 = new Label();
-    methodVisitor.visitLabel(label8);
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 2);
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 6);
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 4);
-    methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map$Entry", "getValue", "()Ljava/lang/Object;", true);
-    methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, "java/util/Set");
-    methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
-    methodVisitor.visitInsn(Opcodes.POP);
-    val label9 = new Label();
-    methodVisitor.visitLabel(label9);
-    methodVisitor.visitJumpInsn(Opcodes.GOTO, label2);
-    methodVisitor.visitLabel(label3);
-    methodVisitor.visitFrame(Opcodes.F_CHOP, 3, null, 0, null);
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 2);
-    methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "unmodifiableMap", "(Ljava/util/Map;)Ljava/util/Map;", false);
-    methodVisitor.visitInsn(Opcodes.ARETURN);
-    val label10 = new Label();
-    methodVisitor.visitLabel(label10);
-    methodVisitor.visitLocalVariable("key", "Ljava/lang/String;", null, label5, label9, 5);
-    methodVisitor.visitLocalVariable("filePermission", "Ljava/io/FilePermission;", null, label8, label9, 6);
-    methodVisitor.visitLocalVariable("entry", "Ljava/util/Map$Entry;", "Ljava/util/Map$Entry<Ljava/lang/String;Ljava/util/Set<Ljava/net/URL;>;>;", label4, label9, 4);
-    methodVisitor.visitLocalVariable("this", "Lorg/elasticsearch/bootstrap/ESPolicy;", null, label0, label10, 0);
-    methodVisitor.visitLocalVariable("securedFiles", "Ljava/util/Map;", "Ljava/util/Map<Ljava/lang/String;Ljava/util/Set<Ljava/net/URL;>;>;", label0, label10, 1);
-    methodVisitor.visitLocalVariable("result", "Ljava/util/Map;", "Ljava/util/Map<Ljava/io/FilePermission;Ljava/util/Set<Ljava/net/URL;>;>;", label1, label10, 2);
-    methodVisitor.visitMaxs(5, 7);
-    methodVisitor.visitEnd();
+    {
+      val methodVisitor = classVisitor.visitMethod(
+        Opcodes.ACC_PRIVATE,
+        "createSecuredFilesForRor", 
+        "(Ljava/util/Map;)Ljava/util/Map;", "(Ljava/util/Map<Ljava/lang/String;Ljava/util/Set<Ljava/net/URL;>;>;)Ljava/util/Map<Ljava/io/FilePermission;Ljava/util/Set<Ljava/net/URL;>;>;", 
+        null
+      )
+      methodVisitor.visitCode()
+      val label0 = new Label
+      methodVisitor.visitLabel(label0)
+      methodVisitor.visitTypeInsn(Opcodes.NEW, "java/util/HashMap")
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/util/HashMap", "<init>", "()V", false)
+      methodVisitor.visitVarInsn(Opcodes.ASTORE, 2)
+      val label1 = new Label
+      methodVisitor.visitLabel(label1)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 1)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map", "entrySet", "()Ljava/util/Set;", true)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Set", "iterator", "()Ljava/util/Iterator;", true)
+      methodVisitor.visitVarInsn(Opcodes.ASTORE, 3)
+      val label2 = new Label
+      methodVisitor.visitLabel(label2)
+      methodVisitor.visitFrame(Opcodes.F_APPEND, 2, Array("java/util/Map", "java/util/Iterator"), 0, null)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 3)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z", true)
+      val label3 = new Label
+      methodVisitor.visitJumpInsn(Opcodes.IFEQ, label3)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 3)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;", true)
+      methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, "java/util/Map$Entry")
+      methodVisitor.visitVarInsn(Opcodes.ASTORE, 4)
+      val label4 = new Label
+      methodVisitor.visitLabel(label4)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 4)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map$Entry", "getKey", "()Ljava/lang/Object;", true)
+      methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, "java/lang/String")
+      methodVisitor.visitVarInsn(Opcodes.ASTORE, 5)
+      val label5 = new Label
+      methodVisitor.visitLabel(label5)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 5)
+      methodVisitor.visitLdcInsn("/elasticsearch.yml")
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "endsWith", "(Ljava/lang/String;)Z", false)
+      val label6 = new Label
+      methodVisitor.visitJumpInsn(Opcodes.IFNE, label6)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 5)
+      methodVisitor.visitLdcInsn("\\elasticsearch.yml")
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "endsWith", "(Ljava/lang/String;)Z", false)
+      val label7 = new Label
+      methodVisitor.visitJumpInsn(Opcodes.IFEQ, label7)
+      methodVisitor.visitLabel(label6)
+      methodVisitor.visitFrame(Opcodes.F_APPEND, 2, Array[AnyRef]("java/util/Map$Entry", "java/lang/String"), 0, null)
+      methodVisitor.visitLdcInsn("write,delete,execute")
+      val label8 = new Label
+      methodVisitor.visitJumpInsn(Opcodes.GOTO, label8)
+      methodVisitor.visitLabel(label7)
+      methodVisitor.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
+      methodVisitor.visitLdcInsn("read,readlink,write,delete,execute")
+      methodVisitor.visitLabel(label8)
+      methodVisitor.visitFrame(Opcodes.F_SAME1, 0, null, 1, Array[AnyRef]("java/lang/String"))
+      methodVisitor.visitVarInsn(Opcodes.ASTORE, 6)
+      val label9 = new Label
+      methodVisitor.visitLabel(label9)
+      methodVisitor.visitTypeInsn(Opcodes.NEW, "java/io/FilePermission")
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 5)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 6)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/io/FilePermission", "<init>", "(Ljava/lang/String;Ljava/lang/String;)V", false)
+      methodVisitor.visitVarInsn(Opcodes.ASTORE, 7)
+      val label10 = new Label
+      methodVisitor.visitLabel(label10)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 2)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 7)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 4)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map$Entry", "getValue", "()Ljava/lang/Object;", true)
+      methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, "java/util/Set")
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true)
+      methodVisitor.visitInsn(Opcodes.POP)
+      val label11 = new Label
+      methodVisitor.visitLabel(label11)
+      methodVisitor.visitJumpInsn(Opcodes.GOTO, label2)
+      methodVisitor.visitLabel(label3)
+      methodVisitor.visitFrame(Opcodes.F_CHOP, 3, null, 0, null)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 2)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "unmodifiableMap", "(Ljava/util/Map;)Ljava/util/Map;", false)
+      methodVisitor.visitInsn(Opcodes.ARETURN)
+      val label12 = new Label
+      methodVisitor.visitLabel(label12)
+      methodVisitor.visitLocalVariable("key", "Ljava/lang/String;", null, label5, label11, 5)
+      methodVisitor.visitLocalVariable("fileMask", "Ljava/lang/String;", null, label9, label11, 6)
+      methodVisitor.visitLocalVariable("filePermission", "Ljava/io/FilePermission;", null, label10, label11, 7)
+      methodVisitor.visitLocalVariable("entry", "Ljava/util/Map$Entry;", "Ljava/util/Map$Entry<Ljava/lang/String;Ljava/util/Set<Ljava/net/URL;>;>;", label4, label11, 4)
+      methodVisitor.visitLocalVariable("this", "Lorg/elasticsearch/bootstrap/ESPolicy;", null, label0, label12, 0)
+      methodVisitor.visitLocalVariable("securedFiles", "Ljava/util/Map;", "Ljava/util/Map<Ljava/lang/String;Ljava/util/Set<Ljava/net/URL;>;>;", label0, label12, 1)
+      methodVisitor.visitLocalVariable("result", "Ljava/util/Map;", "Ljava/util/Map<Ljava/io/FilePermission;Ljava/util/Set<Ljava/net/URL;>;>;", label1, label12, 2)
+      methodVisitor.visitMaxs(4, 8)
+      methodVisitor.visitEnd()
+    }
   }
 
 }
