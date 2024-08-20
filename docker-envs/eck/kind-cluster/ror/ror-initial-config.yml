@@ -20,14 +20,7 @@ data:
 
        - name: "Admin access"
          type: allow
-         auth_key: "admin:admin"
-     
-       - name: "User 1"
-         type: allow
-         auth_key: "user1:test"
-         indices: ["kibana_sample*"]
-         kibana:
-           access: ro
+         auth_key: "admin:${ADMIN_PASSWORD}"
 
 kind: ConfigMap
 metadata:

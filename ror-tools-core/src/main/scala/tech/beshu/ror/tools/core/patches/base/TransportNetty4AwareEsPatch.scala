@@ -46,7 +46,7 @@ private [patches] abstract class TransportNetty4AwareEsPatch(rorPluginDirectory:
       throw new IllegalStateException(
         s"""
           |ES Corrupted! Something went wrong during patching/unpatching and the current state of ES installation is corrupted.
-          |To recover from this state, please uninstall ReadonlyREST plugin and copy the corrupted files from ES sources (https://www.elastic.co/downloads/elasticsearch):
+          |To recover from this state, please uninstall ReadonlyREST plugin and copy the corrupted files from ES binaries (https://www.elastic.co/downloads/elasticsearch):
           |${possiblyCorruptedEsFiles.map(_.toString).map(f => s"- $f").mkString("\n")}
           |""".stripMargin)
     }
