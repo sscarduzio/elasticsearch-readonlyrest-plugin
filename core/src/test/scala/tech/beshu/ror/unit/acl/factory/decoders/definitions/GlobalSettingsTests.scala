@@ -132,7 +132,7 @@ class GlobalSettingsTests extends
             assertion =
               error =>
                 error should be(GeneralReadonlyrestSettingsError(Message(
-                  "Unknown fls engine: 'custom'. Supported: 'lucene', 'es', 'es_with_lucene'(default).")
+                  "Unknown fls engine: 'custom'. Supported: 'es_with_lucene'(default), 'es'.")
                 ))
           )
         }

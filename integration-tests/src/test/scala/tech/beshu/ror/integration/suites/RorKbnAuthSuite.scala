@@ -43,7 +43,7 @@ class RorKbnAuthSuite
     val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response should have statusCode 401
+    response should have statusCode 403
   }
 
   "rejectTokenWithWrongKey" in {
@@ -57,7 +57,7 @@ class RorKbnAuthSuite
     )
 
     val response = clusterStateManager.indices()
-    response should have statusCode 401
+    response should have statusCode 403
   }
 
   "rejectTokenWithoutUserClaim" in {
@@ -69,7 +69,7 @@ class RorKbnAuthSuite
     )
 
     val response = clusterStateManager.indices()
-    response should have statusCode 401
+    response should have statusCode 403
   }
 
   "acceptValidTokenWithUserClaim" in {
@@ -100,7 +100,7 @@ class RorKbnAuthSuite
     )
 
     val response = clusterStateManager.indices()
-    response should have statusCode 401
+    response should have statusCode 403
   }
 
   "rejectTokenWithoutRolesClaim" in {
@@ -114,7 +114,7 @@ class RorKbnAuthSuite
     )
 
     val response = clusterStateManager.indices()
-    response should have statusCode 401
+    response should have statusCode 403
   }
 
   "rejectTokenWithWrongRolesClaim" in {
@@ -129,7 +129,7 @@ class RorKbnAuthSuite
     )
 
     val response = clusterStateManager.indices()
-    response should have statusCode 401
+    response should have statusCode 403
   }
 
   "acceptValidTokenWithRolesClaim" in {

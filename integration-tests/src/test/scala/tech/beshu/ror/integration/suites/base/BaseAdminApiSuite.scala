@@ -172,13 +172,13 @@ trait BaseAdminApiSuite
 
           // before first reload no user can access indices
           val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
-          dev1ror1Results should have statusCode 401
+          dev1ror1Results should have statusCode 403
           val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("test2_index")
-          dev2ror1Results should have statusCode 401
+          dev2ror1Results should have statusCode 403
           val dev1ror2Results = dev1Ror2ndInstanceSearchManager.search("test1_index")
-          dev1ror2Results should have statusCode 401
+          dev1ror2Results should have statusCode 403
           val dev2ror2Results = dev2Ror2ndInstanceSearchManager.search("test2_index")
-          dev2ror2Results should have statusCode 401
+          dev2ror2Results should have statusCode 403
 
           // first reload
           forceReload("/admin_api/readonlyrest_first_update.yml")
@@ -188,11 +188,11 @@ trait BaseAdminApiSuite
           val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After1stReloadResults should have statusCode 200
           val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
-          dev2ror1After1stReloadResults should have statusCode 401
+          dev2ror1After1stReloadResults should have statusCode 403
           val dev1ror2After1stReloadResults = dev1Ror2ndInstanceSearchManager.search("test1_index")
           dev1ror2After1stReloadResults should have statusCode 200
           val dev2ror2After1stReloadResults = dev2Ror2ndInstanceSearchManager.search("test2_index")
-          dev2ror2After1stReloadResults should have statusCode 401
+          dev2ror2After1stReloadResults should have statusCode 403
 
           // second reload
           forceReload("/admin_api/readonlyrest_second_update.yml")
@@ -396,7 +396,7 @@ trait BaseAdminApiSuite
 
           // check if impersonation works
           dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-          dev1SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
+          dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
           dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
           dev2SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
 
@@ -455,7 +455,7 @@ trait BaseAdminApiSuite
 
           // after first reload only dev1 can access indices
           dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-          dev1SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
+          dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
           dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
           dev2SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
 
@@ -464,8 +464,8 @@ trait BaseAdminApiSuite
 
           // after second reload dev1 & dev2 can access indices
           dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-          dev1SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
-          dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
+          dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
+          dev2SearchManagers.foreach(indexNotFound(_, "test1_index"))
           dev2SearchManagers.foreach(allowedSearch(_, "test2_index"))
         }
         "configuration is valid and response with warnings" in {
@@ -589,7 +589,7 @@ trait BaseAdminApiSuite
 
         // after first reload only dev1 can access indices
         dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-        dev1SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
+        dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
         dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
         dev2SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
 
@@ -599,8 +599,8 @@ trait BaseAdminApiSuite
 
         // after second reload dev1 & dev2 can access indices
         dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-        dev1SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
-        dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
+        dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
+        dev2SearchManagers.foreach(indexNotFound(_, "test1_index"))
         dev2SearchManagers.foreach(allowedSearch(_, "test2_index"))
 
         invalidateRorTestConfig(rorClients.head)
@@ -684,7 +684,7 @@ trait BaseAdminApiSuite
 
           // after first reload only dev1 can access indices
           dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-          dev1SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
+          dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
           dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
           dev2SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
 
@@ -709,8 +709,8 @@ trait BaseAdminApiSuite
 
           // after second reload dev1 & dev2 can access indices
           dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-          dev1SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
-          dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
+          dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
+          dev2SearchManagers.foreach(indexNotFound(_, "test1_index"))
           dev2SearchManagers.foreach(allowedSearch(_, "test2_index"))
 
           // wait for test engine auto-destruction
@@ -896,7 +896,7 @@ trait BaseAdminApiSuite
 
         // after first reload only dev1 can access indices
         dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-        dev1SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
+        dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
         dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
         dev2SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
 
@@ -905,8 +905,8 @@ trait BaseAdminApiSuite
 
         // after second reload dev1 & dev2 can access indices
         dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-        dev1SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
-        dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
+        dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
+        dev2SearchManagers.foreach(indexNotFound(_, "test1_index"))
         dev2SearchManagers.foreach(allowedSearch(_, "test2_index"))
 
         invalidateRorTestConfig(rorClients.head)
@@ -1217,9 +1217,43 @@ trait BaseAdminApiSuite
     results should have statusCode 200
   }
 
+  private def indexNotFound(sm: SearchManager, indexName: String) = {
+    val results = sm.search(indexName)
+    results should have statusCode 404
+
+    val generatedIndex = results.responseJson("error")("index").str
+    generatedIndex should fullyMatch regex s"^${indexName}_ROR_[a-zA-Z0-9]{10}$$".r
+
+    results.responseJson should be(ujson.read(
+      s"""
+        |{
+        |  "error":{
+        |    "root_cause":[
+        |      {
+        |        "type":"index_not_found_exception",
+        |        "reason":"no such index [$generatedIndex]",
+        |        "resource.type":"index_or_alias",
+        |        "resource.id":"$generatedIndex",
+        |        "index_uuid":"_na_",
+        |        "index":"$generatedIndex"
+        |      }
+        |    ],
+        |    "type":"index_not_found_exception",
+        |    "reason":"no such index [$generatedIndex]",
+        |    "resource.type":"index_or_alias",
+        |    "resource.id":"$generatedIndex",
+        |    "index_uuid":"_na_",
+        |    "index":"$generatedIndex"
+        |  },
+        |  "status":404
+        |}""".stripMargin
+    ))
+  }
+
+
   private def operationNotAllowed(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
-    results should have statusCode 401
+    results should have statusCode 403
     results.responseJson should be(ujson.read(
       """
         |{
@@ -1228,23 +1262,21 @@ trait BaseAdminApiSuite
         |      {
         |        "type":"forbidden_response",
         |        "reason":"forbidden",
-        |        "due_to":"OPERATION_NOT_ALLOWED",
-        |        "header":{"WWW-Authenticate":"Basic"}
+        |        "due_to":"OPERATION_NOT_ALLOWED"
         |      }
         |    ],
         |  "type":"forbidden_response",
         |  "reason":"forbidden",
-        |  "due_to":"OPERATION_NOT_ALLOWED",
-        |  "header":{"WWW-Authenticate":"Basic"}
+        |  "due_to":"OPERATION_NOT_ALLOWED"
         |  },
-        |  "status":401
+        |  "status":403
         |}""".stripMargin
     ))
   }
 
   private def impersonationNotAllowed(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
-    results should have statusCode 401
+    results should have statusCode 403
     results.responseJson should be(ujson.read(
       """
         |{
@@ -1253,16 +1285,14 @@ trait BaseAdminApiSuite
         |      {
         |        "type":"forbidden_response",
         |        "reason":"forbidden",
-        |        "due_to":"IMPERSONATION_NOT_ALLOWED",
-        |        "header":{"WWW-Authenticate":"Basic"}
+        |        "due_to":"IMPERSONATION_NOT_ALLOWED"
         |      }
         |    ],
         |  "type":"forbidden_response",
         |  "reason":"forbidden",
-        |  "due_to":"IMPERSONATION_NOT_ALLOWED",
-        |  "header":{"WWW-Authenticate":"Basic"}
+        |  "due_to":"IMPERSONATION_NOT_ALLOWED"
         |  },
-        |  "status":401
+        |  "status":403
         |}""".stripMargin
     ))
   }

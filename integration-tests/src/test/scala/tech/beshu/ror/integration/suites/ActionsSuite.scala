@@ -44,7 +44,7 @@ class ActionsSuite
     "work for delete request" which {
       "forbid deleting from test1_index" in {
         val result = actionManager.deleteDoc("test1_index", 1)
-        result should have statusCode 401
+        result should have statusCode 403
       }
       "allow deleting from test2_index" in {
         val result = actionManager.deleteDoc("test2_index", 1)

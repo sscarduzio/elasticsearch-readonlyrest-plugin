@@ -48,7 +48,7 @@ class DeleteByQuerySuite
     "not be allowed" when {
       "is executed by red client" in {
         val response = redTeamDeleteByQueryManager.deleteByQuery("facebook", matchAllQuery)
-        response should have statusCode 401
+        response should have statusCode 403
       }
     }
   }

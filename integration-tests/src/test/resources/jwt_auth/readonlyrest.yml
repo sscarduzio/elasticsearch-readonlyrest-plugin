@@ -1,7 +1,5 @@
 readonlyrest:
 
-  prompt_for_basic_auth: true
-
   access_control_rules:
     - name: Container housekeeping is allowed
       type: allow

@@ -113,7 +113,7 @@ class DocumentApiSuite
           )
         )
 
-        result should have statusCode 401
+        result should have statusCode 403
       }
     }
     "_bulk API is used" should {
@@ -156,7 +156,7 @@ class DocumentApiSuite
             BulkAction.Insert("index2_2020-01-01", 1, ujson.read("""{ "message" : "hello" }"""))
           )
 
-          result should have statusCode 401
+          result should have statusCode 403
         }
       }
     }

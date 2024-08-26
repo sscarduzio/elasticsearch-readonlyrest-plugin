@@ -1,7 +1,5 @@
 readonlyrest:
 
-  prompt_for_basic_auth: false
-
   # (De)activate plugin
   enable: true
 

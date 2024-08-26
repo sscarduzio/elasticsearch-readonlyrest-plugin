@@ -1,7 +1,5 @@
 readonlyrest:
 
-  prompt_for_basic_auth: true
-
   # comments should survive
   access_control_rules:
     - name: "CONTAINER ADMIN - file"

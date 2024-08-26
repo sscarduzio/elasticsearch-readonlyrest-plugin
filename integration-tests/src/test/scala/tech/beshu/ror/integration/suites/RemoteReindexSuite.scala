@@ -94,24 +94,24 @@ class RemoteReindexSuite
       "request specifies source index that is allowed, but dest that isn't allowed" in {
         val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev1"), "not_allowed_index")
 
-        result should have statusCode 401
+        result should have statusCode 403
       }
       "request specifies source index that isn't allowed, but dest that is allowed" in {
         val result = destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "test1_index_reindexed")
 
-        result should have statusCode 401
+        result should have statusCode 403
       }
       "request specifies both source index and dest index that are not allowed" in {
         val result = destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "not_allowed_index_reindexed")
 
-        result should have statusCode 401
+        result should have statusCode 403
       }
     }
     "be blocked by source ES" when {
       "request specifies source index that is allowed on dest ES, but is not allowed on source ES" in {
         val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev3"), "test1_index_reindexed")
 
-        result should have statusCode 401
+        result should have statusCode 404
       }
       "request specifies index which is allowed, but is not present in source ES" in {
         val result = destEsIndexManager.reindex(createReindexSource("test2_index", "dev4"), "test2_index_reindexed")

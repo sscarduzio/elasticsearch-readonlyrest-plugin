@@ -72,9 +72,12 @@ object GlobalStaticSettingsDecoder {
     case Some(definedFlsEngine) =>
       flsEngineFromString(definedFlsEngine)
         .left
-        .map((unknown: UnknownFlsEngine) => CoreCreationError.GeneralReadonlyrestSettingsError(Message(
-          s"Unknown fls engine: '${unknown.value}'. Supported: 'lucene', 'es', 'es_with_lucene'(default)."
-        )))
+        .map((unknown: UnknownFlsEngine) =>
+          CoreCreationError.GeneralReadonlyrestSettingsError(Message(
+            // we don't officially say the `lucene` is supported, that's why it is omitted in the error message
+            s"Unknown fls engine: '${unknown.value}'. Supported: 'es_with_lucene'(default), 'es'."
+          ))
+        )
   }
 
   private def flsEngineFromString(str: String): Either[UnknownFlsEngine, FlsEngine] = str match {

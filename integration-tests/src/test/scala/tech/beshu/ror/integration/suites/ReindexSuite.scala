@@ -50,22 +50,22 @@ class ReindexSuite
       "user has no permission to source index and dest index which are present on ES" in {
         val result = user1IndexManager.reindex(ReindexSource.Local("test2_index"), "test2_index_reindexed")
 
-        result should have statusCode 401
+        result should have statusCode 403
       }
       "user has no permission to source index and dest index which are absent on ES" in {
         val result = user1IndexManager.reindex(ReindexSource.Local("not_allowed_index"), "not_allowed_index_reindexed")
 
-        result should have statusCode 401
+        result should have statusCode 403
       }
       "user has permission to source index and but no permission to dest index" in {
         val result = user1IndexManager.reindex(ReindexSource.Local("test1_index"), "not_allowed_index_reindexed")
 
-        result should have statusCode 401
+        result should have statusCode 403
       }
       "user has permission to dest index and but no permission to source index" in {
         val result = user1IndexManager.reindex(ReindexSource.Local("not_allowed_index"), "test1_index_reindexed")
 
-        result should have statusCode 401
+        result should have statusCode 403
       }
     }
   }

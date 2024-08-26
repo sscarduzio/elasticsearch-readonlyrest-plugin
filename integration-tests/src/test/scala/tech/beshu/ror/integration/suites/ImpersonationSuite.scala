@@ -23,7 +23,6 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer}
-import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
@@ -88,9 +87,8 @@ class ImpersonationSuite
         impersonatingSearchManagers("admin1", "pass", impersonatedUser = "dev1").foreach { searchManager =>
           val result = searchManager.search("test2_index")
 
-          result should have statusCode 401
+          result should have statusCode 403
           result.responseJson should be(impersonationNotSupportedResponse)
-          result.headers should contain(SimpleHeader("WWW-Authenticate", "Basic"))
         }
       }
     }
@@ -111,7 +109,7 @@ class ImpersonationSuite
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
 
-            result should have statusCode 401
+            result should have statusCode 403
             result.responseJson should be(impersonationNotSupportedResponse)
           }
         }
@@ -151,7 +149,7 @@ class ImpersonationSuite
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
 
-            result should have statusCode 401
+            result should have statusCode 403
             result.responseJson should be(impersonationNotSupportedResponse)
           }
         }
@@ -204,7 +202,7 @@ class ImpersonationSuite
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ext_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
 
-            result should have statusCode 401
+            result should have statusCode 403
             result.responseJson should be(impersonationNotSupportedResponse)
           }
         }
@@ -233,7 +231,7 @@ class ImpersonationSuite
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ext_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
 
-            result should have statusCode 401
+            result should have statusCode 403
             result.responseJson should be(impersonationNotSupportedResponse)
           }
         }
@@ -275,7 +273,7 @@ class ImpersonationSuite
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "gpa_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
 
-            result should have statusCode 401
+            result should have statusCode 403
             result.responseJson should be(impersonationNotSupportedResponse)
           }
         }
@@ -328,7 +326,7 @@ class ImpersonationSuite
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "gpa_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
 
-            result should have statusCode 401
+            result should have statusCode 403
             result.responseJson should be(impersonationNotSupportedResponse)
           }
         }
@@ -426,7 +424,7 @@ class ImpersonationSuite
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
             val result = searchManager.search("test4_index")
 
-            result should have statusCode 401
+            result should have statusCode 403
             result.responseJson should be(impersonationNotSupportedResponse)
           }
         }
@@ -487,27 +485,24 @@ class ImpersonationSuite
       impersonatingSearchManagers("unknown", "pass", impersonatedUser = "dev1").foreach { searchManager =>
         val result = searchManager.search("test1_index")
 
-        result should have statusCode 401
+        result should have statusCode 403
         result.responseJson should be(impersonationNotAllowedResponse)
-        result.headers should contain(SimpleHeader("WWW-Authenticate", "Basic"))
       }
     }
     "user with admin privileges cannot be authenticated" in {
       impersonatingSearchManagers("admin1", "wrong_pass", impersonatedUser = "dev1").foreach { searchManager =>
         val result = searchManager.search("test1_index")
 
-        result should have statusCode 401
+        result should have statusCode 403
         result.responseJson should be(impersonationNotAllowedResponse)
-        result.headers should contain(SimpleHeader("WWW-Authenticate", "Basic"))
       }
     }
     "admin user is authenticated but cannot impersonate given user" in {
       impersonatingSearchManagers("admin2", "pass", impersonatedUser = "dev1").foreach { searchManager =>
         val result = searchManager.search("test1_index")
 
-        result should have statusCode 401
+        result should have statusCode 403
         result.responseJson should be(impersonationNotAllowedResponse)
-        result.headers should contain(SimpleHeader("WWW-Authenticate", "Basic"))
       }
     }
     "mocks were invalidated" in {
@@ -552,7 +547,7 @@ class ImpersonationSuite
 
         val result2 = searchManager.search("test3_index")
 
-        result2 should have statusCode 401
+        result2 should have statusCode 403
         result2.responseJson should be(impersonationNotSupportedResponse)
       }
     }
@@ -616,36 +611,36 @@ class ImpersonationSuite
         result should have statusCode 200
       }
     }
-    "return 401 and IMPERSONATION_NOT_ALLOWED when the impersonator cannot be authenticated" in {
+    "return 403 and IMPERSONATION_NOT_ALLOWED when the impersonator cannot be authenticated" in {
       loadTestSettings()
       configureSomeMocksForAllExternalServices()
 
       impersonatingRorApiManagers("admin1", "wrong_password", impersonatedUser = "dev1").foreach { apiManger =>
         val result = apiManger.fetchMetadata()
 
-        result should have statusCode 401
+        result should have statusCode 403
         result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"))
       }
     }
-    "return 401 and IMPERSONATION_NOT_ALLOWED when the impersonator is not allowed to impersonate a given user" in {
+    "return 403 and IMPERSONATION_NOT_ALLOWED when the impersonator is not allowed to impersonate a given user" in {
       loadTestSettings()
       configureSomeMocksForAllExternalServices()
 
       impersonatingRorApiManagers("admin2", "pass", impersonatedUser = "dev1").foreach { apiManger =>
         val result = apiManger.fetchMetadata()
 
-        result should have statusCode 401
+        result should have statusCode 403
         result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"))
       }
     }
-    "return 401 and IMPERSONATION_NOT_SUPPORTED when there is no matched block and at least one don't support impersonation" in {
+    "return 403 and IMPERSONATION_NOT_SUPPORTED when there is no matched block and at least one don't support impersonation" in {
       loadTestSettings()
       configureSomeMocksForAllExternalServices()
 
       impersonatingRorApiManagers("admin1", "pass", impersonatedUser = "dev3").foreach { apiManger =>
         val result = apiManger.fetchMetadata()
 
-        result should have statusCode 401
+        result should have statusCode 403
         result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"))
       }
     }
@@ -855,16 +850,14 @@ class ImpersonationSuite
       |      {
       |        "type":"forbidden_response",
       |        "reason":"forbidden",
-      |        "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"],
-      |        "header":{"WWW-Authenticate":"Basic"}
+      |        "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"]
       |      }
       |    ],
       |    "type":"forbidden_response",
       |    "reason":"forbidden",
-      |    "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"],
-      |    "header":{"WWW-Authenticate":"Basic"}
+      |    "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"]
       |  },
-      |  "status":401
+      |  "status":403
       |}
     """.stripMargin)
 
@@ -876,16 +869,14 @@ class ImpersonationSuite
       |      {
       |        "type":"forbidden_response",
       |        "reason":"forbidden",
-      |        "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"],
-      |        "header":{"WWW-Authenticate":"Basic"}
+      |        "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"]
       |      }
       |    ],
       |    "type":"forbidden_response",
       |    "reason":"forbidden",
-      |    "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"],
-      |    "header":{"WWW-Authenticate":"Basic"}
+      |    "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"]
       |  },
-      |  "status":401
+      |  "status":403
       |}
     """.stripMargin)
 

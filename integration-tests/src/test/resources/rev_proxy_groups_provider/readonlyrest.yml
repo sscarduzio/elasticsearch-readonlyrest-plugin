@@ -1,7 +1,5 @@
 readonlyrest:
 
-  prompt_for_basic_auth: false
-
   # HTTP response body in case of forbidden request.
   # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
   response_if_req_forbidden: <h1>Forbidden</h1>
