@@ -27,12 +27,12 @@ import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
-import tech.beshu.ror.utils.misc.StringOps._
+import tech.beshu.ror.utils.misc.StringOps.*
 import ujson.Value
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 trait BaseAdminApiSuite
@@ -42,7 +42,7 @@ trait BaseAdminApiSuite
     with MultipleClientsSupport
     with Eventually
     with OptionValues
-    with BeforeAndAfterEach 
+    with BeforeAndAfterEach
     with CustomScalaTestMatchers {
   this: EsClusterProvider =>
 
@@ -1224,29 +1224,36 @@ trait BaseAdminApiSuite
     val generatedIndex = results.responseJson("error")("index").str
     generatedIndex should fullyMatch regex s"^${indexName}_ROR_[a-zA-Z0-9]{10}$$".r
 
+    val reason =
+      if (Version.greaterOrEqualThan(esVersionUsed, 7, 0, 0)) {
+        s"no such index [$generatedIndex]"
+      } else {
+        "no such index"
+      }
+
     results.responseJson should be(ujson.read(
       s"""
-        |{
-        |  "error":{
-        |    "root_cause":[
-        |      {
-        |        "type":"index_not_found_exception",
-        |        "reason":"no such index [$generatedIndex]",
-        |        "resource.type":"index_or_alias",
-        |        "resource.id":"$generatedIndex",
-        |        "index_uuid":"_na_",
-        |        "index":"$generatedIndex"
-        |      }
-        |    ],
-        |    "type":"index_not_found_exception",
-        |    "reason":"no such index [$generatedIndex]",
-        |    "resource.type":"index_or_alias",
-        |    "resource.id":"$generatedIndex",
-        |    "index_uuid":"_na_",
-        |    "index":"$generatedIndex"
-        |  },
-        |  "status":404
-        |}""".stripMargin
+         |{
+         |  "error":{
+         |    "root_cause":[
+         |      {
+         |        "type":"index_not_found_exception",
+         |        "reason":"$reason",
+         |        "resource.type":"index_or_alias",
+         |        "resource.id":"$generatedIndex",
+         |        "index_uuid":"_na_",
+         |        "index":"$generatedIndex"
+         |      }
+         |    ],
+         |    "type":"index_not_found_exception",
+         |    "reason":"$reason",
+         |    "resource.type":"index_or_alias",
+         |    "resource.id":"$generatedIndex",
+         |    "index_uuid":"_na_",
+         |    "index":"$generatedIndex"
+         |  },
+         |  "status":404
+         |}""".stripMargin
     ))
   }
 
