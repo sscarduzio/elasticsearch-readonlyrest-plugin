@@ -168,7 +168,7 @@ class DataStreamApiSuite
           val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
 
           val dsAdminSearch = searchManager.searchAll("data-stream-admin")
-          dsAdminSearch should have statusCode 401
+          dsAdminSearch should have statusCode 404
 
           List(
             ("data-stream-dev", 2),
@@ -193,7 +193,7 @@ class DataStreamApiSuite
           val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
 
           val dsAdminSearch = searchManager.searchAll("data-stream-admin")
-          dsAdminSearch should have statusCode 401
+          dsAdminSearch should have statusCode 404
 
           val getAllResponse = adminDataStreamManager.getAllDataStreams().force()
           def findIndicesForDataStream(name: String) =
@@ -320,7 +320,7 @@ class DataStreamApiSuite
 
           findIndicesForDataStream(adminDataStream).foreach { indexName =>
             val response = searchManager.searchAll(indexName)
-            response should have statusCode 401
+            response should have statusCode 404
           }
           findIndicesForDataStream(devDataStream).foreach { indexName =>
             val response = searchManager.searchAll(indexName)
@@ -350,7 +350,7 @@ class DataStreamApiSuite
 
           findIndicesForDataStream(adminDataStream).foreach { indexName =>
             val response = searchManager.searchAll(indexName)
-            response should have statusCode 401
+            response should have statusCode 404
           }
           findIndicesForDataStream(devDataStream).foreach { indexName =>
             val response = searchManager.searchAll(indexName)
@@ -386,7 +386,7 @@ class DataStreamApiSuite
             val documentManager = new DocumentManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
 
             documentManager
-              .createDocWithGeneratedId("data-stream-admin", documentJson) should have statusCode 401
+              .createDocWithGeneratedId("data-stream-admin", documentJson) should have statusCode 403
 
             documentManager
               .createDocWithGeneratedId("data-stream-dev", documentJson)
@@ -409,7 +409,7 @@ class DataStreamApiSuite
             val documentManager = new DocumentManager(clients.head.basicAuthClient("user10", "pass"), esVersionUsed)
 
             documentManager
-              .createDocWithGeneratedId("data-stream-admin", documentJson) should have statusCode 401
+              .createDocWithGeneratedId("data-stream-admin", documentJson) should have statusCode 403
 
             documentManager
               .createDocWithGeneratedId("data-stream-dev", documentJson)
@@ -480,7 +480,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user2Client, esVersionUsed)
             val response = dsm.createDataStream(dataStream)
-            response should have statusCode 401
+            response should have statusCode 403
           }
         }
       }
@@ -692,7 +692,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val response = dsm.getDataStreamStats(dataStream)
-            response should have statusCode 401
+            response should have statusCode 403
           }
         }
       }
@@ -737,7 +737,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user2Client, esVersionUsed)
             val response = dsm.deleteDataStream(dataStream)
-            response should have statusCode 401
+            response should have statusCode 403
           }
         }
       }
@@ -795,7 +795,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user5Client, esVersionUsed)
             val migrateToDataStreamResponse = dsm.migrateToDataStream(dataStream)
-            migrateToDataStreamResponse should have statusCode 401
+            migrateToDataStreamResponse should have statusCode 403
           }
         }
       }
@@ -913,7 +913,7 @@ class DataStreamApiSuite
                  |  ]
                  |}
                  |""".stripMargin))
-            modifyResponse should have statusCode 401
+            modifyResponse should have statusCode 403
           }
           "one of the data streams does not match the allowed data stream names" excludeES(allEs6x, allEs7xBelowEs716x) in {
             val dataStream = DataStreamNameGenerator.next("test")
@@ -945,7 +945,7 @@ class DataStreamApiSuite
                  |  ]
                  |}
                  |""".stripMargin))
-            modifyResponse should have statusCode 401
+            modifyResponse should have statusCode 403
           }
         }
       }
@@ -1005,7 +1005,7 @@ class DataStreamApiSuite
                  |  ]
                  |}
                  |""".stripMargin))
-            modifyResponse should have statusCode 401
+            modifyResponse should have statusCode 403
           }
         }
       }

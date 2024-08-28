@@ -45,7 +45,7 @@ class LocalGroupsSuite
 
     val response = clusterManager.state()
 
-    response should have statusCode 401
+    response should have statusCode 403
   }
 
   "bad credentials, good rule" in {
@@ -57,7 +57,7 @@ class LocalGroupsSuite
 
     val response = clusterManager.state()
 
-    response should have statusCode 401
+    response should have statusCode 403
   }
 
   "bad credentials, bad rule" in {
@@ -68,7 +68,7 @@ class LocalGroupsSuite
 
     val response = catManager.indices()
 
-    response should have statusCode 401
+    response should have statusCode 403
   }
 
   "identify retrieval" in {

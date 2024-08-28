@@ -59,7 +59,7 @@ class UriRegexRuleSuite
 
   private def assertRuleMatchForUser(name: String): Unit = assertHealthCheckStatus(200, name)
 
-  private def assertRuleDoesNotMatchForUser(name: String): Unit = assertHealthCheckStatus(401, name)
+  private def assertRuleDoesNotMatchForUser(name: String): Unit = assertHealthCheckStatus(403, name)
 
   private def assertHealthCheckStatus(status: Int, name: String): Unit = {
     val manager = new CatManager(basicAuthClient(name, "pass"), esVersion = esVersionUsed)

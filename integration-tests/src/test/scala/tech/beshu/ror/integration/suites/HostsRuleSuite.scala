@@ -41,7 +41,7 @@ class HostsRuleSuite
   "testGet" in {
     val response = searchManager.search()
 
-    response should have statusCode 401
+    response should have statusCode 403
   }
 }
 

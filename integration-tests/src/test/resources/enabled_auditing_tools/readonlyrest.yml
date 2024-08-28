@@ -1,7 +1,5 @@
 readonlyrest:
 
-  prompt_for_basic_auth: false
-
   audit:
     enabled: true
     outputs:

@@ -12,8 +12,6 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
-  prompt_for_basic_auth: false
-
   access_control_rules:
 
     # ES containter initializer need this rule to configure ES instance after startup

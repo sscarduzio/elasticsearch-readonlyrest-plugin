@@ -47,7 +47,7 @@ class MiscSuite
       )
       val response = userClusterStateManager.healthCheck()
 
-      response should have statusCode 401
+      response should have statusCode 403
     }
     "allow the request when it doesn't contain x-forwarded-for header" in {
       val userClusterStateManager = new CatManager(
@@ -94,7 +94,7 @@ class MiscSuite
     "be protected" in {
       val unknownUserCatManager = new CatManager(basicAuthClient("unknown", "unknown"), esVersion = esVersionUsed)
       val response = unknownUserCatManager.main()
-      response should have statusCode 401
+      response should have statusCode 403
     }
   }
 }

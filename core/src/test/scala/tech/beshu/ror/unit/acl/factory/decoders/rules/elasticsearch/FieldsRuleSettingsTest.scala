@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.elasticsearch
 
-import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
@@ -288,7 +287,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(GeneralReadonlyrestSettingsError(Message("Unknown fls engine: 'something'. Supported: 'es_with_lucene', 'es'.")))
+            errors.head should be(GeneralReadonlyrestSettingsError(Message("Unknown fls engine: 'something'. Supported: 'es_with_lucene'(default), 'es'.")))
           }
         )
       }

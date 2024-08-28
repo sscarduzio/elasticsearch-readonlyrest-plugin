@@ -161,21 +161,21 @@ class CurrentUserMetadataSuite
 
           val result = unknownUserMetadataManager.fetchMetadata()
 
-          result should have statusCode 401
+          result should have statusCode 403
         }
         "current group is set but it doesn't exist on available groups list" in {
           val user4MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
 
           val result = user4MetadataManager.fetchMetadata(preferredGroupId = Some("group7"))
 
-          result should have statusCode 401
+          result should have statusCode 403
         }
         "block with no available groups collected is matched and current group is set" in {
           val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
           val result = user3MetadataManager.fetchMetadata(preferredGroupId = Some("group7"))
 
-          result should have statusCode 401
+          result should have statusCode 403
         }
       }
     }
