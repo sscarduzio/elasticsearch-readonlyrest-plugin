@@ -21,6 +21,7 @@ import io.circe.{Decoder, DecodingFailure, Json}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
 import tech.beshu.ror.utils.yaml
+import tech.beshu.ror.utils.yaml.RorYamlParser
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 
 final class YamlFileBasedConfigLoader(file: File)
@@ -42,9 +43,8 @@ final class YamlFileBasedConfigLoader(file: File)
 
   private lazy val loadedConfigJson: Either[MalformedSettings, Json] = {
     file.fileReader { reader =>
-      yaml
-        .parser
-        .parse(reader)
+      RorYamlParser
+        .parse(reader)(environmentConfig.propertiesProvider)
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
         .flatMap { json =>
           jsonConfigResolver

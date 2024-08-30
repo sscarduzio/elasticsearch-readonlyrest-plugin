@@ -47,8 +47,10 @@ import tech.beshu.ror.utils.json.KeyCodec
 
 import scala.concurrent.duration.Duration
 import scala.util.Try
+import tech.beshu.ror.providers.PropertiesProvider
 
-final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService)
+final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService,
+                                   propertiesProvider: PropertiesProvider)
   extends BaseIndexConfigManager[TestRorConfig]
     with Logging {
 
@@ -90,7 +92,11 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
         expirationTtlString <- getConfigProperty(config, Const.properties.expirationTtl)
         rawRorConfigString <- getConfigProperty(config, Const.properties.settings)
         authMocksConfigString <- getConfigProperty(config, Const.properties.mocks)
-        rawRorConfig <- EitherT(RawRorConfig.fromString(rawRorConfigString).map(_.left.map(ParsingError.apply)))
+        rawRorConfig <- EitherT {
+          RawRorConfig
+            .fromString(rawRorConfigString)(propertiesProvider)
+            .map(_.left.map(ParsingError.apply))
+        }
         expirationTime <- getInstant(expirationTimeString)
         expirationTtl <- getExpirationTtl(expirationTtlString)
         mocks <- getMocks(authMocksConfigString)

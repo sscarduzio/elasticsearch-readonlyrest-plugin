@@ -16,26 +16,21 @@
  */
 package tech.beshu.ror.utils.yaml
 
-import better.files.File
-import io.circe.Decoder
+import tech.beshu.ror.configuration.RorProperties
+import tech.beshu.ror.org.yaml.snakeyaml.LoaderOptions
 import tech.beshu.ror.providers.PropertiesProvider
-import tech.beshu.ror.utils.yaml
+import java.io.Reader
+import io.circe._
 
-class JsonFile(file: File) {
+object RorYamlParser {
 
-  def parse[T](implicit decoder: Decoder[T],
-               propertiesProvider: PropertiesProvider): Either[String, T] = {
-    file.fileReader { reader =>
-      RorYamlParser
-        .parse(reader)
-        .left.map(_.message)
-        .flatMap { json =>
-          decoder
-            .decodeJson(json)
-            .left.map(_.message)
-        }
-    }
+  def parse(yaml: Reader)(implicit propertiesProvider: PropertiesProvider): Either[ParsingFailure, Json] = {
+    tech.beshu.ror.utils.yaml.parser.parse(yaml, createLoaderOptions())
+  }
+
+  private def createLoaderOptions()(implicit propertiesProvider: PropertiesProvider): LoaderOptions = {
+    val options = new LoaderOptions
+    options.setCodePointLimit(RorProperties.rorSettingsMaxSize.toBytes.toInt)
+    options
   }
 }
-
-

@@ -36,8 +36,10 @@ import tech.beshu.ror.utils.DurationOps._
 import java.time.Instant
 import scala.concurrent.duration._
 import scala.util.Try
+import tech.beshu.ror.providers.PropertiesProvider
 
-class TestConfigApi(rorInstance: RorInstance){
+class TestConfigApi(rorInstance: RorInstance,
+                    propertiesProvider: PropertiesProvider){
 
   import tech.beshu.ror.api.TestConfigApi.Utils._
   import tech.beshu.ror.api.TestConfigApi.Utils.decoders._
@@ -71,7 +73,9 @@ class TestConfigApi(rorInstance: RorInstance){
   }
 
   private def rorTestConfig(configString: String): EitherT[Task, TestConfigResponse, RawRorConfig] = EitherT {
-    RawRorConfig.fromString(configString).map(_.left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(error.show)))
+    RawRorConfig
+      .fromString(configString)(propertiesProvider)
+      .map(_.left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(error.show)))
   }
 
   private def invalidateTestConfig()

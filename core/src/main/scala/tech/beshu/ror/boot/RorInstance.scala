@@ -84,14 +84,15 @@ class RorInstance private(boot: ReadonlyRest,
     rorInstance = this,
     boot.indexConfigManager,
     new FileConfigLoader(boot.esEnv.configPath),
-    rorConfigurationIndex
+    rorConfigurationIndex,
+    environmentConfig.propertiesProvider
   )
 
   private val authMockRestApi = new AuthMockApi(
     rorInstance = this
   )
 
-  private val testConfigRestApi = new TestConfigApi(this)
+  private val testConfigRestApi = new TestConfigApi(this, environmentConfig.propertiesProvider)
 
   def engines: Option[Engines] = aMainConfigEngine.engine.map(Engines(_, anTestConfigEngine.engine))
 
