@@ -13,7 +13,7 @@ readonlyrest:
       auth_key: dev1:test
 
     - name: "test2"
-      indices: ["test2_index", "other_cluster:test1_index"]
+      indices: ["test2_index", "other_cluster:test1_index", "private2:test_alias"]
       auth_key: dev2:test
 
     - name: "real life case"

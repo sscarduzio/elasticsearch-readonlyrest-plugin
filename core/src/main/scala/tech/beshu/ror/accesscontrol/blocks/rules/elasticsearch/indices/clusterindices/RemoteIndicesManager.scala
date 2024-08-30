@@ -62,7 +62,7 @@ class RemoteIndicesManager(requestContext: RequestContext,
 
   override def allDataStreamAliases: Task[Set[RemoteIndexName]] = {
     requestContext
-      .allRemoteIndicesAndAliases.map(_.flatMap(_.aliases))
+      .allRemoteDataStreamsAndAliases.map(_.flatMap(_.aliases))
   }
 
   override def dataStreamsPerAliasMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
@@ -70,7 +70,7 @@ class RemoteIndicesManager(requestContext: RequestContext,
       .map {
         _.foldLeft(Map.empty[RemoteIndexName, Set[RemoteIndexName]]) {
           case (acc, fullRemoteDataStream) =>
-            val aliasesPerDataStream = Map(fullRemoteDataStream.dataStream -> fullRemoteDataStream.aliases)
+            val aliasesPerDataStream = fullRemoteDataStream.aliases.map((_, Set(fullRemoteDataStream.dataStream))).toMap
             mapMonoid.combine(acc, aliasesPerDataStream)
         }
       }

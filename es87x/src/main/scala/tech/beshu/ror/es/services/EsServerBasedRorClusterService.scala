@@ -266,8 +266,8 @@ class EsServerBasedRorClusterService(nodeName: String,
                 .toSet
 
             val dataStreamAliases =
-              aliasesPerIndex
-                .getOrElse(dataStreamName, Set.empty)
+              backingIndices
+                .flatMap(backingIndex => aliasesPerIndex.getOrElse(backingIndex, Set.empty))
                 .map(index => DataStreamName.Full.fromNes(index.name))
 
             FullRemoteDataStreamWithAliases(

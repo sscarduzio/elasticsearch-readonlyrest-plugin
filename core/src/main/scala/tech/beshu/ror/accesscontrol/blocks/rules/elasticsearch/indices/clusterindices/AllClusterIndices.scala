@@ -84,24 +84,20 @@ trait AllClusterIndices extends BaseIndicesProcessor {
                                    allAllowedIndices: Set[ClusterIndexName.Remote],
                                    requestedIndices: UniqueNonEmptyList[ClusterIndexName.Remote],
                                    determinedKibanaIndex: Option[KibanaIndexName]): Task[ProcessResult[ClusterIndexName]] = {
-    if (requestedIndices.isEmpty) {
-      Task.now(ProcessResult.Failed(None))
-    } else {
-      implicit val indicesManager: RemoteIndicesManager = new RemoteIndicesManager(
-        requestContext,
-        PatternsMatcher.create(allAllowedIndices)
-      )
-      logger.debug(s"[${requestContext.id.show}] Checking remote indices (allowed: [${allAllowedIndices.map(_.show).mkString(",")}], requested: [${requestedIndices.map(_.show).mkString(",")}])")
-      canPass(requestContext, determinedKibanaIndex, requestedIndices)
-        .map {
-          case CanPass.Yes(narrowedIndices) =>
-            ProcessResult.Ok(narrowedIndices)
-          case CanPass.No(Some(Reason.IndexNotExist)) =>
-            ProcessResult.Failed(Some(Cause.IndexNotFound))
-          case CanPass.No(_) =>
-            ProcessResult.Failed(None)
-        }
-    }
+    implicit val indicesManager: RemoteIndicesManager = new RemoteIndicesManager(
+      requestContext,
+      PatternsMatcher.create(allAllowedIndices)
+    )
+    logger.debug(s"[${requestContext.id.show}] Checking remote indices (allowed: [${allAllowedIndices.map(_.show).mkString(",")}], requested: [${requestedIndices.map(_.show).mkString(",")}])")
+    canPass(requestContext, determinedKibanaIndex, requestedIndices)
+      .map {
+        case CanPass.Yes(narrowedIndices) =>
+          ProcessResult.Ok(narrowedIndices)
+        case CanPass.No(Some(Reason.IndexNotExist)) =>
+          ProcessResult.Failed(Some(Cause.IndexNotFound))
+        case CanPass.No(_) =>
+          ProcessResult.Failed(None)
+      }
   }
 
   private def splitIntoRemoteAndLocalIndices(indices: Set[ClusterIndexName]) = {

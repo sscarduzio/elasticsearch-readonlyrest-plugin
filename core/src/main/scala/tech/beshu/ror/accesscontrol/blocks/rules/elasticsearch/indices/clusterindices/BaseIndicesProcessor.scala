@@ -141,6 +141,7 @@ trait BaseIndicesProcessor {
           filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(requestedIndices) ::
           filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured(requestedIndices) ::
           filterAssumingThatAliasesAreRequestedAndDataStreamsAreConfigured(requestedIndices) ::
+          filterAssumingThatAliasesAreRequestedAndDataStreamAliasesAreConfigured(requestedIndices) ::
           // data streams requested
           filterAssumingThatDataStreamsAreRequestedAndIndicesAreConfigured(requestedIndices) ::
           filterAssumingThatDataStreamsAreRequestedAndAliasesAreConfigured() ::
@@ -239,6 +240,17 @@ trait BaseIndicesProcessor {
       val indicesOfRequestedAliases = requestedAliases.flatMap(aliasesPerIndex.getOrElse(_, Set.empty))
       indicesManager.allowedIndicesMatcher.filter(indicesOfRequestedAliases)
     }
+  }
+
+  private def filterAssumingThatAliasesAreRequestedAndDataStreamAliasesAreConfigured[T <: ClusterIndexName : Matchable](requestedIndices: UniqueNonEmptyList[T])
+                                                                                                                       (implicit indicesManager: IndicesManager[T]) = {
+    indicesManager
+      .allDataStreamAliases
+      .map { allDataStreamAliases =>
+        val requestedAliasesNames = requestedIndices
+        val requestedAliases = PatternsMatcher.create(requestedAliasesNames).filter(allDataStreamAliases)
+        indicesManager.allowedIndicesMatcher.filter(requestedAliases)
+      }
   }
 
   private def filterAssumingThatAliasesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable](requestedIndices: UniqueNonEmptyList[T])
