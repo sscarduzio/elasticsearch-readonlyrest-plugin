@@ -16,21 +16,30 @@
  */
 package tech.beshu.ror.utils.yaml
 
-import tech.beshu.ror.configuration.RorProperties
 import tech.beshu.ror.org.yaml.snakeyaml.LoaderOptions
-import tech.beshu.ror.providers.PropertiesProvider
-import java.io.Reader
-import io.circe._
+import better.files.*
 
-object RorYamlParser {
+import java.io.{Reader, StringReader}
+import io.circe.*
+import squants.information.Information
 
-  def parse(yaml: Reader)(implicit propertiesProvider: PropertiesProvider): Either[ParsingFailure, Json] = {
-    tech.beshu.ror.utils.yaml.parser.parse(yaml, createLoaderOptions())
+class RorYamlParser(maxSize: Information) {
+
+  def parse(yaml: Reader): Either[ParsingFailure, Json] = {
+    tech.beshu.ror.utils.yaml.parser.parse(yaml, loaderOptions)
+  }
+  
+  def parse(file: File): Either[ParsingFailure, Json] = {
+    file.fileReader { reader => parse(reader) }
+  }
+  
+  def parse(yamlContent: String): Either[ParsingFailure, Json] = {
+    parse(new StringReader(yamlContent))
   }
 
-  private def createLoaderOptions()(implicit propertiesProvider: PropertiesProvider): LoaderOptions = {
+  private lazy val loaderOptions: LoaderOptions = {
     val options = new LoaderOptions
-    options.setCodePointLimit(RorProperties.rorSettingsMaxSize.toBytes.toInt)
+    options.setCodePointLimit(maxSize.toBytes.toInt)
     options
   }
 }

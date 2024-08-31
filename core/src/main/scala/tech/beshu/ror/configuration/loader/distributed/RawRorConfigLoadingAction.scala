@@ -28,7 +28,7 @@ object RawRorConfigLoadingAction {
   def load(env: EsEnv, indexJsonContentService: IndexJsonContentService)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
     val compiler = ConfigLoadingInterpreter.create(
-      new IndexConfigManager(indexJsonContentService, environmentConfig.propertiesProvider),
+      new IndexConfigManager(indexJsonContentService),
       RorProperties.rorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
     )
     (for {

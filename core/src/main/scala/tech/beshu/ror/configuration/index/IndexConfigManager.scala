@@ -25,10 +25,10 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.ParsingError
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
-import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.configuration.EnvironmentConfig
 
-final class IndexConfigManager(indexJsonContentService: IndexJsonContentService,
-                               propertiesProvider: PropertiesProvider)
+final class IndexConfigManager(indexJsonContentService: IndexJsonContentService)
+                              (implicit environmentConfig: EnvironmentConfig)
   extends BaseIndexConfigManager[RawRorConfig]
   with Logging {
 
@@ -39,10 +39,10 @@ final class IndexConfigManager(indexJsonContentService: IndexJsonContentService,
         case Right(source) =>
           source
             .find(_._1 == Config.rorSettingsIndexConst.settingsKey)
-            .map { case (_, rorYamlString) => 
+            .map { case (_, rorYamlString) =>
               RawRorConfig
-                .fromString(rorYamlString)(propertiesProvider)
-                .map(_.left.map(ParsingError.apply)) 
+                .fromString(rorYamlString)
+                .map(_.left.map(ParsingError.apply))
             }
             .getOrElse(configLoaderError(IndexConfigUnknownStructure))
         case Left(CannotReachContentSource) =>

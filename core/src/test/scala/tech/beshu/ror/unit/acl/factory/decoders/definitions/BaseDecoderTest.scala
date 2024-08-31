@@ -25,7 +25,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.utils.ADecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
-import tech.beshu.ror.utils.yaml
+import tech.beshu.ror.utils.TestsUtils
 
 import scala.util.{Failure, Try}
 
@@ -67,13 +67,9 @@ abstract class BaseDecoderTest[F[_] : Comonad, A, B](decoder: ADecoder[F, A])
   }
 
   private def decode(yamlContent: String): F[Either[DecodingFailure, A]] = {
-    yaml
-      .parser
+    TestsUtils.rorYamlParser
       .parse(yamlContent)
-      .map(json =>
-        decoder
-          .apply(json.hcursor)
-      )
+      .map(json => decoder.apply(json.hcursor))
       .fold(ex => throw ex, identity)
   }
 

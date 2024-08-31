@@ -18,8 +18,9 @@ package tech.beshu.ror.configuration
 
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
-import tech.beshu.ror.providers._
+import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
+import tech.beshu.ror.utils.yaml.RorYamlParser
 
 import java.time.Clock
 
@@ -29,7 +30,8 @@ final case class EnvironmentConfig(clock: Clock,
                                    uniqueIdentifierGenerator: UniqueIdentifierGenerator,
                                    uuidProvider: UuidProvider,
                                    jsCompiler: JsCompiler,
-                                   variablesFunctions: SupportedVariablesFunctions)
+                                   variablesFunctions: SupportedVariablesFunctions,
+                                   yamlParser: RorYamlParser)
 
 object EnvironmentConfig {
 
@@ -41,5 +43,6 @@ object EnvironmentConfig {
     uuidProvider = JavaUuidProvider,
     jsCompiler = MozillaJsCompiler,
     variablesFunctions = SupportedVariablesFunctions.default,
+    yamlParser = new RorYamlParser(RorProperties.rorSettingsMaxSize(JvmPropertiesProvider))
   )
 }

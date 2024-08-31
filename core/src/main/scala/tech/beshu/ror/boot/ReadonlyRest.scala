@@ -308,8 +308,8 @@ object ReadonlyRest {
              env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
-    val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService, environmentConfig.propertiesProvider)
-    val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService, environmentConfig.propertiesProvider)
+    val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
+    val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
     new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env)

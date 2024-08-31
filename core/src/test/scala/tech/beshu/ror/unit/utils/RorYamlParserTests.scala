@@ -14,16 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.acl.factory
+package tech.beshu.ror.unit.utils
 
 import io.circe.Json
-import org.scalatest.matchers.should.Matchers._
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.yaml
+import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.wordspec.AnyWordSpec
+import squants.information.Kilobytes
+import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.yaml.RorYamlParser
 
-class YamlParserTests extends AnyWordSpec with Inside {
+class RorYamlParserTests extends AnyWordSpec with Inside {
 
   "Yaml parser" should {
     "return parsing failure error" when {
@@ -183,5 +184,6 @@ class YamlParserTests extends AnyWordSpec with Inside {
       }
     }
   }
-  private def parseYaml(yamlContent:String): Json = yaml.parser.parse(yamlContent).toOption.get
+  private def parseYaml(yamlContent:String): Json =
+    new RorYamlParser(Kilobytes(100)).parse(yamlContent).toTry.get
 }

@@ -25,8 +25,7 @@ import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, Ma
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.es.EsEnv
-import tech.beshu.ror.providers.PropertiesProvider
-import tech.beshu.ror.utils.yaml.{JsonFile, YamlKeyDecoder}
+import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 import scala.language.implicitConversions
 
@@ -52,10 +51,16 @@ object EsConfig {
   private def parse(configFile: File, ossDistribution: Boolean)
                    (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, EsSettings] = {
     implicit val decoder: Decoder[EsSettings] = decoders.esSettingsDecoder(ossDistribution)
-    implicit val propertiesProvider: PropertiesProvider = environmentConfig.propertiesProvider
     EitherT.fromEither[Task](
-      new JsonFile(configFile)
-        .parse[EsSettings]
+      environmentConfig
+        .yamlParser
+        .parse(configFile)
+        .left.map(_.message)
+        .flatMap { json =>
+          decoder
+            .decodeJson(json)
+            .left.map(_.message)
+        }
         .left.map(MalformedContent(configFile, _))
     )
   }

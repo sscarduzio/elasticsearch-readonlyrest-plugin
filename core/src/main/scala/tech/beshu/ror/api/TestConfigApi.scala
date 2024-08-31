@@ -32,14 +32,13 @@ import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 import tech.beshu.ror.utils.DurationOps._
-
+import tech.beshu.ror.configuration.EnvironmentConfig
 import java.time.Instant
 import scala.concurrent.duration._
 import scala.util.Try
-import tech.beshu.ror.providers.PropertiesProvider
 
-class TestConfigApi(rorInstance: RorInstance,
-                    propertiesProvider: PropertiesProvider){
+class TestConfigApi(rorInstance: RorInstance)
+                   (implicit environmentConfig: EnvironmentConfig) {
 
   import tech.beshu.ror.api.TestConfigApi.Utils._
   import tech.beshu.ror.api.TestConfigApi.Utils.decoders._
@@ -74,7 +73,7 @@ class TestConfigApi(rorInstance: RorInstance,
 
   private def rorTestConfig(configString: String): EitherT[Task, TestConfigResponse, RawRorConfig] = EitherT {
     RawRorConfig
-      .fromString(configString)(propertiesProvider)
+      .fromString(configString)
       .map(_.left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(error.show)))
   }
 
