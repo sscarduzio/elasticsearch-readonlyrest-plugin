@@ -1298,7 +1298,7 @@ class ReadonlyRestStartingTests
           coreFactory,
           mockedIndexJsonContentManager,
           "/boot_tests/forced_file_loading/",
-          maxYamlSize = Some("10 Kb")
+          maxYamlSize = Some("1 Kb")
         )
 
         val result = readonlyRest.start().runSyncUnsafe()
@@ -1340,7 +1340,7 @@ class ReadonlyRestStartingTests
                                indexJsonContentService: IndexJsonContentService,
                                configPath: String,
                                refreshInterval: Option[FiniteDuration] = None,
-                               maxYamlSize: Option[String] = None): ReadonlyRest = {
+                               maxYamlSize: Option[String] = Some("10 KB")): ReadonlyRest = {
     def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
       refreshInterval
         .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
@@ -1348,7 +1348,7 @@ class ReadonlyRestStartingTests
 
     def mapWithMaxYamlSize(maxYamlSize: Option[String]) =
       maxYamlSize
-        .map(size => "com.readonlyrest.settings.max-size-mb" -> size)
+        .map(size => "com.readonlyrest.settings.maxSize" -> size)
         .toMap
 
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig

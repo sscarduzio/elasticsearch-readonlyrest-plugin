@@ -44,7 +44,7 @@ object RorProperties extends Logging {
     val rorConfig: NonEmptyString = nes("com.readonlyrest.settings.file.path")
     val refreshInterval: NonEmptyString = nes("com.readonlyrest.settings.refresh.interval")
     val loadingDelay: NonEmptyString = nes("com.readonlyrest.settings.loading.delay")
-    val rorSettingsMaxSize: NonEmptyString = nes("com.readonlyrest.settings.max-size-mb")
+    val rorSettingsMaxSize: NonEmptyString = nes("com.readonlyrest.settings.maxSize")
   }
 
   def rorConfigCustomFile(implicit propertiesProvider: PropertiesProvider): Option[File] =

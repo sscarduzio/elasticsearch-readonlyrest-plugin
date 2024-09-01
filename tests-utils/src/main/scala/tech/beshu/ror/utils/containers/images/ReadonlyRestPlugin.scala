@@ -89,6 +89,7 @@ class ReadonlyRestPlugin(esVersion: String,
     builder
       .add(unboundidDebug(false))
       .add(rorReloadingInterval())
+      .add("-Dcom.readonlyrest.settings.maxSize=1MB")
   }
 
   private def unboundidDebug(enabled: Boolean) =
