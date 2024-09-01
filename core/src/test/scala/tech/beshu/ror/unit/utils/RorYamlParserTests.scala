@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.unit.utils
 
-import io.circe.Json
+import io.circe.{Json, ParsingFailure}
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import squants.information.Kilobytes
+import squants.information.{Bytes, Kilobytes}
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.yaml.RorYamlParser
 
-class RorYamlParserTests extends AnyWordSpec with Inside {
+class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
   "Yaml parser" should {
     "return parsing failure error" when {
@@ -183,7 +183,27 @@ class RorYamlParserTests extends AnyWordSpec with Inside {
         parseYaml("200").noSpaces shouldEqual "200"
       }
     }
+    "yaml parser can be limited with max yaml size" in {
+      val yamlContent: String =
+        """
+          |readonlyrest:
+          |
+          |    access_control_rules:
+          |
+          |    - name: "CONTAINER ADMIN1"
+          |      verbosity: "error"
+          |      type: "allow"
+          |      auth_key: "admin:container"
+          |""".stripMargin
+
+      val result = new RorYamlParser(Bytes(10)).parse(yamlContent)
+      inside(result) {
+        case Left(parsingFailure) =>
+          parsingFailure.message should be("The incoming YAML document exceeds the limit: 10 code points.")
+      }
+    }
   }
-  private def parseYaml(yamlContent:String): Json =
+
+  private def parseYaml(yamlContent: String): Json =
     new RorYamlParser(Kilobytes(100)).parse(yamlContent).toTry.get
 }

@@ -44,7 +44,7 @@ object RorProperties extends Logging {
     val rorConfig: NonEmptyString = nes("com.readonlyrest.settings.file.path")
     val refreshInterval: NonEmptyString = nes("com.readonlyrest.settings.refresh.interval")
     val loadingDelay: NonEmptyString = nes("com.readonlyrest.settings.loading.delay")
-    val rorSettingsMaxSizeInMB: NonEmptyString = nes("com.readonlyrest.settings.max-size-mb")
+    val rorSettingsMaxSize: NonEmptyString = nes("com.readonlyrest.settings.max-size-mb")
   }
 
   def rorConfigCustomFile(implicit propertiesProvider: PropertiesProvider): Option[File] =
@@ -65,11 +65,11 @@ object RorProperties extends Logging {
       str => toLoadingDelay(str),
       LoadingDelay(defaults.refreshInterval)
     )
-    
+
   def rorSettingsMaxSize(implicit propertiesProvider: PropertiesProvider): Information =
     getProperty(
-      keys.rorSettingsMaxSizeInMB,
-      str => toInformation(str),
+      keys.rorSettingsMaxSize,
+      Information.parseString,
       defaults.rorSettingsMaxSize
     )
 
@@ -118,13 +118,6 @@ object RorProperties extends Logging {
       case Success(interval) if interval == 0 => None
       case Success(interval) if interval > 0 => Some(interval)
       case Success(_) | Failure(_) => throw new IllegalArgumentException(s"Cannot convert '$value' to positive integer")
-    }
-  }
-  
-  private def toInformation(value: String): Try[Information] = {
-    toPositiveInt(value).map {
-      case Some(value) => Megabytes(value)
-      case None => defaults.rorSettingsMaxSize
     }
   }
 
