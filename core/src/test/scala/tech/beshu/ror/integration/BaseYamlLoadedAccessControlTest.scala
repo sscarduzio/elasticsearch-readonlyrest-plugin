@@ -39,7 +39,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
   protected implicit def propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default
 
-  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default.copy(
+  private implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
     envVarsProvider = envVarsProvider,
     propertiesProvider = propertiesProvider
   )

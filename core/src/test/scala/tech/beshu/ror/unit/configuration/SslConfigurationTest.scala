@@ -30,11 +30,9 @@ import tech.beshu.ror.utils.TestsUtils.getResourcePath
 class SslConfigurationTest
   extends AnyWordSpec with Inside {
 
-  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
-    .default
-    .copy(
-      propertiesProvider = TestsPropertiesProvider.default
-    )
+  private implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
+    propertiesProvider = TestsPropertiesProvider.default
+  )
 
   "A ReadonlyREST ES API SSL settings" should {
     "be loaded from elasticsearch config file" when {

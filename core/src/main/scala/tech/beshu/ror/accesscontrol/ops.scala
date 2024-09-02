@@ -162,7 +162,7 @@ object show {
       case Address.Ip(value) => value.toString
       case Address.Name(value) => value.toString
     }
-    implicit val informationShow: Show[Information] = Show.show { i => s"${i.toMegabytes}MB" }
+    implicit val informationShow: Show[Information] = Show.show { i => i.toString }
     implicit val ipShow: Show[Ip] = Show.show(_.value.toString())
     implicit val methodShow: Show[Method] = Show.show(_.value)
     implicit val jsonPathShow: Show[JsonPath] = Show.show(_.rawPath)
