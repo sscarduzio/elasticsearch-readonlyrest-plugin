@@ -61,3 +61,9 @@ docker-envs/misc-clusters/ror-with-elastic-cloud-poc/certs-generator/input/*
 docker-envs/misc-clusters/ror-with-elastic-cloud-poc/certs/*
 docker-envs/eck/kind-cluster/subst-ror
 **/.base
+
+// metals
+.bloop/
+.bsp/
+.metals/
+.vscode/

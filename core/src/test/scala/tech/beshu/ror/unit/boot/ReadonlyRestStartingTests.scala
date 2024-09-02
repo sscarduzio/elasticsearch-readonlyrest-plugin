@@ -54,6 +54,7 @@ import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 class ReadonlyRestStartingTests
   extends AnyWordSpec
