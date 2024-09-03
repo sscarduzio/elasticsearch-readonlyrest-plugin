@@ -1291,13 +1291,9 @@ class ReadonlyRestStartingTests
     }
     "not be able to be loaded" when {
       "max size of ROR settings is exceeded" in {
-        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
-        mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
-
-        val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading/readonlyrest.yml")
         val readonlyRest = readonlyRestBoot(
-          coreFactory,
-          mockedIndexJsonContentManager,
+          mock[CoreFactory],
+          mock[IndexJsonContentService],
           "/boot_tests/forced_file_loading/",
           maxYamlSize = Some("1 B")
         )
