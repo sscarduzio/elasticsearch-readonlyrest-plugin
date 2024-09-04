@@ -169,7 +169,7 @@ class Elasticsearch(esVersion: String,
       .add("-Xms512m")
       .add("-Xmx512m")
       .add("-Djava.security.egd=file:/dev/./urandoms")
-      .add("-Xdebug", s"-agentlib:jdwp=transport=dt_socket,server=n,suspend=y,address=${xDebugAddressBasedOn(esVersion)}")
+      .add("-Xdebug", s"-agentlib:jdwp=transport=dt_socket,server=n,suspend=n,address=${xDebugAddressBasedOn(esVersion)}")
   }
 
   private def xDebugAddressBasedOn(esVersion: String) = {
