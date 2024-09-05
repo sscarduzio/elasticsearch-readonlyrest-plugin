@@ -42,8 +42,8 @@ final class YamlFileBasedConfigLoader(file: File)
 
   private lazy val loadedConfigJson: Either[MalformedSettings, Json] = {
     file.fileReader { reader =>
-      yaml
-        .parser
+      environmentConfig
+        .yamlParser
         .parse(reader)
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
         .flatMap { json =>

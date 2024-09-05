@@ -26,15 +26,13 @@ import tech.beshu.ror.configuration.{EnvironmentConfig, YamlFileBasedConfigLoade
 
 class YamlFileBasedConfigLoaderTest extends AnyWordSpec with Inside {
 
-  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
-    .default
-    .copy(
-      envVarsProvider = name =>
-        name.value.value match {
-          case "USER_NAME" => Some("John")
-          case _ => None
-        }
-    )
+  private implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
+    envVarsProvider = name =>
+      name.value.value match {
+        case "USER_NAME" => Some("John")
+        case _ => None
+      }
+  )
 
   "YamlFileBasedConfigLoader" should {
     "decode file file" in {

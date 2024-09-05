@@ -21,6 +21,7 @@ import cats.implicits.*
 import cats.{Order, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
+import squants.information.Information
 import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
@@ -161,6 +162,7 @@ object show {
       case Address.Ip(value) => value.toString
       case Address.Name(value) => value.toString
     }
+    implicit val informationShow: Show[Information] = Show.show { i => i.toString }
     implicit val ipShow: Show[Ip] = Show.show(_.value.toString())
     implicit val methodShow: Show[Method] = Show.show(_.value)
     implicit val jsonPathShow: Show[JsonPath] = Show.show(_.rawPath)

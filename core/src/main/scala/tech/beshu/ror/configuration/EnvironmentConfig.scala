@@ -18,28 +18,24 @@ package tech.beshu.ror.configuration
 
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
-import tech.beshu.ror.providers._
+import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
+import tech.beshu.ror.utils.yaml.RorYamlParser
 
 import java.time.Clock
 
-final case class EnvironmentConfig(clock: Clock,
-                                   envVarsProvider: EnvVarsProvider,
-                                   propertiesProvider: PropertiesProvider,
-                                   uniqueIdentifierGenerator: UniqueIdentifierGenerator,
-                                   uuidProvider: UuidProvider,
-                                   jsCompiler: JsCompiler,
-                                   variablesFunctions: SupportedVariablesFunctions)
+final class EnvironmentConfig(val clock: Clock = Clock.systemUTC(),
+                              val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
+                              val propertiesProvider: PropertiesProvider = JvmPropertiesProvider,
+                              val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
+                              val uuidProvider: UuidProvider = JavaUuidProvider,
+                              val jsCompiler: JsCompiler = MozillaJsCompiler,
+                              val variablesFunctions: SupportedVariablesFunctions = SupportedVariablesFunctions.default) {
+
+  val yamlParser: RorYamlParser = new RorYamlParser(RorProperties.rorSettingsMaxSize(propertiesProvider))
+}
 
 object EnvironmentConfig {
 
-  val default: EnvironmentConfig = EnvironmentConfig(
-    clock = Clock.systemUTC(),
-    envVarsProvider = OsEnvVarsProvider,
-    propertiesProvider = JvmPropertiesProvider,
-    uniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
-    uuidProvider = JavaUuidProvider,
-    jsCompiler = MozillaJsCompiler,
-    variablesFunctions = SupportedVariablesFunctions.default,
-  )
+  val default: EnvironmentConfig = new EnvironmentConfig()
 }

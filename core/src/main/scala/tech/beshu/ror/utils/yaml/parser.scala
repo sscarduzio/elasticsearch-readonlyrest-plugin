@@ -24,26 +24,27 @@ import tech.beshu.ror.org.yaml.snakeyaml.nodes._
 
 import scala.jdk.CollectionConverters._
 
-object parser {
+private [yaml] object parser {
   /**
     * Parse YAML from the given [[Reader]], returning either [[ParsingFailure]] or [[Json]]
     *
     * @param yaml
     * @return
     */
-  def parse(yaml: Reader): Either[ParsingFailure, Json] = for {
-    parsed <- parseSingle(yaml)
+  def parse(yaml: Reader,
+            options: LoaderOptions): Either[ParsingFailure, Json] = for {
+    parsed <- parseSingle(yaml, options)
     json <- yamlToJson(parsed)
   } yield json
 
-  def parse(yaml: String): Either[ParsingFailure, Json] = parse(new StringReader(yaml))
+  def parse(yaml: String, options: LoaderOptions): Either[ParsingFailure, Json] = parse(new StringReader(yaml), options)
 
   def parseDocuments(yaml: Reader): LazyList[Either[ParsingFailure, Json]] = parseStream(yaml).map(yamlToJson)
 
   def parseDocuments(yaml: String): LazyList[Either[ParsingFailure, Json]] = parseDocuments(new StringReader(yaml))
 
-  private[this] def parseSingle(reader: Reader) = Either.catchNonFatal(
-    new Yaml(new SafeConstructor(new LoaderOptions()))
+  private[this] def parseSingle(reader: Reader, options: LoaderOptions) = Either.catchNonFatal(
+    new Yaml(new SafeConstructor(options))
       .compose(reader)).leftMap(err => ParsingFailure(err.getMessage, err)
   )
 

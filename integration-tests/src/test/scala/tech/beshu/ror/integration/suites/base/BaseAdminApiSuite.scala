@@ -29,8 +29,8 @@ import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApi
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
-import tech.beshu.ror.utils.misc.StringOps.*
 import ujson.Value
+import tech.beshu.ror.utils.misc.ScalaUtils.StringDateTimeOps
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps

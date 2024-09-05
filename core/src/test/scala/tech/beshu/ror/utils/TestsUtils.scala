@@ -25,6 +25,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.matchers.should.Matchers.*
 import io.lemonlabs.uri.Url
+import squants.information.Megabytes
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
@@ -62,10 +63,12 @@ import java.util.Base64
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
+import tech.beshu.ror.utils.yaml.RorYamlParser
 
 object TestsUtils {
 
   implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
+  val rorYamlParser = new RorYamlParser(Megabytes(3))
 
   def basicAuthHeader(value: String): Header =
     new Header(
@@ -368,11 +371,13 @@ object TestsUtils {
   }
 
   def rorConfigFromUnsafe(yamlContent: String): RawRorConfig = {
-    RawRorConfig(yaml.parser.parse(yamlContent).toOption.get, yamlContent)
+    rorConfigFrom(yamlContent).toOption.get
   }
 
   def rorConfigFrom(yamlContent: String): Either[ParsingFailure, RawRorConfig] = {
-    yaml.parser.parse(yamlContent).map(json => RawRorConfig(json, yamlContent))
+    rorYamlParser
+      .parse(yamlContent)
+      .map(json => RawRorConfig(json, yamlContent))
   }
 
   def rorConfigFromResource(resource: String): RawRorConfig = {

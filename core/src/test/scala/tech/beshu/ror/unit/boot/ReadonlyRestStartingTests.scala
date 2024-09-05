@@ -18,13 +18,13 @@ package tech.beshu.ror.unit.boot
 
 import cats.data.NonEmptyList
 import cats.effect.Resource
-import cats.implicits._
-import eu.timepit.refined.auto._
+import cats.implicits.*
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.Eventually
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{EitherValues, Inside, OptionValues}
@@ -45,14 +45,16 @@ import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
-import tech.beshu.ror.utils.DurationOps._
+import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 
 import java.time.Clock
 import java.util.UUID
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 class ReadonlyRestStartingTests
   extends AnyWordSpec
@@ -63,31 +65,6 @@ class ReadonlyRestStartingTests
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
   private implicit val testClock: Clock = Clock.systemUTC()
-
-  def withReadonlyRestExt[EXT](readonlyRestAndExt: (ReadonlyRest, EXT))(testCode: (RorInstance, EXT) => Any): Unit = {
-    val (readonlyRest, ext) = readonlyRestAndExt
-    Resource
-      .make(
-        acquire = readonlyRest
-          .start()
-          .flatMap {
-            case Right(startedInstance) => Task.now(startedInstance)
-            case Left(startingFailure) => Task.raiseError(new Exception(s"$startingFailure"))
-          }
-      )(
-        release = _.stop()
-      )
-      .use { startedInstance =>
-        Task.delay {
-          testCode(startedInstance, ext)
-        }
-      }
-      .runSyncUnsafe()
-  }
-
-  def withReadonlyRest(readonlyRest: ReadonlyRest)(testCode: RorInstance => Any): Unit = {
-    withReadonlyRestExt((readonlyRest, ())) { case (rorInstance, ()) => testCode(rorInstance)}
-  }
 
   "A ReadonlyREST core" should {
     "support the main engine" should {
@@ -114,7 +91,7 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading/readonlyrest.yml")
           readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/forced_file_loading/")
-        }){ rorInstance =>
+        }) { rorInstance =>
           val acl = rorInstance.engines.value.mainEngine.core.accessControl
           acl shouldBe a[AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
@@ -628,7 +605,7 @@ class ReadonlyRestStartingTests
               where {
                 (config: IndexName.Full, id: String, content: Map[String, String]) =>
                   config == fullIndexName(".readonlyrest") &&
-                    id == "2"  &&
+                    id == "2" &&
                     content.get("settings").contains(testConfig1.raw) &&
                     content.get("expiration_ttl_millis").contains("60000") &&
                     content.contains("expiration_timestamp") &&
@@ -1092,8 +1069,8 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
-          (readonlyRest, (mockedIndexJsonContentManager,expirationTimestamp))
-        }) { case (rorInstance, (mockedIndexJsonContentManager,expirationTimestamp)) =>
+          (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
+        }) { case (rorInstance, (mockedIndexJsonContentManager, expirationTimestamp)) =>
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
@@ -1225,7 +1202,7 @@ class ReadonlyRestStartingTests
 
         testEngineReloadResult.value shouldBe a[TestConfig.Present]
         rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
-        rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()  shouldBe a[TestConfig.Present]
+        rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() shouldBe a[TestConfig.Present]
 
         (mockedIndexJsonContentManager.saveContent _)
           .expects(
@@ -1312,27 +1289,75 @@ class ReadonlyRestStartingTests
         }
       }
     }
+    "not be able to be loaded" when {
+      "max size of ROR settings is exceeded" in {
+        val readonlyRest = readonlyRestBoot(
+          mock[CoreFactory],
+          mock[IndexJsonContentService],
+          "/boot_tests/forced_file_loading/",
+          maxYamlSize = Some("1 B")
+        )
+
+        val result = readonlyRest.start().runSyncUnsafe()
+        inside(result) {
+          case Left(StartingFailure(message, _)) =>
+            message should include("Settings file is malformed")
+            message should include("The incoming YAML document exceeds the limit: 1 code points")
+        }
+      }
+    }
+  }
+
+  private def withReadonlyRest(readonlyRest: ReadonlyRest)(testCode: RorInstance => Any): Unit = {
+    withReadonlyRestExt((readonlyRest, ())) { case (rorInstance, ()) => testCode(rorInstance) }
+  }
+
+  private def withReadonlyRestExt[EXT](readonlyRestAndExt: (ReadonlyRest, EXT))
+                                      (testCode: (RorInstance, EXT) => Any): Unit = {
+    val (readonlyRest, ext) = readonlyRestAndExt
+    Resource
+      .make(
+        acquire = readonlyRest
+          .start()
+          .flatMap {
+            case Right(startedInstance) => Task.now(startedInstance)
+            case Left(startingFailure) => Task.raiseError(new Exception(s"$startingFailure"))
+          }
+      )(
+        release = _.stop()
+      )
+      .use { startedInstance =>
+        Task.delay {
+          testCode(startedInstance, ext)
+        }
+      }
+      .runSyncUnsafe()
   }
 
   private def readonlyRestBoot(factory: CoreFactory,
                                indexJsonContentService: IndexJsonContentService,
                                configPath: String,
-                               refreshInterval: Option[FiniteDuration] = None) = {
+                               refreshInterval: Option[FiniteDuration] = None,
+                               maxYamlSize: Option[String] = None): ReadonlyRest = {
     def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
       refreshInterval
         .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
         .toMap
 
-    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
-      .default
-      .copy(
-        propertiesProvider = TestsPropertiesProvider.usingMap(
-          mapWithIntervalFrom(refreshInterval) ++
-            Map(
-              "com.readonlyrest.settings.loading.delay" -> "0"
-            )
-        )
+    def mapWithMaxYamlSize(maxYamlSize: Option[String]) =
+      maxYamlSize
+        .map(size => "com.readonlyrest.settings.maxSize" -> size)
+        .toMap
+
+    implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
+      propertiesProvider = TestsPropertiesProvider.usingMap(
+        mapWithIntervalFrom(refreshInterval) ++
+          mapWithMaxYamlSize(maxYamlSize) ++
+          Map(
+            "com.readonlyrest.settings.loading.delay" -> "0"
+          )
       )
+    )
 
     ReadonlyRest.create(
       factory,

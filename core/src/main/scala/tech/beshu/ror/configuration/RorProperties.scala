@@ -21,10 +21,12 @@ import cats.Show
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
+import squants.information.{Information, Megabytes}
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.accesscontrol.show.logs.informationShow
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -35,12 +37,14 @@ object RorProperties extends Logging {
   object defaults {
     val refreshInterval: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
     val loadingDelay: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
+    val rorSettingsMaxSize: Information = Megabytes(3)
   }
 
   object keys {
     val rorConfig: NonEmptyString = nes("com.readonlyrest.settings.file.path")
     val refreshInterval: NonEmptyString = nes("com.readonlyrest.settings.refresh.interval")
     val loadingDelay: NonEmptyString = nes("com.readonlyrest.settings.loading.delay")
+    val rorSettingsMaxSize: NonEmptyString = nes("com.readonlyrest.settings.maxSize")
   }
 
   def rorConfigCustomFile(implicit propertiesProvider: PropertiesProvider): Option[File] =
@@ -60,6 +64,13 @@ object RorProperties extends Logging {
       keys.loadingDelay,
       str => toLoadingDelay(str),
       LoadingDelay(defaults.refreshInterval)
+    )
+
+  def rorSettingsMaxSize(implicit propertiesProvider: PropertiesProvider): Information =
+    getProperty(
+      keys.rorSettingsMaxSize,
+      Information.parseString,
+      defaults.rorSettingsMaxSize
     )
 
   private def getProperty[T: Show](name: NonEmptyString, fromString: String => Try[T], default: T)
@@ -99,14 +110,14 @@ object RorProperties extends Logging {
     case None => LoadingDelay(defaults.loadingDelay)
   }
 
-  private def toPositiveFiniteDuration(value: String): Try[Option[PositiveFiniteDuration]] = Try {
+  private def toPositiveFiniteDuration(value: String): Try[Option[PositiveFiniteDuration]] =
+    toPositiveInt(value).map(_.map(_.toLong.seconds.toRefinedPositiveUnsafe))
+
+  private def toPositiveInt(value: String): Try[Option[Int]] = Try {
     Try(Integer.valueOf(value)) match {
-      case Success(interval) if interval == 0 =>
-        None
-      case Success(interval) if interval > 0 =>
-        Some(interval.toLong.seconds.toRefinedPositiveUnsafe)
-      case Success(_) | Failure(_) =>
-        throw new IllegalArgumentException(s"Cannot convert '$value' to finite positive duration")
+      case Success(interval) if interval == 0 => None
+      case Success(interval) if interval > 0 => Some(interval)
+      case Success(_) | Failure(_) => throw new IllegalArgumentException(s"Cannot convert '$value' to positive integer")
     }
   }
 

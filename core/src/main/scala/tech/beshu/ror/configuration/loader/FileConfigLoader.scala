@@ -25,6 +25,7 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{Parsi
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError.FileNotExist
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorProperties}
+import tech.beshu.ror.providers.PropertiesProvider
 
 import java.nio.file.Path
 
@@ -32,8 +33,10 @@ class FileConfigLoader(esConfigPath: Path)
                       (implicit environmentConfig: EnvironmentConfig)
   extends ConfigLoader[FileConfigError] {
 
+  private implicit val propertiesProvider: PropertiesProvider = environmentConfig.propertiesProvider
+  
   def rawConfigFile: File = {
-    RorProperties.rorConfigCustomFile(environmentConfig.propertiesProvider) match {
+    RorProperties.rorConfigCustomFile match {
       case Some(customRorFile) => customRorFile
       case None => File(s"${esConfigPath.toAbsolutePath}/readonlyrest.yml")
     }
