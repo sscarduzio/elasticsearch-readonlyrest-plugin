@@ -41,7 +41,7 @@ private[patches] class SecurityManagerShouldAllowReadingEsConfigFile(esVersion: 
 }
 
 private class ModifyPermissionsForElasticsearchYmlInEsPolicyClass
-  extends BytecodeJarModifier) {
+  extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
