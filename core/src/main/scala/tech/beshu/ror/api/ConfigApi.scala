@@ -36,11 +36,13 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.Specia
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
+import tech.beshu.ror.configuration.EnvironmentConfig
 
 class ConfigApi(rorInstance: RorInstance,
                 indexConfigManager: IndexConfigManager,
                 fileConfigLoader: FileConfigLoader,
                 rorConfigurationIndex: RorConfigurationIndex)
+               (implicit val EnvironmentConfig: EnvironmentConfig)
   extends Logging {
 
   import ConfigApi.Utils._
@@ -115,7 +117,9 @@ class ConfigApi(rorInstance: RorInstance,
   }
 
   private def rorConfigFrom(configString: String): EitherT[Task, ConfigResponse, RawRorConfig] = EitherT {
-    RawRorConfig.fromString(configString).map(_.left.map(error => UpdateIndexConfig.Failure(error.show)))
+    RawRorConfig
+      .fromString(configString)
+      .map(_.left.map(error => UpdateIndexConfig.Failure(error.show)))
   }
 
   private def forceReloadAndSaveNewConfig(config: RawRorConfig)

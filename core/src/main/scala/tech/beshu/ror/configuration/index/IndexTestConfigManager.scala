@@ -19,7 +19,7 @@ package tech.beshu.ror.configuration.index
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneOffset}
 import cats.data.EitherT
-import cats.implicits._
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder}
@@ -39,16 +39,17 @@ import tech.beshu.ror.configuration.index.IndexConfigError.{IndexConfigNotExist,
 import tech.beshu.ror.configuration.index.IndexTestConfigManager.Const
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.{RawRorConfig, TestRorConfig}
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, TestRorConfig}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
-import tech.beshu.ror.utils.DurationOps._
+import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.json.KeyCodec
 
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
 final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService)
+                                  (implicit environmentConfig: EnvironmentConfig)
   extends BaseIndexConfigManager[TestRorConfig]
     with Logging {
 
@@ -90,7 +91,11 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
         expirationTtlString <- getConfigProperty(config, Const.properties.expirationTtl)
         rawRorConfigString <- getConfigProperty(config, Const.properties.settings)
         authMocksConfigString <- getConfigProperty(config, Const.properties.mocks)
-        rawRorConfig <- EitherT(RawRorConfig.fromString(rawRorConfigString).map(_.left.map(ParsingError.apply)))
+        rawRorConfig <- EitherT {
+          RawRorConfig
+            .fromString(rawRorConfigString)
+            .map(_.left.map(ParsingError.apply))
+        }
         expirationTime <- getInstant(expirationTimeString)
         expirationTtl <- getExpirationTtl(expirationTtlString)
         mocks <- getMocks(authMocksConfigString)

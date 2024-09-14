@@ -17,17 +17,27 @@
 package tech.beshu.ror.utils.misc
 
 import java.time.Duration
-
 import cats.Functor
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 
-import scala.concurrent.duration._
+import java.time.format.DateTimeFormatter
+import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.{Success, Try}
 
 object ScalaUtils {
 
+  implicit class StringDateTimeOps(val value: String) extends AnyVal {
+    def isInIsoDateTimeFormat: Boolean = {
+      isInDateTimeFormat(DateTimeFormatter.ISO_DATE_TIME)
+    }
+
+    def isInDateTimeFormat(format: DateTimeFormatter): Boolean = {
+      Try(format.parse(value)).toOption.isDefined
+    }
+  }
+  
   implicit class StringListOps(val list: List[String]) extends AnyVal {
     def mkJsonStringArray: String =
       list.map(e => s""""$e"""").mkString("[", ",", "]")

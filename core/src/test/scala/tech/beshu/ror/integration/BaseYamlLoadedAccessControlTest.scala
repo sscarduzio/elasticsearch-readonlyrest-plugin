@@ -39,15 +39,11 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
   protected implicit def propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default
 
-  private val factory = {
-    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
-      .default
-      .copy(
-        envVarsProvider = envVarsProvider,
-        propertiesProvider = propertiesProvider
-      )
-    new RawRorConfigBasedCoreFactory()
-  }
+  private implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
+    envVarsProvider = envVarsProvider,
+    propertiesProvider = propertiesProvider
+  )
+  private val factory = new RawRorConfigBasedCoreFactory()
   protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider
   protected val httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory
   protected val mockProvider: MocksProvider = NoOpMocksProvider

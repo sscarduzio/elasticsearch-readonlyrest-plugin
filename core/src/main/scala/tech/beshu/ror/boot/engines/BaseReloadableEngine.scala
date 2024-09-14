@@ -390,7 +390,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   private def stopEarly(engineState: EngineState.Working)
                        (implicit requestId: RequestId): Unit = {
     engineState.scheduledShutdownJob.foreach(_.cancel())
-    scheduler.scheduleOnce(BaseReloadableEngine.delayOfOldEngineShutdown) {
+    scheduler.scheduleOnce(delayOfOldEngineShutdown) {
       logger.info(s"[${requestId.show}] ROR $name engine (id=${engineState.engineWithConfig.config.hashString()}) is being stopped early ...")
       stop(engineState.engineWithConfig)
     }
