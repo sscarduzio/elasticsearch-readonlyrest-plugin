@@ -137,6 +137,7 @@ trait BaseIndicesProcessor {
         filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(requestedIndices) ::
           filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured() ::
           filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured(requestedIndices) ::
+          filterAssumingThatIndicesAreRequestedAndDataStreamAliasesAreConfigured() ::
           // aliases requested
           filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(requestedIndices) ::
           filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured(requestedIndices) ::
@@ -145,7 +146,8 @@ trait BaseIndicesProcessor {
           // data streams requested
           filterAssumingThatDataStreamsAreRequestedAndIndicesAreConfigured(requestedIndices) ::
           filterAssumingThatDataStreamsAreRequestedAndAliasesAreConfigured() ::
-          filterAssumingThatDataStreamsAreRequestedAndDataStreamsAreConfigured(requestedIndices) :: Nil
+          filterAssumingThatDataStreamsAreRequestedAndDataStreamsAreConfigured(requestedIndices) ::
+          filterAssumingThatDataStreamsAreRequestedAndDataStreamAliasesAreConfigured() :: Nil
       )
       .map(_.flatten.toSet)
       .map { allowedRealIndices =>
@@ -251,6 +253,20 @@ trait BaseIndicesProcessor {
         val requestedAliases = PatternsMatcher.create(requestedAliasesNames).filter(allDataStreamAliases)
         indicesManager.allowedIndicesMatcher.filter(requestedAliases)
       }
+  }
+
+  private def filterAssumingThatDataStreamsAreRequestedAndDataStreamAliasesAreConfigured[T <: ClusterIndexName : Matchable](): Task[Set[T]] = {
+    // eg. alias A1 of data stream DS1 can be defined with filtering, so result of /DS1/_search will be different than
+    // result of /A1/_search. It means that if data streams are requested and data stream aliases are configured, the result of
+    // this kind of method will always be an empty set.
+    Task.now(Set.empty[T])
+  }
+
+  private def filterAssumingThatIndicesAreRequestedAndDataStreamAliasesAreConfigured[T <: ClusterIndexName : Matchable](): Task[Set[T]] = {
+    // eg. alias A1 of data stream DS1 with backing index I1 can be defined with filtering, so result of /I1/_search will be different than
+    // result of /A1/_search. It means that if backing indices are requested and data stream aliases are configured, the result of
+    // this kind of method will always be an empty set.
+    Task.now(Set.empty[T])
   }
 
   private def filterAssumingThatAliasesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable](requestedIndices: UniqueNonEmptyList[T])
