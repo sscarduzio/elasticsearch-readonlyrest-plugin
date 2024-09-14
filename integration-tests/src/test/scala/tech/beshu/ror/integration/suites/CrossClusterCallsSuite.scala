@@ -23,11 +23,11 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.SecurityType.{RorWithXpackSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.SecurityType.{RorWithXpackSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
-import tech.beshu.ror.utils.elasticsearch.{EnhancedDataStreamManager, DataStreamManager, DocumentManager, IndexManager, IndexTemplateManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
@@ -43,7 +43,7 @@ class CrossClusterCallsSuite
     with CustomScalaTestMatchers
     with Eventually {
 
-  import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
+  import tech.beshu.ror.integration.suites.CrossClusterCallsSuite.*
 
   override implicit val rorConfigFileName: String = "/cross_cluster_search/readonlyrest.yml"
 
@@ -95,6 +95,7 @@ class CrossClusterCallsSuite
   private lazy val user4SearchManager = new SearchManager(basicAuthClient("dev4", "test"), esVersionUsed)
   private lazy val user5SearchManager = new SearchManager(basicAuthClient("dev5", "test"), esVersionUsed)
   private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
+  private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
 
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {
@@ -123,7 +124,7 @@ class CrossClusterCallsSuite
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream backing indices" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "he queries remote data streams only by data stream backing indices when data stream configured" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val resolveIndexResponse = user1IndexManager.resolve("private2:test1_ds")
           resolveIndexResponse.dataStreams.size should be(1)
           val dataStream = resolveIndexResponse.dataStreams.head
@@ -134,11 +135,29 @@ class CrossClusterCallsSuite
           }
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream backing index with wildcard" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "he queries remote data streams only by data stream backing index with wildcard when data stream configured" excludeES (allEs6x, allEs7xBelowEs714x) in {
           val result = user1SearchManager.search(s"private2:.ds-test1_ds*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream alias when data stream configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          val result = user1SearchManager.search(s"private2:test_alias")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream alias pattern when data stream name configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          val result = user1SearchManager.search(s"private2:test_al*")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream alias when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          val result = user2SearchManager.search(s"private2:test_alias")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
         "he queries remote xpack cluster indices" in {
           val result = user5SearchManager.search("xpack:xpack*")
@@ -175,6 +194,12 @@ class CrossClusterCallsSuite
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
+        "he queries remote data streams backing indices with wildcard when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          val result = user2SearchManager.search(s"private2:.ds-test*")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List.empty[String])
+        }
       }
     }
     "return 404" when {
@@ -186,6 +211,15 @@ class CrossClusterCallsSuite
         "he queries remote indices only" in {
           val result = user2SearchManager.search("private2:test1_index")
           result should have statusCode 404
+        }
+        "he queries remote data streams backing indices when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          val resolveIndexResponse = adminIndexManager.resolve("private2:test_alias")
+          val backingIndices = resolveIndexResponse.aliases.flatMap(_.indices)
+          backingIndices should have size 5
+          backingIndices.foreach { backingIndex =>
+            val result = user2SearchManager.search(s"private2:$backingIndex")
+            result should have statusCode 404
+          }
         }
       }
     }
@@ -280,6 +314,24 @@ class CrossClusterCallsSuite
           result should have statusCode 200
           result.searchHits.arr.size should be(3)
         }
+        "he queries remote data streams only by data stream alias when data stream configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          val result = user1SearchManager.asyncSearch(s"private2:test_alias")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream alias pattern when data stream name configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          val result = user1SearchManager.asyncSearch(s"private2:test_al*")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3"))
+        }
+        "he queries remote data streams only by data stream alias when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          val result = user2SearchManager.asyncSearch(s"private2:test_alias")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
+        }
       }
     }
     "return empty response" when {
@@ -294,6 +346,12 @@ class CrossClusterCallsSuite
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
+        "he queries remote data streams backing indices with wildcard when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          val result = user2SearchManager.asyncSearch(s"private2:.ds-test*")
+          result should have statusCode 200
+          val searchResults = result.searchHits.map(_("_source").obj("message").str)
+          searchResults.sorted should be(List.empty[String])
+        }
       }
     }
     "return 404" when {
@@ -305,6 +363,15 @@ class CrossClusterCallsSuite
         "he queries remote indices only" excludeES(allEs6x, allEs7xBelowEs77x) in {
           val result = user2SearchManager.asyncSearch("private2:test1_index")
           result should have statusCode 404
+        }
+        "he queries remote data streams backing indices when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          val resolveIndexResponse = adminIndexManager.resolve("private2:test_alias")
+          val backingIndices = resolveIndexResponse.aliases.flatMap(_.indices)
+          backingIndices should have size 5
+          backingIndices.foreach { backingIndex =>
+            val result = user2SearchManager.asyncSearch(s"private2:$backingIndex")
+            result should have statusCode 404
+          }
         }
       }
     }
@@ -552,6 +619,25 @@ object CrossClusterCallsSuite extends StrictLogging {
         messages = NonEmptyList.of("message1", "message2", "message3"),
         rolloverAfterEachDoc = true
       )
+
+      if (Version.greaterOrEqualThan(esVersion, 7, 14, 0)) {
+        enhancedDataStreamManager.createDataStream("test2_ds")
+        enhancedDataStreamManager.createDocsInDataStream(
+          name = "test2_ds",
+          messages = NonEmptyList.of("message4", "message5"),
+          rolloverAfterEachDoc = true
+        )
+
+        enhancedDataStreamManager.addAlias("test1_ds", "test_alias")
+        enhancedDataStreamManager.addAlias("test2_ds", "test_alias")
+
+        enhancedDataStreamManager.createDataStream("test3_ds")
+        enhancedDataStreamManager.createDocsInDataStream(
+          name = "test3_ds",
+          messages = NonEmptyList.of("message6", "message7"),
+          rolloverAfterEachDoc = true
+        )
+      }
     }
   }
 

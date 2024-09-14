@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import cats.data.NonEmptyList
+import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 
 import java.time.Instant
 import java.util.UUID
@@ -47,6 +48,20 @@ class EnhancedDataStreamManager(dataStreamManager: DataStreamManager,
       if (rolloverAfterEachDoc) rolloverDataStream(name)
       createDocInDataStream(name = name, message = message)
     }
+  }
+
+  def addAlias(name: String, alias: String): Unit = {
+    addAliases(name, NonEmptyList.one(alias))
+  }
+
+  def addAliases(name: String, aliases: NonEmptyList[String]): Unit = {
+    val actions = aliases.map(alias => AliasAction.Add(index = name, alias = alias))
+    indexManager
+      .updateAliases(
+        actions.head,
+        actions.tail*
+      )
+      .force()
   }
 
   def rolloverDataStream(name: String): Unit = {

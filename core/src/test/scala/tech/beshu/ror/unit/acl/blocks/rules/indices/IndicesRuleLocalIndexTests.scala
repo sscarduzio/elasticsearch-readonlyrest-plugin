@@ -139,6 +139,18 @@ trait IndicesRuleLocalIndexTests {
           found = Set(clusterIndexName("test-index"))
         )
       }
+      "wildcard alias passed, full name alias configured" in {
+        assertMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("test-alias")),
+          requestIndices = Set(clusterIndexName("test-al*")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(
+              fullLocalIndexWithAliases(fullIndexName("test-index"), Set(fullIndexName("test-alias")))
+            )
+          ),
+          found = Set(clusterIndexName("test-alias"))
+        )
+      }
       "wildcard alias passed, full name index related to alias matching passed one configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test-index")),
