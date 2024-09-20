@@ -54,13 +54,14 @@ object IndexName {
           case str if str.contains("*") => Some(IndexName.Pattern(NonEmptyString.unsafeFrom(str)))
           case _ => None
         }
+
     def unsafeFromNes(value: NonEmptyString): Pattern = Pattern(value)
   }
 
   def fromString(value: String): Option[IndexName] =
     IndexName.Pattern.fromString(value) orElse IndexName.Full.fromString(value)
 
-  implicit val matchableIndexName: Matchable[IndexName] = Matchable.matchable{
+  implicit val matchableIndexName: Matchable[IndexName] = Matchable.matchable {
     case IndexName.Full(name) => name
     case IndexName.Pattern(namePattern) => namePattern
   }
@@ -84,7 +85,6 @@ object KibanaIndexName {
     """^_security_solution_\d+\.\d+\.\d+$""".r, // eg. .kibana_security_solution_8.8.0
     """^_task_manager$""".r, // eg. .kibana_task_manager
     """^_task_manager_\d+\.\d+\.\d+$""".r, // eg. .kibana_task_manager_8.8.0
-
   )
 
   implicit class IsRelatedToKibanaIndex(val indexName: ClusterIndexName) extends AnyVal {
@@ -114,7 +114,7 @@ object KibanaIndexName {
 }
 
 sealed trait ClusterIndexName {
-  private [domain] lazy val matcher = PatternsMatcher.create(this :: Nil)
+  private[domain] lazy val matcher = PatternsMatcher.create(this :: Nil)
 }
 object ClusterIndexName {
 
@@ -158,6 +158,7 @@ object ClusterIndexName {
             case str if str.contains("*") => Some(ClusterName.Pattern(NonEmptyString.unsafeFrom(str)))
             case _ => None
           }
+
         def unsafeFromNes(value: NonEmptyString): Pattern = {
           Pattern(value)
         }
@@ -328,6 +329,22 @@ object ClusterIndexName {
     }
   }
 
+  implicit class ExcludingIndicesSorting(val indices: Iterable[ClusterIndexName]) extends AnyVal {
+
+    def sortByNameWithExcludingIndicesAtTheEnd(): Seq[ClusterIndexName] = {
+      indices.toSeq.sorted(ExcludingIndicesSorting.ordering)
+    }
+  }
+  object ExcludingIndicesSorting {
+    private implicit val ordering: Ordering[ClusterIndexName] = Ordering.fromLessThan { case (a, b) =>
+      val aName = a.stringify
+      val bName = b.stringify
+      if (!aName.startsWith("-") && !bName.startsWith("-")) aName < bName
+      else if (aName.startsWith("-") && !bName.startsWith("-")) false
+      else if (!aName.startsWith("-") && bName.startsWith("-")) true
+      else aName < bName
+    }
+  }
 }
 
 final case class IndexPattern(value: ClusterIndexName) {

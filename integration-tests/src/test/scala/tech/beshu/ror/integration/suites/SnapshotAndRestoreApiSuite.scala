@@ -48,6 +48,7 @@ class SnapshotAndRestoreApiSuite
   private lazy val dev2SnapshotManager = new SnapshotManager(basicAuthClient("dev2", "test"), esVersionUsed)
   private lazy val dev3SnapshotManager = new SnapshotManager(basicAuthClient("dev3", "test"), esVersionUsed)
   private lazy val dev4SnapshotManager = new SnapshotManager(basicAuthClient("dev4", "test"), esVersionUsed)
+  private lazy val dev5SnapshotManager = new SnapshotManager(basicAuthClient("dev5", "test"), esVersionUsed)
 
   "Snapshot repository management API" when {
     "user creates a repository" should {
@@ -307,6 +308,15 @@ class SnapshotAndRestoreApiSuite
 
           val snapshotName = SnapshotNameGenerator.next("dev2-snap-")
           val response = dev2SnapshotManager.putSnapshot(repositoryName, snapshotName, "index2*")
+
+          response should have statusCode 200
+        }
+        "user has access to repository and snapshot name and the index pattern (with index exclusions)" in {
+          val repositoryName = RepositoryNameGenerator.next("dev5-repo-")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName = SnapshotNameGenerator.next("dev5-snap-")
+          val response = dev5SnapshotManager.putSnapshot(repositoryName, snapshotName, "-index3.1", "index3*", "-index3.2")
 
           response should have statusCode 200
         }
@@ -869,6 +879,10 @@ object SnapshotAndRestoreApiSuite {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager.createFirstDoc("index1", ujson.read("""{"hello":"world"}""")).force()
     documentManager.createFirstDoc("index2", ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createFirstDoc("index3.0", ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createFirstDoc("index3.1", ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createFirstDoc("index3.2", ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createFirstDoc("index3.3", ujson.read("""{"hello":"world"}""")).force()
   }
 
   private object RepositoryNameGenerator {
