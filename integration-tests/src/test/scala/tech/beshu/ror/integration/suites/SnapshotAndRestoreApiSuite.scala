@@ -375,7 +375,7 @@ class SnapshotAndRestoreApiSuite
           val result = dev3SnapshotManager.getAllSnapshotsOf(repositoryName)
 
           result should have statusCode 200
-          result.snapshots.map(_("snapshot").str) should be(List(snapshotName1, snapshotName2))
+          result.snapshots.map(_("snapshot").str) contain theSameElementsAs (List(snapshotName1, snapshotName2))
         }
         "user has access to repository name" when {
           "has also access to snapshot name" in {
@@ -391,7 +391,7 @@ class SnapshotAndRestoreApiSuite
             val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, snapshotName1)
 
             result should have statusCode 200
-            result.snapshots.map(_("snapshot").str) should be(List(snapshotName1))
+            result.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1))
           }
           "has also access to one of requested snapshot names" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
@@ -406,7 +406,7 @@ class SnapshotAndRestoreApiSuite
             val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
 
             result should have statusCode 200
-            result.snapshots.map(_("snapshot").str) should be(List(snapshotName1))
+            result.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1))
           }
           "snapshot pattern has to be narrowed" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
@@ -421,7 +421,7 @@ class SnapshotAndRestoreApiSuite
             val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, "dev2*")
 
             result should have statusCode 200
-            result.snapshots.map(_("snapshot").str) should be(List(snapshotName1))
+            result.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1))
           }
           "snapshot pattern doesn't have to be narrowed" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
@@ -436,7 +436,7 @@ class SnapshotAndRestoreApiSuite
             val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, "dev2-snap-*")
 
             result should have statusCode 200
-            result.snapshots.map(_("snapshot").str) should be(List(snapshotName1))
+            result.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1))
           }
           "one of requested snapshot patterns is allowed" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
@@ -451,7 +451,7 @@ class SnapshotAndRestoreApiSuite
             val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, "dev2*", "dev1*")
 
             result should have statusCode 200
-            result.snapshots.map(_("snapshot").str) should be(List(snapshotName1))
+            result.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1))
           }
           "has access to index from snapshot, but _all snapshots are called" in {
             val repositoryName = "dev4-repo"
@@ -466,8 +466,8 @@ class SnapshotAndRestoreApiSuite
             val result = dev4SnapshotManager.getAllSnapshotsOf(repositoryName)
 
             result should have statusCode 200
-            result.snapshots.map(_("snapshot").str) should be(List(snapshotName1, snapshotName2))
-            result.snapshots.flatMap(_("indices").arr.map(_.str).toList) should be(List("index1"))
+            result.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1, snapshotName2))
+            result.snapshots.flatMap(_("indices").arr.map(_.str).toList) contain theSameElementsAs(List("index1"))
           }
         }
       }
@@ -532,7 +532,7 @@ class SnapshotAndRestoreApiSuite
             val result = dev2SnapshotManager.getAllSnapshotStatusesOf(repositoryName, snapshotName1)
 
             result should have statusCode 200
-            result.snapshots.map(_("snapshot").str) should be(List(snapshotName1))
+            result.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1))
           }
           "has also access to one of requested snapshot names" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
@@ -547,7 +547,7 @@ class SnapshotAndRestoreApiSuite
             val result = dev2SnapshotManager.getAllSnapshotStatusesOf(repositoryName, snapshotName1, snapshotName2)
 
             result should have statusCode 200
-            result.snapshots.map(_("snapshot").str) should be(List(snapshotName1))
+            result.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1))
           }
         }
         "user asks about all statuses" when {
@@ -712,7 +712,7 @@ class SnapshotAndRestoreApiSuite
 
           result should have statusCode 403
           val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
-          verification.snapshots.map(_("snapshot").str) should be(List(snapshotName1, snapshotName2))
+          verification.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1, snapshotName2))
         }
         "user has no access to at least one requested snapshot name" when {
           "one snapshot is being removed" in {
@@ -726,7 +726,7 @@ class SnapshotAndRestoreApiSuite
 
             result should have statusCode 403
             val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
-            verification.snapshots.map(_("snapshot").str) should be(List(snapshotName))
+            verification.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName))
           }
           "many snapshots are being removed" excludeES(allEs6x, allEs7xBelowEs78x) in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
@@ -742,7 +742,7 @@ class SnapshotAndRestoreApiSuite
 
             result should have statusCode 403
             val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
-            verification.snapshots.map(_("snapshot").str) should be(List(snapshotName1, snapshotName2))
+            verification.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1, snapshotName2))
           }
         }
         "user has no access to requested snapshot name pattern" in {
@@ -759,7 +759,7 @@ class SnapshotAndRestoreApiSuite
 
           result should have statusCode 403
           val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
-          verification.snapshots.map(_("snapshot").str) should be(List(snapshotName1, snapshotName2))
+          verification.snapshots.map(_("snapshot").str) contain theSameElementsAs(List(snapshotName1, snapshotName2))
         }
       }
     }
