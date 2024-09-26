@@ -169,7 +169,7 @@ object Block {
   sealed trait Policy
   object Policy {
     case object Allow extends Policy
-    case object Forbid extends Policy
+    final case class Forbid(message: Option[String]) extends Policy
 
     implicit val eq: Eq[Policy] = Eq.fromUniversalEquals
   }

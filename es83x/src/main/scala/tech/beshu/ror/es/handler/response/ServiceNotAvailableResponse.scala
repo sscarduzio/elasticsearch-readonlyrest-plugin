@@ -16,38 +16,23 @@
  */
 package tech.beshu.ror.es.handler.response
 
-import cats.Show
-import cats.implicits.toShow
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.rest.RestStatus
-import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.response.ServiceNotAvailableResponseContext
+import tech.beshu.ror.accesscontrol.response.ServiceNotAvailableResponseContext.ResponseCreator
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
-class ServiceNotAvailableResponse private(cause: ServiceNotAvailableResponse.Cause)
-  extends ElasticsearchException(GlobalSettings.defaultForbiddenRequestMessage) {
+final class ServiceNotAvailableResponse private(context: ServiceNotAvailableResponseContext)
+  extends ElasticsearchException(context.responseMessage) {
 
-  addMetadata("es.due_to", List(cause).map(_.show).asJava)
+  addMetadata("es.due_to", context.causes.asJava)
 
   override def status(): RestStatus = RestStatus.SERVICE_UNAVAILABLE
 }
 
-object ServiceNotAvailableResponse {
+object ServiceNotAvailableResponse extends ResponseCreator[ServiceNotAvailableResponse] {
 
-  sealed trait Cause
-  object Cause {
-    case object RorNotReadyYet extends Cause
-    case object RorFailedToStart extends Cause
-  }
-
-  private implicit val causeShow: Show[Cause] = Show.show {
-    case Cause.RorNotReadyYet => "READONLYREST_NOT_READY_YET"
-    case Cause.RorFailedToStart => "READONLYREST_FAILED_TO_START"
-  }
-
-  def createRorStartingFailureResponse(): ServiceNotAvailableResponse =
-    new ServiceNotAvailableResponse(Cause.RorFailedToStart)
-
-  def createRorNotReadyYetResponse(): ServiceNotAvailableResponse =
-    new ServiceNotAvailableResponse(Cause.RorNotReadyYet)
+  override def create(context: ServiceNotAvailableResponseContext): ServiceNotAvailableResponse =
+    new ServiceNotAvailableResponse(context)
 }

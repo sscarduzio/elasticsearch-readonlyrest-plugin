@@ -17,28 +17,29 @@
 package tech.beshu.ror.es.handler
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
-import tech.beshu.ror.accesscontrol.blocks.BlockContext._
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields, ResponseTransformation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
+import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
+import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.Cause.fromMismatchedCause
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.{ForbiddenBlockMatch, OperationNotAllowed}
-import tech.beshu.ror.es.utils.ThreadContextOps._
+import tech.beshu.ror.es.utils.ThreadContextOps.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.LoggerOps._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.LoggerOps.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.{Duration, Instant}
 import scala.util.{Failure, Success, Try}
@@ -65,8 +66,8 @@ class RegularRequestHandler(engine: Engine,
       result match {
         case allow: RegularRequestResult.Allow[B] =>
           onAllow(request, allow.blockContext)
-        case RegularRequestResult.ForbiddenBy(_, _) =>
-          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch))
+        case RegularRequestResult.ForbiddenBy(_, block) =>
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
         case RegularRequestResult.ForbiddenByMismatched(causes) =>
           onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound() =>
@@ -106,9 +107,11 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def onForbidden(requestContext: RequestContext, causes: NonEmptyList[ForbiddenResponse.Cause]): Unit = {
+  private def onForbidden(requestContext: RequestContext, causes: NonEmptyList[ForbiddenResponseContext.Cause]): Unit = {
     logRequestProcessingTime(requestContext)
-    esContext.listener.onFailure(ForbiddenResponse.create(causes.toList, engine.core.accessControl.staticContext))
+    esContext.listener.onFailure(ForbiddenResponse.create(
+      ForbiddenResponseContext.create(causes, engine.core.accessControl.staticContext)
+    ))
   }
 
   private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {

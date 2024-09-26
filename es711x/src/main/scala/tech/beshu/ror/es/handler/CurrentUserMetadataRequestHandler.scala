@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler
 
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
@@ -28,16 +28,16 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataReque
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotEnabledResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.Cause.fromMismatchedCause
-import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.LoggerOps.*
 
 import java.time.{Duration, Instant}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
 class CurrentUserMetadataRequestHandler(engine: Engine,
@@ -77,8 +77,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   private def onForbidden(requestContext: RequestContext, causes: NonEmptySet[ForbiddenCause]): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(ForbiddenResponse.create(
-      causes = causes.toList.map(fromMismatchedCause),
-      aclStaticContext = engine.core.accessControl.staticContext
+      ForbiddenResponseContext.from(causes.toNonEmptyList, engine.core.accessControl.staticContext)
     ))
   }
 

@@ -63,7 +63,7 @@ class AccessControlList(val blocks: NonEmptyList[Block],
           case Matched(block, blockContext) =>
             block.policy match {
               case Policy.Allow => RegularRequestResult.Allow(blockContext, block)
-              case Policy.Forbid => RegularRequestResult.ForbiddenBy(blockContext, block)
+              case Policy.Forbid(_) => RegularRequestResult.ForbiddenBy(blockContext, block)
             }
           case Mismatched(_) if wasRejectedDueToIndexNotFound(history) =>
             RegularRequestResult.IndexNotFound()
@@ -172,7 +172,7 @@ class AccessControlList(val blocks: NonEmptyList[Block],
     blocks.toList.takeWhile { b =>
       b.block.policy match {
         case Policy.Allow => true
-        case Policy.Forbid => false
+        case Policy.Forbid(_) => false
       }
     }
   }
