@@ -33,6 +33,7 @@ trait BaseIndexApiSuite
 
   protected def notFoundIndexStatusReturned: Int
   protected def forbiddenStatusReturned: Int
+  protected def forbiddenByBlockResponse(reason: String): ujson.Value
 
   override def nodeDataInitializer = Some(BaseIndexApiSuite.nodeDataInitializer())
 
@@ -155,49 +156,13 @@ trait BaseIndexApiSuite
           val response = dev9IndexManager.getIndex("index9")
 
           response should have statusCode forbiddenStatusReturned
-          response.responseJson should be(ujson.read(
-            s"""
-               |{
-               |  "error":{
-               |    "root_cause":[
-               |      {
-               |        "type":"forbidden_response",
-               |        "reason":"forbidden",
-               |        "due_to":"FORBIDDEN_BY_BLOCK"
-               |      }
-               |    ],
-               |    "type":"forbidden_response",
-               |    "reason":"forbidden",
-               |    "due_to":"FORBIDDEN_BY_BLOCK"
-               |  },
-               |  "status":$forbiddenStatusReturned
-               |}
-               |""".stripMargin
-          ))
+          response.responseJson should be(forbiddenByBlockResponse("forbidden"))
         }
         "custom forbidden response for block configured" in {
           val response = dev10IndexManager.getIndex("index10")
 
           response should have statusCode forbiddenStatusReturned
-          response.responseJson should be(ujson.read(
-            s"""
-               |{
-               |  "error":{
-               |    "root_cause":[
-               |      {
-               |        "type":"forbidden_response",
-               |        "reason":"you are unauthorized to access this resource",
-               |        "due_to":"FORBIDDEN_BY_BLOCK"
-               |      }
-               |    ],
-               |    "type":"forbidden_response",
-               |    "reason":"you are unauthorized to access this resource",
-               |    "due_to":"FORBIDDEN_BY_BLOCK"
-               |  },
-               |  "status":$forbiddenStatusReturned
-               |}
-               |""".stripMargin
-          ))
+          response.responseJson should be(forbiddenByBlockResponse("you are unauthorized to access this resource"))
         }
       }
     }
