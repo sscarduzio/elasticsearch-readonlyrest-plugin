@@ -36,8 +36,8 @@ final class ForbiddenResponseContext(aclStaticContext: Option[AccessControlStati
       .getOrElse(GlobalSettings.defaultForbiddenRequestMessage)
   }
 
-  def causes: List[String] = {
-    forbiddenCauses.toList.map(_.show)
+  def causes: NonEmptyList[String] = {
+    forbiddenCauses.map(_.show)
   }
 
   def doesRequirePassword: Boolean = {

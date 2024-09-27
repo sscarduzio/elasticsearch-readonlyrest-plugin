@@ -49,6 +49,6 @@ readonlyrest:
     - name: "dev10 - forbid"
       type:
         policy: forbid
-        response_if_request_forbidden: "you are unauthorized to access this resource"
+        response_message: "you are unauthorized to access this resource"
       indices: [ "index10" ]
       auth_key: dev10:test

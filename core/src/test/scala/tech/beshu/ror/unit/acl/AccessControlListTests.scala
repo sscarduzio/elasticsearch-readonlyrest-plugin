@@ -145,7 +145,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
   }
 
   private def mockForbidPolicyBlock(name: String, userMetadata: UserMetadata) = {
-    mockBlock(name, Block.Policy.Forbid(None), userMetadata)
+    mockBlock(name, Block.Policy.Forbid(), userMetadata)
   }
 
   private def mockBlock(name: String, policy: Block.Policy, userMetadata: UserMetadata) = {

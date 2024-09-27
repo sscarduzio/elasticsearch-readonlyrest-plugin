@@ -99,7 +99,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               requestContext,
               new Block(
                 Block.Name("mock-block"),
-                Block.Policy.Forbid(None),
+                Block.Policy.Forbid(),
                 Block.Verbosity.Info,
                 NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
               ),

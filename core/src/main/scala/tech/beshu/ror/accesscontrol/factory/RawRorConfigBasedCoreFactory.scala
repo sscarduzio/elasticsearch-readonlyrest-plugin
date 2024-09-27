@@ -267,7 +267,7 @@ class RawRorConfigBasedCoreFactory()
         .toSyncDecoder
         .emapE[Block.Policy] {
           case "allow" => Right(Block.Policy.Allow)
-          case "forbid" => Right(Block.Policy.Forbid(message = None))
+          case "forbid" => Right(Block.Policy.Forbid())
           case unknown => Left(unknownTypeError(unknown))
         }
         .decoder
@@ -280,7 +280,7 @@ class RawRorConfigBasedCoreFactory()
             policyType <- c.downFieldAs[String]("policy")
             policy <- policyType match {
               case "allow" => Right(Block.Policy.Allow)
-              case "forbid" => c.downFieldAs[Option[String]]("response_if_request_forbidden").map(Block.Policy.Forbid.apply)
+              case "forbid" => c.downFieldAs[Option[String]]("response_message").map(Block.Policy.Forbid.apply)
               case unknown => Left(DecodingFailureOps.fromError(unknownTypeError(unknown)))
             }
           } yield policy

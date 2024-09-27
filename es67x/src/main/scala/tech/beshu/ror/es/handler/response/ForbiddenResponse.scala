@@ -26,7 +26,7 @@ import scala.jdk.CollectionConverters.*
 final class ForbiddenResponse private(context: ForbiddenResponseContext)
   extends ElasticsearchException(context.responseMessage) {
 
-  addMetadata("es.due_to", context.causes.asJava)
+  addMetadata("es.due_to", context.causes.toList.asJava)
 
   if (context.doesRequirePassword) {
     addHeader("WWW-Authenticate", "Basic")

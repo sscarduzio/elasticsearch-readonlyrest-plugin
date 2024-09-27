@@ -150,7 +150,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  - name: test_block3
             |    type:
             |      policy: forbid
-            |      response_if_request_forbidden: "you are unauthorized to access this resource"
+            |      response_message: "you are unauthorized to access this resource"
             |    auth_key: test:test
             |
             |""".stripMargin)
