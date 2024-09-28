@@ -213,16 +213,7 @@ class RawRorConfigBasedCoreFactory()
                            mocksProvider: MocksProvider)
                           (implicit loggingContext: LoggingContext): Decoder[BlockDecodingResult] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
-    implicit val policyDecoder: Decoder[Block.Policy] =
-      Decoder
-        .decodeString
-        .toSyncDecoder
-        .emapE[Block.Policy] {
-        case "allow" => Right(Block.Policy.Allow)
-        case "forbid" => Right(Block.Policy.Forbid)
-        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown block policy type: $unknown")))
-      }
-        .decoder
+    implicit val policyDecoder: Decoder[Block.Policy] = this.policyDecoder
     implicit val verbosityDecoder: Decoder[Verbosity] =
       Decoder
         .decodeString
@@ -230,7 +221,7 @@ class RawRorConfigBasedCoreFactory()
         .emapE[Verbosity] {
         case "info" => Right(Verbosity.Info)
         case "error" => Right(Verbosity.Error)
-        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown")))
+        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown. Supported types: 'info'(default), 'error'.")))
       }
         .decoder
     Decoder
@@ -262,6 +253,49 @@ class RawRorConfigBasedCoreFactory()
     import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
     Decoder.instance(_.downField("obfuscated_headers").as[Option[Set[Header.Name]]])
       .map(_.getOrElse(Set(Header.Name.authorization)))
+  }
+
+  private val policyDecoder: Decoder[Block.Policy] = {
+    def unknownTypeError(unknownType: String) =
+      BlocksLevelCreationError(Message(
+        s"Unknown block policy type: $unknownType. Supported types: 'allow'(default), 'forbid'."
+      ))
+
+    val simplePolicyDecoder = {
+      Decoder
+        .decodeString
+        .toSyncDecoder
+        .emapE[Block.Policy] {
+          case "allow" => Right(Block.Policy.Allow)
+          case "forbid" => Right(Block.Policy.Forbid())
+          case unknown => Left(unknownTypeError(unknown))
+        }
+        .decoder
+    }
+
+    val extendedPolicyDecoder = {
+      Decoder
+        .instance { c =>
+          for {
+            policyType <- c.downFieldAs[String]("policy")
+            policy <- policyType match {
+              case "allow" => Right(Block.Policy.Allow)
+              case "forbid" => c.downFieldAs[Option[String]]("response_message").map(Block.Policy.Forbid.apply)
+              case unknown => Left(DecodingFailureOps.fromError(unknownTypeError(unknown)))
+            }
+          } yield policy
+        }
+        .toSyncDecoder
+        .decoder
+    }
+
+    Decoder.instance { c =>
+      c.focus match {
+        case Some(f) if f.isString => simplePolicyDecoder(c)
+        case Some(f) if f.isObject => extendedPolicyDecoder(c)
+        case Some(_) | None => Left(DecodingFailure("Malformed block policy type", c.history))
+      }
+    }
   }
 
   private def localUsersForRule[R <: Rule](rule: RuleDefinition[R]) = {

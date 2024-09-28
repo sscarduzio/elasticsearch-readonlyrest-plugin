@@ -40,3 +40,15 @@ readonlyrest:
     - name: "dev8 - all indices, but explicitly said"
       indices: ["*"]
       auth_key: dev8:test
+
+    - name: "dev9 - forbid"
+      type: forbid
+      indices: [ "index9" ]
+      auth_key: dev9:test
+
+    - name: "dev10 - forbid"
+      type:
+        policy: forbid
+        response_message: "you are unauthorized to access this resource"
+      indices: [ "index10" ]
+      auth_key: dev10:test

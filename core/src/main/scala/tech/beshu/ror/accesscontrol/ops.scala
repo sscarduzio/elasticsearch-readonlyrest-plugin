@@ -322,7 +322,7 @@ object show {
 
     implicit val policyShow: Show[Policy] = Show.show {
       case Allow => "ALLOW"
-      case Forbid => "FORBID"
+      case Forbid(_) => "FORBID"
     }
     implicit val blockShow: Show[Block] = Show.show { b =>
       s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.map(_.name.show).toList.mkString(",")}]"

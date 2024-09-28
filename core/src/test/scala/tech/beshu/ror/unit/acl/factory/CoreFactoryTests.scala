@@ -98,6 +98,84 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
         headers.head should be(Header.Name(NonEmptyString.unsafeFrom("CorpoAuth")))
       }
     }
+    "check policy" when {
+      "allow policy set" in {
+        val config = rorConfigFromUnsafe(
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block1
+            |    type: allow
+            |    auth_key: admin:container
+            |
+            |  - name: test_block2
+            |    type:
+            |      policy: allow
+            |    auth_key: test:test
+            |
+            |""".stripMargin)
+        inside(createCore(config)) {
+          case Right(Core(acl: AccessControlList, _)) =>
+            val firstBlock = acl.blocks.head
+            firstBlock.name should be(Block.Name("test_block1"))
+            firstBlock.policy should be(Block.Policy.Allow)
+            firstBlock.verbosity should be(Block.Verbosity.Info)
+            firstBlock.rules should have size 1
+
+            val secondBlock = acl.blocks.tail.head
+            secondBlock.name should be(Block.Name("test_block2"))
+            secondBlock.policy should be(Block.Policy.Allow)
+            secondBlock.verbosity should be(Block.Verbosity.Info)
+            secondBlock.rules should have size 1
+        }
+      }
+      "forbid policy set" in {
+        val config = rorConfigFromUnsafe(
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block1
+            |    type: forbid
+            |    auth_key: admin:container
+            |
+            |  - name: test_block2
+            |    type:
+            |      policy: forbid
+            |    auth_key: test:test
+            |
+            |  - name: test_block3
+            |    type:
+            |      policy: forbid
+            |      response_message: "you are unauthorized to access this resource"
+            |    auth_key: test:test
+            |
+            |""".stripMargin)
+        inside(createCore(config)) {
+          case Right(Core(acl: AccessControlList, _)) =>
+            val firstBlock = acl.blocks.head
+            firstBlock.name should be(Block.Name("test_block1"))
+            firstBlock.policy should be(Block.Policy.Forbid(None))
+            firstBlock.verbosity should be(Block.Verbosity.Info)
+            firstBlock.rules should have size 1
+
+            val secondBlock = acl.blocks.tail.head
+            secondBlock.name should be(Block.Name("test_block2"))
+            secondBlock.policy should be(Block.Policy.Forbid(None))
+            secondBlock.verbosity should be(Block.Verbosity.Info)
+            secondBlock.rules should have size 1
+
+            val thirdBlock = acl.blocks.tail(1)
+            thirdBlock.name should be(Block.Name("test_block3"))
+            thirdBlock.policy should be(Block.Policy.Forbid(Some("you are unauthorized to access this resource")))
+            thirdBlock.verbosity should be(Block.Verbosity.Info)
+            thirdBlock.rules should have size 1
+        }
+      }
+    }
     "return blocks level error" when {
       "there is no `access_control_rules` section" in {
         val config = rorConfigFromUnsafe(
@@ -178,20 +256,39 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |""".stripMargin
         )))))
       }
-      "block has unknown type" in {
-        val config = rorConfigFromUnsafe(
-          """
-            |readonlyrest:
-            |
-            |  access_control_rules:
-            |
-            |  - name: test_block
-            |    type: unknown
-            |    auth_key: admin:container
-            |
-            |""".stripMargin)
-        val acl = createCore(config)
-        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown block policy type: unknown")))))
+      "block has unknown policy type" when {
+        "simple policy format" in {
+          val config = rorConfigFromUnsafe(
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type: unknown
+              |    auth_key: admin:container
+              |
+              |""".stripMargin)
+          val acl = createCore(config)
+          acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown block policy type: unknown. Supported types: 'allow'(default), 'forbid'.")))))
+        }
+        "extended policy format" in {
+          val config = rorConfigFromUnsafe(
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type:
+              |      policy: unknown
+              |    auth_key: admin:container
+              |
+              |""".stripMargin)
+          val acl = createCore(config)
+          acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown block policy type: unknown. Supported types: 'allow'(default), 'forbid'.")))))
+
+        }
       }
       "block has unknown verbosity" in {
         val config = rorConfigFromUnsafe(
@@ -206,7 +303,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |
             |""".stripMargin)
         val acl = createCore(config)
-        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown verbosity value: unknown")))))
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown verbosity value: unknown. Supported types: 'info'(default), 'error'.")))))
       }
       "block has authorization rule, but no authentication rule" in {
         val config = rorConfigFromUnsafe(
@@ -344,7 +441,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
         case Right(Core(acl: AccessControlList, _)) =>
           val firstBlock = acl.blocks.head
           firstBlock.name should be(Block.Name("test_block1"))
-          firstBlock.policy should be(Block.Policy.Forbid)
+          firstBlock.policy should be(Block.Policy.Forbid(None))
           firstBlock.verbosity should be(Block.Verbosity.Info)
           firstBlock.rules should have size 1
 

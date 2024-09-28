@@ -33,6 +33,7 @@ trait BaseIndexApiSuite
 
   protected def notFoundIndexStatusReturned: Int
   protected def forbiddenStatusReturned: Int
+  protected def forbiddenByBlockResponse(reason: String): ujson.Value
 
   override def nodeDataInitializer = Some(BaseIndexApiSuite.nodeDataInitializer())
 
@@ -43,6 +44,8 @@ trait BaseIndexApiSuite
   private lazy val dev6IndexManager = new IndexManager(basicAuthClient("dev6", "test"), esVersionUsed)
   private lazy val dev7IndexManager = new IndexManager(basicAuthClient("dev7", "test"), esVersionUsed)
   private lazy val dev8IndexManager = new IndexManager(basicAuthClient("dev8", "test"), esVersionUsed)
+  private lazy val dev9IndexManager = new IndexManager(basicAuthClient("dev9", "test"), esVersionUsed)
+  private lazy val dev10IndexManager = new IndexManager(basicAuthClient("dev10", "test"), esVersionUsed)
 
   "ROR" when {
     "Get index API is used" should {
@@ -147,6 +150,20 @@ trait BaseIndexApiSuite
           "index7-000001" -> Set("index7"),
           "index7-000002" -> Set.empty
         ))
+      }
+      "forbid to query index" when {
+        "default forbidden response configured" in {
+          val response = dev9IndexManager.getIndex("index9")
+
+          response should have statusCode forbiddenStatusReturned
+          response.responseJson should be(forbiddenByBlockResponse("forbidden"))
+        }
+        "custom forbidden response for block configured" in {
+          val response = dev10IndexManager.getIndex("index10")
+
+          response should have statusCode forbiddenStatusReturned
+          response.responseJson should be(forbiddenByBlockResponse("you are unauthorized to access this resource"))
+        }
       }
     }
     "Get index alias API is used" should {
