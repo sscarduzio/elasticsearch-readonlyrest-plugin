@@ -17,11 +17,11 @@
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.threadpool.ThreadPool
-import org.joor.Reflect.on
+import org.joor.Reflect.{accessible, on}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
@@ -30,9 +30,9 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
                                       esContext: EsContext,
@@ -78,9 +78,9 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
         (for {
           repositoryName <- RepositoryName.from(snapshotStatus.getSnapshot.getRepository)
           snapshotName <- SnapshotName.from(snapshotStatus.getSnapshot.getSnapshotId.getName)
-        } yield  {
+        } yield {
           allowedRepositoriesMatcher.`match`(repositoryName) &&
-          allowedSnapshotsMatcher.`match`(snapshotName)
+            allowedSnapshotsMatcher.`match`(snapshotName)
         }) getOrElse false
       }
 
@@ -103,10 +103,15 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
     }
   }
 
-  private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
-    NonEmptyList.fromList(fullNamedSnapshotsFrom(blockContext.snapshots).toList) match {
-      case Some(list) => Right(list)
-      case None => Left(())
+  private def snapshotsFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, NonEmptyList[SnapshotName]] = {
+    val snapshots = blockContext.snapshots
+    if (allSnapshotsRequested(snapshots)) {
+      Right(NonEmptyList.one(SnapshotName.All))
+    } else {
+      NonEmptyList.fromList(fullNamedSnapshotsFrom(snapshots).toList) match {
+        case Some(list) => Right(list)
+        case None => Left(())
+      }
     }
   }
 
@@ -116,6 +121,9 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
       .create(snapshots)
       .filter(allFullNameSnapshots)
   }
+
+  private def allSnapshotsRequested(requestedSnapshots: Iterable[SnapshotName]) =
+    requestedSnapshots.exists(_ == SnapshotName.all)
 
   private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
     val repositories = fullNamedRepositoriesFrom(blockContext.repositories).toList
@@ -138,9 +146,13 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   }
 
   private def update(actionRequest: SnapshotsStatusRequest,
-                     snapshots: NonEmptyList[SnapshotName.Full],
+                     snapshots: NonEmptyList[SnapshotName],
                      repository: RepositoryName.Full) = {
-    actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
+    if(allSnapshotsRequested(snapshots.toList)) {
+      actionRequest.snapshots(List.empty.toArray)
+    } else {
+      actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
+    }
     actionRequest.repository(RepositoryName.toString(repository))
   }
 
