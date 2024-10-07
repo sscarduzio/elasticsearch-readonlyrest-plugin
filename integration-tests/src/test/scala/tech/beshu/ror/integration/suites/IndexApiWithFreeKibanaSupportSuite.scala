@@ -27,4 +27,32 @@ class IndexApiWithFreeKibanaSupportSuite
 
   override val notFoundIndexStatusReturned: Int = 401
   override val forbiddenStatusReturned: Int = 401
+
+  override def forbiddenByBlockResponse(reason: String): ujson.Value = {
+    ujson.read(
+      s"""
+         |{
+         |  "error":{
+         |    "root_cause":[
+         |      {
+         |        "type":"forbidden_response",
+         |        "reason":"$reason",
+         |        "due_to":"FORBIDDEN_BY_BLOCK",
+         |        "header":{
+         |          "WWW-Authenticate":"Basic"
+         |        }
+         |      }
+         |    ],
+         |    "type":"forbidden_response",
+         |    "reason":"$reason",
+         |    "due_to":"FORBIDDEN_BY_BLOCK",
+         |    "header":{
+         |      "WWW-Authenticate":"Basic"
+         |    }
+         |  },
+         |  "status":$forbiddenStatusReturned
+         |}
+         |""".stripMargin
+    )
+  }
 }
