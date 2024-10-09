@@ -91,15 +91,32 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   private def modifySnapshotStatusRequest(request: SnapshotsStatusRequest,
                                           blockContext: SnapshotRequestBlockContext) = {
     val updateResult = for {
-      snapshots <- snapshotsFrom(blockContext)
       repository <- repositoryFrom(blockContext)
-    } yield update(request, snapshots, repository)
+      snapshots <- snapshotsFrom(blockContext)
+    } yield update(request, repository, snapshots)
     updateResult match {
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
         logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
+    }
+  }
+
+  private def repositoryFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, RepositoryName] = {
+    val repositories = blockContext.repositories
+    if(allRepositoriesRequested(repositories)) {
+      Right(RepositoryName.All)
+    } else {
+      fullNamedRepositoriesFrom(repositories).toList match {
+        case Nil =>
+          Left(())
+        case repository :: rest =>
+          if (rest.nonEmpty) {
+            logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]")
+          }
+          Right(repository)
+      }
     }
   }
 
@@ -115,6 +132,13 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
     }
   }
 
+  private def fullNamedRepositoriesFrom(repositories: Iterable[RepositoryName]): Set[RepositoryName.Full] = {
+    val allFullNameRepositories: Set[RepositoryName.Full] = allSnapshots.keys.toSet
+    PatternsMatcher
+      .create(repositories)
+      .filter(allFullNameRepositories)
+  }
+
   private def fullNamedSnapshotsFrom(snapshots: Iterable[SnapshotName]): Set[SnapshotName.Full] = {
     val allFullNameSnapshots: Set[SnapshotName.Full] = allSnapshots.values.toSet.flatten
     PatternsMatcher
@@ -125,39 +149,28 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   private def allSnapshotsRequested(requestedSnapshots: Iterable[SnapshotName]) =
     requestedSnapshots.exists(_ == SnapshotName.all)
 
-  private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
-    val repositories = fullNamedRepositoriesFrom(blockContext.repositories).toList
-    repositories match {
-      case Nil =>
-        Left(())
-      case repository :: rest =>
-        if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]")
-        }
-        Right(repository)
-    }
-  }
-
-  private def fullNamedRepositoriesFrom(repositories: Iterable[RepositoryName]): Set[RepositoryName.Full] = {
-    val allFullNameRepositories: Set[RepositoryName.Full] = allSnapshots.keys.toSet
-    PatternsMatcher
-      .create(repositories)
-      .filter(allFullNameRepositories)
-  }
+  private def allRepositoriesRequested(requestedRepositories: Iterable[RepositoryName]) =
+    requestedRepositories.exists(_ == RepositoryName.all)
 
   private def update(actionRequest: SnapshotsStatusRequest,
-                     snapshots: NonEmptyList[SnapshotName],
-                     repository: RepositoryName.Full) = {
-    if(allSnapshotsRequested(snapshots.toList)) {
+                     repository: RepositoryName,
+                     snapshots: NonEmptyList[SnapshotName]) = {
+    actionRequest.repository(RepositoryName.toString(repository))
+    updateSnapshots(actionRequest, snapshots)
+  }
+
+  private def updateSnapshots(actionRequest: SnapshotsStatusRequest, snapshots: NonEmptyList[SnapshotName]) = {
+    if (allSnapshotsRequested(snapshots.toList)) {
       actionRequest.snapshots(List.empty.toArray)
     } else {
       actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
     }
-    actionRequest.repository(RepositoryName.toString(repository))
   }
 
   private def isCurrentSnapshotStatusRequest(actionRequest: SnapshotsStatusRequest) = {
     val repositories = repositoriesFrom(actionRequest)
-    (repositories.isEmpty || repositories == Set(RepositoryName.all)) && snapshotsFrom(actionRequest).isEmpty
+    val snapshots = snapshotsFrom(actionRequest)
+    (repositories.isEmpty || repositories.contains(RepositoryName.all)) &&
+      (snapshots.isEmpty || snapshots.contains(SnapshotName.all))
   }
 }

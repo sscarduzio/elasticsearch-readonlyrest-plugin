@@ -75,7 +75,9 @@ class SnapshotManager(client: RestClient, esVersion: String)
     call(createGetAllSnapshotStatusesRequest(), new SnapshotsResult(_))
   }
 
-  def getStatusOf(repositoryName: String):
+  def getStatusesOfSnapshotsOf(repositoryName: String): SnapshotsResult = {
+    call(createGetRepositoryStatusRequest(repositoryName), new SnapshotsResult(_))
+  }
 
   def putSnapshot(repositoryName: String, snapshotName: String, index: String, otherIndices: String*): JsonResponse = {
     val request = createNewSnapshotRequest(repositoryName, snapshotName, index :: otherIndices.toList)
@@ -161,6 +163,10 @@ class SnapshotManager(client: RestClient, esVersion: String)
 
   private def createGetAllSnapshotStatusesRequest() = {
     new HttpGet(client.from(s"/_snapshot/_status"))
+  }
+
+  private def createGetRepositoryStatusRequest(repositoryName: String) = {
+    new HttpGet(client.from(s"/_snapshot/$repositoryName/_status"))
   }
 
   private def createNewSnapshotRequest(repositoryName: String,
