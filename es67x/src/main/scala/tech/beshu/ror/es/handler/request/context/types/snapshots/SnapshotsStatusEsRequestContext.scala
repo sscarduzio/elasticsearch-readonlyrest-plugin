@@ -21,7 +21,7 @@ import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.threadpool.ThreadPool
-import org.joor.Reflect.{accessible, on}
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
