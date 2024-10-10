@@ -83,7 +83,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
             allowedSnapshotsMatcher.`match`(snapshotName)
         }) getOrElse false
       }
-
+    
     on(response).set("snapshots", allowedSnapshotStatuses.asJava)
     response
   }
@@ -91,9 +91,9 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   private def modifySnapshotStatusRequest(request: SnapshotsStatusRequest,
                                           blockContext: SnapshotRequestBlockContext) = {
     val updateResult = for {
-      snapshots <- snapshotsFrom(blockContext)
       repository <- repositoryFrom(blockContext)
-    } yield update(request, snapshots, repository)
+      snapshots <- snapshotsFrom(blockContext)
+    } yield update(request, repository, snapshots)
     updateResult match {
       case Right(_) =>
         ModificationResult.Modified
@@ -116,6 +116,18 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
             logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]")
           }
           Right(repository)
+      }
+    }
+  }
+
+  private def snapshotsFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, NonEmptyList[SnapshotName]] = {
+    val snapshots = blockContext.snapshots
+    if (allSnapshotsRequested(snapshots)) {
+      Right(NonEmptyList.one(SnapshotName.All))
+    } else {
+      NonEmptyList.fromList(fullNamedSnapshotsFrom(snapshots).toList) match {
+        case Some(list) => Right(list)
+        case None => Left(())
       }
     }
   }

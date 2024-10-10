@@ -120,6 +120,18 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
     }
   }
 
+  private def snapshotsFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, NonEmptyList[SnapshotName]] = {
+    val snapshots = blockContext.snapshots
+    if (allSnapshotsRequested(snapshots)) {
+      Right(NonEmptyList.one(SnapshotName.All))
+    } else {
+      NonEmptyList.fromList(fullNamedSnapshotsFrom(snapshots).toList) match {
+        case Some(list) => Right(list)
+        case None => Left(())
+      }
+    }
+  }
+
   private def fullNamedRepositoriesFrom(repositories: Iterable[RepositoryName]): Set[RepositoryName.Full] = {
     val allFullNameRepositories: Set[RepositoryName.Full] = allSnapshots.keys.toSet
     PatternsMatcher
