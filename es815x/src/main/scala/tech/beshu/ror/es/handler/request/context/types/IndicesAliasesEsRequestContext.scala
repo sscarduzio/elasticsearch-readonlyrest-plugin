@@ -16,19 +16,20 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits._
+import cats.implicits.*
 import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
                                      esContext: EsContext,
@@ -40,15 +41,15 @@ class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
   private lazy val originIndices = actionRequest
     .getAliasActions.asScala
     .flatMap { r =>
-      r.indices.asSafeSet.flatMap(ClusterIndexName.fromString) ++
-        r.aliases.asSafeList.flatMap(ClusterIndexName.fromString)
+      r.indices.asSafeSet.flatMap(RequestedIndex.fromString) ++
+        r.aliases.asSafeList.flatMap(RequestedIndex.fromString)
     }
     .toSet
 
-  override protected def indicesFrom(request: IndicesAliasesRequest): Set[ClusterIndexName] = originIndices
+  override protected def indicesFrom(request: IndicesAliasesRequest): Set[RequestedIndex] = originIndices
 
   override protected def update(request: IndicesAliasesRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (originIndices == filteredIndices.toList.toSet) {
       Modified

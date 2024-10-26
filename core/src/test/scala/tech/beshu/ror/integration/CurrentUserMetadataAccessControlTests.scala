@@ -18,28 +18,27 @@ package tech.beshu.ror.integration
 
 import cats.data.NonEmptySet
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
-import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
-import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause.OperationNotAllowed
-import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult._
+import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
+import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNotAllowed
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, HttpClientsFactory}
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.{LdapContainer, WireMockContainer, WireMockScalaAdapter}
 import tech.beshu.ror.utils.uniquelist.UniqueList
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class CurrentUserMetadataAccessControlTests
   extends AnyWordSpec

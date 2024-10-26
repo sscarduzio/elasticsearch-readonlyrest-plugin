@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 
-import cats.implicits._
 import cats.Show
 import cats.data.NonEmptySet
 import monix.eval.Task
@@ -25,12 +24,12 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, Template, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 private[indices] trait AllTemplateIndices
   extends IndexTemplateIndices

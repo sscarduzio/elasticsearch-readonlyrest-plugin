@@ -17,10 +17,10 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.transformation
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.Utils._
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function._
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.Utils.*
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionDefinition.{FunctionArg, PartialApplyError}
 
 import java.util.Locale
@@ -146,7 +146,7 @@ object domain {
     }
 
     private def incorrectArgsCountError(expected: Int, args: List[FunctionArg]) = {
-      PartialApplyError(s"Incorrect function arguments count. Expected: $expected, actual: ${args.size}.")
+      PartialApplyError(s"Incorrect function arguments count. Expected: ${expected.show}, actual: ${args.size.show}.")
     }
 
     private def patternErrorFor(ex: Throwable): String = ex match {

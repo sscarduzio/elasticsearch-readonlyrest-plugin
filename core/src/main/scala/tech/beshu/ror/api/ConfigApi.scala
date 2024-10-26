@@ -22,21 +22,19 @@ import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
+import tech.beshu.ror.api.ConfigApi.*
 import tech.beshu.ror.api.ConfigApi.ConfigRequest.Type
 import tech.beshu.ror.api.ConfigApi.ConfigResponse.*
-import tech.beshu.ror.api.ConfigApi.*
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.configuration.index.IndexConfigError.IndexConfigNotExist
+import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
-import tech.beshu.ror.configuration.EnvironmentConfig
 
 class ConfigApi(rorInstance: RorInstance,
                 indexConfigManager: IndexConfigManager,
@@ -45,8 +43,8 @@ class ConfigApi(rorInstance: RorInstance,
                (implicit val EnvironmentConfig: EnvironmentConfig)
   extends Logging {
 
-  import ConfigApi.Utils._
-  import ConfigApi.Utils.decoders._
+  import ConfigApi.Utils.*
+  import ConfigApi.Utils.decoders.*
 
   def call(request: ConfigRequest)
           (implicit requestId: RequestId): Task[ConfigResponse] = {
@@ -74,7 +72,7 @@ class ConfigApi(rorInstance: RorInstance,
         case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)) =>
           ForceReloadConfig.Failure("ROR is stopped")
         case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(failure))) =>
-          ForceReloadConfig.Failure(s"Cannot reload new settings: ${failure.message}")
+          ForceReloadConfig.Failure(s"Cannot reload new settings: ${failure.message.show}")
       }
   }
 
@@ -113,7 +111,7 @@ class ConfigApi(rorInstance: RorInstance,
 
   private def decodeUpdateRequest(payload: String): Either[ConfigResponse.Failure, UpdateConfigRequest] = {
     io.circe.parser.decode[UpdateConfigRequest](payload)
-      .left.map(error => ConfigResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage}]"))
+      .left.map(error => ConfigResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage.show}]"))
   }
 
   private def rorConfigFrom(configString: String): EitherT[Task, ConfigResponse, RawRorConfig] = EitherT {
@@ -133,7 +131,7 @@ class ConfigApi(rorInstance: RorInstance,
         case ReloadError(RawConfigReloadError.RorInstanceStopped) =>
           UpdateIndexConfig.Failure(s"ROR instance is being stopped")
         case ReloadError(RawConfigReloadError.ReloadingFailed(failure)) =>
-          UpdateIndexConfig.Failure(s"Cannot reload new settings: ${failure.message}")
+          UpdateIndexConfig.Failure(s"Cannot reload new settings: ${failure.message.show}")
       }
   }
 }

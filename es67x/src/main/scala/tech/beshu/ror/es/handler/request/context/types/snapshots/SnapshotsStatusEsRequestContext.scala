@@ -17,12 +17,12 @@
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RequestedIndex, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
@@ -30,9 +30,9 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
                                       esContext: EsContext,
@@ -52,8 +52,8 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[SnapshotsStatusRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: SnapshotsStatusRequest): Set[ClusterIndexName] =
-    Set(ClusterIndexName.Local.wildcard)
+  override protected def indicesFrom(request: SnapshotsStatusRequest): Set[RequestedIndex] =
+    Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
     if (isCurrentSnapshotStatusRequest(actionRequest)) updateSnapshotStatusResponse(blockContext)

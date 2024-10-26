@@ -17,15 +17,14 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import cats.{Eq, Show}
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.*
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
-import tech.beshu.ror.accesscontrol.show.logs.*
 import tech.beshu.ror.constants
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 

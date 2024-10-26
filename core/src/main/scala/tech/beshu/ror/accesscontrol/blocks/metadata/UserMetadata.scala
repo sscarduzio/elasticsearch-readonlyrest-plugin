@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.metadata
 
-import cats.implicits._
+import cats.implicits.*
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.JsonRepresentation
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 

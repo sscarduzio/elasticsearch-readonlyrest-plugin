@@ -17,20 +17,21 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.bulk.BulkShardRequest
 import org.elasticsearch.index.Index
 import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, Modified}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
 class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
@@ -40,12 +41,12 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
                                 override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[BulkShardRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: BulkShardRequest): Set[ClusterIndexName] = {
-    request.indices().asSafeSet.flatMap(ClusterIndexName.fromString)
+  override protected def indicesFrom(request: BulkShardRequest): Set[RequestedIndex] = {
+    request.indices().asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: BulkShardRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     tryUpdate(request, filteredIndices) match {
       case Success(_) =>
@@ -56,9 +57,10 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
     }
   }
 
-  private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[ClusterIndexName]) = {
+  private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[RequestedIndex]) = {
     val singleIndex = indices.head
-    val uuid = clusterService.indexOrAliasUuids(singleIndex).toList.head
+    val uuid = clusterService.indexOrAliasUuids(singleIndex.name).toList.head
+    // todo: one index taken - do we need a warn here?
     ReflectionUtils
       .getAllFields(request.shardId().getClass, ReflectionUtils.withName("index")).asScala
       .foldLeft(Try(())) {

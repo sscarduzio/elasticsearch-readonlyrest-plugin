@@ -17,28 +17,28 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, RequestedIndex}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.utils.IndicesListOps.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi
-import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi._
-import tech.beshu.ror.es.handler.response.DocumentApiOps.MultiGetApi._
+import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi.*
+import tech.beshu.ror.es.handler.response.DocumentApiOps.MultiGetApi.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                esContext: EsContext,
@@ -93,8 +93,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       .toList
   }
 
-  private def indicesFrom(item: MultiGetRequest.Item): Set[domain.ClusterIndexName] = {
-    val requestIndices = item.indices.flatMap(ClusterIndexName.fromString).toSet
+  private def indicesFrom(item: MultiGetRequest.Item): Set[RequestedIndex] = {
+    val requestIndices = item.indices.flatMap(RequestedIndex.fromString).toSet
     indicesOrWildcard(requestIndices)
   }
 
@@ -108,7 +108,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     }
   }
 
-  private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[ClusterIndexName]) = {
+  private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[RequestedIndex]) = {
     indices.toList match {
       case Nil => updateItemWithNonExistingIndex(item)
       case index :: rest =>
@@ -121,7 +121,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
   private def updateItemWithNonExistingIndex(item: MultiGetRequest.Item): Unit = {
     val originRequestIndices = indicesFrom(item).toList
-    val notExistingIndex = originRequestIndices.randomNonexistentIndex()
+    val notExistingIndex = originRequestIndices.map(_.name).randomNonexistentIndex()
     item.index(notExistingIndex.stringify)
   }
 

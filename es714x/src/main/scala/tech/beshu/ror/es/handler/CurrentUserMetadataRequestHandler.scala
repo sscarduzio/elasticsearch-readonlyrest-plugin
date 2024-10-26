@@ -23,7 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
-import tech.beshu.ror.accesscontrol.AccessControl.{ForbiddenCause, UserMetadataRequestResult}
+import tech.beshu.ror.accesscontrol.AccessControlList.{ForbiddenCause, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.CorrelationId

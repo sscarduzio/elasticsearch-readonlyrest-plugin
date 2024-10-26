@@ -17,12 +17,13 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import com.google.common.collect.Sets
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -30,8 +31,8 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.utils.ReflecUtils
 
-import java.util.{List => JList}
-import scala.jdk.CollectionConverters._
+import java.util.List as JList
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionRequest,
@@ -42,10 +43,10 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
                                                      override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ActionRequest): Set[ClusterIndexName] = indices
+  override protected def indicesFrom(request: ActionRequest): Set[RequestedIndex] = indices
 
   override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {
@@ -54,12 +55,12 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
     }
   }
 
-  private def tryUpdate(actionRequest: ActionRequest, indices: NonEmptyList[ClusterIndexName]) = {
+  private def tryUpdate(actionRequest: ActionRequest, indices: NonEmptyList[RequestedIndex]) = {
     // Optimistic reflection attempt
     ReflecUtils.setIndices(
       actionRequest,
       Sets.newHashSet("index", "indices", "setIndex", "setIndices"),
-      indices.toList.map(_.stringify).toSet.asJava
+      indices.stringify.toSet.asJava
     )
   }
 }

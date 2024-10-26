@@ -17,8 +17,8 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
-import cats.implicits._
-import eu.timepit.refined.auto._
+import cats.implicits.*
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable

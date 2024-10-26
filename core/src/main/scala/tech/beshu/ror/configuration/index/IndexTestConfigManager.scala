@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.configuration.index
 
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneOffset}
 import cats.data.EitherT
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
@@ -45,6 +43,8 @@ import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, Cann
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.json.KeyCodec
 
+import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.Duration
 import scala.util.Try
 

@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils.uniquelist
 
 import cats.Show
-import cats.implicits._
+import cats.implicits.*
 
 import scala.collection.SortedSet
 

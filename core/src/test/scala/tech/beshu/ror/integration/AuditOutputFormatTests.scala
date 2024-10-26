@@ -18,23 +18,22 @@ package tech.beshu.ror.integration
 
 import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
-import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
+import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.header
+import tech.beshu.ror.utils.TestsUtils.{header, unsafeNes}
 
 import java.time.{Clock, Instant, ZoneId}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest {
 
@@ -149,7 +148,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       settings = settings,
       auditSinkServiceCreator = _ => auditSinkService
     ).get
-    new AccessControlLoggingDecorator(acl, Some(auditingTool))
+    new AccessControlListLoggingDecorator(acl, Some(auditingTool))
   }
 
   private def captureProcessingMillis(jsonString: String) = {

@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, IndicesRequest}
 import org.elasticsearch.action.IndicesRequest.Replaceable
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext

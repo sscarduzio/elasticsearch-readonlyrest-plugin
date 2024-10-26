@@ -25,9 +25,9 @@ import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.accesscontrol.show.logs.{historyShow, obfuscatedHeaderShow}
+import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.audit.{AuditRequestContext, Headers}
+import tech.beshu.ror.implicits.*
 
 import java.time.Instant
 

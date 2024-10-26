@@ -18,8 +18,8 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -33,15 +33,13 @@ class IndexEsRequestContext(actionRequest: IndexRequest,
                             override val threadPool: ThreadPool)
   extends BaseSingleIndexEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indexFrom(request: IndexRequest): ClusterIndexName = {
-    ClusterIndexName
+  override protected def indexFrom(request: IndexRequest): RequestedIndex = {
+    RequestedIndex
       .fromString(request.index())
-      .getOrElse {
-        throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")
-      }
+      .getOrElse(throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid"))
   }
 
-  override protected def update(request: IndexRequest, index: ClusterIndexName): ModificationResult = {
+  override protected def update(request: IndexRequest, index: RequestedIndex): ModificationResult = {
     request.index(index.stringify)
     Modified
   }

@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RequestedIndex, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
@@ -33,19 +33,19 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
     with EsRequest[SnapshotRequestBlockContext] {
 
   override val initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty,
-    snapshotsOrWildcard(snapshotsFrom(actionRequest)),
-    repositoriesOrWildcard(repositoriesFrom(actionRequest)),
-    indicesFrom(actionRequest),
-    Set(ClusterIndexName.Local.wildcard)
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty,
+    snapshots = snapshotsOrWildcard(snapshotsFrom(actionRequest)),
+    repositories = repositoriesOrWildcard(repositoriesFrom(actionRequest)),
+    filteredIndices = indicesFrom(actionRequest),
+    allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
   )
 
   protected def snapshotsFrom(request: T): Set[SnapshotName]
 
   protected def repositoriesFrom(request: T): Set[RepositoryName]
 
-  protected def indicesFrom(request: T): Set[ClusterIndexName]
+  protected def indicesFrom(request: T): Set[RequestedIndex[_ <: ClusterIndexName]]
 }

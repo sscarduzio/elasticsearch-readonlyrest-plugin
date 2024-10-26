@@ -21,7 +21,7 @@ import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
@@ -136,7 +136,7 @@ final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)
                                       requestId: RequestContext.Id)
     extends SearchRequest(request) {
 
-    this.indices(indices.toList.map(_.stringify): _*)
+    this.indices(indices.stringify: _*)
 
     override def source(sourceBuilder: SearchSourceBuilder): SearchRequest = {
       super

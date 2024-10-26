@@ -17,13 +17,14 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.index.query.QueryBuilder
 import org.elasticsearch.threadpool.ThreadPool
-import org.joor.Reflect._
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import org.joor.Reflect.*
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
@@ -53,14 +54,14 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
   }
 
   override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[ClusterIndexName] = {
-    sqlIndicesExtractResult.map(_.indices.flatMap(ClusterIndexName.fromString)) match {
+    sqlIndicesExtractResult.map(_.indices.flatMap(RequestedIndex.fromString)) match {
       case Right(indices) => indices
-      case Left(_) => Set(ClusterIndexName.Local.wildcard)
+      case Left(_) => Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
     }
   }
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                indices: NonEmptyList[ClusterIndexName],
+                                indices: NonEmptyList[RequestedIndex],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val result = for {
@@ -89,10 +90,10 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
   }
 
   private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,
-                                   indices: NonEmptyList[ClusterIndexName]): Either[SqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
+                                   indices: NonEmptyList[RequestedIndex]): Either[SqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
     sqlIndicesExtractResult match {
       case Right(sqlIndices) =>
-        val indicesStrings = indices.map(_.stringify).toList.toSet
+        val indicesStrings = indices.stringify.toSet
         if (indicesStrings != sqlIndices.indices) {
           SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings)
         } else {

@@ -17,18 +17,19 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.reroute.ClusterRerouteRequest
-import org.elasticsearch.cluster.routing.allocation.command._
+import org.elasticsearch.cluster.routing.allocation.command.*
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
                                      esContext: EsContext,
@@ -37,7 +38,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
                                      override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ClusterRerouteRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterRerouteRequest): Set[ClusterIndexName] = {
+  override protected def indicesFrom(request: ClusterRerouteRequest): Set[RequestedIndex] = {
     request
       .getCommands.commands().asScala
       .flatMap(indexFrom)
@@ -45,7 +46,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
   }
 
   override protected def update(request: ClusterRerouteRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val modifiedCommands = request
       .getCommands.commands().asScala.toSeq
@@ -54,7 +55,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
     Modified
   }
 
-  private def modifiedCommand(command: AllocationCommand, allowedIndices: NonEmptyList[ClusterIndexName]) = {
+  private def modifiedCommand(command: AllocationCommand, allowedIndices: NonEmptyList[RequestedIndex]) = {
     val indexFromCommand = indexFrom(command)
     indexFromCommand match {
       case None => command
@@ -71,12 +72,12 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
       case c: AllocateReplicaAllocationCommand => c.index()
       case c: AllocateStalePrimaryAllocationCommand => c.index()
     }
-    ClusterIndexName.fromString(indexNameStr)
+    RequestedIndex.fromString(indexNameStr)
   }
 
   private def setNonExistentIndexFor(command: AllocationCommand) = {
     val randomIndex = indexFrom(command)
-        .map(_.randomNonexistentIndex())
+        .map(_.name.randomNonexistentIndex())
         .getOrElse(ClusterIndexName.Local.randomNonexistentIndex())
     command match {
       case c: CancelAllocationCommand =>

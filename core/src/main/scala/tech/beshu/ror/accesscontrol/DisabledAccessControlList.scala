@@ -17,14 +17,14 @@
 package tech.beshu.ror.accesscontrol
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.AccessControl.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.RequestContext.Aux
 
-object DisabledAccessControl extends AccessControl {
+object DisabledAccessControlList extends AccessControlList {
 
   override val description: String = "Disabled ROR ACL"
 
@@ -34,7 +34,7 @@ object DisabledAccessControl extends AccessControl {
   override def handleMetadataRequest(requestContext: Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] =
     Task.now(WithHistory.withNoHistory(UserMetadataRequestResult.PassedThrough))
 
-  override val staticContext: AccessControl.AccessControlStaticContext = new AccessControlStaticContext {
+  override val staticContext: AccessControlList.AccessControlStaticContext = new AccessControlStaticContext {
     override val usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = None
     override val doesRequirePassword: Boolean = false
     override val forbiddenRequestMessage: String = ""

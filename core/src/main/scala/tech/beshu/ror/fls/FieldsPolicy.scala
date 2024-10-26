@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.fls
 
-import java.util.regex.Pattern
-
-import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.constants
+
+import java.util.regex.Pattern
 
 class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
 

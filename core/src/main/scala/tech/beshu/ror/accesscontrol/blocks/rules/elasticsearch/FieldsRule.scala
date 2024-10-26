@@ -17,15 +17,15 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest._
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFLSUpdater.{FilterableBlockContextWithFieldsUpdater, FilterableMultiRequestBlockContextWithFieldsUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFLSUpdater}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
@@ -37,9 +37,8 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestriction
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.fls.FieldsPolicy
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFLSUpdater.FilterableBlockContextWithFieldsUpdater
-import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFLSUpdater.FilterableMultiRequestBlockContextWithFieldsUpdater
 
 class FieldsRule(val settings: Settings)
   extends RegularRule

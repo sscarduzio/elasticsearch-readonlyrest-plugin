@@ -22,7 +22,8 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
@@ -30,7 +31,7 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi
-import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi._
+import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 
 class GetEsRequestContext(actionRequest: GetRequest,
@@ -42,20 +43,18 @@ class GetEsRequestContext(actionRequest: GetRequest,
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  override protected def indicesFrom(request: GetRequest): Set[ClusterIndexName] = {
-    val indexName = ClusterIndexName
+  override protected def indicesFrom(request: GetRequest): Set[RequestedIndex] = {
+    val indexName = RequestedIndex
       .fromString(request.index())
-      .getOrElse {
-        throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")
-      }
+      .getOrElse(throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid"))
     Set(indexName)
   }
 
   override protected def update(request: GetRequest,
-                                indices: NonEmptyList[ClusterIndexName],
+                                indices: NonEmptyList[RequestedIndex],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    val indexName = indices.head
+    val indexName = indices.head 
     request.index(indexName.stringify)
     ModificationResult.UpdateResponse(updateFunction(filter, fieldLevelSecurity))
   }

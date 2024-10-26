@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.threadpool.ThreadPool
@@ -30,8 +30,9 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.accesscontrol.show.logs.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class BulkEsRequestContext(actionRequest: BulkRequest,
                            esContext: EsContext,
@@ -96,7 +97,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
 
   private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[ClusterIndexName]) = {
     if (indices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.toList.mkString(",")}]")
+      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
     }
     request.index(indices.head.stringify)
   }

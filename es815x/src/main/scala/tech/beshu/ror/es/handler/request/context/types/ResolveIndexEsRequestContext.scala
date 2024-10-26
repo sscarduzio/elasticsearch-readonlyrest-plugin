@@ -22,17 +22,18 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
 import org.elasticsearch.threadpool.ThreadPool
-import org.joor.Reflect._
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import org.joor.Reflect.*
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
                                    esContext: EsContext,
@@ -41,14 +42,14 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ResolveIndexAction.Request](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ResolveIndexAction.Request): Set[domain.ClusterIndexName] = indicesOrWildcard {
-    request.indices().asSafeList.flatMap(ClusterIndexName.fromString).toSet
+  override protected def indicesFrom(request: ResolveIndexAction.Request): Set[RequestedIndex] = indicesOrWildcard {
+    request.indices().asSafeList.flatMap(RequestedIndex.fromString).toSet
   }
 
   override protected def update(request: ResolveIndexAction.Request,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    request.indices(filteredIndices.toList.map(_.stringify): _*)
+    request.indices(filteredIndices.stringify: _*)
     ModificationResult.UpdateResponse(resp => Task.delay(filterResponse(resp, allAllowedIndices)))
   }
 

@@ -16,11 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-import java.security.KeyFactory
-import java.security.spec.X509EncodedKeySpec
-
 import org.apache.commons.codec.binary.Base64
 
+import java.security.KeyFactory
+import java.security.spec.X509EncodedKeySpec
 import scala.util.Try
 
 object CryptoOps {

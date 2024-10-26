@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
-import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
@@ -32,6 +31,7 @@ import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeDataStreamsFilterScala
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeDataStreamsFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class DataStreamsRule(val settings: Settings)
@@ -80,10 +80,10 @@ class DataStreamsRule(val settings: Settings)
         case CheckResult.Ok(processedDataStreams) if processedDataStreams.size === dataStreamsToCheck.size =>
           Right(processedDataStreams)
         case CheckResult.Ok(processedDataStreams) =>
-          val filteredOutDataStreams = dataStreamsToCheck.diff(processedDataStreams).map(_.show)
+          val filteredOutDataStreams = dataStreamsToCheck.diff(processedDataStreams)
           logger.debug(
             s"[${requestContext.id.show}] Write request with data streams cannot proceed because some of the data streams " +
-              s"[${filteredOutDataStreams.toList.mkString_(",")}] were filtered out by ACL. The request will be rejected.."
+              s"[${filteredOutDataStreams.show}] were filtered out by ACL. The request will be rejected.."
           )
           Left(())
         case CheckResult.Failed =>

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.elasticsearch
 
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 
 class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
 
@@ -207,7 +207,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             assertion = errors => {
               errors should have size 1
               errors.head should be(RulesLevelCreationError(Message(
-                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: 'field1','~field2'"
+                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: 'field1', '~field2'"
               )))
             }
           )
@@ -226,7 +226,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             assertion = errors => {
               errors should have size 1
               errors.head should be(RulesLevelCreationError(Message(
-                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}','~field2'"
+                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}', '~field2'"
               )))
             }
           )
@@ -245,7 +245,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             assertion = errors => {
               errors should have size 1
               errors.head should be(RulesLevelCreationError(Message(
-                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}','~@{user}.name'"
+                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}', '~@{user}.name'"
               )))
             }
           )
@@ -266,7 +266,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "These fields cannot be filtered using this rule: _type,_uid"
+              "These fields cannot be filtered using this rule: _type, _uid"
             )))
           }
         )

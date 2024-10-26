@@ -19,7 +19,8 @@ package tech.beshu.ror.es.handler.request.context.types
 import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.indices.rollover.RolloverRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -33,13 +34,13 @@ class RolloverEsRequestContext(actionRequest: RolloverRequest,
                                override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[RolloverRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: RolloverRequest): Set[ClusterIndexName] = {
+  override protected def indicesFrom(request: RolloverRequest): Set[RequestedIndex] = {
     (Option(request.getNewIndexName).toSet ++ Set(request.getRolloverTarget))
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: RolloverRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     Modified
   }

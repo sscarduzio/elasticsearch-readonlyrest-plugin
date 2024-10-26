@@ -16,9 +16,8 @@
  */
 package tech.beshu.ror.utils.uniquelist
 
-import cats.implicits._
-import cats.Show
 import cats.data.NonEmptyList
+import cats.implicits.*
 
 import scala.collection.SortedSet
 
@@ -54,6 +53,4 @@ object UniqueNonEmptyList {
     if(set.nonEmpty) Some(new UniqueNonEmptyList[T](set.toVector.distinct))
     else None
 
-  implicit def show[T: Show]: Show[UniqueNonEmptyList[T]] =
-    Show.show(_.toList.map(_.show).mkString(","))
 }

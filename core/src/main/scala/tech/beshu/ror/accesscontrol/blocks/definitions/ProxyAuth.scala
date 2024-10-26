@@ -17,18 +17,19 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import cats.{Eq, Show}
-import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.blocks.definitions.ProxyAuth.Name
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 
-final case class ProxyAuth(id: ProxyAuth#Id, userIdHeader: Header.Name) extends Item {
+final case class ProxyAuth(override val id: ProxyAuth#Id, userIdHeader: Header.Name)
+  extends Item {
+
   override type Id = Name
-  override implicit val show: Show[Name] = ProxyAuth.nameShow
+  override val idShow: Show[Name] = Show.show(_.value)
 }
 
 object ProxyAuth {
   final case class Name(value: String) extends AnyVal
 
   implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
-  implicit val nameShow: Show[Name] = Show.show(_.value)
 }

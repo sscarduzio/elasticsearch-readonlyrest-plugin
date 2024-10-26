@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.http
 
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import squants.information.Bytes
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}

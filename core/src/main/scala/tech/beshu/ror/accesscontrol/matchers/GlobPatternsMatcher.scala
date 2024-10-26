@@ -35,6 +35,11 @@ private[matchers] class GlobPatternsMatcher[T: Matchable](val values: Iterable[T
     globs.exists(_.matches(Matchable[T].show(value)))
   }
 
+  override def `match`[B: Conversion](value: B): Boolean = {
+    val bToTConversion = implicitly[Conversion[B]]
+    `match`(bToTConversion(value))
+  }
+
   override def filter[B <: T](items: Iterable[B]): Set[B] = {
     items.toSet.filter(`match`)
   }

@@ -14,20 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.acl
+package tech.beshu.ror.accesscontrol
 
 import cats.data.{NonEmptyList, NonEmptySet, WriterT}
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.AccessControl._
-import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.*
+import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem, Policy}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -37,9 +36,9 @@ import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class AccessControlList(val blocks: NonEmptyList[Block],
-                        override val staticContext: AccessControlListStaticContext)
-  extends AccessControl {
+class EnabledAccessControlList(val blocks: NonEmptyList[Block],
+                               override val staticContext: AccessControlListStaticContext)
+  extends AccessControlList {
 
   override val description: String = "Enabled ROR ACL"
 
@@ -273,11 +272,11 @@ class AccessControlList(val blocks: NonEmptyList[Block],
   }
 }
 
-object AccessControlList {
+object EnabledAccessControlList {
 
-  class AccessControlListStaticContext(blocks: NonEmptyList[Block],
-                                       globalSettings: GlobalSettings,
-                                       override val obfuscatedHeaders: Set[Header.Name])
+  final class AccessControlListStaticContext(blocks: NonEmptyList[Block],
+                                             globalSettings: GlobalSettings,
+                                             override val obfuscatedHeaders: Set[Header.Name])
     extends AccessControlStaticContext {
 
     override val forbiddenRequestMessage: String = globalSettings.forbiddenRequestMessage

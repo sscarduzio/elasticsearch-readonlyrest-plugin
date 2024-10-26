@@ -17,14 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.ApiKeysRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.ApiKey
-import tech.beshu.ror.accesscontrol.domain.Header.Name._
+import tech.beshu.ror.accesscontrol.domain.Header.Name.*
 
 class ApiKeysRule(val settings: Settings)
   extends RegularRule {

@@ -149,7 +149,7 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Log
   private def filterMetadataData(composableIndexTemplate: ComposableIndexTemplate, basedOn: IndexTemplate) = {
     ComposableIndexTemplate
       .builder()
-      .indexPatterns(basedOn.patterns.toList.map(_.value.stringify).asJava)
+      .indexPatterns(basedOn.patterns.map(_.value).stringify.asJava)
       .template(new metadata.Template(
         composableIndexTemplate.template().settings(),
         composableIndexTemplate.template().mappings(),
@@ -167,7 +167,7 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Log
   }
 
   private def filterAliases(template: metadata.Template, basedOn: IndexTemplate) = {
-    val aliasesStrings = basedOn.aliases.map(_.stringify)
+    val aliasesStrings = basedOn.aliases.stringify
     template
       .aliases().asSafeMap
       .filter { case (name, _) => aliasesStrings.contains(name) }

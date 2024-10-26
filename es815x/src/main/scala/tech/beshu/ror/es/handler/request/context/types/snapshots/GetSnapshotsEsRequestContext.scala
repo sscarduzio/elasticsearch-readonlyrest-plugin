@@ -105,7 +105,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       .getSnapshots.asSafeList
       .foreach { snapshot =>
         val snapshotIndices = snapshot.indices().asSafeList.flatMap(ClusterIndexName.fromString).toSet
-        val filteredSnapshotIndices = matcher.filter(snapshotIndices).map(_.stringify).toList.asJava
+        val filteredSnapshotIndices = matcher.filter(snapshotIndices).stringify.asJava
         on(snapshot).set("indices", filteredSnapshotIndices)
         snapshot
       }

@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.http
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -32,14 +32,13 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.unit.acl.blocks.rules.http.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
-import tech.beshu.ror.utils.DurationOps._
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.TestsUtils.*
 
-import java.time._
+import java.time.*
 import java.util.UUID
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
 

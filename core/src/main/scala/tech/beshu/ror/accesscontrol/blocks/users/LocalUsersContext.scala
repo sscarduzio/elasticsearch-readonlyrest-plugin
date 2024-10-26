@@ -16,17 +16,17 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.users
 
-import cats.implicits._
+import cats.implicits.*
 import cats.kernel.Monoid
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
-import tech.beshu.ror.accesscontrol.blocks.rules.http._
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
+import tech.beshu.ror.accesscontrol.blocks.rules.http.*
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
+import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.LocalUsers
 

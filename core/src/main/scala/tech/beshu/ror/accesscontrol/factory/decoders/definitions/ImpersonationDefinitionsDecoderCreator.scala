@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
-import cats.implicits._
 import cats.Id
 import io.circe.{Decoder, DecodingFailure}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions._
+import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -29,9 +29,8 @@ import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -73,9 +72,8 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
 
     UniqueNonEmptyList.fromSortedSet(exactImpersonators.intersect(exactImpersonatedUsers)) match {
       case Some(duplicatedUsers) =>
-        val users = duplicatedUsers.map(_.value.value.value).mkString(",")
         Left(decodingFailure(
-          Message(s"Each of the given users [$users] should be either impersonator or a user to be impersonated")
+          Message(s"Each of the given users [${duplicatedUsers.show}] should be either impersonator or a user to be impersonated")
         ))
       case None => Right(())
     }

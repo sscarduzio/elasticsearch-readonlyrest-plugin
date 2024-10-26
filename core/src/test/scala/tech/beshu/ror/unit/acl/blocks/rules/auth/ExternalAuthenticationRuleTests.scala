@@ -18,14 +18,13 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralNonIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -37,13 +36,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
-import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, impersonationHeader, impersonatorDefFrom, mocksProviderForExternalAuthnServiceFrom}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, impersonationHeader, impersonatorDefFrom, mocksProviderForExternalAuthnServiceFrom, unsafeNes}
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {

@@ -22,7 +22,8 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.implicits.*
 
 object GlobalStaticSettingsDecoder {
 
@@ -60,7 +61,7 @@ object GlobalStaticSettingsDecoder {
         case Some("case_insensitive") => Right(CaseSensitivity.Disabled)
         case Some("case_sensitive") | None => Right(CaseSensitivity.Enabled)
         case Some(other) => Left(CoreCreationError.GeneralReadonlyrestSettingsError(Message(
-          s"Unknown username case mapping: '$other'. Supported: 'case_insensitive', 'case_sensitive'(default)."
+          s"Unknown username case mapping: '${other.show}'. Supported: 'case_insensitive', 'case_sensitive'(default)."
         )))
       }
       .decoder
@@ -72,21 +73,19 @@ object GlobalStaticSettingsDecoder {
     case Some(definedFlsEngine) =>
       flsEngineFromString(definedFlsEngine)
         .left
-        .map((unknown: UnknownFlsEngine) =>
+        .map { case () =>
           CoreCreationError.GeneralReadonlyrestSettingsError(Message(
             // we don't officially say the `lucene` is supported, that's why it is omitted in the error message
-            s"Unknown fls engine: '${unknown.value}'. Supported: 'es_with_lucene'(default), 'es'."
+            s"Unknown fls engine: '${definedFlsEngine.show}'. Supported: 'es_with_lucene'(default), 'es'."
           ))
-        )
+        }
   }
 
-  private def flsEngineFromString(str: String): Either[UnknownFlsEngine, FlsEngine] = str match {
+  private def flsEngineFromString(str: String): Either[Unit, FlsEngine] = str match {
     case "lucene" => Right(GlobalSettings.FlsEngine.Lucene)
     case "es_with_lucene" => Right(GlobalSettings.FlsEngine.ESWithLucene)
     case "es" => Right(GlobalSettings.FlsEngine.ES)
-    case unknown => Left(UnknownFlsEngine(unknown))
+    case unknown => Left(())
   }
-
-  private final case class UnknownFlsEngine(value: String)
 
 }

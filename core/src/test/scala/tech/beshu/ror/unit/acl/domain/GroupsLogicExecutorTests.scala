@@ -16,13 +16,12 @@
  */
 package tech.beshu.ror.unit.acl.domain
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroupIds}
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
 

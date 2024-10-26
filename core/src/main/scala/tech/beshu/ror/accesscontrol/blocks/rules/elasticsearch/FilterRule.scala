@@ -18,17 +18,16 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.{FilterableBlockContextWithFilterUpdater, FilterableMultiRequestBlockContextWithFilterUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFilterUpdater}
 import tech.beshu.ror.accesscontrol.domain.Filter
-import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.FilterableBlockContextWithFilterUpdater
-import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.FilterableMultiRequestBlockContextWithFilterUpdater
 
 /**
   * Document level security (DLS) rule.

@@ -18,9 +18,9 @@ package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import cats.kernel.Monoid
-import enumeratum._
+import enumeratum.*
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto.autoUnwrap
 import eu.timepit.refined.types.string.NonEmptyString

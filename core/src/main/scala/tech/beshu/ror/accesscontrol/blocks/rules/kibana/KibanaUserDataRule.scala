@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
-import cats.implicits.toShow
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -28,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolv
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
-import tech.beshu.ror.accesscontrol.show.logs.*
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaUserDataRule(override val settings: Settings)

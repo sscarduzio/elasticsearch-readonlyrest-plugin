@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, Ru
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields}
-import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering._
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.*
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 

@@ -27,6 +27,8 @@ trait PatternsMatcher[A] {
 
   def `match`[B <: A](value: B): Boolean
 
+  def `match`[B : Conversion](value: B): Boolean
+
   def filter[B <: A](items: Iterable[B]): Set[B]
 
   def filter[B: Conversion](items: Iterable[B]): Set[B]

@@ -22,10 +22,9 @@ import com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Url
 import monix.eval.Task
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.CacheableExternalAuthenticationServiceDecorator.HashedUserCredentials
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
-import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, Header, User}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
@@ -35,19 +34,18 @@ import java.nio.charset.Charset
 
 trait ExternalAuthenticationService extends Item {
   override type Id = Name
-  def id: Id
+
   def authenticate(credentials: Credentials)
                   (implicit requestId: RequestId): Task[Boolean]
   def serviceTimeout: PositiveFiniteDuration
 
-  override implicit def show: Show[Name] = Name.nameShow
+  override val idShow: Show[Name] = Show.show(_.value.value)
 }
 object ExternalAuthenticationService {
 
   final case class Name(value: NonEmptyString)
   object Name {
     implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
-    implicit val nameShow: Show[Name] = Show.show(_.value.value)
   }
 }
 

@@ -18,7 +18,8 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -33,15 +34,15 @@ class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
                                      override val threadPool: ThreadPool)
   extends BaseSingleIndexEsRequestContext[DeleteRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indexFrom(request: DeleteRequest): ClusterIndexName = {
-    ClusterIndexName
+  override protected def indexFrom(request: DeleteRequest): RequestedIndex = {
+    RequestedIndex
       .fromString(actionRequest.index())
       .getOrElse {
         throw RequestSeemsToBeInvalid[DeleteRequest]("Invalid index name")
       }
   }
 
-  override protected def update(actionRequest: DeleteRequest, index: ClusterIndexName): ModificationResult = {
+  override protected def update(actionRequest: DeleteRequest, index: RequestedIndex): ModificationResult = {
     actionRequest.index(index.stringify)
     Modified
   }

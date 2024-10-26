@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.utils
 
+import tech.beshu.ror.boot.RorInstance
+
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Supplier
-
-import tech.beshu.ror.boot.RorInstance
 
 object RorInstanceSupplier extends Supplier[Option[RorInstance]]{
   private val rorInstanceAtomicReference = new AtomicReference(Option.empty[RorInstance])

@@ -145,7 +145,7 @@ private[templates] object GetTemplatesEsRequestContext extends Logging {
       metadata.name(),
       metadata.order(),
       metadata.version(),
-      basedOn.patterns.toList.map(_.value.stringify).asJava,
+      basedOn.patterns.map(_.value).stringify.asJava,
       metadata.settings(),
       Map(metadata.mappings().string() -> metadata.mappings()).asJava,
       filterAliases(metadata, basedOn)
@@ -153,7 +153,7 @@ private[templates] object GetTemplatesEsRequestContext extends Logging {
   }
 
   private def filterAliases(metadata: IndexTemplateMetadata, template: LegacyTemplate) = {
-    val aliasesStrings = template.aliases.map(_.stringify)
+    val aliasesStrings = template.aliases.stringify
     val filteredAliasesMap =
       metadata
         .aliases().asSafeValues

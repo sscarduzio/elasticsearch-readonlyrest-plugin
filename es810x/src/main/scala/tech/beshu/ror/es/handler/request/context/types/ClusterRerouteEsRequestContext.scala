@@ -21,7 +21,7 @@ import cats.implicits._
 import org.elasticsearch.action.admin.cluster.reroute.ClusterRerouteRequest
 import org.elasticsearch.cluster.routing.allocation.command._
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext

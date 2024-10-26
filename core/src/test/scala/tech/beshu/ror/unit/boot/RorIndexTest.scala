@@ -16,30 +16,29 @@
  */
 package tech.beshu.ror.unit.boot
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.Eventually
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{EitherValues, Inside, OptionValues}
-import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.AccessControlList
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
-import tech.beshu.ror.utils.DurationOps._
+import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 
 import java.util.UUID
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class RorIndexTest extends AnyWordSpec
@@ -294,7 +293,7 @@ class RorIndexTest extends AnyWordSpec
   }
 
   private def mockAccessControl = {
-    val mockedAccessControl = mock[AccessControl]
+    val mockedAccessControl = mock[AccessControlList]
     (() => mockedAccessControl.staticContext)
       .expects()
       .anyNumberOfTimes()

@@ -37,7 +37,7 @@ class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
 
   private def filter(responseIndicesNadAliases: List[(String, java.util.List[AliasMetadata])],
                      allowedAliases: NonEmptyList[ClusterIndexName]) = {
-    val matcher = PatternsMatcher.create(allowedAliases.toList.map(_.stringify))
+    val matcher = PatternsMatcher.create(allowedAliases.toList.map(_.stringify)) // todo:!!!!
     responseIndicesNadAliases
       .map { case (indexName, aliasesList) =>
         val filteredAliases = matcher.filter(aliasesList.asSafeList.toSet)

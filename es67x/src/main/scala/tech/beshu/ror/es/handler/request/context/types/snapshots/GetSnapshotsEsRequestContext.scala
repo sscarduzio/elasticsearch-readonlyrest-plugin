@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RequestedIndex, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
@@ -31,10 +31,10 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
                                    esContext: EsContext,
@@ -55,8 +55,8 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[GetSnapshotsRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.ClusterIndexName] =
-    Set(ClusterIndexName.Local.wildcard)
+  override protected def indicesFrom(request: GetSnapshotsRequest): Set[RequestedClusterIndex[_ <: ClusterIndexName]] =
+    Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {

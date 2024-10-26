@@ -17,11 +17,11 @@
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RequestedIndex, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
@@ -29,7 +29,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
 class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
                                       esContext: EsContext,
@@ -48,8 +48,8 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: RestoreSnapshotRequest): Set[domain.ClusterIndexName] =
-    indicesOrWildcard(request.indices.asSafeSet.flatMap(ClusterIndexName.fromString))
+  override protected def indicesFrom(request: RestoreSnapshotRequest): Set[RequestedIndex] =
+    indicesOrWildcard(request.indices.asSafeSet.flatMap(RequestedIndex.fromString))
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {

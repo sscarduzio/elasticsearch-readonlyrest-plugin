@@ -23,10 +23,10 @@ import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.*
 import tech.beshu.ror.es.EsEnv
-import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 final case class RorIndexNameConfiguration(index: RorConfigurationIndex)
 

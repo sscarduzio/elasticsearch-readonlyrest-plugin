@@ -17,22 +17,21 @@
 package tech.beshu.ror.configuration.loader
 
 import cats.data.EitherT
-import cats.implicits._
 import cats.~>
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
-import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
 import tech.beshu.ror.configuration.RorProperties.LoadingDelay
+import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
-import tech.beshu.ror.configuration.loader.LoadedRorConfig._
-import tech.beshu.ror.configuration.{ConfigLoading, EsConfig, EnvironmentConfig}
+import tech.beshu.ror.configuration.loader.LoadedRorConfig.*
+import tech.beshu.ror.configuration.{ConfigLoading, EnvironmentConfig, EsConfig}
+import tech.beshu.ror.implicits.*
 
 object ConfigLoadingInterpreter extends Logging {
 
@@ -41,7 +40,7 @@ object ConfigLoadingInterpreter extends Logging {
             (implicit environmentConfig: EnvironmentConfig): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
     override def apply[A](fa: LoadConfigAction[A]): Task[A] = fa match {
       case ConfigLoading.LoadConfigAction.LoadEsConfig(env) =>
-        logger.info(s"Loading Elasticsearch settings from file: ${env.elasticsearchConfig.toString}")
+        logger.info(s"Loading Elasticsearch settings from file: ${env.elasticsearchConfig.show}")
         EsConfig
           .from(env)
           .map(_.left.map {
@@ -58,19 +57,19 @@ object ConfigLoadingInterpreter extends Logging {
               )
           })
       case ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(path) =>
-        logger.info(s"Loading ReadonlyREST settings forced loading from file from: ${path.toString}")
+        logger.info(s"Loading ReadonlyREST settings forced loading from file from: ${path.show}")
         EitherT(new FileConfigLoader(path).load())
           .bimap(convertFileError, ForcedFileConfig(_))
           .leftMap { error =>
-            logger.error(s"Loading ReadonlyREST from file failed: $error")
+            logger.error(s"Loading ReadonlyREST from file failed: ${error.toString}")
             error
           }.value
       case ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(path) =>
-        logger.info(s"Loading ReadonlyREST settings from file from: ${path.toString}, because index not exist")
+        logger.info(s"Loading ReadonlyREST settings from file from: ${path.show}, because index not exist")
         EitherT(new FileConfigLoader(path).load())
           .bimap(convertFileError, FileConfig(_))
           .leftMap { error =>
-            logger.error(s"Loading ReadonlyREST from file failed: $error")
+            logger.error(s"Loading ReadonlyREST from file failed: ${error.toString}")
             error
           }
           .value
@@ -78,7 +77,7 @@ object ConfigLoadingInterpreter extends Logging {
         logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${configIndex.index.show}) ...")
         loadFromIndex(indexConfigManager, configIndex, inIndexLoadingDelay)
           .map { rawRorConfig =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw config from index: ${rawRorConfig.raw}")
+            logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw config from index: ${rawRorConfig.raw.show}")
             rawRorConfig
           }
           .bimap(convertIndexError, IndexConfig(configIndex, _))
@@ -92,7 +91,7 @@ object ConfigLoadingInterpreter extends Logging {
   private def logIndexLoadingError[A](error: LoadedRorConfig.LoadingIndexError): Unit = {
     error match {
       case IndexParsingError(message) =>
-        logger.error(s"Loading ReadonlyREST settings from index failed: $message")
+        logger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
       case LoadedRorConfig.IndexUnknownStructure =>
         logger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
       case LoadedRorConfig.IndexNotExist =>

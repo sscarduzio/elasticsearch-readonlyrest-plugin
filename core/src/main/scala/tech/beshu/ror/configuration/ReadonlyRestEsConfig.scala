@@ -19,13 +19,14 @@ package tech.beshu.ror.configuration
 import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.es.EsEnv
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
 final case class ReadonlyRestEsConfig(bootConfig: RorBootConfiguration,
                                       sslConfig: RorSsl,
                                       fipsConfig: FipsConfiguration)
 
 object ReadonlyRestEsConfig {
+
   def load(esEnv: EsEnv)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, ReadonlyRestEsConfig]] = {
     value {

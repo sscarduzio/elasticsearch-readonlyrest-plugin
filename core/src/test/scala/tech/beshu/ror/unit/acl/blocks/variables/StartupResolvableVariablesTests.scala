@@ -17,10 +17,10 @@
 package tech.beshu.ror.unit.acl.blocks.variables
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariable.ResolvingError
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError
@@ -127,12 +127,12 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
             (
               "@{env:test}#{bilbo}",
               Left(InvalidVariableDefinition("Unable to compile transformation string: [bilbo]. Cause: No function with name 'bilbo'. " +
-                "Supported functions are: [replace_all,replace_first,to_lowercase,to_uppercase]"))
+                "Supported functions are: [replace_all, replace_first, to_lowercase, to_uppercase]"))
             ),
             (
               s"@{env:test}#{to_uppercase.bilbo}",
               Left(InvalidVariableDefinition("Unable to compile transformation string: [to_uppercase.bilbo]. Cause: No function with name 'bilbo'. " +
-                "Supported functions are: [replace_all,replace_first,to_lowercase,to_uppercase]"))
+                "Supported functions are: [replace_all, replace_first, to_lowercase, to_uppercase]"))
             )
           ).unzip
 

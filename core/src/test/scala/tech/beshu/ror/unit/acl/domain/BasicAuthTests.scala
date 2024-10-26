@@ -16,13 +16,12 @@
  */
 package tech.beshu.ror.unit.acl.domain
 
-import org.scalatest.matchers.should.Matchers._
-import org.scalatest.wordspec.AnyWordSpec
+import eu.timepit.refined.auto.*
 import org.scalatest.Inside
+import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, PlainTextSecret, User}
-import tech.beshu.ror.utils.TestsUtils._
-import eu.timepit.refined.auto._
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.TestsUtils.*
 
 class BasicAuthTests extends AnyWordSpec with Inside {
 

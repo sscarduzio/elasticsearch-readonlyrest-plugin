@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices
 
-import cats.implicits._
 import cats.kernel.Semigroup
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.ProcessResult
@@ -27,22 +27,22 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.Ca
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.accesscontrol.show.logs._
 
 trait AllClusterIndices extends BaseIndicesProcessor {
   this: IndicesRule =>
 
   protected def processIndices(requestContext: RequestContext,
                                allAllowedIndices: Set[ClusterIndexName],
-                               requestedIndices: Set[ClusterIndexName],
-                               determinedKibanaIndex: Option[KibanaIndexName]): Task[ProcessResult[ClusterIndexName]] = {
+                               requestedIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                               determinedKibanaIndex: Option[KibanaIndexName]): Task[ProcessResult] = {
     val (allAllowedRemoteIndices, allAllowedLocalIndices) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
-    val (requestedRemoteIndices, requestedLocalIndices) = splitIntoRemoteAndLocalIndices(requestedIndices)
+    val (requestedRemoteIndices, requestedLocalIndices) = splitIntoRequestedRemoteAndLocalIndices(requestedIndices)
 
     (UniqueNonEmptyList.fromIterable(requestedLocalIndices), UniqueNonEmptyList.fromIterable(requestedRemoteIndices)) match {
       case (Some(nonEmptyRequestedLocalIndices), Some(nonEmptyRequestedRemoteIndices)) =>
-        import AllClusterIndices._
+        import AllClusterIndices.*
         for {
           localResult <- processLocalIndices(requestContext, allAllowedLocalIndices, nonEmptyRequestedLocalIndices, determinedKibanaIndex)
           remoteResult <- processRemoteIndices(requestContext, allAllowedRemoteIndices, nonEmptyRequestedRemoteIndices, determinedKibanaIndex)
@@ -53,7 +53,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
         processRemoteIndices(requestContext, allAllowedRemoteIndices, nonEmptyRequestedRemoteIndices, determinedKibanaIndex)
       case (None, None) =>
         if (requestContext.allIndicesAndAliases.nonEmpty || requestContext.allDataStreamsAndAliases.nonEmpty) {
-          Task.now(ProcessResult.Ok(allAllowedIndices))
+          Task.now(ProcessResult.Ok(allAllowedIndices.map(RequestedIndex(_, excluded = false))))
         } else {
           Task.now(ProcessResult.Failed(Some(Cause.IndexNotFound)))
         }
@@ -62,14 +62,14 @@ trait AllClusterIndices extends BaseIndicesProcessor {
 
   private def processLocalIndices(requestContext: RequestContext,
                                   allAllowedIndices: Set[ClusterIndexName.Local],
-                                  requestedIndices: UniqueNonEmptyList[ClusterIndexName.Local],
-                                  determinedKibanaIndex: Option[KibanaIndexName]): Task[ProcessResult[ClusterIndexName]] = {
+                                  requestedIndices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName.Local]],
+                                  determinedKibanaIndex: Option[KibanaIndexName]): Task[ProcessResult] = {
     implicit val indicesManager: LocalIndicesManager = new LocalIndicesManager(
       requestContext,
       PatternsMatcher.create(allAllowedIndices)
     )
-    logger.debug(s"[${requestContext.id.show}] Checking local indices (allowed: [${allAllowedIndices.map(_.show).mkString(",")}], requested: [${requestedIndices.map(_.show).mkString(",")}])")
-    canPass(requestContext, determinedKibanaIndex, requestedIndices)
+    logger.debug(s"[${requestContext.id.show}] Checking local indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
+    canPass[ClusterIndexName.Local](requestContext, determinedKibanaIndex, requestedIndices)
       .map {
         case CanPass.Yes(narrowedIndices) =>
           ProcessResult.Ok(narrowedIndices)
@@ -82,13 +82,13 @@ trait AllClusterIndices extends BaseIndicesProcessor {
 
   private def processRemoteIndices(requestContext: RequestContext,
                                    allAllowedIndices: Set[ClusterIndexName.Remote],
-                                   requestedIndices: UniqueNonEmptyList[ClusterIndexName.Remote],
-                                   determinedKibanaIndex: Option[KibanaIndexName]): Task[ProcessResult[ClusterIndexName]] = {
+                                   requestedIndices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName.Remote]],
+                                   determinedKibanaIndex: Option[KibanaIndexName]): Task[ProcessResult] = {
     implicit val indicesManager: RemoteIndicesManager = new RemoteIndicesManager(
       requestContext,
       PatternsMatcher.create(allAllowedIndices)
     )
-    logger.debug(s"[${requestContext.id.show}] Checking remote indices (allowed: [${allAllowedIndices.map(_.show).mkString(",")}], requested: [${requestedIndices.map(_.show).mkString(",")}])")
+    logger.debug(s"[${requestContext.id.show}] Checking remote indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
     canPass(requestContext, determinedKibanaIndex, requestedIndices)
       .map {
         case CanPass.Yes(narrowedIndices) =>
@@ -100,7 +100,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       }
   }
 
-  private def splitIntoRemoteAndLocalIndices(indices: Set[ClusterIndexName]) = {
+  private def splitIntoRemoteAndLocalIndices(indices: Iterable[ClusterIndexName]) = {
     indices.foldLeft((Set.empty[ClusterIndexName.Remote], Set.empty[ClusterIndexName.Local])) {
       case ((remoteIndicesList, localIndicesList), currentIndex) =>
         currentIndex match {
@@ -112,11 +112,23 @@ trait AllClusterIndices extends BaseIndicesProcessor {
     }
   }
 
+  private def splitIntoRequestedRemoteAndLocalIndices(indices: Iterable[RequestedIndex[ClusterIndexName]]) = {
+    indices.foldLeft((Set.empty[RequestedIndex[ClusterIndexName.Remote]], Set.empty[RequestedIndex[ClusterIndexName.Local]])) {
+      case ((remoteIndicesList, localIndicesList), currentIndex) =>
+        currentIndex.name match {
+          case local: ClusterIndexName.Local =>
+            (remoteIndicesList, localIndicesList + RequestedIndex(local, currentIndex.excluded))
+          case remote: ClusterIndexName.Remote =>
+            (remoteIndicesList + RequestedIndex(remote, currentIndex.excluded), localIndicesList)
+        }
+    }
+  }
+
 }
 
 object AllClusterIndices {
-  implicit def processResultSemigroup: Semigroup[ProcessResult[ClusterIndexName]] = Semigroup.instance {
-    case (ProcessResult.Ok(set1), ProcessResult.Ok(set2)) => ProcessResult.Ok(set1 ++ set2)
+  implicit def processResultSemigroup: Semigroup[ProcessResult] = Semigroup.instance {
+    case (ProcessResult.Ok(indices1), ProcessResult.Ok(indices2)) => ProcessResult.Ok(indices1 ++ indices2)
     case (ok@ProcessResult.Ok(_), ProcessResult.Failed(_)) => ok
     case (ProcessResult.Failed(_), ok@ProcessResult.Ok(_)) => ok
     case (failed@ProcessResult.Failed(_), ProcessResult.Failed(_)) => failed

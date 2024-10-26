@@ -28,13 +28,13 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.UUID
 
-final case class UserDef private(id: UserDef#Id,
+final case class UserDef private(override val id: UUID,
                                  usernames: UserIdPatterns,
                                  mode: Mode)
   extends Item {
 
   override type Id = UUID // artificial ID (won't be used)
-  override implicit val show: Show[UUID] = Show.show(_.toString)
+  override val idShow: Show[UUID] = Show.show(_.toString)
 
   def localGroups: UniqueNonEmptyList[Group] =
     mode match {

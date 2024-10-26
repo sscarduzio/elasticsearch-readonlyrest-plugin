@@ -17,14 +17,14 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableRequestBlockContext, RequestedIndex, RequestedIndex}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, ClusterIndexName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -46,7 +46,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     {
       import tech.beshu.ror.accesscontrol.show.logs._
       val indices = indicesOrWildcard(indicesFrom(actionRequest))
-      logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
+      logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
       indices
     },
     Set(ClusterIndexName.Local.wildcard),
@@ -86,7 +86,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
   protected def indicesFrom(request: R): Set[ClusterIndexName]
 
   protected def update(request: R,
-                       indices: NonEmptyList[ClusterIndexName],
+                       indices: NonEmptyList[RequestedIndex[_ <: ClusterIndexName]],
                        filter: Option[Filter],
                        fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult
 

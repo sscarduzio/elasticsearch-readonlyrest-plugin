@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.transformation
 
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{Function, FunctionDefinition}
-import tech.beshu.ror.utils.RefinedUtils._
+import tech.beshu.ror.utils.RefinedUtils.*
 
 final case class SupportedVariablesFunctions(functions: Seq[FunctionDefinition])
 

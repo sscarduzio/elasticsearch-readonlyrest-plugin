@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.utils
 
 import cats.data.NonEmptySet
-import cats.implicits.*
 import cats.{Applicative, Order}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
@@ -32,8 +31,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{Reason, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.orders.*
-import tech.beshu.ror.accesscontrol.show.logs.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.*
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.CirceOps.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -220,7 +219,7 @@ object CirceOps {
                               MalformedValue(json)
                             case None =>
                               val ruleName = df.history.headOption.collect { case df: DownField => df.k }.getOrElse("")
-                              Message(s"Malformed definition $ruleName")
+                              Message(s"Malformed definition ${ruleName.show}")
                           }
                         })
                       }
@@ -247,7 +246,7 @@ object CirceOps {
 
   implicit class DecodingFailureOps(val decodingFailure: DecodingFailure) extends AnyVal {
 
-    import AclCreationErrorCoders._
+    import AclCreationErrorCoders.*
 
     def overrideDefaultErrorWith(error: CoreCreationError): DecodingFailure = {
       if (aclCreationError.isDefined) decodingFailure
@@ -282,7 +281,7 @@ object CirceOps {
 
   object DecodingFailureOps {
 
-    import AclCreationErrorCoders._
+    import AclCreationErrorCoders.*
 
     def fromError(error: CoreCreationError): DecodingFailure =
       DecodingFailure(Encoder[CoreCreationError].apply(error).noSpaces, Nil)
@@ -347,24 +346,24 @@ object CirceOps {
 
     def downNonEmptyField(name: String): Decoder.Result[NonEmptyString] = {
       import tech.beshu.ror.accesscontrol.factory.decoders.common.nonEmptyStringDecoder
-      downFields(name).asWithError[NonEmptyString](s"Field $name cannot be empty")
+      downFields(name).asWithError[NonEmptyString](s"Field ${name.show} cannot be empty")
     }
 
     def downNonEmptyOptionalField(name: String): Decoder.Result[Option[NonEmptyString]] = {
       import tech.beshu.ror.accesscontrol.factory.decoders.common.nonEmptyStringDecoder
-      downFields(name).asWithError[Option[NonEmptyString]](s"Field $name cannot be empty")
+      downFields(name).asWithError[Option[NonEmptyString]](s"Field ${name.show} cannot be empty")
     }
 
     def downFieldAs[T: Decoder](name: String): Decoder.Result[T] = {
       value.downField(name).as[T].adaptError {
-        case error: DecodingFailure => error.modifyError(errorMessage => s"Error for field '$name': $errorMessage")
+        case error: DecodingFailure => error.modifyError(errorMessage => s"Error for field '${name.show}': ${errorMessage.show}")
       }
     }
 
     def downFieldsAs[T: Decoder](field: String, fields: String*): Decoder.Result[T] = {
       val (cursor, key) = downFieldsWithKey(field, fields*)
       cursor.as[T].adaptError {
-        case error: DecodingFailure => error.modifyError(errorMessage => s"Error for field '$key': $errorMessage")
+        case error: DecodingFailure => error.modifyError(errorMessage => s"Error for field '${key.show}': ${errorMessage.show}")
       }
     }
 

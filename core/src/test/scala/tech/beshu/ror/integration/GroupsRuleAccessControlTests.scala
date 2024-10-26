@@ -16,24 +16,23 @@
  */
 package tech.beshu.ror.integration
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allow, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.SingletonLdapContainers
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.misc.JwtUtils._
+import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.util.Base64
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class GroupsRuleAccessControlTests
   extends AnyWordSpec
@@ -133,7 +132,7 @@ class GroupsRuleAccessControlTests
       "allow when authorization satisfies all groups" in {
         val request = MockRequestContext.indices.copy(
           headers = Set(header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes))),
-          filteredIndices = Set(clusterIndexName("g34_index")),
+          filteredIndices = Set(requestedIndex("g34_index")),
         )
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 1
@@ -149,7 +148,7 @@ class GroupsRuleAccessControlTests
         "proxy auth user is correct one" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-proxy-id")),
-            filteredIndices = Set(clusterIndexName("g12_index")),
+            filteredIndices = Set(requestedIndex("g12_index")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -164,7 +163,7 @@ class GroupsRuleAccessControlTests
         "proxy auth user is unknown" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-invalid")),
-            filteredIndices = Set(clusterIndexName("g12_index")),
+            filteredIndices = Set(requestedIndex("g12_index")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -183,7 +182,7 @@ class GroupsRuleAccessControlTests
           ))
           val request = MockRequestContext.indices.copy(
             headers = Set(bearerHeader(jwt)),
-            filteredIndices = Set(clusterIndexName("g*")),
+            filteredIndices = Set(requestedIndex("g*")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -203,7 +202,7 @@ class GroupsRuleAccessControlTests
               basicAuthHeader("morgan:user1"),
               currentGroupHeader( "admin")
             ),
-            filteredIndices = Set(clusterIndexName(".kibana")),
+            filteredIndices = Set(requestedIndex(".kibana")),
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()

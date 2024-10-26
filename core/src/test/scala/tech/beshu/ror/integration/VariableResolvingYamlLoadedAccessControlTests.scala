@@ -17,31 +17,30 @@
 package tech.beshu.ror.integration
 
 import com.dimafeng.testcontainers.ForAllTestContainer
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableRequestBlockContext, GeneralIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonTree, JsonValue}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Jwt => _, _}
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.SingletonLdapContainers
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.NonStoppableLdapContainer
-import tech.beshu.ror.utils.misc.JwtUtils._
+import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import java.util.Base64
 
@@ -260,7 +259,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           ))
           val request = MockRequestContext.indices.copy(
             headers = Set(bearerHeader(jwt)),
-            filteredIndices = Set(clusterIndexName("gjj1"))
+            filteredIndices = Set(requestedIndex("gjj1"))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -273,7 +272,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user3")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
             )
-            blockContext.filteredIndices should be(Set(clusterIndexName("gjj1")))
+            blockContext.filteredIndices should be(Set(requestedIndex("gjj1")))
             blockContext.responseHeaders should be(Set.empty)
           }
         }
@@ -285,7 +284,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val request = MockRequestContext.indices.copy(
             headers = Set(bearerHeader(jwt)),
-            filteredIndices = Set(clusterIndexName("gj0")),
+            filteredIndices = Set(requestedIndex("gj0")),
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("gj0")))
           )
 
@@ -299,7 +298,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user4")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
             )
-            blockContext.filteredIndices should be(Set(clusterIndexName("gj0")))
+            blockContext.filteredIndices should be(Set(requestedIndex("gj0")))
             blockContext.responseHeaders should be(Set.empty)
           }
         }
@@ -333,7 +332,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
         "Available groups env is used" in {
           val request = MockRequestContext.search.copy(
             headers = Set(basicAuthHeader("cartman:user2")),
-            indices = Set(clusterIndexName("*")),
+            indices = Set(requestedIndex("*")),
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("test-g1")),
               fullLocalIndexWithAliases(fullIndexName("test-g2")),
@@ -352,7 +351,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 .withCurrentGroupId(GroupId("g1"))
                 .withAvailableGroups(UniqueList.of(group("g1"), group("g3")))
             )
-            blockContext.filteredIndices should be(Set(clusterIndexName("test-g1"), clusterIndexName("test-g3")))
+            blockContext.filteredIndices should be(Set(requestedIndex("test-g1"), requestedIndex("test-g3")))
             blockContext.responseHeaders should be(Set.empty)
             blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "group_id": ["g1","g3"] }}}}""")))
           }

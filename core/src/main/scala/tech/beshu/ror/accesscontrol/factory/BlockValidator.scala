@@ -16,19 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
-import cats.data.Validated._
-import cats.data._
-import cats.implicits._
+import cats.data.*
+import cats.data.Validated.*
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{GroupsAndRule, GroupsOrRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith, RuleDoesNotMeetRequirement}
+import tech.beshu.ror.implicits.*
 
 object BlockValidator {
 

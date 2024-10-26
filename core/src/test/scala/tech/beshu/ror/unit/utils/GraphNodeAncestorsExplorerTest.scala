@@ -17,17 +17,17 @@
 package tech.beshu.ror.unit.utils
 
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.RequestId
-import tech.beshu.ror.utils.{GraphNodeAncestorsExplorer, WithDummyRequestIdSupport}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.{GraphNodeAncestorsExplorer, WithDummyRequestIdSupport}
 
 class GraphNodeAncestorsExplorerTest extends AnyWordSpec with Matchers with MockFactory with WithDummyRequestIdSupport {
 

@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.unit.acl.blocks.variables
 
-import eu.timepit.refined.auto._
 import cats.data.NonEmptyList
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.impl.DefaultClaims
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -34,11 +34,10 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVa
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
 import tech.beshu.ror.mocks.{MockRequestContext, MockUserMetadataRequestContext}
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.jdk.CollectionConverters._
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import scala.jdk.CollectionConverters.*
 
 class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
 

@@ -20,7 +20,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import monix.execution.atomic.Atomic
-import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.domain.RequestId
 
 class GraphNodeAncestorsExplorer[NODE](kinshipLevel: Int Refined Positive,
                                        doFetchParentNodesOf: (NODE, RequestId) => Task[Set[NODE]]) {

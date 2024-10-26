@@ -16,16 +16,15 @@
  */
 package tech.beshu.ror.unit.acl.domain
 
-import java.time.Instant
-
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.TestsUtils.*
+
+import java.time.Instant
 
 class RorAuditIndexTemplateTests extends AnyWordSpec with Inside {
 

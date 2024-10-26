@@ -17,32 +17,32 @@
 package tech.beshu.ror.unit.acl
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause.OperationNotAllowed
-import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult.{Allow, Forbidden}
-import tech.beshu.ror.accesscontrol.acl.AccessControlList
-import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNotAllowed
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allow, Forbidden}
+import tech.beshu.ror.accesscontrol.EnabledAccessControlList
+import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
+class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with Inside {
 
   "An AccessControlList" when {
     "metadata request is called" should {
@@ -124,7 +124,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
   }
 
   private def createAcl(blocks: NonEmptyList[Block]) = {
-    new AccessControlList(
+    new EnabledAccessControlList(
       blocks,
       new AccessControlListStaticContext(
         blocks,

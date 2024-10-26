@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
-import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
@@ -26,11 +25,12 @@ import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroupIds}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions.RorKbnDefinitionsDecoder._
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.RorKbnDefinitionsDecoder.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.implicits.*
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                             globalSettings: GlobalSettings)
@@ -86,7 +86,7 @@ private object RorKbnAuthRuleDecoder {
       .emapE {
         case (name, Some((_, groupsOrKey)), Some((_, groupsAndKey))) =>
           Left(RulesLevelCreationError(Message(
-            s"Please specify either '$groupsOrKey' or '$groupsAndKey' for ROR Kibana authorization rule '${name.value.value}'"
+            s"Please specify either '${groupsOrKey.show}' or '${groupsAndKey.show}' for ROR Kibana authorization rule '${name.show}'"
           )))
         case (name, Some((groupsOrLogic, _)), None) =>
           Right((name, groupsOrLogic))

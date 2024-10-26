@@ -23,6 +23,7 @@ import tech.beshu.ror.configuration.loader.LoadedTestRorConfig
 object TestConfigLoading {
   type IndexErrorOr[A] = LoadedTestRorConfig.LoadingIndexError Either A
   type LoadTestRorConfig[A] = Free[LoadTestConfigAction, A]
+
   sealed trait LoadTestConfigAction[A]
   object LoadTestConfigAction {
     final case class LoadRorConfigFromIndex(index: RorConfigurationIndex)

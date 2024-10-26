@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
@@ -45,7 +45,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     {
       import tech.beshu.ror.accesscontrol.show.logs._
       val indices = indicesOrWildcard(indicesFrom(actionRequest))
-      logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
+      logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
       indices
     },
     Set(ClusterIndexName.Local.wildcard)

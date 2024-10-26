@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RequestedIndex, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
@@ -47,5 +47,5 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
 
   protected def repositoriesFrom(request: T): Set[RepositoryName]
 
-  protected def indicesFrom(request: T): Set[ClusterIndexName]
+  protected def indicesFrom(request: T): Set[RequestedIndex]
 }

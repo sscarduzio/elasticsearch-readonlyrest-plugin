@@ -18,11 +18,11 @@ package tech.beshu.ror.es
 
 import cats.data.NonEmptyList
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.es.RorClusterService.*
 
 trait RorClusterService {
 

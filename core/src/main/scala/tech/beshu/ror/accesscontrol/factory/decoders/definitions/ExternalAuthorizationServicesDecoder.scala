@@ -17,17 +17,17 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
-import cats.implicits._
 import io.lemonlabs.uri.Url
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config._
-import tech.beshu.ror.accesscontrol.blocks.definitions._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, Reason}
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.json.JsonPath
@@ -116,7 +116,7 @@ object ExternalAuthorizationServicesDecoder {
       .emapE[AuthTokenSendMethod] {
         case "HEADER" => Right(AuthTokenSendMethod.UsingHeader)
         case "QUERY_PARAM" => Right(AuthTokenSendMethod.UsingQueryParam)
-        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '$unknown' of 'auth_token_passed_as' attribute. Supported: 'HEADER', 'QUERY_PARAM'")))
+        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '${unknown.show}' of 'auth_token_passed_as' attribute. Supported: 'HEADER', 'QUERY_PARAM'")))
       }
       .decoder
 
@@ -126,7 +126,7 @@ object ExternalAuthorizationServicesDecoder {
       .emapE[SupportedHttpMethod] {
         case "POST" | "post" => Right(SupportedHttpMethod.Post)
         case "GET" | "get" => Right(SupportedHttpMethod.Get)
-        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '$unknown' of 'http_method' attribute. Supported: 'GET', 'POST'")))
+        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '${unknown.show}' of 'http_method' attribute. Supported: 'GET', 'POST'")))
       }
       .decoder
 

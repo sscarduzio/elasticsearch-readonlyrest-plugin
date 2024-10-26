@@ -19,6 +19,7 @@ package tech.beshu.ror.utils
 import io.circe.*
 import io.circe.generic.semiauto.*
 import io.circe.syntax.EncoderOps
+import tech.beshu.ror.implicits.*
 
 import scala.language.implicitConversions
 
@@ -27,9 +28,9 @@ object CirceOps {
     def getPrettyMessage: String = {
       error match {
         case _: ParsingFailure =>
-          s"Could not parse JSON. Cause: [${error.getMessage}]"
+          s"Could not parse JSON. Cause: [${error.getMessage.show}]"
         case ex: DecodingFailure =>
-          s"Could not parse at ${CursorOp.opsToPath(ex.history)}: [${ex.getMessage}]"
+          s"Could not parse at ${CursorOp.opsToPath(ex.history).show}: [${ex.getMessage.show}]"
       }
     }
   }
@@ -50,7 +51,7 @@ object CirceOps {
         c.downField("type").as[String] match
           case Right(typeValue) => decoders.get(typeValue) match
             case Some(decoder) => decoder.decodeJson(c.value)
-            case None => Left(DecodingFailure(s"Missing decoder for type $typeValue", Nil))
+            case None => Left(DecodingFailure(s"Missing decoder for type ${typeValue.show}", Nil))
           case Left(error) => Left(error)
       },
       Encoder.instance(encode)

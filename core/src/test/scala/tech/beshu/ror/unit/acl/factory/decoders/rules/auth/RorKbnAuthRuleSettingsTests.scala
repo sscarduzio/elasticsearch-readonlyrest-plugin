@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
-import eu.timepit.refined.auto._
-import org.scalatest.matchers.should.Matchers._
+import eu.timepit.refined.auto.*
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
@@ -29,11 +29,11 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.security.KeyPairGenerator
 import java.util.Base64
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class RorKbnAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] {

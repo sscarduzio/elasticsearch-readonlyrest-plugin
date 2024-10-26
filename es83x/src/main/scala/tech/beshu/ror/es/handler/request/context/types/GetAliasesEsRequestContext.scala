@@ -23,7 +23,7 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.alias.get.{GetAliasesRequest, GetAliasesResponse}
 import org.elasticsearch.cluster.metadata.{AliasMetadata, DataStreamAlias}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
@@ -55,12 +55,12 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     List.empty,
     {
       val indices = aliasesFrom(actionRequest)
-      logger.debug(s"[${id.show}] Discovered aliases: ${indices.map(_.show).mkString(",")}")
+      logger.debug(s"[${id.show}] Discovered aliases: ${indices.show}")
       indices
     },
     {
       val indices = indicesFrom(actionRequest)
-      logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
+      logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
       indices
     },
   )
@@ -77,7 +77,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
         UpdateResponse(updateAliasesResponse(aliases, _))
       case None =>
         logger.error(s"[${id.show}] At least one alias and one index has to be allowed. " +
-          s"Found allowed indices: [${blockContext.indices.map(_.show).mkString(",")}]." +
+          s"Found allowed indices: [${blockContext.indices.show}]." +
           s"Found allowed aliases: [${blockContext.aliases.map(_.show).mkString(",")}]")
         ShouldBeInterrupted
     }

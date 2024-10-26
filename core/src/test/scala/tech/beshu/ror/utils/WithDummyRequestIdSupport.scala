@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils
 
-import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.domain.RequestId
 
 import java.util.UUID
 

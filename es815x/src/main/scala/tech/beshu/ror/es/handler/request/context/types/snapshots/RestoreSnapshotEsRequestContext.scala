@@ -105,6 +105,6 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
                      indices: NonEmptyList[ClusterIndexName]) = {
     request.snapshot(SnapshotName.toString(snapshot))
     request.repository(RepositoryName.toString(repository))
-    request.indices(indices.toList.sortByNameWithExcludingIndicesAtTheEnd().map(_.stringify): _*)
+    request.indices(indices.stringify: _*)
   }
 }

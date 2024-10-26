@@ -17,20 +17,19 @@
 package tech.beshu.ror.api
 
 import cats.data.EitherT
-import cats.implicits._
+import cats.implicits.*
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe._
-import io.circe.syntax._
+import io.circe.*
+import io.circe.syntax.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService => AuthenticationService, ExternalAuthorizationService => AuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService as AuthenticationService, ExternalAuthorizationService as AuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RequestId, User}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigUpdateError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RorConfig
@@ -39,11 +38,11 @@ import tech.beshu.ror.utils.CirceOps.CirceErrorOps
 class AuthMockApi(rorInstance: RorInstance)
   extends Logging {
 
-  import AuthMockApi.AuthMockResponse._
-  import AuthMockApi.AuthMockService._
-  import AuthMockApi.Utils._
-  import AuthMockApi.Utils.codecs._
-  import AuthMockApi._
+  import AuthMockApi.*
+  import AuthMockApi.AuthMockResponse.*
+  import AuthMockApi.AuthMockService.*
+  import AuthMockApi.Utils.*
+  import AuthMockApi.Utils.codecs.*
 
   def call(request: AuthMockRequest)
           (implicit requestId: RequestId): Task[AuthMockResponse] = {
@@ -93,7 +92,7 @@ class AuthMockApi(rorInstance: RorInstance)
 
   private def decodeRequest(body: String): EitherT[Task, AuthMockResponse, UpdateMocksRequest] = {
     io.circe.parser.decode[UpdateMocksRequest](body)
-      .leftMap(error => AuthMockResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage}]"))
+      .leftMap(error => AuthMockResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage.show}]"))
       .leftWiden[AuthMockResponse]
       .toEitherT[Task]
   }
@@ -142,7 +141,7 @@ class AuthMockApi(rorInstance: RorInstance)
       .leftMap { unknownAuthServices =>
         val unknownServices = unknownAuthServices.mkString_("[", ",", "]")
         AuthMockResponse.UpdateAuthMock.UnknownAuthServicesDetected(
-          s"ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured. Unknown services: $unknownServices"
+          s"ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured. Unknown services: ${unknownServices.show}"
         )
       }
       .toEither
@@ -252,7 +251,7 @@ object AuthMockApi {
   }
 
   private object Utils {
-    import AuthMockService._
+    import AuthMockService.*
 
     final case class UpdateMocksRequest(services: List[AuthMockService])
 
@@ -357,7 +356,7 @@ object AuthMockApi {
 
     object codecs {
 
-      import AuthMockResponse._
+      import AuthMockResponse.*
 
       implicit val nonEmptyStringCodec: Codec[NonEmptyString] = Codec.from(
         Decoder.decodeString.emap(NonEmptyString.from),
@@ -376,7 +375,7 @@ object AuthMockApi {
             .flatMap {
               case "NOT_CONFIGURED" => Right(MockMode.NotConfigured)
               case "" => Left(DecodingFailure(s"Mock type cannot be empty", ops = c.history))
-              case other => Left(DecodingFailure(s"Unknown type of mock: $other", ops = c.history))
+              case other => Left(DecodingFailure(s"Unknown type of mock: ${other.show}", ops = c.history))
             }
             .orElse(Decoder[T].apply(c).map(MockMode.Enabled.apply))
         }
@@ -429,7 +428,7 @@ object AuthMockApi {
               case "LDAP" => Decoder[LdapAuthorizationService].apply(c)
               case "EXT_AUTHN" => Decoder[ExternalAuthenticationService].apply(c)
               case "EXT_AUTHZ" => Decoder[ExternalAuthorizationService].apply(c)
-              case other => Left(DecodingFailure(s"Unknown auth mock service type: $other", Nil))
+              case other => Left(DecodingFailure(s"Unknown auth mock service type: ${other.show}", Nil))
             }
           } yield service
         }

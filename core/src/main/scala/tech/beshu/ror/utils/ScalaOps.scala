@@ -18,19 +18,19 @@ package tech.beshu.ror.utils
 
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
-import cats.implicits._
 import cats.{Functor, Order}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.util
 import java.util.Base64
 import scala.collection.immutable.SortedSet
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.Try
@@ -84,7 +84,7 @@ object ScalaOps {
     }
 
     def unsafeToNonEmptySet: NonEmptySet[T] =
-      toNonEmptySet.getOrElse(throw new IllegalArgumentException(s"Cannot convert $value to non empty set"))
+      toNonEmptySet.getOrElse(throw new IllegalArgumentException(s"Cannot convert ${value} to non empty set"))
   }
 
   implicit class CollectionOps[T: ClassTag](value: util.Collection[T]) {
@@ -205,13 +205,13 @@ object ScalaOps {
 
   implicit class AutoClosableMOps[A <: AutoCloseable, M[_]: Functor](value: M[A]) {
     def bracket[B](convert: A => B): M[B] = {
-      import cats.implicits._
+      import cats.implicits.*
       value.map(v => AutoCloseableOps(v).bracket(convert))
     }
   }
 
   implicit class NonEmptySetOps[T](value: NonEmptySet[T]) extends AnyVal {
-    import cats.implicits._
+    import cats.implicits.*
 
     def widen[S >: T : Ordering]: NonEmptySet[S] = NonEmptySet.fromSetUnsafe(SortedSet.empty[S] ++ value.toList.widen[S].toSet)
   }

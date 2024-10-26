@@ -28,6 +28,8 @@ import tech.beshu.ror.utils.js.JsCompiler
 import java.util.regex
 import scala.util.{Failure, Success, Try}
 
+final case class RequestId(value: String)
+
 sealed trait CaseSensitivity
 object CaseSensitivity {
   case object Enabled extends CaseSensitivity

@@ -17,10 +17,10 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices
 
 import cats.Monoid
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.BaseIndicesProcessor.IndicesManager
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Remote => RemoteIndexName}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote as RemoteIndexName
 import tech.beshu.ror.accesscontrol.domain.{FullRemoteIndexWithAliases, IndexAttribute}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext

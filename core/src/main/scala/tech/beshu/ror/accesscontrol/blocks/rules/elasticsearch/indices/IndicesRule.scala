@@ -17,13 +17,13 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices
 
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, DataStreamRequestBlockContext, HasIndexPacks, SnapshotRequestBlockContext}
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, DataStreamRequestBlockContext, HasIndexPacks, RequestedIndex, SnapshotRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -84,8 +84,7 @@ class IndicesRule(override val settings: Settings,
       val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
       processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices, blockContext.userMetadata.kibanaIndex)
         .map {
-          case ProcessResult.Ok(filteredIndices: Set[ClusterIndexName]) =>
-            Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices))
+          case ProcessResult.Ok(filteredIndices) => Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices))
           case ProcessResult.Failed(cause) => Rejected(cause)
         }
     }
@@ -111,7 +110,7 @@ class IndicesRule(override val settings: Settings,
                   indices,
                   blockContext.userMetadata.kibanaIndex
                 ) map {
-                  case ProcessResult.Ok(narrowedIndices: Set[ClusterIndexName]) => Right(currentList :+ Indices.Found(narrowedIndices))
+                  case ProcessResult.Ok(narrowedIndices) => Right(currentList :+ Indices.Found(narrowedIndices))
                   case ProcessResult.Failed(Some(Cause.IndexNotFound)) => Right(currentList :+ Indices.NotFound)
                   case ProcessResult.Failed(cause) => Left(cause)
                 }
@@ -140,7 +139,7 @@ class IndicesRule(override val settings: Settings,
         aliasesResult <- processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.aliases, blockContext.userMetadata.kibanaIndex)
       } yield {
         (indicesResult, aliasesResult) match {
-          case (ProcessResult.Ok(indices: Set[ClusterIndexName]), ProcessResult.Ok(aliases: Set[ClusterIndexName])) =>
+          case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
             Fulfilled(blockContext.withIndices(indices).withAliases(aliases))
           case (ProcessResult.Failed(cause), _) => Rejected(cause)
           case (_, ProcessResult.Failed(Some(Cause.IndexNotFound))) => Rejected(Some(Cause.AliasNotFound))
@@ -178,10 +177,10 @@ object IndicesRule {
   final case class Settings(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                             mustInvolveIndices: Boolean)
 
-  private[indices] sealed trait ProcessResult[+T <: ClusterIndexName]
+  private[indices] sealed trait ProcessResult
   private[indices] object ProcessResult {
-    final case class Ok[T <: ClusterIndexName](indices: Set[T]) extends ProcessResult[T]
-    final case class Failed(cause: Option[Cause]) extends ProcessResult[Nothing]
+    final case class Ok(indices: Iterable[RequestedIndex[ClusterIndexName]]) extends ProcessResult
+    final case class Failed(cause: Option[Cause]) extends ProcessResult
   }
 
 }

@@ -20,7 +20,7 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, Sn
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
 import tech.beshu.ror.utils.{StringPatternsMatcherJava, ZeroKnowledgeMatchFilter}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class ZeroKnowledgeMatchFilterScalaAdapter {
 
