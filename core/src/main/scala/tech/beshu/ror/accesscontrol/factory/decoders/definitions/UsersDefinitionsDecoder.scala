@@ -231,7 +231,6 @@ object UsersDefinitionsDecoder {
 
   private def validate(definitions: Definitions[UserDef]): Either[CoreCreationError, Definitions[UserDef]] = {
     UserDefinitionsValidator.validate(definitions)
-      .toEither
       .leftMap { validationErrors =>
         val cause = validationErrors.map(toErrorMessage).toList.mkString(",")
         DefinitionsLevelCreationError(Message(s"Users definition sections invalid: $cause"))

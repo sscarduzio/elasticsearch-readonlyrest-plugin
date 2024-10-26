@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.user
 
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
+import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth.{SeparateRules, SingleRule}
@@ -37,7 +37,7 @@ object UserDefinitionsValidator {
                                                                  ruleNames: UniqueNonEmptyList[Rule.Name]) extends ValidationError
   }
 
-  def validate(definitions: Definitions[UserDef]): ValidatedNel[ValidationError, Unit] = {
+  def validate(definitions: Definitions[UserDef]): Either[NonEmptyList[ValidationError], Unit] = {
     val localUsersWithBasicAuthenticationRule: List[(UserIdPattern, List[BasicAuthenticationRule[?]])] =
       definitions.items
         .flatMap { definition =>
@@ -67,8 +67,8 @@ object UserDefinitionsValidator {
         }
 
     NonEmptyList.fromList(validationErrors) match {
-      case Some(errors) => Validated.Invalid(errors)
-      case None => Validated.Valid(())
+      case Some(errors) => Left(errors)
+      case None => Right(())
     }
   }
 

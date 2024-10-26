@@ -225,6 +225,49 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
               )
             }
           }
+          "one username defined twice with the hashed credentials and the same authentication rule" in {
+            val basicAuthRules = List("auth_key_sha1", "auth_key_sha256", "auth_key_sha512", "auth_key_pbkdf2")
+            basicAuthRules.foreach { authRule =>
+              assertDecodingSuccess(
+                yaml =
+                  s"""
+                     |readonlyrest:
+                     |
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    ${ruleName.name.value}: ["group*"]
+                     |
+                     |  users:
+                     |  - username: cartman
+                     |    groups: ["group1", "group3"]
+                     |    $authRule: "cartman:hashedPassword"
+                     |
+                     |  - username: cartman
+                     |    groups: ["group2", "group4"]
+                     |    $authRule: "hashedUsernameAndPassword"
+                     |
+                     |""".stripMargin,
+                assertion = rule => {
+                  val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+                    AlreadyResolved(GroupIdLike.from("group*").nel),
+                  ))
+                  rule.settings.permittedGroupIds should be(groups)
+                  rule.settings.usersDefinitions.length should be(2)
+                  val sortedUserDefinitions = rule.settings.usersDefinitions
+                  inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
+                    patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
+                    localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
+                  }
+                  inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
+                    patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
+                    localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group4")))
+                  }
+                }
+              )
+            }
+          }
+
           "one username defined twice with the same credentials and different authentication rule" in {
             assertDecodingSuccess(
               yaml =
@@ -258,7 +301,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                   localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
                   authRule shouldBe an[AuthKeySha1Rule]
                   authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
-                    BasicAuthenticationRule.Settings(HashedOnlyPassword(userId("cartman"),"hashedPassword"))
+                    BasicAuthenticationRule.Settings(HashedOnlyPassword(userId("cartman"), "hashedPassword"))
                   }
                 }
                 inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
@@ -266,7 +309,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                   localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group4")))
                   authRule shouldBe an[AuthKeySha256Rule]
                   authRule.asInstanceOf[AuthKeySha256Rule].settings should be {
-                    BasicAuthenticationRule.Settings(HashedOnlyPassword(userId("cartman"),"hashedPassword"))
+                    BasicAuthenticationRule.Settings(HashedOnlyPassword(userId("cartman"), "hashedPassword"))
                   }
                 }
               }
