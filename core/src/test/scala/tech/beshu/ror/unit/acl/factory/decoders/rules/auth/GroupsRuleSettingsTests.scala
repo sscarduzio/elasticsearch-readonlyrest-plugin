@@ -16,30 +16,28 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
-import eu.timepit.refined.auto._
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
-import tech.beshu.ror.accesscontrol.blocks.rules.auth._
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.SingletonLdapContainers
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.reflect.ClassTag
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.Name)
 class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.DeprecatedName)
@@ -180,6 +178,95 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
+                  }
+                }
+              }
+            )
+          }
+          "one username defined twice with the same credentials and the same authentication rule" in {
+            val basicAuthRules = List("auth_key", "auth_key_sha1", "auth_key_sha256", "auth_key_sha512", "auth_key_pbkdf2", "auth_key_unix")
+            basicAuthRules.foreach { authRule =>
+              assertDecodingSuccess(
+                yaml =
+                  s"""
+                     |readonlyrest:
+                     |
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    ${ruleName.name.value}: ["group*"]
+                     |
+                     |  users:
+                     |  - username: cartman
+                     |    groups: ["group1", "group3"]
+                     |    $authRule: "cartman:pass"
+                     |
+                     |  - username: cartman
+                     |    groups: ["group2", "group4"]
+                     |    $authRule: "cartman:pass"
+                     |
+                     |""".stripMargin,
+                assertion = rule => {
+                  val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+                    AlreadyResolved(GroupIdLike.from("group*").nel),
+                  ))
+                  rule.settings.permittedGroupIds should be(groups)
+                  rule.settings.usersDefinitions.length should be(2)
+                  val sortedUserDefinitions = rule.settings.usersDefinitions
+                  inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
+                    patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
+                    localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
+                  }
+                  inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
+                    patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
+                    localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group4")))
+                  }
+                }
+              )
+            }
+          }
+          "one username defined twice with the same credentials and different authentication rule" in {
+            assertDecodingSuccess(
+              yaml =
+                s"""
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ${ruleName.name.value}: ["group*"]
+                   |
+                   |  users:
+                   |  - username: cartman
+                   |    groups: ["group1", "group3"]
+                   |    auth_key_sha1: "cartman:hashedPassword"
+                   |
+                   |  - username: cartman
+                   |    groups: ["group2", "group4"]
+                   |    auth_key_sha256: "cartman:hashedPassword" # same password used only for test purposes to show that the user definition passes validation
+                   |
+                   |""".stripMargin,
+              assertion = rule => {
+                val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupIdLike.from("group*").nel),
+                ))
+                rule.settings.permittedGroupIds should be(groups)
+                rule.settings.usersDefinitions.length should be(2)
+                val sortedUserDefinitions = rule.settings.usersDefinitions
+                inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
+                  patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
+                  authRule shouldBe an[AuthKeySha1Rule]
+                  authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
+                    BasicAuthenticationRule.Settings(HashedOnlyPassword(userId("cartman"),"hashedPassword"))
+                  }
+                }
+                inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
+                  patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
+                  localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group4")))
+                  authRule shouldBe an[AuthKeySha256Rule]
+                  authRule.asInstanceOf[AuthKeySha256Rule].settings should be {
+                    BasicAuthenticationRule.Settings(HashedOnlyPassword(userId("cartman"),"hashedPassword"))
                   }
                 }
               }
@@ -706,6 +793,144 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
           }
         )
       }
+      "two entries for username with the same authentication rule and different credentials" when {
+        "auth key rule is used" in {
+          val basicAuthRule = "auth_key"
+          val user = "cartman"
+          val credentials1 = s"$user:pass1"
+          val credentials2 = s"$user:pass2"
+          assertDecodingFailure(
+            yaml =
+              s"""
+                 |readonlyrest:
+                 |
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    ${ruleName.name.value}: group1
+                 |
+                 |  users:
+                 |  - username: $user
+                 |    groups: ["group1", "group3"]
+                 |    $basicAuthRule: "$credentials1"
+                 |  - username: $user
+                 |    groups: ["group2", "group3"]
+                 |    $basicAuthRule: "$credentials2"
+                 |
+                 |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(DefinitionsLevelCreationError(Message(
+                s"Users definition sections invalid: Multiple sections with different credentials for user '$user' and rules '$basicAuthRule'"
+              )))
+            }
+          )
+        }
+        "auth key unix rule is used" in {
+          val basicAuthRule = "auth_key_unix"
+          val user = "logstash"
+          val credentials1 = "logstash:$6$rounds=11111$d07dnv4N$jh8an.nDSXG6PZlfVh5ehigYL8.5gtV.9yoXAOYFHTQvwPWhBdEIOxnS8tpbuIAk86shjJiqxeap5o0A1PoFI/"
+          val credentials2 = "logstash:$6$rounds=22222$d07dnv4N$jh8an.nDSXG6PZlfVh5ehigYL8.5gtV.9yoXAOYFHTQvwPWhBdEIOxnS8tpbuIAk86shjJiqxeap5o0A1PoFI/"
+          assertDecodingFailure(
+            yaml =
+              s"""
+                 |readonlyrest:
+                 |
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    ${ruleName.name.value}: group1
+                 |
+                 |  users:
+                 |  - username: $user
+                 |    groups: ["group1", "group3"]
+                 |    $basicAuthRule: "$credentials1"
+                 |  - username: $user
+                 |    groups: ["group2", "group3"]
+                 |    $basicAuthRule: "$credentials2"
+                 |
+                 |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(DefinitionsLevelCreationError(Message(
+                s"Users definition sections invalid: Multiple sections with different credentials for user '$user' and rules '$basicAuthRule'"
+              )))
+            }
+          )
+        }
+        "hashed credentials are used" when {
+          "hashed username and password" in {
+            val basicAuthRules = List("auth_key_sha1", "auth_key_sha256", "auth_key_sha512", "auth_key_pbkdf2")
+            val user = "cartman"
+            val credentials1 = s"abc"
+            val credentials2 = s"def"
+
+            basicAuthRules.foreach { basicAuthRule =>
+              assertDecodingFailure(
+                yaml =
+                  s"""
+                     |readonlyrest:
+                     |
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    ${ruleName.name.value}: group1
+                     |
+                     |  users:
+                     |  - username: $user
+                     |    groups: ["group1", "group3"]
+                     |    $basicAuthRule: "$credentials1"
+                     |  - username: $user
+                     |    groups: ["group2", "group3"]
+                     |    $basicAuthRule: "$credentials2"
+                     |
+                     |""".stripMargin,
+                assertion = errors => {
+                  errors should have size 1
+                  errors.head should be(DefinitionsLevelCreationError(Message(
+                    s"Users definition sections invalid: Multiple sections with different credentials for user '$user' and rules '$basicAuthRule'"
+                  )))
+                }
+              )
+            }
+          }
+          "hashed password" in {
+            val basicAuthRules = List("auth_key_sha1", "auth_key_sha256", "auth_key_sha512", "auth_key_pbkdf2")
+            val user = "cartman"
+            val credentials1 = s"$user:pass1"
+            val credentials2 = s"$user:pass2"
+
+            basicAuthRules.foreach { basicAuthRule =>
+              assertDecodingFailure(
+                yaml =
+                  s"""
+                     |readonlyrest:
+                     |
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    ${ruleName.name.value}: group1
+                     |
+                     |  users:
+                     |  - username: $user
+                     |    groups: ["group1", "group3"]
+                     |    $basicAuthRule: "$credentials1"
+                     |  - username: $user
+                     |    groups: ["group2", "group3"]
+                     |    $basicAuthRule: "$credentials2"
+                     |
+                     |""".stripMargin,
+                assertion = errors => {
+                  errors should have size 1
+                  errors.head should be(DefinitionsLevelCreationError(Message(
+                    s"Users definition sections invalid: Multiple sections with different credentials for user '$user' and rules '$basicAuthRule'"
+                  )))
+                }
+              )
+            }
+          }
+        }
+      }
       "groups set in user definitions is not defined" in {
         assertDecodingFailure(
           yaml =
@@ -1024,226 +1249,226 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
              |""".stripMargin,
         assertion = errors => {
           errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message(
-              """Users definition section external groups mapping feature allows for single rule with authentication
-                | and authorization or two rules which handle authentication and authorization separately. 'auth_key'
-                | and 'auth_key_sha1' should be authentication and authorization rules""".stripMargin
-            )))
-          }
-        )
-      }
-      "only one authorization rule can be defined for user in users section" in {
-        assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ${ruleName.name.value}: ["group1"]
-               |
-               |  users:
-               |  - username: cartman
-               |    groups: ["group1", "group3"]
-               |    auth_key: "cartman:pass"
-               |    ldap_authorization:
-               |      name: "ldap1"
-               |      groups: ["ldap_group1"]
-               |    groups_provider_authorization:
-               |      user_groups_provider: GroupsService1
-               |      groups: ["group3"]
-               |
-               |  ldaps:
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    users:
-               |      search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    groups:
-               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |
-               |  user_groups_providers:
-               |  - name: GroupsService1
-               |    groups_endpoint: "http://localhost:8080/groups"
-               |    auth_token_name: "user"
-               |    auth_token_passed_as: QUERY_PARAM
-               |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
-               |
-               |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message(
-              "Too many rules defined for [cartman] in users definition section: auth_key,ldap_authorization,groups_provider_authorization"
-            )))
-          }
-        )
-      }
-      "single authorization and authentication rule cannot be used together with different authentication rule for user in users section" in {
-        assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ${ruleName.name.value}:
-               |
-               |  users:
-               |  - username: cartman
-               |    groups: ["group1", "group3"]
-               |    auth_key: "cartman:pass"
-               |    ldap_auth:
-               |      name: "ldap1"
-               |      groups: ["ldap_group1"]
-               |
-               |  ldaps:
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    users:
-               |      search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    groups:
-               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |
-               |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message(
-              """Users definition section external groups mapping feature allows for single rule with authentication
-                | and authorization or two rules which handle authentication and authorization separately. 'ldap_auth'
-                | is an authentication with authorization rule and 'auth_key' is and authentication only rule.
-                | Cannot use them both in this context.""".stripMargin
-            )))
-          }
-        )
-      }
-      "single authorization and authentication rule cannot be used together with different authorization rule for user in users section" in {
-        assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ${ruleName.name.value}:
-               |
-               |  users:
-               |  - username: cartman
-               |    groups: ["group1", "group3"]
-               |    ldap_auth:
-               |      name: "ldap1"
-               |      groups: ["ldap_group1"]
-               |    groups_provider_authorization:
-               |      user_groups_provider: GroupsService1
-               |      groups: ["group3"]
-               |
-               |  ldaps:
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    users:
-               |      search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    groups:
-               |      search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |
-               |  user_groups_providers:
-               |  - name: GroupsService1
-               |    groups_endpoint: "http://localhost:8080/groups"
-               |    auth_token_name: "user"
-               |    auth_token_passed_as: QUERY_PARAM
-               |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
-               |
-               |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message(
-              """Users definition section external groups mapping feature allows for single rule with authentication
-                | and authorization or two rules which handle authentication and authorization separately. 'ldap_auth'
-                | is an authentication with authorization rule and 'groups_provider_authorization' is and authorization only rule.
-                | Cannot use them both in this context.""".stripMargin
-            )))
-          }
-        )
-      }
-      "auth key rule inside user definition is unparsable" in {
-        assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ${ruleName.name.value}: group1
-               |
-               |  users:
-               |  - username: cartman
-               |    groups: ["group1", "group3"]
-               |    auth_key:
-               |      key: "cartman:pass"
-               |
-               |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """auth_key:
-                |  key: "cartman:pass"
-                |""".stripMargin)))
-          }
-        )
-      }
-      "user definition doesn't allow to use unknown rules" in {
-        assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ${ruleName.name.value}:
-               |
-               |  users:
-               |  - username: cartman
-               |    groups: ["group1", "group3"]
-               |    unknown_field: "abc"
-               |    auth_key: "cartman:pass"
-               |
-               |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Unknown rule 'unknown_field' in users definitions section")))
-          }
-        )
-      }
-      "auth rule is used, but user cannot be matched by username patterns" in {
-        assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ${ruleName.name.value}: group1
-               |
-               |  users:
-               |  - username: a*
-               |    groups: ["group1", "group3"]
-               |    auth_key: "cartman:pass"
-               |
-               |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Users [cartman] are allowed to be authenticated by rule [auth_key], but it's used in a context of user patterns [a*]. It seems that this is not what you expect.")))
-          }
-        )
-      }
+          errors.head should be(DefinitionsLevelCreationError(Message(
+            """Users definition section external groups mapping feature allows for single rule with authentication
+              | and authorization or two rules which handle authentication and authorization separately. 'auth_key'
+              | and 'auth_key_sha1' should be authentication and authorization rules""".stripMargin
+          )))
+        }
+      )
     }
+    "only one authorization rule can be defined for user in users section" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             |readonlyrest:
+             |
+             |  access_control_rules:
+             |
+             |  - name: test_block1
+             |    ${ruleName.name.value}: ["group1"]
+             |
+             |  users:
+             |  - username: cartman
+             |    groups: ["group1", "group3"]
+             |    auth_key: "cartman:pass"
+             |    ldap_authorization:
+             |      name: "ldap1"
+             |      groups: ["ldap_group1"]
+             |    groups_provider_authorization:
+             |      user_groups_provider: GroupsService1
+             |      groups: ["group3"]
+             |
+             |  ldaps:
+             |  - name: ldap1
+             |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+             |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+             |    ssl_enabled: false
+             |    users:
+             |      search_user_base_DN: "ou=People,dc=example,dc=com"
+             |    groups:
+             |      search_groups_base_DN: "ou=People,dc=example,dc=com"
+             |
+             |  user_groups_providers:
+             |  - name: GroupsService1
+             |    groups_endpoint: "http://localhost:8080/groups"
+             |    auth_token_name: "user"
+             |    auth_token_passed_as: QUERY_PARAM
+             |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+             |
+             |""".stripMargin,
+        assertion = errors => {
+          errors should have size 1
+          errors.head should be(DefinitionsLevelCreationError(Message(
+            "Too many rules defined for [cartman] in users definition section: auth_key,ldap_authorization,groups_provider_authorization"
+          )))
+        }
+      )
+    }
+    "single authorization and authentication rule cannot be used together with different authentication rule for user in users section" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             |readonlyrest:
+             |
+             |  access_control_rules:
+             |
+             |  - name: test_block1
+             |    ${ruleName.name.value}:
+             |
+             |  users:
+             |  - username: cartman
+             |    groups: ["group1", "group3"]
+             |    auth_key: "cartman:pass"
+             |    ldap_auth:
+             |      name: "ldap1"
+             |      groups: ["ldap_group1"]
+             |
+             |  ldaps:
+             |  - name: ldap1
+             |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+             |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+             |    ssl_enabled: false
+             |    users:
+             |      search_user_base_DN: "ou=People,dc=example,dc=com"
+             |    groups:
+             |      search_groups_base_DN: "ou=People,dc=example,dc=com"
+             |
+             |""".stripMargin,
+        assertion = errors => {
+          errors should have size 1
+          errors.head should be(DefinitionsLevelCreationError(Message(
+            """Users definition section external groups mapping feature allows for single rule with authentication
+              | and authorization or two rules which handle authentication and authorization separately. 'ldap_auth'
+              | is an authentication with authorization rule and 'auth_key' is and authentication only rule.
+              | Cannot use them both in this context.""".stripMargin
+          )))
+        }
+      )
+    }
+    "single authorization and authentication rule cannot be used together with different authorization rule for user in users section" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             |readonlyrest:
+             |
+             |  access_control_rules:
+             |
+             |  - name: test_block1
+             |    ${ruleName.name.value}:
+             |
+             |  users:
+             |  - username: cartman
+             |    groups: ["group1", "group3"]
+             |    ldap_auth:
+             |      name: "ldap1"
+             |      groups: ["ldap_group1"]
+             |    groups_provider_authorization:
+             |      user_groups_provider: GroupsService1
+             |      groups: ["group3"]
+             |
+             |  ldaps:
+             |  - name: ldap1
+             |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+             |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+             |    ssl_enabled: false
+             |    users:
+             |      search_user_base_DN: "ou=People,dc=example,dc=com"
+             |    groups:
+             |      search_groups_base_DN: "ou=People,dc=example,dc=com"
+             |
+             |  user_groups_providers:
+             |  - name: GroupsService1
+             |    groups_endpoint: "http://localhost:8080/groups"
+             |    auth_token_name: "user"
+             |    auth_token_passed_as: QUERY_PARAM
+             |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+             |
+             |""".stripMargin,
+        assertion = errors => {
+          errors should have size 1
+          errors.head should be(DefinitionsLevelCreationError(Message(
+            """Users definition section external groups mapping feature allows for single rule with authentication
+              | and authorization or two rules which handle authentication and authorization separately. 'ldap_auth'
+              | is an authentication with authorization rule and 'groups_provider_authorization' is and authorization only rule.
+              | Cannot use them both in this context.""".stripMargin
+          )))
+        }
+      )
+    }
+    "auth key rule inside user definition is unparsable" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             |readonlyrest:
+             |
+             |  access_control_rules:
+             |
+             |  - name: test_block1
+             |    ${ruleName.name.value}: group1
+             |
+             |  users:
+             |  - username: cartman
+             |    groups: ["group1", "group3"]
+             |    auth_key:
+             |      key: "cartman:pass"
+             |
+             |""".stripMargin,
+        assertion = errors => {
+          errors should have size 1
+          errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
+            """auth_key:
+              |  key: "cartman:pass"
+              |""".stripMargin)))
+        }
+      )
+    }
+    "user definition doesn't allow to use unknown rules" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             |readonlyrest:
+             |
+             |  access_control_rules:
+             |
+             |  - name: test_block1
+             |    ${ruleName.name.value}:
+             |
+             |  users:
+             |  - username: cartman
+             |    groups: ["group1", "group3"]
+             |    unknown_field: "abc"
+             |    auth_key: "cartman:pass"
+             |
+             |""".stripMargin,
+        assertion = errors => {
+          errors should have size 1
+          errors.head should be(DefinitionsLevelCreationError(Message("Unknown rule 'unknown_field' in users definitions section")))
+        }
+      )
+    }
+    "authentication rule is used, but user cannot be matched by username patterns" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             |readonlyrest:
+             |
+             |  access_control_rules:
+             |
+             |  - name: test_block1
+             |    ${ruleName.name.value}: group1
+             |
+             |  users:
+             |  - username: a*
+             |    groups: ["group1", "group3"]
+             |    auth_key: "cartman:pass"
+             |
+             |""".stripMargin,
+        assertion = errors => {
+          errors should have size 1
+          errors.head should be(DefinitionsLevelCreationError(Message("Users [cartman] are allowed to be authenticated by rule [auth_key], but it's used in a context of user patterns [a*]. It seems that this is not what you expect.")))
+        }
+      )
+    }
+  }
 }

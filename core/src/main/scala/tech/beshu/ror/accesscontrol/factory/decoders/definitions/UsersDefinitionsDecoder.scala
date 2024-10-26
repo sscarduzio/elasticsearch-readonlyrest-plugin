@@ -18,12 +18,14 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import io.circe.{ACursor, Decoder, HCursor, Json}
+import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
-import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.definitions.user.UserDefinitionsValidator
+import tech.beshu.ror.accesscontrol.blocks.definitions.user.UserDefinitionsValidator.ValidationError
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
@@ -32,20 +34,21 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, GroupName, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.{usersDefinitionsAllowedRulesDecoderBy, withUserIdParamsCheck}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.*
+import tech.beshu.ror.accesscontrol.show.logs.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.failed
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 object UsersDefinitionsDecoder {
 
-  import tech.beshu.ror.accesscontrol.factory.decoders.definitions.UsersDefinitionsDecoder.GroupsDecoder._
+  import tech.beshu.ror.accesscontrol.factory.decoders.definitions.UsersDefinitionsDecoder.GroupsDecoder.*
 
   def instance(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
@@ -85,7 +88,7 @@ object UsersDefinitionsDecoder {
           } yield UserDef(usernamePatterns, mode)
         }
         .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
-    DefinitionsBaseDecoder.instance[Id, UserDef]("users")
+    DefinitionsBaseDecoder.instance[Id, UserDef]("users").emapE(validate)
   }
 
   private implicit val userIdPatternsDecoder: Decoder[UserIdPatterns] =
@@ -226,6 +229,23 @@ object UsersDefinitionsDecoder {
 
   private def decodingFailure(msg: Message) = DecodingFailureOps.fromError(DefinitionsLevelCreationError(msg))
 
+  private def validate(definitions: Definitions[UserDef]): Either[CoreCreationError, Definitions[UserDef]] = {
+    UserDefinitionsValidator.validate(definitions)
+      .toEither
+      .leftMap { validationErrors =>
+        val cause = validationErrors.map(toErrorMessage).toList.mkString(",")
+        DefinitionsLevelCreationError(Message(s"Users definition sections invalid: $cause"))
+      }
+      .as(definitions)
+  }
+
+  private def toErrorMessage(ve: ValidationError) = {
+    ve match {
+      case ValidationError.MultipleUserEntriesWithDifferentCredentials(user, ruleNames) =>
+        s"Multiple sections with different credentials for user '${user.show}' and rules ${ruleNames.map(_.show).mkString("'",",","'")}"
+    }
+  }
+
   private object GroupsDecoder {
 
     private object GroupMappingKeys {
@@ -250,9 +270,9 @@ object UsersDefinitionsDecoder {
     implicit lazy val groupMappingsDecoder: Decoder[GroupMappings] = Decoder.instance { c =>
       for {
         mappingsJsons <- NonEmptyList
-            .fromList(c.values.getOrElse(c.value :: Nil).toList)
-            .toRight("Non empty list of groups is required")
-            .left.map(msg => decodingFailure(Message(msg)))
+          .fromList(c.values.getOrElse(c.value :: Nil).toList)
+          .toRight("Non empty list of groups is required")
+          .left.map(msg => decodingFailure(Message(msg)))
         mappingsDecoder = mappingsJsons match {
           case groupMappings if haveSimpleFormatWithGroupIds(groupMappings) =>
             groupsSimpleDecoder

@@ -77,6 +77,9 @@ class CurrentUserMetadataAccessControlTests
       |readonlyrest:
       |
       |  access_control_rules:
+      |  - name: "User 0"
+      |    users: ["user0"]
+      |    groups: [group*]
       |
       |  - name: "User 1 - index1"
       |    users: ["user1"]
@@ -160,6 +163,13 @@ class CurrentUserMetadataAccessControlTests
       |      groups: ["service3_group1"]
       |
       |  users:
+      |  - username: user0
+      |    groups: ["group3", "group1"]
+      |    auth_key: "user0:pass"
+      |
+      |  - username: user0
+      |    groups: ["group4", "group2"]
+      |    auth_key: "user0:pass"
       |
       |  - username: user1
       |    groups: ["group1", "group3"]
@@ -363,6 +373,20 @@ class CurrentUserMetadataAccessControlTests
             inside(result2.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
               userMetadata.availableGroups.toSet should be (Set(group("ldap2_group1"), group("ldap2_group2")))
+            }
+          }
+          "user defined twice in user definitions" in {
+            val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("user0:pass")))
+            val result = acl.handleMetadataRequest(request).runSyncUnsafe()
+            inside(result.result) { case Allow(userMetadata, _) =>
+              userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user0"))))
+              userMetadata.currentGroupId should be(Some(GroupId("group3")))
+              userMetadata.availableGroups.toSet should be(Set(group("group3"), group("group1")))
+              userMetadata.kibanaIndex should be(None)
+              userMetadata.hiddenKibanaApps should be(Set.empty)
+              userMetadata.allowedKibanaApiPaths should be(Set.empty)
+              userMetadata.kibanaAccess should be(None)
+              userMetadata.userOrigin should be(None)
             }
           }
         }
