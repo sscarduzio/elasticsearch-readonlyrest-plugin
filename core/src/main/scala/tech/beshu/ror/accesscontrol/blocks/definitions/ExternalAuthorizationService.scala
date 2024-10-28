@@ -26,8 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationServ
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.AuthTokenSendMethod.{UsingHeader, UsingQueryParam}
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.utils.CacheableAction
@@ -181,7 +182,7 @@ object HttpExternalAuthorizationService {
                           tokenName: AuthTokenName,
                           groupsConfig: GroupsConfig,
                           authTokenSendMethod: AuthTokenSendMethod,
-                          defaultHeaders: Set[Header],
+                          defaultHeaders: Set[domain.Header],
                           defaultQueryParams: Set[QueryParam])
 
   object Config {

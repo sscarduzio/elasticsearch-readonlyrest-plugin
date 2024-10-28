@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSu
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
-import tech.beshu.ror.accesscontrol.domain.{Json, *}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
