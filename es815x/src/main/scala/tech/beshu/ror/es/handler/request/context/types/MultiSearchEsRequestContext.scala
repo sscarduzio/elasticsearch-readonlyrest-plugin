@@ -31,10 +31,12 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.response.SearchHitOps.*
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.es.handler.response.SearchHitOps.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
@@ -62,7 +64,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     actionRequest
       .requests().asScala
       .flatMap(indexAttributesFrom)
-      .toSet
+      .toCovariantSet
   }
 
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {
@@ -124,9 +126,11 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       .toList
   }
 
-  private def indicesFrom(request: SearchRequest): Set[RequestedIndex] = {
-    val requestIndices = request.indices.asSafeSet.flatMap(RequestedIndex.fromString)
-    indicesOrWildcard(requestIndices)
+  private def indicesFrom(request: SearchRequest): Set[ClusterIndexName] = {
+    request
+      .indices.asSafeSet
+      .flatMap(RequestedIndex.fromString)
+      .orWildcardWhenEmpty
   }
 
   private def updateRequest(request: SearchRequest,

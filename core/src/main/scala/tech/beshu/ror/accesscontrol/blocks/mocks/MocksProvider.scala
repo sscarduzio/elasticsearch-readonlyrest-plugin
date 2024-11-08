@@ -23,6 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthoriza
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.{Group, RequestId, User}
+import tech.beshu.ror.syntax.*
 
 trait MocksProvider {
 

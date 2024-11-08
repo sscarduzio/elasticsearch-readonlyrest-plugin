@@ -28,11 +28,13 @@ import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, In
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi
 import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi.*
-import tech.beshu.ror.es.handler.request.context.ModificationResult
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 class GetEsRequestContext(actionRequest: GetRequest,
                           esContext: EsContext,
@@ -54,7 +56,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                                 indices: NonEmptyList[RequestedIndex],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    val indexName = indices.head 
+    val indexName = indices.head
     request.index(indexName.stringify)
     ModificationResult.UpdateResponse(updateFunction(filter, fieldLevelSecurity))
   }

@@ -92,7 +92,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
           }
         )
       }
-      "two repositoryes are defined, second one with variable" in {
+      "two repositories are defined, second one with variable" in {
         assertDecodingSuccess(
           yaml =
             """

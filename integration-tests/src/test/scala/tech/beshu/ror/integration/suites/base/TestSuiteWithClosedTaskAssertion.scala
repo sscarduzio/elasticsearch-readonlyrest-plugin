@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import org.scalatest._
+import org.scalatest.*
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.providers.{MultipleClients, MultipleEsTargets}
 import tech.beshu.ror.utils.elasticsearch.CatManager

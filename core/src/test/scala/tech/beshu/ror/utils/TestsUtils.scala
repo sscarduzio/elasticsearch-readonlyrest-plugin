@@ -51,6 +51,7 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.misc.JwtUtils
@@ -187,7 +188,7 @@ object TestsUtils {
         map
           .get(id)
           .map(r => LdapServiceMock {
-            r.map { case (userId, groups) => LdapUserMock(userId, groups) }.toSet
+            r.map { case (userId, groups) => LdapUserMock(userId, groups) }.toCovariantSet
           })
       }
 
@@ -228,7 +229,7 @@ object TestsUtils {
         map
           .get(id)
           .map(r => ExternalAuthorizationServiceMock {
-            r.map { case (userId, groups) => ExternalAuthorizationServiceUserMock(userId, groups) }.toSet
+            r.map { case (userId, groups) => ExternalAuthorizationServiceUserMock(userId, groups) }.toCovariantSet
           })
       }
     }

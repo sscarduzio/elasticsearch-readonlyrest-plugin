@@ -35,11 +35,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
@@ -369,7 +371,7 @@ class LdapAuthorizationRuleTests
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthorizationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.copy(
-      headers = preferredGroupId.map(_.toCurrentGroupHeader).toSet
+      headers = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
@@ -402,7 +404,7 @@ class LdapAuthorizationRuleTests
       override def groupsOf(id: User.Id)
                            (implicit requestId: RequestId): Task[UniqueList[Group]] = Task.delay {
         groups.get(id) match {
-          case Some(g) => UniqueList.fromIterable(g)
+          case Some(g) => UniqueList.from(g)
           case None => UniqueList.empty
         }
       }

@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.mocks.MockRequestContext.roAction
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import java.time.{Clock, Instant}
@@ -102,7 +103,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                filteredIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                                                filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                                                 allAllowedIndices: Set[ClusterIndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
@@ -200,7 +201,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                           override val isCompositeRequest: Boolean = false,
                                           override val isAllowedForDLS: Boolean = true,
-                                          indices: Iterable[RequestedIndex[ClusterIndexName]],
+                                          indices: Set[RequestedIndex[ClusterIndexName]],
                                           allAllowedIndices: Set[ClusterIndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = FilterableRequestBlockContext

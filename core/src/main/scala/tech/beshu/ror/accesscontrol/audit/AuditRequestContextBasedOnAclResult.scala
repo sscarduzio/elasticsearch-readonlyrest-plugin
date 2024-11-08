@@ -28,8 +28,10 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.audit.{AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 import java.time.Instant
+import scala.collection.immutable.{Set => ScalaSet}
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
                                                                             userMetadata: Option[UserMetadata],
@@ -47,14 +49,17 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
   override val timestamp: Instant = requestContext.timestamp
   override val id: String = requestContext.id.value
   override val correlationId: String = requestContext.rorKibanaSessionId.value.value
-  override val indices: Set[String] = requestContext.initialBlockContext.indices.map(_.stringify)
+  override val indices: ScalaSet[String] =
+    requestContext
+      .initialBlockContext.indices
+      .map(_.stringify).toSet
   override val action: String = requestContext.action.value
   override val headers: Map[String, String] = requestContext.headers.map(h => (h.name.value.value, h.value.value)).toMap
   override val requestHeaders: Headers = new Headers(
     requestContext.headers
-      .foldLeft(Map.empty[String, Set[String]]) {
+      .foldLeft(Map.empty[String, ScalaSet[String]]) {
         case (acc, header) =>
-          val headerNames = acc.get(header.name.value.value).toList.flatten.toSet
+          val headerNames: ScalaSet[String] = acc.get(header.name.value.value).toList.flatten.toSet
           acc + (header.name.value.value -> (headerNames + header.value.value))
       }
   )

@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRepo
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class RepositoriesRule(val settings: Settings)
@@ -56,7 +57,7 @@ class RepositoriesRule(val settings: Settings)
   private def checkRepositories[B <: BlockContext](blockContext: RepositoryRequestBlockContext)
                                                   (implicit ev: RepositoryRequestBlockContext <:< B): RuleResult[B] = {
     checkAllowedRepositories(
-      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toSet,
+      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.repositories,
       blockContext.requestContext
     ) match {
@@ -68,7 +69,7 @@ class RepositoriesRule(val settings: Settings)
   private def checkSnapshotRepositories[B <: BlockContext](blockContext: SnapshotRequestBlockContext)
                                                           (implicit ev: SnapshotRequestBlockContext <:< B): RuleResult[B] = {
     checkAllowedRepositories(
-      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toSet,
+      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.repositories,
       blockContext.requestContext
     ) match {

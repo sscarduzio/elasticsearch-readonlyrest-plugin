@@ -23,20 +23,20 @@ import monix.execution.atomic.AtomicInt
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
-import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.EsModulePatterns
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike {
 
-  import RorStartingSuite._
+  import RorStartingSuite.*
 
   implicit val scheduler: Scheduler = Scheduler.computation(10)
 

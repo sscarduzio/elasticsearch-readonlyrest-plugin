@@ -24,13 +24,15 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.accesscontrol.show.logs.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
 
@@ -42,11 +44,11 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     with EsRequest[MultiIndexRequestBlockContext] {
 
   override lazy val initialBlockContext: MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty,
-    indexPacksFrom(actionRequest)
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty,
+    indexPacks = indexPacksFrom(actionRequest)
   )
 
   override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
@@ -73,9 +75,11 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
       .toList
   }
 
-  private def indicesFrom(request: DocWriteRequest[_]): Set[domain.ClusterIndexName] = {
-    val requestIndices = request.indices.flatMap(ClusterIndexName.fromString).toSet
-    indicesOrWildcard(requestIndices)
+  private def indicesFrom(request: DocWriteRequest[_]): Set[ClusterIndexName] = {
+    request
+      .indices.asSafeSet
+      .flatMap(ClusterIndexName.fromString)
+      .orWildcardWhenEmpty
   }
 
   private def updateRequest(request: DocWriteRequest[_], indexPack: Indices): ModificationResult = {

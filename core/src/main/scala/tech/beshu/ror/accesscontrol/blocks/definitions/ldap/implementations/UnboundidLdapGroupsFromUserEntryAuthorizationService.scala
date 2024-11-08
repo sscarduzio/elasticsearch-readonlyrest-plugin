@@ -77,7 +77,7 @@ class UnboundidLdapGroupsFromUserEntryAuthorizationService private(override val 
           } flatMap { mainGroups =>
             enrichWithNestedGroupsIfNecessary(mainGroups)
           } map { allGroups =>
-            UniqueList.fromIterable(allGroups.map(_.group))
+            UniqueList.from(allGroups.map(_.group))
           }
         case Left(errorResult) if errorResult.getResultCode == ResultCode.NO_SUCH_OBJECT && !user.confirmed =>
           logger.error(s"[${requestId.show}] LDAP getting user groups returned error [${errorResult.show}]")

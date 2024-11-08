@@ -36,9 +36,7 @@ class IndexEsRequestContext(actionRequest: IndexRequest,
   override protected def indexFrom(request: IndexRequest): ClusterIndexName = {
     ClusterIndexName
       .fromString(request.index())
-      .getOrElse {
-        throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")
-      }
+      .getOrElse(throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid"))
   }
 
   override protected def update(request: IndexRequest, index: ClusterIndexName): ModificationResult = {

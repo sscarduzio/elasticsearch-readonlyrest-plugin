@@ -14,16 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils
+package tech.beshu.ror
 
-import ujson.Value
+import tech.beshu.ror.utils.set.{CovariantSet, CovariantSetExtensions, CovariantSetInstances}
 
-object UjsonOps {
+object syntax
+  extends CovariantSetExtensions
+  with CovariantSetInstances {
 
-  implicit class ValueOps(val value: Value) extends AnyVal {
-    def opt(key: String): Option[Value] = {
-      value.obj.get(key)
-    }
+  type Set[A] = CovariantSet[A]
+  object Set {
+    def empty[A]: CovariantSet[A] = CovariantSet.empty
+    def apply[A](elems: A*): CovariantSet[A] = CovariantSet.from(elems)
   }
-
 }

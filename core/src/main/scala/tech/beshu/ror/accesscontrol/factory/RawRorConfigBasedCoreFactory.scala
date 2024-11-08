@@ -51,6 +51,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResul
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.yaml.YamlOps
 
@@ -429,7 +430,6 @@ class RawRorConfigBasedCoreFactory()
                                              unknownUsersForWildcardPattern: Boolean): LocalUsers = {
     userIdPatterns
       .patterns
-      .unsorted
       .map { userIdPattern =>
         if (userIdPattern.containsWildcard) {
           LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)

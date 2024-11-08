@@ -16,8 +16,7 @@
  */
 package tech.beshu.ror.es.handler.request.context
 
-import tech.beshu.ror.accesscontrol.request.RequestContext.Method
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
@@ -25,16 +24,18 @@ import org.elasticsearch.action.support.IndicesOptions.WildcardStates
 import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RCUtils
-import tech.beshu.ror.utils.RefinedUtils._
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Instant
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -140,22 +141,6 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
         case WildcardStates.CLOSED => Some(IndexAttribute.Closed)
         case _ => None
       }
-      .toSet
-  }
-
-  protected def indicesOrWildcard(indices: Set[ClusterIndexName]): Set[ClusterIndexName] = {
-    if (indices.nonEmpty) indices else Set(ClusterIndexName.Local.wildcard)
-  }
-
-  protected def repositoriesOrWildcard(repositories: Set[RepositoryName]): Set[RepositoryName] = {
-    if (repositories.nonEmpty) repositories else Set(RepositoryName.all)
-  }
-
-  protected def snapshotsOrWildcard(snapshots: Set[SnapshotName]): Set[SnapshotName] = {
-    if (snapshots.nonEmpty) snapshots else Set(SnapshotName.all)
-  }
-
-  protected def dataStreamsOrWildcard(dataStreams: Set[DataStreamName]): Set[DataStreamName] = {
-    if (dataStreams.nonEmpty) dataStreams else Set(DataStreamName.all)
+      .toCovariantSet
   }
 }

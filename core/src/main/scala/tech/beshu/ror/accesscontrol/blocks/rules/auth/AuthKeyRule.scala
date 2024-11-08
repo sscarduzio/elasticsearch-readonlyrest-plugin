@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, RequestId, User}
+import tech.beshu.ror.syntax.*
 
 final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[Credentials],
                         override implicit val userIdCaseSensitivity: CaseSensitivity,

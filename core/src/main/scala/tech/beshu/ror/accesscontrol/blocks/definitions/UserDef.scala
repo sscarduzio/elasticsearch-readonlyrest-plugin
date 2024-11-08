@@ -41,9 +41,7 @@ final case class UserDef private(override val id: UUID,
       case Mode.WithoutGroupsMapping(_, localGroups) => localGroups
       case Mode.WithGroupsMapping(_, GroupMappings.Simple(localGroups)) => localGroups
       case Mode.WithGroupsMapping(_, GroupMappings.Advanced(mappings)) =>
-        UniqueNonEmptyList.unsafeFromIterable {
-          mappings.unsorted.map(_.local)
-        }
+        UniqueNonEmptyList.unsafeFrom(mappings.map(_.local))
     }
 }
 

@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.alias.get.{GetAliasesRequest, GetAliasesResponse}
@@ -28,17 +28,19 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
+import tech.beshu.ror.accesscontrol.utils.IndicesListOps.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted, UpdateResponse}
-import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap._
+import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.*
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
-import java.util.{List => JList}
+import java.util.List as JList
+import scala.jdk.CollectionConverters.*
 
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                  esContext: EsContext,
@@ -49,20 +51,12 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     with EsRequest[AliasRequestBlockContext] {
 
   override val initialBlockContext: AliasRequestBlockContext = AliasRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty,
-    {
-      val indices = aliasesFrom(actionRequest)
-      logger.debug(s"[${id.show}] Discovered aliases: ${indices.show}")
-      indices
-    },
-    {
-      val indices = indicesFrom(actionRequest)
-      logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
-      indices
-    },
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty,
+    aliases = discoverAliases(actionRequest),
+    indices = discoverIndices(actionRequest),
   )
 
   override protected def modifyRequest(blockContext: AliasRequestBlockContext): ModificationResult = {
@@ -78,17 +72,17 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
       case None =>
         logger.error(s"[${id.show}] At least one alias and one index has to be allowed. " +
           s"Found allowed indices: [${blockContext.indices.show}]." +
-          s"Found allowed aliases: [${blockContext.aliases.map(_.show).mkString(",")}]")
+          s"Found allowed aliases: [${blockContext.aliases.show}]")
         ShouldBeInterrupted
     }
   }
 
   override def modifyWhenIndexNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentIndex()
+      val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.indices)
       if (nonExistentIndex.hasWildcard) {
         val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.nonExistingIndicesFromInitialIndices().toList)
+          .fromList(initialBlockContext.indices.map(_.randomNonexistentIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
         updateIndices(actionRequest, nonExistingIndices)
         Modified
@@ -96,14 +90,14 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
         ShouldBeInterrupted
       }
     } else {
-      updateIndices(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()))
+      updateIndices(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.indices)))
       Modified
     }
   }
 
   override def modifyWhenAliasNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentAlias = initialBlockContext.aliases.toList.randomNonexistentIndex()
+      val nonExistentAlias = initialBlockContext.randomNonexistentIndex(_.aliases)
       if (nonExistentAlias.hasWildcard) {
         val nonExistingAliases = NonEmptyList
           .fromList(initialBlockContext.aliases.map(_.randomNonexistentIndex()).toList)
@@ -114,20 +108,37 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
         ShouldBeInterrupted
       }
     } else {
-      updateAliases(actionRequest, NonEmptyList.of(initialBlockContext.aliases.toList.randomNonexistentIndex()))
+      updateAliases(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.aliases)))
       Modified
     }
   }
 
+  private def discoverIndices(request: GetAliasesRequest) = {
+    val indices = request
+      .indices().asSafeSet
+      .flatMap(ClusterIndexName.fromString)
+      .orWildcardWhenEmpty
+    logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
+    indices
+  }
+
+  private def discoverAliases(request: GetAliasesRequest) = {
+    val aliases = rawRequestAliasesSet(request)
+      .flatMap(ClusterIndexName.fromString)
+      .orWildcardWhenEmpty
+    logger.debug(s"[${id.show}] Discovered aliases: ${aliases.show}")
+    aliases
+  }
+
   private def updateIndices(request: GetAliasesRequest, indices: NonEmptyList[ClusterIndexName]): Unit = {
-    request.indices(indices.map(_.stringify).toList: _*)
+    request.indices(indices.stringify: _*)
   }
 
   private def updateAliases(request: GetAliasesRequest, aliases: NonEmptyList[ClusterIndexName]): Unit = {
     if (isRequestedEmptyAliasesSet(request)) {
       // we don't need to do anything
     } else {
-      request.aliases(aliases.map(_.stringify).toList: _*)
+      request.aliases(aliases.stringify: _*)
     }
   }
 
@@ -137,23 +148,14 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
       case aliasesResponse: GetAliasesResponse =>
         aliasesResponse.getAliases.filterOutNotAllowedAliases(allowedAliases)
       case other =>
-        logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetAliasesResponse].getSimpleName}], was: [${other.getClass.getSimpleName}]")
+        logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetAliasesResponse].show}], was: [${other.getClass.show}]")
         ImmutableOpenMapOps.empty[String, JList[AliasMetaData]]
     }
     Task.now(new GetAliasesResponse(aliases))
   }
 
-  private def indicesFrom(request: GetAliasesRequest) = {
-    indicesOrWildcard(request.indices().asSafeSet.flatMap(ClusterIndexName.fromString))
-  }
-
-  private def aliasesFrom(request: GetAliasesRequest) = {
-    indicesOrWildcard(rawRequestAliasesSet(request).flatMap(ClusterIndexName.fromString))
-  }
-
-  private def isRequestedEmptyAliasesSet(request: GetAliasesRequest) = {
-    rawRequestAliasesSet(request).isEmpty
-  }
+  private def isRequestedEmptyAliasesSet(request: GetAliasesRequest) = rawRequestAliasesSet(request).isEmpty
 
   private def rawRequestAliasesSet(request: GetAliasesRequest) = request.aliases().asSafeSet
+
 }

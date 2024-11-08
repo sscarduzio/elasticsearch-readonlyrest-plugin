@@ -35,6 +35,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
+import tech.beshu.ror.syntax.*
 
 class DataStreamsRuleTests extends AnyWordSpec with Inside {
 

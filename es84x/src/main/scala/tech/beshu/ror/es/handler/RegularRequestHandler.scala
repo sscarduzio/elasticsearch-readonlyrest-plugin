@@ -37,6 +37,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomRespo
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps.*
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.LoggerOps.*
 import tech.beshu.ror.utils.ScalaOps.*

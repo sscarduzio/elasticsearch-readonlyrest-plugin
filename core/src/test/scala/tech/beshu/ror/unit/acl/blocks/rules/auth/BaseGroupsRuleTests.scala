@@ -50,6 +50,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -536,7 +537,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                  caseSensitivity: CaseSensitivity): Unit = {
     val rule = createRule(settings, caseSensitivity)
     val requestContext = MockRequestContext.metadata.copy(
-      headers = preferredGroupId.map(_.toCurrentGroupHeader).toSet
+      headers = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet
     )
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,
@@ -560,7 +561,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
   def userIdPatterns(id: String, ids: String*): UserIdPatterns = {
     UserIdPatterns(
-      UniqueNonEmptyList.unsafeFromIterable(
+      UniqueNonEmptyList.unsafeFrom(
         (id :: ids.toList).map(str => UserIdPattern(User.Id(NonEmptyString.unsafeFrom(str))))
       )
     )
@@ -623,7 +624,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
         Task.now(Fulfilled(blockContext.withUserMetadata(
-          _.withAvailableGroups(UniqueList.fromIterable(groups.toList))
+          _.withAvailableGroups(UniqueList.from(groups.toList))
         )))
       }
     }
@@ -651,7 +652,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
         Task.now(Fulfilled(blockContext.withUserMetadata(
-          _.withAvailableGroups(UniqueList.fromIterable(groups.toList))
+          _.withAvailableGroups(UniqueList.from(groups.toList))
         )))
     }
 

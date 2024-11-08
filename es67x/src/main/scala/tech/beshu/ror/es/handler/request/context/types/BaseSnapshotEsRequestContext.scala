@@ -24,6 +24,8 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, Sn
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T,
                                                                 esContext: EsContext,
@@ -37,8 +39,8 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
     userMetadata = UserMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    snapshots = snapshotsOrWildcard(snapshotsFrom(actionRequest)),
-    repositories = repositoriesOrWildcard(repositoriesFrom(actionRequest)),
+    snapshots = snapshotsFrom(actionRequest).orWildcardWhenEmpty,
+    repositories = repositoriesFrom(actionRequest).orWildcardWhenEmpty,
     filteredIndices = indicesFrom(actionRequest),
     allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
   )

@@ -19,10 +19,11 @@ package tech.beshu.ror.es.actions.rradmin
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.ConfigApi
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.RorActionRequest
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.{constants, RequestId}
+import tech.beshu.ror.utils.ScalaOps.*
 
 class RRAdminRequest(adminApiRequest: ConfigApi.ConfigRequest,
                      esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
@@ -49,10 +50,7 @@ object RRAdminRequest {
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRAdminRequest(
-      new ConfigApi.ConfigRequest(
-        requestType,
-        request.content.utf8ToString
-      ),
+      new ConfigApi.ConfigRequest(requestType, request.content.utf8ToString),
       request
     )
   }

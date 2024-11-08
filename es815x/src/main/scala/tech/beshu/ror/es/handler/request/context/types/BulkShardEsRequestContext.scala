@@ -29,6 +29,8 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, Modified}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
@@ -58,9 +60,11 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
   }
 
   private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[RequestedIndex]) = {
+    if (indices.tail.nonEmpty) {
+      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
+    }
     val singleIndex = indices.head
-    val uuid = clusterService.indexOrAliasUuids(singleIndex.name).toList.head
-    // todo: one index taken - do we need a warn here?
+    val uuid = clusterService.indexOrAliasUuids(singleIndex).toList.head
     ReflectionUtils
       .getAllFields(request.shardId().getClass, ReflectionUtils.withName("index")).asScala
       .foldLeft(Try(())) {

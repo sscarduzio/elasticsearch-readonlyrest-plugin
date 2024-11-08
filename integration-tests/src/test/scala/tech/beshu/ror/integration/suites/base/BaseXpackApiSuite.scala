@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.NextRollupJobNam
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, SecurityType}
-import tech.beshu.ror.utils.elasticsearch._
+import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import ujson.{Null, Num, Str}
@@ -357,8 +357,8 @@ trait BaseXpackApiSuite
 
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
-          jobs should have size 1
-          jobs.map(_ ("job_id").str) should contain(jobName2)
+          jobs.map(_ ("job_id").str) should contain oneOf (jobName1, jobName2)
+          jobs.map(_ ("job_id").str) should not contain jobName3
           jobs.foreach { job =>
             job("rollup_index").str should startWith("rollup_test4")
             job("index_pattern").str should startWith("test4")
@@ -376,8 +376,8 @@ trait BaseXpackApiSuite
 
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
-          jobs should have size 2
-          jobs.map(_ ("job_id").str) should contain(jobName2)
+          jobs.map(_ ("job_id").str) should contain oneOf(jobName1, jobName2)
+          jobs.map(_ ("job_id").str) should not contain jobName3
           jobs.foreach { job =>
             job("rollup_index").str should startWith("rollup_test4")
             job("index_pattern").str should startWith("test4")

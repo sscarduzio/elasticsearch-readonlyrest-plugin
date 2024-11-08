@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, KibanaApp, KibanaIndex
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.JsCompiler
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -36,7 +37,7 @@ class KibanaHideAppsRuleDecoder(implicit jsCompiler: JsCompiler)
     DecoderHelpers
       .decodeNonEmptyStringLikeOrUniqueNonEmptyList(identity)
       .emap(_.toList.map(KibanaApp.from).traverse(identity))
-      .map(apps => new KibanaHideAppsRule(Settings(UniqueNonEmptyList.unsafeFromIterable(apps))))
+      .map(apps => new KibanaHideAppsRule(Settings(UniqueNonEmptyList.unsafeFrom(apps))))
       .map(RuleDefinition.create(_))
   }
 }

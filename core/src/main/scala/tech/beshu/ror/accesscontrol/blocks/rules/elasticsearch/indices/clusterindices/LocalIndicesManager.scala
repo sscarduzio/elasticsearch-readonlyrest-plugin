@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local as LocalIndexN
 import tech.beshu.ror.accesscontrol.domain.IndexAttribute
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.syntax.*
 
 class LocalIndicesManager(requestContext: RequestContext,
                           override val allowedIndicesMatcher: PatternsMatcher[LocalIndexName])
@@ -99,6 +100,7 @@ class LocalIndicesManager(requestContext: RequestContext,
       )
   }
 
-  private lazy val mapMonoid: Monoid[Map[LocalIndexName, Set[LocalIndexName]]] = Monoid[Map[LocalIndexName, Set[LocalIndexName]]]
+  private lazy val mapMonoid: Monoid[Map[LocalIndexName, Set[LocalIndexName]]] =
+    Monoid[Map[LocalIndexName, Set[LocalIndexName]]]
 
 }

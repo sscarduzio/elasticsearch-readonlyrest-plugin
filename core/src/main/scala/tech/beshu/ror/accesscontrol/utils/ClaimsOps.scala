@@ -135,14 +135,14 @@ class ClaimsOps(val claims: Claims) extends Logging {
       }
   }
 
-  private def createGroupsFromIds(ids: Iterable[Any]): UniqueList[Group] = UniqueList.fromIterable {
+  private def createGroupsFromIds(ids: Iterable[Any]): UniqueList[Group] = UniqueList.from {
     ids
       .flatMap(nonEmptyStringFrom)
       .map(GroupId.apply)
       .map(Group.from)
   }
 
-  private def createGroupsFrom(idsWithNames: Iterable[(Any, Any)]): UniqueList[Group] = UniqueList.fromIterable {
+  private def createGroupsFrom(idsWithNames: Iterable[(Any, Any)]): UniqueList[Group] = UniqueList.from {
     idsWithNames
       .flatMap { case (id, name) =>
         nonEmptyStringFrom(id)

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
@@ -26,10 +26,12 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
                                      esContext: EsContext,
@@ -50,7 +52,10 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
   }
 
   override protected def indicesFrom(request: CreateSnapshotRequest): Set[ClusterIndexName] = {
-    indicesOrWildcard(request.indices().asSafeSet.flatMap(ClusterIndexName.fromString))
+    request
+      .indices().asSafeSet
+      .flatMap(ClusterIndexName.fromString)
+      .orWildcardWhenEmpty
   }
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
@@ -63,7 +68,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -75,7 +80,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
         Left(())
       case snapshot :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. The whole set of snapshots [${snapshots.mkString(",")}]")
+          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. The whole set of snapshots [${snapshots.show}]")
         }
         Right(snapshot)
     }
@@ -88,14 +93,14 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]")
+          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
         }
         Right(repository)
     }
   }
 
   private def indicesFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromIterable(blockContext.filteredIndices) match {
+    UniqueNonEmptyList.from(blockContext.filteredIndices) match {
       case Some(value) => Right(value)
       case None => Left(())
     }

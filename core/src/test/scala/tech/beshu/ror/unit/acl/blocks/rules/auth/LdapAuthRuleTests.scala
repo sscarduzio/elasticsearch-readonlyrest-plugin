@@ -33,10 +33,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -413,7 +414,7 @@ class LdapAuthRuleTests
       authenticationSettings,
       authorizationSettings,
       impersonation,
-      impersonateAsHeader.toSet + basicHeader,
+      impersonateAsHeader.toCovariantSet + basicHeader,
       AssertionType.RuleFulfilled(blockContextAssertion)
     )
 
@@ -427,7 +428,7 @@ class LdapAuthRuleTests
       authenticationSettings,
       authorizationSettings,
       impersonation,
-      impersonateAsHeader.toSet ++ basicHeader.toSet,
+      impersonateAsHeader.toCovariantSet ++ basicHeader.toSet,
       AssertionType.RuleRejected(rejectionCause)
     )
 

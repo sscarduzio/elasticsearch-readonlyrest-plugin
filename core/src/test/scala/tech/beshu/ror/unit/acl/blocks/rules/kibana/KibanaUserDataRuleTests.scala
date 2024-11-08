@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -79,7 +80,7 @@ class KibanaUserDataRuleTests
           access = KibanaAccess.Unrestricted,
           kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
           kibanaTemplateIndex = None,
-          appsToHide = apps.toSet,
+          appsToHide = apps.toCovariantSet,
           allowedApiPaths = Set.empty,
           metadata = None,
           rorIndex = RorConfigurationIndex(rorIndex)
@@ -117,7 +118,7 @@ class KibanaUserDataRuleTests
           kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
           kibanaTemplateIndex = None,
           appsToHide = Set.empty,
-          allowedApiPaths = paths.toSet,
+          allowedApiPaths = paths.toCovariantSet,
           metadata = None,
           rorIndex = RorConfigurationIndex(rorIndex)
         ))
@@ -232,7 +233,7 @@ class KibanaUserDataRuleTests
     )
 
   override protected def defaultOutputBlockContextAssertion(settings: KibanaUserDataRule.Settings,
-                                                            indices: Iterable[RequestedIndex[ClusterIndexName]],
+                                                            indices: Set[RequestedIndex[ClusterIndexName]],
                                                             dataStreams: Set[DataStreamName],
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {

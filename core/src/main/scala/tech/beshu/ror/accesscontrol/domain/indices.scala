@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
+import cats.data.NonEmptyList
 import cats.implicits.*
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
@@ -24,6 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.constants
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -256,11 +258,25 @@ object ClusterIndexName {
     }
   }
 
+  implicit class IterableStringify[T <: ClusterIndexName](val iterable: Iterable[T]) extends AnyVal {
+    def stringify: List[String] = iterable.map(_.stringify).toList
+  }
+
+  implicit class NonEmptyListStringify[T <: ClusterIndexName](val nonEmptyList: NonEmptyList[T]) extends AnyVal {
+    def stringify: List[String] = nonEmptyList.toIterable.stringify
+  }
+
   implicit class OnlyIndexName(val remoteIndexName: ClusterIndexName.Remote) extends AnyVal {
     def onlyIndexName: NonEmptyString = remoteIndexName match {
       case Remote(IndexName.Full(name), _) => name
       case Remote(IndexName.Pattern(namePattern), _) => namePattern
     }
+  }
+
+  implicit class OrWildcardWhenEmpty(val indices: Set[ClusterIndexName]) extends AnyVal {
+    def orWildcardWhenEmpty: Set[ClusterIndexName] =
+      if (indices.nonEmpty) indices
+      else Set(ClusterIndexName.Local.wildcard)
   }
 
   implicit class HasPrefix(val indexName: ClusterIndexName) extends AnyVal {

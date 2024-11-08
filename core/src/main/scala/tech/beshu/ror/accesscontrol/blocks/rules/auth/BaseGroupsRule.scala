@@ -152,7 +152,7 @@ abstract class BaseGroupsRule(val settings: Settings)
             .map { loggedUser =>
               blockContext.withUserMetadata(_
                 .withLoggedUser(loggedUser)
-                .withAvailableGroups(availableGroups.toUniqueList)
+                .withAvailableGroups(UniqueList.from(availableGroups))
               )
             }
         case None =>
@@ -235,7 +235,8 @@ abstract class BaseGroupsRule(val settings: Settings)
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
     } yield destinationBlockContext.withUserMetadata(_
       .withLoggedUser(loggedUser)
-      .withAvailableGroups(availableLocalGroups.toUniqueList))
+      .withAvailableGroups(UniqueList.from(availableLocalGroups))
+    )
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule,
@@ -264,8 +265,8 @@ abstract class BaseGroupsRule(val settings: Settings)
   private def mapExternalGroupsToLocalGroups(groupMappings: GroupMappings,
                                              externalGroup: UniqueList[Group]) = {
     groupMappings match {
-      case GroupMappings.Simple(localGroups) => UniqueNonEmptyList.fromIterable(localGroups.map(_.id))
-      case GroupMappings.Advanced(mappings) => UniqueNonEmptyList.fromIterable {
+      case GroupMappings.Simple(localGroups) => UniqueNonEmptyList.from(localGroups.map(_.id))
+      case GroupMappings.Advanced(mappings) => UniqueNonEmptyList.from {
         externalGroup
           .toList
           .flatMap { externalGroup =>

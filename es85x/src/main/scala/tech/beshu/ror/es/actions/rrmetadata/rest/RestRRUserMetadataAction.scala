@@ -28,7 +28,7 @@ import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRe
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 @Inject
 class RestRRUserMetadataAction()

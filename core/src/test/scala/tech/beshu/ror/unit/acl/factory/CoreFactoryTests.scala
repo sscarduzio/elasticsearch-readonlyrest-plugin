@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
 class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
@@ -351,7 +352,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |
     """.stripMargin)
         val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
-        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block should contain only one authentication rule, but contains: [auth_key,proxy_auth]")))))
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block should contain only one authentication rule, but contains: [auth_key, proxy_auth]")))))
       }
       "block uses user variable without defining authentication rule beforehand" in {
         val config = rorConfigFromUnsafe(

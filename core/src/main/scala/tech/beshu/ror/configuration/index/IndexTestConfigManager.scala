@@ -40,6 +40,7 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{Parsi
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, TestRorConfig}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.json.KeyCodec
 
@@ -180,7 +181,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
           userMock => (userMock.id, userMock.groups.map(_.id), userMock.groups)
         )
         val deprecatedFormatDecoder = Decoder.forProduct2("id", "groups")((id: User.Id, groupIds: List[GroupId]) =>
-          LdapUserMock(id, groupIds.toSet.map(Group.from))
+          LdapUserMock(id, groupIds.map(Group.from).toCovariantSet)
         )
         val decoder: Decoder[LdapUserMock] = Decoder.forProduct2("id", "userGroups")(LdapUserMock.apply)
         Codec.from(decoder.or(deprecatedFormatDecoder), encoder)
@@ -201,7 +202,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
           (userMock: ExternalAuthorizationServiceUserMock) => (userMock.id, userMock.groups.map(_.id), userMock.groups)
         )
         val deprecatedFormatDecoder = Decoder.forProduct2("id", "groups")((id: User.Id, groupIds: List[GroupId]) =>
-          ExternalAuthorizationServiceUserMock(id, groupIds.toSet.map(Group.from))
+          ExternalAuthorizationServiceUserMock(id, groupIds.map(Group.from).toCovariantSet)
         )
         val decoder = Decoder.forProduct2("id", "userGroups")(ExternalAuthorizationServiceUserMock.apply)
         Codec.from(decoder.or(deprecatedFormatDecoder), encoder)

@@ -21,7 +21,7 @@ import java.util.{Iterator => JavaIterator}
 import com.google.common.collect.Iterators
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.StoredFieldVisitor.Status
-import org.apache.lucene.index._
+import org.apache.lucene.index.*
 import org.apache.lucene.util.Bits
 import org.elasticsearch.ExceptionsHelper
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
@@ -32,7 +32,7 @@ import tech.beshu.ror.es.dlsfls.RorDocumentFieldDirectoryReader.RorDocumentField
 import tech.beshu.ror.es.utils.XContentBuilderOps.toXContentBuilderOps
 import tech.beshu.ror.fls.{FieldsPolicy, JsonPolicyBasedFilterer}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: FieldsRestrictions)
@@ -98,9 +98,8 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
 
   override def getDelegate: LeafReader = in
 
-  override def document(docID: Int, visitor: StoredFieldVisitor): Unit = {
+  override def document(docID: Int, visitor: StoredFieldVisitor): Unit =
     super.document(docID, new RorStoredFieldVisitorDecorator(visitor))
-  }
 
   override def getCoreCacheHelper: IndexReader.CacheHelper = this.in.getCoreCacheHelper
 
@@ -149,6 +148,7 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
 }
 
 object RorDocumentFieldReader {
+
   def wrap(in: DirectoryReader, fieldsRestrictions: FieldsRestrictions): RorDocumentFieldDirectoryReader =
     new RorDocumentFieldDirectoryReader(in, fieldsRestrictions)
 }

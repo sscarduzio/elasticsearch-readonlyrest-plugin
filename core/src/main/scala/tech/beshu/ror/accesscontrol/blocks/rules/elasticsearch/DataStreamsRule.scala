@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeData
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class DataStreamsRule(val settings: Settings)
@@ -56,7 +57,7 @@ class DataStreamsRule(val settings: Settings)
   private def checkDataStreams[B <: BlockContext](blockContext: DataStreamRequestBlockContext)
                                                  (implicit ev: DataStreamRequestBlockContext <:< B): RuleResult[B] = {
     checkAllowedDataStreams(
-      resolveAll(settings.allowedDataStreams.toNonEmptyList, blockContext).toSet,
+      resolveAll(settings.allowedDataStreams.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.dataStreams,
       blockContext.requestContext
     ) match {

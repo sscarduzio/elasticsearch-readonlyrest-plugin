@@ -26,6 +26,8 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                    esContext: EsContext,
@@ -40,7 +42,7 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
                                 filteredIndices: NonEmptyList[RequestedIndex],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.toList.mkString(",")}]")
+      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
     }
     update(request, filteredIndices.head)
   }

@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.ssl
 
-import io.netty.channel._
-import io.netty.handler.ssl._
+import io.netty.channel.*
+import io.netty.handler.ssl.*
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.Version
 import org.elasticsearch.cluster.node.DiscoveryNode

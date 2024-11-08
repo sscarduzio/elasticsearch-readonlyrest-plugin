@@ -22,7 +22,7 @@ import org.elasticsearch.common.xcontent.StatusToXContentObject
 import org.elasticsearch.rest.RestStatus
 import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
 import tech.beshu.ror.api.TestConfigApi
-import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
+import tech.beshu.ror.api.TestConfigApi.TestConfigResponse.*
 
 import java.time.ZoneOffset
 

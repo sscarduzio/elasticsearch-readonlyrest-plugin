@@ -27,11 +27,13 @@ import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, In
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi
-import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi._
+import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
+import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi
+import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 class GetEsRequestContext(actionRequest: GetRequest,
                           esContext: EsContext,
@@ -45,9 +47,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
   override protected def indicesFrom(request: GetRequest): Set[ClusterIndexName] = {
     val indexName = ClusterIndexName
       .fromString(request.index())
-      .getOrElse {
-        throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")
-      }
+      .getOrElse(throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid"))
     Set(indexName)
   }
 

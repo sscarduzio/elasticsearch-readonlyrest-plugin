@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.{Id, Method}
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.Instant

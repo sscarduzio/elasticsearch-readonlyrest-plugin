@@ -22,12 +22,12 @@ import org.elasticsearch.action.admin.cluster.reroute.ClusterRerouteRequest
 import org.elasticsearch.cluster.routing.allocation.command.*
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
+import tech.beshu.ror.syntax.*
 
 import scala.jdk.CollectionConverters.*
 
@@ -42,7 +42,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
     request
       .getCommands.commands().asScala
       .flatMap(indexFrom)
-      .toSet
+      .toCovariantSet
   }
 
   override protected def update(request: ClusterRerouteRequest,

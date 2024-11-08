@@ -32,8 +32,9 @@ import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotEnabledResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotEnabledResponse
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.LoggerOps.*
 
 import java.time.{Duration, Instant}
@@ -97,7 +98,8 @@ private class RRMetadataResponse(userMetadata: UserMetadata,
   extends ActionResponse with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val sourceMap: Map[String, _] = MetadataValue.read(userMetadata, correlationId).view.mapValues(MetadataValue.toAny).toMap
+    val sourceMap: Map[String, _] =
+      MetadataValue.read(userMetadata, correlationId).view.mapValues(MetadataValue.toAny).toMap
     builder.map(sourceMap.asJava)
     builder
   }

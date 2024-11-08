@@ -25,7 +25,8 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class DeleteDataStreamEsRequestContext(actionRequest: DeleteDataStreamAction.Request,
                                        esContext: EsContext,
@@ -33,11 +34,16 @@ class DeleteDataStreamEsRequestContext(actionRequest: DeleteDataStreamAction.Req
                                        override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  private lazy val originDataStreams = actionRequest.getNames.asSafeList.flatMap(DataStreamName.fromString).toSet
+  private lazy val originDataStreams =
+    actionRequest
+      .getNames.asSafeSet
+      .flatMap(DataStreamName.fromString)
 
-  override protected def dataStreamsFrom(request: DeleteDataStreamAction.Request): Set[DataStreamName] = originDataStreams
+  override protected def dataStreamsFrom(request: DeleteDataStreamAction.Request): Set[DataStreamName] =
+    originDataStreams
 
-  override protected def backingIndicesFrom(request: DeleteDataStreamAction.Request): BackingIndices = BackingIndices.IndicesNotInvolved
+  override protected def backingIndicesFrom(request: DeleteDataStreamAction.Request): BackingIndices =
+    BackingIndices.IndicesNotInvolved
 
   override protected def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     setDataStreamNames(blockContext.dataStreams)

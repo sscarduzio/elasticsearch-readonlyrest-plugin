@@ -26,9 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationServ
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.AuthTokenSendMethod.{UsingHeader, UsingQueryParam}
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.utils.CacheableAction
@@ -107,7 +107,7 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
     groupsFromBody match {
       case Success(groups) =>
         logger.debug(s"[${requestId.show}] Groups returned by groups provider '${id.show}': ${groups.show}")
-        UniqueList.fromIterable(groups)
+        UniqueList.from(groups)
       case Failure(ex) =>
         logger.debug(s"[${requestId.show}] Group based authorization response exception - provider '${id.show}'", ex)
         UniqueList.empty
@@ -182,7 +182,7 @@ object HttpExternalAuthorizationService {
                           tokenName: AuthTokenName,
                           groupsConfig: GroupsConfig,
                           authTokenSendMethod: AuthTokenSendMethod,
-                          defaultHeaders: Set[domain.Header],
+                          defaultHeaders: Set[Header],
                           defaultQueryParams: Set[QueryParam])
 
   object Config {

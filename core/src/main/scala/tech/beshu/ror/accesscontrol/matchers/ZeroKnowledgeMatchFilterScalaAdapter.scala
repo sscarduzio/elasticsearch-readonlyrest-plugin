@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.matchers
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
 import tech.beshu.ror.utils.{StringPatternsMatcherJava, ZeroKnowledgeMatchFilter}
+import tech.beshu.ror.syntax.*
 
 import scala.jdk.CollectionConverters.*
 
@@ -26,10 +27,10 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
 
   def alterIndicesIfNecessary(indices: Set[ClusterIndexName], matcher: PatternsMatcher[ClusterIndexName]): AlterResult[ClusterIndexName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-      indices.map(_.stringify).asJava,
+      indices.asScala.map(_.stringify).asJava,
       new StringPatternsMatcherJava(matcher)
     )) match {
-      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.flatMap(ClusterIndexName.fromString).toSet)
+      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.flatMap(ClusterIndexName.fromString).toCovariantSet)
       case None => AlterResult.NotAltered()
     }
   }
@@ -41,10 +42,11 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
           case RepositoryName.Pattern(v) => v.value
           case RepositoryName.Full(v) => v.value
         }
+        .asScala
         .asJava,
       new StringPatternsMatcherJava(matcher)
     )) match {
-      case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.flatMap(RepositoryName.from).toSet)
+      case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.flatMap(RepositoryName.from).toCovariantSet)
       case None => AlterResult.NotAltered()
     }
   }
@@ -56,10 +58,11 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
           case SnapshotName.Pattern(v) => v.value
           case SnapshotName.Full(v) => v.value
         }
+        .asScala
         .asJava,
       new StringPatternsMatcherJava(matcher)
     )) match {
-      case Some(alteredSnapshots) => AlterResult.Altered(alteredSnapshots.asScala.flatMap(SnapshotName.from).toSet)
+      case Some(alteredSnapshots) => AlterResult.Altered(alteredSnapshots.asScala.flatMap(SnapshotName.from).toCovariantSet)
       case None => AlterResult.NotAltered()
     }
   }

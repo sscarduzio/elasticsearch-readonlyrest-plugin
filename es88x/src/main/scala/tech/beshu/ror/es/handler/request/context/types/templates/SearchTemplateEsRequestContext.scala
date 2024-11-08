@@ -28,11 +28,12 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.SearchRequestOps._
+import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.{BaseFilterableEsRequestContext, ReflectionBasedActionRequest}
-import tech.beshu.ror.es.handler.response.SearchHitOps._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.handler.response.SearchHitOps.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                              esContext: EsContext,
@@ -136,7 +137,7 @@ final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)
                                       requestId: RequestContext.Id)
     extends SearchRequest(request) {
 
-    this.indices(indices.toList.map(_.stringify): _*)
+    this.indices(indices.stringify: _*)
 
     override def source(sourceBuilder: SearchSourceBuilder): SearchRequest = {
       super

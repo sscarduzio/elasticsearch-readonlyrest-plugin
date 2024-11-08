@@ -27,9 +27,10 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.RefinedUtils._
 
 class PutComposableIndexTemplateEsRequestContext(actionRequest: PutComposableIndexTemplateAction.Request,
                                                  esContext: EsContext,
@@ -60,10 +61,10 @@ object PutComposableIndexTemplateEsRequestContext {
         .fromString(request.name())
         .toRight("Template name should be non-empty")
       patterns <- UniqueNonEmptyList
-        .fromIterable(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
+        .from(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
-      aliases = request.indexTemplate().template().asSafeSet
-        .flatMap(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet)
+      aliases = Option(request.indexTemplate().template()).toCovariantSet
+        .flatMap(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toCovariantSet)
     } yield AddingIndexTemplate(name, patterns, aliases)
   }
 }

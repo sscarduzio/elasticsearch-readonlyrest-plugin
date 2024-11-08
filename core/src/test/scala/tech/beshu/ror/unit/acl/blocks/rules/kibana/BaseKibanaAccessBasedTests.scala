@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
 import scala.concurrent.duration.*
@@ -373,7 +374,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
 
   private def assertMatchRuleUsingIndicesRequest(settings: SETTINGS,
                                                  action: Action,
-                                                 requestedIndices: Iterable[RequestedIndex[ClusterIndexName]] = Set.empty,
+                                                 requestedIndices: Set[RequestedIndex[ClusterIndexName]] = Set.empty,
                                                  customKibanaIndex: Option[KibanaIndexName] = None,
                                                  uriPath: Option[UriPath] = None)
                                                 (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, requestedIndices, Set.empty, customKibanaIndex)) =
@@ -389,14 +390,14 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
   private def assertNotMatchRuleUsingIndicesRequest(settings: SETTINGS,
                                                     action: Action,
                                                     customKibanaIndex: Option[KibanaIndexName] = None,
-                                                    requestedIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                                                    requestedIndices: Set[RequestedIndex[ClusterIndexName]],
                                                     uriPath: Option[UriPath] = None) =
     assertRuleUsingIndicesRequest(settings, action, customKibanaIndex, requestedIndices, uriPath, blockContextAssertion = None)
 
   private def assertRuleUsingIndicesRequest(settings: SETTINGS,
                                             action: Action,
                                             customKibanaIndex: Option[KibanaIndexName],
-                                            requestedIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                                            requestedIndices: Set[RequestedIndex[ClusterIndexName]],
                                             uriPath: Option[UriPath],
                                             blockContextAssertion: Option[BlockContext => Unit]) = {
     val requestContext = MockRequestContext.indices.copy(
@@ -460,7 +461,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
   protected lazy val rorIndex: IndexName.Full = fullIndexName(".readonlyrest")
 
   protected def defaultOutputBlockContextAssertion(settings: SETTINGS,
-                                                   indices: Iterable[RequestedIndex[ClusterIndexName]],
+                                                   indices: Set[RequestedIndex[ClusterIndexName]],
                                                    dataStreams: Set[DataStreamName],
                                                    customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit
 

@@ -21,6 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.*
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class KibanaAccessRuleTests
@@ -33,7 +34,7 @@ class KibanaAccessRuleTests
     Settings(access, RorConfigurationIndex(rorIndex))
 
   override protected def defaultOutputBlockContextAssertion(settings: Settings,
-                                                            indices: Iterable[RequestedIndex[ClusterIndexName]],
+                                                            indices: Set[RequestedIndex[ClusterIndexName]],
                                                             dataStreams: Set[DataStreamName],
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {

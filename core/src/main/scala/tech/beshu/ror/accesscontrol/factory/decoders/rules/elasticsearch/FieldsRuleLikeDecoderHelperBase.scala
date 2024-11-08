@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 object FieldsRuleLikeDecoderHelperBase {
@@ -59,7 +60,8 @@ trait FieldsRuleLikeDecoderHelperBase {
                                        (implicit accessModeConverter: AccessModeConverter[MODE]): Decoder[MODE] =
     fromConfiguredFieldsDecoder(configuredFields, createAccessMode[MODE])
 
-  protected def documentFieldsDecoder[FIELD](configuredFields: UniqueNonEmptyList[ConfiguredField], alwaysAllowedFields: Set[NonEmptyString])
+  protected def documentFieldsDecoder[FIELD](configuredFields: UniqueNonEmptyList[ConfiguredField],
+                                             alwaysAllowedFields: Set[NonEmptyString])
                                             (implicit itemConvertible: Convertible[FIELD],
                                              variableCreator: RuntimeResolvableVariableCreator) =
     fromConfiguredFieldsDecoder(configuredFields, createDocumentFields[FIELD](alwaysAllowedFields))
@@ -106,6 +108,7 @@ trait FieldsRuleLikeDecoderHelperBase {
   private def checkForAlwaysAllowedFields(fields: UniqueNonEmptyList[ConfiguredField], alwaysAllowedFields: Set[NonEmptyString]) = {
     fields
       .map(_.fieldName)
+      .toCovariantSet
       .intersect(alwaysAllowedFields)
       .toSet
   }

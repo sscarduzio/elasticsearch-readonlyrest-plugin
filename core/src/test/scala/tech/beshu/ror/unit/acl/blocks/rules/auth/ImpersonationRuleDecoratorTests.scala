@@ -38,6 +38,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -213,7 +214,7 @@ class ImpersonationRuleDecoratorTests
 
   private def userIdPatterns(id: String, ids: String*) = {
     UserIdPatterns(
-      UniqueNonEmptyList.unsafeFromIterable(
+      UniqueNonEmptyList.unsafeFrom(
         (id :: ids.toList).map(str => UserIdPattern(User.Id(NonEmptyString.unsafeFrom(str))))
       )
     )

@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.{Conversion, Matchable}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 trait BaseIndicesProcessor {
@@ -40,14 +41,14 @@ trait BaseIndicesProcessor {
 
   protected def canPass[T <: ClusterIndexName : Matchable : Show](requestContext: RequestContext,
                                                                   determinedKibanaIndex: Option[KibanaIndexName],
-                                                                  requestedIndices: Iterable[RequestedIndex[T]])
+                                                                  requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                  (implicit indicesManager: IndicesManager[T]): Task[CanPass[Set[RequestedIndex[T]]]] = {
     implicit val requestId: RequestContext.Id = requestContext.id
     if (requestContext.isReadOnlyRequest) canIndicesReadOnlyRequestPass(requestedIndices, determinedKibanaIndex)
     else canIndicesWriteRequestPass(requestedIndices, determinedKibanaIndex)
   }
 
-  private def canIndicesReadOnlyRequestPass[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]],
+  private def canIndicesReadOnlyRequestPass[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]],
                                                                                       determinedKibanaIndex: Option[KibanaIndexName])
                                                                                      (implicit requestId: RequestContext.Id,
                                                                                       indicesManager: IndicesManager[T]): Task[CanPass[Set[RequestedIndex[T]]]] = {
@@ -60,7 +61,7 @@ trait BaseIndicesProcessor {
     result.value.map(_.left.getOrElse(CanPass.No()))
   }
 
-  private def allKibanaRelatedIndicesMatched[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]],
+  private def allKibanaRelatedIndicesMatched[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]],
                                                                                        determinedKibanaIndex: Option[KibanaIndexName])
                                                                                       (implicit requestId: RequestContext.Id): Task[CheckContinuation[Set[RequestedIndex[T]]]] =
     Task.delay {
@@ -71,7 +72,7 @@ trait BaseIndicesProcessor {
           val allKibanaRelatedIndices = requestedIndices.forall(_.name.isRelatedToKibanaIndex(kibanaIndexName))
           if (allKibanaRelatedIndices) {
             logger.debug(s"[${requestId.show}] ... matched [indices: ${requestedIndices.show}]. Stop")
-            stop(CanPass.Yes(requestedIndices.toSet))
+            stop(CanPass.Yes(requestedIndices.toCovariantSet))
           } else {
             logger.debug(s"[${requestId.show}] ... not matched. Continue")
             continue[Set[RequestedIndex[T]]]
@@ -81,7 +82,7 @@ trait BaseIndicesProcessor {
       }
     }
 
-  private def noneOrAllIndicesMatched[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def noneOrAllIndicesMatched[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                (implicit requestId: RequestContext.Id,
                                                                                 indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[RequestedIndex[T]]]] = {
     Task.delay {
@@ -109,7 +110,7 @@ trait BaseIndicesProcessor {
         }
   }
 
-  private def allIndicesMatchedByWildcard[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def allIndicesMatchedByWildcard[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                    (implicit requestId: RequestContext.Id,
                                                                                     indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[RequestedIndex[T]]]] =
     Task.delay {
@@ -124,16 +125,17 @@ trait BaseIndicesProcessor {
             logger.debug(s"[${requestId.show}] ... not matched. Continue")
             continue
           }
-        case _ if requestedIndices.forall(i => !i.name.hasWildcard) && indicesManager.allowedIndicesMatcher.filter(requestedIndices.toSet) === requestedIndices.toSet =>
+        case _ if requestedIndices.iterator.forall(i => !i.name.hasWildcard) &&
+          indicesManager.allowedIndicesMatcher.filter(requestedIndices) == requestedIndices.toCovariantSet =>
           logger.debug(s"[${requestId.show}] ... matched [indices: ${requestedIndices.show}]. Stop")
-          stop(CanPass.Yes(requestedIndices.toSet))
+          stop(CanPass.Yes(requestedIndices.toCovariantSet))
         case _ =>
           logger.debug(s"[${requestId.show}] ... not matched. Continue")
           continue[Set[RequestedIndex[T]]]
       }
     }
 
-  private def indicesAliasesDataStreams[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def indicesAliasesDataStreams[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                  (implicit requestId: RequestContext.Id,
                                                                                   indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[RequestedIndex[T]]]] = {
     Task
@@ -157,7 +159,7 @@ trait BaseIndicesProcessor {
           filterAssumingThatDataStreamsAreRequestedAndDataStreamsAreConfigured(requestedIndices) ::
           filterAssumingThatDataStreamsAreRequestedAndDataStreamAliasesAreConfigured[T]() :: Nil
       )
-      .map(_.flatten.toSet)
+      .map(_.flatten.toCovariantSet)
       .map { allowedRealIndices =>
         if (allowedRealIndices.nonEmpty) {
           logger.debug(s"[${requestId.show}] ... matched [indices: ${allowedRealIndices.show}]. Stop")
@@ -169,7 +171,7 @@ trait BaseIndicesProcessor {
       }
   }
 
-  private def filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                                                     (implicit indicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     indicesManager
       .allIndices
@@ -187,7 +189,7 @@ trait BaseIndicesProcessor {
     Task.now(Set.empty[RequestedIndex[T]])
   }
 
-  private def filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]]
+  private def filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]]
                                                                                                                         )(implicit indicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     indicesManager
       .backingIndicesPerDataStreamMap
@@ -203,7 +205,7 @@ trait BaseIndicesProcessor {
                 // passing the data stream name for such case is enough
                 if (!requestedBackingIndicesMatcher.`match`(dataStreamName)) {
                   UniqueNonEmptyList
-                    .fromIterable(backingIndices.filterBy(requestedIndices))
+                    .from(backingIndices.filterBy(requestedIndices))
                     .map(indices => (dataStreamName, indices))
                 } else {
                   Option.empty[(T, UniqueNonEmptyList[RequestedIndex[T]])]
@@ -217,6 +219,7 @@ trait BaseIndicesProcessor {
             }
             .values
             .flatten
+            .toCovariantSet
 
         implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
         val backingIndicesMatchedByAllowedBackingIndices =
@@ -224,12 +227,12 @@ trait BaseIndicesProcessor {
             .flatMap {
               case (dataStreamName, backingIndices) => allowedMatcher.filter(backingIndices)
             }
-            .toSet
-        backingIndicesMatchedByAllowedDataStreamName.toSet ++ backingIndicesMatchedByAllowedBackingIndices
+            .toCovariantSet
+        backingIndicesMatchedByAllowedDataStreamName ++ backingIndicesMatchedByAllowedBackingIndices
       }
   }
 
-  private def filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                                                     (implicit indicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     indicesManager
       .allAliases
@@ -241,7 +244,7 @@ trait BaseIndicesProcessor {
       }
   }
 
-  private def filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                                                     (implicit indicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     for {
       allAliases <- indicesManager.allAliases
@@ -264,7 +267,7 @@ trait BaseIndicesProcessor {
     }
   }
 
-  private def filterAssumingThatAliasesAreRequestedAndDataStreamAliasesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def filterAssumingThatAliasesAreRequestedAndDataStreamAliasesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                                                               (implicit indicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     indicesManager
       .allDataStreamAliases
@@ -290,7 +293,7 @@ trait BaseIndicesProcessor {
     Task.now(Set.empty[RequestedIndex[T]])
   }
 
-  private def filterAssumingThatAliasesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def filterAssumingThatAliasesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                                                         (implicit indicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     for {
       allAliases <- indicesManager.allDataStreamAliases
@@ -308,7 +311,7 @@ trait BaseIndicesProcessor {
     }
   }
 
-  private def filterAssumingThatDataStreamsAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def filterAssumingThatDataStreamsAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                                                         (implicit indicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     for {
       allDataStreams <- indicesManager.allDataStreams
@@ -341,7 +344,7 @@ trait BaseIndicesProcessor {
     Task.now(Set.empty[RequestedIndex[T]])
   }
 
-  private def filterAssumingThatDataStreamsAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def filterAssumingThatDataStreamsAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                                                             (implicit indicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     indicesManager
       .allDataStreams
@@ -353,7 +356,7 @@ trait BaseIndicesProcessor {
       }
   }
 
-  private def canIndicesWriteRequestPass[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]],
+  private def canIndicesWriteRequestPass[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]],
                                                                                    determinedKibanaIndex: Option[KibanaIndexName])
                                                                                   (implicit requestId: RequestContext.Id,
                                                                                    indicesManager: IndicesManager[T]): Task[CanPass[Set[RequestedIndex[T]]]] = {
@@ -364,16 +367,16 @@ trait BaseIndicesProcessor {
     result.value.map(_.left.getOrElse(CanPass.No()))
   }
 
-  private def generalWriteRequest[T <: ClusterIndexName : Matchable : Show](requestedIndices: Iterable[RequestedIndex[T]])
+  private def generalWriteRequest[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                            (implicit requestId: RequestContext.Id,
-                                                                            indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[RequestedIndex[T]]]] =
+                                                                            indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[RequestedIndex[T]]]] = {
     Task.delay {
       logger.debug(s"[${requestId.show}] Checking - write request ...")
       // Write requests
       logger.debug(s"[${requestId.show}] Stage 7")
       if (requestedIndices.isEmpty && indicesManager.allowedIndicesMatcher.contains("<no-index>")) {
         logger.debug(s"[${requestId.show}] ... matched [indices: ${requestedIndices.show}]. Stop")
-        stop(CanPass.Yes(requestedIndices.toSet))
+        stop(CanPass.Yes(requestedIndices.toCovariantSet))
       } else {
         // Reject write if at least one requested index is not allowed by the rule conf
         logger.debug(s"[${requestId.show}] Stage 8")
@@ -384,11 +387,12 @@ trait BaseIndicesProcessor {
               CanPass.No()
             case None =>
               logger.debug(s"[${requestId.show}] ... matched [indices: ${requestedIndices.show}]. Stop")
-              CanPass.Yes(requestedIndices.toSet)
+              CanPass.Yes(requestedIndices.toCovariantSet)
           }
         }
       }
     }
+  }
 
 }
 

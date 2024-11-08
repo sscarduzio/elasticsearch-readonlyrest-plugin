@@ -17,18 +17,20 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, ClusterIndexName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                   esContext: EsContext,
@@ -39,36 +41,41 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     with EsRequest[FilterableRequestBlockContext] {
 
   override val initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty,
-    {
-      import tech.beshu.ror.accesscontrol.show.logs._
-      val indices = indicesOrWildcard(indicesFrom(actionRequest))
-      logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
-      indices
-    },
-    Set(ClusterIndexName.Local.wildcard),
-    None,
-    None,
-    requestFieldsUsage
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty,
+    filteredIndices = discoverIndices(),
+    allAllowedIndices = Set(ClusterIndexName.Local.wildcard),
+    filter = None,
+    fieldLevelSecurity = None,
+    requestFieldsUsage = requestFieldsUsage
   )
 
   override def modifyWhenIndexNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentIndex()
+      val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
       if (nonExistentIndex.hasWildcard) {
         val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.nonExistingIndicesFromInitialIndices().toList)
+          .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
-        update(actionRequest, nonExistingIndices, initialBlockContext.filter, initialBlockContext.fieldLevelSecurity)
+        update(
+          request = actionRequest,
+          indices = nonExistingIndices,
+          filter = initialBlockContext.filter,
+          fieldLevelSecurity = initialBlockContext.fieldLevelSecurity
+        )
         Modified
       } else {
         ShouldBeInterrupted
       }
     } else {
-      update(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()), initialBlockContext.filter, initialBlockContext.fieldLevelSecurity)
+      update(
+        request = actionRequest,
+        indices = NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.filteredIndices)),
+        filter = initialBlockContext.filter,
+        fieldLevelSecurity = initialBlockContext.fieldLevelSecurity
+      )
       Modified
     }
   }
@@ -91,4 +98,10 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
                        fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult
 
   protected def requestFieldsUsage: RequestFieldsUsage
+
+  private def discoverIndices() = {
+    val indices = indicesFrom(actionRequest).orWildcardWhenEmpty
+    logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
+    indices
+  }
 }

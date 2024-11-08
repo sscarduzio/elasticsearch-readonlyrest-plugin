@@ -20,10 +20,10 @@ import org.elasticsearch.common.path.PathTrie
 import org.elasticsearch.rest.{RestController, RestHandler, RestRequest}
 import org.joor.Reflect.on
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.function.UnaryOperator
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 
 class RestControllerOps(val restController: RestController) {

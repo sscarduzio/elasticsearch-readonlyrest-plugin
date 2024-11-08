@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote as RemoteInde
 import tech.beshu.ror.accesscontrol.domain.{FullRemoteIndexWithAliases, IndexAttribute}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.syntax.*
 
 class RemoteIndicesManager(requestContext: RequestContext,
                            override val allowedIndicesMatcher: PatternsMatcher[RemoteIndexName])
@@ -106,5 +107,6 @@ class RemoteIndicesManager(requestContext: RequestContext,
       ))
   }
 
-  private lazy val mapMonoid: Monoid[Map[RemoteIndexName, Set[RemoteIndexName]]] = Monoid[Map[RemoteIndexName, Set[RemoteIndexName]]]
+  private lazy val mapMonoid: Monoid[Map[RemoteIndexName, Set[RemoteIndexName]]] =
+    Monoid[Map[RemoteIndexName, Set[RemoteIndexName]]]
 }

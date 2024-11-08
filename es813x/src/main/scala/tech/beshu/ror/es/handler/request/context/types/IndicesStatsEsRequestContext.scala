@@ -25,7 +25,8 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class IndicesStatsEsRequestContext(actionRequest: IndicesStatsRequest,
                                    esContext: EsContext,
@@ -41,7 +42,7 @@ class IndicesStatsEsRequestContext(actionRequest: IndicesStatsRequest,
   override protected def update(request: IndicesStatsRequest,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    request.indices(filteredIndices.map(_.stringify).toList: _*)
+    request.indices(filteredIndices.stringify: _*)
     Modified
   }
 }

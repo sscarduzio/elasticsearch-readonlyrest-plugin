@@ -21,6 +21,7 @@ import eu.timepit.refined.auto.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.orders.indexOrder
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
 trait IndicesRuleDataStreamTests {

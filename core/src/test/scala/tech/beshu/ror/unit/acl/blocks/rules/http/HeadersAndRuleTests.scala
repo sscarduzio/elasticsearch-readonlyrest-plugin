@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersAndRule
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
 class HeadersAndRuleTests extends AnyWordSpec with MockFactory {

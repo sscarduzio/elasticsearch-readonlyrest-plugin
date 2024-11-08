@@ -17,8 +17,8 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.{ActionRequest, IndicesRequest}
 import org.elasticsearch.action.IndicesRequest.Replaceable
+import org.elasticsearch.action.{ActionRequest, IndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
@@ -26,7 +26,8 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class IndicesReplaceableEsRequestContext(actionRequest: ActionRequest with Replaceable,
                                          esContext: EsContext,
@@ -42,7 +43,7 @@ class IndicesReplaceableEsRequestContext(actionRequest: ActionRequest with Repla
   override protected def update(request: ActionRequest with Replaceable,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    request.indices(filteredIndices.toList.map(_.stringify): _*)
+    request.indices(filteredIndices.stringify: _*)
     Modified
   }
 }

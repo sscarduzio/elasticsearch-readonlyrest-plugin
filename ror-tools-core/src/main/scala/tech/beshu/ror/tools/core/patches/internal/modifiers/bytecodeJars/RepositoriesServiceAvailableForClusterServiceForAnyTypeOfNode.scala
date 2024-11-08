@@ -17,7 +17,7 @@
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
 import just.semver.SemVer
-import org.objectweb.asm._
+import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.es790
 

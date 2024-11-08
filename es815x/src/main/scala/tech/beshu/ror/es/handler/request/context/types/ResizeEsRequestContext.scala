@@ -27,6 +27,8 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 import scala.jdk.CollectionConverters.*
 
@@ -40,17 +42,17 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
   override protected def indicesFrom(request: ResizeRequest): Set[RequestedIndex] = {
     (request.getSourceIndex :: request.getTargetIndexRequest.index() :: request.getTargetIndexRequest.aliases().asScala.map(_.name()).toList)
       .flatMap(RequestedIndex.fromString)
-      .toSet
+      .toCovariantSet
   }
 
   override protected def update(request: ResizeRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    val notAllowedIndices = indicesFrom(actionRequest) -- filteredIndices.toList.toSet
+    val notAllowedIndices = indicesFrom(actionRequest) -- filteredIndices.toList.toCovariantSet
     if (notAllowedIndices.isEmpty) {
       Modified
     } else {
-      throw new IllegalStateException(s"Resize request is write request and such requests need all indices to be allowed. Not allowed indices=[${notAllowedIndices.map(_.show).mkString(",")}]")
+      throw new IllegalStateException(s"Resize request is write request and such requests need all indices to be allowed. Not allowed indices=[${notAllowedIndices.show}]")
     }
   }
 }

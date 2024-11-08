@@ -24,13 +24,14 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{Resolv
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
@@ -42,20 +43,23 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ResolveIndexAction.Request](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ResolveIndexAction.Request): Set[RequestedIndex] = indicesOrWildcard {
-    request.indices().asSafeList.flatMap(RequestedIndex.fromString).toSet
+  override protected def indicesFrom(request: ResolveIndexAction.Request): Set[ClusterIndexName] = {
+    request
+      .indices().asSafeSet
+      .flatMap(ClusterIndexName.fromString)
+      .orWildcardWhenEmpty
   }
 
   override protected def update(request: ResolveIndexAction.Request,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     ModificationResult.UpdateResponse(resp => Task.delay(filterResponse(resp, allAllowedIndices)))
   }
 
   override def modifyWhenIndexNotFound: ModificationResult = {
-    val randomNonexistingIndex = initialBlockContext.randomNonexistentIndex()
-    update(actionRequest, NonEmptyList.of(randomNonexistingIndex), NonEmptyList.of(randomNonexistingIndex))
+    val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
+    update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex))
     Modified
   }
 
@@ -103,13 +107,13 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
 
   private def isAllowed(aliasOrIndex: String, allowedIndices: NonEmptyList[ClusterIndexName]) = {
     val resolvedAliasOrIndexName = ClusterIndexName.Local.fromString(aliasOrIndex)
-      .getOrElse(throw new IllegalStateException(s"Cannot create IndexName from $aliasOrIndex"))
+      .getOrElse(throw new IllegalStateException(s"Cannot create IndexName from ${aliasOrIndex.show}"))
     allowedIndices.exists(_.matches(resolvedAliasOrIndexName))
   }
 
-  private def createResolvedIndex(index: String, aliases: List[String], attributes: Array[String], datastream: String) = {
+  private def createResolvedIndex(index: String, aliases: List[String], attributes: Array[String], dataStream: String) = {
     onClass(classOf[ResolvedIndex])
-      .create(index, aliases.toArray, attributes, datastream)
+      .create(index, aliases.toArray, attributes, dataStream)
       .get[ResolvedIndex]()
   }
 

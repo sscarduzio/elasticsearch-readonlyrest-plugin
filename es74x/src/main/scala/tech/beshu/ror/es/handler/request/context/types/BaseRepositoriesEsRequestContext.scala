@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
@@ -27,6 +27,8 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                     esContext: EsContext,
@@ -36,11 +38,11 @@ abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionReques
     with EsRequest[RepositoryRequestBlockContext] {
 
   override val initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty,
-    repositoriesOrWildcard(repositoriesFrom(actionRequest))
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty,
+    repositories = repositoriesFrom(actionRequest).orWildcardWhenEmpty
   )
 
   override protected def modifyRequest(blockContext: RepositoryRequestBlockContext): ModificationResult = {
@@ -48,7 +50,7 @@ abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionReques
       case Some(repositories) =>
         update(actionRequest, repositories)
       case None =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request, because of empty repositories list.")
+        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request, because of empty repositories list.")
         ShouldBeInterrupted
     }
   }

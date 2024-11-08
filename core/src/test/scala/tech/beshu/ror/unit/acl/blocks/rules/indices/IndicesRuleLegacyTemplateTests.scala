@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingLegacyTempla
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, indexPattern, requestedIndex, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 

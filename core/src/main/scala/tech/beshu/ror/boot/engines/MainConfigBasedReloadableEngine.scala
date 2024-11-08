@@ -18,19 +18,19 @@ package tech.beshu.ror.boot.engines
 
 import tech.beshu.ror.implicits.*
 import cats.data.EitherT
-import cats.implicits._
+import cats.implicits.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
-import tech.beshu.ror.boot.ReadonlyRest._
+import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.{ConfigUpToDate, ReloadingFailed, RorInstanceStopped}
-import tech.beshu.ror.boot.RorInstance._
+import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
-import tech.beshu.ror.boot.engines.ConfigHash._
+import tech.beshu.ror.boot.engines.ConfigHash.*
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.configuration.index.SavingIndexConfigError.CannotSaveConfig
 import tech.beshu.ror.utils.ScalaOps.value

@@ -25,8 +25,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, Succeeded}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, GeneralIndexRequestBlockContext, RequestedIndex, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -42,30 +42,31 @@ import tech.beshu.ror.accesscontrol.domain.Template.{ComponentTemplate, IndexTem
 import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.mocks.{MockFilterableMultiRequestContext, MockGeneralIndexRequestContext, MockRequestContext, MockTemplateRequestContext}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, fullDataStreamName, fullIndexName, fullLocalIndexWithAliases, indexPattern, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
 
   protected def assertMatchRuleForIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
-                                               requestIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                                               requestIndices: Set[RequestedIndex[ClusterIndexName]],
                                                modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity,
                                                modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity,
-                                               filteredRequestedIndices: Iterable[RequestedIndex[ClusterIndexName]]): Assertion =
+                                               filteredRequestedIndices: Set[RequestedIndex[ClusterIndexName]]): Assertion =
     assertRuleForIndexRequest(configured, requestIndices, isMatched = true, modifyRequestContext, modifyBlockContext, filteredRequestedIndices)
 
   protected def assertNotMatchRuleForIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
-                                                  requestIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                                                  requestIndices: Set[RequestedIndex[ClusterIndexName]],
                                                   modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity,
                                                   modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity): Assertion =
     assertRuleForIndexRequest(configured, requestIndices, isMatched = false, modifyRequestContext, modifyBlockContext, Set.empty)
 
   private def assertRuleForIndexRequest(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
-                                        requestIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                                        requestIndices: Set[RequestedIndex[ClusterIndexName]],
                                         isMatched: Boolean,
                                         modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext,
                                         modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext,
-                                        filteredRequestedIndices: Iterable[RequestedIndex[ClusterIndexName]]) = {
+                                        filteredRequestedIndices: Set[RequestedIndex[ClusterIndexName]]) = {
     val rule = createIndicesRule(configuredValues)
     val requestContext = modifyRequestContext apply MockRequestContext.indices
       .copy(
@@ -99,7 +100,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
             .toNonEmptyList.toList
             .collect { case a: AlreadyResolved[ClusterIndexName] => a }
             .flatMap(_.value.toList)
-            .toSet
+            .toCovariantSet
         ))
       } else {
         Rejected(Some(Cause.IndexNotFound))
@@ -238,7 +239,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
       ClusterName.Full.fromString(clusterName).getOrElse(throw new IllegalArgumentException(s"Cannot create cluster name from '$clusterName'")),
       fullIndexNameFrom(fullRemoteIndexName),
       IndexAttribute.Opened,
-      remoteIndexAliases.toSet.map(fullIndexNameFrom)
+      remoteIndexAliases.map(fullIndexNameFrom).toCovariantSet
     )
   }
 
@@ -248,7 +249,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
     FullRemoteDataStreamWithAliases(
       ClusterName.Full.fromString(clusterName).getOrElse(throw new IllegalArgumentException(s"Cannot create cluster name from '$clusterName'")),
       fullDataStreamName(fullRemoteDataStreamName),
-      aliasesNames = remoteDataStreamAliases.toSet.map(fullDataStreamName),
+      aliasesNames = remoteDataStreamAliases.map(fullDataStreamName).toCovariantSet,
       backingIndices = Set(fullIndexName(NonEmptyString.unsafeFrom(".ds-" + fullRemoteDataStreamName.value)))
     )
   }

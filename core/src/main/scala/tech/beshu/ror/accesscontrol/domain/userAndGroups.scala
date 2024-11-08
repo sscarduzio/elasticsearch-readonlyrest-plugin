@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 sealed trait LoggedUser {
@@ -120,7 +121,7 @@ final case class PermittedGroupIds(groupIds: UniqueNonEmptyList[_ <: GroupIdLike
 object PermittedGroupIds {
 
   def from(groups: UniqueNonEmptyList[Group]): PermittedGroupIds = {
-    PermittedGroupIds(UniqueNonEmptyList.unsafeFromIterable(groups.toList.map(_.id)))
+    PermittedGroupIds(UniqueNonEmptyList.unsafeFrom(groups.map(_.id)))
   }
 
   implicit class PermittedGroupIdsMatcher(val permittedGroupIds: PermittedGroupIds) extends AnyVal {
@@ -133,7 +134,7 @@ object PermittedGroupIds {
             val (matched, notMatched) = groupsToCheckLeft.partition(permittedGroupIdLike.matches)
             (alreadyPermittedGroups ++ matched, notMatched)
         }
-      UniqueList.fromIterable(permitted)
+      UniqueList.from(permitted)
     }
 
     def matches(groupId: GroupId): Boolean = {
@@ -145,7 +146,7 @@ object PermittedGroupIds {
 final case class ResolvablePermittedGroupIds(permittedGroupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]) {
   def resolveGroupIds[B <: BlockContext](blockContext: B): Option[PermittedGroupIds] = {
     UniqueNonEmptyList
-      .fromIterable(resolveAll(permittedGroupIds.toNonEmptyList, blockContext))
+      .from(resolveAll(permittedGroupIds.toNonEmptyList, blockContext))
       .map(PermittedGroupIds.apply)
   }
 }
@@ -186,14 +187,14 @@ object GroupsLogic {
               result
           }
       if (isThereNotPermittedGroup) None
-      else UniqueNonEmptyList.fromIterable(matchedUserGroups)
+      else UniqueNonEmptyList.from(matchedUserGroups)
     }
   }
 
   implicit class GroupsLogicOrExecutor(val groupsLogic: GroupsLogic.Or) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
       val someMatchedUserGroups = groupsLogic.permittedGroupIds.filterOnlyPermitted(userGroups)
-      UniqueNonEmptyList.fromIterable(someMatchedUserGroups)
+      UniqueNonEmptyList.from(someMatchedUserGroups)
     }
   }
 }

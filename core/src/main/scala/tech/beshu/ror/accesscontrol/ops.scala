@@ -36,6 +36,7 @@ import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.ScalaOps.*
@@ -65,6 +66,59 @@ object header {
   trait FromHeaderValue[T] {
     def fromRawValue(value: NonEmptyString): Try[T]
   }
+}
+
+object headerValues {
+  implicit def nonEmptyListHeaderValue[T: ToHeaderValue]: ToHeaderValue[NonEmptyList[T]] = ToHeaderValue { list =>
+    implicit val nesShow: Show[NonEmptyString] = Show.show(_.value)
+    val tToHeaderValue = implicitly[ToHeaderValue[T]]
+    NonEmptyString.unsafeFrom(list.map(tToHeaderValue.toRawValue).mkString_(","))
+  }
+
+  implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
+  implicit val indexNameHeaderValue: ToHeaderValue[ClusterIndexName] = ToHeaderValue(_.nonEmptyStringify)
+
+  implicit val transientFieldsToHeaderValue: ToHeaderValue[FieldsRestrictions] = ToHeaderValue { fieldsRestrictions =>
+    import upickle.default
+    import default.*
+    implicit val nesW: Writer[NonEmptyString] = StringWriter.comap(_.value)
+    implicit val accessModeW: Writer[AccessMode] = Writer.merge(
+      macroW[AccessMode.Whitelist.type],
+      macroW[AccessMode.Blacklist.type]
+    )
+    implicit val documentFieldW: Writer[DocumentField] = macroW
+    implicit val setW: Writer[UniqueNonEmptyList[DocumentField]] =
+      SeqLikeWriter[UniqueNonEmptyList, DocumentField]
+
+    implicit val fieldsRestrictionsW: Writer[FieldsRestrictions] = macroW
+
+    val fieldsJsonString = upickle.default.write(fieldsRestrictions)
+    NonEmptyString.unsafeFrom(
+      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes("UTF-8"))
+    )
+  }
+
+  implicit val transientFieldsFromHeaderValue: FromHeaderValue[FieldsRestrictions] = (value: NonEmptyString) => {
+    import upickle.default
+    import default.*
+    implicit val nesR: Reader[NonEmptyString] = StringReader.map(NonEmptyString.unsafeFrom)
+    implicit val accessModeR: Reader[AccessMode] = Reader.merge(
+      macroR[AccessMode.Whitelist.type],
+      macroR[AccessMode.Blacklist.type]
+    )
+    implicit val documentFieldR: Reader[DocumentField] = macroR
+
+    implicit val setR: Reader[UniqueNonEmptyList[DocumentField]] =
+      SeqLikeReader[List, DocumentField].map(UniqueNonEmptyList.unsafeFrom)
+
+    implicit val fieldsRestrictionsR: Reader[FieldsRestrictions] = macroR
+
+    Try(upickle.default.read[FieldsRestrictions](
+      new String(Base64.getDecoder.decode(value.value), "UTF-8")
+    ))
+  }
+
+  implicit val groupHeaderValue: ToHeaderValue[GroupId] = ToHeaderValue(_.value)
 }
 
 object orders {
@@ -125,57 +179,11 @@ object orders {
     case (MustBePresent(_), _) => -1
     case (_, MustBePresent(_)) => 1
   }
-}
 
-object headerValues {
-  implicit def nonEmptyListHeaderValue[T: ToHeaderValue]: ToHeaderValue[NonEmptyList[T]] = ToHeaderValue { list =>
-    implicit val nesShow: Show[NonEmptyString] = Show.show(_.value)
-    val tToHeaderValue = implicitly[ToHeaderValue[T]]
-    NonEmptyString.unsafeFrom(list.map(tToHeaderValue.toRawValue).mkString_(","))
+  def userIdOrder(globalSettings: GlobalSettings): Order[User.Id] = Order.by { userId =>
+    globalSettings.userIdCaseSensitivity match {
+      case CaseSensitivity.Enabled => userId.value.value
+      case CaseSensitivity.Disabled => userId.value.value.toLowerCase
+    }
   }
-
-  implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
-  implicit val indexNameHeaderValue: ToHeaderValue[ClusterIndexName] = ToHeaderValue(_.nonEmptyStringify)
-
-  implicit val transientFieldsToHeaderValue: ToHeaderValue[FieldsRestrictions] = ToHeaderValue { fieldsRestrictions =>
-    import upickle.default
-    import default.*
-    implicit val nesW: Writer[NonEmptyString] = StringWriter.comap(_.value)
-    implicit val accessModeW: Writer[AccessMode] = Writer.merge(
-      macroW[AccessMode.Whitelist.type],
-      macroW[AccessMode.Blacklist.type]
-    )
-    implicit val documentFieldW: Writer[DocumentField] = macroW
-    implicit val setW: Writer[UniqueNonEmptyList[DocumentField]] =
-      SeqLikeWriter[UniqueNonEmptyList, DocumentField]
-
-    implicit val fieldsRestrictionsW: Writer[FieldsRestrictions] = macroW
-
-    val fieldsJsonString = upickle.default.write(fieldsRestrictions)
-    NonEmptyString.unsafeFrom(
-      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes("UTF-8"))
-    )
-  }
-
-  implicit val transientFieldsFromHeaderValue: FromHeaderValue[FieldsRestrictions] = (value: NonEmptyString) => {
-    import upickle.default
-    import default.*
-    implicit val nesR: Reader[NonEmptyString] = StringReader.map(NonEmptyString.unsafeFrom)
-    implicit val accessModeR: Reader[AccessMode] = Reader.merge(
-      macroR[AccessMode.Whitelist.type],
-      macroR[AccessMode.Blacklist.type]
-    )
-    implicit val documentFieldR: Reader[DocumentField] = macroR
-
-    implicit val setR: Reader[UniqueNonEmptyList[DocumentField]] =
-      SeqLikeReader[List, DocumentField].map(UniqueNonEmptyList.unsafeFromIterable)
-
-    implicit val fieldsRestrictionsR: Reader[FieldsRestrictions] = macroR
-
-    Try(upickle.default.read[FieldsRestrictions](
-      new String(Base64.getDecoder.decode(value.value), "UTF-8")
-    ))
-  }
-
-  implicit val groupHeaderValue: ToHeaderValue[GroupId] = ToHeaderValue(_.value)
 }

@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.*
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -52,10 +53,13 @@ object CirceOps {
         .decoder
 
     implicit def decodeUniqueNonEmptyList[T](implicit decodeT: Decoder[T]): Decoder[UniqueNonEmptyList[T]] =
-      Decoder.decodeNonEmptyList(decodeT).map(UniqueNonEmptyList.fromNonEmptyList)
+      Decoder.decodeNonEmptyList(decodeT).map(nel => UniqueNonEmptyList.unsafeFrom(nel.toList))
 
     implicit def decodeUniqueList[T](implicit decodeT: Decoder[T]): Decoder[UniqueList[T]] =
-      Decoder.decodeList[T].map(UniqueList.fromIterable)
+      Decoder.decodeList[T].map(UniqueList.from)
+
+    implicit def decodeCovariantSet[T](implicit decodeT: Decoder[T]): Decoder[Set[T]] =
+      Decoder.decodeSet[T].map(_.toCovariantSet)
 
     def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
       decodeStringLike
@@ -95,12 +99,12 @@ object CirceOps {
         val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
           case ((errors, values), elem) =>
             fromString(elem) match {
-              case Right(value) => (errors, values + value)
-              case Left(error) => (errors + error, values)
+              case Right(value) => (errors, values :+ value)
+              case Left(error) => (errors :+ error, values)
             }
         }
         if (errorsUniqueList.nonEmpty) Left(errorsUniqueList.mkString(","))
-        else Right(UniqueNonEmptyList.unsafeFromIterable(valuesUniqueList))
+        else Right(UniqueNonEmptyList.unsafeFrom(valuesUniqueList))
       }
 
     def decoderStringLikeOrUniqueNonEmptyList[T: Decoder]: Decoder[UniqueNonEmptyList[T]] =
@@ -112,10 +116,10 @@ object CirceOps {
       decodeStringLikeNonEmpty
         .map(UniqueNonEmptyList.of(_))
         .or(DecoderHelpers.decodeUniqueNonEmptyList[NonEmptyString])
-        .map(a => UniqueNonEmptyList.unsafeFromIterable(a.toList.map(fromString)))
+        .map(a => UniqueNonEmptyList.unsafeFrom(a.toList.map(fromString)))
 
     def decodeStringLikeOrSet[T : Decoder]: Decoder[Set[T]] = {
-      decodeStringLike.map(Set(_)).or(Decoder.decodeSet[String]).emap { set =>
+      decodeStringLike.map(Set.apply(_)).or(decodeCovariantSet[String]).emap { set =>
         val (errorsSet, valuesSet) = set.foldLeft((Set.empty[String], Set.empty[T])) {
           case ((errors, values), elem) =>
             Decoder[T].decodeJson(Json.fromString(elem)) match {
@@ -129,12 +133,12 @@ object CirceOps {
     }
 
     def decodeStringLikeOrUniqueList[T: Decoder]: Decoder[UniqueList[T]] = {
-      decodeStringLike.map(str => UniqueList.fromIterable(str :: Nil)).or(decodeUniqueList[String]).emap { uniqueList =>
+      decodeStringLike.map(str => UniqueList.from(str :: Nil)).or(decodeUniqueList[String]).emap { uniqueList =>
         val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
           case ((errors, values), elem) =>
             Decoder[T].decodeJson(Json.fromString(elem)) match {
-              case Right(value) => (errors, values + value)
-              case Left(error) => (errors + error.message, values)
+              case Right(value) => (errors, values :+ value)
+              case Left(error) => (errors :+ error.message, values)
             }
         }
         if (errorsUniqueList.nonEmpty) Left(errorsUniqueList.mkString(","))

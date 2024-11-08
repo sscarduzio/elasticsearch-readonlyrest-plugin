@@ -20,6 +20,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.syntax.*
 
 sealed trait BlockContextUpdater[B <: BlockContext] {
 
@@ -123,7 +124,7 @@ object BlockContextUpdater {
       blockContext.copy(repositories = repositories)
 
     def withIndices(blockContext: SnapshotRequestBlockContext,
-                    indices: Iterable[RequestedIndex[ClusterIndexName]]): SnapshotRequestBlockContext =
+                    indices: Set[RequestedIndex[ClusterIndexName]]): SnapshotRequestBlockContext =
       blockContext.copy(filteredIndices = indices)
   }
 
@@ -202,11 +203,11 @@ object BlockContextUpdater {
       blockContext.copy(responseTransformations = responseTransformation :: blockContext.responseTransformations)
 
     def withIndices(blockContext: AliasRequestBlockContext,
-                    indices: Iterable[RequestedIndex[ClusterIndexName]]): AliasRequestBlockContext =
+                    indices: Set[RequestedIndex[ClusterIndexName]]): AliasRequestBlockContext =
       blockContext.copy(indices = indices)
 
     def withAliases(blockContext: AliasRequestBlockContext,
-                    aliases: Iterable[RequestedIndex[ClusterIndexName]]): AliasRequestBlockContext =
+                    aliases: Set[RequestedIndex[ClusterIndexName]]): AliasRequestBlockContext =
       blockContext.copy(aliases = aliases)
   }
 
@@ -312,7 +313,7 @@ object BlockContextUpdater {
 abstract class BlockContextWithIndicesUpdater[B <: BlockContext : HasIndices] {
 
   def withIndices(blockContext: B,
-                  filteredIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                  filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                   allAllowedIndices: Set[ClusterIndexName]): B
 }
 
@@ -323,7 +324,7 @@ object BlockContextWithIndicesUpdater {
     extends BlockContextWithIndicesUpdater[FilterableRequestBlockContext] {
 
     def withIndices(blockContext: FilterableRequestBlockContext,
-                    filteredIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                    filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                     allAllowedIndices: Set[ClusterIndexName]): FilterableRequestBlockContext =
       blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
   }
@@ -332,7 +333,7 @@ object BlockContextWithIndicesUpdater {
     extends BlockContextWithIndicesUpdater[GeneralIndexRequestBlockContext] {
 
     def withIndices(blockContext: GeneralIndexRequestBlockContext,
-                    filteredIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                    filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                     allAllowedIndices: Set[ClusterIndexName]): GeneralIndexRequestBlockContext =
       blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
   }
@@ -341,7 +342,7 @@ object BlockContextWithIndicesUpdater {
     extends BlockContextWithIndicesUpdater[SnapshotRequestBlockContext] {
 
     def withIndices(blockContext: SnapshotRequestBlockContext,
-                    filteredIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                    filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                     allAllowedIndices: Set[ClusterIndexName]): SnapshotRequestBlockContext =
       blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
   }
@@ -350,7 +351,7 @@ object BlockContextWithIndicesUpdater {
     extends BlockContextWithIndicesUpdater[DataStreamRequestBlockContext] {
 
     def withIndices(blockContext: DataStreamRequestBlockContext,
-                    filteredIndices: Iterable[RequestedIndex[ClusterIndexName]],
+                    filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                     allAllowedIndices: Set[ClusterIndexName]): DataStreamRequestBlockContext =
       blockContext.copy(backingIndices = DataStreamRequestBlockContext.BackingIndices.IndicesInvolved(
         filteredIndices = filteredIndices,

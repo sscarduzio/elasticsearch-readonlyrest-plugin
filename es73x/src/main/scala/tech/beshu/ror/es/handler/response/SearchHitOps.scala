@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.response
 import org.elasticsearch.search.SearchHit
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object SearchHitOps {
 

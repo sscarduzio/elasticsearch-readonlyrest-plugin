@@ -21,7 +21,7 @@ import com.github.dockerjava.api.model.{ExposedPort, InternetProtocol, Ports}
 import org.testcontainers.images.builder.ImageFromDockerfile
 
 import scala.annotation.nowarn
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 @nowarn("cat=deprecation")
 class DnsServerContainer(srvServicePort: Int)

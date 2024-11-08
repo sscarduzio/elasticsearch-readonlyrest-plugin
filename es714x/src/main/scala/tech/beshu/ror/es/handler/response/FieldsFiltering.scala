@@ -22,7 +22,7 @@ import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.AccessMode
 import tech.beshu.ror.fls.FieldsPolicy
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object FieldsFiltering {
 

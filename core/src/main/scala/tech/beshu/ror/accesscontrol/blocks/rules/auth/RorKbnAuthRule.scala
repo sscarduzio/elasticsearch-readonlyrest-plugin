@@ -138,7 +138,7 @@ final class RorKbnAuthRule(val settings: Settings,
       case (NotFound, Groups.NotDefined) =>
         Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case (Found(groups), Groups.Defined(groupsLogic)) =>
-        UniqueNonEmptyList.fromIterable(groups) match {
+        UniqueNonEmptyList.from(groups) match {
           case Some(nonEmptyGroups) =>
             groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
               case Some(matchedGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds.from(matchedGroups)) =>
@@ -150,7 +150,7 @@ final class RorKbnAuthRule(val settings: Settings,
             Left(())
         }
       case (Found(groups), Groups.NotDefined) =>
-        UniqueNonEmptyList.fromIterable(groups) match {
+        UniqueNonEmptyList.from(groups) match {
           case None =>
             Right(blockContext)
           case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds.from(nonEmptyGroups)) =>

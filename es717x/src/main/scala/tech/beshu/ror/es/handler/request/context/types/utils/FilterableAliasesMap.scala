@@ -24,10 +24,11 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.{Conversion, Matcha
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.AliasesMap
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
+import tech.beshu.ror.syntax.*
 
 class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
 
@@ -44,7 +45,7 @@ class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
     val matcher = PatternsMatcher.create(allowedAliases.toList.map(_.stringify))
     responseIndicesNadAliases
       .map { case (indexName, aliasesList) =>
-        val filteredAliases = matcher.filter(aliasesList.asSafeList.toSet)
+        val filteredAliases = matcher.filter(aliasesList.asSafeList)
         (indexName, filteredAliases.toList.asJava)
       }
   }

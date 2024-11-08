@@ -31,11 +31,11 @@ import org.elasticsearch.client.{Cancellable, RequestOptions, RestClient, RestHi
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
-import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse._
+import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
 
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
-import scala.collection.parallel.CollectionConverters._
+import scala.collection.parallel.CollectionConverters.*
 
 class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
                                              (implicit scheduler: Scheduler)

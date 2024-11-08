@@ -17,5 +17,6 @@
 package tech.beshu.ror.accesscontrol.audit
 
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.syntax.*
 
 final case class LoggingContext(obfuscatedHeaders: Set[Header.Name])

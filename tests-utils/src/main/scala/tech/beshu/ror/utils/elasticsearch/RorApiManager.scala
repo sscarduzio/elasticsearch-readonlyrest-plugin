@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import cats.implicits._
+import cats.implicits.*
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}

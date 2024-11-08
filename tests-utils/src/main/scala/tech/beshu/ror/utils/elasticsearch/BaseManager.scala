@@ -24,14 +24,14 @@ import org.testcontainers.shaded.org.yaml.snakeyaml.constructor.SafeConstructor
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, SimpleHeader}
 import tech.beshu.ror.utils.httpclient.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.ScalaUtils._
+import tech.beshu.ror.utils.misc.ScalaUtils.*
 import tech.beshu.ror.utils.misc.Version
 import ujson.Value
 
 import java.time.Duration
 import java.util
 import java.util.function.BiPredicate
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 abstract class BaseManager(client: RestClient,

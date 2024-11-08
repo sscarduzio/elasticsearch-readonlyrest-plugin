@@ -19,13 +19,14 @@ package tech.beshu.ror.es.handler.request.context.types
 import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import org.joor.Reflect._
+import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
+import tech.beshu.ror.syntax.*
 
 class GetRollupIndexCapsEsRequestContext private(actionRequest: ActionRequest,
                                                  esContext: EsContext,
@@ -36,13 +37,13 @@ class GetRollupIndexCapsEsRequestContext private(actionRequest: ActionRequest,
 
   override protected def indicesFrom(request: ActionRequest): Set[ClusterIndexName] = {
     val indicesName = on(request).call("indices").get[Array[String]]()
-    indicesName.flatMap(ClusterIndexName.fromString).toSet
+    indicesName.flatMap(ClusterIndexName.fromString).toCovariantSet
   }
 
   override protected def update(request: ActionRequest,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    on(request).call("indices", filteredIndices.map(_.stringify).toList.toArray)
+    on(request).call("indices", filteredIndices.stringify.toArray)
     Modified
   }
 }

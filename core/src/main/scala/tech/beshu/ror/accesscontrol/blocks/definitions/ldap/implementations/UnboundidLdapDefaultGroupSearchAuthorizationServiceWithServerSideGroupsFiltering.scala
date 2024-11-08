@@ -79,7 +79,7 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
           } flatMap { mainGroups =>
             enrichWithNestedGroupsIfNecessary(mainGroups)
           } map { allGroups =>
-            UniqueList.fromIterable(allGroups.map(_.group))
+            UniqueList.from(allGroups.map(_.group))
           }
         case Left(errorResult) =>
           logger.error(s"[${requestId.show}] LDAP getting user groups returned error: [code=${errorResult.getResultCode.toString.show}, cause=${errorResult.getResultString.show}]")

@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.domain.CaseSensitivity;
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher;
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher$;
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable$;
+import tech.beshu.ror.utils.set.CovariantSet;
 
 import java.util.Set;
 
@@ -62,10 +63,13 @@ public class StringPatternsMatcherJava {
         .SetHasAsJava(
             underlyingMatcher
                 .filter(
-                  CollectionConverters
-                      .SetHasAsScala(haystack)
-                      .asScala()
+                    CovariantSet.from(
+                        CollectionConverters
+                            .SetHasAsScala(haystack)
+                            .asScala()
+                    )
                 )
+                .<String>toSet()
         )
         .asJava();
   }

@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.domain.{Group, Header}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class EnabledAccessControlList(val blocks: NonEmptyList[Block],
@@ -127,7 +128,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   }
 
   private def allAvailableGroupsFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
-    UniqueList.fromIterable(
+    UniqueList.from(
       matchedResults.toList.flatMap {
         case Matched(_, bc) => bc.userMetadata.availableGroups
       }

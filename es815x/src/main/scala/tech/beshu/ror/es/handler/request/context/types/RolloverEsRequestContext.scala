@@ -26,6 +26,7 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
+import tech.beshu.ror.syntax.*
 
 class RolloverEsRequestContext(actionRequest: RolloverRequest,
                                esContext: EsContext,
@@ -35,7 +36,7 @@ class RolloverEsRequestContext(actionRequest: RolloverRequest,
   extends BaseIndicesEsRequestContext[RolloverRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: RolloverRequest): Set[RequestedIndex] = {
-    (Option(request.getNewIndexName).toSet ++ Set(request.getRolloverTarget))
+    (Option(request.getNewIndexName).toCovariantSet ++ Set(request.getRolloverTarget))
       .flatMap(RequestedIndex.fromString)
   }
 

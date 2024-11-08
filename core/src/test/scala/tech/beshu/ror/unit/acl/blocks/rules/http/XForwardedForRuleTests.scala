@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.MockOnce
 import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.ResolveResult.{ResolvedIps, Unresolvable}
 import tech.beshu.ror.mocks.{MockHostnameResolver, MockRequestContext}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils.*
 

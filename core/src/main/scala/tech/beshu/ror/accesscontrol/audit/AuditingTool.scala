@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.audit
 
+import cats.Show
 import cats.data.NonEmptyList
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -178,14 +179,11 @@ object AuditingTool extends Logging {
              loggingContext: LoggingContext): Option[AuditingTool] = {
     createAuditSinks(settings, auditSinkServiceCreator) match {
       case Some(auditSinks) =>
-        val enabledSinks = auditSinks.toList
-          .map {
-            case _: EsIndexBasedAuditSink => "index"
-            case _: LogBasedAuditSink => "log"
-          }
-          .mkString(",")
-
-        logger.info(s"The audit is enabled with the given outputs: [${enabledSinks.show}]")
+        implicit val auditSinkShow: Show[BaseAuditSink] = Show.show {
+          case _: EsIndexBasedAuditSink => "index"
+          case _: LogBasedAuditSink => "log"
+        }
+        logger.info(s"The audit is enabled with the given outputs: [${auditSinks.show}]")
         Some(new AuditingTool(auditSinks))
       case None =>
         logger.info("The audit is disabled because no output is enabled")

@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RequestId, User}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigUpdateError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RorConfig
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.CirceErrorOps
 
 class AuthMockApi(rorInstance: RorInstance)
@@ -258,7 +259,7 @@ object AuthMockApi {
     implicit class MockUserOps(val mock: MockUserWithGroups) extends AnyVal {
       def domainUserId: User.Id = User.Id(mock.name)
 
-      def domainGroups: Set[Group] = mock.groups.map(toDomainGroup).toSet
+      def domainGroups: Set[Group] = mock.groups.map(toDomainGroup).toCovariantSet
 
       private def toDomainGroup(mockGroup: MockGroup) = {
         val id = GroupId(mockGroup.id)
@@ -320,21 +321,21 @@ object AuthMockApi {
           case LdapAuthorizationService(name, MockMode.Enabled(mock)) =>
             mocksProvider.copy(
               ldapMocks = mocksProvider.ldapMocks +
-                (LdapService.Name(name) -> LdapServiceMock(mock.users.map(toLdapMock).toSet))
+                (LdapService.Name(name) -> LdapServiceMock(mock.users.map(toLdapMock).toCovariantSet))
             )
           case ExternalAuthenticationService(_, MockMode.NotConfigured) =>
             mocksProvider
           case ExternalAuthenticationService(name, MockMode.Enabled(mock)) =>
             mocksProvider.copy(
               externalAuthenticationServiceMocks = mocksProvider.externalAuthenticationServiceMocks +
-                (AuthenticationService.Name(name) -> ExternalAuthenticationServiceMock(users = mock.users.map(toAuthenticationMock).toSet))
+                (AuthenticationService.Name(name) -> ExternalAuthenticationServiceMock(users = mock.users.map(toAuthenticationMock).toCovariantSet))
             )
           case ExternalAuthorizationService(_, MockMode.NotConfigured) =>
             mocksProvider
           case ExternalAuthorizationService(name, MockMode.Enabled(mock)) =>
             mocksProvider.copy(
               externalAuthorizationServiceMocks = mocksProvider.externalAuthorizationServiceMocks +
-                (AuthorizationService.Name(name) -> ExternalAuthorizationServiceMock(users = mock.users.map(toAuthorizationMock).toSet))
+                (AuthorizationService.Name(name) -> ExternalAuthorizationServiceMock(users = mock.users.map(toAuthorizationMock).toCovariantSet))
             )
         }
       }

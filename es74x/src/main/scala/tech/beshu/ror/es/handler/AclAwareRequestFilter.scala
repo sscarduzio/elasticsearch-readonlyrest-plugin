@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.es.handler
 
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action._
+import org.elasticsearch.action.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
@@ -56,7 +56,7 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
-import org.elasticsearch.tasks.{Task => EsTask}
+import org.elasticsearch.tasks.Task as EsTask
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
@@ -66,14 +66,16 @@ import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
-import tech.beshu.ror.es.handler.AclAwareRequestFilter._
-import tech.beshu.ror.es.handler.request.RestRequestOps._
-import tech.beshu.ror.es.handler.request.context.types._
-import tech.beshu.ror.es.handler.request.context.types.repositories._
-import tech.beshu.ror.es.handler.request.context.types.ror._
-import tech.beshu.ror.es.handler.request.context.types.snapshots._
-import tech.beshu.ror.es.handler.request.context.types.templates._
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.*
+import tech.beshu.ror.es.handler.request.RestRequestOps.*
+import tech.beshu.ror.es.handler.request.context.types.*
+import tech.beshu.ror.es.handler.request.context.types.repositories.*
+import tech.beshu.ror.es.handler.request.context.types.ror.*
+import tech.beshu.ror.es.handler.request.context.types.snapshots.*
+import tech.beshu.ror.es.handler.request.context.types.templates.*
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 import java.time.Instant
 import scala.reflect.ClassTag
@@ -200,7 +202,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case _ =>
-            logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.getSimpleName}")
+            logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.show}")
             regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
         }
       // rest
@@ -282,4 +284,4 @@ object AclAwareRequestFilter {
 }
 
 final case class RequestSeemsToBeInvalid[T: ClassTag](message: String, cause: Throwable = null)
-  extends IllegalStateException(s"Request '${implicitly[ClassTag[T]].runtimeClass.getSimpleName}' cannot be handled; [msg: $message]", cause)
+  extends IllegalStateException(s"Request '${implicitly[ClassTag[T]].runtimeClass.show}' cannot be handled; [msg: ${message.show}]", cause)

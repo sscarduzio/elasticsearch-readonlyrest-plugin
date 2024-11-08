@@ -25,8 +25,9 @@ import tech.beshu.ror.api.AuthMockApi.AuthMockResponse
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RorInstanceSupplier
+import tech.beshu.ror.implicits.*
 
-class RRAuthMockActionHandler() extends Logging {
+class RRAuthMockActionHandler extends Logging {
 
   private implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 

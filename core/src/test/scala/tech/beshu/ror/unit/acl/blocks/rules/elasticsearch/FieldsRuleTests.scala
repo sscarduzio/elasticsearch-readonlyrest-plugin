@@ -38,6 +38,7 @@ import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.mocks.{MockRequestContext, MockSimpleRequestContext}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.blocks.rules.elasticsearch.FieldsRuleTests.{BlockContextCreator, Configuration, Fields, RequestContextCreator}
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList

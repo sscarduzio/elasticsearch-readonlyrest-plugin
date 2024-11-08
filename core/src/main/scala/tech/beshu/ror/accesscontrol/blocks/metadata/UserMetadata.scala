@@ -21,6 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.JsonRepresentation
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 final case class UserMetadata private(loggedUser: Option[LoggedUser],
@@ -46,7 +47,7 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
   def withCurrentGroupId(groupId: GroupId): UserMetadata = this.copy(currentGroupId = Some(groupId))
   def addAvailableGroup(group: Group): UserMetadata = addAvailableGroups(UniqueNonEmptyList.of(group))
   def addAvailableGroups(groups: UniqueNonEmptyList[Group]): UserMetadata = {
-    val newAvailableGroups = this.availableGroups.mergeWith(groups.toUniqueList)
+    val newAvailableGroups = UniqueList.from(this.availableGroups ++ groups)
     this.copy(
       availableGroups = newAvailableGroups,
       currentGroupId = this.currentGroupId.orElse(newAvailableGroups.headOption.map(_.id))

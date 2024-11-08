@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 import java.util.regex.Pattern
 import scala.util.Try
@@ -173,7 +174,9 @@ abstract class BaseKibanaRule(val settings: Settings)
   }
 
   private def isRelatedToSingleIndex(index: ClusterIndexName) = ProcessingContext.create { (requestContext, _) =>
-    val result = requestContext.initialBlockContext.indices.map(_.name) == Set(index)
+    val result = requestContext.initialBlockContext.indices.headOption match
+      case Some(requestedIndex) if requestedIndex.name == index => true
+      case Some(_) | None => false
     logger.debug(s"[${requestContext.id.show}] Is related to single index '${index.nonEmptyStringify}'? ${result.show}")
     result
   }

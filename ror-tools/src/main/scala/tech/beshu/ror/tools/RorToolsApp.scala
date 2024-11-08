@@ -17,7 +17,7 @@
 package tech.beshu.ror.tools
 
 import scopt.OParser
-import tech.beshu.ror.tools.core.actions._
+import tech.beshu.ror.tools.core.actions.*
 import tech.beshu.ror.tools.core.patches.base.EsPatch
 import tech.beshu.ror.tools.core.utils.{EsDirectory, RorToolsException}
 
@@ -61,7 +61,7 @@ object RorToolsApp {
 
   private val builder = OParser.builder[Config]
 
-  import builder._
+  import builder.*
 
   private lazy val parser = OParser.sequence(
     head("ROR tools", "1.0.0"),

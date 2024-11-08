@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, FilteredResponseFields}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseField, ResponseFieldsRestrictions}
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -52,12 +53,14 @@ class ResponseFieldsRuleTests extends AnyWordSpec {
 
     rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
       BlockContext.GeneralIndexRequestBlockContext(
-        requestContext,
-        UserMetadata.empty,
-        Set.empty,
-        FilteredResponseFields(ResponseFieldsRestrictions(UniqueNonEmptyList.fromNonEmptyList(resolvedFields.map(_.value.head)), mode)) :: Nil,
-        Set.empty,
-        Set.empty
+        requestContext = requestContext,
+        userMetadata = UserMetadata.empty,
+        responseHeaders = Set.empty,
+        responseTransformations = FilteredResponseFields(ResponseFieldsRestrictions(
+          UniqueNonEmptyList.fromNonEmptyList(resolvedFields.map(_.value.head)), mode
+        )) :: Nil,
+        filteredIndices = Set.empty,
+        allAllowedIndices = Set.empty
       )
     ))
   }

@@ -101,7 +101,7 @@ private[auth] trait BaseAuthorizationRule
                                                                            userGroupsProvider: (B, LoggedUser, Set[GroupIdLike]) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
     if (blockContext.isCurrentGroupEligible(groupsPermittedByRule)) {
       userGroupsProvider(blockContext, user, groupsPermittedByRule.groupIds.toSet)
-        .map(uniqueList => UniqueNonEmptyList.fromIterable(uniqueList.toSet))
+        .map(uniqueList => UniqueNonEmptyList.from(uniqueList.toSet))
         .map {
           case Some(fetchedUserGroups) =>
             calculateAllowedGroupsForUser(fetchedUserGroups) match {

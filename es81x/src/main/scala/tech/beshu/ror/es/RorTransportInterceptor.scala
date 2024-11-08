@@ -17,9 +17,9 @@
 package tech.beshu.ror.es
 
 import org.elasticsearch.common.util.concurrent.ThreadContext
-import org.elasticsearch.transport._
+import org.elasticsearch.transport.*
 import tech.beshu.ror.accesscontrol.domain.Action
-import tech.beshu.ror.es.utils.ThreadContextOps._
+import tech.beshu.ror.es.utils.ThreadContextOps.*
 
 class RorTransportInterceptor(threadContext: ThreadContext, nodeName: String)
   extends TransportInterceptor {

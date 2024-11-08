@@ -16,28 +16,34 @@
  */
 package tech.beshu.ror.utils.uniquelist
 
-import cats.Show
 import cats.implicits.*
 
-import scala.collection.SortedSet
+import scala.collection.{IterableFactory, IterableFactoryDefaults, SeqOps, mutable}
 
-class UniqueList[T] private(vector: Vector[T])
-  extends BaseUniqueList[T, UniqueList[T]](
-    vector,
-    newVector => new UniqueList(newVector)
-  ) {
+final case class UniqueList[+T] private [uniquelist] (private val underlying: Vector[T])
+  extends Iterable[T]
+    with IterableFactoryDefaults[T, UniqueList]
+    with SeqOps[T, UniqueList, UniqueList[T]] {
 
-  def mergeWith(other: UniqueList[T]): UniqueList[T] = {
-    UniqueList.fromVector(this.vector ++ other.toVector)
-  }
+  override def iterableFactory: UniqueListFactory = UniqueList
+
+  override def iterator: Iterator[T] = underlying.iterator
+
+  override def apply(i: Int): T = underlying.apply(i)
+
+  override def length: Int = underlying.size
+
 }
 
-object UniqueList {
-  def fromVector[T](vector: Vector[T]): UniqueList[T] = new UniqueList[T](vector.distinct)
-  def empty[T]: UniqueList[T] = fromVector(Vector.empty)
-  def of[T](t: T*): UniqueList[T] = fromIterable(t.toList)
-  def fromIterable[T](list: Iterable[T]): UniqueList[T] = fromVector(list.toVector)
-  def fromSortedSet[T](set: SortedSet[T]): UniqueList[T] = fromVector(set.toVector)
+object UniqueList extends UniqueListFactory
 
-  implicit def show[T: Show]: Show[UniqueList[T]] = Show.show(_.toList.show)
+trait UniqueListFactory extends IterableFactory[UniqueList] {
+
+  private val emptyUniqueListInstance = UniqueList[Any](Vector.empty)
+
+  override def from[T](source: IterableOnce[T]): UniqueList[T] = new UniqueList[T](source.iterator.toVector.distinct)
+  override def empty[T]: UniqueList[T] = emptyUniqueListInstance.asInstanceOf[UniqueList[T]]
+  override def newBuilder[T]: mutable.Builder[T, UniqueList[T]] = Vector.newBuilder.mapResult(from)
+  def of[T](t: T*): UniqueList[T] = from(t)
 }
+object UniqueListFactory extends UniqueListFactory

@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -29,7 +29,9 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
                                       esContext: EsContext,
@@ -37,19 +39,22 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
                                       override val threadPool: ThreadPool)
   extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def snapshotsFrom(request: RestoreSnapshotRequest): Set[domain.SnapshotName] =
+  override protected def snapshotsFrom(request: RestoreSnapshotRequest): Set[SnapshotName] =
     SnapshotName
       .from(request.snapshot())
-      .toSet
+      .toCovariantSet
 
-  override protected def repositoriesFrom(request: RestoreSnapshotRequest): Set[domain.RepositoryName] = Set {
+  override protected def repositoriesFrom(request: RestoreSnapshotRequest): Set[RepositoryName] = Set {
     RepositoryName
       .from(request.repository())
       .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: RestoreSnapshotRequest): Set[domain.ClusterIndexName] =
-    indicesOrWildcard(request.indices.asSafeSet.flatMap(ClusterIndexName.fromString))
+  override protected def indicesFrom(request: RestoreSnapshotRequest): Set[ClusterIndexName] =
+    request
+      .indices.asSafeSet
+      .flatMap(ClusterIndexName.fromString)
+      .orWildcardWhenEmpty
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
@@ -61,7 +66,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -73,7 +78,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
         Left(())
       case snapshot :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.mkString(",")}]")
+          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.show}]")
         }
         Right(snapshot)
     }
@@ -86,7 +91,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]")
+          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
         }
         Right(repository)
     }

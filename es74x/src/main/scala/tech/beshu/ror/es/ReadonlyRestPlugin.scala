@@ -30,7 +30,7 @@ import org.elasticsearch.common.component.LifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
-import org.elasticsearch.common.settings._
+import org.elasticsearch.common.settings.*
 import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
@@ -40,17 +40,17 @@ import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.MapperService
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
-import org.elasticsearch.plugins._
+import org.elasticsearch.plugins.*
 import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
-import tech.beshu.ror.constants
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
@@ -72,8 +72,8 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import java.nio.file.Path
 import java.util
 import java.util.function.Supplier
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
 @Inject
@@ -151,7 +151,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    import tech.beshu.ror.es.utils.IndexModuleOps._
+    import tech.beshu.ror.es.utils.IndexModuleOps.*
     indexModule.overwrite(RoleIndexSearcherWrapper.instance)
   }
 
@@ -225,7 +225,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                settingsFilter: SettingsFilter,
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
-    import tech.beshu.ror.es.utils.RestControllerOps._
+    import tech.beshu.ror.es.utils.RestControllerOps.*
     restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
     List[RestHandler](
       new RestRRAdminAction(restController),
@@ -237,7 +237,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     ).asJava
   }
 
-  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
+  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry,
+                                        threadContext: ThreadContext): util.List[TransportInterceptor] = {
     List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
   }
 

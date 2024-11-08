@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits.*
 import cats.data.NonEmptyList
+import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
@@ -27,6 +27,8 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationExplainRequest,
                                                esContext: EsContext,
@@ -36,7 +38,7 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
   extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: ClusterAllocationExplainRequest): Set[RequestedIndex] =
-    getIndexFrom(request).toSet
+    getIndexFrom(request).toCovariantSet
 
   override protected def update(request: ClusterAllocationExplainRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex],
@@ -44,7 +46,7 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
     getIndexFrom(request) match {
       case Some(_) =>
         if (filteredIndices.tail.nonEmpty) {
-          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.toList.mkString(",")}]")
+          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
         }
         updateIndexIn(request, filteredIndices.head)
         Modified

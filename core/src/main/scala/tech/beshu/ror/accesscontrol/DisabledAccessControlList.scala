@@ -23,6 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.RequestContext.Aux
+import tech.beshu.ror.syntax.*
 
 object DisabledAccessControlList extends AccessControlList {
 

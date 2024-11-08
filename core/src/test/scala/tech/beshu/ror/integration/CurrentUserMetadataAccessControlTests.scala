@@ -36,6 +36,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, HttpClientsFactory}
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.{LdapContainer, WireMockContainer, WireMockScalaAdapter}
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -245,7 +246,7 @@ class CurrentUserMetadataAccessControlTests
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1"))))
             userMetadata.currentGroupId should be (Some(GroupId("group3")))
-            userMetadata.availableGroups.toSet should be (Set(group("group3"), group("group1")))
+            userMetadata.availableGroups.toCovariantSet should be (Set(group("group3"), group("group1")))
             userMetadata.kibanaIndex should be (None)
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.allowedKibanaApiPaths should be (Set.empty)
@@ -261,7 +262,7 @@ class CurrentUserMetadataAccessControlTests
           inside(loginResponse.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
             userMetadata.currentGroupId should be (Some(GroupId("group6")))
-            userMetadata.availableGroups.toSet should be (Set(group("group5", "Group 5"), group("group6", "Group 6")))
+            userMetadata.availableGroups.toCovariantSet should be (Set(group("group5", "Group 5"), group("group6", "Group 6")))
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user4_group6_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.allowedKibanaApiPaths should be (Set.empty)
@@ -276,7 +277,7 @@ class CurrentUserMetadataAccessControlTests
           inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
             userMetadata.currentGroupId should be (Some(GroupId("group5")))
-            userMetadata.availableGroups.toSet should be (Set(group("group5", "Group 5"), group("group6", "Group 6")))
+            userMetadata.availableGroups.toCovariantSet should be (Set(group("group5", "Group 5"), group("group6", "Group 6")))
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user4_group5_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.allowedKibanaApiPaths should be (Set.empty)
@@ -290,7 +291,7 @@ class CurrentUserMetadataAccessControlTests
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
             userMetadata.currentGroupId should be (Some(GroupId("group2")))
-            userMetadata.availableGroups.toSet should be (Set(group("group2")))
+            userMetadata.availableGroups.toCovariantSet should be (Set(group("group2")))
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user2_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(FullNameKibanaApp("user2_app1"), FullNameKibanaApp("user2_app2")))
             userMetadata.allowedKibanaApiPaths should be (Set(
@@ -307,7 +308,7 @@ class CurrentUserMetadataAccessControlTests
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3"))))
             userMetadata.currentGroupId should be (None)
-            userMetadata.availableGroups.toSet should be (UniqueList.empty)
+            userMetadata.availableGroups should be (UniqueList.empty)
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user3_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(FullNameKibanaApp("user3_app1"), FullNameKibanaApp("user3_app2")))
             userMetadata.allowedKibanaApiPaths should be (Set.empty)
@@ -322,7 +323,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result1.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
-              userMetadata.availableGroups.toSet should be (Set(group("service1_group1"), group("service1_group2")))
+              userMetadata.availableGroups.toCovariantSet should be (Set(group("service1_group1"), group("service1_group2")))
             }
 
             val request2 = MockRequestContext.metadata.copy(
@@ -332,7 +333,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result2.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
-              userMetadata.availableGroups.toSet should be (Set(group("service1_group1"), group("service1_group2")))
+              userMetadata.availableGroups.toCovariantSet should be (Set(group("service1_group1"), group("service1_group2")))
             }
 
             val request3 = MockRequestContext.metadata.copy(
@@ -342,7 +343,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result3.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user7"))))
-              userMetadata.availableGroups.toSet should be(Set(group("service3_group1", "Group 1")))
+              userMetadata.availableGroups.toCovariantSet should be(Set(group("service3_group1", "Group 1")))
             }
           }
           "the service is LDAP" in {
@@ -351,7 +352,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result1.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
-              userMetadata.availableGroups.toSet should be (Set(group("ldap2_group1"), group("ldap2_group2")))
+              userMetadata.availableGroups.toCovariantSet should be (Set(group("ldap2_group1"), group("ldap2_group2")))
             }
 
             val request2 = MockRequestContext.metadata.copy(
@@ -361,7 +362,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result2.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
-              userMetadata.availableGroups.toSet should be (Set(group("ldap2_group1"), group("ldap2_group2")))
+              userMetadata.availableGroups.toCovariantSet should be (Set(group("ldap2_group1"), group("ldap2_group2")))
             }
           }
         }

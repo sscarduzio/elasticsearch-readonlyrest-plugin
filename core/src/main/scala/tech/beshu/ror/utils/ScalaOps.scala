@@ -16,14 +16,15 @@
  */
 package tech.beshu.ror.utils
 
+import cats.Functor
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
-import cats.{Functor, Order}
+import cats.implicits.*
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
-import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.util
@@ -37,7 +38,7 @@ import scala.util.Try
 
 object ScalaOps {
 
-  implicit class IterableeOnceOps[T](iterable: IterableOnce[T]) extends AnyVal {
+  implicit class IterableOnceOps[T](iterable: IterableOnce[T]) extends AnyVal {
 
     def mkStringOrEmptyString(start: String, sep: String, end: String): String = {
       if (iterable.iterator.isEmpty) ""
@@ -53,46 +54,29 @@ object ScalaOps {
   implicit class JavaMapOps[K : ClassTag, V : ClassTag](map: java.util.Map[K, V]) {
     def asSafeMap: Map[K, V] = Option(map).map(_.asScala.toMap).getOrElse(Map.empty)
 
-    def asSafeKeys: Set[K] = asSafeMap.keys.toSet[K]
+    def asSafeKeys: Set[K] = asSafeMap.keys.toCovariantSet
 
-    def asSafeValues: Set[V] = asSafeMap.values.toSet
+    def asSafeValues: Set[V] = asSafeMap.values.toCovariantSet
   }
 
-  implicit class JavaMapFactoryMethod(mapObject: Map.type) {
+  implicit class JavaMapFactoryMethod(mapObject: Map.type) extends AnyVal {
     def asEmptyJavaMap[K, V]: java.util.Map[K, V] = Map.empty[K, V].asJava
   }
 
-  implicit class JavaListOps[T : ClassTag](list: java.util.List[T]) {
+  implicit class JavaListOps[T : ClassTag](val list: java.util.List[T]) {
     def asSafeList: List[T] = Option(list).map(_.asScala.toList).getOrElse(Nil)
   }
 
-  implicit class JavaSetOps[T : ClassTag](set: java.util.Set[T]) {
-    def asSafeSet: Set[T] = Option(set).map(_.asScala.toSet).getOrElse(Set.empty)
+  implicit class JavaSetOps[T : ClassTag](set: java.lang.Iterable[T]) {
+    def asSafeSet: Set[T] = Option(set).map(_.asScala.toCovariantSet).getOrElse(Set.empty)
   }
 
   implicit class ArrayOps[T : ClassTag](array: Array[T]) {
-    def asSafeSet: Set[T] = safeArray.toSet
+    def asSafeSet: Set[T] = asSafeList.toCovariantSet
 
     def asSafeList: List[T] = safeArray.toList
 
     private def safeArray = Option(array).getOrElse(Array.empty[T])
-  }
-
-  implicit class SetOps[T: Order](value: Set[T]) {
-    def toNonEmptySet: Option[NonEmptySet[T]] = {
-      NonEmptySet.fromSet[T](SortedSet.empty[T] ++ value)
-    }
-
-    def unsafeToNonEmptySet: NonEmptySet[T] =
-      toNonEmptySet.getOrElse(throw new IllegalArgumentException(s"Cannot convert ${value} to non empty set"))
-  }
-
-  implicit class CollectionOps[T: ClassTag](value: util.Collection[T]) {
-    def asSafeIterable: Iterable[T] = Option(value).map(_.asScala).getOrElse(Iterable.empty)
-  }
-
-  implicit class ToSetOps[T](value: T) extends AnyVal {
-    def asSafeSet: Set[T] = Option(value).toSet
   }
 
   implicit class ListOps[T](list: List[T]) extends AnyVal {
@@ -107,7 +91,7 @@ object ScalaOps {
         .toList
   }
 
-  implicit class MapOps[K, V](map: Map[K, V]) extends AnyVal {
+  implicit class MapOps[K, V](map: Map[K, V]) {
     def asStringMap: Map[String, String] =
       map.collect {
         case (key: String, value: String) => (key, value)
@@ -250,7 +234,7 @@ object ScalaOps {
     }
   }
 
-  implicit class PositiveFiniteDurationAdd(duration: PositiveFiniteDuration) {
+  implicit class PositiveFiniteDurationAdd(duration: PositiveFiniteDuration) extends AnyVal {
 
     def +(duration: PositiveFiniteDuration): PositiveFiniteDuration = {
       Refined.unsafeApply(this.duration.value + duration.value)

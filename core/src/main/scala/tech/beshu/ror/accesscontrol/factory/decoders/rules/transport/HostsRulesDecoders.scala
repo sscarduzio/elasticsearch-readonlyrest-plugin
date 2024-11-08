@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{Rule
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport.HostRulesDecodersHelper.defaultAcceptForwardedForHeader
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 
 class HostsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)

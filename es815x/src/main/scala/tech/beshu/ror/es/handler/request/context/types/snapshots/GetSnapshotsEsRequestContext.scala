@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsResponse}
 import org.elasticsearch.threadpool.ThreadPool
@@ -30,10 +30,12 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
                                    esContext: EsContext,
@@ -43,16 +45,14 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
 
   override protected def snapshotsFrom(request: GetSnapshotsRequest): Set[SnapshotName] = {
     request
-      .snapshots().asSafeList
+      .snapshots().asSafeSet
       .flatMap(SnapshotName.from)
-      .toSet[SnapshotName]
   }
 
   override protected def repositoriesFrom(request: GetSnapshotsRequest): Set[RepositoryName] = {
     request
-      .repositories().asSafeList
+      .repositories().asSafeSet
       .flatMap(RepositoryName.from)
-      .toSet
   }
 
   override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.ClusterIndexName] =
@@ -72,20 +72,20 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
             Task.now(r)
         }
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }
 
   private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromIterable(blockContext.snapshots) match {
+    UniqueNonEmptyList.from(blockContext.snapshots) match {
       case Some(list) => Right(list)
       case None => Left(())
     }
   }
 
   private def repositoriesFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromIterable(blockContext.repositories) match {
+    UniqueNonEmptyList.from(blockContext.repositories) match {
       case Some(list) => Right(list)
       case None => Left(())
     }
@@ -104,9 +104,9 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
     response
       .getSnapshots.asSafeList
       .foreach { snapshot =>
-        val snapshotIndices = snapshot.indices().asSafeList.flatMap(ClusterIndexName.fromString).toSet
-        val filteredSnapshotIndices = matcher.filter(snapshotIndices).stringify.asJava
-        on(snapshot).set("indices", filteredSnapshotIndices)
+        val snapshotIndices = snapshot.indices().asSafeList.flatMap(ClusterIndexName.fromString)
+        val filteredSnapshotIndices = matcher.filter(snapshotIndices)
+        on(snapshot).set("indices", filteredSnapshotIndices.stringify.asJava)
         snapshot
       }
     response

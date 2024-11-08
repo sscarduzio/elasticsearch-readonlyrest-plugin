@@ -19,45 +19,49 @@ package tech.beshu.ror.accesscontrol.matchers
 import com.hrakaroo.glob.GlobPattern
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
+import tech.beshu.ror.syntax.*
 
-private[matchers] class GlobPatternsMatcher[T: Matchable](val values: Iterable[T])
-  extends PatternsMatcher[T] {
+private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A])
+  extends PatternsMatcher[A] {
 
-  override val patterns: Iterable[String] = values.map(implicitly[Matchable[T]].show)
-  override val caseSensitivity: CaseSensitivity = implicitly[Matchable[T]].caseSensitivity
+  override val patterns: Iterable[String] = values.map(implicitly[Matchable[A]].show)
+  override val caseSensitivity: CaseSensitivity = implicitly[Matchable[A]].caseSensitivity
 
   private val globs = values.map { v =>
-    val matchable = implicitly[Matchable[T]]
+    val matchable = implicitly[Matchable[A]]
     GlobPattern.compile(matchable.show(v), '*', '?', globPatternFlags(matchable.caseSensitivity))
   }
 
-  override def `match`[B <: T](value: B): Boolean = {
-    globs.exists(_.matches(Matchable[T].show(value)))
+  override def `match`[B <: A](value: B): Boolean = {
+    globs.exists(_.matches(Matchable[A].show(value)))
   }
 
   override def `match`[B: Conversion](value: B): Boolean = {
-    val bToTConversion = implicitly[Conversion[B]]
-    `match`(bToTConversion(value))
+    val bAoAConversion = implicitly[Conversion[B]]
+    `match`(bAoAConversion(value))
   }
 
-  override def filter[B <: T](items: Iterable[B]): Set[B] = {
-    items.toSet.filter(`match`)
+  override def filter[B <: A](items: IterableOnce[B]): Set[B] = {
+    filterWithConversion(items, identity)
   }
 
-  override def filter[B: Conversion](items: Iterable[B]): Set[B] = {
-    val bToTConversion = implicitly[Conversion[B]]
-    items
-      .flatMap {
-        case b if `match`(bToTConversion(b)) => Some(b)
-        case _ => None
-      }
-      .toSet
+  override def filter[B: Conversion](items: IterableOnce[B]): Set[B] = {
+    filterWithConversion(items, implicitly[Conversion[B]])
   }
 
   override def contains(str: String): Boolean = {
     values
-      .map(implicitly[Matchable[T]].show)
+      .map(implicitly[Matchable[A]].show)
       .exists(_ == str)
+  }
+
+  private def filterWithConversion[B](items: IterableOnce[B], conversion: Conversion[B]): Set[B] = {
+    items.iterator
+      .flatMap {
+        case b if `match`(conversion(b)) => Some(b)
+        case _ => None
+      }
+      .toCovariantSet
   }
 
   private def globPatternFlags(caseSensitivity: CaseSensitivity) = {

@@ -143,7 +143,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    import tech.beshu.ror.es.utils.IndexModuleOps._
+    import tech.beshu.ror.es.utils.IndexModuleOps.*
     indexModule.overwrite(RoleIndexSearcherWrapper.instance)
   }
 
@@ -224,7 +224,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes],
                                clusterSupportsFeature: Predicate[NodeFeature]): util.Collection[RestHandler] = {
-    import tech.beshu.ror.es.utils.RestControllerOps._
+    import tech.beshu.ror.es.utils.RestControllerOps.*
     restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
     List[RestHandler](
       new RestRRAdminAction(),

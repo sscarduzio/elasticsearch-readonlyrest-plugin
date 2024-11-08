@@ -29,6 +29,8 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
@@ -40,9 +42,8 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
 
   override protected def indicesFrom(request: GetIndexRequest): Set[RequestedIndex] = {
     request
-      .indices().asSafeList
+      .indices().asSafeSet
       .flatMap(RequestedIndex.fromString)
-      .toSet
   }
 
   override protected def update(request: GetIndexRequest,
@@ -65,7 +66,7 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
           getIndexResponse.dataStreams()
         ))
       case other =>
-        logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetIndexResponse].getSimpleName}], was: [${other.getClass.getSimpleName}]")
+        logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetIndexResponse].show}], was: [${other.getClass.show}]")
         Task.now(new GetIndexResponse(
           Array.empty,
           Map.asEmptyJavaMap,

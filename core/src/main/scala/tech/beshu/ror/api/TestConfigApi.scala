@@ -29,6 +29,7 @@ import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexCo
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 import tech.beshu.ror.utils.DurationOps.*
 
@@ -115,7 +116,7 @@ class TestConfigApi(rorInstance: RorInstance)
         case TestConfig.NotSet =>
           TestConfigResponse.ProvideLocalUsers.TestSettingsNotConfigured("ROR Test settings are not configured")
         case TestConfig.Present(config, _, _, _) =>
-          val filteredLocalUsers = config.localUsers.users -- loggedUser.map(_.id).toSet
+          val filteredLocalUsers = config.localUsers.users -- loggedUser.map(_.id)
           TestConfigResponse.ProvideLocalUsers.SuccessResponse(
             users = filteredLocalUsers.map(_.value.value).toList,
             unknownUsers = config.localUsers.unknownUsers

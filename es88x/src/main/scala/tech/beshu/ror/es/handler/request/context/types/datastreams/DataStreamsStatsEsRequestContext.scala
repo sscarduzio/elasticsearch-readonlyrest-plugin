@@ -20,13 +20,13 @@ import org.elasticsearch.action.datastreams.DataStreamsStatsAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.DataStreamName
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class DataStreamsStatsEsRequestContext(actionRequest: DataStreamsStatsAction.Request,
                                        esContext: EsContext,
@@ -34,10 +34,11 @@ class DataStreamsStatsEsRequestContext(actionRequest: DataStreamsStatsAction.Req
                                        override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override def backingIndicesFrom(request: DataStreamsStatsAction.Request): BackingIndices = BackingIndices.IndicesNotInvolved
+  override def backingIndicesFrom(request: DataStreamsStatsAction.Request): BackingIndices =
+    BackingIndices.IndicesNotInvolved
 
-  override def dataStreamsFrom(request: DataStreamsStatsAction.Request): Set[domain.DataStreamName] =
-    actionRequest.indices().asSafeList.flatMap(DataStreamName.fromString).toSet
+  override def dataStreamsFrom(request: DataStreamsStatsAction.Request): Set[DataStreamName] =
+    actionRequest.indices().asSafeSet.flatMap(DataStreamName.fromString)
 
   override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     actionRequest.indices(blockContext.dataStreams.map(DataStreamName.toString).toList: _*)

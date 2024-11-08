@@ -17,12 +17,12 @@
 package tech.beshu.ror.tools.core.patches.base
 
 import tech.beshu.ror.tools.core.patches.internal.{EsNotRequirePatch, EsPatchLoggingDecorator, RorPluginDirectory}
-import tech.beshu.ror.tools.core.patches._
+import tech.beshu.ror.tools.core.patches.*
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No.Cause
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.{No, Yes}
 import tech.beshu.ror.tools.core.utils.EsDirectory
-import tech.beshu.ror.tools.core.utils.EsUtil._
+import tech.beshu.ror.tools.core.utils.EsUtil.*
 
 trait EsPatch {
 

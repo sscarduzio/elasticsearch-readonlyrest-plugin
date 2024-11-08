@@ -18,9 +18,8 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import io.circe.{Decoder, DecodingFailure}
-import tech.beshu.ror.implicits.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -33,6 +32,8 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
@@ -70,7 +71,7 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
     val exactImpersonators = impersonatorUsernames.patterns.filterNot(_.containsWildcard)
     val exactImpersonatedUsers = impersonatedUsers.usernames.patterns.filterNot(_.containsWildcard)
 
-    UniqueNonEmptyList.fromSortedSet(exactImpersonators.intersect(exactImpersonatedUsers)) match {
+    UniqueNonEmptyList.from(exactImpersonators.toCovariantSet.intersect(exactImpersonatedUsers.toCovariantSet)) match {
       case Some(duplicatedUsers) =>
         Left(decodingFailure(
           Message(s"Each of the given users [${duplicatedUsers.show}] should be either impersonator or a user to be impersonated")

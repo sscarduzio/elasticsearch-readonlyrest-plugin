@@ -16,32 +16,35 @@
  */
 package tech.beshu.ror
 
+import better.files.File
+import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits.*
-import cats.Show
-import eu.timepit.refined.types.string.NonEmptyString
 import eu.timepit.refined.api.*
+import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import squants.information.Information
+import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Name, Policy}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.*
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -53,7 +56,6 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
@@ -62,15 +64,12 @@ import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.json.JsonPath
+import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import java.time.Instant
-import java.nio.file.Path as JPath
 import java.io.File as JFile
-import better.files.File
-
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
-
+import java.nio.file.Path as JPath
+import java.time.Instant
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
@@ -82,17 +81,19 @@ object implicits
 trait LogsShowInstances
   extends cats.instances.AllInstances {
 
-  override implicit def catsStdShowForSet[A](implicit evidence$3: Show[A]): Show[Set[A]] = Show.show(iterableShow[A].show)
+  override implicit def catsStdShowForSet[A](implicit evidence$3: Show[A]): Show[Set[A]] = Show.show(iterableLikeShow.show)
 
-  override implicit def catsStdShowForList[A: Show]: Show[List[A]] = Show.show(iterableShow[A].show)
+  override implicit def catsStdShowForList[A: Show]: Show[List[A]] = Show.show(iterableLikeShow.show)
 
-  override implicit def catsStdShowForSortedSet[A: Show]: Show[SortedSet[A]] = Show.show(iterableShow[A].show)
+  override implicit def catsStdShowForSortedSet[A: Show]: Show[SortedSet[A]] = Show.show(iterableLikeShow.show)
 
   implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
 
-  implicit def iterableShow[T: Show]: Show[Iterable[T]] = Show.show(_.map(_.show).mkString(", "))
+  implicit def covariantSetShow[T: Show]: Show[CovariantSet[T]] = Show.show(iterableLikeShow.show)
 
   implicit def uniqueNonEmptyListShow[T: Show]: Show[UniqueNonEmptyList[T]] = Show.show(_.toList.show)
+
+  implicit def iterableLikeShow[T: Show, I <: Iterable[T]]: Show[I] = Show.show(_.map(_.show).mkString(", "))
 
   implicit def nonEmptyListShow[T: Show]: Show[NonEmptyList[T]] = Show.show(_.toList.show)
 
@@ -101,6 +102,8 @@ trait LogsShowInstances
   implicit def refinedString[T]: Show[String Refined T] = Show.show(_.value)
 
   implicit def refinedFiniteDurationShow[T]: Show[FiniteDuration Refined T] = Show.show(_.value.toString)
+
+  implicit def classShow[T]: Show[Class[T]] = Show.show(_.getSimpleName)
 
   implicit val instantShow: Show[Instant] = Show.show(_.toString)
 
@@ -116,7 +119,7 @@ trait LogsShowInstances
     case Address.Name(value) => value.toString
   }
   implicit val informationShow: Show[Information] = Show.show { i => i.toString }
-  implicit val requestContextIdshow: Show[RequestContext.Id] = Show.show(_.value)
+  implicit val requestContextIdShow: Show[RequestContext.Id] = Show.show(_.value)
   implicit val methodShow: Show[RequestContext.Method] = Show.show(_.value)
   implicit val jPathShow: Show[JPath] = Show.show(_.toString)
   implicit val jFilePathShow: Show[JFile] = Show.show(_.toString)
@@ -140,9 +143,7 @@ trait LogsShowInstances
   }
   implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
 
-  implicit def requestedClusterIndexShow[T <: ClusterIndexName : Show]: Show[RequestedIndex[T]] =
-    Show.show(ri => s"${if (ri.excluded) "-" else ""}${ri.name.show}")
-
+  implicit def requestedIndexShow[T <: ClusterIndexName : Show]: Show[RequestedIndex[T]] = Show(_.name.show)
   implicit val clusterIndexNameShow: Show[ClusterIndexName] = Show.show(_.stringify)
   implicit val localClusterIndexNameShow: Show[ClusterIndexName.Local] = Show.show(_.stringify)
   implicit val remoteClusterIndexNameShow: Show[ClusterIndexName.Remote] = Show.show(_.stringify)
@@ -170,6 +171,11 @@ trait LogsShowInstances
   implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
   implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
   implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
+  implicit val templateShow: Show[Template] = Show.show {
+    case Template.IndexTemplate(name, patterns, aliases) => s"IndexTemplate[name=[${name.show}],patterns=[${patterns.show}],aliases=[${aliases.show}]]"
+    case Template.LegacyTemplate(name, patterns, aliases) => s"LegacyTemplate[name=[${name.show}],patterns=[${patterns.show}],aliases=[${aliases.show}]]"
+    case Template.ComponentTemplate(name, aliases) => s"ComponentTemplate[name=[${name.show}],aliases=[${aliases.show}]]"
+  }
   implicit val snapshotNameShow: Show[SnapshotName] = Show.show(v => SnapshotName.toString(v))
   implicit val ldapHostShow: Show[LdapHost] = Show.show(_.url.toString())
   implicit val ldapServiceNameShow: Show[LdapService.Name] = Show.show(_.value.value)
@@ -188,7 +194,7 @@ trait LogsShowInstances
       (showOption("user", bc.userMetadata.loggedUser) ::
         showOption("group", bc.userMetadata.currentGroupId) ::
         showNamedIterable("av_groups", bc.userMetadata.availableGroups.toList.map(_.id)) ::
-        showNamedIterable("indices", bc.indices) ::
+        showNamedIterable("indices", bc.indices) :: // todo: for sure it's ok?
         showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
         showOption("fls", bc.fieldLevelSecurity) ::
         showNamedIterable("response_hdr", bc.responseHeaders) ::
@@ -206,7 +212,7 @@ trait LogsShowInstances
         case Blacklist => "~"
       }
       val commaSeparatedFields = fields.map(fieldPrefix + _.value.value).toList.mkString(",")
-      s"fields=[$commaSeparatedFields]"
+      s"fields=[${commaSeparatedFields.show}]"
   }
 
   private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
@@ -285,7 +291,7 @@ trait LogsShowInstances
         case "" => ""
         case nonEmpty => s" RESOLVED:[$nonEmpty]"
       }
-      s"""[${h.block.show}->$rulesHistoryItemsStr$resolvedPart]"""
+      s"""[${h.block.show}->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
     }
 
   implicit val policyShow: Show[Policy] = Show.show {
@@ -301,7 +307,7 @@ trait LogsShowInstances
     case RuntimeResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
       "Cannot use more than one multi-value variable"
     case RuntimeResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
-      s"Variable malformed, cause: $cause"
+      s"Variable malformed, cause: ${cause.show}"
     case RuntimeResolvableVariableCreator.CreationError.VariableConversionError(cause) =>
       cause
   }
@@ -311,7 +317,7 @@ trait LogsShowInstances
     case StartupResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
       "Cannot use more than one multi-value variable"
     case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
-      s"Variable malformed, cause: $cause"
+      s"Variable malformed, cause: ${cause.show}"
   }
   implicit val variableTypeShow: Show[VariableContext.VariableType] = Show.show {
     case _: VariableType.User => "user"
@@ -328,7 +334,7 @@ trait LogsShowInstances
       s"JWT variables are not allowed to be used in Groups rule"
   }
 
-  def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
+  def obfuscatedHeaderShow(obfuscatedHeaders: Iterable[Header.Name]): Show[Header] = {
     Show.show[Header] {
       case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
       case header => headerShow.show(header)
@@ -341,7 +347,7 @@ trait LogsShowInstances
     case BlockValidationError.AuthorizationWithoutAuthentication =>
       s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
     case BlockValidationError.OnlyOneAuthenticationRuleAllowed(authRules) =>
-      s"The '${block.show}' block should contain only one authentication rule, but contains: [${authRules.map(_.name.show).mkString_(",")}]"
+      s"The '${block.show}' block should contain only one authentication rule, but contains: [${authRules.map(_.name).toList.show}]"
     case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
       s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
     case error: BlockValidationError.KibanaRuleTogetherWith =>
@@ -377,13 +383,13 @@ trait LogsShowInstances
 
   implicit val authorizationValueErrorShow: Show[AuthorizationValueError] = Show.show {
     case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
-    case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [$value]"
-    case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [$value], reason: [$message]"
+    case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [${value.show}]"
+    case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [${value.show}], reason: [${message.show}]"
   }
 
   implicit val unresolvableErrorShow: Show[Unresolvable] = Show.show {
-    case Unresolvable.CannotExtractValue(msg) => s"Cannot extract variable value. $msg"
-    case Unresolvable.CannotInstantiateResolvedValue(msg) => s"Extracted value type doesn't fit. $msg"
+    case Unresolvable.CannotExtractValue(msg) => s"Cannot extract variable value. ${msg.show}"
+    case Unresolvable.CannotInstantiateResolvedValue(msg) => s"Extracted value type doesn't fit. ${msg.show}"
   }
 
   implicit def accessShow[T: Show]: Show[AccessRequirement[T]] = Show.show {
