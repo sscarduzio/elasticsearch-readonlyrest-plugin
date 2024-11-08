@@ -17,31 +17,31 @@
 package tech.beshu.ror.api
 
 import cats.data.EitherT
-import cats.implicits._
+import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
-import tech.beshu.ror.accesscontrol.domain.LoggedUser
+import tech.beshu.ror.accesscontrol.domain.{LoggedUser, RequestId}
 import tech.beshu.ror.api.TestConfigApi.TestConfigRequest.Type
-import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
+import tech.beshu.ror.api.TestConfigApi.TestConfigResponse.*
 import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
-import tech.beshu.ror.utils.DurationOps._
-import tech.beshu.ror.configuration.EnvironmentConfig
+import tech.beshu.ror.utils.DurationOps.*
+
 import java.time.Instant
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Try
 
 class TestConfigApi(rorInstance: RorInstance)
                    (implicit environmentConfig: EnvironmentConfig) {
 
-  import tech.beshu.ror.api.TestConfigApi.Utils._
-  import tech.beshu.ror.api.TestConfigApi.Utils.decoders._
+  import tech.beshu.ror.api.TestConfigApi.Utils.*
+  import tech.beshu.ror.api.TestConfigApi.Utils.decoders.*
 
   def call(request: RorApiRequest[TestConfigRequest])
           (implicit requestId: RequestId): Task[TestConfigResponse] = {
@@ -116,7 +116,7 @@ class TestConfigApi(rorInstance: RorInstance)
         case TestConfig.NotSet =>
           TestConfigResponse.ProvideLocalUsers.TestSettingsNotConfigured("ROR Test settings are not configured")
         case TestConfig.Present(config, _, _, _) =>
-          val filteredLocalUsers = config.localUsers.users -- loggedUser.map(_.id).toSet
+          val filteredLocalUsers = config.localUsers.users -- loggedUser.map(_.id)
           TestConfigResponse.ProvideLocalUsers.SuccessResponse(
             users = filteredLocalUsers.map(_.value.value).toList,
             unknownUsers = config.localUsers.unknownUsers
@@ -249,7 +249,7 @@ object TestConfigApi {
     private def parseDuration(value: String): Either[String, PositiveFiniteDuration] = {
       Try(Duration(value))
         .toEither
-        .leftMap(_ =>s"Cannot parse '$value' as duration.")
+        .leftMap(_ =>s"Cannot parse '${value.show}' as duration.")
         .flatMap(_.toRefinedPositive)
     }
 

@@ -17,15 +17,15 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import cats.{Eq, Show}
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.*
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
-import tech.beshu.ror.accesscontrol.show.logs.*
 import tech.beshu.ror.constants
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -71,7 +71,7 @@ object Header {
   def fromRawHeaders(headers: Map[String, List[String]]): Set[Header] = {
     val (authorizationHeaders, otherHeaders) =
       headers
-        .map { case (name, values) => (name, values.toSet) }
+        .map { case (name, values) => (name, values.toCovariantSet) }
         .flatMap { case (name, values) =>
           for {
             nonEmptyName <- NonEmptyString.unapply(name)
@@ -93,10 +93,10 @@ object Header {
           case Right(v) => v
         }
       }
-      .toSet
+      .toCovariantSet
     val restOfHeaders = otherHeaders
       .flatMap { case (name, values) => values.map(new Header(name, _)).toList }
-      .toSet
+      .toCovariantSet
     val restOfHeaderNames = restOfHeaders.map(_.name)
     restOfHeaders ++ headersFromAuthorizationHeaderValues.filter { header => !restOfHeaderNames.contains(header.name) }
   }

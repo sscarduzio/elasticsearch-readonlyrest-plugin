@@ -17,9 +17,9 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules.http
 
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.implicits.*
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
+import tech.beshu.ror.syntax.*
 
 class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule] with MockFactory {
 

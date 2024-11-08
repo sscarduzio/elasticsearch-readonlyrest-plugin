@@ -16,18 +16,17 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
-import cats.implicits.toShow
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser, RequestId}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.{ExtractingError, toSessionHeader}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 

@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation
 
 import cats.data.EitherT
 import monix.eval.Task
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -31,10 +30,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.{ImpersonationResult, UserExistence}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
-import tech.beshu.ror.accesscontrol.domain.{LoggedUser, User}
+import tech.beshu.ror.accesscontrol.domain.{LoggedUser, RequestId, User}
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
+import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 
 private [rules] trait AuthenticationImpersonationSupport extends ImpersonationSupport
 

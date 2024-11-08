@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.syntax.*
 
 sealed trait BlockContextUpdater[B <: BlockContext] {
 
@@ -311,7 +312,9 @@ object BlockContextUpdater {
 
 abstract class BlockContextWithIndicesUpdater[B <: BlockContext : HasIndices] {
 
-  def withIndices(blockContext: B, filteredIndices: Set[ClusterIndexName], allAllowedIndices: Set[ClusterIndexName]): B
+  def withIndices(blockContext: B,
+                  filteredIndices: Set[ClusterIndexName],
+                  allAllowedIndices: Set[ClusterIndexName]): B
 }
 
 object BlockContextWithIndicesUpdater {

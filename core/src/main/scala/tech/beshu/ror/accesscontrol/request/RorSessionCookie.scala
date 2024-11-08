@@ -16,25 +16,23 @@
  */
 package tech.beshu.ror.accesscontrol.request
 
-import java.net.HttpCookie
-import java.nio.charset.StandardCharsets
-import java.time.{Clock, Instant}
-
-import cats.implicits._
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.parser._
+import io.circe.parser.*
 import io.circe.{Decoder, Encoder}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.Header.Name.setCookie
 import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.UuidProvider
 
-import scala.jdk.CollectionConverters._
+import java.net.HttpCookie
+import java.nio.charset.StandardCharsets
+import java.time.{Clock, Instant}
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 final case class RorSessionCookie(userId: User.Id, expiryDate: Instant)
@@ -98,7 +96,7 @@ object RorSessionCookie extends Logging {
       logger.warn(s"'${signature.value}' is not valid signature for ${cookie.show}")
       Left(Invalid)
     } else if (now.isAfter(cookie.expiryDate)) {
-      logger.info(s"cookie was present but expired. Found: ${cookie.expiryDate}, now it's $now")
+      logger.info(s"cookie was present but expired. Found: ${cookie.expiryDate.show}, now it's ${now.show}")
       Left(Expired)
     } else {
       Right({})

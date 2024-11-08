@@ -18,18 +18,17 @@ package tech.beshu.ror.accesscontrol.utils
 
 import cats.Show
 import cats.data.NonEmptyList
-import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult._
+import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.{Success, Try}
 
@@ -92,8 +91,8 @@ class ClaimsOps(val claims: Claims) extends Logging {
               createGroupsFrom(idsWithNames = idsWithNames)
             case Found(names) =>
               logger.debug(
-                s"Group names array extracted from the JWT at json path '${groupNamesClaimName.map(_.name.show).getOrElse("")}' has different size [size=${names.size}] than " +
-                  s"the group IDs array extracted from the JWT at json path '${groupIdsClaimName.name.show}' [size=${ids.size}]. " +
+                s"Group names array extracted from the JWT at json path '${groupNamesClaimName.map(_.name.show).getOrElse("")}' has different size [size=${names.size.show}] than " +
+                  s"the group IDs array extracted from the JWT at json path '${groupIdsClaimName.name.show}' [size=${ids.size.show}]. " +
                   s"Both array's size has to be equal. Only group IDs will be used for further processing.."
               )
               createGroupsFromIds(ids)
@@ -136,14 +135,14 @@ class ClaimsOps(val claims: Claims) extends Logging {
       }
   }
 
-  private def createGroupsFromIds(ids: Iterable[Any]): UniqueList[Group] = UniqueList.fromIterable {
+  private def createGroupsFromIds(ids: Iterable[Any]): UniqueList[Group] = UniqueList.from {
     ids
       .flatMap(nonEmptyStringFrom)
       .map(GroupId.apply)
       .map(Group.from)
   }
 
-  private def createGroupsFrom(idsWithNames: Iterable[(Any, Any)]): UniqueList[Group] = UniqueList.fromIterable {
+  private def createGroupsFrom(idsWithNames: Iterable[(Any, Any)]): UniqueList[Group] = UniqueList.from {
     idsWithNames
       .flatMap { case (id, name) =>
         nonEmptyStringFrom(id)

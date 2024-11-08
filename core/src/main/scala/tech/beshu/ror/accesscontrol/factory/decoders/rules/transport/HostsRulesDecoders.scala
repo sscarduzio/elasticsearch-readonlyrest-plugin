@@ -21,11 +21,12 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{HostsRule, LocalHostsRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.Address
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleBaseDecoderWithAssociatedFields, RuleBaseDecoderWithoutAssociatedFields}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport.HostRulesDecodersHelper.defaultAcceptForwardedForHeader
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 
 class HostsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)

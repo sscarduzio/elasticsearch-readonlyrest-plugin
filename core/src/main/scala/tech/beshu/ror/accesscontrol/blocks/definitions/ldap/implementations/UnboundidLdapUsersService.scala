@@ -16,22 +16,22 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.implicits.toShow
-import com.unboundid.ldap.sdk._
+import com.unboundid.ldap.sdk.*
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.NestedGroupsConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.ops.logs.*
+import tech.beshu.ror.accesscontrol.domain.{RequestId, User}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
-import tech.beshu.ror.utils.RefinedUtils._
+import tech.beshu.ror.utils.RefinedUtils.*
 
 class UnboundidLdapUsersService private(override val id: LdapService#Id,
                                         connectionPool: UnboundidLdapConnectionPool,
@@ -70,10 +70,10 @@ class UnboundidLdapUsersService private(override val id: LdapService#Id,
         case Right(user :: Nil) =>
           Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
         case Right(all@user :: _) =>
-          logger.warn(s"[${requestId.show}] LDAP search user - more than one user was returned: ${all.mkString(",")}. Picking first")
+          logger.warn(s"[${requestId.show}] LDAP search user - more than one user was returned: ${all.toSet.show}. Picking first")
           Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
         case Left(errorResult) =>
-          logger.error(s"[${requestId.show}] LDAP search user - returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          logger.error(s"[${requestId.show}] LDAP search user - returned error: [${errorResult.show}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
   }
@@ -86,7 +86,7 @@ class UnboundidLdapUsersService private(override val id: LdapService#Id,
     val baseDn = searchUserBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = s"${uidAttribute.name.value}=${Filter.encodeValue(userId.value.value)}"
-    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter]")
+    logger.debug(s"[${requestId.show}] LDAP search [base DN: ${baseDn.show}, scope: ${scope.show}, search filter: ${searchFilter.show}]")
     new SearchRequest(listener, baseDn, scope, searchFilter)
   }
 }
@@ -110,7 +110,7 @@ object UnboundidLdapUsersService {
 }
 
 final case class LdapUnexpectedResult(code: ResultCode, cause: String)
-  extends Throwable(s"LDAP returned code: ${code.getName} [${code.intValue()}], cause: $cause")
+  extends Throwable(s"LDAP returned code: ${code.getName.show} [${code.intValue().show}], cause: ${cause.show}")
 
 final case class UserSearchFilterConfig(searchUserBaseDN: Dn, userIdAttribute: UserIdAttribute)
 object UserSearchFilterConfig {

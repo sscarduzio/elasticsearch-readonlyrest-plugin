@@ -16,22 +16,22 @@
  */
 package tech.beshu.ror.integration
 
-import java.util.Base64
-
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Inside, Tag}
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Allow
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.Allow
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
+
+import java.util.Base64
 
 class AuthKeyYamlLoadedAccessControlTests
   extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {

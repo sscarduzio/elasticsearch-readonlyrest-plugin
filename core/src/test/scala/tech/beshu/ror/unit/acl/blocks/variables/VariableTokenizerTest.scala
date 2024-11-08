@@ -17,12 +17,12 @@
 package tech.beshu.ror.unit.acl.blocks.variables
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer
-import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token._
+import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class VariableTokenizerTest extends AnyWordSpec with Matchers {

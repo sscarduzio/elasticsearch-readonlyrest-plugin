@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch
 
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.implicits.*
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.SnapshotsRule
@@ -28,10 +28,10 @@ import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch.SnapshotDecodersHelper._
-import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch.SnapshotDecodersHelper.*
+import tech.beshu.ror.accesscontrol.orders.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.implicits.*
 
 class SnapshotsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[SnapshotsRule] {

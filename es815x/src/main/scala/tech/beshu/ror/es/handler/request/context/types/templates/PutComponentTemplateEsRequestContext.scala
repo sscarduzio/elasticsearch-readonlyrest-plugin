@@ -27,8 +27,9 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.RefinedUtils._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class PutComponentTemplateEsRequestContext(actionRequest: PutComponentTemplateAction.Request,
                                            esContext: EsContext,
@@ -43,7 +44,7 @@ class PutComponentTemplateEsRequestContext(actionRequest: PutComponentTemplateAc
       name <- TemplateName
         .fromString(request.name())
         .toRight("Template name should be non-empty")
-      aliases = request.componentTemplate().template().aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet
+      aliases = request.componentTemplate().template().aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toCovariantSet
     } yield AddingComponentTemplate(name, aliases)
 
     templateOperation match {

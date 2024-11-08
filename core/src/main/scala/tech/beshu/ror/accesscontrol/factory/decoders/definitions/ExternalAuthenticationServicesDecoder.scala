@@ -17,17 +17,17 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
-import cats.implicits._
-import io.lemonlabs.uri.Url
+import cats.implicits.*
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.definitions._
+import io.lemonlabs.uri.Url
+import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 

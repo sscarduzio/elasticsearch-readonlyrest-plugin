@@ -27,7 +27,7 @@ import tech.beshu.ror.configuration.loader.distributed.NodesResponse
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.es.actions.rrconfig.{RRConfig, RRConfigsResponse}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 final class RestRRConfigActionResponseBuilder(localNode: NodeId, channel: RestChannel)
   extends RestBuilderListener[RRConfigsResponse](channel) {

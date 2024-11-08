@@ -16,10 +16,8 @@
  */
 package tech.beshu.ror.es.utils
 
-import java.lang.reflect.Modifier
-import java.util.regex.Pattern
-import java.util.{List => JList}
-
+import cats.Show
+import cats.implicits.*
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
@@ -28,10 +26,14 @@ import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFie
 import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices
 import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
 import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ReflecUtils
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import java.lang.reflect.Modifier
+import java.util.List as JList
+import java.util.regex.Pattern
+import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
 sealed trait ExtractedIndices {
@@ -47,7 +49,7 @@ object ExtractedIndices {
   }
   object SqlIndices {
     final case class SqlTableRelated(tables: List[IndexSqlTable]) extends SqlIndices {
-      override lazy val indices: Set[String] = tables.flatMap(_.indices).toSet
+      override lazy val indices: Set[String] = tables.flatMap(_.indices).toCovariantSet
     }
     object SqlTableRelated {
       final case class IndexSqlTable(tableStringInQuery: String, indices: Set[String])
@@ -63,6 +65,8 @@ object SqlRequestHelper {
   sealed trait ModificationError
   object ModificationError {
     final case class UnexpectedException(ex: Throwable) extends ModificationError
+
+    implicit val show: Show[ModificationError] = Show.show(_.toString)
   }
 
   def modifyIndicesOf(request: CompositeIndicesRequest,

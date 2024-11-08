@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices
 
-import cats.implicits._
 import cats.kernel.Semigroup
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
@@ -27,8 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.Ca
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.accesscontrol.show.logs._
 
 trait AllClusterIndices extends BaseIndicesProcessor {
   this: IndicesRule =>
@@ -40,9 +40,9 @@ trait AllClusterIndices extends BaseIndicesProcessor {
     val (allAllowedRemoteIndices, allAllowedLocalIndices) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
     val (requestedRemoteIndices, requestedLocalIndices) = splitIntoRemoteAndLocalIndices(requestedIndices)
 
-    (UniqueNonEmptyList.fromIterable(requestedLocalIndices), UniqueNonEmptyList.fromIterable(requestedRemoteIndices)) match {
+    (UniqueNonEmptyList.from(requestedLocalIndices), UniqueNonEmptyList.from(requestedRemoteIndices)) match {
       case (Some(nonEmptyRequestedLocalIndices), Some(nonEmptyRequestedRemoteIndices)) =>
-        import AllClusterIndices._
+        import AllClusterIndices.*
         for {
           localResult <- processLocalIndices(requestContext, allAllowedLocalIndices, nonEmptyRequestedLocalIndices, determinedKibanaIndex)
           remoteResult <- processRemoteIndices(requestContext, allAllowedRemoteIndices, nonEmptyRequestedRemoteIndices, determinedKibanaIndex)
@@ -68,8 +68,8 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       requestContext,
       PatternsMatcher.create(allAllowedIndices)
     )
-    logger.debug(s"[${requestContext.id.show}] Checking local indices (allowed: [${allAllowedIndices.map(_.show).mkString(",")}], requested: [${requestedIndices.map(_.show).mkString(",")}])")
-    canPass(requestContext, determinedKibanaIndex, requestedIndices)
+    logger.debug(s"[${requestContext.id.show}] Checking local indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
+    canPass[ClusterIndexName.Local](requestContext, determinedKibanaIndex, requestedIndices)
       .map {
         case CanPass.Yes(narrowedIndices) =>
           ProcessResult.Ok(narrowedIndices)
@@ -88,7 +88,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       requestContext,
       PatternsMatcher.create(allAllowedIndices)
     )
-    logger.debug(s"[${requestContext.id.show}] Checking remote indices (allowed: [${allAllowedIndices.map(_.show).mkString(",")}], requested: [${requestedIndices.map(_.show).mkString(",")}])")
+    logger.debug(s"[${requestContext.id.show}] Checking remote indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
     canPass(requestContext, determinedKibanaIndex, requestedIndices)
       .map {
         case CanPass.Yes(narrowedIndices) =>
@@ -100,7 +100,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       }
   }
 
-  private def splitIntoRemoteAndLocalIndices(indices: Set[ClusterIndexName]) = {
+  private def splitIntoRemoteAndLocalIndices(indices: Iterable[ClusterIndexName]) = {
     indices.foldLeft((Set.empty[ClusterIndexName.Remote], Set.empty[ClusterIndexName.Local])) {
       case ((remoteIndicesList, localIndicesList), currentIndex) =>
         currentIndex match {
@@ -111,12 +111,11 @@ trait AllClusterIndices extends BaseIndicesProcessor {
         }
     }
   }
-
 }
 
 object AllClusterIndices {
   implicit def processResultSemigroup: Semigroup[ProcessResult[ClusterIndexName]] = Semigroup.instance {
-    case (ProcessResult.Ok(set1), ProcessResult.Ok(set2)) => ProcessResult.Ok(set1 ++ set2)
+    case (ProcessResult.Ok(indices1), ProcessResult.Ok(indices2)) => ProcessResult.Ok(indices1 ++ indices2)
     case (ok@ProcessResult.Ok(_), ProcessResult.Failed(_)) => ok
     case (ProcessResult.Failed(_), ok@ProcessResult.Ok(_)) => ok
     case (failed@ProcessResult.Failed(_), ProcessResult.Failed(_)) => failed

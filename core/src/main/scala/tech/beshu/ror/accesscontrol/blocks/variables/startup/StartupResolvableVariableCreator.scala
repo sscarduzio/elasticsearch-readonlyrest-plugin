@@ -17,14 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.startup
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token.Transformation
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupMultiResolvableVariable.Wrapper
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator._
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError._
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.*
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
@@ -46,7 +46,7 @@ class StartupResolvableVariableCreator(transformationCompiler: TransformationCom
   }
 
   private def oldFashionedEnvAndTextHandling(text: NonEmptyString, `type`: VariableType): Option[Either[CreationError, NonEmptyList[`type`.T]]] = {
-    import cats.syntax.either._
+    import cats.syntax.either.*
     if (text.value.startsWith("env:")) {
       NonEmptyString
         .unapply(text.value.substring("env:".length))
@@ -162,9 +162,9 @@ class StartupResolvableVariableCreator(transformationCompiler: TransformationCom
   private def toCreationError(transformationStr: String,
                               error: TransformationCompiler.CompilationError): CreationError = error match {
     case CompilationError.UnableToParseTransformation(message) =>
-      CreationError.InvalidVariableDefinition(s"Unable to parse transformation string: [$transformationStr]. Cause: $message")
+      CreationError.InvalidVariableDefinition(s"Unable to parse transformation string: [${transformationStr.show}]. Cause: ${message.show}")
     case CompilationError.UnableToCompileTransformation(message) =>
-      CreationError.InvalidVariableDefinition(s"Unable to compile transformation string: [$transformationStr]. Cause: $message")
+      CreationError.InvalidVariableDefinition(s"Unable to compile transformation string: [${transformationStr.show}]. Cause: ${message.show}")
   }
 
   private object regexes {

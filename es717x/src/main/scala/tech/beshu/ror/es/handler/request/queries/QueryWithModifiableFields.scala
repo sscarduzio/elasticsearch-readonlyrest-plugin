@@ -82,8 +82,8 @@ object QueryWithModifiableFields {
 
   object instances {
 
-    import QueryFieldsUsage.instances._
-    import QueryType.instances._
+    import QueryFieldsUsage.instances.*
+    import QueryType.instances.*
 
     //term level
     implicit val existsQueryHandler: ModifiableLeafQuery[ExistsQueryBuilder] = ModifiableLeafQuery.instance { (query, notAllowedFields) =>

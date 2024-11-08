@@ -16,19 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
-import java.security.PublicKey
-
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 
-final case class RorKbnDef(id: Name,
+import java.security.PublicKey
+
+final case class RorKbnDef(override val id: Name,
                            checkMethod: SignatureCheckMethod)
   extends Item {
 
   override type Id = Name
-  override implicit val show: Show[Name] = RorKbnDef.nameShow
+  override val idShow: Show[Name] = Show.show(_.value.value)
 }
 object RorKbnDef {
   final case class Name(value: NonEmptyString)
@@ -41,5 +41,4 @@ object RorKbnDef {
   }
 
   implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
-  implicit val nameShow: Show[Name] = Show.show(_.value.value)
 }

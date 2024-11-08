@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError

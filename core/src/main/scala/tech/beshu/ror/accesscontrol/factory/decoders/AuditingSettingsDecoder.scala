@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
@@ -35,6 +34,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 import scala.annotation.nowarn
@@ -45,7 +45,7 @@ object AuditingSettingsDecoder extends Logging {
   lazy val instance: Decoder[Option[AuditingTool.Settings]] = {
     for {
       auditSettings <- auditSettingsDecoder
-      deprecatedAuditSettings <- DeprecatedAuditSeettingsDecoder.instance
+      deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance
     } yield auditSettings.orElse(deprecatedAuditSettings)
   }
 
@@ -112,7 +112,6 @@ object AuditingSettingsDecoder extends Logging {
   }
 
   private val auditSinkConfigExtendedDecoder: Decoder[AuditSink] = {
-
     implicit val loggerNameDecoder: Decoder[RorAuditLoggerName] = {
       SyncDecoderCreator
         .from(nonEmptyStringDecoder)
@@ -176,7 +175,7 @@ object AuditingSettingsDecoder extends Logging {
           .map {
             case CreationError.ParsingError(msg) =>
               AuditingSettingsCreationError(Message(
-                s"Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: $patternStr error: $msg"
+                s"Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: ${patternStr.show} error: ${msg.show}"
               ))
           }
       }
@@ -199,8 +198,8 @@ object AuditingSettingsDecoder extends Logging {
           case Success(Some(customSerializer)) =>
             logger.info(s"Using custom serializer: ${customSerializer.getClass.getName}")
             Right(customSerializer)
-          case Success(None) => Left(AuditingSettingsCreationError(Message(s"Class $fullClassName is not a subclass of ${classOf[AuditLogSerializer].getName} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName}")))
-          case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '$fullClassName', error: ${ex.getMessage}")))
+          case Success(None) => Left(AuditingSettingsCreationError(Message(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}")))
+          case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '${fullClassName.show}', error: ${ex.getMessage.show}")))
         }
       }
       .decoder
@@ -220,11 +219,11 @@ object AuditingSettingsDecoder extends Logging {
   private def unsupportedOutputTypeError(unsupportedType: String,
                                          supportedTypes: List[String]) = {
     AuditingSettingsCreationError(Message(
-      s"Unsupported 'type' of audit output: $unsupportedType. Supported types: [${supportedTypes.mkString(", ")}]"
+      s"Unsupported 'type' of audit output: ${unsupportedType.show}. Supported types: [${supportedTypes.show}]"
     ))
   }
 
-  private object DeprecatedAuditSeettingsDecoder {
+  private object DeprecatedAuditSettingsDecoder {
     lazy val instance: Decoder[Option[AuditingTool.Settings]] = Decoder.instance { c =>
       whenEnabled(c) {
         for {

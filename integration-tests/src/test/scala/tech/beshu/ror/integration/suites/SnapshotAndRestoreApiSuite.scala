@@ -358,6 +358,15 @@ class SnapshotAndRestoreApiSuite
 
           response should have statusCode 403
         }
+        "user has no access to excluded index" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo-")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName = SnapshotNameGenerator.next("dev2-snap-")
+          val response = dev2SnapshotManager.putSnapshot(repositoryName, snapshotName, "index2*", "-index3")
+
+          response should have statusCode 403
+        }
       }
     }
     "user gets snapshots" should {

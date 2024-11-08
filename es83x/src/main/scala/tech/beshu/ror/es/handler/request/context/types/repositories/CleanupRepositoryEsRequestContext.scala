@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types.repositories
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
@@ -27,6 +27,8 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.BaseRepositoriesEsRequestContext
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 class CleanupRepositoryEsRequestContext(actionRequest: CleanupRepositoryRequest,
                                         esContext: EsContext,
@@ -43,7 +45,7 @@ class CleanupRepositoryEsRequestContext(actionRequest: CleanupRepositoryRequest,
   override protected def update(request: CleanupRepositoryRequest,
                                 repositories: NonEmptyList[RepositoryName]): ModificationResult = {
     if (repositories.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.toList.mkString(",")}]")
+      logger.warn(s"[${id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
     }
     request.name(RepositoryName.toString(repositories.head))
     Modified

@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.{StringPatternsMatcherJava, ZeroKnowledgeIndexFilter}
 
 import java.util
@@ -30,11 +31,11 @@ class ZeroKnowledgeRemoteIndexFilterScalaAdapter {
   def check(indices: Set[ClusterIndexName.Remote], matcher: PatternsMatcher[ClusterIndexName.Remote]): CheckResult = {
     val processedIndices: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
-      indices.map(_.stringify).asJava,
+      indices.asScala.map(_.stringify).asJava,
       new StringPatternsMatcherJava(matcher),
       (t: util.Set[String]) => processedIndices.addAll(t)
     )
-    if(result) CheckResult.Ok(processedIndices.asScala.flatMap(ClusterIndexName.Remote.fromString).toSet)
+    if(result) CheckResult.Ok(processedIndices.asScala.flatMap(ClusterIndexName.Remote.fromString).toCovariantSet)
     else CheckResult.Failed
   }
 }

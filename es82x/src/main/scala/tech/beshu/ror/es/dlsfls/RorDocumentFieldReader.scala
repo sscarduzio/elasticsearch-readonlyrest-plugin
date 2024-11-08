@@ -19,23 +19,23 @@ package tech.beshu.ror.es.dlsfls
 import com.google.common.collect.Iterators
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.codecs.StoredFieldsReader
+import org.apache.lucene.index.*
 import org.apache.lucene.index.StoredFieldVisitor.Status
-import org.apache.lucene.index._
 import org.apache.lucene.util.Bits
 import org.elasticsearch.ExceptionsHelper
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
 import org.elasticsearch.common.lucene.index.SequentialStoredFieldsLeafReader
 import org.elasticsearch.common.xcontent.XContentHelper
 import org.elasticsearch.xcontent.{XContentBuilder, XContentType}
-import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.dlsfls.RorDocumentFieldDirectoryReader.RorDocumentFieldDirectorySubReader
-import tech.beshu.ror.es.utils.XContentBuilderOps._
+import tech.beshu.ror.es.utils.XContentBuilderOps.*
 import tech.beshu.ror.fls.{FieldsPolicy, JsonPolicyBasedFilterer}
 
 import java.io.ByteArrayOutputStream
-import java.util.{Iterator => JavaIterator}
-import scala.jdk.CollectionConverters._
+import java.util.Iterator as JavaIterator
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: FieldsRestrictions)

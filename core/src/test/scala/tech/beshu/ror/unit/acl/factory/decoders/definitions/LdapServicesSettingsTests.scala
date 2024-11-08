@@ -27,18 +27,19 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{Assertions, BeforeAndAfterAll, Checkpoints}
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
 import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
-import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Clock
 import scala.annotation.tailrec
@@ -46,7 +47,6 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
   extends BaseDecoderTest(
@@ -2170,7 +2170,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                |    connection_timeout_in_sec: 2
             """.stripMargin,
           assertion = { error =>
-            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with 'ldap1' LDAP connection to: ldaps://ssl-ldap2.foo.com:836,ldaps://ssl-ldap3.foo.com:836")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with 'ldap1' LDAP connection to: ldaps://ssl-ldap2.foo.com:836, ldaps://ssl-ldap3.foo.com:836")))
           }
         )
       }

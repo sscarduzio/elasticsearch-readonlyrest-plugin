@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.audit
 
+import cats.Show
 import cats.data.NonEmptyList
-import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
@@ -29,10 +29,10 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.implicits.*
 
 import java.time.Clock
 
@@ -179,13 +179,11 @@ object AuditingTool extends Logging {
              loggingContext: LoggingContext): Option[AuditingTool] = {
     createAuditSinks(settings, auditSinkServiceCreator) match {
       case Some(auditSinks) =>
-        val enabledSinks = auditSinks.map {
+        implicit val auditSinkShow: Show[BaseAuditSink] = Show.show {
           case _: EsIndexBasedAuditSink => "index"
           case _: LogBasedAuditSink => "log"
         }
-          .mkString_(",")
-
-        logger.info(s"The audit is enabled with the given outputs: [$enabledSinks]")
+        logger.info(s"The audit is enabled with the given outputs: [${auditSinks.show}]")
         Some(new AuditingTool(auditSinks))
       case None =>
         logger.info("The audit is disabled because no output is enabled")

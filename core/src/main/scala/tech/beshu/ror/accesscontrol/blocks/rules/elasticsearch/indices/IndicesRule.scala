@@ -17,13 +17,16 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices
 
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks.{indexPacksFromFilterableMultiBlockContext, indexPacksFromMultiIndexBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, DataStreamRequestBlockContext, HasIndexPacks, SnapshotRequestBlockContext}
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndexPacksUpdater.{FilterableMultiRequestBlockContextWithIndexPacksUpdater, MultiIndexRequestBlockContextWithIndexPacksUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndicesUpdater.{FilterableRequestBlockContextWithIndicesUpdater, GeneralIndexRequestBlockContextWithIndicesUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -37,12 +40,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, B
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndicesUpdater.GeneralIndexRequestBlockContextWithIndicesUpdater
-import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndexPacksUpdater.MultiIndexRequestBlockContextWithIndexPacksUpdater
-import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndexPacksUpdater.FilterableMultiRequestBlockContextWithIndexPacksUpdater
-import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndicesUpdater.FilterableRequestBlockContextWithIndicesUpdater
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks.indexPacksFromMultiIndexBlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks.indexPacksFromFilterableMultiBlockContext
+import tech.beshu.ror.syntax.*
 
 class IndicesRule(override val settings: Settings,
                   override val identifierGenerator: UniqueIdentifierGenerator)
@@ -51,7 +49,7 @@ class IndicesRule(override val settings: Settings,
     with AllTemplateIndices
     with Logging {
 
-  import IndicesRule._
+  import IndicesRule.*
 
   override val name: Rule.Name = IndicesRule.Name.name
 
@@ -81,7 +79,7 @@ class IndicesRule(override val settings: Settings,
     if (matchAll) {
       Task.now(Fulfilled(blockContext))
     } else {
-      val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
+      val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
       processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices, blockContext.userMetadata.kibanaIndex)
         .map {
           case ProcessResult.Ok(filteredIndices: Set[ClusterIndexName]) =>
@@ -95,10 +93,10 @@ class IndicesRule(override val settings: Settings,
     if (matchAll) {
       Task.now(Fulfilled(blockContext))
     } else {
-      import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks._
+      import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks.*
       def atLeastOneFound(indices: Vector[Indices]) = indices.exists(_.isInstanceOf[Indices.Found])
 
-      val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
+      val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
       blockContext
         .indexPacks
         .foldLeft(Task.now(Vector.empty[Indices].asRight[Option[Cause]])) {
@@ -134,7 +132,7 @@ class IndicesRule(override val settings: Settings,
     if (matchAll) {
       Task.now(Fulfilled(blockContext))
     } else {
-      val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
+      val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
       for {
         indicesResult <- processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.indices, blockContext.userMetadata.kibanaIndex)
         aliasesResult <- processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.aliases, blockContext.userMetadata.kibanaIndex)

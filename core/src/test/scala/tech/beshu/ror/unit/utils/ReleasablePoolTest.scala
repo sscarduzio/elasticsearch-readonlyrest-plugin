@@ -16,19 +16,19 @@
  */
 package tech.beshu.ror.unit.utils
 
-import cats.implicits._
+import cats.implicits.*
 import cats.{Id, Monad}
 import monix.eval.Task
 import monix.execution.atomic.{AtomicBoolean, AtomicInt}
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.unit.utils.ReleasablePoolTest.Counter
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 private final class ReleasablePoolTaskTest extends ReleasablePoolTest[Task] {

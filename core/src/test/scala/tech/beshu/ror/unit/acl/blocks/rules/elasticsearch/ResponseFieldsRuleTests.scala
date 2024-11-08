@@ -19,19 +19,19 @@ package tech.beshu.ror.unit.acl.blocks.rules.elasticsearch
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, FilteredResponseFields}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseField, ResponseFieldsRestrictions}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ResponseFieldsRuleTests extends AnyWordSpec {
   "A ResponseFields rule" should {
@@ -53,12 +53,14 @@ class ResponseFieldsRuleTests extends AnyWordSpec {
 
     rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
       BlockContext.GeneralIndexRequestBlockContext(
-        requestContext,
-        UserMetadata.empty,
-        Set.empty,
-        FilteredResponseFields(ResponseFieldsRestrictions(UniqueNonEmptyList.fromNonEmptyList(resolvedFields.map(_.value.head)), mode)) :: Nil,
-        Set.empty,
-        Set.empty
+        requestContext = requestContext,
+        userMetadata = UserMetadata.empty,
+        responseHeaders = Set.empty,
+        responseTransformations = FilteredResponseFields(ResponseFieldsRestrictions(
+          UniqueNonEmptyList.fromNonEmptyList(resolvedFields.map(_.value.head)), mode
+        )) :: Nil,
+        filteredIndices = Set.empty,
+        allAllowedIndices = Set.empty
       )
     ))
   }

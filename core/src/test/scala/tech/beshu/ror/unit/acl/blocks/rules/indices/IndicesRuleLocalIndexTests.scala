@@ -16,15 +16,14 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
-
 import cats.data.NonEmptySet
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 import tech.beshu.ror.accesscontrol.orders.indexOrder
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 
 trait IndicesRuleLocalIndexTests {
   this: BaseIndicesRuleTests =>
@@ -38,7 +37,7 @@ trait IndicesRuleLocalIndexTests {
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test")))
           ),
-          found = Set(clusterIndexName("test")),
+          filteredRequestedIndices = Set(clusterIndexName("test")),
         )
       }
       "'_all' passed, one is configured, there is one real index" in {
@@ -48,7 +47,7 @@ trait IndicesRuleLocalIndexTests {
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test")))
           ),
-          found = Set(clusterIndexName("test"))
+          filteredRequestedIndices = Set(clusterIndexName("test"))
         )
       }
       "'*' passed, one is configured, there is one real index" in {
@@ -58,14 +57,14 @@ trait IndicesRuleLocalIndexTests {
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test")))
           ),
-          found = Set(clusterIndexName("test"))
+          filteredRequestedIndices = Set(clusterIndexName("test"))
         )
       }
       "one full name index passed, one full name index configured, no real indices" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test")),
           requestIndices = Set(clusterIndexName("test")),
-          found = Set(clusterIndexName("test"))
+          filteredRequestedIndices = Set(clusterIndexName("test"))
         )
       }
       "one wildcard index passed, one full name index configured, no real indices" in {
@@ -75,56 +74,56 @@ trait IndicesRuleLocalIndexTests {
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"))),
           ),
-          found = Set(clusterIndexName("test"))
+          filteredRequestedIndices = Set(clusterIndexName("test"))
         )
       }
       "one full name index passed, one wildcard index configured, no real indices" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("t*")),
           requestIndices = Set(clusterIndexName("test")),
-          found = Set(clusterIndexName("test"))
+          filteredRequestedIndices = Set(clusterIndexName("test"))
         )
       }
       "two full name indexes passed, the same two full name indexes configured, no real indices" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1"), indexNameVar("test2")),
           requestIndices = Set(clusterIndexName("test2"), clusterIndexName("test1")),
-          found = Set(clusterIndexName("test2"), clusterIndexName("test1"))
+          filteredRequestedIndices = Set(clusterIndexName("test2"), clusterIndexName("test1"))
         )
       }
       "two full name indexes passed, one the same, one different index configured, no real indices" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1"), indexNameVar("test2")),
           requestIndices = Set(clusterIndexName("test1"), clusterIndexName("test3")),
-          found = Set(clusterIndexName("test1"))
+          filteredRequestedIndices = Set(clusterIndexName("test1"))
         )
       }
       "two matching wildcard indexes passed, two full name indexes configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1"), indexNameVar("test2")),
           requestIndices = Set(clusterIndexName("*2"), clusterIndexName("*1")),
-          found = Set(clusterIndexName("test1"), clusterIndexName("test2"))
+          filteredRequestedIndices = Set(clusterIndexName("test1"), clusterIndexName("test2"))
         )
       }
       "two full name indexes passed, two matching wildcard indexes configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*1"), indexNameVar("*2")),
           requestIndices = Set(clusterIndexName("test2"), clusterIndexName("test1")),
-          found = Set(clusterIndexName("test2"), clusterIndexName("test1"))
+          filteredRequestedIndices = Set(clusterIndexName("test2"), clusterIndexName("test1"))
         )
       }
       "two full name indexes passed, one matching full name and one non-matching wildcard index configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1"), indexNameVar("*2")),
           requestIndices = Set(clusterIndexName("test1"), clusterIndexName("test3")),
-          found = Set(clusterIndexName("test1"))
+          filteredRequestedIndices = Set(clusterIndexName("test1"))
         )
       }
       "one matching wildcard index passed and one non-matching full name index, two full name indexes configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1"), indexNameVar("*2")),
           requestIndices = Set(clusterIndexName("*1"), clusterIndexName("test3")),
-          found = Set(clusterIndexName("test1"))
+          filteredRequestedIndices = Set(clusterIndexName("test1"))
         )
       }
       "one full name alias passed, full name index related to that alias configured" in {
@@ -136,7 +135,7 @@ trait IndicesRuleLocalIndexTests {
               fullLocalIndexWithAliases(fullIndexName("test-index"), Set(fullIndexName("test-alias")))
             )
           ),
-          found = Set(clusterIndexName("test-index"))
+          filteredRequestedIndices = Set(clusterIndexName("test-index"))
         )
       }
       "wildcard alias passed, full name alias configured" in {
@@ -148,7 +147,7 @@ trait IndicesRuleLocalIndexTests {
               fullLocalIndexWithAliases(fullIndexName("test-index"), Set(fullIndexName("test-alias")))
             )
           ),
-          found = Set(clusterIndexName("test-alias"))
+          filteredRequestedIndices = Set(clusterIndexName("test-alias"))
         )
       }
       "wildcard alias passed, full name index related to alias matching passed one configured" in {
@@ -160,7 +159,7 @@ trait IndicesRuleLocalIndexTests {
               fullLocalIndexWithAliases(fullIndexName("test-index"), Set(fullIndexName("test-alias")))
             )
           ),
-          found = Set(clusterIndexName("test-index"))
+          filteredRequestedIndices = Set(clusterIndexName("test-index"))
         )
       }
       "one full name alias passed, wildcard index configured" in {
@@ -172,7 +171,7 @@ trait IndicesRuleLocalIndexTests {
               fullLocalIndexWithAliases(fullIndexName("test-index"), Set(fullIndexName("test-alias")))
             )
           ),
-          found = Set(clusterIndexName("test-index"))
+          filteredRequestedIndices = Set(clusterIndexName("test-index"))
         )
       }
       "one alias passed, only subset of alias indices configured" in {
@@ -187,7 +186,7 @@ trait IndicesRuleLocalIndexTests {
               fullLocalIndexWithAliases(fullIndexName("test-index4"), Set(fullIndexName("test-alias")))
             )
           ),
-          found = Set(clusterIndexName("test-index1"), clusterIndexName("test-index2"))
+          filteredRequestedIndices = Set(clusterIndexName("test-index1"), clusterIndexName("test-index2"))
         )
       }
       "cross cluster index is used together with local index" in {
@@ -209,7 +208,7 @@ trait IndicesRuleLocalIndexTests {
               fullRemoteIndexWithAliases("odd", "test2_index1"),
             ))
           ),
-          found = Set(
+          filteredRequestedIndices = Set(
             clusterIndexName("local_index1"),
             clusterIndexName("local_index2"),
             clusterIndexName("odd:test1_index1"),
@@ -232,7 +231,7 @@ trait IndicesRuleLocalIndexTests {
             modifyBlockContext = bc => bc.copy(
               userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
             ),
-            found = Set(clusterIndexName(".custom_kibana_7.9.0"))
+            filteredRequestedIndices = Set(clusterIndexName(".custom_kibana_7.9.0"))
           )
         }
         "there are full name kibana indices passed" in {
@@ -242,7 +241,7 @@ trait IndicesRuleLocalIndexTests {
             modifyBlockContext = bc => bc.copy(
               userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
             ),
-            found = Set(clusterIndexName(".custom_kibana_8.10.4"), clusterIndexName(".custom_kibana_task_manager_8.10.4"))
+            filteredRequestedIndices = Set(clusterIndexName(".custom_kibana_8.10.4"), clusterIndexName(".custom_kibana_task_manager_8.10.4"))
           )
         }
       }

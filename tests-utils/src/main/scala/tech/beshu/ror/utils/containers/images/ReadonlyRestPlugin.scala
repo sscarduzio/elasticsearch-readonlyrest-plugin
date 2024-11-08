@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils.containers.images
 
-import better.files._
+import better.files.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch.{configDir, esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes

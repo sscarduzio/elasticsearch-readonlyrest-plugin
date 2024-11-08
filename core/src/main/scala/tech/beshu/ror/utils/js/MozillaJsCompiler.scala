@@ -21,7 +21,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.mozilla.javascript.Context
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
 

@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor
@@ -25,16 +25,16 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule, GroupsOrRule}
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, ResolvablePermittedGroupIds}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 
 class GroupsOrRuleDecoder(usersDefinitions: Definitions[UserDef],
                           globalSettings: GlobalSettings,

@@ -20,7 +20,7 @@ import better.files.FileExtensions
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction
 import tech.beshu.ror.utils.httpclient.RestClient

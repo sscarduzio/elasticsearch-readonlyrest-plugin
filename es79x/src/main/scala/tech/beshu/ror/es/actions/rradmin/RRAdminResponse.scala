@@ -21,8 +21,8 @@ import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{StatusToXContentObject, ToXContent, XContentBuilder}
 import org.elasticsearch.rest.RestStatus
 import tech.beshu.ror.api.ConfigApi
-import tech.beshu.ror.api.ConfigApi.ConfigResponse._
-import tech.beshu.ror.api.ConfigApi._
+import tech.beshu.ror.api.ConfigApi.ConfigResponse.*
+import tech.beshu.ror.api.ConfigApi.*
 
 class RRAdminResponse(response: ConfigApi.ConfigResponse)
   extends ActionResponse with StatusToXContentObject {

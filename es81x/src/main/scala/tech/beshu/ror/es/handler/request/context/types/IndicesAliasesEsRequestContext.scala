@@ -16,19 +16,21 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits.*
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
                                      esContext: EsContext,
@@ -43,14 +45,14 @@ class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
       r.indices.asSafeSet.flatMap(ClusterIndexName.fromString) ++
         r.aliases.asSafeList.flatMap(ClusterIndexName.fromString)
     }
-    .toSet
+    .toCovariantSet
 
   override protected def indicesFrom(request: IndicesAliasesRequest): Set[ClusterIndexName] = originIndices
 
   override protected def update(request: IndicesAliasesRequest,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    if (originIndices == filteredIndices.toList.toSet) {
+    if (originIndices == filteredIndices.toList.toCovariantSet) {
       Modified
     } else {
       logger.error(s"[${id.show}] Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")

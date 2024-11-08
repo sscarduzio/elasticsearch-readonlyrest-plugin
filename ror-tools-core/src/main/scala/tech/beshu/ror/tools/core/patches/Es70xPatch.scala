@@ -19,8 +19,8 @@ package tech.beshu.ror.tools.core.patches
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
-import tech.beshu.ror.tools.core.patches.internal.filePatchers._
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars._
+import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 
 import scala.language.postfixOps
 

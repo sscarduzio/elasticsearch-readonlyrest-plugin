@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
-import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, ImpersonatorDef}
@@ -27,14 +26,14 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthenticationServicesDecoder._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthenticationServicesDecoder.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ExternalAuthenticationServicesDecoder}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService],

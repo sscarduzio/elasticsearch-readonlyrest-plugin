@@ -17,18 +17,18 @@
 package tech.beshu.ror.unit.acl.blocks.rules.elasticsearch
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralNonIndexRequestBlockContext, HasFieldLevelSecurity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.FilterableRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -38,10 +38,10 @@ import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.mocks.{MockRequestContext, MockSimpleRequestContext}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.blocks.rules.elasticsearch.FieldsRuleTests.{BlockContextCreator, Configuration, Fields, RequestContextCreator}
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
 
@@ -246,7 +246,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                                                                                                requestContext: RequestContextCreator[B],
                                                                                                incomingBlockContext: BlockContextCreator[B],
                                                                                                expectedStrategy: Strategy) = {
-    import HasFieldLevelSecurity._
+    import HasFieldLevelSecurity.*
 
     val rule = createRule(config)
     val incomingRequest = requestContext(incomingBlockContext)

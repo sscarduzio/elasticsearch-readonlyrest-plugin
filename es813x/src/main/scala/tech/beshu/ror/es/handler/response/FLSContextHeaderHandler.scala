@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.handler.response
 
-import cats.implicits._
+import cats.implicits.*
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.implicits.*
 
 object FLSContextHeaderHandler extends Logging {
 
@@ -34,7 +35,8 @@ object FLSContextHeaderHandler extends Logging {
     val header = createContextHeader(fieldsRestrictions)
     Option(threadContext.getHeader(header.name.value.value)) match {
       case None =>
-        logger.debug(s"[${requestId.show}] Adding thread context header required by lucene. Header Value: '${header.value.value}'")
+        implicit val show = headerShow
+        logger.debug(s"[${requestId.show}] Adding thread context header required by lucene. Header: '${header.show}'")
         threadContext.putHeader(header.name.value.value, header.value.value)
       case Some(_) =>
     }

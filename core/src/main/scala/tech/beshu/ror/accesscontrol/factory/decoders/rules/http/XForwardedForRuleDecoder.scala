@@ -21,11 +21,11 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.http.XForwardedForRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.Address
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.orders.addressOrder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
-import tech.beshu.ror.accesscontrol.orders.addressOrder
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
 
 class XForwardedForRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[XForwardedForRule] {

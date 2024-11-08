@@ -25,13 +25,13 @@ import org.elasticsearch.common.xcontent.XContentHelper
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method.POST
-import org.elasticsearch.rest._
+import org.elasticsearch.rest.*
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, RRAuditEventRequest}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 @Inject

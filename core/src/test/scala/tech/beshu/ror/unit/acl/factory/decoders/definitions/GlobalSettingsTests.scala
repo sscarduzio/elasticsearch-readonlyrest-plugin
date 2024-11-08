@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{GeneralReadonlyrestSettingsError}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.GeneralReadonlyrestSettingsError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.GlobalStaticSettingsDecoder
 import tech.beshu.ror.accesscontrol.utils.{SyncDecoder, SyncDecoderCreator}

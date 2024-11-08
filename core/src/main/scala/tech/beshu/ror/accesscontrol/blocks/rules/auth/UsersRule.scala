@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected

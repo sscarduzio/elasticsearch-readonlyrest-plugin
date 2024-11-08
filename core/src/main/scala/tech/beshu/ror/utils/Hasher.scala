@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.utils
 
+import com.google.common.hash.Hashing
+
 import java.nio.charset.Charset
 import java.util.Base64
-
-import com.google.common.hash.Hashing
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 

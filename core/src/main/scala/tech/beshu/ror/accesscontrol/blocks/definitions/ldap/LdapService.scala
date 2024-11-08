@@ -16,30 +16,25 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
-import cats.implicits._
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 sealed trait LdapService extends Item {
   override type Id = Name
-
-  def id: Id
-
-  override implicit def show: Show[Name] = Name.nameShow
+  override def idShow: Show[Name] = Show.show(_.value.value)
 }
 
 object LdapService {
   final case class Name(value: NonEmptyString)
   object Name {
     implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
-    implicit val nameShow: Show[Name] = Show.show(_.value.value)
   }
 }
 

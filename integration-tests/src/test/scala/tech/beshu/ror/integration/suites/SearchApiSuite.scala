@@ -279,7 +279,7 @@ object SearchApiSuite {
       createDataStreamAndDocuments(enhancedDataStreamManager, indexManager, esVersion)
     }
 
-    createOldFashionedDataStream(indexManager, documentManager)
+    createSearchEndpointIndicesAndExampleDocs(indexManager, documentManager)
     createRealLifeTestsDocumentsAndAliases(indexManager, documentManager)
   }
 
@@ -302,7 +302,7 @@ object SearchApiSuite {
     }
   }
 
-  private def createOldFashionedDataStream(indexManager: IndexManager,
+  private def createSearchEndpointIndicesAndExampleDocs(indexManager: IndexManager,
                                            documentManager: DocumentManager) = {
     documentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
     documentManager.createDoc("logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))

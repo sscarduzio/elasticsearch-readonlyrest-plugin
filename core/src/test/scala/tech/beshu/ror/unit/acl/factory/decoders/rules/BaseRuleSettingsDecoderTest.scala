@@ -17,14 +17,14 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, BeforeAndAfterAll, Inside, Suite}
-import tech.beshu.ror.accesscontrol.acl.AccessControlList
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
+import tech.beshu.ror.accesscontrol.EnabledAccessControlList
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
@@ -32,8 +32,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.mocks.MockHttpClientsFactory
-import tech.beshu.ror.providers._
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.providers.*
+import tech.beshu.ror.utils.TestsUtils.*
 
 import scala.reflect.ClassTag
 
@@ -69,7 +69,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
           mocksProvider
         )
         .runSyncUnsafe()
-    ) { case Right(Core(acl: AccessControlList, _)) =>
+    ) { case Right(Core(acl: EnabledAccessControlList, _)) =>
       val rule = acl.blocks.head.rules.collect { case r: T => r }.headOption
         .getOrElse(throw new IllegalStateException("There was no expected rule in decoding result"))
       rule shouldBe a[T]

@@ -21,7 +21,7 @@ import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.misc.EsModulePatterns
 
-import scala.collection.parallel.CollectionConverters._
+import scala.collection.parallel.CollectionConverters.*
 
 trait EsClusterProvider extends EsContainerCreator with EsModulePatterns {
 

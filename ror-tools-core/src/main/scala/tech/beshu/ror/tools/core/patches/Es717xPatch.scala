@@ -20,7 +20,7 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, XPackCoreJarPatchCreator, XPackSecurityJarPatchCreator}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars._
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 
 import scala.language.postfixOps
 

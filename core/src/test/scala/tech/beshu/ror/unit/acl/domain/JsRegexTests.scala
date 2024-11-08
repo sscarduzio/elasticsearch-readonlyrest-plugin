@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.unit.acl.domain
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.JsRegex
-import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 
 class JsRegexTests extends AnyWordSpec with Matchers with EitherValues {
 

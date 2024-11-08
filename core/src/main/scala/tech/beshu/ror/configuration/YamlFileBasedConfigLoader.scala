@@ -20,6 +20,7 @@ import better.files.File
 import io.circe.{Decoder, DecodingFailure, Json}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 
@@ -36,7 +37,7 @@ final class YamlFileBasedConfigLoader(file: File)
       .flatMap { json =>
         implicitly[Decoder[CONFIG]]
           .decodeJson(json)
-          .left.map(e => MalformedSettings(s"Cannot load $configName from file ${file.pathAsString}. Cause: ${prettyCause(e)}"))
+          .left.map(e => MalformedSettings(s"Cannot load ${configName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"))
       }
   }
 
@@ -45,11 +46,11 @@ final class YamlFileBasedConfigLoader(file: File)
       environmentConfig
         .yamlParser
         .parse(reader)
-        .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
+        .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString.show} content. Cause: ${e.message.show}"))
         .flatMap { json =>
           jsonConfigResolver
             .resolve(json)
-            .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString}. $e."))
+            .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString.show}. $e."))
         }
         .map(jsonWithOneLinerKeysToRegularJson)
     }

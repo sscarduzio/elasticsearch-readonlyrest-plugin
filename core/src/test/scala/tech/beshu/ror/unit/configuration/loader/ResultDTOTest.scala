@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.unit.configuration.loader
 
-import io.circe.syntax._
-import cats.implicits._
-import org.scalatest.matchers.should.Matchers._
+import cats.implicits.*
+import io.circe.syntax.*
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.distributed.{NodesResponse, Summary}

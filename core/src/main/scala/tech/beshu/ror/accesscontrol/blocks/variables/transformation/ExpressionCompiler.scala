@@ -16,20 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.variables.transformation
 
-import cats.Show
 import cats.data.NonEmptyList
-import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.ExpressionCompiler._
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.ExpressionCompiler.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionDefinition.FunctionArg
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{Function, FunctionAlias, FunctionDefinition, FunctionName}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parser.Expression
+import tech.beshu.ror.implicits.*
 
-private[transformation] class ExpressionCompiler private(functions: Seq[FunctionDefinition],
-                                                         aliasedFunctions: Seq[FunctionAlias]) {
+private[transformation] class ExpressionCompiler private(functions: Iterable[FunctionDefinition],
+                                                         aliasedFunctions: Iterable[FunctionAlias]) {
 
-  import ExpressionCompiler.CompilationResult._
+  import ExpressionCompiler.CompilationResult.*
 
   type Result[A] = Either[CompilationError, A]
 
@@ -103,7 +102,7 @@ private[transformation] class ExpressionCompiler private(functions: Seq[Function
           _ <- Either.cond(useAlias, (), toError("Function aliases cannot be applied in this context"))
           firstArg <- call.args match {
             case arg :: Nil => Right(arg)
-            case other => Left(toError(s"One argument is required, but was ${other.size}"))
+            case other => Left(toError(s"One argument is required, but was ${other.size.show}"))
           }
           aliasName <-
             NonEmptyString
@@ -115,10 +114,10 @@ private[transformation] class ExpressionCompiler private(functions: Seq[Function
       case functionName =>
         functions
           .find(f => f.functionName == functionName)
-          .toRight(toError(s"No function with name '${call.name.name.value}'. Supported functions are: [${functions.map(_.show).mkString(",")}]"))
+          .toRight(toError(s"No function with name '${call.name.show}'. Supported functions are: [${functions.show}]"))
           .flatMap {
             _.partiallyApplied(call.args).left.map { partialApplyError =>
-              toError(s"Error for function '${functionName.name.value}': ${partialApplyError.message}")
+              toError(s"Error for function '${functionName.name.show}': ${partialApplyError.message.show}")
             }
           }
     }
@@ -127,7 +126,7 @@ private[transformation] class ExpressionCompiler private(functions: Seq[Function
   private def findAlias(name: FunctionName): Result[FunctionAlias] = {
     aliasedFunctions
       .find(_.name == name)
-      .toRight(toError(s"Alias with name '${name.name.value}' does not exits."))
+      .toRight(toError(s"Alias with name '${name.name.show}' does not exits."))
   }
 
   private def toError(message: String) = CompilationError(message)
@@ -146,17 +145,5 @@ private[transformation] object ExpressionCompiler {
     final case class Chain(value: NonEmptyList[Call]) extends CompilationResult
     final case class Call(name: FunctionName, args: List[FunctionArg]) extends CompilationResult
   }
-
-  implicit val showCompilationResultCall: Show[CompilationResult.Call] = { r =>
-    val args: List[String] = r.args.map(_.value).map((_: String) => "string")
-    val name = r.name.name.value
-    s"$name(${args.mkString(",")})"
-  }
-
-  implicit val showCompilationResultChain: Show[CompilationResult.Chain] = Show.show { r =>
-    r.value.map(_.show).mkString_(".")
-  }
-
-  implicit val showFunctionDefinition: Show[FunctionDefinition] = Show.show(_.functionName.name.value)
 
 }

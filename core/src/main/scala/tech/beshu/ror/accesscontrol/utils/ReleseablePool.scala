@@ -17,12 +17,12 @@
 package tech.beshu.ror.accesscontrol.utils
 
 import cats.Monad
-import cats.implicits._
+import cats.implicits.*
 import monix.execution.atomic.Atomic
 
 final class ReleseablePool[M[_] : Monad, A, B](acquire: B => M[A])(release: A => M[Unit]) {
 
-  import ReleseablePool._
+  import ReleseablePool.*
 
   private val pool: Atomic[ActiveList[A]] = Atomic(ActiveList[A]())
 

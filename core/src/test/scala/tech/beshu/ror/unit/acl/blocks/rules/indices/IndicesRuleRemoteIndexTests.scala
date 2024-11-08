@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
-import eu.timepit.refined.auto._
 import cats.data.NonEmptySet
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.orders.indexOrder
-import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, fullIndexName, fullLocalIndexWithAliases}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 
 trait IndicesRuleRemoteIndexTests {
   this: BaseIndicesRuleTests =>
@@ -45,7 +45,7 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
@@ -68,7 +68,7 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
@@ -92,7 +92,7 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
@@ -115,7 +115,7 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
               clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")

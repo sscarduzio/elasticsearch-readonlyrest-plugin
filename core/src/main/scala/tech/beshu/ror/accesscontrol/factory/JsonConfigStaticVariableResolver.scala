@@ -17,13 +17,12 @@
 package tech.beshu.ror.accesscontrol.factory
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver.*
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.EnvVarsProvider
 
 class JsonConfigStaticVariableResolver(envProvider: EnvVarsProvider,

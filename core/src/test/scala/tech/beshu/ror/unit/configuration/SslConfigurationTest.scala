@@ -18,10 +18,10 @@ package tech.beshu.ror.unit.configuration
 
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.configuration.SslConfiguration.*
 import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.{FileBasedConfiguration, KeystoreBasedConfiguration}
-import tech.beshu.ror.configuration.SslConfiguration._
 import tech.beshu.ror.configuration.{EnvironmentConfig, MalformedSettings, RorSsl}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -133,7 +133,7 @@ class SslConfigurationTest
         RorSsl.load(esEnvFrom(configFolderPath)).runSyncUnsafe() shouldBe Left {
           MalformedSettings(
             s"Cannot load ROR SSL configuration from file $expectedFilePath. " +
-              s"Cause: Field sets [server_certificate_key_file,server_certificate_file] and [keystore_file,keystore_pass,key_pass,key_alias] could not be present in the same configuration section")
+              s"Cause: Field sets [server_certificate_key_file, server_certificate_file] and [keystore_file, keystore_pass, key_pass, key_alias] could not be present in the same configuration section")
         }
       }
     }

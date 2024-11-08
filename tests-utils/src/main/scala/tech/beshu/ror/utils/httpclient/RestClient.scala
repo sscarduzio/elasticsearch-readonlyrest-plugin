@@ -35,8 +35,8 @@ import org.apache.http.{Header, HttpResponse}
 
 import java.net.URI
 import scala.annotation.nowarn
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 import scala.util.Try
 

@@ -18,22 +18,23 @@ package tech.beshu.ror.accesscontrol.blocks
 
 import cats.implicits.catsSyntaxOptionId
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor.noWarnings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.auth._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSupport}
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
-import tech.beshu.ror.accesscontrol.blocks.rules.http._
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.http.*
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{HostsRule, LocalHostsRule}
+import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import scala.annotation.nowarn
-import tech.beshu.ror.utils.RefinedUtils._
 
 final case class ImpersonationWarning(block: Block.Name,
                                       ruleName: Rule.Name,
@@ -108,7 +109,7 @@ object ImpersonationWarning {
               block = blockName,
               ruleName = rule.name,
               message = impersonationNotSupportedWithoutMockMsg(rule.name, serviceId.value.value),
-              hint = s"Configure a mock of an external authentication service with ID [${serviceId.value.value}]"
+              hint = s"Configure a mock of an external authentication service with ID [${serviceId.show}]"
             ).some
         }
       } yield warning
@@ -158,7 +159,7 @@ object ImpersonationWarning {
             block = blockName,
             ruleName = rule.name,
             message = nes("The rule contains fully hashed username and password. It doesn't support impersonation in this configuration"),
-            hint = s"You can use second version of the rule and use not hashed username. Like that: `${rule.name.value}: USER_NAME:hash(PASSWORD)"
+            hint = s"You can use second version of the rule and use not hashed username. Like that: `${rule.name.show}: USER_NAME:hash(PASSWORD)"
           ))
         case _: HashedCredentials.HashedOnlyPassword =>
           None
@@ -187,7 +188,7 @@ object ImpersonationWarning {
               block = blockName,
               ruleName = ruleName,
               message = impersonationNotSupportedWithoutMockMsg(ruleName, serviceId.value.value),
-              hint = s"Configure a mock of an LDAP service with ID [${serviceId.value.value}]"
+              hint = s"Configure a mock of an LDAP service with ID [${serviceId.show}]"
             ).some
         }
       } yield warning
@@ -199,7 +200,7 @@ object ImpersonationWarning {
     }
 
     private def impersonationNotSupportedWithoutMockMsg(ruleName: Rule.Name, serviceName: String): NonEmptyString = NonEmptyString.unsafeFrom(
-      s"The rule '${ruleName.value}' will fail to match the impersonating request when the mock of the service '$serviceName' is not configured"
+      s"The rule '${ruleName.show}' will fail to match the impersonating request when the mock of the service '${serviceName.show}' is not configured"
     )
   }
 }

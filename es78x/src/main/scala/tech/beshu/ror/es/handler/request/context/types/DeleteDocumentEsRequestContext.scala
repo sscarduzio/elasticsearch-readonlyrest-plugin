@@ -18,13 +18,14 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
+import tech.beshu.ror.syntax.*
 
 class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
                                      esContext: EsContext,

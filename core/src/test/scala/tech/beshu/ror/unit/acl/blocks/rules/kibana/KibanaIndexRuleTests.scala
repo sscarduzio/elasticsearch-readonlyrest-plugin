@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -27,9 +27,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaIndexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.blocks.rules.utils.KibanaIndexNameRuntimeResolvableVariable
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.TestsUtils.*
 
 class KibanaIndexRuleTests extends AnyWordSpec {
 

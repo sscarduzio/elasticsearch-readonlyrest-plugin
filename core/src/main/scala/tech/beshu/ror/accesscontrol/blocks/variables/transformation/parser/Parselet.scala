@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser
 
-import cats.implicits._
+import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parser.{Expression, ParsingError}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Token.Punctuator
 

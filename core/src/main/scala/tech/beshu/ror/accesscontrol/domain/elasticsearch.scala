@@ -18,9 +18,9 @@ package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import cats.kernel.Monoid
-import enumeratum._
+import enumeratum.*
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto.autoUnwrap
 import eu.timepit.refined.types.string.NonEmptyString
@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.DocumentField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.util.Random
@@ -65,9 +66,9 @@ object Action {
 
     override val values: IndexedSeq[RorAction] = findValues
 
-    val readOnlyActions: Set[RoRorAction] = values.collect { case action: RoRorAction => action }.toSet
-    val writeActions: Set[RwRorAction] = values.collect { case action: RwRorAction => action }.toSet
-    val adminActions: Set[AdminRorAction] = values.collect { case action: AdminRorAction => action }.toSet
+    val readOnlyActions: Set[RoRorAction] = values.collect { case action: RoRorAction => action }.toCovariantSet
+    val writeActions: Set[RwRorAction] = values.collect { case action: RwRorAction => action }.toCovariantSet
+    val adminActions: Set[AdminRorAction] = values.collect { case action: AdminRorAction => action }.toCovariantSet
 
     private def rorActionFrom(value: String): Option[RorAction] = value match {
       case RorUserMetadataAction.`value` => RorUserMetadataAction.some
@@ -182,6 +183,13 @@ object RepositoryName {
     case All => "*"
     case Wildcard => "*"
   }
+
+  implicit class OrWildcardWhenEmpty(val repositories: Set[RepositoryName]) extends AnyVal {
+    def orWildcardWhenEmpty: Set[RepositoryName] =
+      if (repositories.nonEmpty) repositories
+      else Set(RepositoryName.all)
+  }
+
 }
 
 sealed trait SnapshotName
@@ -223,6 +231,12 @@ object SnapshotName {
     case Pattern(namePattern) => namePattern.value
     case All => "*"
     case Wildcard => "*"
+  }
+
+  implicit class OrWildcardWhenEmpty(val snapshots: Set[SnapshotName]) extends AnyVal {
+    def orWildcardWhenEmpty: Set[SnapshotName] =
+      if (snapshots.nonEmpty) snapshots
+      else Set(SnapshotName.all)
   }
 }
 
@@ -273,6 +287,12 @@ object DataStreamName {
     case Pattern(namePattern) => namePattern.value
     case All => "*"
     case Wildcard => "*"
+  }
+
+  implicit class OrWildcardWhenEmpty(val dataSteams: Set[DataStreamName]) extends AnyVal {
+    def orWildcardWhenEmpty: Set[DataStreamName] =
+      if (dataSteams.nonEmpty) dataSteams
+      else Set(DataStreamName.all)
   }
 
   final case class FullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,

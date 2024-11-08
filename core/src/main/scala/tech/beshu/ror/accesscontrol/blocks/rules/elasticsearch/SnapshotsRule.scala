@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeMatchFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.syntax.*
 
 class SnapshotsRule(val settings: Settings)
   extends RegularRule {
@@ -44,7 +45,7 @@ class SnapshotsRule(val settings: Settings)
         Fulfilled(blockContext)
       case BlockContextUpdater.SnapshotRequestBlockContextUpdater =>
         checkAllowedSnapshots(
-          resolveAll(settings.allowedSnapshots.toNonEmptyList, blockContext).toSet,
+          resolveAll(settings.allowedSnapshots.toNonEmptyList, blockContext).toCovariantSet,
           blockContext
         )
       case _ =>

@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DocumentId, Docume
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.response.FieldsFiltering.{MetadataDocumentFields, NewFilteredDocumentFields}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object DocumentApiOps {
 

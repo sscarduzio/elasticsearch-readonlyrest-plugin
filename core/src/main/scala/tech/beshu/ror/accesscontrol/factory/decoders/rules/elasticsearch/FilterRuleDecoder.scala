@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.domain.Filter
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 
 class FilterRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[FilterRule] {

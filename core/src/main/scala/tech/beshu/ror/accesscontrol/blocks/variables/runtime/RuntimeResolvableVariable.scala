@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import com.github.tototoshi.csv.{CSVParser, DefaultCSVFormat}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -27,10 +26,10 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
 import tech.beshu.ror.accesscontrol.domain.{Header, Jwt}
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.CustomClaimValue.{CollectionValue, SingleValue}
-import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.json.JsonPath
 
 private[runtime] trait RuntimeResolvableVariable[VALUE] {

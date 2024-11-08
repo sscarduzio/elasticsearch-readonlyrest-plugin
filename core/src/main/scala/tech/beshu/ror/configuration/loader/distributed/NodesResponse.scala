@@ -17,8 +17,8 @@
 package tech.beshu.ror.configuration.loader.distributed
 
 import cats.Eq
-import cats.implicits._
-import io.circe.syntax._
+import cats.implicits.*
+import io.circe.syntax.*
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.external.dto.ResultDTO
 

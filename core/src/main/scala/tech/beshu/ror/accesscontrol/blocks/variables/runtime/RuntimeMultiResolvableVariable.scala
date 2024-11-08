@@ -18,10 +18,10 @@ package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.Order
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.{Convertible, Unresolvable}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
 sealed trait RuntimeMultiResolvableVariable[T] extends RuntimeResolvableVariable[NonEmptyList[T]]
 

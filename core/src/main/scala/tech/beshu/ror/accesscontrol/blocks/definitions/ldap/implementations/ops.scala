@@ -14,26 +14,18 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils
+package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import monix.execution.CancelablePromise
+import cats.Show
+import cats.implicits.*
+import com.unboundid.ldap.sdk.{SearchResult, SearchResultEntry, SearchScope}
 
-import scala.util.{Failure, Success, Try}
-
-object ScalaJavaHelper {
-
-  def force[T](value: Try[T]): T = value match {
-    case Success(v) => v
-    case Failure(exception) => throw exception
-  }
-
-  def newCancelablePromise[T]: CancelablePromise[T] =
-    CancelablePromise[T]()
-
-  def getOrElse[A, B](either: Either[A, B], toException: A => Exception): B = {
-    either.fold(
-      left => throw toException(left),
-      identity,
-    )
+object ops {
+  object logs {
+    implicit val searchScopeShow: Show[SearchScope] = Show.show(_.getName)
+    implicit val searchResultShow: Show[SearchResult] = Show.show { result =>
+      s"code=${result.getResultCode.intValue().show}, cause=${result.getResultString.show}"
+    }
+    implicit val searchResultEntryShow: Show[SearchResultEntry] = Show.show(_.toString)
   }
 }

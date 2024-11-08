@@ -21,7 +21,7 @@ import tech.beshu.ror.buildinfo.BuildInfoReader
 
 class BuildInfoReaderTest extends AnyWordSpec {
 
-  import org.scalatest.matchers.should.Matchers._
+  import org.scalatest.matchers.should.Matchers.*
 
   "BuildInfoReader" should {
     "fail create from nonexistent file" in {

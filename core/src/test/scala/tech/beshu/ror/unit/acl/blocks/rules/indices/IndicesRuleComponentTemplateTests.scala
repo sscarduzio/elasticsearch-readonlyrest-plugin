@@ -16,16 +16,16 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
-import eu.timepit.refined.auto._
 import cats.data.{NonEmptyList, NonEmptySet}
+import eu.timepit.refined.auto.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.domain.Template.ComponentTemplate
-import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingComponentTemplate, DeletingComponentTemplates, GettingComponentTemplates}
+import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.clusterIndexName
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, unsafeNes}
 
 private [indices] trait IndicesRuleComponentTemplateTests {
   this: BaseIndicesRuleTests =>
@@ -192,7 +192,10 @@ private [indices] trait IndicesRuleComponentTemplateTests {
               name = TemplateName("t1"),
               aliases = Set(clusterIndexName("test1"))
             )
-            val addingTemplateOperation = AddingComponentTemplate(existingTemplate.name, existingTemplate.aliases)
+            val addingTemplateOperation = AddingComponentTemplate(
+              name = existingTemplate.name,
+              aliases = existingTemplate.aliases
+            )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1")),
               requestContext = MockRequestContext

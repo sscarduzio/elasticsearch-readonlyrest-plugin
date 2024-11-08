@@ -17,17 +17,19 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.admin.indices.shrink.ResizeRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class ResizeEsRequestContext(actionRequest: ResizeRequest,
                              esContext: EsContext,
@@ -39,17 +41,17 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
   override protected def indicesFrom(request: ResizeRequest): Set[ClusterIndexName] = {
     (request.getSourceIndex :: request.getTargetIndexRequest.index() :: request.getTargetIndexRequest.aliases().asScala.map(_.name()).toList)
       .flatMap(ClusterIndexName.fromString)
-      .toSet
+      .toCovariantSet
   }
 
   override protected def update(request: ResizeRequest,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    val notAllowedIndices = indicesFrom(actionRequest) -- filteredIndices.toList.toSet
+    val notAllowedIndices = indicesFrom(actionRequest) -- filteredIndices.toList.toCovariantSet
     if (notAllowedIndices.isEmpty) {
       Modified
     } else {
-      throw new IllegalStateException(s"Resize request is write request and such requests need all indices to be allowed. Not allowed indices=[${notAllowedIndices.map(_.show).mkString(",")}]")
+      throw new IllegalStateException(s"Resize request is write request and such requests need all indices to be allowed. Not allowed indices=[${notAllowedIndices.show}]")
     }
   }
 }

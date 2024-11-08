@@ -16,16 +16,16 @@
  */
 package tech.beshu.ror.es.utils
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.TransportVersion
 import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.io.stream.BytesStreamOutput
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.utils.RefinedUtils._
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.util.Base64
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object XPackSecurityAuthenticationHeader {
 

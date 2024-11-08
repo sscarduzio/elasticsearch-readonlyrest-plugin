@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.utils.ReflecUtils
 
 import scala.util.Try
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object SearchHitOps {
 

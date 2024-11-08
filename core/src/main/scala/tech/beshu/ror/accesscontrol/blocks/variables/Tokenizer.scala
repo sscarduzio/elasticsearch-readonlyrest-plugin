@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.variables
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token.TokenWithVariable
 

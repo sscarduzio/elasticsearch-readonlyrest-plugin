@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.data.{EitherT, NonEmptyList}
-import cats.implicits.*
 import com.comcast.ip4s.Port
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -25,6 +24,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
@@ -253,28 +253,22 @@ object LdapServicesDecoder extends Logging {
         connectionErrorFrom(
           connectionMethod match {
             case SingleServer(host) =>
-              s"There was a problem with '${ldap.value}' LDAP connection to: ${host.url.toString()}"
+              s"There was a problem with '${ldap.show}' LDAP connection to: ${host.show}"
             case SeveralServers(hosts, _) =>
-              s"There was a problem with '${ldap.value}' LDAP connection to: ${hosts.map(_.url.toString()).toList.mkString(",")}"
+              s"There was a problem with '${ldap.show}' LDAP connection to: ${hosts.toList.show}"
             case ConnectionMethod.ServerDiscovery(recordName, providerUrl, _, _) =>
-              s"There was a problem with '${ldap.value}' LDAP connection in discovery mode. " +
-                s"Connection details: recordName=${recordName.getOrElse("default")}, " +
+              s"There was a problem with '${ldap.show}' LDAP connection in discovery mode. " +
+                s"Connection details: recordName=${recordName.getOrElse("default").show}, " +
                 s"providerUrl=${providerUrl.getOrElse("default")}"
           }
         )
       case HostResolvingError(ldap, hosts) =>
-        connectionErrorFrom(
-          s"There was a problem with resolving '${ldap.value}' LDAP hosts: ${hosts.map(_.url.toString()).toList.mkString(",")}"
-        )
+        connectionErrorFrom(s"There was a problem with resolving '${ldap.show}' LDAP hosts: ${hosts.toList.show}")
       case BindingTestError(ldap) =>
-        connectionErrorFrom(
-          s"There was a problem with test binding in case of '${ldap.value}' LDAP connector}"
-        )
+        connectionErrorFrom(s"There was a problem with test binding in case of '${ldap.show}' LDAP connector}")
       case UnexpectedConnectionError(ldap, cause) =>
-        logger.error(s"Unexpected '${ldap.value}' LDAP connection error", cause)
-        connectionErrorFrom(
-          s"Unexpected '${ldap.value}' LDAP connection error: '${cause.getMessage}'}"
-        )
+        logger.error(s"Unexpected '${ldap.show}' LDAP connection error", cause)
+        connectionErrorFrom(s"Unexpected '${ldap.show}' LDAP connection error: '${cause.getMessage.show}'}")
   }
 
   private given Decoder[UserSearchFilterConfig] =
@@ -348,7 +342,7 @@ object LdapServicesDecoder extends Logging {
           groupsFromUserAttribute <- c.downFieldAs[Option[GroupsFromUserAttribute]]("groups_from_user_attribute")
           groupIdAttribute <- (maybeGroupIdAttribute, maybeGroupNameAttribute) match {
             case (Some(id), Some(_)) =>
-              Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(Message(s"Group names (group_name_attribute) are not supported when the group search in user entries is used [ldap ${serviceName.value.value}]. If you intend to use this feature, please get in touch with us."))))
+              Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(Message(s"Group names (group_name_attribute) are not supported when the group search in user entries is used [ldap ${serviceName.show}]. If you intend to use this feature, please get in touch with us."))))
             case (Some(id), None) => Right(id)
             case (None, Some(name)) =>
               // When only group_name_attribute is defined, we treat it as group ID (backward compatibility)
@@ -506,7 +500,7 @@ object LdapServicesDecoder extends Logging {
       .emapE[HaMethod] {
         case "FAILOVER" => Right(HaMethod.Failover)
         case "ROUND_ROBIN" => Right(HaMethod.RoundRobin)
-        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown HA method '$unknown'")))
+        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown HA method '${unknown.show}'")))
       }
       .decoder
 
@@ -624,7 +618,7 @@ object LdapServicesDecoder extends Logging {
           case "search_groups_in_user_entries" => Right(SearchInUserEntries)
           case "search_groups_in_group_entries" => Right(SearchInGroupEntries)
           case other => Left(DefinitionsLevelCreationError(Message(
-            s"Unknown mode of groups search: $other. Supported modes are search_groups_in_user_entries, search_groups_in_group_entries"
+            s"Unknown mode of groups search: ${other.show}. Supported modes are search_groups_in_user_entries, search_groups_in_group_entries"
           )))
 
         }.decoder

@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
+import tech.beshu.ror.syntax.*
 
 class TemplateNamePatternMatcher(templateNames: Set[TemplateNamePattern]) {
 

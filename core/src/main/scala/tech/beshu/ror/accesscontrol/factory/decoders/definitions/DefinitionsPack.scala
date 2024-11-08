@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Show
-import tech.beshu.ror.accesscontrol.blocks.definitions._
+import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 
 final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
@@ -36,6 +36,6 @@ object Definitions {
   trait Item {
     type Id
     def id: Id
-    implicit def show: Show[Id]
+    def idShow: Show[Id]
   }
 }

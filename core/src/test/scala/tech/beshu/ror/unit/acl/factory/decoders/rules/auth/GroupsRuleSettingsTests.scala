@@ -16,30 +16,29 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
-import tech.beshu.ror.accesscontrol.blocks.rules.auth._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.SingletonLdapContainers
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.reflect.ClassTag
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.Name)
 class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.DeprecatedName)
@@ -1075,7 +1074,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message(
-              "Too many rules defined for [cartman] in users definition section: auth_key,ldap_authorization,groups_provider_authorization"
+              "Too many rules defined for [cartman] in users definition section: auth_key, ldap_authorization, groups_provider_authorization"
             )))
           }
         )

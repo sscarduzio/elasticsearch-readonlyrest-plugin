@@ -27,11 +27,11 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common.userIdDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ProxyAuthDefinitionsDecoder._
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ProxyAuthDefinitionsDecoder.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
@@ -55,7 +55,7 @@ class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
 
 private object ProxyAuthRuleDecoder {
 
-  import cats.implicits._
+  import cats.implicits.*
 
   private val defaultUserHeaderName: Header.Name = Header.Name.xForwardedUser
 

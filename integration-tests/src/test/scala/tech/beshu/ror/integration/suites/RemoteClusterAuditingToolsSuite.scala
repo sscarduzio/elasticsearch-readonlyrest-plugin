@@ -20,8 +20,8 @@ import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.SecurityType.NoSecurityCluster
-import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.dependencies._
+import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.dependencies.*
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer
 

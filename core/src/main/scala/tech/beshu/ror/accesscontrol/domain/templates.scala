@@ -16,13 +16,14 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import cats.implicits.*
-import eu.timepit.refined.auto.*
 import cats.Eq
 import cats.data.NonEmptyList
+import cats.implicits.*
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.matchers.{TemplateNamePatternMatcher, UniqueIdentifierGenerator}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -83,8 +84,7 @@ object TemplateOperation {
   final case class GettingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
     extends TemplateOperation
 
-  final case class AddingComponentTemplate(name: TemplateName,
-                                           aliases: Set[ClusterIndexName])
+  final case class AddingComponentTemplate(name: TemplateName, aliases: Set[ClusterIndexName])
     extends TemplateOperation
 
   final case class DeletingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
@@ -154,7 +154,7 @@ object TemplateNamePattern {
             ._2
             .toString
         }
-        .getOrElse(throw new IllegalMonitorStateException(s"Cannot find the most generic template name patten in ${in.toList.map(_.show).mkString(",")}"))
+        .getOrElse(throw new IllegalMonitorStateException(s"Cannot find the most generic template name patten in ${in.show}"))
     } else {
       in.head
     }

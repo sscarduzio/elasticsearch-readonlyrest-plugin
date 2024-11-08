@@ -17,10 +17,10 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
-import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.StringOps
 import tech.beshu.ror.utils.json.JsonPath
 
@@ -58,7 +58,7 @@ object BasicAuth extends Logging {
       val basicAuth = fromBase64(rawValue.substring(authMethodName.length))
       basicAuth match {
         case None =>
-          logger.warn(s"Cannot decode value '$headerValue' to Basic Auth")
+          logger.warn(s"Cannot decode value '${headerValue.show}' to Basic Auth")
         case Some(_) =>
       }
       basicAuth
@@ -68,7 +68,7 @@ object BasicAuth extends Logging {
   }
 
   private def fromBase64(base64Value: String) = {
-    import tech.beshu.ror.utils.StringWiseSplitter._
+    import tech.beshu.ror.utils.StringWiseSplitter.*
     base64Value
       .decodeBase64
       .flatMap(_.toNonEmptyStringsTuple.toOption)

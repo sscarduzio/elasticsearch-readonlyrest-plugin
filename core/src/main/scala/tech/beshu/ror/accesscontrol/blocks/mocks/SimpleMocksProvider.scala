@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.mocks
 
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 
 private[mocks] final case class SimpleMocksProvider(mocks: AuthServicesMocks)
   extends MocksProvider {

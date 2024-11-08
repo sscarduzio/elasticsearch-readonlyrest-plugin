@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -36,9 +36,7 @@ class IndexEsRequestContext(actionRequest: IndexRequest,
   override protected def indexFrom(request: IndexRequest): ClusterIndexName = {
     ClusterIndexName
       .fromString(request.index())
-      .getOrElse {
-        throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")
-      }
+      .getOrElse(throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid"))
   }
 
   override protected def update(request: IndexRequest, index: ClusterIndexName): ModificationResult = {

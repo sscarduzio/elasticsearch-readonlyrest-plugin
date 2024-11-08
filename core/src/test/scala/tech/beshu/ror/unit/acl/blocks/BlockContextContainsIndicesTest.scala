@@ -23,7 +23,7 @@ import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class BlockContextContainsIndicesTest extends AnyWordSpec {
 
-  import org.scalatest.matchers.should.Matchers._
+  import org.scalatest.matchers.should.Matchers.*
 
   "find HasIndexPacks" in {
     implicitly[HasIndexPacks[BlockContext.FilterableMultiRequestBlockContext]]

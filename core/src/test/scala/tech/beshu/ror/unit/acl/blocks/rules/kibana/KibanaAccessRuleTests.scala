@@ -18,8 +18,9 @@ package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule._
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.*
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class KibanaAccessRuleTests

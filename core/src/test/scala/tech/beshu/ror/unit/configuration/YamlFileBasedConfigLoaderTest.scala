@@ -17,10 +17,10 @@
 package tech.beshu.ror.unit.configuration
 
 import better.files.File
-import cats.implicits._
+import cats.implicits.*
 import io.circe.Decoder
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.{EnvironmentConfig, YamlFileBasedConfigLoader}
 

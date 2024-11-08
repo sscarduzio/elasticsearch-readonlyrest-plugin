@@ -16,21 +16,21 @@
  */
 package tech.beshu.ror.integration
 
-import eu.timepit.refined.auto._
 import com.dimafeng.testcontainers.ForAllTestContainer
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
   extends AnyWordSpec

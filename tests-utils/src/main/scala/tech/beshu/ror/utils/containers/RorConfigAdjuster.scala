@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils.containers
 
 import better.files.File
-import tech.beshu.ror.utils.containers.ContainerOps._
+import tech.beshu.ror.utils.containers.ContainerOps.*
 
 object RorConfigAdjuster {
 

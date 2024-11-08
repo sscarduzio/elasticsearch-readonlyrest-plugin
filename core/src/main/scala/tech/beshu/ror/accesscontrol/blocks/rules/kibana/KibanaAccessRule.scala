@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.*
 
 class KibanaAccessRule(override val settings: Settings)
   extends BaseKibanaRule(settings) {

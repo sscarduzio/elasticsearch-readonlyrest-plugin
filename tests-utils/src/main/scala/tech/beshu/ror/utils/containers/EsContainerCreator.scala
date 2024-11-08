@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils.containers
 
-import better.files._
+import better.files.*
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
