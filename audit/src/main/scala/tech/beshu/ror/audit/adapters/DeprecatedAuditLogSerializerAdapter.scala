@@ -25,7 +25,7 @@ import tech.beshu.ror.commons.shims.request.RequestContextShim
 
 import java.util.{Date, Optional}
 import java.{lang, util}
-import scala.collection.JavaConverters.*
+import scala.collection.JavaConverters._
 
 class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestcontext.AuditLogSerializer[T])
   extends AuditLogSerializer {
