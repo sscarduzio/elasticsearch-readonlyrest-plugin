@@ -24,6 +24,7 @@ import org.elasticsearch.index.query.QueryBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
@@ -54,7 +55,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
       throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
   }
 
-  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
     sqlIndicesExtractResult.map(_.indices.flatMap(ClusterIndexName.fromString)) match {
       case Right(indices) => indices
       case Left(_) => Set(ClusterIndexName.Local.wildcard)
@@ -62,11 +63,11 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
   }
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                indices: NonEmptyList[ClusterIndexName],
+                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val result: Either[SqlRequestHelper.ModificationError, UpdateResponse] = for {
-      _ <- modifyRequestIndices(request, indices)
+      _ <- modifyRequestIndices(request, filteredRequestedIndices)
       _ <- Right(applyFieldLevelSecurityTo(request, fieldLevelSecurity))
       _ <- Right(applyFilterTo(request, filter))
     } yield {
@@ -91,7 +92,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
   }
 
   private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,
-                                   indices: NonEmptyList[ClusterIndexName]): Either[SqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
+                                   indices: NonEmptyList[RequestedIndex[ClusterIndexName]]): Either[SqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
     sqlIndicesExtractResult match {
       case Right(sqlIndices) =>
         val indicesStrings = indices.stringify.toCovariantSet

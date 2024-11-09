@@ -179,7 +179,7 @@ object BlockContext {
     }
 
     implicit class NonEmptyListStringify[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
-      def stringify: List[String] = requestedIndices.toList.map(_.stringify)
+      def stringify: List[String] = requestedIndices.toList.map(_.stringify) // todo: sorting order matters
     }
 
   }

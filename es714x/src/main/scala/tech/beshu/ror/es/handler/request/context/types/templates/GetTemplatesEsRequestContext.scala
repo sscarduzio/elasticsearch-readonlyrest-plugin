@@ -80,6 +80,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
              | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+        ModificationResult.ShouldBeInterrupted
     }
   }
 

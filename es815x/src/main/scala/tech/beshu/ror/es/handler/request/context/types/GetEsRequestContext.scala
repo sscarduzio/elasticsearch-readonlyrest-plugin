@@ -45,7 +45,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  override protected def indicesFrom(request: GetRequest): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: GetRequest): Set[RequestedIndex[ClusterIndexName]] = {
     val indexName = RequestedIndex
       .fromString(request.index())
       .getOrElse(throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid"))
@@ -53,7 +53,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
   }
 
   override protected def update(request: GetRequest,
-                                indices: NonEmptyList[RequestedIndex],
+                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val indexName = indices.head

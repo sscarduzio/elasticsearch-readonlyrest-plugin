@@ -21,6 +21,7 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
@@ -273,10 +274,10 @@ object ClusterIndexName {
     }
   }
 
-  implicit class OrWildcardWhenEmpty(val indices: Set[ClusterIndexName]) extends AnyVal {
-    def orWildcardWhenEmpty: Set[ClusterIndexName] =
+  implicit class OrWildcardWhenEmpty[T <: ClusterIndexName](val indices: Set[RequestedIndex[T]]) extends AnyVal {
+    def orWildcardWhenEmpty: Set[RequestedIndex[ClusterIndexName]] =
       if (indices.nonEmpty) indices
-      else Set(ClusterIndexName.Local.wildcard)
+      else Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
   }
 
   implicit class HasPrefix(val indexName: ClusterIndexName) extends AnyVal {

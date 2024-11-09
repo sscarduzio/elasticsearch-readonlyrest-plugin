@@ -22,6 +22,7 @@ import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndices
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
@@ -50,18 +51,18 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
   override protected def requestFieldsUsage: FieldLevelSecurity.RequestFieldsUsage =
     searchTemplateRequest.getRequest.checkFieldsUsage()
 
-  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
     searchRequest
       .indices.asSafeSet
       .flatMap(ClusterIndexName.fromString)
   }
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                indices: NonEmptyList[ClusterIndexName],
+                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 filter: Option[domain.Filter],
                                 fieldLevelSecurity: Option[domain.FieldLevelSecurity]): ModificationResult = {
     searchTemplateRequest.setRequest(
-      searchRequest, indices, filter, fieldLevelSecurity
+      searchRequest, filteredRequestedIndices, filter, fieldLevelSecurity
     )
     ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
   }
@@ -119,7 +120,7 @@ final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)
   }
 
   def setRequest(searchRequest: SearchRequest,
-                 indices: NonEmptyList[ClusterIndexName],
+                 indices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                  filter: Option[domain.Filter],
                  fieldLevelSecurity: Option[domain.FieldLevelSecurity]): Unit = {
     setSearchRequest(new EnhancedSearchRequest(searchRequest, indices, filter, fieldLevelSecurity))
@@ -130,7 +131,7 @@ final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)
   }
 
   private class EnhancedSearchRequest(request: SearchRequest,
-                                      indices: NonEmptyList[ClusterIndexName],
+                                      indices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                       filter: Option[Filter],
                                       fieldLevelSecurity: Option[FieldLevelSecurity])
                                      (implicit threadPool: ThreadPool,

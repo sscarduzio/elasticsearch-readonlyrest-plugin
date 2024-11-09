@@ -19,10 +19,10 @@ package tech.beshu.ror.audit.instances
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject
-import tech.beshu.ror.audit.AuditResponseContext.*
+import tech.beshu.ror.audit.AuditResponseContext._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 
-import scala.collection.JavaConverters.*
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 
 class DefaultAuditLogSerializer extends AuditLogSerializer {
