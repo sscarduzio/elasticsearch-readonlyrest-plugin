@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types.datastreams
 import org.elasticsearch.action.datastreams.ModifyDataStreamsAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{DataStreamRequestBlockContext, RequestedIndex}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.RorClusterService
@@ -35,11 +35,11 @@ class ModifyDataStreamsEsRequestContext(actionRequest: ModifyDataStreamsAction.R
                                         override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  private lazy val originIndices: Set[ClusterIndexName] =
+  private lazy val originIndices: Set[RequestedIndex[ClusterIndexName]] =
     actionRequest
       .getActions.asSafeSet
       .map(_.getIndex)
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
 
   override protected def backingIndicesFrom(request: ModifyDataStreamsAction.Request): DataStreamRequestBlockContext.BackingIndices =
     BackingIndices.IndicesInvolved(originIndices, Set(ClusterIndexName.Local.wildcard))

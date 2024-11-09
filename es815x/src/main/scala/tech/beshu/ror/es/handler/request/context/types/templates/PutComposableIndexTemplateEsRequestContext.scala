@@ -19,8 +19,9 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 import org.elasticsearch.action.admin.indices.template.put.TransportPutComposableIndexTemplateAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingIndexTemplate
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.{IndexPattern, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -64,7 +65,7 @@ object PutComposableIndexTemplateEsRequestContext {
         .from(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
       aliases = Option(request.indexTemplate().template()).toCovariantSet
-        .flatMap(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toCovariantSet)
+        .flatMap(_.aliases().asSafeMap.keys.flatMap(RequestedIndex.fromString).toCovariantSet)
     } yield AddingIndexTemplate(name, patterns, aliases)
   }
 }

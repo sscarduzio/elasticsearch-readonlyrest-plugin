@@ -19,7 +19,6 @@ package tech.beshu.ror.es.handler.request.context.types.snapshots
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
-import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
@@ -54,7 +53,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[SnapshotsStatusRequest]("Repository name is empty"))
   }
 
-  override protected def requestedIndicesFrom(request: DeleteSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] =
+  override protected def requestedIndicesFrom(request: SnapshotsStatusRequest): Set[RequestedIndex[ClusterIndexName]] =
     Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {

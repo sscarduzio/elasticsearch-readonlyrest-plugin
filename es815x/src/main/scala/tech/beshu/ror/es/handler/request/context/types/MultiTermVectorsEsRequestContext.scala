@@ -58,7 +58,7 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
   private def removeOrAlter(request: TermVectorsRequest,
                             filteredIndices: Set[RequestedIndex[ClusterIndexName]]): Boolean = {
     val expandedIndicesOfRequest = clusterService.expandLocalIndices(ClusterIndexName.fromString(request.index()).toCovariantSet)
-    val remaining = expandedIndicesOfRequest.intersect(filteredIndices).toList
+    val remaining = expandedIndicesOfRequest.intersect(filteredIndices.map(_.name)).toList // todo: is it ok? or we should take into consideration also exclusion?
     remaining match {
       case Nil =>
         true

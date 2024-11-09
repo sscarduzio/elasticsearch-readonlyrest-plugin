@@ -25,6 +25,7 @@ import org.elasticsearch.cluster.metadata.Template as EsMetadataTemplate
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -47,9 +48,9 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
 
   override lazy val isReadOnlyRequest: Boolean = true
 
-  override protected def indicesFrom(request: SimulateIndexTemplateRequest): Set[ClusterIndexName] =
+  override protected def requestedIndicesFrom(request: SimulateIndexTemplateRequest): Set[RequestedIndex[ClusterIndexName]] =
     Option(request.getIndexName)
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
       .toCovariantSet
 
   override protected def update(request: SimulateIndexTemplateRequest,
@@ -58,12 +59,12 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
     if (filteredIndices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
     }
-    update(request, filteredIndices.head, allAllowedIndices)
+    updateRequest(request, filteredIndices.head, allAllowedIndices)
   }
 
-  private def update(request: SimulateIndexTemplateRequest,
-                     index: ClusterIndexName,
-                     allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+  private def updateRequest(request: SimulateIndexTemplateRequest,
+                            index: RequestedIndex[ClusterIndexName],
+                            allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indexName(index.stringify)
     ModificationResult.UpdateResponse {
       case response: SimulateIndexTemplateResponse =>
@@ -77,7 +78,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
 object SimulateIndexTemplateRequestEsRequestContext {
 
   private[templates] def filterAliasesAndIndexPatternsIn(response: SimulateIndexTemplateResponse,
-                                                     allowedIndices: List[ClusterIndexName]): SimulateIndexTemplateResponse = {
+                                                         allowedIndices: List[ClusterIndexName]): SimulateIndexTemplateResponse = {
     val tunedResponse = new TunedSimulateIndexTemplateResponse(response)
     val filterResponse = filterIndexTemplate(allowedIndices) andThen filterOverlappingTemplates(allowedIndices)
     filterResponse(tunedResponse).underlying

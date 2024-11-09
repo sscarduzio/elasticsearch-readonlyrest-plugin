@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.snapshots
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -51,7 +50,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Repository name is empty"))
   }
 
-  override protected def requestedIndicesFrom(request: DeleteSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] =
+  override protected def requestedIndicesFrom(request: RestoreSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] =
     request
       .indices.asSafeSet
       .flatMap(RequestedIndex.fromString)

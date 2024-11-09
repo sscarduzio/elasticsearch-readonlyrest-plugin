@@ -62,7 +62,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
     val updateResult = for {
       snapshot <- snapshotFrom(blockContext)
       repository <- repositoryFrom(blockContext)
-      indices <- requestedIndicesFrom(blockContext)
+      indices <- filteredIndicesFrom(blockContext)
     } yield update(actionRequest, snapshot, repository, indices)
     updateResult match {
       case Right(_) =>
@@ -99,7 +99,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
     }
   }
 
-  private def indicesFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def filteredIndicesFrom(blockContext: SnapshotRequestBlockContext) = {
     UniqueNonEmptyList.from(blockContext.filteredIndices) match {
       case Some(value) => Right(value)
       case None => Left(())

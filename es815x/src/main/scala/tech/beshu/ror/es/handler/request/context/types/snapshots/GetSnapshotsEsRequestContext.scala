@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.snapshots
 
 import cats.implicits.*
 import monix.eval.Task
-import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
@@ -56,7 +55,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       .flatMap(RepositoryName.from)
   }
 
-  override protected def requestedIndicesFrom(request: DeleteSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] =
+  override protected def requestedIndicesFrom(request: GetSnapshotsRequest): Set[RequestedIndex[ClusterIndexName]] =
     Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {

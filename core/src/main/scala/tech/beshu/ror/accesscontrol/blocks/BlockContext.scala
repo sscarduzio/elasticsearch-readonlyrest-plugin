@@ -169,7 +169,7 @@ object BlockContext {
 
     implicit val requestedIndexEq: Eq[RequestedIndex[ClusterIndexName]] = Eq.by(r => (r.name, r.excluded))
 
-    def fromString(value: String): Option[_ <: RequestedIndex[ClusterIndexName]] = {
+    def fromString(value: String): Option[RequestedIndex[ClusterIndexName]] = {
       val (excluded, potentialIndexName) = isExcluded(value)
       ClusterIndexName.fromString(potentialIndexName).map(RequestedIndex(_, excluded))
     }

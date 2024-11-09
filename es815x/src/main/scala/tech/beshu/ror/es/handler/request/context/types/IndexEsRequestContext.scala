@@ -34,7 +34,7 @@ class IndexEsRequestContext(actionRequest: IndexRequest,
                             override val threadPool: ThreadPool)
   extends BaseSingleIndexEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indexFrom(request: IndexRequest): RequestedIndex[ClusterIndexName] = {
+  override protected def requestedIndexFrom(request: IndexRequest): RequestedIndex[ClusterIndexName] = {
     RequestedIndex
       .fromString(request.index())
       .getOrElse(throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid"))

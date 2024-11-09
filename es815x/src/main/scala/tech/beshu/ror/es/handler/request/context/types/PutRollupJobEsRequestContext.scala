@@ -42,7 +42,7 @@ class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
     val config = on(actionRequest).call("getConfig").get[AnyRef]()
     val indexPattern = on(config).call("getIndexPattern").get[String]()
     val rollupIndex = on(config).call("getRollupIndex").get[String]()
-    (ClusterIndexName.fromString(indexPattern) :: ClusterIndexName.fromString(rollupIndex) :: Nil).flatten.toCovariantSet
+    (RequestedIndex.fromString(indexPattern) :: RequestedIndex.fromString(rollupIndex) :: Nil).flatten.toCovariantSet
   }
 
   override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] = originIndices

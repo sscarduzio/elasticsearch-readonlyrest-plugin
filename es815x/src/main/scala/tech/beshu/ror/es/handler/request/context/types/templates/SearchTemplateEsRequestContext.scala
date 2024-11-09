@@ -54,7 +54,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
   override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
     searchRequest
       .indices.asSafeSet
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,

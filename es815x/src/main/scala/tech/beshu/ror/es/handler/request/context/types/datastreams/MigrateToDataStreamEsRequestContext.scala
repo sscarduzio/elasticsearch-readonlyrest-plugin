@@ -20,6 +20,7 @@ import org.elasticsearch.action.datastreams.MigrateToDataStreamAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -33,17 +34,15 @@ class MigrateToDataStreamEsRequestContext(actionRequest: MigrateToDataStreamActi
                                           override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  private lazy val originIndices =
-    Option(actionRequest.getAliasName)
-      .flatMap(ClusterIndexName.fromString)
-      .toCovariantSet
+  private lazy val originIndex: Option[RequestedIndex[ClusterIndexName]] =
+    Option(actionRequest.getAliasName).flatMap(RequestedIndex.fromString)
 
   override protected def dataStreamsFrom(request: MigrateToDataStreamAction.Request): Set[DataStreamName] =
     Set.empty
 
   override protected def backingIndicesFrom(request: MigrateToDataStreamAction.Request): BackingIndices =
     BackingIndices.IndicesInvolved(
-      filteredIndices = originIndices,
+      filteredIndices = originIndex.toCovariantSet,
       allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
     )
 
