@@ -40,7 +40,7 @@ class IndicesStatsEsRequestContext(actionRequest: IndicesStatsRequest,
   }
 
   override protected def update(request: IndicesStatsRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     Modified

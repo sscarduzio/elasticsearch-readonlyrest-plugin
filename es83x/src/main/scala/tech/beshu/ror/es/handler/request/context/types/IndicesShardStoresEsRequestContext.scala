@@ -40,7 +40,7 @@ class IndicesShardStoresEsRequestContext(actionRequest: IndicesShardStoresReques
   }
 
   override protected def update(request: IndicesShardStoresRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     actionRequest.indices(filteredIndices.stringify: _*)
     Modified

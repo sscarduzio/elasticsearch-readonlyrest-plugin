@@ -39,12 +39,12 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
                                        override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[MultiTermVectorsRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: MultiTermVectorsRequest): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: MultiTermVectorsRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request.getRequests.asScala.flatMap(r => RequestedIndex.fromString(r.index())).toCovariantSet
   }
 
   override protected def update(request: MultiTermVectorsRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.getRequests.removeIf { request => removeOrAlter(request, filteredIndices.toCovariantSet) }
     if (request.getRequests.asScala.isEmpty) {
@@ -56,7 +56,7 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
   }
 
   private def removeOrAlter(request: TermVectorsRequest,
-                            filteredIndices: Set[RequestedIndex]): Boolean = {
+                            filteredIndices: Set[RequestedIndex[ClusterIndexName]]): Boolean = {
     val expandedIndicesOfRequest = clusterService.expandLocalIndices(ClusterIndexName.fromString(request.index()).toCovariantSet)
     val remaining = expandedIndicesOfRequest.intersect(filteredIndices).toList
     remaining match {

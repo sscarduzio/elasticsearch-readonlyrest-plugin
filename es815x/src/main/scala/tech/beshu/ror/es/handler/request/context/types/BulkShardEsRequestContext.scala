@@ -43,12 +43,12 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
                                 override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[BulkShardRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: BulkShardRequest): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: BulkShardRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request.indices().asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: BulkShardRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     tryUpdate(request, filteredIndices) match {
       case Success(_) =>
@@ -59,12 +59,12 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
     }
   }
 
-  private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[RequestedIndex]) = {
+  private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     if (indices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
     }
     val singleIndex = indices.head
-    val uuid = clusterService.indexOrAliasUuids(singleIndex).toList.head
+    val uuid = clusterService.indexOrAliasUuids(singleIndex.name).toList.head
     ReflectionUtils
       .getAllFields(request.shardId().getClass, ReflectionUtils.withName("index")).asScala
       .foldLeft(Try(())) {

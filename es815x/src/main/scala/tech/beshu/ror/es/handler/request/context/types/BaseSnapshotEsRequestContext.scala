@@ -41,7 +41,7 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
     responseTransformations = List.empty,
     snapshots = snapshotsFrom(actionRequest).orWildcardWhenEmpty,
     repositories = repositoriesFrom(actionRequest).orWildcardWhenEmpty,
-    filteredIndices = indicesFrom(actionRequest),
+    filteredIndices = requestedIndicesFrom(actionRequest),
     allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
   )
 
@@ -49,5 +49,5 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
 
   protected def repositoriesFrom(request: T): Set[RepositoryName]
 
-  protected def indicesFrom(request: T): Set[RequestedIndex]
+  protected def requestedIndicesFrom(request: T): Set[RequestedIndex[ClusterIndexName]]
 }

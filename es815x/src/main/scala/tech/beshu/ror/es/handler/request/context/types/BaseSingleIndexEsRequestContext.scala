@@ -36,10 +36,11 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
                                                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[R](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: R): Set[RequestedIndex] = Set(indexFrom(request))
+  override protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]] =
+    Set(requestedIndexFrom(request))
 
   override protected def update(request: R,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
@@ -47,7 +48,7 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
     update(request, filteredIndices.head)
   }
 
-  protected def indexFrom(request: R): RequestedIndex
+  protected def requestedIndexFrom(request: R): RequestedIndex[ClusterIndexName]
 
-  protected def update(request: R, index: RequestedIndex): ModificationResult
+  protected def update(request: R, index: RequestedIndex[ClusterIndexName]): ModificationResult
 }

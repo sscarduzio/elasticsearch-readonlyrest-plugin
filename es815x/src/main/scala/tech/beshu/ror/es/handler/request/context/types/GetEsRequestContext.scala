@@ -56,7 +56,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                                 filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    val indexName = indices.head
+    val indexName = filteredRequestedIndices.head
     request.index(indexName.stringify)
     ModificationResult.UpdateResponse(updateFunction(filter, fieldLevelSecurity))
   }

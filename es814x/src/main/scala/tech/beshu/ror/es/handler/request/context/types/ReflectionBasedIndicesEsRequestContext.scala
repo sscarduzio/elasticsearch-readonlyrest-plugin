@@ -47,7 +47,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
   override protected def indicesFrom(request: ActionRequest): Set[ClusterIndexName] = indices
 
   override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {

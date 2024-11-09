@@ -78,10 +78,10 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     }
   }
 
-  protected def indicesFrom(request: R): Set[ClusterIndexName]
+  protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]]
 
   protected def update(request: R,
-                       filteredIndices: NonEmptyList[ClusterIndexName],
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                        allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult
 
   private def toSortedNonEmptyList[A: Ordering](values: Iterable[A]) = {

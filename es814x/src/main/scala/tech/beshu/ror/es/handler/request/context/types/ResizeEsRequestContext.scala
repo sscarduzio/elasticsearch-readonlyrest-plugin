@@ -45,7 +45,7 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
   }
 
   override protected def update(request: ResizeRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val notAllowedIndices = indicesFrom(actionRequest) -- filteredIndices.toList.toCovariantSet
     if (notAllowedIndices.isEmpty) {

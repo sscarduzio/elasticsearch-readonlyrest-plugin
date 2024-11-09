@@ -21,6 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -36,14 +37,14 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ClusterStateRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterStateRequest): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: ClusterStateRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request.indices.asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: ClusterStateRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    indicesFrom(request).toList match {
+    requestedIndicesFrom(request).toList match {
       case Nil if filteredIndices.exists(_.name === ClusterIndexName.Local.wildcard) =>
         // hack: when empty indices list is replaced with wildcard index, returned result is wrong
         Modified

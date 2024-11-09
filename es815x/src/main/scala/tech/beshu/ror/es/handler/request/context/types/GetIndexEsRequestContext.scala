@@ -40,14 +40,14 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
                                override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[GetIndexRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: GetIndexRequest): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: GetIndexRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request
       .indices().asSafeSet
       .flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: GetIndexRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     ModificationResult.UpdateResponse(filterAliases(_, allAllowedIndices))

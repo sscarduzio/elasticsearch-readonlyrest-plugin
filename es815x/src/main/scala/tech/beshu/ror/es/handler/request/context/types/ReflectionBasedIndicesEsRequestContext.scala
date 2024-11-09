@@ -45,10 +45,10 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
                                                      override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ActionRequest): Set[RequestedIndex] = indices
+  override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] = indices
 
   override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {
@@ -57,7 +57,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
     }
   }
 
-  private def tryUpdate(actionRequest: ActionRequest, indices: NonEmptyList[RequestedIndex]) = {
+  private def tryUpdate(actionRequest: ActionRequest, indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     // Optimistic reflection attempt
     ReflecUtils.setIndices(
       actionRequest,

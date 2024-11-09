@@ -51,7 +51,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
   }
 
   override protected def update(request: ResolveIndexAction.Request,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     ModificationResult.UpdateResponse(resp => Task.delay(filterResponse(resp, allAllowedIndices)))

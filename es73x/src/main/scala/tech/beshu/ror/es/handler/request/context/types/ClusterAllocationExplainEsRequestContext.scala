@@ -40,7 +40,7 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
     getIndexFrom(request).toCovariantSet
 
   override protected def update(request: ClusterAllocationExplainRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     getIndexFrom(request) match {
       case Some(_) =>

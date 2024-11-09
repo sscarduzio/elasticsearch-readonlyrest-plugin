@@ -46,7 +46,7 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
   }
 
   override protected def update(request: ReindexRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(ClusterIndexName.fromString)
     val isSearchRequestComposedOnlyOfAllowedIndices = (searchRequestIndices -- filteredIndices.toList).isEmpty

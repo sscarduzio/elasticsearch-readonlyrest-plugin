@@ -37,13 +37,13 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
                                                override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterAllocationExplainRequest): Set[RequestedIndex] =
-    getIndexFrom(request).toCovariantSet
+  override protected def requestedIndicesFrom(request: ClusterAllocationExplainRequest): Set[RequestedIndex[ClusterIndexName]] =
+    getRequestedIndexFrom(request).toCovariantSet
 
   override protected def update(request: ClusterAllocationExplainRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    getIndexFrom(request) match {
+    getRequestedIndexFrom(request) match {
       case Some(_) =>
         if (filteredIndices.tail.nonEmpty) {
           logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
@@ -58,11 +58,11 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
     }
   }
 
-  private def getIndexFrom(request: ClusterAllocationExplainRequest) = {
+  private def getRequestedIndexFrom(request: ClusterAllocationExplainRequest): Option[RequestedIndex[ClusterIndexName]] = {
     Option(request.getIndex).flatMap(RequestedIndex.fromString)
   }
 
-  private def updateIndexIn(request: ClusterAllocationExplainRequest, indexName: RequestedIndex) = {
+  private def updateIndexIn(request: ClusterAllocationExplainRequest, indexName: RequestedIndex[ClusterIndexName]) = {
     request.setIndex(indexName.stringify)
   }
 }

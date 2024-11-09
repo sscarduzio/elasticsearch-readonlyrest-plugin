@@ -56,9 +56,9 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
   }
 
   override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    sqlIndicesExtractResult.map(_.indices.flatMap(ClusterIndexName.fromString)) match {
+    sqlIndicesExtractResult.map(_.indices.flatMap(RequestedIndex.fromString)) match {
       case Right(indices) => indices
-      case Left(_) => Set(ClusterIndexName.Local.wildcard)
+      case Left(_) => Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
     }
   }
 

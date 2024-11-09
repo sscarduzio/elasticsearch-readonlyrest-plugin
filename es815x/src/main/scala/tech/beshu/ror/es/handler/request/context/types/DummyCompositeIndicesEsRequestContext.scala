@@ -35,9 +35,9 @@ class DummyCompositeIndicesEsRequestContext(actionRequest: ActionRequest with Co
                                             override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex] = Set.empty
+  override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = Set.empty
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = Modified
 }

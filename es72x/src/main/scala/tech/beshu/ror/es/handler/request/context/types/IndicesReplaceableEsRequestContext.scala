@@ -41,7 +41,7 @@ class IndicesReplaceableEsRequestContext(actionRequest: ActionRequest with Repla
   }
 
   override protected def update(request: ActionRequest with Replaceable,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     Modified

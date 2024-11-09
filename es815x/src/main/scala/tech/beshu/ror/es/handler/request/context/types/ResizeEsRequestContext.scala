@@ -39,14 +39,14 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
                              override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ResizeRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ResizeRequest): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: ResizeRequest): Set[RequestedIndex[ClusterIndexName]] = {
     (request.getSourceIndex :: request.getTargetIndexRequest.index() :: request.getTargetIndexRequest.aliases().asScala.map(_.name()).toList)
       .flatMap(RequestedIndex.fromString)
       .toCovariantSet
   }
 
   override protected def update(request: ResizeRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val notAllowedIndices = indicesFrom(actionRequest) -- filteredIndices.toList.toCovariantSet
     if (notAllowedIndices.isEmpty) {

@@ -71,11 +71,11 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
   private def indexPacksFrom(request: BulkRequest): List[Indices] = {
     request
       .requests().asScala
-      .map { r => Indices.Found(indicesFrom(r)) }
+      .map { r => Indices.Found(requestedIndicesFrom(r)) }
       .toList
   }
 
-  private def indicesFrom(request: DocWriteRequest[_]): Set[RequestedIndex] = {
+  private def requestedIndicesFrom(request: DocWriteRequest[_]): Set[RequestedIndex[ClusterIndexName]] = {
     request
       .indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
@@ -99,7 +99,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     }
   }
 
-  private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[RequestedIndex]) = {
+  private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     if (indices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
     }

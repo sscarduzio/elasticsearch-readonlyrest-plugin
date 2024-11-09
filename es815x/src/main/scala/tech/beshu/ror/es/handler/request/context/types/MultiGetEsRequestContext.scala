@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.utils.IndicesListOps.*
+import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
@@ -92,11 +92,11 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   private def indexPacksFrom(request: MultiGetRequest): List[Indices] = {
     request
       .getItems.asScala
-      .map { item => Indices.Found(indicesFrom(item)) }
+      .map { item => Indices.Found(requestedIndicesFrom(item)) }
       .toList
   }
 
-  private def indicesFrom(item: MultiGetRequest.Item): Set[ClusterIndexName] = {
+  private def requestedIndicesFrom(item: MultiGetRequest.Item): Set[RequestedIndex[ClusterIndexName]] = {
     item
       .indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
@@ -113,7 +113,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     }
   }
 
-  private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[RequestedIndex]) = {
+  private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[RequestedIndex[ClusterIndexName]]) = {
     indices.toList match {
       case Nil => updateItemWithNonExistingIndex(item)
       case index :: rest =>
@@ -125,8 +125,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   }
 
   private def updateItemWithNonExistingIndex(item: MultiGetRequest.Item): Unit = {
-    val originRequestIndices = indicesFrom(item).toList
-    val notExistingIndex = originRequestIndices.map(_.name).randomNonexistentIndex()
+    val originRequestIndices = requestedIndicesFrom(item).toList
+    val notExistingIndex = originRequestIndices.randomNonexistentIndex()
     item.index(notExistingIndex.stringify)
   }
 

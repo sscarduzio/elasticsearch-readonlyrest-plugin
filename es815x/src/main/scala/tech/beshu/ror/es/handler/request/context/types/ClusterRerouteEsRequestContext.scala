@@ -22,6 +22,7 @@ import org.elasticsearch.action.admin.cluster.reroute.ClusterRerouteRequest
 import org.elasticsearch.cluster.routing.allocation.command.*
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -38,7 +39,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
                                      override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ClusterRerouteRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterRerouteRequest): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: ClusterRerouteRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request
       .getCommands.commands().asScala
       .flatMap(indexFrom)
@@ -46,7 +47,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
   }
 
   override protected def update(request: ClusterRerouteRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val modifiedCommands = request
       .getCommands.commands().asScala.toSeq
@@ -55,16 +56,16 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
     Modified
   }
 
-  private def modifiedCommand(command: AllocationCommand, allowedIndices: NonEmptyList[RequestedIndex]) = {
+  private def modifiedCommand(command: AllocationCommand, filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     val indexFromCommand = indexFrom(command)
     indexFromCommand match {
       case None => command
-      case Some(index) if allowedIndices.exists(_ === index) => command
+      case Some(index) if filteredIndices.exists(_ === index) => command
       case Some(_) => setNonExistentIndexFor(command)
     }
   }
 
-  private def indexFrom(command: AllocationCommand) = {
+  private def indexFrom(command: AllocationCommand): Option[RequestedIndex[ClusterIndexName]] = {
     val indexNameStr = command match {
       case c: CancelAllocationCommand => c.index()
       case c: MoveAllocationCommand => c.index()

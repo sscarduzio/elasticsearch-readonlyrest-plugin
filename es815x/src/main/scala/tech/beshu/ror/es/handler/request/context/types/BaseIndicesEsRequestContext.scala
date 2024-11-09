@@ -21,7 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, RequestedIndex}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.orders.*
@@ -52,24 +52,24 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
   override def modifyWhenIndexNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
       val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
-      if (nonExistentIndex.hasWildcard) {
+      if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
           .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
-        update(actionRequest, nonExistingIndices, nonExistingIndices)
+        update(actionRequest, nonExistingIndices, nonExistingIndices.map(_.name))
       } else {
         ShouldBeInterrupted
       }
     } else {
       val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
-      update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex))
+      update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
     }
   }
 
   override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
     val result = for {
-      filteredIndices <- toSortedNonEmptyList(blockContext.filteredIndices)
-      allAllowedIndices <- toSortedNonEmptyList(blockContext.allAllowedIndices)
+      filteredIndices <- NonEmptyList.fromList(blockContext.filteredIndices.toList)
+      allAllowedIndices <- NonEmptyList.fromList(blockContext.allAllowedIndices.toList)
     } yield update(actionRequest, filteredIndices, allAllowedIndices)
 
     result.getOrElse {
@@ -78,18 +78,19 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     }
   }
 
-  protected def indicesFrom(request: R): Set[ClusterIndexName]
+  protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]]
 
   protected def update(request: R,
-                       filteredIndices: NonEmptyList[ClusterIndexName],
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                        allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult
 
-  private def toSortedNonEmptyList[A: Ordering](values: Iterable[A]) = {
-    NonEmptyList.fromList(values.toList.sorted)
-  }
+  // todo: do we need it?
+//  private def toSortedNonEmptyList[A: Ordering](values: Iterable[A]) = {
+//    NonEmptyList.fromList(values.toList.sorted)
+//  }
 
   private def discoverIndices() = {
-    val indices = indicesFrom(actionRequest).orWildcardWhenEmpty
+    val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
     logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
     indices
   }

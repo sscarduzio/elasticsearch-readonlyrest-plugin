@@ -18,11 +18,12 @@ package tech.beshu.ror.es.handler.request.context.types.snapshots
 
 import cats.implicits.*
 import monix.eval.Task
+import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RequestedIndex, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
@@ -55,8 +56,8 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       .flatMap(RepositoryName.from)
   }
 
-  override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.ClusterIndexName] =
-    Set(ClusterIndexName.Local.wildcard)
+  override protected def requestedIndicesFrom(request: DeleteSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] =
+    Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {

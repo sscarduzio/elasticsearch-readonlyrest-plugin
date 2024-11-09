@@ -53,7 +53,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
       .toCovariantSet
 
   override protected def update(request: SimulateIndexTemplateRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")

@@ -37,7 +37,7 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
                               override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ReindexRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ReindexRequest): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: ReindexRequest): Set[RequestedIndex[ClusterIndexName]] = {
     val searchRequestIndices = request.getSearchRequest.indices.asSafeSet
     val indexOfIndexRequest = request.getDestination.index()
 
@@ -46,7 +46,7 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
   }
 
   override protected def update(request: ReindexRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(RequestedIndex.fromString)
     val isSearchRequestComposedOnlyOfAllowedIndices = (searchRequestIndices -- filteredIndices.toList).isEmpty

@@ -41,7 +41,7 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
   }
 
   override protected def update(request: ClusterStateRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     indicesFrom(request).toList match {
       case Nil if filteredIndices.exists(_ === ClusterIndexName.Local.wildcard) =>

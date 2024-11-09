@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
+import cats.implicits.*
 import cats.data.NonEmptyList
+import cats.Eq
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
@@ -164,6 +166,9 @@ object BlockContext {
 
   final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean)
   object RequestedIndex {
+
+    implicit val requestedIndexEq: Eq[RequestedIndex[ClusterIndexName]] = Eq.by(r => (r.name, r.excluded))
+
     def fromString(value: String): Option[_ <: RequestedIndex[ClusterIndexName]] = {
       val (excluded, potentialIndexName) = isExcluded(value)
       ClusterIndexName.fromString(potentialIndexName).map(RequestedIndex(_, excluded))
@@ -178,10 +183,19 @@ object BlockContext {
       def stringify: String = s"${if (requestedIndex.excluded) "-" else ""}${requestedIndex.name.stringify}"
     }
 
-    implicit class NonEmptyListStringify[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
-      def stringify: List[String] = requestedIndices.toList.map(_.stringify) // todo: sorting order matters
+    implicit class IterableStringify[T <: ClusterIndexName](val requestedIndices: Iterable[RequestedIndex[T]]) extends AnyVal {
+      def stringify: List[String] = requestedIndices.map(_.stringify).toList // todo: sorting order matters
     }
 
+    implicit class NonEmptyListStringify[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
+      def stringify: List[String] = requestedIndices.toList.stringify
+    }
+
+    implicit class RandomNonexistentRequestedIndex(val requestedIndex: RequestedIndex[ClusterIndexName]) {
+      def randomNonexistentIndex(): RequestedIndex[ClusterIndexName] = {
+        RequestedIndex(requestedIndex.name.randomNonexistentIndex(), excluded = false)
+      }
+    }
   }
 
   trait HasIndices[B <: BlockContext]
@@ -514,8 +528,8 @@ object BlockContext {
 
   implicit class RandomIndexBasedOnBlockContextIndices[B <: BlockContext : HasIndices](blockContext: B) {
 
-    def randomNonexistentIndex(fromIndices: B => Iterable[ClusterIndexName]): ClusterIndexName = {
-      import tech.beshu.ror.accesscontrol.utils.IndicesListOps.*
+    def randomNonexistentIndex(fromIndices: B => Iterable[RequestedIndex[ClusterIndexName]]): RequestedIndex[ClusterIndexName] = {
+      import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
       fromIndices(blockContext).toList.randomNonexistentIndex()
     }
   }

@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types.snapshots
 import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RequestedIndex, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -51,10 +51,10 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[CreateSnapshotRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: CreateSnapshotRequest): Set[ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: CreateSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request
       .indices().asSafeSet
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
 
@@ -62,7 +62,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
     val updateResult = for {
       snapshot <- snapshotFrom(blockContext)
       repository <- repositoryFrom(blockContext)
-      indices <- indicesFrom(blockContext)
+      indices <- requestedIndicesFrom(blockContext)
     } yield update(actionRequest, snapshot, repository, indices)
     updateResult match {
       case Right(_) =>
@@ -109,7 +109,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
   private def update(actionRequest: CreateSnapshotRequest,
                      snapshot: SnapshotName,
                      repository: RepositoryName,
-                     indices: UniqueNonEmptyList[ClusterIndexName]) = {
+                     indices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     actionRequest.snapshot(SnapshotName.toString(snapshot))
     actionRequest.repository(RepositoryName.toString(repository))
     actionRequest.indices(indices.stringify.asJava)

@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RequestedIndex, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -49,7 +49,7 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[DeleteSnapshotRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: DeleteSnapshotRequest): Set[ClusterIndexName] = Set.empty
+  override protected def requestedIndicesFrom(request: DeleteSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] = Set.empty
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {

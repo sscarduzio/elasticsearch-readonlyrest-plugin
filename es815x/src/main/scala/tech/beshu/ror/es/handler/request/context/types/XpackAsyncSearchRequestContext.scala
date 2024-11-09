@@ -51,7 +51,7 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
   override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] =
     searchRequest
       .indices.asSafeSet
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
 
   override protected def update(request: ActionRequest,
                                 filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],

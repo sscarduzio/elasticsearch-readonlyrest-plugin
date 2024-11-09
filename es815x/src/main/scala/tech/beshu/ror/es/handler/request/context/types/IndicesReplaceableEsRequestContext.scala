@@ -37,12 +37,12 @@ class IndicesReplaceableEsRequestContext(actionRequest: ActionRequest with Repla
                                          override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest with Replaceable](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ActionRequest with Replaceable): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: ActionRequest with Replaceable): Set[RequestedIndex[ClusterIndexName]] = {
     request.asInstanceOf[IndicesRequest].indices.asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: ActionRequest with Replaceable,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     Modified

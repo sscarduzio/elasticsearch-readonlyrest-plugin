@@ -19,10 +19,11 @@ package tech.beshu.ror.es.handler.request.context.types.snapshots
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
+import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RequestedIndex, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
@@ -53,8 +54,8 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[SnapshotsStatusRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: SnapshotsStatusRequest): Set[ClusterIndexName] =
-    Set(ClusterIndexName.Local.wildcard)
+  override protected def requestedIndicesFrom(request: DeleteSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] =
+    Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
     if (isCurrentSnapshotStatusRequest(actionRequest)) updateSnapshotStatusResponse(blockContext)

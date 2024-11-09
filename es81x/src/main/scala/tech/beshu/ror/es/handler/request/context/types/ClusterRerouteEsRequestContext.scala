@@ -46,7 +46,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
   }
 
   override protected def update(request: ClusterRerouteRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val modifiedCommands = request
       .getCommands.commands().asScala.toSeq

@@ -55,7 +55,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
   override def modifyWhenIndexNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
       val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
-      if (nonExistentIndex.hasWildcard) {
+      if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
           .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))

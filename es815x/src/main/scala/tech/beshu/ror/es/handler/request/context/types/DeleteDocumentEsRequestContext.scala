@@ -35,7 +35,7 @@ class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
                                      override val threadPool: ThreadPool)
   extends BaseSingleIndexEsRequestContext[DeleteRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indexFrom(request: DeleteRequest): RequestedIndex = {
+  override protected def requestedIndexFrom(request: DeleteRequest): RequestedIndex[ClusterIndexName] = {
     RequestedIndex
       .fromString(actionRequest.index())
       .getOrElse {
@@ -43,7 +43,7 @@ class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
       }
   }
 
-  override protected def update(actionRequest: DeleteRequest, index: RequestedIndex): ModificationResult = {
+  override protected def update(actionRequest: DeleteRequest, index: RequestedIndex[ClusterIndexName]): ModificationResult = {
     actionRequest.index(index.stringify)
     Modified
   }

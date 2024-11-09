@@ -50,7 +50,7 @@ class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
   override protected def indicesFrom(request: IndicesAliasesRequest): Set[ClusterIndexName] = originIndices
 
   override protected def update(request: IndicesAliasesRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (originIndices == filteredIndices.toList.toCovariantSet) {
       Modified

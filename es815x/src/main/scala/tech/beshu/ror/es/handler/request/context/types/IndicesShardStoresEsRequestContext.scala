@@ -36,12 +36,12 @@ class IndicesShardStoresEsRequestContext(actionRequest: IndicesShardStoresReques
                                          override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[IndicesShardStoresRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: IndicesShardStoresRequest): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: IndicesShardStoresRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request.indices.asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: IndicesShardStoresRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     actionRequest.indices(filteredIndices.stringify: _*)
     Modified

@@ -35,13 +35,13 @@ class RolloverEsRequestContext(actionRequest: RolloverRequest,
                                override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[RolloverRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: RolloverRequest): Set[RequestedIndex] = {
+  override protected def requestedIndicesFrom(request: RolloverRequest): Set[RequestedIndex[ClusterIndexName]] = {
     (Option(request.getNewIndexName).toCovariantSet ++ Set(request.getRolloverTarget))
       .flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: RolloverRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     Modified
   }

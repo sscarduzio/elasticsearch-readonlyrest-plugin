@@ -90,7 +90,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     }
   }
 
-  protected def indicesFrom(request: R): Set[ClusterIndexName]
+  protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]]
 
   protected def update(request: R,
                        indices: NonEmptyList[ClusterIndexName],

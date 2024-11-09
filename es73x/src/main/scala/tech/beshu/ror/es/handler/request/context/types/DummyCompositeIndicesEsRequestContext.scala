@@ -37,6 +37,6 @@ class DummyCompositeIndicesEsRequestContext(actionRequest: ActionRequest with Co
   override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[ClusterIndexName] = Set.empty
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = Modified
 }

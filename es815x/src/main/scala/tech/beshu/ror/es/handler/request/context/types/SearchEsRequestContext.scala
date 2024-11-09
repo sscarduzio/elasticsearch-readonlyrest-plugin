@@ -43,7 +43,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
   override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
 
   override protected def requestedIndicesFrom(request: SearchRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
+    request.indices.asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: SearchRequest,

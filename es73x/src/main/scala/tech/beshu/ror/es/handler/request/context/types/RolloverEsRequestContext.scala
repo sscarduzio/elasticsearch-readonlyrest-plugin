@@ -40,7 +40,7 @@ class RolloverEsRequestContext(actionRequest: RolloverRequest,
   }
 
   override protected def update(request: RolloverRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     Modified
   }
