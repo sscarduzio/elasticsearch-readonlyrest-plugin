@@ -24,7 +24,7 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{Resolv
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
+import tech.beshu.ror.accesscontrol.domain.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService

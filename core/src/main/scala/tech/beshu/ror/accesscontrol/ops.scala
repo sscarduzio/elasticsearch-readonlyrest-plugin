@@ -24,19 +24,18 @@ import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
 import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.accesscontrol.request.RequestContext

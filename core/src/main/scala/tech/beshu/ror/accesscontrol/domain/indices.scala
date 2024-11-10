@@ -21,10 +21,10 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
+import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
 import tech.beshu.ror.constants
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
@@ -114,6 +114,48 @@ object KibanaIndexName {
 
   implicit class Stringify(val kibanaIndexName: KibanaIndexName) extends AnyVal {
     def stringify: String = kibanaIndexName.underlying.stringify
+  }
+}
+
+final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean)
+object RequestedIndex {
+
+  implicit val eq: Eq[RequestedIndex[ClusterIndexName]] = Eq.by(r => (r.name, r.excluded))
+
+  def fromString(value: String): Option[RequestedIndex[ClusterIndexName]] = {
+    val (excluded, potentialIndexName) = isExcluded(value)
+    ClusterIndexName.fromString(potentialIndexName).map(RequestedIndex(_, excluded))
+  }
+
+  private def isExcluded(indexName: String): (Boolean, String) = {
+    if (indexName.startsWith("-")) (true, indexName.substring(1))
+    else (false, indexName)
+  }
+
+  implicit class Stringify[T <: ClusterIndexName](val requestedIndex: RequestedIndex[T]) extends AnyVal {
+    def stringify: String = s"${if (requestedIndex.excluded) "-" else ""}${requestedIndex.name.stringify}"
+  }
+
+  implicit class IterableStringify[T <: ClusterIndexName](val requestedIndices: Iterable[RequestedIndex[T]]) extends AnyVal {
+
+    def stringify: List[String] = {
+      implicit val ordering: Ordering[RequestedIndex[ClusterIndexName]] = requestedIndexOrder.toOrdering
+      requestedIndices.toList.sorted.map(_.stringify)
+    }
+  }
+
+  implicit class NonEmptyListStringify[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
+    def stringify: List[String] = requestedIndices.toList.stringify
+  }
+
+  implicit class OnlyIncludedIndices[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
+    def includedOnly: Set[T] = requestedIndices.filterNot(_.excluded).map(_.name).toCovariantSet
+  }
+
+  implicit class RandomNonexistentRequestedIndex(val requestedIndex: RequestedIndex[ClusterIndexName]) {
+    def randomNonexistentIndex(): RequestedIndex[ClusterIndexName] = {
+      RequestedIndex(requestedIndex.name.randomNonexistentIndex(), excluded = false)
+    }
   }
 }
 

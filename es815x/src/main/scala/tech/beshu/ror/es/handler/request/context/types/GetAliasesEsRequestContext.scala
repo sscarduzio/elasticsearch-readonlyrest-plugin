@@ -24,9 +24,9 @@ import org.elasticsearch.action.admin.indices.alias.get.{GetAliasesRequest, GetA
 import org.elasticsearch.cluster.metadata.{AliasMetadata, DataStreamAlias}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices, RequestedIndex}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -65,7 +65,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
       case Some((indices, aliases)) =>
         updateIndices(actionRequest, indices)
         updateAliases(actionRequest, aliases)
-        UpdateResponse(updateAliasesResponse(aliases.map(_.name), _))
+        UpdateResponse(updateAliasesResponse(aliases.includedOnly, _))
       case None =>
         logger.error(s"[${id.show}] At least one alias and one index has to be allowed. " +
           s"Found allowed indices: [${blockContext.indices.show}]." +
@@ -139,7 +139,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     }
   }
 
-  private def updateAliasesResponse(allowedAliases: NonEmptyList[ClusterIndexName],
+  private def updateAliasesResponse(allowedAliases: Set[ClusterIndexName],
                                     response: ActionResponse): Task[ActionResponse] = {
     val (aliases, streams) = response match {
       case aliasesResponse: GetAliasesResponse =>

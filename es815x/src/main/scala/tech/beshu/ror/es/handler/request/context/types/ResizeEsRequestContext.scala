@@ -21,7 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.indices.shrink.ResizeRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
+import tech.beshu.ror.accesscontrol.domain.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext

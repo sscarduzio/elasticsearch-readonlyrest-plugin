@@ -20,7 +20,6 @@ import org.elasticsearch.action.datastreams.MigrateToDataStreamAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext

@@ -18,9 +18,9 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RequestedIndex, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingLegacyTemplate
-import tech.beshu.ror.accesscontrol.domain.{IndexPattern, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.{IndexPattern, RequestedIndex, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid

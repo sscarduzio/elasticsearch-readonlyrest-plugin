@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Name, Policy}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
+import tech.beshu.ror.accesscontrol.domain.RequestedIndex
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*

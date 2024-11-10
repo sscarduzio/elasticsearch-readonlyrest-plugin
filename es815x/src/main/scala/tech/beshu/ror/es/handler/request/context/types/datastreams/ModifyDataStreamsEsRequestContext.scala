@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types.datastreams
 import org.elasticsearch.action.datastreams.ModifyDataStreamsAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{DataStreamRequestBlockContext, RequestedIndex}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.RorClusterService

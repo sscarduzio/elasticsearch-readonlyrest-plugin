@@ -16,8 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 
 import scala.language.implicitConversions
 

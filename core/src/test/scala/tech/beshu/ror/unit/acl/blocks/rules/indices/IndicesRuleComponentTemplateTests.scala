@@ -19,10 +19,9 @@ package tech.beshu.ror.unit.acl.blocks.rules.indices
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.auto.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.Template.ComponentTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingComponentTemplate, DeletingComponentTemplates, GettingComponentTemplates}
-import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.domain.{RequestedIndex, TemplateName, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*

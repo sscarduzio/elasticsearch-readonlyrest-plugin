@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.Eq
-import cats.data.NonEmptyList
 import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
@@ -26,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
 
@@ -164,44 +161,6 @@ object BlockContext {
                                              override val responseHeaders: Set[Header],
                                              override val responseTransformations: List[ResponseTransformation])
     extends BlockContext
-
-  final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean)
-  object RequestedIndex {
-
-    implicit val eq: Eq[RequestedIndex[ClusterIndexName]] = Eq.by(r => (r.name, r.excluded))
-
-    def fromString(value: String): Option[RequestedIndex[ClusterIndexName]] = {
-      val (excluded, potentialIndexName) = isExcluded(value)
-      ClusterIndexName.fromString(potentialIndexName).map(RequestedIndex(_, excluded))
-    }
-
-    private def isExcluded(indexName: String): (Boolean, String) = {
-      if (indexName.startsWith("-")) (true, indexName.substring(1))
-      else (false, indexName)
-    }
-
-    implicit class Stringify[T <: ClusterIndexName](val requestedIndex: RequestedIndex[T]) extends AnyVal {
-      def stringify: String = s"${if (requestedIndex.excluded) "-" else ""}${requestedIndex.name.stringify}"
-    }
-
-    implicit class IterableStringify[T <: ClusterIndexName](val requestedIndices: Iterable[RequestedIndex[T]]) extends AnyVal {
-
-      def stringify: List[String] = {
-        implicit val ordering: Ordering[RequestedIndex[ClusterIndexName]] = requestedIndexOrder.toOrdering
-        requestedIndices.toList.sorted.map(_.stringify)
-      }
-    }
-
-    implicit class NonEmptyListStringify[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
-      def stringify: List[String] = requestedIndices.toList.stringify
-    }
-
-    implicit class RandomNonexistentRequestedIndex(val requestedIndex: RequestedIndex[ClusterIndexName]) {
-      def randomNonexistentIndex(): RequestedIndex[ClusterIndexName] = {
-        RequestedIndex(requestedIndex.name.randomNonexistentIndex(), excluded = false)
-      }
-    }
-  }
 
   trait HasIndices[B <: BlockContext]
   object HasIndices {

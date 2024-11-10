@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.*
 import tech.beshu.ror.accesscontrol.domain.*

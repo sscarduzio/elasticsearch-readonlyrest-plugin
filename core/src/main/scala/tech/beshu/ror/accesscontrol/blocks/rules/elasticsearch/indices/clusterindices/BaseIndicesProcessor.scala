@@ -20,13 +20,12 @@ import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason.IndexNotExist
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.IndicesCheckContinuation.{continue, stop}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.{CanPass, CheckContinuation}
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName}
+import tech.beshu.ror.accesscontrol.domain.RequestedIndex.*
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.{Conversion, Matchable}
 import tech.beshu.ror.accesscontrol.request.RequestContext

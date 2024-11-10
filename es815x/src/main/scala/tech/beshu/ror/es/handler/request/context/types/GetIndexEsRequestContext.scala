@@ -23,7 +23,7 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
+import tech.beshu.ror.accesscontrol.domain.RequestedIndex
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -60,7 +60,7 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
         Task.now(new GetIndexResponse(
           getIndexResponse.indices(),
           getIndexResponse.mappings(),
-          getIndexResponse.aliases().filterOutNotAllowedAliases(allowedAliases = allAllowedAliases),
+          getIndexResponse.aliases().filterOutNotAllowedAliases(allowedAliases = allAllowedAliases.toList),
           getIndexResponse.settings(),
           getIndexResponse.defaultSettings(),
           getIndexResponse.dataStreams()

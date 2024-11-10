@@ -21,7 +21,6 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.matchers.{TemplateNamePatternMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.syntax.*
