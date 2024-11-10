@@ -49,5 +49,5 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
 
   protected def repositoriesFrom(request: T): Set[RepositoryName]
 
-  protected def indicesFrom(request: T): Set[RequestedIndex[_ <: ClusterIndexName]]
+  protected def indicesFrom(request: T): Set[RequestedIndex[ClusterIndexName]]
 }

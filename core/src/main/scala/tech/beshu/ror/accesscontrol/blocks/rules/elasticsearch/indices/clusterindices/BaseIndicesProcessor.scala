@@ -450,7 +450,12 @@ object BaseIndicesProcessor {
       } else {
         Set.empty[RequestedIndex[T]]
       }
-      excludedIndices ++ includedIndices
+      if(includedIndices.exists(_.name.hasWildcard)) {
+        includedIndices ++ excludedIndices
+      } else {
+        includedIndices
+      }
+
     }
   }
 }

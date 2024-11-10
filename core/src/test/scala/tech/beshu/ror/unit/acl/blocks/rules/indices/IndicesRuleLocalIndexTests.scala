@@ -249,19 +249,20 @@ trait IndicesRuleLocalIndexTests {
       "some indices are excluded" when {
         "todo" in { // todo
           assertMatchRuleForIndexRequest(
-            configured = NonEmptySet.of(indexNameVar("sys_logs-*")),
-            requestIndices = Set(requestedIndex("sys_logs*"), requestedIndex("-*old")),
+            configured = NonEmptySet.of(indexNameVar("test-index1-*")),
+            requestIndices = Set(requestedIndex("test-index*"), requestedIndex("-*old")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set(
-                fullLocalIndexWithAliases(fullIndexName("sys_logs-0001")),
-                fullLocalIndexWithAliases(fullIndexName("sys_logs-0002")),
-                fullLocalIndexWithAliases(fullIndexName("sys_logs-old")),
+                fullLocalIndexWithAliases(fullIndexName("test-index1-0001")),
+                fullLocalIndexWithAliases(fullIndexName("test-index1-0002")),
+                fullLocalIndexWithAliases(fullIndexName("test-index1-old")),
+                fullLocalIndexWithAliases(fullIndexName("test-index2-0001")),
+                fullLocalIndexWithAliases(fullIndexName("test-index2-old")),
               )
             ),
             filteredRequestedIndices = Set(
-              requestedIndex("sys_logs-0001"),
-              requestedIndex("sys_logs-0002"),
-              requestedIndex("-sys_logs-old"),
+              requestedIndex("test-index1-0001"),
+              requestedIndex("test-index1-0002")
             ),
           )
         }

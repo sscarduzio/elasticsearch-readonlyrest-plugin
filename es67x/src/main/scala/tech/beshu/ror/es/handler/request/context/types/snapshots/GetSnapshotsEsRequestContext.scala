@@ -56,7 +56,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[GetSnapshotsRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: GetSnapshotsRequest): Set[RequestedClusterIndex[_ <: ClusterIndexName]] =
+  override protected def indicesFrom(request: GetSnapshotsRequest): Set[RequestedClusterIndex[ClusterIndexName]] =
     Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {

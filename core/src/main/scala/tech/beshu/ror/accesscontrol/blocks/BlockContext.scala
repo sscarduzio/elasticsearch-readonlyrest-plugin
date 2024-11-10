@@ -186,16 +186,6 @@ object BlockContext {
 
     implicit class IterableStringify[T <: ClusterIndexName](val requestedIndices: Iterable[RequestedIndex[T]]) extends AnyVal {
 
-      // todo:
-      //  implicit val clusterIndexNameOrdering: Ordering[ClusterIndexName[_ <: ClusterIndexName]] = Ordering.fromLessThan { case (a, b) =>
-      //    (a.ex, b.isExcluded) match {
-      //      case (false, false) => a.stringify < b.stringify
-      //      case (true, false) => false
-      //      case (false, true) => true
-      //      case (false, false) => a.stringify < b.stringify
-      //    }
-      //  }
-
       def stringify: List[String] = {
         implicit val ordering: Ordering[RequestedIndex[ClusterIndexName]] = requestedIndexOrder.toOrdering
         requestedIndices.toList.sorted.map(_.stringify)
