@@ -117,8 +117,9 @@ object TestsUtils {
 
   def group(id: String, name: String): Group = Group(GroupId(NonEmptyString.unsafeFrom(id)), GroupName(NonEmptyString.unsafeFrom(name)))
 
-  def requestedIndex(str: NonEmptyString, excluded: Boolean = false): RequestedIndex[ClusterIndexName] =
-    RequestedIndex(clusterIndexName(str), excluded)
+  def requestedIndex(str: NonEmptyString): RequestedIndex[ClusterIndexName] =
+    RequestedIndex.fromString(str.value)
+      .getOrElse(throw new IllegalArgumentException(s"Cannot create RequestedIndex from '$str'"))
 
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
@@ -267,11 +268,11 @@ object TestsUtils {
                            userOrigin: Option[UserOrigin] = None,
                            jwt: Option[Jwt.Payload] = None,
                            responseHeaders: Set[Header] = Set.empty,
-                           indices: Iterable[RequestedIndex[ClusterIndexName]] = Set.empty, // todo: think about this one
-                           aliases: Set[ClusterIndexName] = Set.empty, // todo: remove?
+                           indices: Set[RequestedIndex[ClusterIndexName]] = Set.empty,
+                           aliases: Set[ClusterIndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,
-                           dataStreams: Set[DataStreamName] = Set.empty, // todo: check
+                           dataStreams: Set[DataStreamName] = Set.empty,
                            templates: Set[TemplateOperation] = Set.empty)
                           (blockContext: BlockContext): Unit = {
       blockContext.userMetadata.loggedUser should be(loggedUser)

@@ -24,6 +24,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
 import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RequestedIndex
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -138,7 +139,8 @@ object orders {
   implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
   implicit val actionOrder: Order[Action] = Order.by(_.value)
   implicit val authKeyOrder: Order[PlainTextSecret] = Order.by(_.value)
-  implicit val indexOrder: Order[ClusterIndexName] = Order.by(_.stringify)
+  implicit val custerIndexNameOrder: Order[ClusterIndexName] = Order.by(_.stringify)
+  implicit val requestedIndexOrder: Order[RequestedIndex[ClusterIndexName]] = Order.by(r => (r.excluded, r.name))
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.toString)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)

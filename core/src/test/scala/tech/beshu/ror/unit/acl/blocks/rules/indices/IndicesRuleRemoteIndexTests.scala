@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.blocks.rules.indices
 import cats.data.NonEmptySet
 import eu.timepit.refined.auto.*
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.orders.indexOrder
+import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 

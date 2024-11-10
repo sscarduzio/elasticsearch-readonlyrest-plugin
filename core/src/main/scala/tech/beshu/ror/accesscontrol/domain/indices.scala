@@ -210,16 +210,6 @@ object ClusterIndexName {
 
   implicit val eqIndexName: Eq[ClusterIndexName] = Eq.fromUniversalEquals
 
-  // todo:
-//  implicit val clusterIndexNameOrdering: Ordering[ClusterIndexName[_ <: ClusterIndexName]] = Ordering.fromLessThan { case (a, b) =>
-//    (a.ex, b.isExcluded) match {
-//      case (false, false) => a.stringify < b.stringify
-//      case (true, false) => false
-//      case (false, true) => true
-//      case (false, false) => a.stringify < b.stringify
-//    }
-//  }
-
   implicit class IndexMatch(indexName: ClusterIndexName) {
 
     def matches(otherIndexName: ClusterIndexName): Boolean = indexName match {

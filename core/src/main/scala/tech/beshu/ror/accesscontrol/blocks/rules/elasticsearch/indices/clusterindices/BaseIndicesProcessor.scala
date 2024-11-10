@@ -445,6 +445,7 @@ object BaseIndicesProcessor {
         PatternsMatcher
           .create(included.map(_.name))
           .filter(indices)
+          .filterNot(index => excludedIndices.map(_.name).contains(index)) // todo: better impl needed
           .map(RequestedIndex(_, excluded = false))
       } else {
         Set.empty[RequestedIndex[T]]

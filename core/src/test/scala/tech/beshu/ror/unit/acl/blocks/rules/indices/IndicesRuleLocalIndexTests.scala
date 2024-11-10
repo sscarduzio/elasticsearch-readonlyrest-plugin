@@ -19,9 +19,10 @@ package tech.beshu.ror.unit.acl.blocks.rules.indices
 import cats.data.NonEmptySet
 import eu.timepit.refined.auto.*
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
-import tech.beshu.ror.accesscontrol.orders.indexOrder
+import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -242,6 +243,26 @@ trait IndicesRuleLocalIndexTests {
               userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
             ),
             filteredRequestedIndices = Set(requestedIndex(".custom_kibana_8.10.4"), requestedIndex(".custom_kibana_task_manager_8.10.4"))
+          )
+        }
+      }
+      "some indices are excluded" when {
+        "todo" in { // todo
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("sys_logs-*")),
+            requestIndices = Set(requestedIndex("sys_logs*"), requestedIndex("-*old")),
+            modifyRequestContext = _.copy(
+              allIndicesAndAliases = Set(
+                fullLocalIndexWithAliases(fullIndexName("sys_logs-0001")),
+                fullLocalIndexWithAliases(fullIndexName("sys_logs-0002")),
+                fullLocalIndexWithAliases(fullIndexName("sys_logs-old")),
+              )
+            ),
+            filteredRequestedIndices = Set(
+              requestedIndex("sys_logs-0001"),
+              requestedIndex("sys_logs-0002"),
+              requestedIndex("-sys_logs-old"),
+            ),
           )
         }
       }

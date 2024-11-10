@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.implicits.*
-import cats.data.NonEmptyList
 import cats.Eq
+import cats.data.NonEmptyList
+import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
 
@@ -167,7 +168,7 @@ object BlockContext {
   final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean)
   object RequestedIndex {
 
-    implicit val requestedIndexEq: Eq[RequestedIndex[ClusterIndexName]] = Eq.by(r => (r.name, r.excluded))
+    implicit val eq: Eq[RequestedIndex[ClusterIndexName]] = Eq.by(r => (r.name, r.excluded))
 
     def fromString(value: String): Option[RequestedIndex[ClusterIndexName]] = {
       val (excluded, potentialIndexName) = isExcluded(value)
@@ -184,7 +185,21 @@ object BlockContext {
     }
 
     implicit class IterableStringify[T <: ClusterIndexName](val requestedIndices: Iterable[RequestedIndex[T]]) extends AnyVal {
-      def stringify: List[String] = requestedIndices.map(_.stringify).toList // todo: sorting order matters
+
+      // todo:
+      //  implicit val clusterIndexNameOrdering: Ordering[ClusterIndexName[_ <: ClusterIndexName]] = Ordering.fromLessThan { case (a, b) =>
+      //    (a.ex, b.isExcluded) match {
+      //      case (false, false) => a.stringify < b.stringify
+      //      case (true, false) => false
+      //      case (false, true) => true
+      //      case (false, false) => a.stringify < b.stringify
+      //    }
+      //  }
+
+      def stringify: List[String] = {
+        implicit val ordering: Ordering[RequestedIndex[ClusterIndexName]] = requestedIndexOrder.toOrdering
+        requestedIndices.toList.sorted.map(_.stringify)
+      }
     }
 
     implicit class NonEmptyListStringify[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
