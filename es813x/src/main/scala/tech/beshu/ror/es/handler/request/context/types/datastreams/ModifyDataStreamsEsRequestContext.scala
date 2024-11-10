@@ -35,11 +35,11 @@ class ModifyDataStreamsEsRequestContext(actionRequest: ModifyDataStreamsAction.R
                                         override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  private lazy val originIndices: Set[ClusterIndexName] =
+  private lazy val originIndices: Set[RequestedIndex[ClusterIndexName]] =
     actionRequest
       .getActions.asSafeSet
       .map(_.getIndex)
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
 
   override protected def backingIndicesFrom(request: ModifyDataStreamsAction.Request): DataStreamRequestBlockContext.BackingIndices =
     BackingIndices.IndicesInvolved(originIndices, Set(ClusterIndexName.Local.wildcard))

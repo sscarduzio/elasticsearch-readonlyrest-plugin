@@ -20,7 +20,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -51,10 +51,10 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[CreateSnapshotRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: CreateSnapshotRequest): Set[ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: CreateSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request
       .indices().asSafeSet
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
 
@@ -62,7 +62,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
     val updateResult = for {
       snapshot <- snapshotFrom(blockContext)
       repository <- repositoryFrom(blockContext)
-      indices <- indicesFrom(blockContext)
+      indices <- filteredIndicesFrom(blockContext)
     } yield update(actionRequest, snapshot, repository, indices)
     updateResult match {
       case Right(_) =>
@@ -99,7 +99,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
     }
   }
 
-  private def indicesFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def filteredIndicesFrom(blockContext: SnapshotRequestBlockContext) = {
     UniqueNonEmptyList.from(blockContext.filteredIndices) match {
       case Some(value) => Right(value)
       case None => Left(())
@@ -109,9 +109,9 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
   private def update(actionRequest: CreateSnapshotRequest,
                      snapshot: SnapshotName,
                      repository: RepositoryName,
-                     indices: UniqueNonEmptyList[ClusterIndexName]) = {
+                     indices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     actionRequest.snapshot(SnapshotName.toString(snapshot))
     actionRequest.repository(RepositoryName.toString(repository))
-    actionRequest.indices(indices.sortByNameWithExcludingIndicesAtTheEnd().stringify.asJava)
+    actionRequest.indices(indices.stringify.asJava)
   }
 }

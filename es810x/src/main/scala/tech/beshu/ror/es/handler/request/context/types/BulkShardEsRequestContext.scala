@@ -23,7 +23,7 @@ import org.elasticsearch.index.Index
 import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -42,8 +42,8 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
                                 override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[BulkShardRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: BulkShardRequest): Set[ClusterIndexName] = {
-    request.indices().asSafeSet.flatMap(ClusterIndexName.fromString)
+  override protected def requestedIndicesFrom(request: BulkShardRequest): Set[RequestedIndex[ClusterIndexName]] = {
+    request.indices().asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: BulkShardRequest,
@@ -58,12 +58,12 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
     }
   }
 
-  private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[ClusterIndexName]) = {
+  private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     if (indices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
     }
     val singleIndex = indices.head
-    val uuid =  clusterService.indexOrAliasUuids(singleIndex).toList.head
+    val uuid = clusterService.indexOrAliasUuids(singleIndex.name).toList.head
     ReflectionUtils
       .getAllFields(request.shardId().getClass, ReflectionUtils.withName("index")).asScala
       .foldLeft(Try(())) {

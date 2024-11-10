@@ -84,11 +84,6 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
                        filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                        allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult
 
-  // todo: do we need it?
-//  private def toSortedNonEmptyList[A: Ordering](values: Iterable[A]) = {
-//    NonEmptyList.fromList(values.toList.sorted)
-//  }
-
   private def discoverIndices() = {
     val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
     logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")

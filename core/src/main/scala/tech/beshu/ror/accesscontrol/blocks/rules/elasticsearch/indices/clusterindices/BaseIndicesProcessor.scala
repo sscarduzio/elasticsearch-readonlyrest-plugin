@@ -432,7 +432,7 @@ object BaseIndicesProcessor {
 
     def filterBy(requestedIndices: Iterable[RequestedIndex[T]]): Set[RequestedIndex[T]] = {
       val (excluded, included) = requestedIndices.toSet.partition(_.excluded)
-      val excludedIndices = if (excluded.nonEmpty) {
+      val excludedRequestedIndices = if (excluded.nonEmpty) {
         PatternsMatcher
           .create(excluded.map(_.name))
           .filter(indices)
@@ -440,21 +440,21 @@ object BaseIndicesProcessor {
       } else {
         Set.empty[RequestedIndex[T]]
       }
-      val includedIndices = if (included.nonEmpty) {
+      val excludedIndicesNames = excludedRequestedIndices.map(_.name)
+      val includedRequestedIndices = if (included.nonEmpty) {
         PatternsMatcher
           .create(included.map(_.name))
           .filter(indices)
-          .filterNot(index => excludedIndices.map(_.name).contains(index)) // todo: better impl needed
+          .filterNot(index => excludedIndicesNames.contains(index))
           .map(RequestedIndex(_, excluded = false))
       } else {
         Set.empty[RequestedIndex[T]]
       }
-      if(includedIndices.exists(_.name.hasWildcard)) {
-        includedIndices ++ excludedIndices
+      if(includedRequestedIndices.exists(_.name.hasWildcard)) {
+        includedRequestedIndices ++ excludedRequestedIndices
       } else {
-        includedIndices
+        includedRequestedIndices
       }
-
     }
   }
 }

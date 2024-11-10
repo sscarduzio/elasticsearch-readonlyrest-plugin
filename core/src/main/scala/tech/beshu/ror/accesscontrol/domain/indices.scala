@@ -148,8 +148,12 @@ object RequestedIndex {
     def stringify: List[String] = requestedIndices.toList.stringify
   }
 
-  implicit class OnlyIncludedIndices[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
+  implicit class OnlyIncludedIndicesFromIterable[T <: ClusterIndexName](val requestedIndices: Iterable[RequestedIndex[T]]) extends AnyVal {
     def includedOnly: Set[T] = requestedIndices.filterNot(_.excluded).map(_.name).toCovariantSet
+  }
+
+  implicit class OnlyIncludedIndicesFromNonEmptyList[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
+    def includedOnly: Set[T] = requestedIndices.toList.includedOnly
   }
 
   implicit class RandomNonexistentRequestedIndex(val requestedIndex: RequestedIndex[ClusterIndexName]) {

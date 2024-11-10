@@ -25,7 +25,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -43,10 +43,10 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ResolveIndexAction.Request](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ResolveIndexAction.Request): Set[ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: ResolveIndexAction.Request): Set[RequestedIndex[ClusterIndexName]] = {
     request
       .indices().asSafeSet
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
 
@@ -59,7 +59,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
 
   override def modifyWhenIndexNotFound: ModificationResult = {
     val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
-    update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex))
+    update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
     Modified
   }
 

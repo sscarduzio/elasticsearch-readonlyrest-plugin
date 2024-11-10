@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -71,14 +71,14 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
   private def indexPacksFrom(request: BulkRequest): List[Indices] = {
     request
       .requests().asScala
-      .map { r => Indices.Found(indicesFrom(r)) }
+      .map { r => Indices.Found(requestedIndicesFrom(r)) }
       .toList
   }
 
-  private def indicesFrom(request: DocWriteRequest[_]): Set[ClusterIndexName] = {
+  private def requestedIndicesFrom(request: DocWriteRequest[_]): Set[RequestedIndex[ClusterIndexName]] = {
     request
       .indices.asSafeSet
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
 
@@ -99,7 +99,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     }
   }
 
-  private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[ClusterIndexName]) = {
+  private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     if (indices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
     }

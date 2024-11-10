@@ -23,7 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -37,14 +37,14 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionRequest,
-                                                     indices: Set[ClusterIndexName],
+                                                     requestedIndices: Set[RequestedIndex[ClusterIndexName]],
                                                      esContext: EsContext,
                                                      aclContext: AccessControlStaticContext,
                                                      clusterService: RorClusterService,
                                                      override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ActionRequest): Set[ClusterIndexName] = indices
+  override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] = requestedIndices
 
   override protected def update(request: ActionRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
@@ -56,7 +56,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
     }
   }
 
-  private def tryUpdate(actionRequest: ActionRequest, indices: NonEmptyList[ClusterIndexName]) = {
+  private def tryUpdate(actionRequest: ActionRequest, indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     // Optimistic reflection attempt
     ReflecUtils.setIndices(
       actionRequest,
@@ -69,16 +69,16 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
 object ReflectionBasedIndicesEsRequestContext extends Logging {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[ReflectionBasedIndicesEsRequestContext] = {
-    indicesFrom(arg.esContext.actionRequest)
+    requestedIndicesFrom(arg.esContext.actionRequest)
       .map(new ReflectionBasedIndicesEsRequestContext(arg.esContext.actionRequest, _, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
   }
 
-  private def indicesFrom(request: ActionRequest) = {
+  private def requestedIndicesFrom(request: ActionRequest) = {
     getIndicesUsingMethod(request, methodName = "getIndices")
       .orElse(getIndicesUsingField(request, fieldName = "indices"))
       .orElse(getIndexUsingMethod(request, methodName = "getIndex"))
       .orElse(getIndexUsingField(request, fieldName = "index"))
-      .map(indices => indices.toList.toCovariantSet.flatMap(ClusterIndexName.fromString))
+      .map(indices => indices.toList.toCovariantSet.flatMap(RequestedIndex.fromString))
   }
 
   private def getIndicesUsingMethod(request: ActionRequest, methodName: String) = {
