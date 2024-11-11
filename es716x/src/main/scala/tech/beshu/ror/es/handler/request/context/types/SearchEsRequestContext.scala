@@ -41,18 +41,18 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
 
   override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
 
-  override protected def indicesFrom(request: SearchRequest): Set[ClusterIndexName] = {
-    request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
+  override protected def requestedIndicesFrom(request: SearchRequest): Set[RequestedIndex[ClusterIndexName]] = {
+    request.indices.asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: SearchRequest,
-                                indices: NonEmptyList[ClusterIndexName],
+                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     request
       .applyFilterToQuery(filter)
       .applyFieldLevelSecurity(fieldLevelSecurity)
-      .indices(indices.stringify: _*)
+      .indices(filteredRequestedIndices.stringify: _*)
 
     ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
   }

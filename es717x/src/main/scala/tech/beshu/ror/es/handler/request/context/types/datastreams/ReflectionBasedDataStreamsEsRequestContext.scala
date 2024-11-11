@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types.datastreams
 import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.common.util.set.Sets
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName, RequestedIndex}
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.MatchResult.{Matched, NotMatched}
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 import tech.beshu.ror.syntax.*
@@ -79,11 +79,11 @@ object ReflectionBasedDataStreamsEsRequestContext {
     def unapply(arg: ReflectionBasedActionRequest): Option[BaseDataStreamsEsRequestContext[ActionRequest]]
 
     protected def tryMatchActionRequestWithIndices(actionRequest: ActionRequest,
-                                                   getIndicesMethodName: String): MatchResult[ClusterIndexName] = {
-      tryMatchActionRequest[ClusterIndexName](
+                                                   getIndicesMethodName: String): MatchResult[RequestedIndex[ClusterIndexName]] = {
+      tryMatchActionRequest[RequestedIndex[ClusterIndexName]](
         actionRequest = actionRequest,
         getPropsMethodName = getIndicesMethodName,
-        toDomain = ClusterIndexName.fromString
+        toDomain = RequestedIndex.fromString
       )
     }
 

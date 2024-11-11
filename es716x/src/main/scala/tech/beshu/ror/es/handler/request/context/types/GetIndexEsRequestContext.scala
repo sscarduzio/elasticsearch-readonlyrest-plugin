@@ -23,7 +23,7 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -40,10 +40,10 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
                                override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[GetIndexRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: GetIndexRequest): Set[ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: GetIndexRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request
       .indices().asSafeSet
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: GetIndexRequest,
@@ -60,7 +60,7 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
         Task.now(new GetIndexResponse(
           getIndexResponse.indices(),
           getIndexResponse.mappings(),
-          getIndexResponse.aliases().filterOutNotAllowedAliases(allowedAliases = allAllowedAliases),
+          getIndexResponse.aliases().filterOutNotAllowedAliases(allowedAliases = allAllowedAliases.toList),
           getIndexResponse.settings(),
           getIndexResponse.defaultSettings(),
           getIndexResponse.dataStreams()

@@ -21,7 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -36,20 +36,20 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
                                                override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterAllocationExplainRequest): Set[ClusterIndexName] =
-    getIndexFrom(request).toCovariantSet
+  override protected def requestedIndicesFrom(request: ClusterAllocationExplainRequest): Set[RequestedIndex[ClusterIndexName]] =
+    getRequestedIndexFrom(request).toCovariantSet
 
   override protected def update(request: ClusterAllocationExplainRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    getIndexFrom(request) match {
+    getRequestedIndexFrom(request) match {
       case Some(_) =>
         if (filteredIndices.tail.nonEmpty) {
           logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
         }
         updateIndexIn(request, filteredIndices.head)
         Modified
-      case None if filteredIndices.exists(_ === ClusterIndexName.Local.wildcard) =>
+      case None if filteredIndices.exists(_.name === ClusterIndexName.Local.wildcard) =>
         Modified
       case None =>
         logger.error(s"[${id.show}] Cluster allocation explain request without index name is unavailable when block contains `indices` rule")
@@ -57,11 +57,11 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
     }
   }
 
-  private def getIndexFrom(request: ClusterAllocationExplainRequest) = {
-    Option(request.getIndex).flatMap(ClusterIndexName.fromString)
+  private def getRequestedIndexFrom(request: ClusterAllocationExplainRequest): Option[RequestedIndex[ClusterIndexName]] = {
+    Option(request.getIndex).flatMap(RequestedIndex.fromString)
   }
 
-  private def updateIndexIn(request: ClusterAllocationExplainRequest, indexName: ClusterIndexName) = {
+  private def updateIndexIn(request: ClusterAllocationExplainRequest, indexName: RequestedIndex[ClusterIndexName]) = {
     request.setIndex(indexName.stringify)
   }
 }

@@ -24,7 +24,7 @@ import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -56,8 +56,8 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[GetSnapshotsRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.ClusterIndexName] =
-    Set(ClusterIndexName.Local.wildcard)
+  override protected def requestedIndicesFrom(request: GetSnapshotsRequest): Set[RequestedIndex[ClusterIndexName]] =
+    Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {

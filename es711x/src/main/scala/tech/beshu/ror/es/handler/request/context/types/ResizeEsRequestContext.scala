@@ -21,7 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.indices.shrink.ResizeRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -38,16 +38,16 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
                              override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ResizeRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ResizeRequest): Set[ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: ResizeRequest): Set[RequestedIndex[ClusterIndexName]] = {
     (request.getSourceIndex :: request.getTargetIndexRequest.index() :: request.getTargetIndexRequest.aliases().asScala.map(_.name()).toList)
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
       .toCovariantSet
   }
 
   override protected def update(request: ResizeRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    val notAllowedIndices = indicesFrom(actionRequest) -- filteredIndices.toList.toCovariantSet
+    val notAllowedIndices = requestedIndicesFrom(actionRequest) -- filteredIndices.toCovariantSet
     if (notAllowedIndices.isEmpty) {
       Modified
     } else {
