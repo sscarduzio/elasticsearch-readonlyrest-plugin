@@ -17,13 +17,12 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -32,13 +31,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
-import tech.beshu.ror.accesscontrol.domain.LoggedUser._
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.*
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with WithDummyRequestIdSupport {
 

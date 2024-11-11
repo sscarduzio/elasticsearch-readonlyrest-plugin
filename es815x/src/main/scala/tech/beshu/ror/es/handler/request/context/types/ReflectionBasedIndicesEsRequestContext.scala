@@ -17,21 +17,23 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import com.google.common.collect.Sets
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ReflecUtils
 
-import java.util.{List => JList}
-import scala.jdk.CollectionConverters._
+import java.util.List as JList
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionRequest,
@@ -49,7 +51,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
+      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
       ShouldBeInterrupted
     }
   }
@@ -59,7 +61,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
     ReflecUtils.setIndices(
       actionRequest,
       Sets.newHashSet("index", "indices", "setIndex", "setIndices"),
-      indices.toList.map(_.stringify).toSet.asJava
+      indices.stringify.toSet.asJava
     )
   }
 }
@@ -76,7 +78,7 @@ object ReflectionBasedIndicesEsRequestContext extends Logging {
       .orElse(getIndicesUsingField(request, fieldName = "indices"))
       .orElse(getIndexUsingMethod(request, methodName = "getIndex"))
       .orElse(getIndexUsingField(request, fieldName = "index"))
-      .map(indices => indices.toList.toSet.flatMap(ClusterIndexName.fromString))
+      .map(indices => indices.toList.toCovariantSet.flatMap(ClusterIndexName.fromString))
   }
 
   private def getIndicesUsingMethod(request: ActionRequest, methodName: String) = {
@@ -112,12 +114,12 @@ object ReflectionBasedIndicesEsRequestContext extends Logging {
   }
 
   private def callMethod[RESULT](obj: AnyRef, methodName: String) = {
-    import org.joor.Reflect._
+    import org.joor.Reflect.*
     Try(on(obj).call(methodName).get[RESULT])
   }
 
   private def getFieldValue[RESULT](obj: AnyRef, fieldName: String) = {
-    import org.joor.Reflect._
+    import org.joor.Reflect.*
     Try(on(obj).get[RESULT](fieldName))
   }
 }

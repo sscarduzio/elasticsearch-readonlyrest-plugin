@@ -28,33 +28,33 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{EitherValues, Inside, OptionValues}
-import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
-import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
+import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, TestConfig}
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 import java.time.Clock
 import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 class ReadonlyRestStartingTests
   extends AnyWordSpec
@@ -82,8 +82,8 @@ class ReadonlyRestStartingTests
           readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/no_index_config_file_config_provided/")
         }) { rorInstance =>
           val acl = rorInstance.engines.value.mainEngine.core.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
+          acl shouldBe a[AccessControlListLoggingDecorator]
+          acl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
         "file loading is forced in elasticsearch.yml" in withReadonlyRest({
           val mockedIndexJsonContentManager = mock[IndexJsonContentService]
@@ -93,8 +93,8 @@ class ReadonlyRestStartingTests
           readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/forced_file_loading/")
         }) { rorInstance =>
           val acl = rorInstance.engines.value.mainEngine.core.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
+          acl shouldBe a[AccessControlListLoggingDecorator]
+          acl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
       }
       "be loaded from index" when {
@@ -110,8 +110,8 @@ class ReadonlyRestStartingTests
           readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
         }) { rorInstance =>
           val acl = rorInstance.engines.value.mainEngine.core.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
+          acl shouldBe a[AccessControlListLoggingDecorator]
+          acl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
         "index is available and file config is not provided" in withReadonlyRest({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
@@ -126,8 +126,8 @@ class ReadonlyRestStartingTests
           readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
         }) { rorInstance =>
           val acl = rorInstance.engines.value.mainEngine.core.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
+          acl shouldBe a[AccessControlListLoggingDecorator]
+          acl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
       }
       "be able to be reloaded" when {
@@ -148,8 +148,8 @@ class ReadonlyRestStartingTests
           readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
         }) { rorInstance =>
           val mainEngine = rorInstance.engines.value.mainEngine
-          mainEngine.core.accessControl shouldBe a[AccessControlLoggingDecorator]
-          mainEngine.core.accessControl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
+          mainEngine.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
+          mainEngine.core.accessControl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
 
           val reload1Result = rorInstance
             .forceReloadAndSave(rorConfigFromResource("/boot_tests/config_reloading/readonlyrest_first.yml"))(newRequestId())
@@ -233,16 +233,16 @@ class ReadonlyRestStartingTests
         readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
       }) { rorInstance =>
         val acl = rorInstance.engines.value.mainEngine.core.accessControl
-        acl shouldBe a[AccessControlLoggingDecorator]
-        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
+        acl shouldBe a[AccessControlListLoggingDecorator]
+        acl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[DisabledAcl]
 
         Task
           .sleep(4 seconds)
           .runSyncUnsafe()
 
         val acl2 = rorInstance.engines.value.mainEngine.core.accessControl
-        acl2 shouldBe a[AccessControlLoggingDecorator]
-        acl2.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
+        acl2 shouldBe a[AccessControlListLoggingDecorator]
+        acl2.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
       }
       "failed to load" when {
         "force load from file is set and config is malformed" in {
@@ -414,7 +414,7 @@ class ReadonlyRestStartingTests
               val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
               (readonlyRest, expirationTimestamp)
             }) { case (rorInstance, expirationTimestamp) =>
-              rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+              rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
               rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
                 TestConfig.Present(
@@ -620,7 +620,7 @@ class ReadonlyRestStartingTests
             .runSyncUnsafe()
 
           testEngineReloadResult.value shouldBe a[TestConfig.Present]
-          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
           val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
           testEngineConfig shouldBe a[TestConfig.Present]
@@ -671,7 +671,7 @@ class ReadonlyRestStartingTests
               .runSyncUnsafe()
 
             testEngineReloadResult1stAttempt.value shouldBe a[TestConfig.Present]
-            rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+            rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
             val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
             testEngineConfig shouldBe a[TestConfig.Present]
@@ -686,7 +686,7 @@ class ReadonlyRestStartingTests
               .runSyncUnsafe()
 
             testEngineReloadResult2ndAttempt.value shouldBe a[TestConfig.Present]
-            rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+            rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
             val testEngineConfigAfterReload = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
             testEngineConfigAfterReload shouldBe a[TestConfig.Present]
@@ -740,7 +740,7 @@ class ReadonlyRestStartingTests
               .runSyncUnsafe()
 
             testEngineReloadResult1stAttempt.value shouldBe a[TestConfig.Present]
-            rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+            rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
             val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
             testEngineConfig shouldBe a[TestConfig.Present]
@@ -769,7 +769,7 @@ class ReadonlyRestStartingTests
               .runSyncUnsafe()
 
             testEngineReloadResult2ndAttempt.value shouldBe a[TestConfig.Present]
-            rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+            rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
             val testEngineConfigAfterReload = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
             testEngineConfigAfterReload shouldBe a[TestConfig.Present]
@@ -824,7 +824,7 @@ class ReadonlyRestStartingTests
             .runSyncUnsafe()
 
           testEngineReloadResult1stAttempt.value shouldBe a[TestConfig.Present]
-          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
           val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
           testEngineConfig shouldBe a[TestConfig.Present]
@@ -854,7 +854,7 @@ class ReadonlyRestStartingTests
             .runSyncUnsafe()
 
           testEngineReloadResult2ndAttempt.value shouldBe a[TestConfig.Present]
-          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
           val testEngineConfigAfterReload = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
           testEngineConfigAfterReload shouldBe a[TestConfig.Present]
@@ -905,7 +905,7 @@ class ReadonlyRestStartingTests
 
           Task.sleep(5 seconds).runSyncUnsafe()
 
-          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
@@ -968,7 +968,7 @@ class ReadonlyRestStartingTests
 
           Task.sleep(5 seconds).runSyncUnsafe()
 
-          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
@@ -1032,7 +1032,7 @@ class ReadonlyRestStartingTests
 
           Task.sleep(5 seconds).runSyncUnsafe()
 
-          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
@@ -1149,7 +1149,7 @@ class ReadonlyRestStartingTests
             .runSyncUnsafe()
 
           testEngineReloadResult.value shouldBe a[TestConfig.Present]
-          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
           Task.sleep(5 seconds).runSyncUnsafe()
 
@@ -1201,7 +1201,7 @@ class ReadonlyRestStartingTests
           .runSyncUnsafe()
 
         testEngineReloadResult.value shouldBe a[TestConfig.Present]
-        rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+        rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
         rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() shouldBe a[TestConfig.Present]
 
         (mockedIndexJsonContentManager.saveContent _)
@@ -1254,7 +1254,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
           (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
         }) { case (rorInstance, (mockedIndexJsonContentManager, expirationTimestamp)) =>
-          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
               config = RorConfig.disabled,
@@ -1399,13 +1399,13 @@ class ReadonlyRestStartingTests
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               resourceFileName: String,
-                              accessControlMock: AccessControl = mockEnabledAccessControl): CoreFactory = {
+                              accessControlMock: AccessControlList = mockEnabledAccessControl): CoreFactory = {
     mockCoreFactory(mockedCoreFactory, rorConfigFromResource(resourceFileName), accessControlMock)
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               rawRorConfig: RawRorConfig,
-                              accessControlMock: AccessControl): CoreFactory = {
+                              accessControlMock: AccessControlList): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
@@ -1567,7 +1567,7 @@ class ReadonlyRestStartingTests
 
   private def newRequestId() = RequestId(UUID.randomUUID().toString)
 
-  private abstract class EnabledAcl extends AccessControl
+  private abstract class EnabledAcl extends AccessControlList
 
-  private abstract class DisabledAcl extends AccessControl
+  private abstract class DisabledAcl extends AccessControlList
 }

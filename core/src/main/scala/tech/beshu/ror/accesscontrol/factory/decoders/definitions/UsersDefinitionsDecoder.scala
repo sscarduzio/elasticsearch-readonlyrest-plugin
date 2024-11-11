@@ -18,11 +18,10 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import cats.data.NonEmptyList
-import cats.implicits._
 import io.circe.{ACursor, Decoder, HCursor, Json}
+import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
-import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -34,18 +33,19 @@ import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, GroupName, UserI
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.{usersDefinitionsAllowedRulesDecoderBy, withUserIdParamsCheck}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.failed
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 object UsersDefinitionsDecoder {
 
-  import tech.beshu.ror.accesscontrol.factory.decoders.definitions.UsersDefinitionsDecoder.GroupsDecoder._
+  import tech.beshu.ror.accesscontrol.factory.decoders.definitions.UsersDefinitionsDecoder.GroupsDecoder.*
 
   def instance(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
@@ -156,8 +156,8 @@ object UsersDefinitionsDecoder {
       case first :: second :: Nil =>
         twoRulesModeFrom(first, second)
       case moreThanTwoRules =>
-        val ruleNamesStr = moreThanTwoRules.map(_.name.show).mkString(",")
-        failed[Mode](DefinitionsLevelCreationError(Message(s"Too many rules defined for [${usernamePatterns.show}] in users definition section: $ruleNamesStr")))
+        val ruleNamesStr = moreThanTwoRules.map(_.name).show
+        failed[Mode](DefinitionsLevelCreationError(Message(s"Too many rules defined for [${usernamePatterns.show}] in users definition section: ${ruleNamesStr.show}")))
     }
   }
 
@@ -290,14 +290,14 @@ object UsersDefinitionsDecoder {
     }
 
     private def objectContainsKeys(json: Json, keys: Set[String]): Boolean = {
-      json.isObject && json.hcursor.keys.forall(objectKeys => keys.subsetOf(objectKeys.toSet))
+      json.isObject && json.hcursor.keys.forall(objectKeys => keys.subsetOf(objectKeys.toCovariantSet))
     }
 
     private def advancedGroupMappingsDecoder(implicit mappingDecoder: Decoder[GroupMappings.Advanced.Mapping]): Decoder[GroupMappings.Advanced] =
       Decoder[List[GroupMappings.Advanced.Mapping]]
         .toSyncDecoder
         .emapE { list =>
-          UniqueNonEmptyList.fromIterable(list) match {
+          UniqueNonEmptyList.from(list) match {
             case Some(mappings) => Right(GroupMappings.Advanced(mappings))
             case None => Left(ValueLevelCreationError(Message("Non empty list of groups mappings is required")))
           }
@@ -331,7 +331,7 @@ object UsersDefinitionsDecoder {
             case Some(Nil) | None =>
               failure(Message(s"Groups mapping should have exactly one YAML key"))
             case Some(keys) =>
-              failure(Message(s"Groups mapping should have exactly one YAML key, but several were defined: [${keys.mkString(",")}]"))
+              failure(Message(s"Groups mapping should have exactly one YAML key, but several were defined: [${keys.show}]"))
           }
         }
 
@@ -351,7 +351,7 @@ object UsersDefinitionsDecoder {
 
     private val groupsSimpleDecoder: Decoder[UniqueNonEmptyList[Group]] = {
       Decoder[UniqueNonEmptyList[GroupId]]
-        .map(groupIds => UniqueNonEmptyList.unsafeFromIterable(groupIds.toList.map(Group.from)))
+        .map(groupIds => UniqueNonEmptyList.unsafeFrom(groupIds.map(Group.from)))
     }
   }
 }

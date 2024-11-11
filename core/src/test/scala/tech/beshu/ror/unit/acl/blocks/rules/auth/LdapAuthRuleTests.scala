@@ -17,35 +17,34 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapAuthRuleTests
   extends AnyWordSpec
@@ -415,7 +414,7 @@ class LdapAuthRuleTests
       authenticationSettings,
       authorizationSettings,
       impersonation,
-      impersonateAsHeader.toSet + basicHeader,
+      impersonateAsHeader.toCovariantSet + basicHeader,
       AssertionType.RuleFulfilled(blockContextAssertion)
     )
 
@@ -429,7 +428,7 @@ class LdapAuthRuleTests
       authenticationSettings,
       authorizationSettings,
       impersonation,
-      impersonateAsHeader.toSet ++ basicHeader.toSet,
+      impersonateAsHeader.toCovariantSet ++ basicHeader.toSet,
       AssertionType.RuleRejected(rejectionCause)
     )
 

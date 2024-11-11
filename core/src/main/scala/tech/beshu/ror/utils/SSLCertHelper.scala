@@ -27,15 +27,16 @@ import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import org.bouncycastle.openssl.PEMParser
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import tech.beshu.ror.configuration.SslConfiguration
+import tech.beshu.ror.configuration.SslConfiguration.*
 import tech.beshu.ror.configuration.SslConfiguration.ClientCertificateConfiguration.TruststoreBasedConfiguration
 import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.KeystoreBasedConfiguration
-import tech.beshu.ror.configuration.SslConfiguration._
+import tech.beshu.ror.implicits.*
 
 import java.io.{File, FileInputStream, FileReader, IOException}
 import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.{KeyStore, PrivateKey}
 import javax.net.ssl.{KeyManagerFactory, SNIServerName, SSLEngine, TrustManagerFactory}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -86,7 +87,7 @@ object SSLCertHelper extends Logging {
       }
       getFipsCompliantKeyManagerFactory(keystoreBasedConfiguration)
         .map { keyManagerFactory =>
-          logger.info("Initializing ROR SSL using SSL provider: " + keyManagerFactory.getProvider.getName)
+          logger.info(s"Initializing ROR SSL using SSL provider: ${keyManagerFactory.getProvider.getName.show}")
           builder.keyManager(keyManagerFactory)
         }
     } else {
@@ -96,7 +97,7 @@ object SSLCertHelper extends Logging {
         case keystoreBasedConfiguration: KeystoreBasedConfiguration =>
           getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedConfiguration)
       }).map { case (privateKey, certificateChain) =>
-        logger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name()}")
+        logger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name().show}")
         builder.keyManager(privateKey, certificateChain.toList.asJava)
       }
     }
@@ -176,7 +177,7 @@ object SSLCertHelper extends Logging {
     trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config)
       .fold(
         ex => {
-          logger.error("ROR SSL: cannot validate SSL protocols and ciphers! " + ex.getClass.getSimpleName + ": " + ex.getMessage, ex)
+          logger.error(s"ROR SSL: cannot validate SSL protocols and ciphers! ${ex.getClass.getSimpleName.show} : ${ex.getMessage.show}", ex)
           false
         },
         _ => true
@@ -234,7 +235,7 @@ object SSLCertHelper extends Logging {
     config.keyAlias match {
       case None if keystore.aliases().hasMoreElements =>
         val firstAlias = keystore.aliases().nextElement()
-        logger.info(s"ROR SSL: ssl.key_alias not configured, took first alias in keystore: $firstAlias")
+        logger.info(s"ROR SSL: ssl.key_alias not configured, took first alias in keystore: ${firstAlias.show}")
         firstAlias
       case None =>
         throw MalformedSslSettings("Key not found in provided keystore!")
@@ -288,7 +289,7 @@ object SSLCertHelper extends Logging {
           val certFactory = CertificateFactory.getInstance("X.509")
           certFactory.generateCertificates(certificateChainFile).asScala.map {
             case cc: X509Certificate => cc
-            case _ => throw MalformedSslSettings(s"Certificate chain in $file contains invalid X509 certificate")
+            case _ => throw MalformedSslSettings(s"Certificate chain in ${file.show} contains invalid X509 certificate")
           }.toArray[X509Certificate]
         }
       }
@@ -300,11 +301,11 @@ object SSLCertHelper extends Logging {
         val alias = prepareAlias(keystore, keystoreBasedConfiguration)
         val privateKey = keystore.getKey(alias, keystoreBasedConfiguration.keyPass.map(_.value.toCharArray).orNull) match {
           case pk: PrivateKey => pk
-          case _ => throw MalformedSslSettings(s"Configured key with alias=$alias is not a private key")
+          case _ => throw MalformedSslSettings(s"Configured key with alias=${alias.show} is not a private key")
         }
         val certificateChain = keystore.getCertificateChain(alias).map {
           case cc: X509Certificate => cc
-          case _ => throw MalformedSslSettings(s"Certificate chain for alias=$alias is not X509 certificate")
+          case _ => throw MalformedSslSettings(s"Certificate chain for alias=${alias.show} is not X509 certificate")
         }
         (privateKey, certificateChain)
       }
@@ -313,15 +314,15 @@ object SSLCertHelper extends Logging {
   private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder,
                                                        config: SslConfiguration) = Try {
     val sslEngine = sslContextBuilder.build().newEngine(ByteBufAllocator.DEFAULT)
-    logger.info("ROR SSL: Available ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
+    logger.info(s"ROR SSL: Available ciphers: ${sslEngine.getEnabledCipherSuites.toList.show}")
     if (config.allowedCiphers.nonEmpty) {
       sslEngine.setEnabledCipherSuites(config.allowedCiphers.map(_.value).toArray)
-      logger.info("ROR SSL: Restricting to ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
+      logger.info(s"ROR SSL: Restricting to ciphers: ${sslEngine.getEnabledCipherSuites.toList.show}")
     }
-    logger.info("ROR SSL: Available SSL protocols: " + sslEngine.getEnabledProtocols.mkString(","))
+    logger.info(s"ROR SSL: Available SSL protocols: ${sslEngine.getEnabledProtocols.toList.show}")
     if (config.allowedProtocols.nonEmpty) {
       sslEngine.setEnabledProtocols(config.allowedProtocols.map(_.value).toArray)
-      logger.info("ROR SSL: Restricting to SSL protocols: " + sslEngine.getEnabledProtocols.mkString(","))
+      logger.info(s"ROR SSL: Restricting to SSL protocols: ${sslEngine.getEnabledProtocols.toList.show}")
     }
   }
 
@@ -333,7 +334,7 @@ object SSLCertHelper extends Logging {
       }
       getFipsCompliantKeyManagerFactory(keystoreBasedConfiguration)
         .map { keyManagerFactory =>
-          logger.info("Initializing ROR SSL using SSL provider: " + keyManagerFactory.getProvider.getName)
+          logger.info(s"Initializing ROR SSL using SSL provider: ${keyManagerFactory.getProvider.getName.show}")
           SslContextBuilder.forServer(keyManagerFactory)
         }
     } else {
@@ -343,7 +344,7 @@ object SSLCertHelper extends Logging {
         case keystoreBasedConfiguration: KeystoreBasedConfiguration =>
           getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedConfiguration)
       }).map { case (privateKey, certificateChain) =>
-        logger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name()}")
+        logger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name().show}")
         SslContextBuilder.forServer(privateKey, certificateChain.toList.asJava)
       }
     }
@@ -361,9 +362,12 @@ object SSLCertHelper extends Logging {
     }
   }
 
-  final case class UnableToLoadDataFromProvidedFilesException(cause: Throwable) extends Exception(s"Unable to load data from provided files", cause)
-  final case class UnableToInitializeSslContextBuilderUsingProvidedFiles(cause: Throwable) extends Exception(s"Unable to initialize Key Manager Factory using provided keystore.", cause)
-  final case class UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(cause: Throwable) extends Exception(s"Unable to initialize Trust Manager Factory using provided truststore.", cause)
+  final case class UnableToLoadDataFromProvidedFilesException(cause: Throwable)
+    extends Exception(s"Unable to load data from provided files", cause)
+  final case class UnableToInitializeSslContextBuilderUsingProvidedFiles(cause: Throwable)
+    extends Exception(s"Unable to initialize Key Manager Factory using provided keystore.", cause)
+  final case class UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(cause: Throwable)
+    extends Exception(s"Unable to initialize Trust Manager Factory using provided truststore.", cause)
   final case class MalformedSslSettings(str: String) extends Exception(str)
   case object TrustManagerNotConfiguredException extends Exception("Trust manager has not been configured!")
 

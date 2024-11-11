@@ -21,8 +21,8 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyUnixRule.UnixHashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.auth._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
@@ -31,9 +31,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.StringWiseSplitter
-import tech.beshu.ror.utils.StringWiseSplitter._
+import tech.beshu.ror.utils.StringWiseSplitter.*
 
 class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                          mocksProvider: MocksProvider,
@@ -193,7 +194,7 @@ private object AuthKeyDecodersHelper {
       .emapE {
         _.value
           .toNonEmptyStringsTuple
-          .left.map(_ => RulesLevelCreationError(Message(s"$fieldNameForMessage malformed (expected two non-empty values separated with colon)")))
+          .left.map(_ => RulesLevelCreationError(Message(s"${fieldNameForMessage.show} malformed (expected two non-empty values separated with colon)")))
       }
       .decoder
 

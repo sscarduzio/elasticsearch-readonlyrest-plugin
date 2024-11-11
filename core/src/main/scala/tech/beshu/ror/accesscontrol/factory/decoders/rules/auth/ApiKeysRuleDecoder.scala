@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.http.ApiKeysRule
 import tech.beshu.ror.accesscontrol.domain.ApiKey
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 
 object ApiKeysRuleDecoder

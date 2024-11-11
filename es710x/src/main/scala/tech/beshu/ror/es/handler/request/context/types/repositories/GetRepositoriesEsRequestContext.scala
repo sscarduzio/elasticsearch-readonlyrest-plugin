@@ -25,7 +25,8 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.BaseRepositoriesEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class GetRepositoriesEsRequestContext(actionRequest: GetRepositoriesRequest,
                                       esContext: EsContext,
@@ -34,9 +35,7 @@ class GetRepositoriesEsRequestContext(actionRequest: GetRepositoriesRequest,
   extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
   override protected def repositoriesFrom(request: GetRepositoriesRequest): Set[RepositoryName] = {
-    repositoriesOrWildcard {
-      request.repositories().asSafeSet.flatMap(RepositoryName.from)
-    }
+    request.repositories().asSafeSet.flatMap(RepositoryName.from).orWildcardWhenEmpty
   }
 
   override protected def update(request: GetRepositoriesRequest,

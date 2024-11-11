@@ -28,17 +28,17 @@ import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{BindingTestError, CannotConnectError, HostResolvingError, UnexpectedConnectionError}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.{Address, PlainTextSecret}
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
-import tech.beshu.ror.utils.ScalaOps.*
-import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
@@ -48,7 +48,7 @@ import scala.util.control.NonFatal
 
 class UnboundidLdapConnectionPoolProvider {
 
-  import UnboundidLdapConnectionPoolProvider._
+  import UnboundidLdapConnectionPoolProvider.*
 
   private val poolOfPools: ReleseablePool[Task, UnboundidLdapConnectionPool, LdapConnectionConfig] =
     new ReleseablePool(createConnectionPool)(pool => pool.close())

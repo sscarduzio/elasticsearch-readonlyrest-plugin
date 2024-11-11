@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.http
 
-import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
@@ -26,9 +25,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecoderOps}
 import tech.beshu.ror.accesscontrol.orders.patternOrder
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecoderOps}
+import tech.beshu.ror.implicits.*
 
 import java.util.regex.Pattern
 import scala.util.Try
@@ -47,7 +46,7 @@ class UriRegexRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
       Try(Pattern.compile(str))
         .toEither
         .left
-        .map(_ => ConvertError(s"Cannot compile pattern: $str"))
+        .map(_ => ConvertError(s"Cannot compile pattern: ${str.show}"))
     }
   }
 

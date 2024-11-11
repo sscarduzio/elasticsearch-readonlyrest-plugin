@@ -18,8 +18,9 @@ package tech.beshu.ror.es.handler.request
 
 import org.elasticsearch.rest.RestRequest
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.syntax.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object RestRequestOps {
   implicit class HeadersOps(val request: RestRequest) extends AnyVal {

@@ -16,11 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation
 
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
-import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, RequestId, User}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 private[rules] trait AuthorizationImpersonationSupport extends ImpersonationSupport

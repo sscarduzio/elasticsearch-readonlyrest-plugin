@@ -18,10 +18,11 @@ package tech.beshu.ror.configuration.loader
 
 import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.TestConfigLoading._
+import tech.beshu.ror.configuration.TestConfigLoading.*
 import tech.beshu.ror.configuration.TestRorConfig
 
 object LoadRawTestRorConfig {
+
   def load(configurationIndex: RorConfigurationIndex,
            fallbackConfig: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
     LoadRawTestRorConfig.load(

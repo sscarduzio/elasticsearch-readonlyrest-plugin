@@ -17,14 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
-import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 private[indices] trait ComponentTemplateIndices
   extends Logging {
@@ -175,7 +175,7 @@ private[indices] trait ComponentTemplateIndices
     findTemplatesBy(Set(namePattern), in)
   }
 
-  private def findTemplatesBy(namePatterns: Set[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.ComponentTemplate] = {
+  private def findTemplatesBy(namePatterns: Iterable[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.ComponentTemplate] = {
     filterTemplates(namePatterns, in.requestContext.componentTemplates)
   }
 

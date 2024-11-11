@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.utils.yaml
 
-import tech.beshu.ror.org.yaml.snakeyaml.LoaderOptions
 import better.files.*
-
-import java.io.{Reader, StringReader}
 import io.circe.*
 import squants.information.Information
+import tech.beshu.ror.org.yaml.snakeyaml.LoaderOptions
+
+import java.io.{Reader, StringReader}
 
 class RorYamlParser(maxSize: Information) {
 

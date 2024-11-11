@@ -19,13 +19,13 @@ package tech.beshu.ror.accesscontrol.blocks.mocks
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 
+import java.time.Duration as JavaDuration
 import scala.language.postfixOps
-import java.time.{Duration => JavaDuration}
 
 class MutableMocksProviderWithCachePerRequest(initial: AuthServicesMocks)
                                              (implicit scheduler: Scheduler)

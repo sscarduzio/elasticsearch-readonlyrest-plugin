@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
-import cats.implicits.toShow
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -28,7 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolv
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
-import tech.beshu.ror.accesscontrol.show.logs.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaUserDataRule(override val settings: Settings)
@@ -94,10 +94,10 @@ class KibanaUserDataRule(override val settings: Settings)
       }
 
   private lazy val resolveAppsToHide =
-    UniqueNonEmptyList.fromIterable(settings.appsToHide)
+    UniqueNonEmptyList.from(settings.appsToHide)
 
   private lazy val resolveAllowedApiPaths =
-    UniqueNonEmptyList.fromIterable(settings.allowedApiPaths)
+    UniqueNonEmptyList.from(settings.allowedApiPaths)
 
   private def resolvedKibanaMetadata(context: BlockContext) =
     settings

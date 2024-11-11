@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.configuration.loader.distributed
 
-import cats.implicits._
+import cats.implicits.*
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 

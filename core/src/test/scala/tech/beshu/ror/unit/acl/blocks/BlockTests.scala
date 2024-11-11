@@ -21,9 +21,9 @@ import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Inside, TestSuite}
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{Inside, TestSuite}
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
@@ -36,12 +36,12 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpd
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Failure
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with BlockTestsMockFactory {
 

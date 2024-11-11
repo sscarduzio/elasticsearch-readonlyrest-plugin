@@ -52,7 +52,7 @@ class RemoteClusterServiceSupplier(repositoriesServiceSupplier: Supplier[Reposit
     on(repositoriesService).get[VerifyNodeRepositoryAction]("verifyAction")
   }
 
-  private def getTransportServiceFrom(action: VerifyNodeRepositoryAction)  = Try {
+  private def getTransportServiceFrom(action: VerifyNodeRepositoryAction) = Try {
     on(action).get[TransportService]("transportService")
   }
 }

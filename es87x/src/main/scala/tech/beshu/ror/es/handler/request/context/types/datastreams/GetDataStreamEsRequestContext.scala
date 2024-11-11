@@ -23,16 +23,16 @@ import org.elasticsearch.index.Index
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
+import tech.beshu.ror.syntax.*
 
 class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
                                     esContext: EsContext,
@@ -40,13 +40,19 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
                                     override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  private lazy val originDataStreams = actionRequest.getNames.asSafeList.flatMap(DataStreamName.fromString).toSet
+  private lazy val originDataStreams =
+    actionRequest
+      .getNames.asSafeSet
+      .flatMap(DataStreamName.fromString)
 
-  override protected def dataStreamsFrom(request: GetDataStreamAction.Request): Set[domain.DataStreamName] = originDataStreams
+  override protected def dataStreamsFrom(request: GetDataStreamAction.Request): Set[DataStreamName] =
+    originDataStreams
 
-  override protected def backingIndicesFrom(request: GetDataStreamAction.Request): BackingIndices = BackingIndices.IndicesInvolved(
-    filteredIndices = Set.empty, allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
-  )
+  override protected def backingIndicesFrom(request: GetDataStreamAction.Request): BackingIndices =
+    BackingIndices.IndicesInvolved(
+      filteredIndices = Set.empty,
+      allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
+    )
 
   override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     setDataStreamNames(blockContext.dataStreams)
@@ -64,10 +70,10 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
   }
 
   private def extendAllowedIndicesSet(allowedIndices: Iterable[ClusterIndexName]) = {
-    allowedIndices.toList.map(_.formatAsDataStreamBackingIndexName).toSet ++ allowedIndices.toSet
+    (allowedIndices.map(_.formatAsDataStreamBackingIndexName) ++ allowedIndices).toCovariantSet
   }
 
-  private def setDataStreamNames(dataStreams: Set[domain.DataStreamName]): Unit = {
+  private def setDataStreamNames(dataStreams: Set[DataStreamName]): Unit = {
     actionRequest.indices(dataStreams.map(DataStreamName.toString).toList: _*) // method is named indices but it sets data streams
   }
 
@@ -83,8 +89,9 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
     new GetDataStreamAction.Response(filteredStreams.asJava)
   }
 
-  private def backingIndiesMatchesAllowedIndices(info: Response.DataStreamInfo, allowedIndicesMatcher: PatternsMatcher[ClusterIndexName]) = {
-    val dataStreamIndices: Set[ClusterIndexName] = indicesFrom(info).keySet
+  private def backingIndiesMatchesAllowedIndices(info: Response.DataStreamInfo,
+                                                 allowedIndicesMatcher: PatternsMatcher[ClusterIndexName]) = {
+    val dataStreamIndices: Set[ClusterIndexName] = indicesFrom(info).keySet.toCovariantSet
     val allowedBackingIndices = allowedIndicesMatcher.filter(dataStreamIndices)
     dataStreamIndices.diff(allowedBackingIndices).isEmpty
   }

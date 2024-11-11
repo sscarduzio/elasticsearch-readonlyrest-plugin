@@ -16,20 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
-import cats.implicits._
 import io.circe.{Decoder, DecodingFailure}
-import tech.beshu.ror.accesscontrol.blocks.definitions._
+import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.auth._
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
-import tech.beshu.ror.accesscontrol.blocks.rules.http._
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
-import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
+import tech.beshu.ror.accesscontrol.blocks.rules.http.*
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
+import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, UserIdPatterns}
@@ -37,14 +36,14 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.http._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.*
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch.*
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.http.*
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana.*
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport.*
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.configuration.EnvironmentConfig
+import tech.beshu.ror.implicits.*
 
 object ruleDecoders {
 
@@ -202,7 +201,7 @@ object ruleDecoders {
           Right(())
         } else {
           Left(
-            s"Users [${users.map(_.show).mkString(",")}] are allowed to be authenticated by rule [${rule.name.show}], but it's used in a context of user patterns [${userIdPatterns.show}]. It seems that this is not what you expect."
+            s"Users [${users.show}] are allowed to be authenticated by rule [${rule.name.show}], but it's used in a context of user patterns [${userIdPatterns.show}]. It seems that this is not what you expect."
           )
         }
       case EligibleUsersSupport.NotAvailable =>

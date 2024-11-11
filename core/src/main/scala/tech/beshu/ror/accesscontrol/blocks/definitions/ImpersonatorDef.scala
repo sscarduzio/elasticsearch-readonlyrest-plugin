@@ -16,21 +16,22 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
-import java.util.UUID
 import cats.Show
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 
-final case class ImpersonatorDef private(id: ImpersonatorDef#Id,
+import java.util.UUID
+
+final case class ImpersonatorDef private(override val id: ImpersonatorDef#Id,
                                          impersonatorUsernames: UserIdPatterns,
                                          authenticationRule: AuthenticationRule,
                                          impersonatedUsers: ImpersonatedUsers)
   extends Item {
 
   override type Id = UUID // artificial ID (won't be used)
-  override implicit val show: Show[UUID] = Show.show(_.toString)
+  override val idShow: Show[UUID] = Show.show(_.toString)
 }
 object ImpersonatorDef {
 

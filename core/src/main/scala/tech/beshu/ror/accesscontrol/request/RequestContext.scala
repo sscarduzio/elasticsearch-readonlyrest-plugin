@@ -17,14 +17,12 @@
 package tech.beshu.ror.accesscontrol.request
 
 import cats.Show
-import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -34,7 +32,8 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, Imper
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.{Id, Method}
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
-import tech.beshu.ror.accesscontrol.show.logs.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.Instant
@@ -118,8 +117,6 @@ object RequestContext extends Logging {
     
     def from(sessionCorrelationId: CorrelationId, requestId: String): Id =
       new Id(s"${sessionCorrelationId.value.value}-$requestId")
-
-    implicit val show: Show[Id] = Show.show(_.value)
   }
 
   def show[B <: BlockContext](userMetadata: UserMetadata,
@@ -157,20 +154,20 @@ object RequestContext extends Logging {
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
-         | CGR:$stringifyUserGroup,
-         | USR:$stringifyUser,
-         | BRS:${r.headers.exists(_.name === Header.Name.userAgent)},
-         | KDX:${userMetadata.kibanaIndex.map(_.show).getOrElse("null")},
+         | CGR:${stringifyUserGroup.show},
+         | USR:${stringifyUser.show},
+         | BRS:${r.headers.exists(_.name === Header.Name.userAgent).show},
+         | KDX:${userMetadata.kibanaIndex.map(_.show).getOrElse("null").show},
          | ACT:${r.action.show},
          | OA:${r.remoteAddress.map(_.show).getOrElse("null")},
-         | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.value.show).getOrElse("null")},
+         | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.value.show).getOrElse("null").show},
          | DA:${r.localAddress.show},
-         | IDX:$stringifyIndices,
+         | IDX:${stringifyIndices.show},
          | MET:${r.method.show},
          | PTH:${r.uriPath.show},
-         | CNT:$stringifyContentLength,
-         | HDR:${r.headers.map(_.show).toList.sorted.mkString(", ")},
-         | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ")},
+         | CNT:${stringifyContentLength.show},
+         | HDR:${r.headers.show},
+         | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ").show},
          | }""".oneLiner
     }
 

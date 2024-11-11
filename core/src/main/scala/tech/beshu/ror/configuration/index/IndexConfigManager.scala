@@ -19,13 +19,12 @@ package tech.beshu.ror.configuration.index
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.configuration.index.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.ParsingError
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
-import tech.beshu.ror.configuration.EnvironmentConfig
 
 final class IndexConfigManager(indexJsonContentService: IndexJsonContentService)
                               (implicit environmentConfig: EnvironmentConfig)

@@ -27,9 +27,10 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.RefinedUtils._
 
 class PutTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
                                   esContext: EsContext,
@@ -45,7 +46,7 @@ class PutTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
         .fromString(request.name())
         .toRight("Template name should be non-empty")
       patterns <- UniqueNonEmptyList
-        .fromIterable(request.patterns().asSafeList.flatMap(IndexPattern.fromString))
+        .from(request.patterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
       aliases = request.aliases().asSafeSet.flatMap(a => ClusterIndexName.fromString(a.name()))
     } yield AddingLegacyTemplate(name, patterns, aliases)

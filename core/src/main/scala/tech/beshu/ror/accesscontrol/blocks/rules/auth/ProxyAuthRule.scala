@@ -16,10 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -32,9 +31,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, RequestId, User}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class ProxyAuthRule(val settings: Settings,
@@ -43,9 +43,9 @@ final class ProxyAuthRule(val settings: Settings,
   extends BaseAuthenticationRule
     with Logging {
 
-  private val userMatcher = PatternsMatcher.create(settings.userIds.toSet)
+  private val userMatcher = PatternsMatcher.create(settings.userIds)
 
-  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.Available(settings.userIds.toSet)
+  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.Available(settings.userIds.toCovariantSet)
 
   override val name: Rule.Name = ProxyAuthRule.Name.name
 

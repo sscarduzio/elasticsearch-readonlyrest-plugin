@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.es.handler.request.context
 
-import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.implicits.*
 
 import scala.util.Try
 

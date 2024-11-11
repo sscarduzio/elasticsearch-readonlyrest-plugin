@@ -16,20 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.implicits._
-import com.unboundid.ldap.sdk._
+import com.unboundid.ldap.sdk.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser, LdapUsersService}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, RequestId, User}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
-import tech.beshu.ror.utils.TaskOps._
+import tech.beshu.ror.utils.TaskOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.time.Clock
@@ -52,7 +51,7 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
     Task.measure(
       doFetchGroupsOf(id, filteringGroupIds),
       measurement => Task.delay {
-        logger.debug(s"[${requestId.show}] LDAP groups fetching took $measurement")
+        logger.debug(s"[${requestId.show}] LDAP groups fetching took ${measurement.show}")
       }
     )
   }
@@ -80,10 +79,10 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
           } flatMap { mainGroups =>
             enrichWithNestedGroupsIfNecessary(mainGroups)
           } map { allGroups =>
-            UniqueList.fromIterable(allGroups.map(_.group))
+            UniqueList.from(allGroups.map(_.group))
           }
         case Left(errorResult) =>
-          logger.error(s"[${requestId.show}] LDAP getting user groups returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          logger.error(s"[${requestId.show}] LDAP getting user groups returned error: [code=${errorResult.getResultCode.toString.show}, cause=${errorResult.getResultString.show}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
   }
@@ -97,7 +96,7 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
     val scope = SearchScope.SUB
     val searchFilter = searchUserGroupsLdapFilerFrom(mode, user, filteringGroupIds)
     val groupAttributes = attributesFrom(mode.groupAttribute)
-    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: ${groupAttributes.mkString(",")}]")
+    logger.debug(s"[${requestId.show}] LDAP search [base DN: ${baseDn.show}, scope: ${scope.getName().show}, search filter: ${searchFilter.show}, attributes: ${groupAttributes.show}]")
     new SearchRequest(listener, baseDn, scope, searchFilter, groupAttributes.toSeq*)
   }
 

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.configuration
 
-import better.files._
+import better.files.*
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -24,9 +24,10 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration}
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.SSLCertHelper
 
-import java.io.{File => JFile}
+import java.io.File as JFile
 import java.nio.file.{Path, Paths}
 
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
@@ -45,7 +46,7 @@ object RorSsl extends Logging {
         error => Left(error),
         {
           case RorSsl(None, None) =>
-            logger.info(s"Cannot find SSL configuration in ${esConfig.toString()} ...")
+            logger.info(s"Cannot find SSL configuration in ${esConfig.show} ...")
             fallbackToRorConfig(esEnv.configPath)
           case ssl =>
             Right(ssl)
@@ -57,7 +58,7 @@ object RorSsl extends Logging {
                                  (implicit rorSslDecoder: Decoder[RorSsl],
                                   environmentConfig: EnvironmentConfig) = {
     val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
-    logger.info(s"... trying: ${rorConfig.pathAsString}")
+    logger.info(s"... trying: ${rorConfig.show}")
     if (rorConfig.exists) {
       loadSslConfigFromFile(rorConfig)
     } else {
@@ -133,7 +134,7 @@ object SslConfiguration {
 }
 
 private object SslDecoders extends Logging {
-  import tech.beshu.ror.configuration.SslConfiguration._
+  import tech.beshu.ror.configuration.SslConfiguration.*
 
   object consts {
     val rorSection = "readonlyrest"
@@ -185,7 +186,7 @@ private object SslDecoders extends Logging {
       val fileBasedKeys = Set(consts.clientTrustedCertificateFile)
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
       if (presentKeys.intersect(truststoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
-        val errorMessage = s"Field sets [${fileBasedKeys.mkString(",")}] and [${truststoreBasedKeys.mkString(",")}] could not be present in the same configuration section"
+        val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${truststoreBasedKeys.show}] could not be present in the same configuration section"
         logger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       } else if (presentKeys.intersect(truststoreBasedKeys).nonEmpty) {
@@ -220,7 +221,7 @@ private object SslDecoders extends Logging {
       val fileBasedKeys = Set(consts.serverCertificateKeyFile, consts.serverCertificateFile)
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
       if (presentKeys.intersect(keystoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
-        val errorMessage = s"Field sets [${fileBasedKeys.mkString(",")}] and [${keystoreBasedKeys.mkString(",")}] could not be present in the same configuration section"
+        val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${keystoreBasedKeys.show}] could not be present in the same configuration section"
         logger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       } else if (presentKeys.intersect(keystoreBasedKeys).nonEmpty) {

@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{BaseHostsRule, Hostna
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Address
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
+import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 
 class XForwardedForRule(val settings: Settings,
                         resolver: HostnameResolver)

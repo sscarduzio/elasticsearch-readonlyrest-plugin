@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{DataStreamRequestBlockContext, GeneralIndexRequestBlockContext}
@@ -27,17 +27,17 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers._
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
   extends AnyWordSpec with Inside with BlockContextAssertion {
@@ -131,7 +131,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
             assertBlockContext(
               kibanaAccess = Some(RW),
               kibanaIndex = Some(customKibanaIndex),
-              indices = Set(customKibanaIndex.underlying),
+              indices = Set(customKibanaIndex.underlying)
             )
           }
         }
@@ -252,10 +252,26 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
     }
     "ROR action is used" when {
       "it's current user metadata request action" in {
-        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.RorAction.RorUserMetadataAction, requestedIndices = Set(Local(rorIndex)))()
-        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.RorAction.RorOldConfigAction, requestedIndices = Set(Local(rorIndex)))()
-        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.RorAction.RorConfigAction, requestedIndices = Set(Local(rorIndex)))()
-        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.RorAction.RorAuditEventAction, requestedIndices = Set(Local(rorIndex)))()
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(KibanaAccess.Admin),
+          Action.RorAction.RorUserMetadataAction,
+          requestedIndices = Set(Local(rorIndex))
+        )()
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(KibanaAccess.Admin),
+          Action.RorAction.RorOldConfigAction,
+          requestedIndices = Set(Local(rorIndex))
+        )()
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(KibanaAccess.Admin),
+          Action.RorAction.RorConfigAction,
+          requestedIndices = Set(Local(rorIndex))
+        )()
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(KibanaAccess.Admin),
+          Action.RorAction.RorAuditEventAction,
+          requestedIndices = Set(Local(rorIndex))
+        )()
       }
     }
     "Kibana related index is used" which {
@@ -338,7 +354,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       assertBlockContext(
         kibanaIndex = Some(customKibanaIndex),
         kibanaAccess = Some(RO),
-        indices = Set(customKibanaIndex.underlying)
+        indices = Set(customKibanaIndex.underlying),
       )
     }
     assertMatchRuleUsingIndicesRequest(
@@ -351,7 +367,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       assertBlockContext(
         kibanaIndex = Some(customKibanaIndex),
         kibanaAccess = Some(RW),
-        indices = Set(customKibanaIndex.underlying)
+        indices = Set(customKibanaIndex.underlying),
       )
     }
   }

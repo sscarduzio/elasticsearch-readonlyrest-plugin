@@ -16,18 +16,18 @@
  */
 package tech.beshu.ror.integration
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Allow
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.Allow
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest with Inside {

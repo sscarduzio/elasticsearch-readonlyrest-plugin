@@ -17,13 +17,13 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.index.query.QueryBuilder
 import org.elasticsearch.threadpool.ThreadPool
-import org.joor.Reflect._
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import org.joor.Reflect.*
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
@@ -35,6 +35,8 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModif
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.SqlRequestHelper
 import tech.beshu.ror.exceptions.SecurityPermissionException
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                          esContext: EsContext,
@@ -49,7 +51,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     case result@Right(_) => result
     case result@Left(SqlRequestHelper.IndicesError.ParsingException) => result
     case Left(SqlRequestHelper.IndicesError.UnexpectedException(ex)) =>
-      throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.getName}", ex)
+      throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
   }
 
   override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[ClusterIndexName] = {
@@ -63,7 +65,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
                                 indices: NonEmptyList[ClusterIndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    val result = for {
+    val result: Either[SqlRequestHelper.ModificationError, UpdateResponse] = for {
       _ <- modifyRequestIndices(request, indices)
       _ <- Right(applyFieldLevelSecurityTo(request, fieldLevelSecurity))
       _ <- Right(applyFilterTo(request, filter))
@@ -81,7 +83,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     }
     result.fold(
       error => {
-        logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request; error=$error")
+        logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request; error=${error.show}")
         CannotModify
       },
       identity
@@ -92,7 +94,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
                                    indices: NonEmptyList[ClusterIndexName]): Either[SqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
     sqlIndicesExtractResult match {
       case Right(sqlIndices) =>
-        val indicesStrings = indices.map(_.stringify).toList.toSet
+        val indicesStrings = indices.stringify.toCovariantSet
         if (indicesStrings != sqlIndices.indices) {
           SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings)
         } else {
@@ -132,7 +134,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
 
   private def applyFilterTo(request: ActionRequest with CompositeIndicesRequest,
                             filter: Option[Filter]) = {
-    import tech.beshu.ror.es.handler.request.SearchRequestOps._
+    import tech.beshu.ror.es.handler.request.SearchRequestOps.*
     Option(on(request).call("filter").get[QueryBuilder])
       .wrapQueryBuilder(filter)
       .foreach { qb => on(request).set("filter", qb) }

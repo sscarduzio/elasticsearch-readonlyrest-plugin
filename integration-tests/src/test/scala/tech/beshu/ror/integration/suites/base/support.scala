@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Suite
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.providers._
+import tech.beshu.ror.utils.containers.providers.*
 import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClusterProvider, EsRemoteClustersContainer}
 
 object support {
@@ -56,7 +56,7 @@ object support {
       with ForAllTestContainer {
     this: Suite with EsClusterProvider with ESVersionSupport =>
 
-    import com.dimafeng.testcontainers.LazyContainer._
+    import com.dimafeng.testcontainers.LazyContainer.*
 
     override lazy val container: MultipleContainers =
       MultipleContainers(clusterContainers.map(containerToLazyContainer(_)).toList: _*)

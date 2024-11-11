@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.xcontent.XContentBuilder
-import ujson._
+import ujson.*
 
 import scala.language.implicitConversions
 

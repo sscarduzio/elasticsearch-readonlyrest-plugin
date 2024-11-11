@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
-import eu.timepit.refined.auto._
-import org.scalatest.matchers.should.Matchers._
+import eu.timepit.refined.auto.*
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function.{FunctionChain, ReplaceFirst}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionName
@@ -126,7 +126,7 @@ class VariableTransformationAliasesTests
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message(
               "variables_function_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
-                "Cause: No function with name 'to_snakecase'. Supported functions are: [replace_all,replace_first,to_lowercase,to_uppercase]"
+                "Cause: No function with name 'to_snakecase'. Supported functions are: [replace_all, replace_first, to_lowercase, to_uppercase]"
             )))
           }
         )

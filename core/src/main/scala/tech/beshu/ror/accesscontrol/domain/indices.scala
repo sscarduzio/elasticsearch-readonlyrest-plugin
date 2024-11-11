@@ -17,14 +17,17 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
+import cats.data.NonEmptyList
+import cats.implicits.*
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.constants
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
-import tech.beshu.ror.utils.RefinedUtils._
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
@@ -200,11 +203,28 @@ object ClusterIndexName {
   }
 
   def unsafeFromString(value: String): ClusterIndexName =
-    fromString(value).getOrElse(throw new IllegalStateException(s"Cannot create an index name from '$value'"))
+    fromString(value).getOrElse(throw new IllegalStateException(s"Cannot create an index name from '${value.show}'"))
 
   implicit val matchableClusterIndexName: Matchable[ClusterIndexName] = Matchable.matchable(_.stringify)
 
   implicit val eqIndexName: Eq[ClusterIndexName] = Eq.fromUniversalEquals
+
+  implicit class ExcludingIndicesSorting(val indices: Iterable[ClusterIndexName]) extends AnyVal {
+
+    def sortByNameWithExcludingIndicesAtTheEnd(): Seq[ClusterIndexName] = {
+      indices.toSeq.sorted(ExcludingIndicesSorting.ordering)
+    }
+  }
+  object ExcludingIndicesSorting {
+    private implicit val ordering: Ordering[ClusterIndexName] = Ordering.fromLessThan { case (a, b) =>
+      val aName = a.stringify
+      val bName = b.stringify
+      if (!aName.startsWith("-") && !bName.startsWith("-")) aName < bName
+      else if (aName.startsWith("-") && !bName.startsWith("-")) false
+      else if (!aName.startsWith("-") && bName.startsWith("-")) true
+      else aName < bName
+    }
+  }
 
   implicit class IndexMatch(indexName: ClusterIndexName) {
 
@@ -245,11 +265,25 @@ object ClusterIndexName {
     }
   }
 
+  implicit class IterableStringify[T <: ClusterIndexName](val iterable: Iterable[T]) extends AnyVal {
+    def stringify: List[String] = iterable.map(_.stringify).toList
+  }
+
+  implicit class NonEmptyListStringify[T <: ClusterIndexName](val nonEmptyList: NonEmptyList[T]) extends AnyVal {
+    def stringify: List[String] = nonEmptyList.toIterable.stringify
+  }
+
   implicit class OnlyIndexName(val remoteIndexName: ClusterIndexName.Remote) extends AnyVal {
     def onlyIndexName: NonEmptyString = remoteIndexName match {
       case Remote(IndexName.Full(name), _) => name
       case Remote(IndexName.Pattern(namePattern), _) => namePattern
     }
+  }
+
+  implicit class OrWildcardWhenEmpty(val indices: Set[ClusterIndexName]) extends AnyVal {
+    def orWildcardWhenEmpty: Set[ClusterIndexName] =
+      if (indices.nonEmpty) indices
+      else Set(ClusterIndexName.Local.wildcard)
   }
 
   implicit class HasPrefix(val indexName: ClusterIndexName) extends AnyVal {
@@ -326,23 +360,6 @@ object ClusterIndexName {
 
     private def legacyBackingIndexWildcardNameFrom(nameStr: NonEmptyString) = {
       IndexName.Pattern.unsafeFromNes(NonEmptyString.unsafeFrom(s".ds-$nameStr-*"))
-    }
-  }
-
-  implicit class ExcludingIndicesSorting(val indices: Iterable[ClusterIndexName]) extends AnyVal {
-
-    def sortByNameWithExcludingIndicesAtTheEnd(): Seq[ClusterIndexName] = {
-      indices.toSeq.sorted(ExcludingIndicesSorting.ordering)
-    }
-  }
-  object ExcludingIndicesSorting {
-    private implicit val ordering: Ordering[ClusterIndexName] = Ordering.fromLessThan { case (a, b) =>
-      val aName = a.stringify
-      val bName = b.stringify
-      if (!aName.startsWith("-") && !bName.startsWith("-")) aName < bName
-      else if (aName.startsWith("-") && !bName.startsWith("-")) false
-      else if (!aName.startsWith("-") && bName.startsWith("-")) true
-      else aName < bName
     }
   }
 }

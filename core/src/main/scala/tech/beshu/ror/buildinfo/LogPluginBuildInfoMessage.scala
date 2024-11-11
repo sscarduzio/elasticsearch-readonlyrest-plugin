@@ -17,6 +17,7 @@
 package tech.beshu.ror.buildinfo
 
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.util.{Failure, Success}
@@ -24,17 +25,18 @@ import scala.util.{Failure, Success}
 object LogPluginBuildInfoMessage extends Logging {
   private val buildInfo = doPrivileged { BuildInfoReader.create() }
 
-  def logBuildInfoMessage(): Unit = {
+  def apply(): Unit = {
+    logBuildInfoMessage()
+  }
+
+  private def logBuildInfoMessage(): Unit = {
     buildInfo match {
       case Success(bf) => logger.info(createLogMessage(bf))
       case Failure(_) => logger.error("Cannot find build info file. No info about ReadonlyREST version.")
     }
   }
 
-  def createLogMessage(buildInfo: BuildInfo): String =
-    s"Starting ReadonlyREST plugin v${buildInfo.pluginVersion} on Elasticsearch v${buildInfo.esVersion}"
+  private def createLogMessage(buildInfo: BuildInfo): String =
+    s"Starting ReadonlyREST plugin v${buildInfo.pluginVersion.show} on Elasticsearch v${buildInfo.esVersion.show}"
 
-  def apply(): Unit = {
-    logBuildInfoMessage()
-  }
 }

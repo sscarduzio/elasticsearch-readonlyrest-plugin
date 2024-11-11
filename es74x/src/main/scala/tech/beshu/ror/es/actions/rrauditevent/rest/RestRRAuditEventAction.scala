@@ -21,7 +21,7 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.xcontent.XContentHelper
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest._
+import org.elasticsearch.rest.*
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.constants

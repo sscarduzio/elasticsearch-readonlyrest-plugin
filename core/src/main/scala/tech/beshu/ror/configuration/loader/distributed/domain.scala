@@ -18,7 +18,7 @@ package tech.beshu.ror.configuration.loader.distributed
 
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 final case class NodeConfig(loadedConfig: Either[LoadedRorConfig.Error, LoadedRorConfig[String]])

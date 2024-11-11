@@ -21,12 +21,13 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.implicits.*
 
 class ObfuscatedHeaderShowFactoryTest
   extends AnyWordSpec
     with TableDrivenPropertyChecks
     with Matchers {
-  import tech.beshu.ror.accesscontrol.show.logs._
+
   private val customHeaderName = Header.Name(NonEmptyString.unsafeFrom("CustomHeader"))
   private val secretHeaderName = Header.Name(NonEmptyString.unsafeFrom("Secret"))
 
@@ -34,6 +35,7 @@ class ObfuscatedHeaderShowFactoryTest
   private val customHeader = Header(customHeaderName, NonEmptyString.unsafeFrom("business value"))
   private val secretHeader = Header(secretHeaderName, NonEmptyString.unsafeFrom("secret"))
   private val capitalizedAuthorization = Header.Name(NonEmptyString.unsafeFrom("authorization"))
+
   "LoggingContextFactory" should {
     "create Show[Header] instance" when {
       "no configuration is provided" in {

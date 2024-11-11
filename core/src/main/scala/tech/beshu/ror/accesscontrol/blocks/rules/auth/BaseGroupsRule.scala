@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
@@ -32,7 +31,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Authen
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.{Group, PermittedGroupIds, ResolvablePermittedGroupIds, User}
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.orders.*
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 abstract class BaseGroupsRule(val settings: Settings)
@@ -152,7 +152,7 @@ abstract class BaseGroupsRule(val settings: Settings)
             .map { loggedUser =>
               blockContext.withUserMetadata(_
                 .withLoggedUser(loggedUser)
-                .withAvailableGroups(availableGroups.toUniqueList)
+                .withAvailableGroups(UniqueList.from(availableGroups))
               )
             }
         case None =>
@@ -235,7 +235,8 @@ abstract class BaseGroupsRule(val settings: Settings)
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
     } yield destinationBlockContext.withUserMetadata(_
       .withLoggedUser(loggedUser)
-      .withAvailableGroups(availableLocalGroups.toUniqueList))
+      .withAvailableGroups(UniqueList.from(availableLocalGroups))
+    )
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule,
@@ -264,8 +265,8 @@ abstract class BaseGroupsRule(val settings: Settings)
   private def mapExternalGroupsToLocalGroups(groupMappings: GroupMappings,
                                              externalGroup: UniqueList[Group]) = {
     groupMappings match {
-      case GroupMappings.Simple(localGroups) => UniqueNonEmptyList.fromIterable(localGroups.map(_.id))
-      case GroupMappings.Advanced(mappings) => UniqueNonEmptyList.fromIterable {
+      case GroupMappings.Simple(localGroups) => UniqueNonEmptyList.from(localGroups.map(_.id))
+      case GroupMappings.Advanced(mappings) => UniqueNonEmptyList.from {
         externalGroup
           .toList
           .flatMap { externalGroup =>

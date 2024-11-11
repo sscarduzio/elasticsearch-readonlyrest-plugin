@@ -16,18 +16,19 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.common.util.set.Sets
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.MatchResult.{Matched, NotMatched}
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object ReflectionBasedDataStreamsEsRequestContext {
 
@@ -38,7 +39,7 @@ object ReflectionBasedDataStreamsEsRequestContext {
       .headOption
   }
 
-  val supportedActionRequests: Set[ClassCanonicalName] = esContextCreators.unsorted.map(_.actionRequestClass).toSet
+  val supportedActionRequests: Set[ClassCanonicalName] = esContextCreators.map(_.actionRequestClass).toCovariantSet
 
   private lazy val esContextCreators: UniqueNonEmptyList[ReflectionBasedDataStreamsEsContextCreator] = UniqueNonEmptyList.of(
     CreateDataStreamEsRequestContext,
@@ -56,7 +57,7 @@ object ReflectionBasedDataStreamsEsRequestContext {
     ReflecUtils.setIndices(
       actionRequest,
       Sets.newHashSet(dataStreamsFieldName),
-      dataStreams.toList.map(DataStreamName.toString).toSet.asJava
+      dataStreams.map(DataStreamName.toString).toSet.asJava
     )
   }
 
@@ -103,8 +104,7 @@ object ReflectionBasedDataStreamsEsRequestContext {
         .map { _ =>
           Matched.apply[A] {
             extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest)
-              .asSafeList
-              .toSet
+              .asSafeSet
               .flatMap((value: String) => toDomain(value))
           }
         }

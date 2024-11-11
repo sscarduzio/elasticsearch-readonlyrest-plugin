@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateResponse, SimulateTemplateAction}
 import org.elasticsearch.threadpool.ThreadPool
@@ -31,7 +31,9 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.es.handler.request.context.types.templates.SimulateIndexTemplateRequestEsRequestContext.TunedSimulateIndexTemplateResponse
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 object SimulateTemplateRequestEsRequestContext {
   def from(actionRequest: SimulateTemplateAction.Request,
@@ -79,7 +81,7 @@ class SimulateNewTemplateRequestEsRequestContext(actionRequest: SimulateTemplate
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -109,13 +111,13 @@ class SimulateExistingTemplateRequestEsRequestContext(existingTemplateName: Temp
           case Some(_) =>
             updateResponse(namePatterns.toList, blockContext.allAllowedIndices.toList)
           case None =>
-            logger.info(s"[${id.show}] User has no access to template ${existingTemplateName.value.value}")
+            logger.info(s"[${id.show}] User has no access to template ${existingTemplateName.show}")
             ModificationResult.ShouldBeInterrupted
         }
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
         ModificationResult.ShouldBeInterrupted
     }
   }

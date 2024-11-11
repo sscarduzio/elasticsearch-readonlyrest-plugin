@@ -25,8 +25,9 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.{ClassCanonicalName, MatchResult, ReflectionBasedDataStreamsEsContextCreator}
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
+import tech.beshu.ror.syntax.*
 
 private[datastreams] class CreateDataStreamEsRequestContext private(actionRequest: ActionRequest,
                                                                     dataStreams: Set[DataStreamName],

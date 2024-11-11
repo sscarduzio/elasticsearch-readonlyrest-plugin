@@ -16,15 +16,16 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, GroupIdLike, GroupsLogic, Header, PermittedGroupIds}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
@@ -33,13 +34,11 @@ import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.accesscontrol.domain
 
 import java.security.KeyPairGenerator
 import java.util.Base64
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class JwtAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[JwtAuthRule]

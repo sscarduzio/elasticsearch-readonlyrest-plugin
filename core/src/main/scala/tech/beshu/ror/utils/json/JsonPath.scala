@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils.json
 
-import tech.beshu.ror.com.jayway.jsonpath.{JsonPath => JaywayJsonPath}
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath as JaywayJsonPath
 import tech.beshu.ror.utils.json.JsonPath.UnableToReadInputAtJsonPath
 
 import scala.util.{Failure, Try}

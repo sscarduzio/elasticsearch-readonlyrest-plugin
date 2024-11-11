@@ -16,10 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -30,9 +29,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRul
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, Token, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.syntax.*
 
 final class TokenAuthenticationRule(val settings: Settings,
                                     override implicit val userIdCaseSensitivity: CaseSensitivity,

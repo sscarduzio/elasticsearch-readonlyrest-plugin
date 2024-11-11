@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.CancelablePromise
@@ -34,21 +34,22 @@ import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.RorClusterService._
-import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.RorClusterService.*
+import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.function.Supplier
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
 class EsServerBasedRorClusterService(nodeName: String,
@@ -62,7 +63,7 @@ class EsServerBasedRorClusterService(nodeName: String,
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metadata.getIndicesLookup
-    lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toSet
+    lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toCovariantSet
   }
 
   override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
@@ -157,7 +158,7 @@ class EsServerBasedRorClusterService(nodeName: String,
             )
           }
       }
-      .toSet
+      .toCovariantSet
   }
 
   private def extractDataStreamsAndAliases(metadata: Metadata): Set[FullLocalDataStreamWithAliases] = {
@@ -169,7 +170,7 @@ class EsServerBasedRorClusterService(nodeName: String,
           backingIndices = backingIndices
         )
       }
-      .toSet
+      .toCovariantSet
   }
 
   private def backingIndicesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[IndexName.Full]] = {
@@ -185,7 +186,7 @@ class EsServerBasedRorClusterService(nodeName: String,
             .flatMap(
               IndexName.Full.fromString
             )
-            .toSet
+            .toCovariantSet
 
         DataStreamName.Full
           .fromString(dataStream.getName)
@@ -204,7 +205,7 @@ class EsServerBasedRorClusterService(nodeName: String,
       .parSequenceUnordered(
         remoteClusterFullNames.map(resolveAllRemoteDataStreams(_, remoteClusterService))
       )
-      .map(_.flatten.toSet)
+      .map(_.flatten.toCovariantSet)
   }
 
   private def resolveAllRemoteDataStreams(remoteClusterName: ClusterName.Full,
@@ -238,7 +239,7 @@ class EsServerBasedRorClusterService(nodeName: String,
       .parSequenceUnordered(
         remoteClusterFullNames.map(resolveAllRemoteIndices(_, remoteClusterService))
       )
-      .map(_.flatten.toSet)
+      .map(_.flatten.toCovariantSet)
   }
 
   private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full,
@@ -262,7 +263,7 @@ class EsServerBasedRorClusterService(nodeName: String,
   }
 
   private def resolveRemoteIndicesUsing(client: Client) = {
-    import tech.beshu.ror.es.utils.ThreadContextOps._
+    import tech.beshu.ror.es.utils.ThreadContextOps.*
     threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(nodeName)
     val promise = CancelablePromise[ClusterStateResponse]()
     client
@@ -295,7 +296,7 @@ class EsServerBasedRorClusterService(nodeName: String,
           clusterName = remoteClusterName,
           dataStreamName = dataStreamName,
           aliasesNames = Set.empty,
-          backingIndices = dataStream.getIndices.asSafeList.flatMap(index => IndexName.Full.fromString(index.getName)).toSet
+          backingIndices = dataStream.getIndices.asSafeList.flatMap(index => IndexName.Full.fromString(index.getName)).toCovariantSet
         )
       }
   }
@@ -321,7 +322,7 @@ class EsServerBasedRorClusterService(nodeName: String,
           repositoriesService.getRepositoryData(RepositoryName.toString(repositoryName), fut)
         }
         repositoryData
-          .getSnapshotIds.asSafeIterable
+          .getSnapshotIds.asSafeSet
           .flatMap { sId =>
             SnapshotName
               .from(sId.getName)
@@ -332,7 +333,7 @@ class EsServerBasedRorClusterService(nodeName: String,
                 case f: SnapshotName.Full => Some(f)
               }
           }
-          .toSet
+          .toCovariantSet
       case None =>
         logger.error("Cannot supply Snapshots Service. Please, report the issue!!!")
         Set.empty[SnapshotName.Full]
@@ -347,13 +348,13 @@ class EsServerBasedRorClusterService(nodeName: String,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.fromIterable(
+          indexPatterns <- UniqueNonEmptyList.from(
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString)
           )
-          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
+          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias())).toCovariantSet
         } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
-      .toSet
+      .toCovariantSet
   }
 
   private def indexTemplates(): Set[Template.IndexTemplate] = {
@@ -364,14 +365,14 @@ class EsServerBasedRorClusterService(nodeName: String,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.fromIterable(
+          indexPatterns <- UniqueNonEmptyList.from(
             templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString)
           )
-          aliases = templateMetaData.template().asSafeSet
-            .flatMap(_.aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toSet)
+          aliases = Option(templateMetaData.template()).toCovariantSet
+            .flatMap(_.aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toCovariantSet)
         } yield Template.IndexTemplate(templateName, indexPatterns, aliases)
       }
-      .toSet
+      .toCovariantSet
   }
 
   private def componentTemplates(): Set[Template.ComponentTemplate] = {
@@ -382,10 +383,10 @@ class EsServerBasedRorClusterService(nodeName: String,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toSet
+          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toCovariantSet
         } yield Template.ComponentTemplate(templateName, aliases)
       }
-      .toSet
+      .toCovariantSet
   }
 
   private def createSearchRequest(filter: Filter,

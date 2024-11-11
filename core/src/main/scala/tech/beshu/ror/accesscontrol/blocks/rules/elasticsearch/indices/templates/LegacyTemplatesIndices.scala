@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 
-import cats.implicits._
 import cats.data.NonEmptyList
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
@@ -24,11 +23,12 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.utils.ScalaOps._
 
 private[indices] trait LegacyTemplatesIndices
   extends Logging {
@@ -55,7 +55,7 @@ private[indices] trait LegacyTemplatesIndices
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * getting Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
-    val existingTemplates = findTemplatesBy(templateNamePatterns.toList.toSet, in = blockContext)
+    val existingTemplates = findTemplatesBy(templateNamePatterns.toList, in = blockContext)
     if (existingTemplates.isEmpty) {
       logger.debug(
         s"""[${blockContext.requestContext.id.show}] * no Templates for name patterns [${templateNamePatterns.show}] found ..."""
@@ -237,7 +237,7 @@ private[indices] trait LegacyTemplatesIndices
     findTemplatesBy(Set(namePattern), in)
   }
 
-  private def findTemplatesBy(namePatterns: Set[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.LegacyTemplate] = {
+  private def findTemplatesBy(namePatterns: Iterable[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.LegacyTemplate] = {
     filterTemplates(namePatterns, in.requestContext.legacyTemplates)
   }
 
@@ -247,7 +247,7 @@ private[indices] trait LegacyTemplatesIndices
       case Template.LegacyTemplate(name, patterns, aliases) =>
         val onlyAllowedPatterns = patterns.filter(p => p.isAllowedByAny(allowedIndices.resolved))
         val onlyAllowedAliases = aliases.filter(isAliasAllowed)
-        UniqueNonEmptyList.fromSortedSet(onlyAllowedPatterns) match {
+        UniqueNonEmptyList.from(onlyAllowedPatterns) match {
           case Some(nonEmptyAllowedPatterns) =>
             Set[Template](Template.LegacyTemplate(name, nonEmptyAllowedPatterns, onlyAllowedAliases))
           case None =>

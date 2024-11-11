@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.request
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{AbstractQueryBuilder, QueryBuilder, QueryBuilders}
@@ -30,14 +30,15 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.handler.request.queries.QueryFieldsUsage.instances._
-import tech.beshu.ror.es.handler.request.queries.QueryFieldsUsage.{Ops => QueryFieldsUsageOps}
-import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.instances._
-import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.{Ops => QueryWithModifiableFieldsOps}
+import tech.beshu.ror.es.handler.request.queries.QueryFieldsUsage.Ops as QueryFieldsUsageOps
+import tech.beshu.ror.es.handler.request.queries.QueryFieldsUsage.instances.*
+import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.Ops as QueryWithModifiableFieldsOps
+import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.instances.*
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
+import tech.beshu.ror.implicits.*
 
 import java.util.UUID
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object SearchRequestOps extends Logging {
 
@@ -157,7 +158,7 @@ object SearchRequestOps extends Logging {
 
     def modifyNotAllowedFieldsInAggregations(notAllowedFields: NonEmptyList[UsedField.SpecificField]): SearchSourceBuilder = {
       def modifyBuilder(aggregatorFactoryBuilder: AggregatorFactories.Builder) = {
-        import org.joor.Reflect._
+        import org.joor.Reflect.*
         on(builder).set("aggregations", aggregatorFactoryBuilder)
         builder
       }

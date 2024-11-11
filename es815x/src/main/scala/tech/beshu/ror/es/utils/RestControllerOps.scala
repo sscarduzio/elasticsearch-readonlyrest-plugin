@@ -23,10 +23,10 @@ import org.elasticsearch.core.RestApiVersion
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestInterceptor, RestRequest}
 import org.joor.Reflect.on
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
 import java.lang
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 

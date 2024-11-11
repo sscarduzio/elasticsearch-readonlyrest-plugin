@@ -30,6 +30,8 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
@@ -42,9 +44,8 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
 
   override protected def snapshotsFrom(request: SnapshotsStatusRequest): Set[SnapshotName] =
     request
-      .snapshots().asSafeList
+      .snapshots().asSafeSet
       .flatMap(SnapshotName.from)
-      .toSet[SnapshotName]
 
   override protected def repositoriesFrom(request: SnapshotsStatusRequest): Set[RepositoryName] = Set {
     RepositoryName
@@ -98,7 +99,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -113,7 +114,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
           Left(())
         case repository :: rest =>
           if (rest.nonEmpty) {
-            logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]")
+            logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
           }
           Right(repository)
       }
@@ -133,14 +134,14 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   }
 
   private def fullNamedRepositoriesFrom(repositories: Iterable[RepositoryName]): Set[RepositoryName.Full] = {
-    val allFullNameRepositories: Set[RepositoryName.Full] = allSnapshots.keys.toSet
+    val allFullNameRepositories = allSnapshots.keys
     PatternsMatcher
       .create(repositories)
       .filter(allFullNameRepositories)
   }
 
   private def fullNamedSnapshotsFrom(snapshots: Iterable[SnapshotName]): Set[SnapshotName.Full] = {
-    val allFullNameSnapshots: Set[SnapshotName.Full] = allSnapshots.values.toSet.flatten
+    val allFullNameSnapshots: Set[SnapshotName.Full] = allSnapshots.values.toCovariantSet.flatten
     PatternsMatcher
       .create(snapshots)
       .filter(allFullNameSnapshots)

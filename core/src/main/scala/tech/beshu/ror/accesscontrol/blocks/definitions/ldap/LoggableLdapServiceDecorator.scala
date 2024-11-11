@@ -16,15 +16,13 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
-import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, RequestId, User}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
-import tech.beshu.ror.utils.TaskOps._
+import tech.beshu.ror.utils.TaskOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.util.{Failure, Success}
@@ -74,7 +72,7 @@ object LoggableLdapAuthorizationService {
         .groupsOf(userId)
         .andThen {
           case Success(groups) =>
-            logger.debug(s"[${requestId.show}] LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
+            logger.debug(s"[${requestId.show}] LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.show}]")
           case Failure(ex) =>
             logger.debug(s"[${requestId.show}] Fetching LDAP user's groups failed:", ex)
         }
@@ -93,12 +91,12 @@ object LoggableLdapAuthorizationService {
 
     override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])
                          (implicit requestId: RequestId): Task[UniqueList[Group]] = {
-      logger.debug(s"[${requestId.show}] Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that filtered group IDs are [${filteringGroupIds.map(_.show).mkString(",")}])")
+      logger.debug(s"[${requestId.show}] Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that filtered group IDs are [${filteringGroupIds.show}])")
       underlying
         .groupsOf(userId, filteringGroupIds)
         .andThen {
           case Success(groups) =>
-            logger.debug(s"[${requestId.show}] LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
+            logger.debug(s"[${requestId.show}] LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.show}]")
           case Failure(ex) =>
             logger.debug(s"[${requestId.show}] Fetching LDAP user's groups failed:", ex)
         }

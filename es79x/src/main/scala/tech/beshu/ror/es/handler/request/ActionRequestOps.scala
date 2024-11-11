@@ -18,6 +18,7 @@ package tech.beshu.ror.es.handler.request
 
 import org.elasticsearch.action.ActionRequest
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext
+import tech.beshu.ror.syntax.*
 
 object ActionRequestOps {
 

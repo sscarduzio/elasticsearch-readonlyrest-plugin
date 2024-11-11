@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.TemplateOperation
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
+import tech.beshu.ror.syntax.*
 
 abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateOperation](actionRequest: R,
                                                                                          esContext: EsContext,
@@ -35,12 +36,12 @@ abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateOp
   protected def templateOperationFrom(actionRequest: R): T
 
   override val initialBlockContext: TemplateRequestBlockContext = TemplateRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty,
-    templateOperationFrom(actionRequest),
-    identity,
-    Set.empty
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty,
+    templateOperation = templateOperationFrom(actionRequest),
+    responseTemplateTransformation = identity,
+    allAllowedIndices = Set.empty
   )
 }

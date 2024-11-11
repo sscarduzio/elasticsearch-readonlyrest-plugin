@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
-import eu.timepit.refined.auto._
 import cats.data.NonEmptySet
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.orders.indexOrder
-import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, fullDataStreamName, fullLocalDataStreamWithAliases}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 
 trait IndicesRuleDataStreamTests {
   this: BaseIndicesRuleTests =>
@@ -37,7 +37,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds")))
           ),
-          found = Set(clusterIndexName("test_ds")),
+          filteredRequestedIndices = Set(clusterIndexName("test_ds")),
         )
       }
       "no data stream passed, one is configured, there is two real data streams" in {
@@ -51,7 +51,7 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
             ),
           ),
-          found = Set(clusterIndexName("test1_ds")),
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds")),
         )
       }
       "'_all' passed, one is configured, there is two real data streams" in {
@@ -65,7 +65,7 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
             )
           ),
-          found = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
         )
       }
       "'*' passed, one is configured, there is one real data stream" in {
@@ -79,7 +79,7 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
             )
           ),
-          found = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
         )
       }
       "one full name data stream passed, one full name data stream configured, no real data streams" in {
@@ -90,7 +90,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set.empty
           ),
-          found = Set(clusterIndexName("test_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test_ds"))
         )
       }
       "one wildcard data stream passed, one full name data stream configured, no real data streams" in {
@@ -101,7 +101,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"))),
           ),
-          found = Set(clusterIndexName("test_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test_ds"))
         )
       }
       "one full name data stream passed, one wildcard data stream configured, no real data streams" in {
@@ -112,7 +112,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          found = Set(clusterIndexName("test_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test_ds"))
         )
       }
       "two full name data streams passed, the same two full name data streams configured" in {
@@ -123,7 +123,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          found = Set(clusterIndexName("test2_ds"), clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test2_ds"), clusterIndexName("test1_ds"))
         )
       }
       "two full name dat streams passed, one the same, one different data stream configured" in {
@@ -134,7 +134,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          found = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
         )
       }
       "two matching wildcard data streams passed, two full name data streams configured" in {
@@ -145,7 +145,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          found = Set(clusterIndexName("test1_ds"), clusterIndexName("test2_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds"), clusterIndexName("test2_ds"))
         )
       }
       "two full name data streams passed, two matching wildcard data streams configured" in {
@@ -156,7 +156,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          found = Set(clusterIndexName("test2_ds"), clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test2_ds"), clusterIndexName("test1_ds"))
         )
       }
       "two full name data streams passed, one matching full name and one non-matching wildcard data stream configured" in {
@@ -167,7 +167,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          found = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
         )
       }
       "one matching wildcard data stream passed and one non-matching full name index, two full name data streams configured" in {
@@ -178,7 +178,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          found = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
         )
       }
       "one full name alias passed, full name data stream related to that alias configured" in {
@@ -192,7 +192,7 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
             )
           ),
-          found = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
         )
       }
       "wildcard alias passed, full name data stream related to alias matching passed one configured" in {
@@ -206,7 +206,7 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
             )
           ),
-          found = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
         )
       }
       "one full name alias passed, wildcard data stream configured" in {
@@ -220,7 +220,7 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias"))),
             )
           ),
-          found = Set(clusterIndexName("test1_ds"), clusterIndexName("test2_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds"), clusterIndexName("test2_ds"))
         )
       }
       "one alias passed, only subset of alias data streams configured" in {
@@ -236,7 +236,7 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
             )
           ),
-          found = Set(clusterIndexName("test1_ds"), clusterIndexName("test2_ds"))
+          filteredRequestedIndices = Set(clusterIndexName("test1_ds"), clusterIndexName("test2_ds"))
         )
       }
       "one alias passed, one alias configured" in {
@@ -252,7 +252,7 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
             )
           ),
-          found = Set(clusterIndexName("test_alias"))
+          filteredRequestedIndices = Set(clusterIndexName("test_alias"))
         )
       }
       "one alias pattern passed, one alias configured" in {
@@ -268,7 +268,7 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
             )
           ),
-          found = Set(clusterIndexName("test_alias"))
+          filteredRequestedIndices = Set(clusterIndexName("test_alias"))
         )
       }
       "one backing index passed, one data stream configured, there is one real data stream" in {
@@ -279,7 +279,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
-          found = Set(
+          filteredRequestedIndices = Set(
             clusterIndexName(".ds-test1_ds"),
           )
         )
@@ -292,7 +292,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
-          found = Set(
+          filteredRequestedIndices = Set(
             clusterIndexName(".ds-test1_ds"),
           )
         )
@@ -305,7 +305,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
-          found = Set(
+          filteredRequestedIndices = Set(
             clusterIndexName(".ds-test1_ds"),
           )
         )
@@ -318,7 +318,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
-          found = Set(
+          filteredRequestedIndices = Set(
             clusterIndexName(".ds-test1_ds"),
           )
         )
@@ -331,7 +331,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
-          found = Set(
+          filteredRequestedIndices = Set(
             clusterIndexName(".ds-test1_ds"),
           )
         )
@@ -344,7 +344,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
-          found = Set(
+          filteredRequestedIndices = Set(
             clusterIndexName(".ds-test1_ds"),
           )
         )
@@ -369,7 +369,7 @@ trait IndicesRuleDataStreamTests {
               fullRemoteDataStreamWithAliases("es_pl", "test2_ds1"),
             ))
           ),
-          found = Set(
+          filteredRequestedIndices = Set(
             clusterIndexName("local_ds1"),
             clusterIndexName("local_ds2"),
             clusterIndexName("es_pl:test1_ds1"),
@@ -388,7 +388,7 @@ trait IndicesRuleDataStreamTests {
               fullRemoteDataStreamWithAliases("es_us", "test1_ds"),
             ))
           ),
-          found = Set(
+          filteredRequestedIndices = Set(
             clusterIndexName("es_us:.ds-test1_ds"),
           )
         )
@@ -632,7 +632,7 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("es_us:c01-logs-2020-03-27"),
               clusterIndexName("es_us:c01-logs-2020-03-28"),
               clusterIndexName("es_us:c01-logs-2020-03-29")
@@ -656,7 +656,7 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("es_us:c01-logs-2020-03-27"),
               clusterIndexName("es_us:c01-logs-2020-03-28"),
               clusterIndexName("es_us:c01-logs-2020-03-29")
@@ -681,7 +681,7 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("es_us:c01-logs-2020-03-27"),
               clusterIndexName("es_us:c01-logs-2020-03-28"),
               clusterIndexName("es_us:c01-logs-2020-03-29")
@@ -705,7 +705,7 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("es_us:c01-logs-2020-03-27"),
               clusterIndexName("es_us:c01-logs-2020-03-28"),
               clusterIndexName("es_us:c01-logs-2020-03-29")
@@ -725,7 +725,7 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_us", "test3_ds", "test2_alias"),
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("es_us:test1_ds")
             )
           )
@@ -743,7 +743,7 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("es_us:test_ds")
             )
           )
@@ -761,7 +761,7 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("es_us:test_alias")
             )
           )
@@ -778,7 +778,7 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
               ))
             ),
-            found = Set(
+            filteredRequestedIndices = Set(
               clusterIndexName("es_us:test_alias")
             )
           )

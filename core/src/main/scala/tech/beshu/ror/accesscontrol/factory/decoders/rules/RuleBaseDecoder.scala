@@ -21,10 +21,12 @@ import io.circe.Decoder.Result
 import io.circe.{ACursor, Decoder, HCursor}
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 sealed abstract class RuleDecoder[T <: Rule : RuleName] extends Decoder[RuleDecoder.Result[T]] {
 
@@ -50,7 +52,7 @@ sealed abstract class RuleDecoder[T <: Rule : RuleName] extends Decoder[RuleDeco
             MalformedValue(json)
           case None =>
             val ruleName = df.history.headOption.collect { case df: DownField => df.k }.getOrElse("")
-            Message(s"Malformed rule $ruleName")
+            Message(s"Malformed rule ${ruleName.show}")
         }
       }))
   }

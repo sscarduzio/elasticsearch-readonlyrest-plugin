@@ -23,10 +23,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
+import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.accesscontrol.orders
 
 class UsersRuleDecoder(globalSettings: GlobalSettings,
                        variableCreator: RuntimeResolvableVariableCreator)
@@ -41,9 +42,5 @@ class UsersRuleDecoder(globalSettings: GlobalSettings,
   private implicit val userIdValueDecoder: Decoder[RuntimeMultiResolvableVariable[User.Id]] =
     DecoderHelpers.alwaysRightMultiVariableDecoder[User.Id](variableCreator)(AlwaysRightConvertible.from(User.Id.apply))
 
-  private implicit val userIdOrder: Order[User.Id] = Order.by { userId =>
-    globalSettings.userIdCaseSensitivity match {
-      case CaseSensitivity.Enabled => userId.value.value
-      case CaseSensitivity.Disabled => userId.value.value.toLowerCase
-    }}
+  private implicit val userIdOrder: Order[User.Id] = orders.userIdOrder(globalSettings)
 }

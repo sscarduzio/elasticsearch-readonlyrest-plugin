@@ -14,18 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils
+package tech.beshu.ror.unit.utils
 
 import cats.data.NonEmptyList
 import cats.implicits.*
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalactic.anyvals.{NonEmptyString, PosInt}
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
-import tech.beshu.ror.utils.MatcherWithWildcardsScalaTest.*
+import tech.beshu.ror.syntax.*
 
 import scala.annotation.nowarn
 
@@ -33,7 +34,7 @@ class MatcherWithWildcardsScalaTest
   extends AnyWordSpec
     with ScalaCheckDrivenPropertyChecks {
 
-  import org.scalatest.matchers.should.Matchers._
+  import MatcherWithWildcardsScalaTest.*
 
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 1000, workers = PosInt.ensuringValid(Runtime.getRuntime.availableProcessors()))
@@ -126,7 +127,7 @@ class MatcherWithWildcardsScalaTest
       forAll("matchers", "haystack") { (matchers: List[String], haystack: Set[String]) =>
         val matcher = PatternsMatcher.create(matchers)(caseSensitiveStringMatchable)
         val result = matcher.filter(haystack)
-        result shouldBe haystack.intersect(matchers.toSet)
+        result shouldBe haystack.intersect(matchers.toCovariantSet)
       }
     }
     "contain all haystack if haystack is in matchers" in {
@@ -184,10 +185,10 @@ class MatcherWithWildcardsScalaTest
   }
 
 }
+
 object MatcherWithWildcardsScalaTest {
   final case class WildcardPattern(private val value: NonEmptyList[String]) {
     lazy val toList: List[String] = value.toList
-
     lazy val string: String = toList.mkString
   }
   final case class MatchingString(value: String) extends AnyVal

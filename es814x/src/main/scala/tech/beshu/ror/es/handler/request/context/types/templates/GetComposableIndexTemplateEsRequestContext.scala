@@ -17,8 +17,8 @@
 package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
-import cats.implicits._
-import eu.timepit.refined.auto._
+import cats.implicits.*
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.rollover.RolloverConfiguration
@@ -27,20 +27,22 @@ import org.elasticsearch.cluster.metadata
 import org.elasticsearch.cluster.metadata.ComposableIndexTemplate
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Template.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingIndexTemplates
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.RefinedUtils._
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableIndexTemplateAction.Request,
                                                  esContext: EsContext,
@@ -81,18 +83,18 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
         ModificationResult.ShouldBeInterrupted
     }
   }
 
   private def updateRequest(templateNamePattern: TemplateNamePattern): Unit = {
-    import org.joor.Reflect._
+    import org.joor.Reflect.*
     on(actionRequest).set("name", templateNamePattern.value.value)
   }
 
   private def updateResponse(`using`: TemplateRequestBlockContext) = {
-    import org.joor.Reflect._
+    import org.joor.Reflect.*
     ModificationResult.UpdateResponse {
       case r: GetComposableIndexTemplateAction.Response =>
         Task.now(new GetComposableIndexTemplateAction.Response(
@@ -124,12 +126,12 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Log
             Some((template, (name, composableIndexTemplate)))
           case Left(msg) =>
             logger.error(
-              s"""[${requestContextId.show}] Template response filtering issue: $msg. For security reasons template
-                 | [$name] will be skipped.""".oneLiner)
+              s"""[${requestContextId.show}] Template response filtering issue: ${msg.show}. For security reasons template
+                 | [${name.show}] will be skipped.""".oneLiner)
             None
         }
       }
-    val filteredTemplates = usingTemplate(templatesMap.keys.toSet)
+    val filteredTemplates = usingTemplate(templatesMap.keys.toCovariantSet)
     templatesMap
       .flatMap { case (template, (name, composableIndexTemplate)) =>
         filteredTemplates
@@ -140,7 +142,7 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Log
             case t: IndexTemplate =>
               Some((name, filterMetadataData(composableIndexTemplate, t)))
             case t =>
-              logger.error(s"""[${requestContextId.show}] Expected IndexTemplate, but got: $t. Skipping""")
+              logger.error(s"""[${requestContextId.show}] Expected IndexTemplate, but got: ${t.show}. Skipping""")
               None
           }
       }
@@ -149,7 +151,7 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Log
   private def filterMetadataData(composableIndexTemplate: ComposableIndexTemplate, basedOn: IndexTemplate) = {
     ComposableIndexTemplate
       .builder()
-      .indexPatterns(basedOn.patterns.toList.map(_.value.stringify).asJava)
+      .indexPatterns(basedOn.patterns.map(_.value).stringify.asJava)
       .template(new metadata.Template(
         composableIndexTemplate.template().settings(),
         composableIndexTemplate.template().mappings(),
@@ -167,7 +169,7 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Log
   }
 
   private def filterAliases(template: metadata.Template, basedOn: IndexTemplate) = {
-    val aliasesStrings = basedOn.aliases.map(_.stringify)
+    val aliasesStrings = basedOn.aliases.stringify
     template
       .aliases().asSafeMap
       .filter { case (name, _) => aliasesStrings.contains(name) }
@@ -180,10 +182,10 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Log
         .fromString(name)
         .toRight("Template name should be non-empty")
       patterns <- UniqueNonEmptyList
-        .fromIterable(composableIndexTemplate.indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
+        .from(composableIndexTemplate.indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
       aliases = Option(composableIndexTemplate.template())
-        .map(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet)
+        .map(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toCovariantSet)
         .getOrElse(Set.empty)
     } yield IndexTemplate(name, patterns, aliases)
   }

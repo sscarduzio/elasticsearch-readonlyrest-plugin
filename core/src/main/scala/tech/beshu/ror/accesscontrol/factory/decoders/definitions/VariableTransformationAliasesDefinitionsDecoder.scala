@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVa
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, Reason}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.implicits.*
 
 object VariableTransformationAliasesDefinitionsDecoder {
 
@@ -48,9 +49,9 @@ object VariableTransformationAliasesDefinitionsDecoder {
           aliasName <- NonEmptyString.from(keyAndValue._1).left.map(_ => error("Alias name cannot be empty"))
           function <- transformationCompiler.compile(keyAndValue._2).left.map {
             case CompilationError.UnableToParseTransformation(message) =>
-              error(s"Unable to parse transformation for alias '${aliasName.value}'. Cause: $message")
+              error(s"Unable to parse transformation for alias '${aliasName.show}'. Cause: ${message.show}")
             case CompilationError.UnableToCompileTransformation(message) =>
-              error(s"Unable to compile transformation for alias '${aliasName.value}'. Cause: $message")
+              error(s"Unable to compile transformation for alias '${aliasName.show}'. Cause: ${message.show}")
           }
         } yield VariableTransformationAliasDef(
           FunctionAlias(
@@ -62,7 +63,7 @@ object VariableTransformationAliasesDefinitionsDecoder {
   }
 
   private def error(message: String) = {
-    val errorMessage = s"$definitionsSectionName definition malformed: $message"
+    val errorMessage = s"${definitionsSectionName.show} definition malformed: ${message.show}"
     DecodingFailureOps.fromError(DefinitionsLevelCreationError(Reason.Message(errorMessage)))
   }
 }

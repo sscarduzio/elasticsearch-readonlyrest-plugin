@@ -18,15 +18,14 @@ package tech.beshu.ror.configuration
 
 import better.files.File
 import cats.Show
-import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Information, Megabytes}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
-import tech.beshu.ror.accesscontrol.show.logs.informationShow
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -79,7 +78,7 @@ object RorProperties extends Logging {
       name,
       fromString,
       {
-        logger.info(s"No '$name' property found. Using default: ${default.show}")
+        logger.info(s"No '${name.show}' property found. Using default: ${default.show}")
         default
       }
     )
@@ -92,7 +91,7 @@ object RorProperties extends Logging {
       .map { stringValue =>
         fromString(stringValue) match {
           case Success(value) => value
-          case Failure(ex) => throw new IllegalArgumentException(s"Invalid format of parameter $name=$stringValue", ex)
+          case Failure(ex) => throw new IllegalArgumentException(s"Invalid format of parameter ${name.show}=${stringValue.show}", ex)
         }
       }
       .getOrElse {
@@ -117,7 +116,7 @@ object RorProperties extends Logging {
     Try(Integer.valueOf(value)) match {
       case Success(interval) if interval == 0 => None
       case Success(interval) if interval > 0 => Some(interval)
-      case Success(_) | Failure(_) => throw new IllegalArgumentException(s"Cannot convert '$value' to positive integer")
+      case Success(_) | Failure(_) => throw new IllegalArgumentException(s"Cannot convert '${value.show}' to positive integer")
     }
   }
 

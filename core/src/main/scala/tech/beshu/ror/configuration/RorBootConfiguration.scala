@@ -23,6 +23,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 final case class RorBootConfiguration(rorNotStartedResponse: RorNotStartedResponse,
@@ -83,7 +84,7 @@ private object Decoders extends Logging {
       case 403 => Right(RorNotStartedResponse.HttpCode.`403`)
       case 503 => Right(RorNotStartedResponse.HttpCode.`503`)
       case other => Left(
-        s"Unsupported response code [$other] for ${segments.toList.mkString(".")}. Supported response codes are: 403, 503."
+        s"Unsupported response code [${other.show}] for ${segments.toList.mkString(".").show}. Supported response codes are: 403, 503."
       )
     }
 
@@ -101,7 +102,7 @@ private object Decoders extends Logging {
       case 403 => Right(RorFailedToStartResponse.HttpCode.`403`)
       case 503 => Right(RorFailedToStartResponse.HttpCode.`503`)
       case other => Left(
-        s"Unsupported response code [$other] for ${segments.toList.mkString(".")}. Supported response codes are: 403, 503."
+        s"Unsupported response code [${other.show}] for ${segments.toList.mkString(".").show}. Supported response codes are: 403, 503."
       )
     }
 

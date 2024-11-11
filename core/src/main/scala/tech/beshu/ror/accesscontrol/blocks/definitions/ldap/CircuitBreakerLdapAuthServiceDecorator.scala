@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
+import cats.Show
 import cats.implicits.toShow
-import monix.catnap._
+import monix.catnap.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, RequestId, User}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -119,6 +119,7 @@ trait LdapCircuitBreaker extends Logging {
   protected def circuitBreakerConfig: CircuitBreakerConfig
 
   private val circuitBreaker = {
+    implicit val show: Show[LdapService.Name] = idShow
     val CircuitBreakerConfig(maxFailures, resetDuration) = circuitBreakerConfig
     CircuitBreaker[Task]
       .unsafe(

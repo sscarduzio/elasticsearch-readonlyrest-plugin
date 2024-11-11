@@ -17,17 +17,15 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
-import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Action
+import tech.beshu.ror.accesscontrol.domain.{Action, RequestId}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.implicits.*
 
 class ActionsRule(val settings: Settings)
   extends RegularRule with Logging {

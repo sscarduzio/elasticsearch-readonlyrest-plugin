@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.tranport
 
 import cats.data.NonEmptySet
-import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
@@ -26,7 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Address
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
+import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
+import tech.beshu.ror.implicits.*
 
 class HostsRule(val settings: Settings,
                 resolver: HostnameResolver)

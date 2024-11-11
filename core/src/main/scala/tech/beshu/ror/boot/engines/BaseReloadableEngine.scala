@@ -17,25 +17,25 @@
 package tech.beshu.ror.boot.engines
 
 import cats.data.EitherT
-import cats.implicits._
+import cats.implicits.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.atomic.{Atomic, AtomicAny}
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
+import tech.beshu.ror.boot.engines.BaseReloadableEngine.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.EngineState.NotStartedYet
-import tech.beshu.ror.boot.engines.BaseReloadableEngine._
-import tech.beshu.ror.boot.engines.ConfigHash._
+import tech.beshu.ror.boot.engines.ConfigHash.*
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
-import tech.beshu.ror.utils.DurationOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.DurationOps.*
 
 import java.time.Instant
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 private[engines] abstract class BaseReloadableEngine(val name: String,
@@ -52,7 +52,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   private val currentEngine: Atomic[EngineState] = AtomicAny[EngineState](
     initialEngine match {
       case InitialEngine.Configured(engine, config, expirationConfig) =>
-        logger.info(s"ROR $name engine (id=${config.hashString()}) was initiated (${engine.core.accessControl.description}).")
+        logger.info(s"ROR ${name.show} engine (id=${config.hashString().show}) was initiated (${engine.core.accessControl.description.show}).")
         stateFromInitial(EngineWithConfig(engine, config, expirationConfig))(RequestId(environmentConfig.uuidProvider.random.toString))
       case InitialEngine.NotConfigured =>
         EngineState.NotStartedYet(recentConfig = None, recentExpirationConfig = None)
@@ -76,7 +76,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
           state match {
             case EngineState.NotStartedYet(_, _) =>
             case working@EngineState.Working(engineWithConfig, _) =>
-              logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) will be stopped ...")
+              logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${engineWithConfig.config.hashString().show}) will be stopped ...")
               stopNow(working)
             case EngineState.Stopped =>
           }
@@ -97,7 +97,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
             EngineState.NotStartedYet(recentConfig = None, recentExpirationConfig = None)
           }
         case oldWorkingEngine@EngineState.Working(engineWithConfig, _) =>
-          logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) will be invalidated ...")
+          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${engineWithConfig.config.hashString().show}) will be invalidated ...")
           stopEarly(oldWorkingEngine)
           if (keepPreviousConfiguration) {
             EngineState.NotStartedYet(
@@ -153,7 +153,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
               case _: EngineState.NotStartedYet =>
                 NotStartedYet(recentConfig = Some(newConfig), recentExpirationConfig = Some(newExpirationConfig))
               case working: EngineState.Working =>
-                logger.info(s"[${requestId.show}] ROR $name engine (id=${working.engineWithConfig.config.hashString()}) will be invalidated ...")
+                logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${working.engineWithConfig.config.hashString().show}) will be invalidated ...")
                 stopEarly(working)
                 NotStartedYet(recentConfig = Some(newConfig), recentExpirationConfig = Some(newExpirationConfig))
               case EngineState.Stopped =>
@@ -283,14 +283,14 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
       Task.delay {
         val oldEngineState = currentEngine.getAndTransform {
           case _: EngineState.NotStartedYet =>
-            logger.info(s"[${requestId.show}] ROR $name engine (id=${newEngineWithConfig.config.hashString()}) is going to be used ...")
+            logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${newEngineWithConfig.config.hashString().show}) is going to be used ...")
             workingStateFrom(newEngineWithConfig)
           case oldWorkingEngine@EngineState.Working(_, _) =>
-            logger.info(s"[${requestId.show}] ROR $name engine (id=${oldWorkingEngine.engineWithConfig.config.hashString()}) will be replaced with engine (id=${newEngineWithConfig.config.hashString()}) ...")
+            logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${oldWorkingEngine.engineWithConfig.config.hashString().show}) will be replaced with engine (id=${newEngineWithConfig.config.hashString().show}) ...")
             stopEarly(oldWorkingEngine)
             workingStateFrom(newEngineWithConfig)
           case EngineState.Stopped =>
-            logger.warn(s"[${requestId.show}] ROR $name engine (id=${newEngineWithConfig.config.hashString()}) cannot be used because the ROR is already stopped!")
+            logger.warn(s"[${requestId.show}] ROR ${name.show} engine (id=${newEngineWithConfig.config.hashString().show}) cannot be used because the ROR is already stopped!")
             newEngineWithConfig.engine.shutdown()
             EngineState.Stopped
         }
@@ -316,7 +316,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
 
   private def stopEngine(engineWithConfig: EngineWithConfig)
                         (implicit requestId: RequestId): Unit = {
-    logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) is being stopped after TTL were reached ...")
+    logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${engineWithConfig.config.hashString().show}) is being stopped after TTL were reached ...")
     stop(engineWithConfig)
     currentEngine.transform {
       case EngineState.NotStartedYet(_, _) =>
@@ -368,7 +368,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
           case EngineState.NotStartedYet(recentConfig, recentExpirationConfig) =>
             EngineState.NotStartedYet(recentConfig, recentExpirationConfig)
           case EngineState.Working(engineWithConfig, scheduledShutdownJob) =>
-            logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) is being updated with new TTL ...")
+            logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${engineWithConfig.config.hashString().show}) is being updated with new TTL ...")
             scheduledShutdownJob.foreach(_.cancel())
             val engineWithNewExpirationConfig = engineWithConfig.copy(expirationConfig = Some(engineExpirationConfig(configExpiration)))
             workingStateFrom(engineWithNewExpirationConfig)
@@ -391,14 +391,14 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                        (implicit requestId: RequestId): Unit = {
     engineState.scheduledShutdownJob.foreach(_.cancel())
     scheduler.scheduleOnce(delayOfOldEngineShutdown) {
-      logger.info(s"[${requestId.show}] ROR $name engine (id=${engineState.engineWithConfig.config.hashString()}) is being stopped early ...")
+      logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${engineState.engineWithConfig.config.hashString().show}) is being stopped early ...")
       stop(engineState.engineWithConfig)
     }
   }
 
   private def stopNow(engineState: EngineState.Working)
                      (implicit requestId: RequestId): Unit = {
-    logger.info(s"[${requestId.show}] ROR $name engine (id=${engineState.engineWithConfig.config.hashString()}) is being stopped now ...")
+    logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${engineState.engineWithConfig.config.hashString().show}) is being stopped now ...")
     engineState.scheduledShutdownJob.foreach(_.cancel())
     stop(engineState.engineWithConfig)
   }
@@ -406,7 +406,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   private def stop(engineWithConfig: EngineWithConfig)
                   (implicit requestId: RequestId): Unit = {
     engineWithConfig.engine.shutdown()
-    logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) stopped!")
+    logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${engineWithConfig.config.hashString().show}) stopped!")
   }
 
   private def isStillValid(validTo: Instant) = {

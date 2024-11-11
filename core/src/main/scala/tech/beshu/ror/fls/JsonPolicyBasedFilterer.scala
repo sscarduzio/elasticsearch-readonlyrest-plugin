@@ -17,7 +17,7 @@
 package tech.beshu.ror.fls
 
 import tech.beshu.ror.fls.JsonPolicyBasedFilterer.JSON
-import ujson._
+import ujson.*
 
 class JsonPolicyBasedFilterer(policy: FieldsPolicy) {
 

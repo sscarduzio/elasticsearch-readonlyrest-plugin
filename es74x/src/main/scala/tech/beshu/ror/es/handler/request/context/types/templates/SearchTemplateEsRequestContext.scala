@@ -23,17 +23,18 @@ import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.SearchRequestOps._
+import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.{BaseFilterableEsRequestContext, ReflectionBasedActionRequest}
-import tech.beshu.ror.es.handler.response.SearchHitOps._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.handler.response.SearchHitOps.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                              esContext: EsContext,

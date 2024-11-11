@@ -24,13 +24,13 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.unit.TimeValue
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest._
+import org.elasticsearch.rest.*
 import tech.beshu.ror.constants
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, RRConfigsRequest}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 @Inject
 class RestRRConfigAction(settings: Settings,

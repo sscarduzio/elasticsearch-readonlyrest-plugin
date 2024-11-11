@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVa
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 

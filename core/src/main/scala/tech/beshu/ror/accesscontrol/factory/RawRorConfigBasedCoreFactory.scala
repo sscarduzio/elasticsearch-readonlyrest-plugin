@@ -17,17 +17,13 @@
 package tech.beshu.ror.accesscontrol.factory
 
 import cats.data.{NonEmptyList, State, Validated}
-import cats.implicits._
 import cats.kernel.Monoid
-import io.circe._
+import io.circe.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol._
-import tech.beshu.ror.accesscontrol.acl.AccessControlList
-import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
+import tech.beshu.ror.accesscontrol.*
+import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
-import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
@@ -37,28 +33,29 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
-import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex, UserIdPatterns}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.*
+import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSupport, localUsersMonoid}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
+import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.*
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.*
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, GlobalStaticSettingsDecoder}
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.utils.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.accesscontrol.utils._
-import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.localUsersMonoid
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.yaml.YamlOps
 
-final case class Core(accessControl: AccessControl,
+final case class Core(accessControl: AccessControlList,
                       rorConfig: RorConfig)
 
 trait CoreFactory {
@@ -129,7 +126,7 @@ class RawRorConfigBasedCoreFactory()
       core <-
       if (!enabled) {
         AsyncDecoderCreator
-          .from(Decoder.const(Core(DisabledAccessControl, RorConfig.disabled)))
+          .from(Decoder.const(Core(DisabledAccessControlList, RorConfig.disabled)))
       } else {
         for {
           globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorConfigurationIndex))
@@ -149,7 +146,7 @@ class RawRorConfigBasedCoreFactory()
     }
   }
 
-  import RawRorConfigBasedCoreFactory._
+  import RawRorConfigBasedCoreFactory.*
 
   private def rulesNelDecoder(definitions: DefinitionsPack,
                               globalSettings: GlobalSettings,
@@ -181,7 +178,7 @@ class RawRorConfigBasedCoreFactory()
           }
         }
       case Validated.Invalid(unknownRules) =>
-        Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Unknown rules: ${unknownRules.mkString(",")}"))))
+        Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Unknown rules: ${unknownRules.show}"))))
     }
   }
 
@@ -221,7 +218,7 @@ class RawRorConfigBasedCoreFactory()
         .emapE[Verbosity] {
         case "info" => Right(Verbosity.Info)
         case "error" => Right(Verbosity.Error)
-        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown. Supported types: 'info'(default), 'error'.")))
+        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'.")))
       }
         .decoder
     Decoder
@@ -258,7 +255,7 @@ class RawRorConfigBasedCoreFactory()
   private val policyDecoder: Decoder[Block.Policy] = {
     def unknownTypeError(unknownType: String) =
       BlocksLevelCreationError(Message(
-        s"Unknown block policy type: $unknownType. Supported types: 'allow'(default), 'forbid'."
+        s"Unknown block policy type: ${unknownType.show}. Supported types: 'allow'(default), 'forbid'."
       ))
 
     val simplePolicyDecoder = {
@@ -364,22 +361,22 @@ class RawRorConfigBasedCoreFactory()
           DecoderHelpers
             .decodeFieldList[BlockDecodingResult, Task](Attributes.acl, RulesLevelCreationError.apply)
             .emapE {
-              case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl} section found")))
+              case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl.show} section found")))
               case FieldListValue(blocks) =>
                 NonEmptyList.fromList(blocks) match {
                   case None =>
-                    Left(BlocksLevelCreationError(Message(s"${Attributes.acl} defined, but no block found")))
+                    Left(BlocksLevelCreationError(Message(s"${Attributes.acl.show} defined, but no block found")))
                   case Some(neBlocks) =>
                     neBlocks.map(_.block.name).toList.findDuplicates match {
                       case Nil => Right(neBlocks)
-                      case duplicates => Left(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
+                      case duplicates => Left(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: ${duplicates.show}")))
                     }
                 }
             }
         }
       } yield {
         val blocks = blocksNel.map(_.block)
-        blocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
+        blocks.toList.foreach { block => logger.info(s"ADDING BLOCK:\t ${block.show}") }
         val localUsers: LocalUsers = {
           val fromUserDefs = localUsersFromUserDefs(userDefs)
           val fromImpersonatorDefs = localUsersFromImpersonatorDefs(impersonationDefs)
@@ -397,14 +394,14 @@ class RawRorConfigBasedCoreFactory()
           impersonationWarningsReader = new ImpersonationWarningsCombinedReader(blocksNel.map(_.impersonationWarnings).toList: _*),
           auditingSettings = auditingTools,
         )
-        val accessControl = new AccessControlList(
+        val accessControl = new EnabledAccessControlList(
           blocks,
           new AccessControlListStaticContext(
             blocks,
             globalSettings,
             obfuscatedHeaders
           )
-        ): AccessControl
+        ): AccessControlList
         Core(accessControl, rorConfig)
       }
       decoder.apply(c)
@@ -433,7 +430,6 @@ class RawRorConfigBasedCoreFactory()
                                              unknownUsersForWildcardPattern: Boolean): LocalUsers = {
     userIdPatterns
       .patterns
-      .unsorted
       .map { userIdPattern =>
         if (userIdPattern.containsWildcard) {
           LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)

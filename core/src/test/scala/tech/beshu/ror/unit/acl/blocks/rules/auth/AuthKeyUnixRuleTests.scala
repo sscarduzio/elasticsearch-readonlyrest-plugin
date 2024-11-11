@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyUnixRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation

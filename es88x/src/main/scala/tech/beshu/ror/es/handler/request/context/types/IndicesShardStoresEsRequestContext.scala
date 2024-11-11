@@ -19,13 +19,14 @@ package tech.beshu.ror.es.handler.request.context.types
 import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class IndicesShardStoresEsRequestContext(actionRequest: IndicesShardStoresRequest,
                                          esContext: EsContext,
@@ -41,7 +42,7 @@ class IndicesShardStoresEsRequestContext(actionRequest: IndicesShardStoresReques
   override protected def update(request: IndicesShardStoresRequest,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    actionRequest.indices(filteredIndices.toList.map(_.stringify): _*)
+    actionRequest.indices(filteredIndices.stringify: _*)
     Modified
   }
 }

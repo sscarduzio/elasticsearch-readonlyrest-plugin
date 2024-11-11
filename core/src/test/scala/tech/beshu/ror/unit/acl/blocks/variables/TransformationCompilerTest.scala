@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.blocks.variables
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError.{UnableToCompileTransformation, UnableToParseTransformation}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{Function, FunctionAlias, FunctionName}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class TransformationCompilerTest extends AnyWordSpec with Matchers with Inside {
@@ -127,7 +127,7 @@ class TransformationCompilerTest extends AnyWordSpec with Matchers with Inside {
         inside(result) {
           case Left(message) =>
             message should be(UnableToCompileTransformation(
-              "No function with name 'replace_last'. Supported functions are: [replace_all,replace_first,to_lowercase,to_uppercase]"
+              "No function with name 'replace_last'. Supported functions are: [replace_all, replace_first, to_lowercase, to_uppercase]"
             ))
         }
       }

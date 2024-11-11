@@ -17,10 +17,10 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
@@ -31,16 +31,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, Header, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 

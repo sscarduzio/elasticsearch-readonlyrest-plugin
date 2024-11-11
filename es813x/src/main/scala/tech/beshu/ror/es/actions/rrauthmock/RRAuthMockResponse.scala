@@ -22,7 +22,7 @@ import org.elasticsearch.rest.RestStatus
 import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
 import tech.beshu.ror.api.AuthMockApi
 import tech.beshu.ror.es.utils.StatusToXContentObject
-import tech.beshu.ror.es.utils.XContentBuilderOps._
+import tech.beshu.ror.es.utils.XContentBuilderOps.*
 
 
 class RRAuthMockResponse(response: AuthMockApi.AuthMockResponse)

@@ -16,44 +16,35 @@
  */
 package tech.beshu.ror.utils.uniquelist
 
-import cats.implicits._
-import cats.Show
 import cats.data.NonEmptyList
+import cats.implicits.*
+import tech.beshu.ror.utils.set.CovariantSet
 
-import scala.collection.SortedSet
+final case class UniqueNonEmptyList[+T] private[uniquelist](private val underlying: UniqueList[T])
+  extends Iterable[T] {
 
-class UniqueNonEmptyList[T] private (vector: Vector[T])
-  extends BaseUniqueList[T, UniqueNonEmptyList[T]](
-    vector,
-    newVector => new UniqueNonEmptyList(newVector)
-  ) {
-
-  def toUniqueList: UniqueList[T] = UniqueList.fromVector(vector)
-
-  def toNonEmptyList: NonEmptyList[T] = NonEmptyList.fromListUnsafe(vector.toList)
+  override def iterator: Iterator[T] = underlying.iterator
 }
 
 object UniqueNonEmptyList {
 
-  def of[T](t: T, ts: T*): UniqueNonEmptyList[T] = unsafeFromIterable(t :: ts.toList)
+  def fromNonEmptyList[T](nel: NonEmptyList[T]): UniqueNonEmptyList[T] = unsafeFrom(nel.toList)
 
-  def unsafeFromIterable[T](iterable: Iterable[T]): UniqueNonEmptyList[T] =
-    fromIterable(iterable).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty list"))
+  def from[T](iterable: Iterable[T]): Option[UniqueNonEmptyList[T]] =
+    if (iterable.isEmpty) None
+    else Some(UniqueNonEmptyList(UniqueList.from(iterable)))
 
-  def fromIterable[T](iterable: Iterable[T]): Option[UniqueNonEmptyList[T]] =
-    if(iterable.isEmpty) None
-    else Some(new UniqueNonEmptyList[T](iterable.toVector.distinct))
+  def unsafeFrom[T](iterable: Iterable[T]): UniqueNonEmptyList[T] =
+    from(iterable).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty list"))
 
-  def fromNonEmptyList[T](list: NonEmptyList[T]): UniqueNonEmptyList[T] =
-    new UniqueNonEmptyList[T](list.toList.toVector.distinct)
+  def of[T](t: T, ts: T*): UniqueNonEmptyList[T] = unsafeFrom(t :: ts.toList)
 
-  def unsafeFromSortedSet[T](set: SortedSet[T]): UniqueNonEmptyList[T] =
-    fromSortedSet(set).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty set"))
+  implicit class ToNonEmptyList[T](val uniqueNonEmptyList: UniqueNonEmptyList[T]) extends AnyVal {
+    def toNonEmptyList: NonEmptyList[T] = NonEmptyList.fromListUnsafe(uniqueNonEmptyList.toList)
+  }
 
-  def fromSortedSet[T](set: SortedSet[T]): Option[UniqueNonEmptyList[T]] =
-    if(set.nonEmpty) Some(new UniqueNonEmptyList[T](set.toVector.distinct))
-    else None
+  implicit class ToSet[T](val uniqueNonEmptyList: UniqueNonEmptyList[T]) extends AnyVal {
+    def toSet: CovariantSet[T] = CovariantSet.from(uniqueNonEmptyList.iterator)
+  }
 
-  implicit def show[T: Show]: Show[UniqueNonEmptyList[T]] =
-    Show.show(_.toList.map(_.show).mkString(","))
 }

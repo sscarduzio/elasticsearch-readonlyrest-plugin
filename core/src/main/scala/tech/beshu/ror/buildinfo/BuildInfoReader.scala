@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.buildinfo
 
-import java.io.InputStream
-import java.util.{Objects, Properties}
-
 import cats.effect.Resource
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.boot.RorSchedulers
+import tech.beshu.ror.implicits.*
 
+import java.io.InputStream
+import java.util.{Objects, Properties}
 import scala.util.Try
 
 final case class BuildInfo(esVersion: String, pluginVersion: String)
@@ -55,7 +55,7 @@ object BuildInfoReader {
   }
 
   private def createResource(filename: String) =
-    requireNonNull(this.getClass.getResourceAsStream(filename), s"file '$filename' is expected to be present in plugin jar, but it wasn't found.")
+    requireNonNull(this.getClass.getResourceAsStream(filename), s"file '${filename.show}' is expected to be present in plugin jar, but it wasn't found.")
 
   private def loadProperties(inputStream: InputStream) = {
     val props = new Properties()
@@ -64,7 +64,7 @@ object BuildInfoReader {
   }
 
   private def getProperty(props: Properties, propertyName: String) =
-    requireNonNull(props.getProperty(propertyName), s"Property value '$propertyName' have to be defined")
+    requireNonNull(props.getProperty(propertyName), s"Property value '${propertyName.show}' have to be defined")
 
   private def requireNonNull[A](a: A, message: String): Task[A] = Task {
     Objects.requireNonNull(a, message)

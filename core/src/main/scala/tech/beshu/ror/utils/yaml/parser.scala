@@ -15,14 +15,15 @@
  */
 package tech.beshu.ror.utils.yaml
 
-import java.io.{Reader, StringReader}
-import cats.syntax.either._
-import io.circe._
-import tech.beshu.ror.org.yaml.snakeyaml.{LoaderOptions, Yaml}
+import cats.syntax.either.*
+import io.circe.*
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.org.yaml.snakeyaml.constructor.SafeConstructor
-import tech.beshu.ror.org.yaml.snakeyaml.nodes._
+import tech.beshu.ror.org.yaml.snakeyaml.nodes.*
+import tech.beshu.ror.org.yaml.snakeyaml.{LoaderOptions, Yaml}
 
-import scala.jdk.CollectionConverters._
+import java.io.{Reader, StringReader}
+import scala.jdk.CollectionConverters.*
 
 private [yaml] object parser {
   /**
@@ -75,11 +76,11 @@ private [yaml] object parser {
 
     def convertScalarNode(node: ScalarNode) = Either.catchNonFatal(node.getTag match {
       case Tag.INT | Tag.FLOAT => JsonNumber.fromString(node.getValue).map(Json.fromJsonNumber).getOrElse {
-        throw new NumberFormatException(s"Invalid numeric string ${node.getValue}")
+        throw new NumberFormatException(s"Invalid numeric string ${node.getValue.show}")
       }
       case Tag.BOOL => Json.fromBoolean(flattener.construct(node) match {
         case b: java.lang.Boolean => b
-        case _ => throw new IllegalArgumentException(s"Invalid boolean string ${node.getValue}")
+        case _ => throw new IllegalArgumentException(s"Invalid boolean string ${node.getValue.show}")
       })
       case Tag.NULL => Json.Null
       case CustomTag(other) =>
@@ -126,7 +127,7 @@ private [yaml] object parser {
       convertKeyNode(tuple.getKeyNode)
         .flatMap { key =>
           if (keys.contains(key)) {
-            ParsingFailure(s"Duplicated key: '$key'", DuplicatedKeyException(key)).asLeft
+            ParsingFailure(s"Duplicated key: '${key.show}'", DuplicatedKeyException(key)).asLeft
           } else {
             (keys + key).asRight
           }

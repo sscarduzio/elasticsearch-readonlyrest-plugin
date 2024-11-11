@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
-import cats.implicits._
 import cats.Applicative
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -24,7 +23,8 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Ite
 import tech.beshu.ror.accesscontrol.utils.ADecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 object DefinitionsBaseDecoder {
 
@@ -36,21 +36,20 @@ object DefinitionsBaseDecoder {
         case NoField =>
           Right(Definitions(List.empty[A]))
         case FieldListValue(Nil) =>
-          Left(DefinitionsLevelCreationError(Message(s"$definitionsSectionName declared, but no definition found")))
+          Left(DefinitionsLevelCreationError(Message(s"${definitionsSectionName.show} declared, but no definition found")))
         case FieldListValue(list) =>
           list.findDuplicates(_.id) match {
             case Nil =>
               Right(Definitions(list))
             case duplicates =>
               Left(DefinitionsLevelCreationError(Message(
-                s"$definitionsSectionName definitions must have unique identifiers. Duplicates: ${duplicates.map(showId).mkString(",")}"
+                s"${definitionsSectionName.show} definitions must have unique identifiers. Duplicates: ${duplicates.map(showId).show}"
               )))
           }
       }
   }
 
   private def showId(item: Item): String = {
-    implicit val _itemshow = item.show
-    item.id.show
+    item.idShow.show(item.id)
   }
 }

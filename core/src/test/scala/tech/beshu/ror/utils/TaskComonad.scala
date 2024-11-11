@@ -20,7 +20,7 @@ import cats.Comonad
 import monix.eval.Task
 import monix.execution.Scheduler
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class TaskComonad(timeout: FiniteDuration)

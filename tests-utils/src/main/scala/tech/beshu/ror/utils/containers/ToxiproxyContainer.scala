@@ -24,7 +24,7 @@ import org.testcontainers.containers.Network
 import tech.beshu.ror.utils.containers.ToxiproxyContainer.{httpApiPort, proxedPort}
 import eu.rekawek.toxiproxy.model.toxic
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.duration.FiniteDuration
 import scala.language.postfixOps
 

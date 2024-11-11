@@ -22,7 +22,7 @@ import tech.beshu.ror.configuration.loader.distributed.internode.dto.NodeConfigD
 object NodeConfigSerializer {
 
   import io.circe.parser
-  import io.circe.syntax._
+  import io.circe.syntax.*
 
   def serialize(nodeConfig: NodeConfig): String = {
     NodeConfigDTO.create(nodeConfig).asJson.noSpaces

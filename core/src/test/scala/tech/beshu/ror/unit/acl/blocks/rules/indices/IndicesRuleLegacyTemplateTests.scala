@@ -17,16 +17,16 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.{NonEmptyList, NonEmptySet}
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingLegacyTemplate, DeletingLegacyTemplates, GettingLegacyTemplates}
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, indexPattern}
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, indexPattern, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 private [indices] trait IndicesRuleLegacyTemplateTests {
   this: BaseIndicesRuleTests =>

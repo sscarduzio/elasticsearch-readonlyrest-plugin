@@ -92,7 +92,7 @@ object QueryFieldsUsage extends Logging {
         logger.debug(s"Cannot extract fields for query: ${builder.getName}")
         CannotExtractFields
     }
-    
+
     private def resolveFieldsUsageForLeafQuery[QUERY <: QueryBuilder : QueryFieldsUsage : Leaf](leafQuery: QUERY) = {
       leafQuery.fieldsUsage
     }

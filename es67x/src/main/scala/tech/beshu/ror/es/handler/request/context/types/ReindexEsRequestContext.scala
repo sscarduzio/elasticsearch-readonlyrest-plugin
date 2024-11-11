@@ -17,16 +17,18 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class ReindexEsRequestContext(actionRequest: ReindexRequest,
                               esContext: EsContext,

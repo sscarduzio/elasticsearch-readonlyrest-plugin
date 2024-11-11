@@ -16,23 +16,24 @@
  */
 package tech.beshu.ror.mocks
 
-import java.time.{Clock, Instant}
-import tech.beshu.ror.accesscontrol.request.RequestContext.Method
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.mocks.MockRequestContext.roAction
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
+import java.time.{Clock, Instant}
 import scala.annotation.nowarn
 
 object MockRequestContext {

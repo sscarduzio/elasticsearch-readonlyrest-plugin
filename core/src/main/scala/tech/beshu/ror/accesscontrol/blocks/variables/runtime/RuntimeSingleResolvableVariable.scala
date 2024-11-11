@@ -18,9 +18,9 @@ package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.Order
 import cats.data.NonEmptyList
-import cats.instances.either._
-import cats.syntax.order._
-import cats.syntax.traverse._
+import cats.instances.either.*
+import cats.syntax.order.*
+import cats.syntax.traverse.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.{Convertible, Unresolvable}
 

@@ -16,20 +16,19 @@
  */
 package tech.beshu.ror.integration
 
-import cats.implicits._
-import eu.timepit.refined.auto._
+import cats.implicits.*
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.accesscontrol.AccessControl
+import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.{RawRorConfig, EnvironmentConfig}
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
-import tech.beshu.ror.providers._
+import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, unsafeNes}
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
@@ -48,7 +47,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
   protected val httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory
   protected val mockProvider: MocksProvider = NoOpMocksProvider
 
-  lazy val acl: AccessControl = {
+  lazy val acl: AccessControlList = {
     val aclEngineT = for {
       config <- RawRorConfig
         .fromString(configYaml)

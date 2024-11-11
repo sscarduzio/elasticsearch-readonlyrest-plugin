@@ -19,8 +19,8 @@ package tech.beshu.ror.integration.utils
 import better.files.File
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.providers._
+import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.providers.*
 import tech.beshu.ror.utils.misc.Resources.getResourcePath
 
 trait PluginTestSupport extends EsClusterProvider with CallingEsDirectly {

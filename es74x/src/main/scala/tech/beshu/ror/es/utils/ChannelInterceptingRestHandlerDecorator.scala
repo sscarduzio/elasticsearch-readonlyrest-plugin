@@ -94,6 +94,7 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
         .addRorUserAuthenticationHeader(client.getLocalNodeId)
     }
   }
+
 }
 
 object ChannelInterceptingRestHandlerDecorator {

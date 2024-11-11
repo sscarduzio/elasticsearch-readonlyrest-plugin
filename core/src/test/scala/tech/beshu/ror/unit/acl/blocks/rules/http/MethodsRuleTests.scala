@@ -17,17 +17,18 @@
 package tech.beshu.ror.unit.acl.blocks.rules.http
 
 import cats.data.NonEmptySet
-import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class MethodsRuleTests extends AnyWordSpec with MockFactory {

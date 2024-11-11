@@ -16,23 +16,24 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
-import cats.implicits.toShow
 import monix.eval.Task
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.{ClassCanonicalName, MatchResult, ReflectionBasedDataStreamsEsContextCreator, tryUpdateDataStreams}
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ReflecUtils.{invokeMethod, setField}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRequest,
@@ -64,13 +65,13 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
           Task.now(r)
       }
     } else {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getCanonicalName} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
+      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
       ModificationResult.ShouldBeInterrupted
     }
   }
 
   private def extendAllowedIndicesSet(allowedIndices: Iterable[ClusterIndexName]) = {
-    allowedIndices.toList.map(_.formatAsDataStreamBackingIndexName).toSet ++ allowedIndices.toSet
+    allowedIndices.toList.map(_.formatAsDataStreamBackingIndexName).toCovariantSet ++ allowedIndices.toCovariantSet
   }
 
   private def modifyActionRequest(blockContext: BlockContext.DataStreamRequestBlockContext): Boolean = {
@@ -118,7 +119,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
         backingIndices
           .flatMap(backingIndex => Option(invokeMethod(backingIndex, backingIndex.getClass, "getName").asInstanceOf[String]))
           .flatMap(ClusterIndexName.fromString)
-          .toSet
+          .toCovariantSet
       }
     } yield indices
 

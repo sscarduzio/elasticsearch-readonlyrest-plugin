@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.matchers
 
 import cats.Show
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
+import tech.beshu.ror.syntax.*
 
 trait PatternsMatcher[A] {
   type Conversion[B] = Function1[B, A]
@@ -27,9 +28,11 @@ trait PatternsMatcher[A] {
 
   def `match`[B <: A](value: B): Boolean
 
-  def filter[B <: A](items: Iterable[B]): Set[B]
+  def `match`[B : Conversion](value: B): Boolean
 
-  def filter[B: Conversion](items: Iterable[B]): Set[B]
+  def filter[B <: A](items: IterableOnce[B]): Set[B]
+
+  def filter[B: Conversion](items: IterableOnce[B]): Set[B]
 
   def contains(str: String): Boolean
 }

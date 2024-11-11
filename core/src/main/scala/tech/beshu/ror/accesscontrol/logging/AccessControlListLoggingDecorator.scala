@@ -17,31 +17,30 @@
 package tech.beshu.ror.accesscontrol.logging
 
 import cats.Show
-import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.constants
-import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControlList
+import tech.beshu.ror.accesscontrol.AccessControlList.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.logging.ResponseContext._
+import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.utils.TaskOps._
+import tech.beshu.ror.constants
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.TaskOps.*
 
 import scala.util.{Failure, Success}
 
-class AccessControlLoggingDecorator(val underlying: AccessControl,
-                                    auditingTool: Option[AuditingTool])
-                                   (implicit loggingContext: LoggingContext,
-                                    scheduler: Scheduler)
-  extends AccessControl with Logging {
+class AccessControlListLoggingDecorator(val underlying: AccessControlList,
+                                        auditingTool: Option[AuditingTool])
+                                       (implicit loggingContext: LoggingContext,
+                                        scheduler: Scheduler)
+  extends AccessControlList with Logging {
 
   override def description: String = underlying.description
 
@@ -99,7 +98,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
       implicit val showHeader: Show[Header] =
         if (logger.delegate.isDebugEnabled()) headerShow
         else obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
-      import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator.responseContextShow
+      import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator.responseContextShow
       logger.info(responseContextShow[B].show(responseContext))
     }
     auditingTool.foreach {
@@ -128,10 +127,10 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
     }
   }
 
-  override val staticContext: AccessControl.AccessControlStaticContext = underlying.staticContext
+  override val staticContext: AccessControlList.AccessControlStaticContext = underlying.staticContext
 }
 
-object AccessControlLoggingDecorator {
+object AccessControlListLoggingDecorator {
 
   private implicit def responseContextShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[ResponseContext[B]] = {
     Show.show[ResponseContext[B]] {

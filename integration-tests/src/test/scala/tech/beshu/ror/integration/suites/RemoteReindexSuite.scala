@@ -21,7 +21,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource

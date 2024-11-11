@@ -16,47 +16,44 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
-import cats.implicits._
 import cats.{Eq, Show}
-import io.lemonlabs.uri.Url
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
+import io.lemonlabs.uri.Url
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.AuthTokenSendMethod.{UsingHeader, UsingQueryParam}
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config._
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService._
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CacheableAction
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
 trait ExternalAuthorizationService extends Item {
   override type Id = Name
-  def id: Id
+
   def grantsFor(userId: User.Id)
                (implicit requestId: RequestId): Task[UniqueList[Group]]
   def serviceTimeout: PositiveFiniteDuration
 
-  override implicit def show: Show[Name] = Name.nameShow
+  override val idShow: Show[Name] = Show.show(_.value.value)
 }
 object ExternalAuthorizationService {
 
   final case class Name(value: NonEmptyString)
   object Name {
     implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
-    implicit val nameShow: Show[Name] = Show.show(_.value.value)
   }
 }
 
@@ -105,11 +102,12 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
 
   private def groupsFromResponseBody(body: String)
                                     (implicit requestId: RequestId): UniqueList[Group] = {
+    implicit val show: Show[Name] = idShow
     val groupsFromBody = groupsFrom(body)
     groupsFromBody match {
       case Success(groups) =>
-        logger.debug(s"[${requestId.show}] Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
-        UniqueList.fromIterable(groups)
+        logger.debug(s"[${requestId.show}] Groups returned by groups provider '${id.show}': ${groups.show}")
+        UniqueList.from(groups)
       case Failure(ex) =>
         logger.debug(s"[${requestId.show}] Group based authorization response exception - provider '${id.show}'", ex)
         UniqueList.empty
