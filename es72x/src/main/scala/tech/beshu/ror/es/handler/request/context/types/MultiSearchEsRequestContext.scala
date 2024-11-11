@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, IndexAttribute}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -126,10 +126,10 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       .toList
   }
 
-  private def indicesFrom(request: SearchRequest): Set[ClusterIndexName] = {
+  private def indicesFrom(request: SearchRequest) = {
     request
       .indices.asSafeSet
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
 
@@ -148,7 +148,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       .applyFieldLevelSecurity(fieldLevelSecurity)
   }
 
-  private def updateRequestWithIndices(request: SearchRequest, indices: Set[ClusterIndexName]) = {
+  private def updateRequestWithIndices(request: SearchRequest, indices: Set[RequestedIndex[ClusterIndexName]]) = {
     indices.toList match {
       case Nil => updateRequestWithNonExistingIndex(request)
       case nonEmptyIndicesList => request.indices(nonEmptyIndicesList.stringify: _*)

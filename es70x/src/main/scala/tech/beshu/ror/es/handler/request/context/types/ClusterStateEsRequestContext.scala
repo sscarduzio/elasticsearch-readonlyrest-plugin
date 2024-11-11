@@ -21,8 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.domain.UriPath.CatIndicesPath
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -37,30 +36,20 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ClusterStateRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterStateRequest): Set[ClusterIndexName] = {
-    request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
+  override protected def requestedIndicesFrom(request: ClusterStateRequest): Set[RequestedIndex[ClusterIndexName]] = {
+    request.indices.asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: ClusterStateRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    indicesFrom(request).toList match {
-      case Nil if filteredIndices.exists(_ === ClusterIndexName.Local.wildcard) =>
+    requestedIndicesFrom(request).toList match {
+      case Nil if filteredIndices.exists(_.name === ClusterIndexName.Local.wildcard) =>
         // hack: when empty indices list is replaced with wildcard index, returned result is wrong
         Modified
       case _ =>
         request.indices(filteredIndices.stringify: _*)
         Modified
-    }
-  }
-
-  override def modifyWhenIndexNotFound: ModificationResult = {
-    uriPath match {
-      case CatIndicesPath(_) =>
-        val randomNonExistentIndices = NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.filteredIndices))
-        update(actionRequest, randomNonExistentIndices, randomNonExistentIndices)
-      case _ =>
-        super.modifyWhenIndexNotFound
     }
   }
 }
