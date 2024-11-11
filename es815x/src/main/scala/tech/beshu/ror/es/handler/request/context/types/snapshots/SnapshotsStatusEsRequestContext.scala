@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.threadpool.ThreadPool
@@ -30,9 +30,9 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
                                       esContext: EsContext,
@@ -78,12 +78,12 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
         (for {
           repositoryName <- RepositoryName.from(snapshotStatus.getSnapshot.getRepository)
           snapshotName <- SnapshotName.from(snapshotStatus.getSnapshot.getSnapshotId.getName)
-        } yield  {
+        } yield {
           allowedRepositoriesMatcher.`match`(repositoryName) &&
-          allowedSnapshotsMatcher.`match`(snapshotName)
+            allowedSnapshotsMatcher.`match`(snapshotName)
         }) getOrElse false
       }
-
+    
     on(response).set("snapshots", allowedSnapshotStatuses.asJava)
     response
   }
@@ -91,9 +91,9 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   private def modifySnapshotStatusRequest(request: SnapshotsStatusRequest,
                                           blockContext: SnapshotRequestBlockContext) = {
     val updateResult = for {
-      snapshots <- snapshotsFrom(blockContext)
       repository <- repositoryFrom(blockContext)
-    } yield update(request, snapshots, repository)
+      snapshots <- snapshotsFrom(blockContext)
+    } yield update(request, repository, snapshots)
     updateResult match {
       case Right(_) =>
         ModificationResult.Modified
@@ -103,30 +103,32 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
     }
   }
 
-  private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
-    NonEmptyList.fromList(fullNamedSnapshotsFrom(blockContext.snapshots).toList) match {
-      case Some(list) => Right(list)
-      case None => Left(())
+  private def repositoryFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, RepositoryName] = {
+    val repositories = blockContext.repositories
+    if(allRepositoriesRequested(repositories)) {
+      Right(RepositoryName.All)
+    } else {
+      fullNamedRepositoriesFrom(repositories).toList match {
+        case Nil =>
+          Left(())
+        case repository :: rest =>
+          if (rest.nonEmpty) {
+            logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]")
+          }
+          Right(repository)
+      }
     }
   }
 
-  private def fullNamedSnapshotsFrom(snapshots: Iterable[SnapshotName]): Set[SnapshotName.Full] = {
-    val allFullNameSnapshots: Set[SnapshotName.Full] = allSnapshots.values.toSet.flatten
-    PatternsMatcher
-      .create(snapshots)
-      .filter(allFullNameSnapshots)
-  }
-
-  private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
-    val repositories = fullNamedRepositoriesFrom(blockContext.repositories).toList
-    repositories match {
-      case Nil =>
-        Left(())
-      case repository :: rest =>
-        if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]")
-        }
-        Right(repository)
+  private def snapshotsFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, NonEmptyList[SnapshotName]] = {
+    val snapshots = blockContext.snapshots
+    if (allSnapshotsRequested(snapshots)) {
+      Right(NonEmptyList.one(SnapshotName.All))
+    } else {
+      NonEmptyList.fromList(fullNamedSnapshotsFrom(snapshots).toList) match {
+        case Some(list) => Right(list)
+        case None => Left(())
+      }
     }
   }
 
@@ -137,15 +139,38 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
       .filter(allFullNameRepositories)
   }
 
+  private def fullNamedSnapshotsFrom(snapshots: Iterable[SnapshotName]): Set[SnapshotName.Full] = {
+    val allFullNameSnapshots: Set[SnapshotName.Full] = allSnapshots.values.toSet.flatten
+    PatternsMatcher
+      .create(snapshots)
+      .filter(allFullNameSnapshots)
+  }
+
+  private def allSnapshotsRequested(requestedSnapshots: Iterable[SnapshotName]) =
+    requestedSnapshots.exists(_ == SnapshotName.all)
+
+  private def allRepositoriesRequested(requestedRepositories: Iterable[RepositoryName]) =
+    requestedRepositories.exists(_ == RepositoryName.all)
+
   private def update(actionRequest: SnapshotsStatusRequest,
-                     snapshots: NonEmptyList[SnapshotName.Full],
-                     repository: RepositoryName.Full) = {
-    actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
+                     repository: RepositoryName,
+                     snapshots: NonEmptyList[SnapshotName]) = {
     actionRequest.repository(RepositoryName.toString(repository))
+    updateSnapshots(actionRequest, snapshots)
+  }
+
+  private def updateSnapshots(actionRequest: SnapshotsStatusRequest, snapshots: NonEmptyList[SnapshotName]) = {
+    if (allSnapshotsRequested(snapshots.toList)) {
+      actionRequest.snapshots(List.empty.toArray)
+    } else {
+      actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
+    }
   }
 
   private def isCurrentSnapshotStatusRequest(actionRequest: SnapshotsStatusRequest) = {
     val repositories = repositoriesFrom(actionRequest)
-    (repositories.isEmpty || repositories == Set(RepositoryName.all)) && snapshotsFrom(actionRequest).isEmpty
+    val snapshots = snapshotsFrom(actionRequest)
+    (repositories.isEmpty || repositories.contains(RepositoryName.all)) &&
+      (snapshots.isEmpty || snapshots.contains(SnapshotName.all))
   }
 }

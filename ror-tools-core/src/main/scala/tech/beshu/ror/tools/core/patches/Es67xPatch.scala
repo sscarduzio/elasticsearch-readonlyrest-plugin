@@ -20,14 +20,15 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, OptionalXPackSecurityJarPatchCreator, XPackSecurityJarPatchCreator}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.{DeactivateSecurityActionFilter, DeactivateSecurityServerTransportInterceptor, DummyAuthorizeInAuthorizationService, RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.{DeactivateSecurityActionFilter, DeactivateSecurityServerTransportInterceptor, DummyAuthorizeInAuthorizationService, RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode, SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode}
 
 import scala.language.postfixOps
 
 private[patches] class Es67xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion),
+      new SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new OptionalXPackSecurityJarPatchCreator(
       DeactivateSecurityActionFilter,
