@@ -34,3 +34,7 @@ readonlyrest:
       ]
       repositories: ["dev5-repo-*"]
       snapshots: ["dev5-snap-*"]
+      
+    - name: "dev6 block"
+      auth_key: dev6:test
+      repositories: ["dev6-repo-*"]
