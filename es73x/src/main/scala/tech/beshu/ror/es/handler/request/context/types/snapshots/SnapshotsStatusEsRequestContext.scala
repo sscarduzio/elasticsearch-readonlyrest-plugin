@@ -23,7 +23,7 @@ import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusR
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -53,8 +53,8 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[SnapshotsStatusRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: SnapshotsStatusRequest): Set[ClusterIndexName] =
-    Set(ClusterIndexName.Local.wildcard)
+  override protected def requestedIndicesFrom(request: SnapshotsStatusRequest): Set[RequestedIndex[ClusterIndexName]] =
+    Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
     if (isCurrentSnapshotStatusRequest(actionRequest)) updateSnapshotStatusResponse(blockContext)

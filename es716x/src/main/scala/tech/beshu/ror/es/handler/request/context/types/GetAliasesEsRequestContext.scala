@@ -26,8 +26,8 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.utils.IndicesListOps.*
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted, UpdateResponse}
@@ -67,7 +67,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
       case Some((indices, aliases)) =>
         updateIndices(actionRequest, indices)
         updateAliases(actionRequest, aliases)
-        UpdateResponse(updateAliasesResponse(aliases, _))
+        UpdateResponse(updateAliasesResponse(aliases.includedOnly, _))
       case None =>
         logger.error(s"[${id.show}] At least one alias and one index has to be allowed. " +
           s"Found allowed indices: [${blockContext.indices.show}]." +
@@ -79,7 +79,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
   override def modifyWhenIndexNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
       val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.indices)
-      if (nonExistentIndex.hasWildcard) {
+      if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
           .fromList(initialBlockContext.indices.map(_.randomNonexistentIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
@@ -97,7 +97,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
   override def modifyWhenAliasNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
       val nonExistentAlias = initialBlockContext.randomNonexistentIndex(_.aliases)
-      if (nonExistentAlias.hasWildcard) {
+      if (nonExistentAlias.name.hasWildcard) {
         val nonExistingAliases = NonEmptyList
           .fromList(initialBlockContext.aliases.map(_.randomNonexistentIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentAlias))
@@ -115,7 +115,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
   private def discoverIndices(request: GetAliasesRequest) = {
     val indices = request
       .indices().asSafeSet
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
     logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
     indices
@@ -123,17 +123,17 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
 
   private def discoverAliases(request: GetAliasesRequest) = {
     val aliases = rawRequestAliasesSet(request)
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
     logger.debug(s"[${id.show}] Discovered aliases: ${aliases.show}")
     aliases
   }
 
-  private def updateIndices(request: GetAliasesRequest, indices: NonEmptyList[ClusterIndexName]): Unit = {
+  private def updateIndices(request: GetAliasesRequest, indices: NonEmptyList[RequestedIndex[ClusterIndexName]]): Unit = {
     request.indices(indices.stringify: _*)
   }
 
-  private def updateAliases(request: GetAliasesRequest, aliases: NonEmptyList[ClusterIndexName]): Unit = {
+  private def updateAliases(request: GetAliasesRequest, aliases: NonEmptyList[RequestedIndex[ClusterIndexName]]): Unit = {
     if (isRequestedEmptyAliasesSet(request)) {
       // we don't need to do anything
     } else {
@@ -141,7 +141,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     }
   }
 
-  private def updateAliasesResponse(allowedAliases: NonEmptyList[ClusterIndexName],
+  private def updateAliasesResponse(allowedAliases: Set[ClusterIndexName],
                                     response: ActionResponse): Task[ActionResponse] = {
     val (aliases, streams) = response match {
       case aliasesResponse: GetAliasesResponse =>

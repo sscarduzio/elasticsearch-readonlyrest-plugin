@@ -33,7 +33,7 @@ class KibanaAccessRuleTests
     Settings(access, RorConfigurationIndex(rorIndex))
 
   override protected def defaultOutputBlockContextAssertion(settings: Settings,
-                                                            indices: Set[ClusterIndexName],
+                                                            indices: Set[RequestedIndex[ClusterIndexName]],
                                                             dataStreams: Set[DataStreamName],
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {

@@ -21,7 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.termvectors.{MultiTermVectorsRequest, TermVectorsRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -38,12 +38,12 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
                                        override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[MultiTermVectorsRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: MultiTermVectorsRequest): Set[ClusterIndexName] = {
-    request.getRequests.asScala.flatMap(r => ClusterIndexName.fromString(r.index())).toCovariantSet
+  override protected def requestedIndicesFrom(request: MultiTermVectorsRequest): Set[RequestedIndex[ClusterIndexName]] = {
+    request.getRequests.asScala.flatMap(r => RequestedIndex.fromString(r.index())).toCovariantSet
   }
 
   override protected def update(request: MultiTermVectorsRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.getRequests.removeIf { request => removeOrAlter(request, filteredIndices.toCovariantSet) }
     if (request.getRequests.asScala.isEmpty) {
@@ -55,9 +55,9 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
   }
 
   private def removeOrAlter(request: TermVectorsRequest,
-                            filteredIndices: Set[ClusterIndexName]): Boolean = {
+                            filteredIndices: Set[RequestedIndex[ClusterIndexName]]): Boolean = {
     val expandedIndicesOfRequest = clusterService.expandLocalIndices(ClusterIndexName.fromString(request.index()).toCovariantSet)
-    val remaining = expandedIndicesOfRequest.intersect(filteredIndices).toList
+    val remaining = expandedIndicesOfRequest.intersect(filteredIndices.includedOnly).toList
     remaining match {
       case Nil =>
         true

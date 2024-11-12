@@ -103,7 +103,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                filteredIndices: Set[ClusterIndexName],
+                                                filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                                                 allAllowedIndices: Set[ClusterIndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
@@ -201,7 +201,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                           override val isCompositeRequest: Boolean = false,
                                           override val isAllowedForDLS: Boolean = true,
-                                          indices: Set[ClusterIndexName],
+                                          indices: Set[RequestedIndex[ClusterIndexName]],
                                           allAllowedIndices: Set[ClusterIndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = FilterableRequestBlockContext

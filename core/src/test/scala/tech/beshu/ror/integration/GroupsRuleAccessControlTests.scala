@@ -133,7 +133,7 @@ class GroupsRuleAccessControlTests
       "allow when authorization satisfies all groups" in {
         val request = MockRequestContext.indices.copy(
           headers = Set(header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes))),
-          filteredIndices = Set(clusterIndexName("g34_index")),
+          filteredIndices = Set(requestedIndex("g34_index")),
         )
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 1
@@ -149,7 +149,7 @@ class GroupsRuleAccessControlTests
         "proxy auth user is correct one" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-proxy-id")),
-            filteredIndices = Set(clusterIndexName("g12_index")),
+            filteredIndices = Set(requestedIndex("g12_index")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -164,7 +164,7 @@ class GroupsRuleAccessControlTests
         "proxy auth user is unknown" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-invalid")),
-            filteredIndices = Set(clusterIndexName("g12_index")),
+            filteredIndices = Set(requestedIndex("g12_index")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -183,7 +183,7 @@ class GroupsRuleAccessControlTests
           ))
           val request = MockRequestContext.indices.copy(
             headers = Set(bearerHeader(jwt)),
-            filteredIndices = Set(clusterIndexName("g*")),
+            filteredIndices = Set(requestedIndex("g*")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -203,7 +203,7 @@ class GroupsRuleAccessControlTests
               basicAuthHeader("morgan:user1"),
               currentGroupHeader( "admin")
             ),
-            filteredIndices = Set(clusterIndexName(".kibana")),
+            filteredIndices = Set(requestedIndex(".kibana")),
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()

@@ -54,7 +54,7 @@ object TemplateOperation {
 
   final case class AddingLegacyTemplate(name: TemplateName,
                                         patterns: UniqueNonEmptyList[IndexPattern],
-                                        aliases: Set[ClusterIndexName])
+                                        aliases: Set[RequestedIndex[ClusterIndexName]])
     extends TemplateOperation
 
   final case class DeletingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
@@ -65,12 +65,12 @@ object TemplateOperation {
 
   final case class AddingIndexTemplate(name: TemplateName,
                                        patterns: UniqueNonEmptyList[IndexPattern],
-                                       aliases: Set[ClusterIndexName])
+                                       aliases: Set[RequestedIndex[ClusterIndexName]])
     extends TemplateOperation
 
   final case class AddingIndexTemplateAndGetAllowedOnes(name: TemplateName,
                                                         patterns: UniqueNonEmptyList[IndexPattern],
-                                                        aliases: Set[ClusterIndexName],
+                                                        aliases: Set[RequestedIndex[ClusterIndexName]],
                                                         allowedTemplates: List[TemplateNamePattern])
     extends TemplateOperation
 
@@ -84,7 +84,7 @@ object TemplateOperation {
   final case class GettingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
     extends TemplateOperation
 
-  final case class AddingComponentTemplate(name: TemplateName, aliases: Set[ClusterIndexName])
+  final case class AddingComponentTemplate(name: TemplateName, aliases: Set[RequestedIndex[ClusterIndexName]])
     extends TemplateOperation
 
   final case class DeletingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])

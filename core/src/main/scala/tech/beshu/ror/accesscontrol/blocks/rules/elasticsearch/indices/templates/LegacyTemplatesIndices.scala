@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.template
 
 import cats.data.NonEmptyList
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
@@ -76,7 +76,7 @@ private[indices] trait LegacyTemplatesIndices
 
   protected def addingLegacyTemplate(newTemplateName: TemplateName,
                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                     aliases: Set[ClusterIndexName])
+                                     aliases: Set[RequestedIndex[ClusterIndexName]])
                                     (implicit blockContext: TemplateRequestBlockContext,
                                      allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
@@ -149,7 +149,7 @@ private[indices] trait LegacyTemplatesIndices
 
   private def canAddNewLegacyTemplate(newTemplateName: TemplateName,
                                       newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                      newTemplateAliases: Set[ClusterIndexName])
+                                      newTemplateAliases: Set[RequestedIndex[ClusterIndexName]])
                                      (implicit blockContext: TemplateRequestBlockContext,
                                       allowedIndices: AllowedIndices) = {
     logger.debug(
@@ -171,7 +171,7 @@ private[indices] trait LegacyTemplatesIndices
       if (newTemplateAliases.isEmpty) true
       else {
         newTemplateAliases.forall { alias =>
-          val allowed = isAliasAllowed(alias)
+          val allowed = isAliasAllowed(alias.name)
           if (!allowed) logger.debug(
             s"""[${blockContext.requestContext.id.show}] STOP: one of Template's [${newTemplateName.show}]
                | alias [${alias.show}] is forbidden.""".oneLiner

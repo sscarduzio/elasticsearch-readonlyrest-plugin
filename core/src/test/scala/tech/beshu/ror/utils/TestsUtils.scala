@@ -117,6 +117,10 @@ object TestsUtils {
 
   def group(id: String, name: String): Group = Group(GroupId(NonEmptyString.unsafeFrom(id)), GroupName(NonEmptyString.unsafeFrom(name)))
 
+  def requestedIndex(str: NonEmptyString): RequestedIndex[ClusterIndexName] =
+    RequestedIndex.fromString(str.value)
+      .getOrElse(throw new IllegalArgumentException(s"Cannot create RequestedIndex from '$str'"))
+
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
   def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value).get
@@ -264,7 +268,7 @@ object TestsUtils {
                            userOrigin: Option[UserOrigin] = None,
                            jwt: Option[Jwt.Payload] = None,
                            responseHeaders: Set[Header] = Set.empty,
-                           indices: Set[ClusterIndexName] = Set.empty,
+                           indices: Set[RequestedIndex[ClusterIndexName]] = Set.empty,
                            aliases: Set[ClusterIndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,

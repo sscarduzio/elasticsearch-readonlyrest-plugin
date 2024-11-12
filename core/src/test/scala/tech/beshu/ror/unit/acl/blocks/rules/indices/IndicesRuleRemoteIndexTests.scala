@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.blocks.rules.indices
 import cats.data.NonEmptySet
 import eu.timepit.refined.auto.*
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.orders.indexOrder
+import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -32,7 +32,7 @@ trait IndicesRuleRemoteIndexTests {
         "requested index name with wildcard is the same as configured index name with wildcard" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
-            requestIndices = Set(clusterIndexName("e*:*-logs-smg-stats-*")),
+            requestIndices = Set(requestedIndex("e*:*-logs-smg-stats-*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"), Set.empty)),
               allRemoteIndicesAndAliases = Task.now(Set(
@@ -46,16 +46,16 @@ trait IndicesRuleRemoteIndexTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-29")
             )
           )
         }
         "requested index name with wildcard is more general version of the configured index name with wildcard" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
-            requestIndices = Set(clusterIndexName("e*:*-logs-smg-*")),
+            requestIndices = Set(requestedIndex("e*:*-logs-smg-*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"), Set.empty)),
               allRemoteIndicesAndAliases = Task.now(Set(
@@ -69,16 +69,16 @@ trait IndicesRuleRemoteIndexTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-29")
             )
           )
         }
         "requested index name with wildcard is more specialized version of the configured index name with wildcard" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
-            requestIndices = Set(clusterIndexName("e*:*-logs-smg-stats-2020-03-2*")),
+            requestIndices = Set(requestedIndex("e*:*-logs-smg-stats-2020-03-2*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"), Set.empty)),
               allRemoteIndicesAndAliases = Task.now(Set(
@@ -93,16 +93,16 @@ trait IndicesRuleRemoteIndexTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-29")
             )
           )
         }
         "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
-            requestIndices = Set(clusterIndexName("e*:c0*")),
+            requestIndices = Set(requestedIndex("e*:c0*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"), Set.empty)),
               allRemoteIndicesAndAliases = Task.now(Set(
@@ -116,9 +116,9 @@ trait IndicesRuleRemoteIndexTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
-              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
+              requestedIndex("etl1:c01-logs-smg-stats-2020-03-29")
             )
           )
         }
@@ -128,7 +128,7 @@ trait IndicesRuleRemoteIndexTests {
       "not allowed cluster indices are being called" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*-logs-smg-stats-*"), indexNameVar("etl*:*-logs-smg-stats-*")),
-          requestIndices = Set(clusterIndexName("pub*:*logs*")),
+          requestIndices = Set(requestedIndex("pub*:*logs*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("clocal-logs-smg-stats-2020-03-27")),

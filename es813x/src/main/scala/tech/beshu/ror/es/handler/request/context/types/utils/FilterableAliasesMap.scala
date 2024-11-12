@@ -16,34 +16,36 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.utils
 
-import cats.data.NonEmptyList
 import org.elasticsearch.cluster.metadata.AliasMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.{Conversion, Matchable}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.{Conversion, Matchable}
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.AliasesMap
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
-import tech.beshu.ror.syntax.*
 
 class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
 
   import FilterableAliasesMap.{conversion, matchable}
 
-  def filterOutNotAllowedAliases(allowedAliases: NonEmptyList[ClusterIndexName]): AliasesMap = {
+  def filterOutNotAllowedAliases(allowedAliases: Iterable[ClusterIndexName]): AliasesMap = {
     filter(value.asSafeMap.toList, allowedAliases).toMap.asJava
   }
 
   private def filter(responseIndicesNadAliases: List[(String, java.util.List[AliasMetadata])],
-                     allowedAliases: NonEmptyList[ClusterIndexName]) = {
-    val matcher = PatternsMatcher.create(allowedAliases.toList.map(_.stringify))
-    responseIndicesNadAliases
-      .map { case (indexName, aliasesList) =>
-        val filteredAliases = matcher.filter(aliasesList.asSafeList)
-        (indexName, filteredAliases.toList.asJava)
-      }
+                     allowedAliases: Iterable[ClusterIndexName]) = {
+    if (allowedAliases.isEmpty) List.empty
+    else {
+      val matcher = PatternsMatcher.create(allowedAliases.stringify)
+      responseIndicesNadAliases
+        .map { case (indexName, aliasesList) =>
+          val filteredAliases = matcher.filter(aliasesList.asSafeList)
+          (indexName, filteredAliases.toList.asJava)
+        }
+    }
   }
 
 }

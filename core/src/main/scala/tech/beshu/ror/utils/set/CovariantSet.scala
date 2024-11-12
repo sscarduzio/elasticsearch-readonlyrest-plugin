@@ -47,7 +47,7 @@ trait CovariantSetExtensions {
     def asScala: Set[A] = covariantSet.underlying.asInstanceOf[Set[A]]
   }
 
-  implicit class FromIterable[I <: IterableOnce[A], A](val iterable: I) {
+  implicit class FromIterable[A](val iterable: IterableOnce[A]) {
     def toCovariantSet: CovariantSet[A] = CovariantSet(iterable.iterator.toSet)
   }
 

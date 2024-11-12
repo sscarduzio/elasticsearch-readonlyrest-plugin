@@ -110,6 +110,7 @@ trait FieldsRuleLikeDecoderHelperBase {
       .map(_.fieldName)
       .toCovariantSet
       .intersect(alwaysAllowedFields)
+      .toSet
   }
 
   private def createRuntimeVariable[FIELD](field: ConfiguredField)

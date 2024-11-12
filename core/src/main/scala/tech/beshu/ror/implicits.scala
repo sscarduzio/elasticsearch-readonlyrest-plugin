@@ -16,31 +16,35 @@
  */
 package tech.beshu.ror
 
+import better.files.File
+import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits.*
-import cats.Show
-import eu.timepit.refined.types.string.NonEmptyString
 import eu.timepit.refined.api.*
+import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import squants.information.Information
+import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Name, Policy}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
+import tech.beshu.ror.accesscontrol.domain.RequestedIndex
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -52,7 +56,6 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
@@ -61,15 +64,12 @@ import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.json.JsonPath
+import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import java.time.Instant
-import java.nio.file.Path as JPath
 import java.io.File as JFile
-import better.files.File
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
-import tech.beshu.ror.utils.set.CovariantSet
-
+import java.nio.file.Path as JPath
+import java.time.Instant
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
@@ -143,6 +143,7 @@ trait LogsShowInstances
   }
   implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
 
+  implicit def requestedIndexShow[T <: ClusterIndexName : Show]: Show[RequestedIndex[T]] = Show(_.name.show)
   implicit val clusterIndexNameShow: Show[ClusterIndexName] = Show.show(_.stringify)
   implicit val localClusterIndexNameShow: Show[ClusterIndexName.Local] = Show.show(_.stringify)
   implicit val remoteClusterIndexNameShow: Show[ClusterIndexName.Remote] = Show.show(_.stringify)
@@ -193,7 +194,7 @@ trait LogsShowInstances
       (showOption("user", bc.userMetadata.loggedUser) ::
         showOption("group", bc.userMetadata.currentGroupId) ::
         showNamedIterable("av_groups", bc.userMetadata.availableGroups.toList.map(_.id)) ::
-        showNamedIterable("indices", bc.indices) ::
+        showNamedIterable("indices", bc.indices) :: // todo: for sure it's ok?
         showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
         showOption("fls", bc.fieldLevelSecurity) ::
         showNamedIterable("response_hdr", bc.responseHeaders) ::

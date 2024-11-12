@@ -29,7 +29,7 @@ import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequest
 import tech.beshu.ror.syntax.*
 
 class MigrateToDataStreamEsRequestContext(actionRequest: ActionRequest,
-                                          indices: Set[ClusterIndexName],
+                                          indices: Set[RequestedIndex[ClusterIndexName]],
                                           esContext: EsContext,
                                           clusterService: RorClusterService,
                                           override val threadPool: ThreadPool)

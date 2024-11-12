@@ -21,7 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -35,10 +35,11 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
                                                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[R](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: R): Set[ClusterIndexName] = Set(indexFrom(request))
+  override protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]] =
+    Set(requestedIndexFrom(request))
 
   override protected def update(request: R,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
@@ -46,7 +47,7 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
     update(request, filteredIndices.head)
   }
 
-  protected def indexFrom(request: R): ClusterIndexName
+  protected def requestedIndexFrom(request: R): RequestedIndex[ClusterIndexName]
 
-  protected def update(request: R, index: ClusterIndexName): ModificationResult
+  protected def update(request: R, index: RequestedIndex[ClusterIndexName]): ModificationResult
 }

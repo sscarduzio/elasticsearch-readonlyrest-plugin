@@ -21,8 +21,8 @@ import eu.timepit.refined.auto.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.domain.Template.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplate, DeletingIndexTemplates, GettingIndexTemplates}
-import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
-import tech.beshu.ror.accesscontrol.orders.indexOrder
+import tech.beshu.ror.accesscontrol.domain.{RequestedIndex, TemplateName, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -168,7 +168,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
             val addingTemplateOperation = AddingIndexTemplate(
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(indexPattern("test1")),
-              aliases = Set(clusterIndexName("alias1"))
+              aliases = Set(requestedIndex("alias1"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("*")),
@@ -222,7 +222,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
             val addingTemplateOperation = AddingIndexTemplate(
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(indexPattern("test1"), indexPattern("test2")),
-              aliases = Set(clusterIndexName("test1_alias"), clusterIndexName("test2_alias"))
+              aliases = Set(requestedIndex("test1_alias"), requestedIndex("test2_alias"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -235,7 +235,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
             val addingTemplateOperation = AddingIndexTemplate(
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(indexPattern("test1"), indexPattern("test2")),
-              aliases = Set(clusterIndexName("{index}_alias"))
+              aliases = Set(requestedIndex("{index}_alias"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -275,7 +275,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
             val addingTemplateOperation = AddingIndexTemplate(
               name = existingTemplate.name,
               patterns = existingTemplate.patterns,
-              aliases = existingTemplate.aliases
+              aliases = existingTemplate.aliases.map(RequestedIndex(_, excluded = false))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1")),
@@ -335,7 +335,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
             val addingTemplateOperation = AddingIndexTemplate(
               name = existingTemplate.name,
               patterns = UniqueNonEmptyList.of(indexPattern("test1"), indexPattern("test2"), indexPattern("test3")),
-              aliases = Set(clusterIndexName("test1_alias"), clusterIndexName("test2_alias"))
+              aliases = Set(requestedIndex("test1_alias"), requestedIndex("test2_alias"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -355,7 +355,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
             val addingTemplateOperation = AddingIndexTemplate(
               name = existingTemplate.name,
               patterns = UniqueNonEmptyList.of(indexPattern("test1"), indexPattern("test2"), indexPattern("test3")),
-              aliases = Set(clusterIndexName("{index}_alias"))
+              aliases = Set(requestedIndex("{index}_alias"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -421,7 +421,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                  aliases = Set(clusterIndexName("test1_alias"), clusterIndexName("alias_test1"))
+                  aliases = Set(requestedIndex("test1_alias"), requestedIndex("alias_test1"))
                 ))
             )
           }
@@ -432,7 +432,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                  aliases = Set(clusterIndexName("{index}_alias"), clusterIndexName("alias_{index}"))
+                  aliases = Set(requestedIndex("{index}_alias"), requestedIndex("alias_{index}"))
                 ))
             )
           }
@@ -518,7 +518,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                  aliases = Set(clusterIndexName("test1_alias"), clusterIndexName("alias_test1"))
+                  aliases = Set(requestedIndex("test1_alias"), requestedIndex("alias_test1"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
@@ -535,7 +535,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                  aliases = Set(clusterIndexName("{index}_alias"), clusterIndexName("alias_{index}"))
+                  aliases = Set(requestedIndex("{index}_alias"), requestedIndex("alias_{index}"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )

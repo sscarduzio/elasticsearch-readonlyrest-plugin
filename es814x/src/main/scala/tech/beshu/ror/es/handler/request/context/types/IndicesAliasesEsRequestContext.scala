@@ -21,7 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -42,15 +42,15 @@ class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
   private lazy val originIndices = actionRequest
     .getAliasActions.asScala
     .flatMap { r =>
-      r.indices.asSafeSet.flatMap(ClusterIndexName.fromString) ++
-        r.aliases.asSafeList.flatMap(ClusterIndexName.fromString)
+      r.indices.asSafeSet.flatMap(RequestedIndex.fromString) ++
+        r.aliases.asSafeList.flatMap(RequestedIndex.fromString)
     }
     .toCovariantSet
 
-  override protected def indicesFrom(request: IndicesAliasesRequest): Set[ClusterIndexName] = originIndices
+  override protected def requestedIndicesFrom(request: IndicesAliasesRequest): Set[RequestedIndex[ClusterIndexName]] = originIndices
 
   override protected def update(request: IndicesAliasesRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (originIndices == filteredIndices.toList.toCovariantSet) {
       Modified

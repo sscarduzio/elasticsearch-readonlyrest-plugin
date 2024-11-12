@@ -22,7 +22,7 @@ import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.domain.UriPath.CatIndicesPath
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -38,12 +38,12 @@ class GetSettingsEsRequestContext(actionRequest: GetSettingsRequest,
                                   override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[GetSettingsRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: GetSettingsRequest): Set[ClusterIndexName] = {
-    request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
+  override protected def requestedIndicesFrom(request: GetSettingsRequest): Set[RequestedIndex[ClusterIndexName]] = {
+    request.indices.asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: GetSettingsRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     Modified

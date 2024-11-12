@@ -53,7 +53,7 @@ private[indices] trait ComponentTemplateIndices
   }
 
   protected def addingComponentTemplate(newTemplateName: TemplateName,
-                                        aliases: Set[ClusterIndexName])
+                                        aliases: Set[RequestedIndex[ClusterIndexName]])
                                        (implicit blockContext: TemplateRequestBlockContext,
                                         allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
@@ -124,7 +124,7 @@ private[indices] trait ComponentTemplateIndices
   }
 
   private def canAddNewComponentTemplate(newTemplateName: TemplateName,
-                                         newTemplateAliases: Set[ClusterIndexName])
+                                         newTemplateAliases: Iterable[RequestedIndex[ClusterIndexName]])
                                         (implicit blockContext: TemplateRequestBlockContext,
                                          allowedIndices: AllowedIndices) = {
     logger.debug(
@@ -134,7 +134,7 @@ private[indices] trait ComponentTemplateIndices
       if (newTemplateAliases.isEmpty) true
       else {
         newTemplateAliases.forall { alias =>
-          val allowed = isAliasAllowed(alias)
+          val allowed = isAliasAllowed(alias.name)
           if (!allowed) logger.debug(
             s"""[${blockContext.requestContext.id.show}] STOP: one of Template's [${newTemplateName.show}]
                | alias [${alias.show}] is forbidden.""".oneLiner

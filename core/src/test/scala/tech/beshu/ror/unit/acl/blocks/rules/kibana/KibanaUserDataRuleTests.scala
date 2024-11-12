@@ -233,7 +233,7 @@ class KibanaUserDataRuleTests
     )
 
   override protected def defaultOutputBlockContextAssertion(settings: KibanaUserDataRule.Settings,
-                                                            indices: Set[ClusterIndexName],
+                                                            indices: Set[RequestedIndex[ClusterIndexName]],
                                                             dataStreams: Set[DataStreamName],
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {

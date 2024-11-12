@@ -124,7 +124,7 @@ object BlockContextUpdater {
       blockContext.copy(repositories = repositories)
 
     def withIndices(blockContext: SnapshotRequestBlockContext,
-                    indices: Set[ClusterIndexName]): SnapshotRequestBlockContext =
+                    indices: Set[RequestedIndex[ClusterIndexName]]): SnapshotRequestBlockContext =
       blockContext.copy(filteredIndices = indices)
   }
 
@@ -203,11 +203,11 @@ object BlockContextUpdater {
       blockContext.copy(responseTransformations = responseTransformation :: blockContext.responseTransformations)
 
     def withIndices(blockContext: AliasRequestBlockContext,
-                    indices: Set[ClusterIndexName]): AliasRequestBlockContext =
+                    indices: Set[RequestedIndex[ClusterIndexName]]): AliasRequestBlockContext =
       blockContext.copy(indices = indices)
 
     def withAliases(blockContext: AliasRequestBlockContext,
-                    aliases: Set[ClusterIndexName]): AliasRequestBlockContext =
+                    aliases: Set[RequestedIndex[ClusterIndexName]]): AliasRequestBlockContext =
       blockContext.copy(aliases = aliases)
   }
 
@@ -313,7 +313,7 @@ object BlockContextUpdater {
 abstract class BlockContextWithIndicesUpdater[B <: BlockContext : HasIndices] {
 
   def withIndices(blockContext: B,
-                  filteredIndices: Set[ClusterIndexName],
+                  filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                   allAllowedIndices: Set[ClusterIndexName]): B
 }
 
@@ -324,7 +324,7 @@ object BlockContextWithIndicesUpdater {
     extends BlockContextWithIndicesUpdater[FilterableRequestBlockContext] {
 
     def withIndices(blockContext: FilterableRequestBlockContext,
-                    filteredIndices: Set[ClusterIndexName],
+                    filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                     allAllowedIndices: Set[ClusterIndexName]): FilterableRequestBlockContext =
       blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
   }
@@ -333,7 +333,7 @@ object BlockContextWithIndicesUpdater {
     extends BlockContextWithIndicesUpdater[GeneralIndexRequestBlockContext] {
 
     def withIndices(blockContext: GeneralIndexRequestBlockContext,
-                    filteredIndices: Set[ClusterIndexName],
+                    filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                     allAllowedIndices: Set[ClusterIndexName]): GeneralIndexRequestBlockContext =
       blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
   }
@@ -342,7 +342,7 @@ object BlockContextWithIndicesUpdater {
     extends BlockContextWithIndicesUpdater[SnapshotRequestBlockContext] {
 
     def withIndices(blockContext: SnapshotRequestBlockContext,
-                    filteredIndices: Set[ClusterIndexName],
+                    filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                     allAllowedIndices: Set[ClusterIndexName]): SnapshotRequestBlockContext =
       blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
   }
@@ -351,7 +351,7 @@ object BlockContextWithIndicesUpdater {
     extends BlockContextWithIndicesUpdater[DataStreamRequestBlockContext] {
 
     def withIndices(blockContext: DataStreamRequestBlockContext,
-                    filteredIndices: Set[ClusterIndexName],
+                    filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                     allAllowedIndices: Set[ClusterIndexName]): DataStreamRequestBlockContext =
       blockContext.copy(backingIndices = DataStreamRequestBlockContext.BackingIndices.IndicesInvolved(
         filteredIndices = filteredIndices,

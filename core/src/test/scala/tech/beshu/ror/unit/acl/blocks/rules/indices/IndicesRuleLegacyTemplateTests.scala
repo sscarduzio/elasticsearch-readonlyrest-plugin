@@ -22,10 +22,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingLegacyTemplate, DeletingLegacyTemplates, GettingLegacyTemplates}
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
-import tech.beshu.ror.accesscontrol.orders.indexOrder
+import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, indexPattern, unsafeNes}
+import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, indexPattern, requestedIndex, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 private [indices] trait IndicesRuleLegacyTemplateTests {
@@ -218,7 +218,7 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             val addingTemplateOperation = AddingLegacyTemplate(
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(indexPattern("test1"), indexPattern("test2")),
-              aliases = Set(clusterIndexName("test1_alias"), clusterIndexName("test2_alias"))
+              aliases = Set(requestedIndex("test1_alias"), requestedIndex("test2_alias"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -231,7 +231,7 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             val addingTemplateOperation = AddingLegacyTemplate(
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(indexPattern("test1"), indexPattern("test2")),
-              aliases = Set(clusterIndexName("{index}_alias"))
+              aliases = Set(requestedIndex("{index}_alias"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -327,7 +327,7 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             val addingTemplateOperation = AddingLegacyTemplate(
               name = existingTemplate.name,
               patterns = UniqueNonEmptyList.of(indexPattern("test1"), indexPattern("test2"), indexPattern("test3")),
-              aliases = Set(clusterIndexName("test1_alias"), clusterIndexName("test2_alias"))
+              aliases = Set(requestedIndex("test1_alias"), requestedIndex("test2_alias"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -347,7 +347,7 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             val addingTemplateOperation = AddingLegacyTemplate(
               name = existingTemplate.name,
               patterns = UniqueNonEmptyList.of(indexPattern("test1"), indexPattern("test2"), indexPattern("test3")),
-              aliases = Set(clusterIndexName("{index}_alias"))
+              aliases = Set(requestedIndex("{index}_alias"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -413,7 +413,7 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
                 .template(AddingLegacyTemplate(
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                  aliases = Set(clusterIndexName("test1_alias"), clusterIndexName("alias_test1"))
+                  aliases = Set(requestedIndex("test1_alias"), requestedIndex("alias_test1"))
                 ))
             )
           }
@@ -424,7 +424,7 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
                 .template(AddingLegacyTemplate(
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                  aliases = Set(clusterIndexName("{index}_alias"), clusterIndexName("alias_{index}"))
+                  aliases = Set(requestedIndex("{index}_alias"), requestedIndex("alias_{index}"))
                 ))
             )
           }
@@ -510,7 +510,7 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
                 .template(AddingLegacyTemplate(
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                  aliases = Set(clusterIndexName("test1_alias"), clusterIndexName("alias_test1"))
+                  aliases = Set(requestedIndex("test1_alias"), requestedIndex("alias_test1"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
@@ -527,7 +527,7 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
                 .template(AddingLegacyTemplate(
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                  aliases = Set(clusterIndexName("{index}_alias"), clusterIndexName("alias_{index}"))
+                  aliases = Set(requestedIndex("{index}_alias"), requestedIndex("alias_{index}"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )

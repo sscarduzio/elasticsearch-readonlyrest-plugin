@@ -16,22 +16,23 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 
 import scala.language.implicitConversions
 
-class IndicesListOps(val indices: List[ClusterIndexName]) extends AnyVal {
+class RequestedIndicesOps(val indices: Iterable[RequestedIndex[ClusterIndexName]]) extends AnyVal {
 
-  def randomNonexistentIndex(): ClusterIndexName = {
-    val foundIndex = indices.find(_.hasWildcard) orElse indices.headOption
+  def randomNonexistentIndex(): RequestedIndex[ClusterIndexName] = {
+    val foundIndex = indices.find(_.name.hasWildcard) orElse indices.headOption
     foundIndex match {
       case Some(indexName) => indexName.randomNonexistentIndex()
-      case None => ClusterIndexName.Local.randomNonexistentIndex()
+      case None => RequestedIndex(ClusterIndexName.Local.randomNonexistentIndex(), excluded = false)
     }
   }
 
 }
 
-object IndicesListOps {
-  implicit def toOps(indices: List[ClusterIndexName]): IndicesListOps = new IndicesListOps(indices)
+object RequestedIndicesOps {
+  implicit def toOps(indices: Iterable[RequestedIndex[ClusterIndexName]]): RequestedIndicesOps =
+    new RequestedIndicesOps(indices)
 }

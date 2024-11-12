@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -55,13 +55,13 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
   override def modifyWhenIndexNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
       val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
-      if (nonExistentIndex.hasWildcard) {
+      if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
           .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
         update(
           request = actionRequest,
-          indices = nonExistingIndices,
+          filteredRequestedIndices = nonExistingIndices,
           filter = initialBlockContext.filter,
           fieldLevelSecurity = initialBlockContext.fieldLevelSecurity
         )
@@ -72,7 +72,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     } else {
       update(
         request = actionRequest,
-        indices = NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.filteredIndices)),
+        filteredRequestedIndices = NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.filteredIndices)),
         filter = initialBlockContext.filter,
         fieldLevelSecurity = initialBlockContext.fieldLevelSecurity
       )
@@ -90,17 +90,17 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     }
   }
 
-  protected def indicesFrom(request: R): Set[ClusterIndexName]
+  protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]]
 
   protected def update(request: R,
-                       indices: NonEmptyList[ClusterIndexName],
+                       filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                        filter: Option[Filter],
                        fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult
 
   protected def requestFieldsUsage: RequestFieldsUsage
 
   private def discoverIndices() = {
-    val indices = indicesFrom(actionRequest).orWildcardWhenEmpty
+    val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
     logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
     indices
   }

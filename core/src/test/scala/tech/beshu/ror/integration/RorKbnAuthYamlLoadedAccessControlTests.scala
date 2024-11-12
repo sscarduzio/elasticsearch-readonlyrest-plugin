@@ -126,7 +126,7 @@ class RorKbnAuthYamlLoadedAccessControlTests
           val preferredGroup = group("mapped_viewer_group")
 
           val request = MockRequestContext.indices.copy(
-            filteredIndices = Set(clusterIndexName("index2")),
+            filteredIndices = Set(requestedIndex("index2")),
             allAllowedIndices = Set(clusterIndexName("index2")),
             headers = Set(bearerHeader(jwtBuilder), preferredGroup.id.toCurrentGroupHeader)
           )
@@ -140,7 +140,7 @@ class RorKbnAuthYamlLoadedAccessControlTests
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               currentGroup = Some(preferredGroup.id),
               availableGroups = UniqueList.of(preferredGroup),
-              indices = Set(clusterIndexName("index2"))
+              indices = Set(requestedIndex("index2"))
             ) {
               blockContext
             }

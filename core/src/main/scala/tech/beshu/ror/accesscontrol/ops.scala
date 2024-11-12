@@ -30,12 +30,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -138,7 +138,8 @@ object orders {
   implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
   implicit val actionOrder: Order[Action] = Order.by(_.value)
   implicit val authKeyOrder: Order[PlainTextSecret] = Order.by(_.value)
-  implicit val indexOrder: Order[ClusterIndexName] = Order.by(_.stringify)
+  implicit val custerIndexNameOrder: Order[ClusterIndexName] = Order.by(_.stringify)
+  implicit val requestedIndexOrder: Order[RequestedIndex[ClusterIndexName]] = Order.by(r => (r.excluded, r.name))
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.toString)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)

@@ -21,11 +21,11 @@ import eu.timepit.refined.auto.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.domain.Template.ComponentTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingComponentTemplate, DeletingComponentTemplates, GettingComponentTemplates}
-import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
-import tech.beshu.ror.accesscontrol.orders.indexOrder
+import tech.beshu.ror.accesscontrol.domain.{RequestedIndex, TemplateName, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, unsafeNes}
+import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, requestedIndex, unsafeNes}
 
 private [indices] trait IndicesRuleComponentTemplateTests {
   this: BaseIndicesRuleTests =>
@@ -122,7 +122,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
           "rule allows access to all indices" in {
             val addingTemplateOperation = AddingComponentTemplate(
               name = TemplateName("t1"),
-              aliases = Set(clusterIndexName("alias1"))
+              aliases = Set(requestedIndex("alias1"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("*")),
@@ -134,7 +134,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
           "rule allows access to index name which is used in template's aliases list" in {
             val addingTemplateOperation = AddingComponentTemplate(
               name = TemplateName("t1"),
-              aliases = Set(clusterIndexName("alias1"))
+              aliases = Set(requestedIndex("alias1"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("alias1")),
@@ -146,7 +146,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
           "rule allows access to index name with wildcard which is a superset of the pattern in template's aliases list" in {
             val addingTemplateOperation = AddingComponentTemplate(
               name = TemplateName("t1"),
-              aliases = Set(clusterIndexName("test1*"))
+              aliases = Set(requestedIndex("test1*"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -158,7 +158,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
           "rule allows access to index name with wildcard which matches both patterns in template's aliases list" in {
             val addingTemplateOperation = AddingComponentTemplate(
               name = TemplateName("t1"),
-              aliases = Set(clusterIndexName("test1"), clusterIndexName("test2"))
+              aliases = Set(requestedIndex("test1"), requestedIndex("test2"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -176,7 +176,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
             )
             val addingTemplateOperation = AddingComponentTemplate(
               name = existingTemplate.name,
-              aliases = Set(clusterIndexName("test2"))
+              aliases = Set(requestedIndex("test2"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("*")),
@@ -194,7 +194,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
             )
             val addingTemplateOperation = AddingComponentTemplate(
               name = existingTemplate.name,
-              aliases = existingTemplate.aliases
+              aliases = existingTemplate.aliases.map(RequestedIndex(_, excluded = false))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1")),
@@ -212,7 +212,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
             )
             val addingTemplateOperation = AddingComponentTemplate(
               name = existingTemplate.name,
-              aliases = Set(clusterIndexName("test2*"))
+              aliases = Set(requestedIndex("test2*"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -230,7 +230,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
             )
             val addingTemplateOperation = AddingComponentTemplate(
               name = existingTemplate.name,
-              aliases = Set(clusterIndexName("test1"), clusterIndexName("test2"), clusterIndexName("test3"))
+              aliases = Set(requestedIndex("test1"), requestedIndex("test2"), requestedIndex("test3"))
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
@@ -251,7 +251,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
                   name = TemplateName("t1"),
-                  aliases = Set(clusterIndexName("test2"))
+                  aliases = Set(requestedIndex("test2"))
                 ))
             )
           }
@@ -261,7 +261,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
                   name = TemplateName("t1"),
-                  aliases = Set(clusterIndexName("test*"))
+                  aliases = Set(requestedIndex("test*"))
                 ))
             )
           }
@@ -271,7 +271,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
                   name = TemplateName("t1"),
-                  aliases = Set(clusterIndexName("test*"))
+                  aliases = Set(requestedIndex("test*"))
                 ))
             )
           }
@@ -281,7 +281,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
                   name = TemplateName("t1"),
-                  aliases = Set(clusterIndexName("test1*"), clusterIndexName("index1*"))
+                  aliases = Set(requestedIndex("test1*"), requestedIndex("index1*"))
                 ))
             )
           }
@@ -297,7 +297,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
                   name = existingTemplate.name,
-                  aliases = Set(clusterIndexName("test1"))
+                  aliases = Set(requestedIndex("test1"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
@@ -312,7 +312,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
                   name = existingTemplate.name,
-                  aliases = Set(clusterIndexName("test1"))
+                  aliases = Set(requestedIndex("test1"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
@@ -327,7 +327,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
                   name = existingTemplate.name,
-                  aliases = Set(clusterIndexName("test*"))
+                  aliases = Set(requestedIndex("test*"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
@@ -342,7 +342,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
                   name = existingTemplate.name,
-                  aliases = Set(clusterIndexName("test*"))
+                  aliases = Set(requestedIndex("test*"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
@@ -485,7 +485,7 @@ private [indices] trait IndicesRuleComponentTemplateTests {
       "multi filterable request tries to fetch data for not allowed index" in {
         assertNotMatchRuleForMultiIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1")),
-          indexPacks = Indices.Found(Set(clusterIndexName("test2"))) :: Nil
+          indexPacks = Indices.Found(Set(requestedIndex("test2"))) :: Nil
         )
       }
     }

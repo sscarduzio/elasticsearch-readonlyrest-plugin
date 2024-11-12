@@ -43,6 +43,7 @@ class SearchApiSuite
   override def nodeDataInitializer = Some(SearchApiSuite.nodeDataInitializer())
 
   private lazy val user1SearchManager = new SearchManager(basicAuthClient("user1", "test"), esVersionUsed)
+  private lazy val user2SearchManager = new SearchManager(basicAuthClient("user2", "test"), esVersionUsed)
 
   private lazy val restrictedDevSearchManager = new SearchManager(basicAuthClient("restricted", "dev"), esVersionUsed)
   private lazy val unrestrictedDevSearchManager = new SearchManager(basicAuthClient("unrestricted", "dev"), esVersionUsed)
@@ -145,6 +146,27 @@ class SearchApiSuite
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
+      }
+      "all requested indices are allowed" in {
+        val result = user2SearchManager.search("sys_logs*", "-*old")
+
+        result should have statusCode 200
+        val searchResults = result.searchHits.map(_("_source").obj("message").str)
+        searchResults.sorted should be(List("test1", "test2", "test3"))
+      }
+    }
+    "return no results" when {
+      "only not allowed indices are involved" in {
+        val result = user2SearchManager.search("business_logs*")
+
+        result should have statusCode 200
+        result.searchHits should be (List.empty)
+      }
+      "excluded index is not allowed" in {
+        val result = user2SearchManager.search("*logs*", "-sys_logs*")
+
+        result should have statusCode 200
+        result.searchHits should be(List.empty)
       }
     }
   }
@@ -310,6 +332,13 @@ object SearchApiSuite {
 
     indexManager.createAliasOf("logs-0001", "all-logs")
     indexManager.createAliasOf("logs-0002", "all-logs")
+
+    documentManager.createDoc("sys_logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("sys_logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("sys_logs-0002", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("sys_logs-old", 1, ujson.read(s"""{ "message":"test4", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+
+    documentManager.createDoc("business_logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
   }
 
   private def createRealLifeTestsDocumentsAndAliases(indexManager: IndexManager,
@@ -339,4 +368,5 @@ object SearchApiSuite {
       )
       .force()
   }
+
 }

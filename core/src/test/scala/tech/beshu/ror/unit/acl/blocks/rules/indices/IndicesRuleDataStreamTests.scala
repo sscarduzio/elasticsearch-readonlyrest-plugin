@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import eu.timepit.refined.auto.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.orders.indexOrder
+import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -37,7 +37,7 @@ trait IndicesRuleDataStreamTests {
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds")))
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test_ds")),
+          filteredRequestedIndices = Set(requestedIndex("test_ds")),
         )
       }
       "no data stream passed, one is configured, there is two real data streams" in {
@@ -51,13 +51,13 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
             ),
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds")),
+          filteredRequestedIndices = Set(requestedIndex("test1_ds")),
         )
       }
       "'_all' passed, one is configured, there is two real data streams" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          requestIndices = Set(clusterIndexName("_all")),
+          requestIndices = Set(requestedIndex("_all")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -65,13 +65,13 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
             )
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
       "'*' passed, one is configured, there is one real data stream" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          requestIndices = Set(clusterIndexName("*")),
+          requestIndices = Set(requestedIndex("*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -79,112 +79,112 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
             )
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
       "one full name data stream passed, one full name data stream configured, no real data streams" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_ds")),
-          requestIndices = Set(clusterIndexName("test_ds")),
+          requestIndices = Set(requestedIndex("test_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set.empty
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test_ds"))
         )
       }
       "one wildcard data stream passed, one full name data stream configured, no real data streams" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_ds")),
-          requestIndices = Set(clusterIndexName("te*")),
+          requestIndices = Set(requestedIndex("te*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"))),
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test_ds"))
         )
       }
       "one full name data stream passed, one wildcard data stream configured, no real data streams" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("t*")),
-          requestIndices = Set(clusterIndexName("test_ds")),
+          requestIndices = Set(requestedIndex("test_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test_ds"))
         )
       }
       "two full name data streams passed, the same two full name data streams configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
-          requestIndices = Set(clusterIndexName("test2_ds"), clusterIndexName("test1_ds")),
+          requestIndices = Set(requestedIndex("test2_ds"), requestedIndex("test1_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test2_ds"), clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test2_ds"), requestedIndex("test1_ds"))
         )
       }
       "two full name dat streams passed, one the same, one different data stream configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
-          requestIndices = Set(clusterIndexName("test1_ds"), clusterIndexName("test3_ds")),
+          requestIndices = Set(requestedIndex("test1_ds"), requestedIndex("test3_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
       "two matching wildcard data streams passed, two full name data streams configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
-          requestIndices = Set(clusterIndexName("*2_ds"), clusterIndexName("*1_ds")),
+          requestIndices = Set(requestedIndex("*2_ds"), requestedIndex("*1_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds"), clusterIndexName("test2_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test1_ds"), requestedIndex("test2_ds"))
         )
       }
       "two full name data streams passed, two matching wildcard data streams configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*1_ds"), indexNameVar("*2_ds")),
-          requestIndices = Set(clusterIndexName("test2_ds"), clusterIndexName("test1_ds")),
+          requestIndices = Set(requestedIndex("test2_ds"), requestedIndex("test1_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test2_ds"), clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test2_ds"), requestedIndex("test1_ds"))
         )
       }
       "two full name data streams passed, one matching full name and one non-matching wildcard data stream configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("*2")),
-          requestIndices = Set(clusterIndexName("test1_ds"), clusterIndexName("test3_ds")),
+          requestIndices = Set(requestedIndex("test1_ds"), requestedIndex("test3_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
       "one matching wildcard data stream passed and one non-matching full name index, two full name data streams configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("*2_ds")),
-          requestIndices = Set(clusterIndexName("*1_ds"), clusterIndexName("test3_ds")),
+          requestIndices = Set(requestedIndex("*1_ds"), requestedIndex("test3_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
       "one full name alias passed, full name data stream related to that alias configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          requestIndices = Set(clusterIndexName("test_alias")),
+          requestIndices = Set(requestedIndex("test_alias")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -192,13 +192,13 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
             )
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
       "wildcard alias passed, full name data stream related to alias matching passed one configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          requestIndices = Set(clusterIndexName("*_alias")),
+          requestIndices = Set(requestedIndex("*_alias")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -206,13 +206,13 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
             )
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
       "one full name alias passed, wildcard data stream configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*_ds")),
-          requestIndices = Set(clusterIndexName("test_alias")),
+          requestIndices = Set(requestedIndex("test_alias")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -220,13 +220,13 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias"))),
             )
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds"), clusterIndexName("test2_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test1_ds"), requestedIndex("test2_ds"))
         )
       }
       "one alias passed, only subset of alias data streams configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
-          requestIndices = Set(clusterIndexName("test_alias")),
+          requestIndices = Set(requestedIndex("test_alias")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -236,13 +236,13 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
             )
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test1_ds"), clusterIndexName("test2_ds"))
+          filteredRequestedIndices = Set(requestedIndex("test1_ds"), requestedIndex("test2_ds"))
         )
       }
       "one alias passed, one alias configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_alias")),
-          requestIndices = Set(clusterIndexName("test_alias")),
+          requestIndices = Set(requestedIndex("test_alias")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -252,13 +252,13 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
             )
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test_alias"))
+          filteredRequestedIndices = Set(requestedIndex("test_alias"))
         )
       }
       "one alias pattern passed, one alias configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_alias")),
-          requestIndices = Set(clusterIndexName("test_al*")),
+          requestIndices = Set(requestedIndex("test_al*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -268,91 +268,91 @@ trait IndicesRuleDataStreamTests {
               fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
             )
           ),
-          filteredRequestedIndices = Set(clusterIndexName("test_alias"))
+          filteredRequestedIndices = Set(requestedIndex("test_alias"))
         )
       }
       "one backing index passed, one data stream configured, there is one real data stream" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          requestIndices = Set(clusterIndexName(".ds-test1_ds")),
+          requestIndices = Set(requestedIndex(".ds-test1_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
           filteredRequestedIndices = Set(
-            clusterIndexName(".ds-test1_ds"),
+            requestedIndex(".ds-test1_ds"),
           )
         )
       }
       "one backing index pattern passed, one data stream configured, there is one real data stream" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          requestIndices = Set(clusterIndexName(".ds-test*")),
+          requestIndices = Set(requestedIndex(".ds-test*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
           filteredRequestedIndices = Set(
-            clusterIndexName(".ds-test1_ds"),
+            requestedIndex(".ds-test1_ds"),
           )
         )
       }
       "one backing index pattern passed, one backing index configured, there is one real data stream" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar(".ds-test1_ds")),
-          requestIndices = Set(clusterIndexName(".ds-test*")),
+          requestIndices = Set(requestedIndex(".ds-test*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
           filteredRequestedIndices = Set(
-            clusterIndexName(".ds-test1_ds"),
+            requestedIndex(".ds-test1_ds"),
           )
         )
       }
       "one backing index pattern passed, one backing index pattern configured, there is one real data stream" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar(".ds-test1*")),
-          requestIndices = Set(clusterIndexName(".ds-test*")),
+          requestIndices = Set(requestedIndex(".ds-test*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
           filteredRequestedIndices = Set(
-            clusterIndexName(".ds-test1_ds"),
+            requestedIndex(".ds-test1_ds"),
           )
         )
       }
       "one backing index passed, data stream pattern configured, there is one real data stream" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test*")),
-          requestIndices = Set(clusterIndexName(".ds-test1_ds")),
+          requestIndices = Set(requestedIndex(".ds-test1_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
           filteredRequestedIndices = Set(
-            clusterIndexName(".ds-test1_ds"),
+            requestedIndex(".ds-test1_ds"),
           )
         )
       }
       "one backing index pattern passed, data stream pattern configured, there is one real data stream" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test*")),
-          requestIndices = Set(clusterIndexName(".ds-test*")),
+          requestIndices = Set(requestedIndex(".ds-test*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
           ),
           filteredRequestedIndices = Set(
-            clusterIndexName(".ds-test1_ds"),
+            requestedIndex(".ds-test1_ds"),
           )
         )
       }
       "cross cluster data stream is used together with local data stream" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("es_pl:test1*"), indexNameVar("local*")),
-          requestIndices = Set(clusterIndexName("local_ds*"), clusterIndexName("es_pl:test1_ds*")),
+          requestIndices = Set(requestedIndex("local_ds*"), requestedIndex("es_pl:test1_ds*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -370,17 +370,17 @@ trait IndicesRuleDataStreamTests {
             ))
           ),
           filteredRequestedIndices = Set(
-            clusterIndexName("local_ds1"),
-            clusterIndexName("local_ds2"),
-            clusterIndexName("es_pl:test1_ds1"),
-            clusterIndexName("es_pl:test1_ds2")
+            requestedIndex("local_ds1"),
+            requestedIndex("local_ds2"),
+            requestedIndex("es_pl:test1_ds1"),
+            requestedIndex("es_pl:test1_ds2")
           )
         )
       }
       "cross cluster data stream backing index is used when data stream configured" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*:test1_ds")),
-          requestIndices = Set(clusterIndexName("es_us:.ds-test1_ds")),
+          requestIndices = Set(requestedIndex("es_us:.ds-test1_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set.empty,
@@ -389,19 +389,19 @@ trait IndicesRuleDataStreamTests {
             ))
           ),
           filteredRequestedIndices = Set(
-            clusterIndexName("es_us:.ds-test1_ds"),
+            requestedIndex("es_us:.ds-test1_ds"),
           )
         )
       }
       "multi filterable request tries to fetch data for allowed and not allowed data streams" in {
         assertMatchRuleForMultiIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          indexPacks = Indices.Found(Set(clusterIndexName("test1_ds"), clusterIndexName("test2_ds"))) :: Nil,
+          indexPacks = Indices.Found(Set(requestedIndex("test1_ds"), requestedIndex("test2_ds"))) :: Nil,
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
           ),
-          allowed = Indices.Found(Set(clusterIndexName("test1_ds"))) :: Nil
+          allowed = Indices.Found(Set(requestedIndex("test1_ds"))) :: Nil
         )
       }
     }
@@ -419,7 +419,7 @@ trait IndicesRuleDataStreamTests {
       "'_all' passed, one is configured, no real data streams" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_ds")),
-          requestIndices = Set(clusterIndexName("_all")),
+          requestIndices = Set(requestedIndex("_all")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set.empty
@@ -429,7 +429,7 @@ trait IndicesRuleDataStreamTests {
       "'*' passed, one is configured, no real data streams" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_ds")),
-          requestIndices = Set(clusterIndexName("*")),
+          requestIndices = Set(requestedIndex("*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set.empty
@@ -439,7 +439,7 @@ trait IndicesRuleDataStreamTests {
       "one full name data stream passed, different one full name data stream configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          requestIndices = Set(clusterIndexName("test2_ds")),
+          requestIndices = Set(requestedIndex("test2_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
@@ -449,7 +449,7 @@ trait IndicesRuleDataStreamTests {
       "one wildcard data stream passed, non-matching data stream with full name configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          requestIndices = Set(clusterIndexName("*2")),
+          requestIndices = Set(requestedIndex("*2")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
@@ -459,7 +459,7 @@ trait IndicesRuleDataStreamTests {
       "one full name data stream passed, non-matching data stream with wildcard configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*1")),
-          requestIndices = Set(clusterIndexName("test2_ds")),
+          requestIndices = Set(requestedIndex("test2_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
@@ -469,7 +469,7 @@ trait IndicesRuleDataStreamTests {
       "two full name data streams passed, different two full name data streams configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
-          requestIndices = Set(clusterIndexName("test4_ds"), clusterIndexName("test3_ds")),
+          requestIndices = Set(requestedIndex("test4_ds"), requestedIndex("test3_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
@@ -479,7 +479,7 @@ trait IndicesRuleDataStreamTests {
       "two wildcard data streams passed, non-matching two full name data streams configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
-          requestIndices = Set(clusterIndexName("*4"), clusterIndexName("*3")),
+          requestIndices = Set(requestedIndex("*4"), requestedIndex("*3")),
           modifyRequestContext = _.copy(
             allDataStreamsAndAliases = testDataStreams
           )
@@ -488,7 +488,7 @@ trait IndicesRuleDataStreamTests {
       "two full name data streams passed, non-matching two wildcard data streams configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*1"), indexNameVar("*2")),
-          requestIndices = Set(clusterIndexName("test4_ds"), clusterIndexName("test3_ds")),
+          requestIndices = Set(requestedIndex("test4_ds"), requestedIndex("test3_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = testDataStreams
@@ -498,7 +498,7 @@ trait IndicesRuleDataStreamTests {
       "one full name alias passed, full name data stream with no alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          requestIndices = Set(clusterIndexName("test_alias")),
+          requestIndices = Set(requestedIndex("test_alias")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -511,7 +511,7 @@ trait IndicesRuleDataStreamTests {
       "one data stream name passed, full name data stream alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_alias")),
-          requestIndices = Set(clusterIndexName("test2_ds")),
+          requestIndices = Set(requestedIndex("test2_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -524,7 +524,7 @@ trait IndicesRuleDataStreamTests {
       "wildcard alias passed, full name data stream with no alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
-          requestIndices = Set(clusterIndexName("*_alias")),
+          requestIndices = Set(requestedIndex("*_alias")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -537,7 +537,7 @@ trait IndicesRuleDataStreamTests {
       "full name data stream passed, data stream alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test12_alias")),
-          requestIndices = Set(clusterIndexName("test1_ds")),
+          requestIndices = Set(requestedIndex("test1_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -552,7 +552,7 @@ trait IndicesRuleDataStreamTests {
       "one backing index passed, one full data stream alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_alias1")),
-          requestIndices = Set(clusterIndexName(".ds-test1_ds")),
+          requestIndices = Set(requestedIndex(".ds-test1_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -567,7 +567,7 @@ trait IndicesRuleDataStreamTests {
       "one backing index passed, one data stream alias pattern configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_al*")),
-          requestIndices = Set(clusterIndexName(".ds-test1_ds")),
+          requestIndices = Set(requestedIndex(".ds-test1_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -582,7 +582,7 @@ trait IndicesRuleDataStreamTests {
       "one backing index pattern passed, one full data stream alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_alias")),
-          requestIndices = Set(clusterIndexName(".ds-test*")),
+          requestIndices = Set(requestedIndex(".ds-test*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -597,7 +597,7 @@ trait IndicesRuleDataStreamTests {
       "one backing index pattern passed, one data stream alias pattern configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_al*")),
-          requestIndices = Set(clusterIndexName(".ds-test*")),
+          requestIndices = Set(requestedIndex(".ds-test*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -618,7 +618,7 @@ trait IndicesRuleDataStreamTests {
         "requested data stream name with wildcard is the same as configured data stream name with wildcard" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("es_u*:*-logs-*")),
-            requestIndices = Set(clusterIndexName("e*:*-logs-*")),
+            requestIndices = Set(requestedIndex("e*:*-logs-*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set.empty,
               allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
@@ -633,16 +633,16 @@ trait IndicesRuleDataStreamTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("es_us:c01-logs-2020-03-27"),
-              clusterIndexName("es_us:c01-logs-2020-03-28"),
-              clusterIndexName("es_us:c01-logs-2020-03-29")
+              requestedIndex("es_us:c01-logs-2020-03-27"),
+              requestedIndex("es_us:c01-logs-2020-03-28"),
+              requestedIndex("es_us:c01-logs-2020-03-29")
             )
           )
         }
         "requested data stream name with wildcard is more general version of the configured data stream name with wildcard" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("es_u*:*-logs-*")),
-            requestIndices = Set(clusterIndexName("e*:*-logs-*")),
+            requestIndices = Set(requestedIndex("e*:*-logs-*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set.empty,
               allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
@@ -657,16 +657,16 @@ trait IndicesRuleDataStreamTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("es_us:c01-logs-2020-03-27"),
-              clusterIndexName("es_us:c01-logs-2020-03-28"),
-              clusterIndexName("es_us:c01-logs-2020-03-29")
+              requestedIndex("es_us:c01-logs-2020-03-27"),
+              requestedIndex("es_us:c01-logs-2020-03-28"),
+              requestedIndex("es_us:c01-logs-2020-03-29")
             )
           )
         }
         "requested data stream name with wildcard is more specialized version of the configured data stream name with wildcard" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("es_u*:*-logs-*")),
-            requestIndices = Set(clusterIndexName("e*:*-logs-2020-03-2*")),
+            requestIndices = Set(requestedIndex("e*:*-logs-2020-03-2*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set.empty,
               allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
@@ -682,16 +682,16 @@ trait IndicesRuleDataStreamTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("es_us:c01-logs-2020-03-27"),
-              clusterIndexName("es_us:c01-logs-2020-03-28"),
-              clusterIndexName("es_us:c01-logs-2020-03-29")
+              requestedIndex("es_us:c01-logs-2020-03-27"),
+              requestedIndex("es_us:c01-logs-2020-03-28"),
+              requestedIndex("es_us:c01-logs-2020-03-29")
             )
           )
         }
         "requested data stream name with wildcard doesn't match the configured data stream name with wildcard but it does match the resolved data stream name" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("es_u*:*-logs-*")),
-            requestIndices = Set(clusterIndexName("e*:c0*")),
+            requestIndices = Set(requestedIndex("e*:c0*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set.empty,
               allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
@@ -706,16 +706,16 @@ trait IndicesRuleDataStreamTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("es_us:c01-logs-2020-03-27"),
-              clusterIndexName("es_us:c01-logs-2020-03-28"),
-              clusterIndexName("es_us:c01-logs-2020-03-29")
+              requestedIndex("es_us:c01-logs-2020-03-27"),
+              requestedIndex("es_us:c01-logs-2020-03-28"),
+              requestedIndex("es_us:c01-logs-2020-03-29")
             )
           )
         }
         "requested data stream alias pattern when data stream configured" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("*:test1_ds")),
-            requestIndices = Set(clusterIndexName("es_us:test1_al*")),
+            requestIndices = Set(requestedIndex("es_us:test1_al*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set.empty,
               allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
@@ -726,14 +726,14 @@ trait IndicesRuleDataStreamTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("es_us:test1_ds")
+              requestedIndex("es_us:test1_ds")
             )
           )
         }
         "requested data stream alias when data stream configured" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("*:test_ds")),
-            requestIndices = Set(clusterIndexName("es_us:test_alias")),
+            requestIndices = Set(requestedIndex("es_us:test_alias")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set.empty,
               allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
@@ -744,14 +744,14 @@ trait IndicesRuleDataStreamTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("es_us:test_ds")
+              requestedIndex("es_us:test_ds")
             )
           )
         }
         "requested data stream alias when data stream alias configured" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("*:test_alias")),
-            requestIndices = Set(clusterIndexName("es_us:test_alias")),
+            requestIndices = Set(requestedIndex("es_us:test_alias")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set.empty,
               allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
@@ -762,14 +762,14 @@ trait IndicesRuleDataStreamTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("es_us:test_alias")
+              requestedIndex("es_us:test_alias")
             )
           )
         }
         "requested data stream alias pattern when data stream alias configured" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("*:test_alias")),
-            requestIndices = Set(clusterIndexName("es_us:test_al*")),
+            requestIndices = Set(requestedIndex("es_us:test_al*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set.empty,
               allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
@@ -779,7 +779,7 @@ trait IndicesRuleDataStreamTests {
               ))
             ),
             filteredRequestedIndices = Set(
-              clusterIndexName("es_us:test_alias")
+              requestedIndex("es_us:test_alias")
             )
           )
         }
@@ -789,7 +789,7 @@ trait IndicesRuleDataStreamTests {
       "not allowed cluster data streams are being called" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*-logs-*"), indexNameVar("es_u*:*-logs-*")),
-          requestIndices = Set(clusterIndexName("pub*:*logs*")),
+          requestIndices = Set(requestedIndex("pub*:*logs*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set(
@@ -812,7 +812,7 @@ trait IndicesRuleDataStreamTests {
       "cross cluster data stream backing index is used when data stream alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*:test_alias")),
-          requestIndices = Set(clusterIndexName("es_us:.ds-test1_ds")),
+          requestIndices = Set(requestedIndex("es_us:.ds-test1_ds")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set.empty,
             allDataStreamsAndAliases = Set.empty,

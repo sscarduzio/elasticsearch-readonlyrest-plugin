@@ -139,7 +139,7 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private def isTargetingKibana = ProcessingContext.create { (requestContext, kibanaIndexName) =>
     val result = if (requestContext.initialBlockContext.indices.nonEmpty) {
-      requestContext.initialBlockContext.indices.forall(_.isRelatedToKibanaIndex(kibanaIndexName))
+      requestContext.initialBlockContext.indices.forall(_.name.isRelatedToKibanaIndex(kibanaIndexName))
     } else {
       false
     }
@@ -174,7 +174,9 @@ abstract class BaseKibanaRule(val settings: Settings)
   }
 
   private def isRelatedToSingleIndex(index: ClusterIndexName) = ProcessingContext.create { (requestContext, _) =>
-    val result = requestContext.initialBlockContext.indices == Set(index)
+    val result = requestContext.initialBlockContext.indices.headOption match
+      case Some(requestedIndex) if requestedIndex.name == index => true
+      case Some(_) | None => false
     logger.debug(s"[${requestContext.id.show}] Is related to single index '${index.nonEmptyStringify}'? ${result.show}")
     result
   }
@@ -182,7 +184,7 @@ abstract class BaseKibanaRule(val settings: Settings)
   private def isRelatedToKibanaSampleDataIndex = ProcessingContext.create { (requestContext, _) =>
     val result = requestContext.initialBlockContext.indices.toList match {
       case Nil => false
-      case head :: Nil => kibanaSampleDataIndexMatcher.`match`(head)
+      case head :: Nil => kibanaSampleDataIndexMatcher.`match`(head.name)
       case _ => false
     }
     logger.debug(s"[${requestContext.id.show}] Is related to Kibana sample data index? ${result.show}")

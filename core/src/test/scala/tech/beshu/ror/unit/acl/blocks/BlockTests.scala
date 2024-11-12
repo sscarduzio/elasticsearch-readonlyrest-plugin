@@ -134,7 +134,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
 
       def withIndices: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
-        _.withIndices(Set(clusterIndexName("idx1")), Set(clusterIndexName("idx*")))
+        _.withIndices(Set(requestedIndex("idx1")), Set(clusterIndexName("idx*")))
 
       val blockName = Block.Name("test_block")
       val block = new Block(
@@ -163,7 +163,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
               .empty
               .withLoggedUser(DirectlyLoggedUser(User.Id("user1")))
           )
-          blockContext.filteredIndices should be(Set(clusterIndexName("idx1")))
+          blockContext.filteredIndices should be(Set(requestedIndex("idx1")))
           blockContext.allAllowedIndices should be(Set(clusterIndexName("idx*")))
           blockContext.responseHeaders should be(Set.empty)
       }

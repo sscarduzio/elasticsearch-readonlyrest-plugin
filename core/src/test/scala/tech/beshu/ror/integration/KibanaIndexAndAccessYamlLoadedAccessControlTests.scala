@@ -100,7 +100,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           val request = MockRequestContext.indices.copy(
             headers = Set(basicAuthHeader("john:dev")),
             action = Action("indices:monitor/*"),
-            filteredIndices = Set(clusterIndexName(".readonlyrest"))
+            filteredIndices = Set(requestedIndex(".readonlyrest"))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -111,7 +111,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
               kibanaIndex = Some(kibanaIndexName(".kibana_template")),
               kibanaAccess = Some(KibanaAccess.Admin),
-              indices = Set(clusterIndexName(".readonlyrest")),
+              indices = Set(requestedIndex(".readonlyrest")),
             ) {
               blockContext
             }
@@ -188,7 +188,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           uriPath = UriPath.from("/.kibana_ror_custom/_doc/dashboard:d3d40550-b889-11eb-a1e1-914af9365d47"),
           method = Method.PUT,
           action = Action("indices:data/write/index"),
-          filteredIndices = Set(clusterIndexName(".kibana_ror_custom"))
+          filteredIndices = Set(requestedIndex(".kibana_ror_custom"))
         )
 
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -201,7 +201,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             availableGroups = UniqueList.of(group("RW_ror_custom")),
             kibanaIndex = Some(kibanaIndexName(".kibana_ror_custom")),
             kibanaAccess = Some(KibanaAccess.RW),
-            indices = Set(clusterIndexName(".kibana_ror_custom")),
+            indices = Set(requestedIndex(".kibana_ror_custom")),
           ) {
             blockContext
           }
@@ -242,7 +242,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           uriPath = UriPath.from("/.kibana_admins/_create/index-pattern:3b2fa1b0-bcb2-11eb-a20e-8daf1d07a2b2"),
           method = Method.PUT,
           action = Action("indices:data/write/index"),
-          filteredIndices = Set(clusterIndexName(".kibana_admins"))
+          filteredIndices = Set(requestedIndex(".kibana_admins"))
         )
 
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -255,7 +255,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             availableGroups = UniqueList.of(group("Administrators")),
             kibanaIndex = Some(kibanaIndexName(".kibana_admins")),
             kibanaAccess = Some(KibanaAccess.Admin),
-            indices = Set(clusterIndexName(".kibana_admins")),
+            indices = Set(requestedIndex(".kibana_admins")),
             hiddenKibanaApps = Set(
               FullNameKibanaApp("Observability"),
               FullNameKibanaApp("Enterprise Search|Overview"),

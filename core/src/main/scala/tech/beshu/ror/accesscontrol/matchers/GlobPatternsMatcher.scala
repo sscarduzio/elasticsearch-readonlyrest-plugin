@@ -48,7 +48,7 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
   override def filter[B: Conversion](items: IterableOnce[B]): Set[B] = {
     filterWithConversion(items, implicitly[Conversion[B]])
   }
-  
+
   override def contains(str: String): Boolean = {
     values
       .map(implicitly[Matchable[A]].show)
