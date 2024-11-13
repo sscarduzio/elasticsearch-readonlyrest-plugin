@@ -30,7 +30,7 @@ import java.util
 import scala.jdk.CollectionConverters.*
 
 @Inject
-class RestRRTestConfigAction()
+class RestRRTestConfigAction
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(

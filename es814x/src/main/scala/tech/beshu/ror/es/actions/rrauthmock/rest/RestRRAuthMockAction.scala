@@ -31,7 +31,7 @@ import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 import scala.jdk.CollectionConverters.*
 
 @Inject
-class RestRRAuthMockAction()
+class RestRRAuthMockAction
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(

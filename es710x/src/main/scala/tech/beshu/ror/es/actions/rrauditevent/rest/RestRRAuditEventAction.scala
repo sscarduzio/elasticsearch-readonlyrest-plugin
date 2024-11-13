@@ -35,7 +35,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 @Inject
-class RestRRAuditEventAction()
+class RestRRAuditEventAction
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(

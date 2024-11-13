@@ -20,7 +20,7 @@ show_help() {
 
 export ES_VERSION=""
 export KBN_VERSION=""
-export ECK_VERSION="2.13.0"
+export ECK_VERSION="2.14.0"
 
 while [[ $# -gt 0 ]]; do
   case $1 in

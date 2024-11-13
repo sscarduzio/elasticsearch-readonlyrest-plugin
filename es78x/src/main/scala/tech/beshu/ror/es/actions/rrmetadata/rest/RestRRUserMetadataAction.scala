@@ -31,7 +31,7 @@ import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMet
 import scala.jdk.CollectionConverters.*
 
 @Inject
-class RestRRUserMetadataAction()
+class RestRRUserMetadataAction
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
