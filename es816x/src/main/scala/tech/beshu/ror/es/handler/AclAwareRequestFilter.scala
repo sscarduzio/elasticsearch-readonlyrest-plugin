@@ -234,6 +234,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: CompositeIndicesRequest =>
         ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
           case SqlIndicesEsRequestContext(r) => regularRequestHandler.handle(r)
+          case EsqlIndicesEsRequestContext(r) => regularRequestHandler.handle(r)
           case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case _ =>
