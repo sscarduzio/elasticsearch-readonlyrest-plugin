@@ -76,7 +76,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
             case Right(modifiedResponse) =>
               modifiedResponse
             case Left(EsqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
-              throw new SecurityPermissionException("Cannot apply field level security to the SQL response", ex)
+              throw new SecurityPermissionException("Cannot apply field level security to the ESQL response", ex)
           }
         }
       }

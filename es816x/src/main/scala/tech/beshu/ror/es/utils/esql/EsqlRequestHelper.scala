@@ -87,12 +87,8 @@ object EsqlRequestHelper {
 
   def modifyResponseAccordingToFieldLevelSecurity(response: ActionResponse,
                                                   fieldLevelSecurity: FieldLevelSecurity): Either[ModificationError, ActionResponse] = {
-    val result = Try {
-      implicit val classLoader: ClassLoader = response.getClass.getClassLoader
-      new EsqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions)
-      response
-    }
-    result.toEither.left.map(ModificationError.UnexpectedException.apply)
+    Try(new EsqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions).underlyingObject)
+      .toEither.left.map(ModificationError.UnexpectedException.apply)
   }
 
   sealed trait IndicesError
@@ -204,7 +200,7 @@ final class SimpleStatement(val underlyingObject: AnyRef)
     on(preAnalysis).get[java.util.List[AnyRef]]("indices").asScala.toList
   }
 
-  private def tableIdentifierFrom(tableInfo: Any)= {
+  private def tableIdentifierFrom(tableInfo: Any) = {
     on(tableInfo).call("id").get[Any]()
   }
 
@@ -248,77 +244,109 @@ final class Command(val underlyingObject: Any)
     } yield index.asInstanceOf[String]
   }
 }
-object Command {
-  def isClassOf(obj: Any)(implicit classLoader: ClassLoader): Boolean =
-    commandClass.isAssignableFrom(obj.getClass)
 
-  private def commandClass(implicit classLoader: ClassLoader): Class[_] =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.plan.logical.command.Command")
-}
+final class EsqlQueryResponse(val underlyingObject: ActionResponse) {
 
-final class EsqlQueryResponse(val underlyingObject: Any)
-                            (implicit classLoader: ClassLoader) {
+  def modifyByApplyingRestrictions(restrictions: FieldsRestrictions): this.type = {
+    val columnsMap = originColumns.map(ci => (ci.name, ci)).toMap
 
-  def modifyByApplyingRestrictions(restrictions: FieldsRestrictions): Unit = {
-    val columnsAndValues = getColumns.zip(getRows.transpose)
-    val columnsMap = columnsAndValues.map { case (column, values) => (column.name, (column, values)) }.toMap
-
-    val filteredColumnsAndValues = FieldsFiltering
+    val filteredColumns = FieldsFiltering
       .filterNonMetadataDocumentFields(NonMetadataDocumentFields(columnsMap), restrictions)
       .value.values
 
-    val filteredColumns = filteredColumnsAndValues.map(_._1).toList
-    val filteredRows = filteredColumnsAndValues.map(_._2).toList.transpose
-
     modifyColumns(filteredColumns)
-    modifyRows(filteredRows)
+    modifyPages(filteredColumns)
+
+    this
   }
 
-  private def getColumns: List[ColumnInfo] = {
-    ReflecUtils
-      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "columns", 0)
-      .invoke(underlyingObject)
-      .asInstanceOf[JList[AnyRef]]
-      .asSafeList
+  private lazy val originColumns = {
+    on(underlyingObject)
+      .get[JList[Any]]("columns").asSafeList
       .map(new ColumnInfo(_))
   }
 
-  private def getRows: List[List[Value]] = {
-    ReflecUtils
-      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "rows", 0)
-      .invoke(underlyingObject)
-      .asInstanceOf[JList[JList[AnyRef]]]
-      .asSafeList.map(_.asSafeList.map(new Value(_)))
+  private lazy val originPages: List[Page] = {
+    on(underlyingObject)
+      .get[JList[Any]]("pages").asSafeList
+      .map(new Page(_))
   }
 
-  private def modifyColumns(columns: List[ColumnInfo]): Unit = {
-    ReflecUtils
-      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "columns", 1)
-      .invoke(underlyingObject, columns.map(_.underlyingObject).asJava)
+  private def modifyColumns(allowedColumns: Iterable[ColumnInfo]): Unit = {
+    val allowedColumnsJava = sortByOriginOrder(allowedColumns.toCovariantSet).map(_.underlyingObject).asJava
+    on(underlyingObject).set("columns", allowedColumnsJava)
   }
 
-  private def modifyRows(rows: List[List[Value]]): Unit = {
-    ReflecUtils
-      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "rows", 1)
-      .invoke(underlyingObject, rows.map(_.map(_.underlyingObject).asJava).asJava)
+  private def modifyPages(allowedColumns: Iterable[ColumnInfo]): Unit = {
+    val allowedColumnsIds = getAllowedColumnsIds(allowedColumns.toCovariantSet)
+    originPages.foreach(_.updateBlocksByLeavingAllowedColumns(allowedColumnsIds))
   }
 
-  private def sqlQueryResponseClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.action.SqlQueryResponse")
+  private def getAllowedColumnsIds(allowedColumns: Set[ColumnInfo]) = {
+    originColumns.zipWithIndex.foldLeft(Set.empty[Int]) {
+      case (acc, (column, idx)) if allowedColumns.contains(column) => acc + idx
+      case (acc, _) => acc
+    }
+  }
+
+  private def sortByOriginOrder(allowedColumns: Set[ColumnInfo]): List[ColumnInfo] = {
+    originColumns.filter(allowedColumns.contains)
+  }
+
+  private final class ColumnInfo(val underlyingObject: Any) {
+    lazy val name: String = on(underlyingObject).get[String]("name")
+  }
+
+  private final class Page(val underlyingObject: Any) {
+
+    def updateBlocksByLeavingAllowedColumns(columnsIdxs: Set[Int]): Unit = {
+      updateBlocks(onlyAllowedBlocks(columnsIdxs))
+    }
+
+    private lazy val originBlocks = {
+      on(underlyingObject).get[Array[Any]]("blocks").toList
+    }
+
+    private def onlyAllowedBlocks(allowedColumnsIdxs: Set[Int]) = {
+      originBlocks
+        .view.zipWithIndex
+        .filter { case (_, idx) => allowedColumnsIdxs.contains(idx) }
+        .map(_._1)
+        .toArray
+    }
+
+    private def updateBlocks(newBlocks: Array[Any]): Unit = {
+      on(underlyingObject).set("blocks", asJavaBlocksArray(newBlocks))
+    }
+
+    private def asJavaBlocksArray(blocks: Array[Any]) = {
+      import java.lang.reflect.Array as JArray
+      val array = JArray.newInstance(
+        on(underlyingObject).field("blocks").`type`().getComponentType,
+        blocks.length
+      )
+      blocks.indices.foreach { i =>
+        JArray.set(array, i, blocks(i))
+      }
+      array
+//      val cls = underlyingObject.getClass
+//
+//      val field = cls.getDeclaredField("blocks")
+//      field.setAccessible(true) // Make the private field accessible
+//
+//      // Get the type of the 'blocks' field (which is an array type)
+//      val fieldType = field.getType // This is of type Block[]
+//
+//      // Get the component type of the array (which is Block)
+//      val componentType = fieldType.getComponentType
+//
+//      // Create a new array of the correct component type
+//      val array = JArray.newInstance(componentType, newBlocks.length)
+//
+//      // Populate the new array with elements from newBlocks
+//      for (i <- newBlocks.indices) {
+//        JArray.set(array, i, newBlocks(i))
+//      }
+    }
+  }
 }
-
-final class ColumnInfo(val underlyingObject: Any)
-                      (implicit classLoader: ClassLoader) {
-
-  val name: String = {
-    ReflecUtils
-      .getMethodOf(columnInfoClass, Modifier.PUBLIC, "name", 0)
-      .invoke(underlyingObject)
-      .asInstanceOf[String]
-  }
-
-  private def columnInfoClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.proto.ColumnInfo")
-}
-
-final class Value(val underlyingObject: Any)
