@@ -33,7 +33,8 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, UpdateResponse}
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
-import tech.beshu.ror.es.utils.esql.EsqlRequestHelper
+import tech.beshu.ror.es.utils.esql.EsqlRequestHelper.IndicesError
+import tech.beshu.ror.es.utils.esql.{EsqlRequestClassification, EsqlRequestHelper}
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -47,17 +48,21 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  private lazy val sqlIndicesExtractResult = EsqlRequestHelper.indicesFrom(actionRequest) match {
+  private lazy val requestClassification = EsqlRequestHelper.classifyEsqlRequest(actionRequest) match {
     case result@Right(_) => result
-    case result@Left(EsqlRequestHelper.IndicesError.ParsingException) => result
-    case Left(EsqlRequestHelper.IndicesError.UnexpectedException(ex)) =>
+    case result@Left(IndicesError.ParsingException) => result
+    case Left(IndicesError.UnexpectedException(ex)) =>
       throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
   }
 
   override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    sqlIndicesExtractResult.map(_.indices.flatMap(RequestedIndex.fromString)) match {
-      case Right(indices) => indices
-      case Left(_) => Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
+    requestClassification match {
+      case Right(r@EsqlRequestClassification.IndicesRelated(_)) =>
+        r.indices.flatMap(RequestedIndex.fromString)
+      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(IndicesError.ParsingException) =>
+        Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
+      case Left(IndicesError.UnexpectedException(ex)) =>
+        throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
     }
   }
 
@@ -91,18 +96,22 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
   }
 
   private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,
-                                   indices: NonEmptyList[RequestedIndex[ClusterIndexName]]): Either[EsqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
-    sqlIndicesExtractResult match {
-      case Right(sqlIndices) =>
-        val indicesStrings = indices.stringify.toCovariantSet
-        if (indicesStrings != sqlIndices.indices) {
-          EsqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings)
+                                   filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]): Either[EsqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
+    requestClassification match {
+      case Right(EsqlRequestClassification.NonIndicesRelated) =>
+        Right(request)
+      case Right(r@EsqlRequestClassification.IndicesRelated(tables)) =>
+        val filteredIndicesStrings = filteredIndices.stringify.toCovariantSet
+        if (filteredIndicesStrings != r.indices) {
+          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndicesStrings)
         } else {
           Right(request)
         }
-      case Left(_) =>
+      case Left(IndicesError.ParsingException) =>
         logger.debug(s"[${id.show}] Cannot parse SQL statement - we can pass it though, because ES is going to reject it")
         Right(request)
+      case Left(IndicesError.UnexpectedException(ex)) =>
+        throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
     }
   }
 

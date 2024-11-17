@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.utils.esql
 
 import cats.Show
+import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
 import org.joor.Reflect.*
@@ -25,9 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
 import tech.beshu.ror.es.utils.*
-import tech.beshu.ror.es.utils.esql.ExtractedIndices.*
-import tech.beshu.ror.es.utils.esql.ExtractedIndices.EsqlIndices.EsqlTableRelated.IndexEsqlTable
-import tech.beshu.ror.es.utils.esql.ExtractedIndices.EsqlIndices.{EsqlNotTableRelated, EsqlTableRelated}
+import tech.beshu.ror.es.utils.esql.EsqlRequestClassification.{IndicesRelated, NonIndicesRelated}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps.*
@@ -38,29 +37,15 @@ import java.util.regex.Pattern
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
-sealed trait ExtractedIndices {
-  def indices: Set[String]
+sealed trait EsqlRequestClassification
+object EsqlRequestClassification {
+  final case class IndicesRelated(tables: NonEmptyList[IndexTable]) extends EsqlRequestClassification {
+    lazy val indices: Set[String] = tables.toCovariantSet.flatMap(_.indices.toIterable)
+  }
+  case object NonIndicesRelated extends EsqlRequestClassification
 }
-object ExtractedIndices {
-  case object NoIndices extends ExtractedIndices {
-    override def indices: Set[String] = Set.empty
-  }
-  final case class RegularIndices(override val indices: Set[String]) extends ExtractedIndices
-  sealed trait EsqlIndices extends ExtractedIndices {
-    def indices: Set[String]
-  }
-  object EsqlIndices {
-    final case class EsqlTableRelated(tables: List[IndexEsqlTable]) extends EsqlIndices {
-      override lazy val indices: Set[String] = tables.flatMap(_.indices).toCovariantSet
-    }
-    object EsqlTableRelated {
-      final case class IndexEsqlTable(tableStringInQuery: String, indices: Set[String])
-    }
-    case object EsqlNotTableRelated extends EsqlIndices {
-      override def indices: Set[String] = Set.empty
-    }
-  }
-}
+
+final case class IndexTable(tableStringInQuery: String, indices: NonEmptyList[String])
 
 object EsqlRequestHelper {
 
@@ -72,17 +57,11 @@ object EsqlRequestHelper {
   }
 
   def modifyIndicesOf(request: CompositeIndicesRequest,
-                      extractedIndices: EsqlIndices,
+                      requestTables: NonEmptyList[IndexTable],
                       finalIndices: Set[String]): Either[ModificationError, CompositeIndicesRequest] = {
-    val result = Try {
-      extractedIndices match {
-        case s: EsqlTableRelated =>
-          setQuery(request, newQueryFrom(getQuery(request), s, finalIndices))
-        case EsqlNotTableRelated =>
-          request
-      }
-    }
-    result.toEither.left.map(ModificationError.UnexpectedException.apply)
+    Try {
+      setQuery(request, newQueryFrom(getQuery(request), requestTables, finalIndices))
+    }.toEither.left.map(ModificationError.UnexpectedException.apply)
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(response: ActionResponse,
@@ -97,16 +76,15 @@ object EsqlRequestHelper {
     case object ParsingException extends IndicesError
   }
 
-  def indicesFrom(request: CompositeIndicesRequest): Either[IndicesError, EsqlIndices] = {
+  def classifyEsqlRequest(request: CompositeIndicesRequest): Either[IndicesError, EsqlRequestClassification] = {
     val result = Try {
       val query = getQuery(request)
       val params = ReflecUtils.invokeMethodCached(request, request.getClass, "params")
 
       implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-      val statement = Try(new EsqlParser().createStatement(query, params))
-      statement match {
-        case Success(statement: SimpleStatement) => Right(statement.indices)
-        case Success(command: Command) => Right(command.indices)
+      Try(new EsqlParser().createStatement(query, params)) match {
+        case Success(statement: IndicesRelatedStatement) => Right(IndicesRelated(statement.indices))
+        case Success(command: OtherCommand) => Right(NonIndicesRelated)
         case Failure(_) => Left(IndicesError.ParsingException: IndicesError)
       }
     }
@@ -127,20 +105,15 @@ object EsqlRequestHelper {
     request
   }
 
-  private def newQueryFrom(oldQuery: String, extractedIndices: EsqlIndices.EsqlTableRelated, finalIndices: Set[String]) = {
-    extractedIndices.tables match {
-      case Nil =>
-        s"""$oldQuery "${finalIndices.mkString(",")}""""
-      case tables =>
-        tables.foldLeft(oldQuery) {
-          case (currentQuery, table) =>
-            val (beforeFrom, afterFrom) = currentQuery.splitBy("FROM")
-            afterFrom match {
-              case None =>
-                replaceTableNameInQueryPart(currentQuery, table.tableStringInQuery, finalIndices)
-              case Some(tablesPart) =>
-                s"${beforeFrom}FROM ${replaceTableNameInQueryPart(tablesPart, table.tableStringInQuery, finalIndices)}"
-            }
+  private def newQueryFrom(oldQuery: String, requestTables: NonEmptyList[IndexTable], finalIndices: Set[String]) = {
+    requestTables.toList.foldLeft(oldQuery) {
+      case (currentQuery, table) =>
+        val (beforeFrom, afterFrom) = currentQuery.splitBy("FROM")
+        afterFrom match {
+          case None =>
+            replaceTableNameInQueryPart(currentQuery, table.tableStringInQuery, finalIndices)
+          case Some(tablesPart) =>
+            s"${beforeFrom}FROM ${replaceTableNameInQueryPart(tablesPart, table.tableStringInQuery, finalIndices)}"
         }
     }
   }
@@ -152,98 +125,65 @@ object EsqlRequestHelper {
 
 final class EsqlParser(implicit classLoader: ClassLoader) {
 
-  private val aClass = classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser")
-  private val underlyingObject = aClass.getConstructor().newInstance()
+  private val underlyingObject =
+    onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser"))
+      .create().get[Any]()
 
   def createStatement(query: String, params: AnyRef): Statement = {
-    val statement = ReflecUtils
-      .getMethodOf(aClass, Modifier.PUBLIC, "createStatement", 2)
-      .invoke(underlyingObject, query, params)
-    new SimpleStatement(statement)
+    val statement = on(underlyingObject).call("createStatement", query, params).get[Any]
+    NonEmptyList.fromList(indicesFrom(statement)) match {
+      case Some(indices) => new IndicesRelatedStatement(statement, indices)
+      case None => OtherCommand(statement)
+    }
   }
 
-}
-
-sealed trait Statement {
-  protected def splitToIndicesPatterns(value: String): Set[String] = {
-    value.split(',').asSafeSet.filter(_.nonEmpty)
-  }
-}
-
-final class SimpleStatement(val underlyingObject: AnyRef)
-                           (implicit classLoader: ClassLoader)
-  extends Statement {
-
-  lazy val indices: EsqlIndices = {
+  private def indicesFrom(statement: Any) = {
     val tableInfoList = tableInfosFrom {
-      doPreAnalyze(newPreAnalyzer, underlyingObject)
+      doPreAnalyze(newPreAnalyzer, statement)
     }
-    EsqlIndices.EsqlTableRelated {
-      tableInfoList
-        .map(tableIdentifierFrom)
-        .map(indicesStringFrom)
-        .map { tableString =>
-          IndexEsqlTable(tableString, splitToIndicesPatterns(tableString))
-        }
-    }
+    tableInfoList
+      .map(tableIdentifierFrom)
+      .map(indexStringFrom)
+      .flatMap { tableString =>
+        NonEmptyList
+          .fromList(splitIntoIndices(tableString))
+          .map(IndexTable(tableString, _))
+      }
+  }
+
+  private def splitIntoIndices(tableString: String) = {
+    tableString.split(',').asSafeList.filter(_.nonEmpty)
   }
 
   private def newPreAnalyzer(implicit classLoader: ClassLoader) = {
     onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.analysis.PreAnalyzer")).create().get[Any]()
   }
 
-  private def doPreAnalyze(preAnalyzer: Any, statement: AnyRef) = {
+  private def doPreAnalyze(preAnalyzer: Any, statement: Any) = {
     on(preAnalyzer).call("preAnalyze", statement).get[Any]()
   }
 
   private def tableInfosFrom(preAnalysis: Any) = {
-    on(preAnalysis).get[java.util.List[AnyRef]]("indices").asScala.toList
+    on(preAnalysis).get[java.util.List[Any]]("indices").asScala.toList
   }
 
   private def tableIdentifierFrom(tableInfo: Any) = {
     on(tableInfo).call("id").get[Any]()
   }
 
-  private def indicesStringFrom(tableIdentifier: Any) = {
+  private def indexStringFrom(tableIdentifier: Any) = {
     on(tableIdentifier).call("index").get[String]()
   }
 
 }
 
-final class Command(val underlyingObject: Any)
-  extends Statement {
+sealed trait Statement
+final class IndicesRelatedStatement(val underlyingObject: Any,
+                                    val indices: NonEmptyList[IndexTable])
+  extends Statement
 
-  lazy val indices: EsqlIndices = {
-    Try {
-      getIndicesString
-        .orElse(getIndexPatternsString)
-        .map { indicesString =>
-          EsqlTableRelated(IndexEsqlTable(indicesString, splitToIndicesPatterns(indicesString)) :: Nil)
-        }
-        .getOrElse(EsqlTableRelated(Nil))
-    } getOrElse {
-      EsqlNotTableRelated
-    }
-  }
-
-  private def getIndicesString = Option {
-    ReflecUtils
-      .getMethodOf(underlyingObject.getClass, Modifier.PUBLIC, "index", 0)
-      .invoke(underlyingObject)
-      .asInstanceOf[String]
-  }
-
-  private def getIndexPatternsString = {
-    for {
-      pattern <- Option(ReflecUtils
-        .getMethodOf(underlyingObject.getClass, Modifier.PUBLIC, "pattern", 0)
-        .invoke(underlyingObject))
-      index <- Option(ReflecUtils
-        .getMethodOf(pattern.getClass, Modifier.PUBLIC, "asIndexNameWildcard", 0)
-        .invoke(pattern))
-    } yield index.asInstanceOf[String]
-  }
-}
+final class OtherCommand(val underlyingObject: Any)
+  extends Statement
 
 final class EsqlQueryResponse(val underlyingObject: ActionResponse) {
 
@@ -329,24 +269,6 @@ final class EsqlQueryResponse(val underlyingObject: ActionResponse) {
         JArray.set(array, i, blocks(i))
       }
       array
-//      val cls = underlyingObject.getClass
-//
-//      val field = cls.getDeclaredField("blocks")
-//      field.setAccessible(true) // Make the private field accessible
-//
-//      // Get the type of the 'blocks' field (which is an array type)
-//      val fieldType = field.getType // This is of type Block[]
-//
-//      // Get the component type of the array (which is Block)
-//      val componentType = fieldType.getComponentType
-//
-//      // Create a new array of the correct component type
-//      val array = JArray.newInstance(componentType, newBlocks.length)
-//
-//      // Populate the new array with elements from newBlocks
-//      for (i <- newBlocks.indices) {
-//        JArray.set(array, i, newBlocks(i))
-//      }
     }
   }
 }
