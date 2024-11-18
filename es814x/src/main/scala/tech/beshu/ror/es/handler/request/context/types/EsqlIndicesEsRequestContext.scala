@@ -33,17 +33,17 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, UpdateResponse}
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification}
 import tech.beshu.ror.es.utils.EsqlRequestHelper
+import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification}
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
 class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
-                                         esContext: EsContext,
-                                         aclContext: AccessControlStaticContext,
-                                         clusterService: RorClusterService,
-                                         override val threadPool: ThreadPool)
+                                          esContext: EsContext,
+                                          aclContext: AccessControlStaticContext,
+                                          clusterService: RorClusterService,
+                                          override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
@@ -52,7 +52,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
     case result@Right(_) => result
     case result@Left(ClassificationError.ParsingException) => result
     case Left(ClassificationError.UnexpectedException(ex)) =>
-      throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
+      throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract ESQL indices from ${actionRequest.getClass.show}", ex)
   }
 
   override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
@@ -62,7 +62,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
       case Right(EsqlRequestClassification.NonIndicesRelated) | Left(ClassificationError.ParsingException) =>
         Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
       case Left(ClassificationError.UnexpectedException(ex)) =>
-        throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
+        throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract ESQL indices from ${actionRequest.getClass.show}", ex)
     }
   }
 
@@ -88,7 +88,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
     }
     result.fold(
       error => {
-        logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request; error=${error.show}")
+        logger.error(s"[${id.show}] Cannot modify ESQL indices of incoming request; error=${error.show}")
         CannotModify
       },
       identity
@@ -108,10 +108,10 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
           Right(request)
         }
       case Left(ClassificationError.ParsingException) =>
-        logger.debug(s"[${id.show}] Cannot parse SQL statement - we can pass it though, because ES is going to reject it")
+        logger.debug(s"[${id.show}] Cannot parse ESQL statement - we can pass it though, because ES is going to reject it")
         Right(request)
       case Left(ClassificationError.UnexpectedException(ex)) =>
-        throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
+        throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract ESQL indices from ${actionRequest.getClass.show}", ex)
     }
   }
 
