@@ -88,7 +88,9 @@ object KibanaIndexName {
     """^_security_solution$""".r, // eg. .kibana_security_solution
     """^_security_solution_\d+\.\d+\.\d+$""".r, // eg. .kibana_security_solution_8.8.0
     """^_task_manager$""".r, // eg. .kibana_task_manager
-    """^_task_manager_\d+\.\d+\.\d+$""".r, // eg. .kibana_task_manager_8.8.0
+    """^_task_manager_\d+\.\d+\.\d+$""".r, // eg. .kibana_task_manager_8.8.0,
+    """^_usage_counters$""".r, // eg. .kibana_usage_counters
+    """^_usage_counters_\d+\.\d+\.\d+$""".r, // eg. .kibana_usage_counters_8.16.0
   )
 
   implicit class IsRelatedToKibanaIndex(val indexName: ClusterIndexName) extends AnyVal {
