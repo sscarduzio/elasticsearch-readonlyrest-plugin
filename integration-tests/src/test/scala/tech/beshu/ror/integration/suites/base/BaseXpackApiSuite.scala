@@ -953,7 +953,7 @@ trait BaseXpackApiSuite
     "SELECT query is used" should {
       "be allowed" when {
         "user has no indices rule (has access to any index)" when {
-          "full index name is used" in {
+          "full index name is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = adminEsqlManager.execute("""FROM library | LIMIT 100""")
             result should have statusCode 200
             result.columnNames should contain only("author", "author.keyword", "internal_id", "name", "name.keyword", "release_date")
@@ -961,7 +961,7 @@ trait BaseXpackApiSuite
             result.column("internal_id").toList should contain only(Num(1), Num(2))
             result.rows.size should be(2)
           }
-          "full indices names are used" in {
+          "full indices names are used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = adminEsqlManager.execute("""FROM \"bookstore,library\" | LIMIT 100""")
             result should have statusCode 200
             result.columnNames should contain only("author", "author.keyword", "internal_id", "name", "name.keyword", "release_date", "price")
@@ -971,7 +971,7 @@ trait BaseXpackApiSuite
             result.column("internal_id").toList should contain only(Num(1), Num(2), Null)
             result.rows.size should be(5)
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = adminEsqlManager.execute("""FROM \"*\" | LIMIT 100""")
             result should have statusCode 200
             result.columnNames should contain only("author", "author.keyword", "internal_id", "name", "name.keyword", "release_date", "price")
@@ -981,7 +981,7 @@ trait BaseXpackApiSuite
             result.column("internal_id").toList should contain only(Num(1), Num(2), Null)
             result.rows.size should be(5)
           }
-          "alias is used" in {
+          "alias is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = adminEsqlManager.execute("""FROM bookshop | LIMIT 100""")
             result should have statusCode 200
             result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "price", "release_date")
@@ -991,35 +991,35 @@ trait BaseXpackApiSuite
           }
         }
         "user has access to given index" when {
-          "full index name is used" in {
+          "full index name is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev1EsqlManager.execute("""FROM bookstore | LIMIT 100""")
             result should have statusCode 200
             result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "release_date")
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
             result.rows.size should be(3)
           }
-          "full indices names are used and one of them is not allowed" in {
+          "full indices names are used and one of them is not allowed" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev1EsqlManager.execute("""FROM \"bookstore,library\" | LIMIT 100""")
             result should have statusCode 200
             result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "release_date")
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
             result.rows.size should be(3)
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev1EsqlManager.execute("""FROM \"book*\" | LIMIT 100""")
             result should have statusCode 200
             result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "release_date")
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
             result.rows.size should be(3)
           }
-          "alias is used" in {
+          "alias is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev1EsqlManager.execute("""FROM \"bookshop\" | LIMIT 100""")
             result should have statusCode 200
             result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "release_date")
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
             result.rows.size should be(3)
           }
-          "filter in block is used" in {
+          "filter in block is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev3EsqlManager.execute("""FROM bookstore | LIMIT 100""")
             result should have statusCode 200
             result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "price", "release_date")
@@ -1027,29 +1027,29 @@ trait BaseXpackApiSuite
             result.rows.size should be(1)
           }
         }
-        "esql query is malformed" in {
+        "esql query is malformed" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
           val result = adminEsqlManager.execute("""FROM unescaped-index.name | LIMIT 100""")
           result should have statusCode 400
         }
       }
       "be forbidden" when {
         "user doesn't have access to given index" when {
-          "full index name is used" in {
+          "full index name is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev2EsqlManager.execute("""FROM bookstore | LIMIT 100""")
             result should have statusCode 400
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev2EsqlManager.execute("""FROM \"book*\" | LIMIT 100""")
             result should have statusCode 400
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
-          "alias is used" in {
+          "alias is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev2EsqlManager.execute("""FROM bookshop | LIMIT 100""")
             result should have statusCode 400
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
-          "not-existent index name is used" in {
+          "not-existent index name is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev2EsqlManager.execute("""FROM flea_market | LIMIT 100""")
             result should have statusCode 400
             result.responseJson("error").obj("reason").str should include("Unknown index")
@@ -1058,7 +1058,7 @@ trait BaseXpackApiSuite
       }
       "be malformed" when {
         "user rule is not used" when {
-          "not-existent index name is used" in {
+          "not-existent index name is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = adminEsqlManager.execute("""FROM unknown | LIMIT 100""")
             result should have statusCode 400
           }

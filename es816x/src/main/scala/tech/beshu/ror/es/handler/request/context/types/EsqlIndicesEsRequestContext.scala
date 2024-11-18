@@ -33,8 +33,8 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, UpdateResponse}
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
-import tech.beshu.ror.es.utils.esql.EsqlRequestHelper.IndicesError
-import tech.beshu.ror.es.utils.esql.{EsqlRequestClassification, EsqlRequestHelper}
+import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification}
+import tech.beshu.ror.es.utils.EsqlRequestHelper
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -50,8 +50,8 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
 
   private lazy val requestClassification = EsqlRequestHelper.classifyEsqlRequest(actionRequest) match {
     case result@Right(_) => result
-    case result@Left(IndicesError.ParsingException) => result
-    case Left(IndicesError.UnexpectedException(ex)) =>
+    case result@Left(ClassificationError.ParsingException) => result
+    case Left(ClassificationError.UnexpectedException(ex)) =>
       throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
   }
 
@@ -59,9 +59,9 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
     requestClassification match {
       case Right(r@EsqlRequestClassification.IndicesRelated(_)) =>
         r.indices.flatMap(RequestedIndex.fromString)
-      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(IndicesError.ParsingException) =>
+      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(ClassificationError.ParsingException) =>
         Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
-      case Left(IndicesError.UnexpectedException(ex)) =>
+      case Left(ClassificationError.UnexpectedException(ex)) =>
         throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
     }
   }
@@ -107,10 +107,10 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
         } else {
           Right(request)
         }
-      case Left(IndicesError.ParsingException) =>
+      case Left(ClassificationError.ParsingException) =>
         logger.debug(s"[${id.show}] Cannot parse SQL statement - we can pass it though, because ES is going to reject it")
         Right(request)
-      case Left(IndicesError.UnexpectedException(ex)) =>
+      case Left(ClassificationError.UnexpectedException(ex)) =>
         throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
     }
   }
