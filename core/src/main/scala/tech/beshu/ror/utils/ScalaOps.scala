@@ -209,8 +209,11 @@ object ScalaOps {
       }
     }
 
-    def splitBy(str: String): (String, Option[String]) = {
-      value.indexOf(str) match {
+    def splitBy(str: String, caseInsensitive: Boolean = false): (String, Option[String]) = {
+      val normalizedValue = if (caseInsensitive) value.toLowerCase else value
+      val normalizedStr = if (caseInsensitive) str.toLowerCase else str
+
+      normalizedValue.indexOf(normalizedStr) match {
         case -1 =>
           (value, None)
         case idx =>
