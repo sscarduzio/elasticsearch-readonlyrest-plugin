@@ -71,7 +71,7 @@ dependencies {
     api project(path: ':audit', configuration: 'default')
     api project(path: ':ror-shadowed-libs', configuration: 'shadow')
 
-    api group: 'org.asynchttpclient',           name: 'async-http-client',                   version: '2.10.5'
+    api group: 'org.asynchttpclient',           name: 'async-http-client',                   version: '3.0.1'
     api group: 'com.github.pathikrit',          name: 'better-files_3',                      version: '3.9.2'
     api group: 'io.circe',                      name: 'circe-core_3',                        version: '0.14.6'
     api group: 'io.circe',                      name: 'circe-generic_3',                     version: '0.14.6'
@@ -132,7 +132,7 @@ dependencies {
         api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.115.Final'
         api group: 'com.google.guava',      name: 'guava',                              version: '32.0.1-jre'
         api group: 'io.spray',              name: 'spray-json_3',                       version: '1.3.6'
-        api group: 'org.asynchttpclient',   name: 'async-http-client',                  version: '2.10.5'
+        api group: 'org.asynchttpclient',   name: 'async-http-client',                  version: '3.0.1'
     }
 }
 
