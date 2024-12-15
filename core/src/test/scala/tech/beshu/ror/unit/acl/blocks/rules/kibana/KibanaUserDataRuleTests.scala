@@ -16,35 +16,34 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NullValue, NumValue, StringValue}
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
-
 import scala.util.{Failure, Success, Try}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class KibanaUserDataRuleTests
   extends BaseKibanaAccessBasedTests[KibanaUserDataRule, KibanaUserDataRule.Settings] {
@@ -81,7 +80,7 @@ class KibanaUserDataRuleTests
           access = KibanaAccess.Unrestricted,
           kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
           kibanaTemplateIndex = None,
-          appsToHide = apps.toSet,
+          appsToHide = apps.toCovariantSet,
           allowedApiPaths = Set.empty,
           metadata = None,
           rorIndex = RorConfigurationIndex(rorIndex)
@@ -119,7 +118,7 @@ class KibanaUserDataRuleTests
           kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
           kibanaTemplateIndex = None,
           appsToHide = Set.empty,
-          allowedApiPaths = paths.toSet,
+          allowedApiPaths = paths.toCovariantSet,
           metadata = None,
           rorIndex = RorConfigurationIndex(rorIndex)
         ))
@@ -234,7 +233,7 @@ class KibanaUserDataRuleTests
     )
 
   override protected def defaultOutputBlockContextAssertion(settings: KibanaUserDataRule.Settings,
-                                                            indices: Set[domain.ClusterIndexName],
+                                                            indices: Set[RequestedIndex[ClusterIndexName]],
                                                             dataStreams: Set[DataStreamName],
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {

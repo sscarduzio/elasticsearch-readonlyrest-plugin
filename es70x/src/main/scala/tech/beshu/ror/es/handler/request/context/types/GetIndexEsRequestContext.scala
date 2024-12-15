@@ -17,19 +17,21 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap._
+import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.*
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
                                esContext: EsContext,
@@ -38,17 +40,16 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
                                override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[GetIndexRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: GetIndexRequest): Set[ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: GetIndexRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request
-      .indices().asSafeList
-      .flatMap(ClusterIndexName.fromString)
-      .toSet
+      .indices().asSafeSet
+      .flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: GetIndexRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    request.indices(filteredIndices.map(_.stringify).toList: _*)
+    request.indices(filteredIndices.stringify: _*)
     ModificationResult.UpdateResponse(filterAliases(_, allAllowedIndices))
   }
 
@@ -59,12 +60,12 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
         Task.now(new GetIndexResponse(
           getIndexResponse.indices(),
           getIndexResponse.mappings(),
-          getIndexResponse.aliases().filterOutNotAllowedAliases(allowedAliases = allAllowedAliases),
+          getIndexResponse.aliases().filterOutNotAllowedAliases(allowedAliases = allAllowedAliases.toList),
           getIndexResponse.settings(),
           getIndexResponse.defaultSettings()
         ))
       case other =>
-        logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetIndexResponse].getSimpleName}], was: [${other.getClass.getSimpleName}]")
+        logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetIndexResponse].show}], was: [${other.getClass.show}]")
         Task.now(new GetIndexResponse(
           Array.empty,
           ImmutableOpenMapOps.empty,

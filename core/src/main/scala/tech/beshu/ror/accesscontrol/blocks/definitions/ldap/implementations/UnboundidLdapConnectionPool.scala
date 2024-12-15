@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import com.unboundid.ldap.sdk._
+import com.unboundid.ldap.sdk.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Promise
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
                                   bindRequestUser: BindRequestUser)

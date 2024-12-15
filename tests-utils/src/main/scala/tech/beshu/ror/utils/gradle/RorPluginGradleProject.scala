@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.gradle
 import java.io.{File => JFile}
 import java.nio.file.Paths
 
-import better.files._
+import better.files.*
 import org.gradle.tooling.GradleConnector
 
 import scala.util.Try

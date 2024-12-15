@@ -18,19 +18,17 @@ package tech.beshu.ror.configuration.loader.external
 
 import cats.Show
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
+import tech.beshu.ror.implicits.*
 
 package object dto {
   implicit val showLoadedConfigError: Show[LoadedRorConfig.Error] = Show.show {
-    {
-      case LoadedRorConfig.FileNotExist(path) => s"""file not exist: ${path.toString}"""
-      case LoadedRorConfig.FileParsingError(message) => s"""file parsing error: $message"""
-      case LoadedRorConfig.EsFileNotExist(path) => s"""ES file not exist: ${path.toString}"""
-      case LoadedRorConfig.EsFileMalformed(path, message) => s"""ES file malformed: $path $message"""
-      case LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled(typeOfConfiguration) =>
-        s"""ROR $typeOfConfiguration cannot be used when XPack Security is enabled"""
-      case LoadedRorConfig.IndexParsingError(message) => s"""index parsing error: $message"""
-      case LoadedRorConfig.IndexUnknownStructure => "index unknown structure"
-    }
+    case LoadedRorConfig.FileNotExist(path) => s"""file not exist: ${path.show}"""
+    case LoadedRorConfig.FileParsingError(message) => s"""file parsing error: ${message.show}"""
+    case LoadedRorConfig.EsFileNotExist(path) => s"""ES file not exist: ${path.show}"""
+    case LoadedRorConfig.EsFileMalformed(path, message) => s"""ES file malformed: ${path.show} ${message.show}"""
+    case LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled(typeOfConfiguration) =>
+      s"""ROR ${typeOfConfiguration.show} cannot be used when XPack Security is enabled"""
+    case LoadedRorConfig.IndexParsingError(message) => s"""index parsing error: ${message.show}"""
+    case LoadedRorConfig.IndexUnknownStructure => "index unknown structure"
   }
-
 }

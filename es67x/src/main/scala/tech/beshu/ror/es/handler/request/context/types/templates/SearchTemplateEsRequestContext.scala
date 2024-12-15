@@ -23,17 +23,18 @@ import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.SearchRequestOps._
+import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.{BaseFilterableEsRequestContext, ReflectionBasedActionRequest}
-import tech.beshu.ror.es.handler.response.SearchHitOps._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.handler.response.SearchHitOps.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                              esContext: EsContext,
@@ -51,17 +52,17 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
   override protected def requestFieldsUsage: FieldLevelSecurity.RequestFieldsUsage =
     searchTemplateRequest.getRequest.checkFieldsUsage()
 
-  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
     searchRequest
       .indices.asSafeSet
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                indices: NonEmptyList[ClusterIndexName],
+                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 filter: Option[domain.Filter],
                                 fieldLevelSecurity: Option[domain.FieldLevelSecurity]): ModificationResult = {
-    searchRequest.indices(indices.toList.map(_.stringify): _*)
+    searchRequest.indices(filteredRequestedIndices.stringify: _*)
     if (searchTemplateRequest.isSimulate)
       ModificationResult.UpdateResponse.using { resp =>
         filterFieldsFromResponse(fieldLevelSecurity)(new ReflectionBasedSearchTemplateResponse(resp))
@@ -117,6 +118,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
     })
     Task.fromCancelablePromise(promise)
   }
+
 }
 
 object SearchTemplateEsRequestContext {

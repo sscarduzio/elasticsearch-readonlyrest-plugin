@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.search.MultiSearchResponse
 import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
@@ -27,17 +27,19 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
+import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.SearchRequestOps._
+import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.types.ReflectionBasedActionRequest
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.es.handler.response.SearchHitOps._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.handler.response.SearchHitOps.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                                   esContext: EsContext,
@@ -47,14 +49,14 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
     with EsRequest[FilterableMultiRequestBlockContext] {
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty,
-    indexPacksFrom(multiSearchTemplateRequest),
-    None,
-    None,
-    requestFieldsUsage
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty,
+    indexPacks = indexPacksFrom(multiSearchTemplateRequest),
+    filter = None,
+    fieldLevelSecurity = None,
+    requestFieldsUsage = requestFieldsUsage
   )
 
   private lazy val multiSearchTemplateRequest = new ReflectionBasedMultiSearchTemplateRequest(actionRequest)
@@ -143,8 +145,10 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
     indicesFrom(request).toList.randomNonexistentIndex()
 
   private def indicesFrom(request: ReflectionBasedSearchTemplateRequest) = {
-    val requestIndices = request.getRequest.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
-    indicesOrWildcard(requestIndices)
+    request
+      .getRequest.indices.asSafeSet
+      .flatMap(RequestedIndex.fromString)
+      .orWildcardWhenEmpty
   }
 }
 

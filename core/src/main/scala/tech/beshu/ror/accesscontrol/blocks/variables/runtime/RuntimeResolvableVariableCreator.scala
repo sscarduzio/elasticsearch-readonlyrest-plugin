@@ -17,21 +17,22 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.data.NonEmptyList
-import cats.instances.either._
-import cats.instances.list._
-import cats.syntax.traverse._
+import cats.instances.either.*
+import cats.instances.list.*
+import cats.syntax.traverse.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token.Transformation
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
 import tech.beshu.ror.accesscontrol.blocks.variables.{Tokenizer, runtime}
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.json.JsonPath
 
 import scala.util.matching.Regex
@@ -141,7 +142,7 @@ class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCom
         Right(`type`.createJwtVariableExtractable(compiledPath, maybeTransformation))
       case Failure(ex) =>
         logger.debug("Compiling JSON path failed", ex)
-        Left(CreationError.InvalidVariableDefinition(s"cannot compile '$jsonPathStr' to JsonPath"))
+        Left(CreationError.InvalidVariableDefinition(s"cannot compile '${jsonPathStr.show}' to JsonPath"))
     }
   }
 
@@ -165,9 +166,9 @@ class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCom
   private def toCreationError(transformationStr: String,
                               error: TransformationCompiler.CompilationError): CreationError = error match {
     case CompilationError.UnableToParseTransformation(message) =>
-      CreationError.InvalidVariableDefinition(s"Unable to parse transformation string: [$transformationStr]. Cause: $message")
+      CreationError.InvalidVariableDefinition(s"Unable to parse transformation string: [${transformationStr.show}]. Cause: ${message.show}")
     case CompilationError.UnableToCompileTransformation(message) =>
-      CreationError.InvalidVariableDefinition(s"Unable to compile transformation string: [$transformationStr]. Cause: $message")
+      CreationError.InvalidVariableDefinition(s"Unable to compile transformation string: [${transformationStr.show}]. Cause: ${message.show}")
   }
 }
 

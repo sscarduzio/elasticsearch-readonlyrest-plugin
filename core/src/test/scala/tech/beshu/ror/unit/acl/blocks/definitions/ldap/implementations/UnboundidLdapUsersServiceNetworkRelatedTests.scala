@@ -16,35 +16,34 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
-import cats.data._
+import cats.data.*
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import com.unboundid.ldap.sdk.LDAPSearchException
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{Assertion, BeforeAndAfterAll, BeforeAndAfterEach, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapAuthenticationService, LdapService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.repeat
-import tech.beshu.ror.utils.TestsUtils.ValueOrIllegalState
+import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
 import tech.beshu.ror.utils.containers.{LdapContainer, ToxiproxyContainer}
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import java.time.Clock
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.reflect.{ClassTag, classTag}
 import scala.util.{Failure, Success, Try}
-import tech.beshu.ror.utils.RefinedUtils.*
 
 class UnboundidLdapUsersServiceNetworkRelatedTests
   extends AnyFreeSpec

@@ -24,6 +24,7 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.syntax.*
 
 import scala.annotation.unused
 
@@ -35,10 +36,10 @@ class GeneralNonIndexEsRequestContext(@unused actionRequest: ActionRequest,
     with EsRequest[GeneralNonIndexRequestBlockContext] {
 
   override val initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty
   )
 
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = Modified

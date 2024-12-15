@@ -30,7 +30,7 @@ import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
-import org.elasticsearch.common.settings._
+import org.elasticsearch.common.settings.*
 import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
 import org.elasticsearch.env.{Environment, NodeEnvironment}
@@ -40,7 +40,7 @@ import org.elasticsearch.index.mapper.IgnoredFieldMapper
 import org.elasticsearch.indices.IndicesService
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
-import org.elasticsearch.plugins._
+import org.elasticsearch.plugins.*
 import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
@@ -79,8 +79,8 @@ import java.nio.file.Path
 import java.util
 import java.util.function.{BiConsumer, Supplier}
 import scala.annotation.nowarn
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
 @Inject
@@ -158,7 +158,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    import tech.beshu.ror.es.utils.IndexModuleOps._
+    import tech.beshu.ror.es.utils.IndexModuleOps.*
     indexModule.overwrite(RoleIndexSearcherWrapper.instance)
   }
 
@@ -237,7 +237,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                settingsFilter: SettingsFilter,
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
-    import tech.beshu.ror.es.utils.RestControllerOps._
+    import tech.beshu.ror.es.utils.RestControllerOps.*
     restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
     List[RestHandler](
       new RestRRAdminAction(),
@@ -249,7 +249,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     ).asJava
   }
 
-  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
+  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry,
+                                        threadContext: ThreadContext): util.List[TransportInterceptor] = {
     List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
   }
 

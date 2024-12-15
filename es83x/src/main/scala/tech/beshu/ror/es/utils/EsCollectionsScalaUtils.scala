@@ -18,15 +18,16 @@ package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.collect.ImmutableOpenMap
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
+import tech.beshu.ror.syntax.*
 
 object EsCollectionsScalaUtils {
 
   implicit class ImmutableOpenMapOps[K, V](val value: ImmutableOpenMap[K, V]) extends AnyVal {
 
-    def asSafeKeys: Set[K] = Option(value).map(_.keySet().asScala.toSet).getOrElse(Set.empty)
+    def asSafeKeys: Set[K] = Option(value).map(_.keySet().asScala.toCovariantSet).getOrElse(Set.empty)
 
-    def asSafeValues: Set[V] = Option(value).map(_.values().asScala.toSet).getOrElse(Set.empty)
+    def asSafeValues: Set[V] = Option(value).map(_.values().asScala.toCovariantSet).getOrElse(Set.empty)
 
     def asSafeEntriesList: List[(K, V)] =
       Option(value) match {

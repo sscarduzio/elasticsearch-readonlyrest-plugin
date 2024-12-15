@@ -16,18 +16,16 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
-import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Credentials
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.domain.{Credentials, RequestId}
+import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
+import tech.beshu.ror.implicits.*
 
 private [auth] abstract class BaseBasicAuthAuthenticationRule
   extends BaseAuthenticationRule

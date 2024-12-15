@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 
-import cats.implicits._
-import cats.Show
 import cats.data.NonEmptySet
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -25,12 +23,13 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, Template, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 private[indices] trait AllTemplateIndices
   extends IndexTemplateIndices
@@ -46,7 +45,7 @@ private[indices] trait AllTemplateIndices
     implicit val allowedIndices: AllowedIndices = new AllowedIndices(settings.allowedIndices, blockContext)
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] Checking - indices and aliases in Template related request.
-         | Allowed indices by the rule: [${allowedIndices.show}]:""".oneLiner
+         | Allowed indices by the rule: [${allowedIndices.resolved.show}]:""".oneLiner
     )
     implicit val _blockContext = blockContext
     val result = blockContext.templateOperation match {
@@ -106,20 +105,17 @@ private[indices] trait AllTemplateIndices
     alias.isAllowedBy(allowedIndices.resolved)
   }
 
-  private[indices] def filterTemplates[T <: Template](allowedNamePatterns: Set[TemplateNamePattern],
-                                                      requestedTemplates: Set[T]): Set[T] = {
+  private[indices] def filterTemplates[T <: Template](allowedNamePatterns: Iterable[TemplateNamePattern],
+                                                      requestedTemplates: Iterable[T]): Set[T] = {
     val matcher = PatternsMatcher.create(allowedNamePatterns)
-    val templateByName: Map[TemplateNamePattern, Set[T]] = requestedTemplates.groupBy(t => TemplateNamePattern(t.name.value))
-    val filteredTemplateNames = matcher.filter(templateByName.keys.toSet)
-    templateByName.view.filterKeys(filteredTemplateNames.contains).values.toSet.flatten
+    val templateByName: Map[TemplateNamePattern, Iterable[T]] = requestedTemplates.groupBy(t => TemplateNamePattern(t.name.value))
+    val filteredTemplateNames = matcher.filter(templateByName.keys)
+    templateByName.view.filterKeys(filteredTemplateNames.contains).values.toCovariantSet.flatten
   }
 
   private[indices] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                         val blockContext: TemplateRequestBlockContext) {
-    val resolved: Set[ClusterIndexName] = resolveAll(allowedIndices.toNonEmptyList, blockContext).toSet
-  }
-  private[indices] object AllowedIndices {
-    implicit def show: Show[AllowedIndices] = Show.show(_.resolved.map(_.show).mkStringOrEmptyString("", ",", ""))
+    val resolved: Set[ClusterIndexName] = resolveAll(allowedIndices.toNonEmptyList, blockContext).toCovariantSet
   }
 
   private[indices] sealed trait PartialResult[T]

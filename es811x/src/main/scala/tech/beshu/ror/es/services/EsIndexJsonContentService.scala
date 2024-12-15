@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.services
 
-import cats.implicits._
+import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.ResourceNotFoundException
@@ -25,14 +25,14 @@ import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.common.inject.{Inject, Singleton}
 import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.IndexJsonContentService
-import tech.beshu.ror.es.IndexJsonContentService._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.IndexJsonContentService.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.annotation.unused
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 @Singleton
 class EsIndexJsonContentService(client: NodeClient,

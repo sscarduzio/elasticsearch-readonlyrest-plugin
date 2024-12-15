@@ -17,12 +17,12 @@
 package tech.beshu.ror.es.handler.request.queries
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.index.query._
+import org.elasticsearch.index.query.*
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsedField, UsingFields}
-import tech.beshu.ror.es.handler.request.queries.QueryType.instances._
+import tech.beshu.ror.es.handler.request.queries.QueryType.instances.*
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 

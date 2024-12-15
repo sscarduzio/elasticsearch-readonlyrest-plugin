@@ -17,16 +17,18 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class ReindexEsRequestContext(actionRequest: ReindexRequest,
                               esContext: EsContext,
@@ -35,22 +37,22 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
                               override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ReindexRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ReindexRequest): Set[ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: ReindexRequest): Set[RequestedIndex[ClusterIndexName]] = {
     val searchRequestIndices = request.getSearchRequest.indices.asSafeSet
     val indexOfIndexRequest = request.getDestination.index()
 
     (searchRequestIndices + indexOfIndexRequest)
-      .flatMap(ClusterIndexName.fromString)
+      .flatMap(RequestedIndex.fromString)
   }
 
   override protected def update(request: ReindexRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(ClusterIndexName.fromString)
+    val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(RequestedIndex.fromString)
     val isSearchRequestComposedOnlyOfAllowedIndices = (searchRequestIndices -- filteredIndices.toList).isEmpty
 
     val indexOfIndexRequest = actionRequest.getDestination.index()
-    val isDestinationIndexOnFilteredIndicesList = ClusterIndexName.fromString(indexOfIndexRequest).exists(filteredIndices.toList.contains(_))
+    val isDestinationIndexOnFilteredIndicesList = RequestedIndex.fromString(indexOfIndexRequest).exists(filteredIndices.toList.contains(_))
 
     if (isDestinationIndexOnFilteredIndicesList && isSearchRequestComposedOnlyOfAllowedIndices) {
       Modified

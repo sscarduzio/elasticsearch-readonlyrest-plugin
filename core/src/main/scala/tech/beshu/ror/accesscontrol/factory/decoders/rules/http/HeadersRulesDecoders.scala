@@ -25,9 +25,10 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.http.HeadersHelper.headerAccessRequirementFromString
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.utils.StringWiseSplitter._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.StringWiseSplitter.*
 
 class HeadersAndRuleDecoder(implicit ev: RuleName[HeadersAndRule])
   extends RuleBaseDecoderWithoutAssociatedFields[HeadersAndRule] {
@@ -70,6 +71,6 @@ private object HeadersHelper {
       }
 
   private def errorMessage(rawValue: String) = {
-    s"Cannot convert $rawValue to header access requirement (format: name:value_pattern or ~name:value_pattern - name and value_pattern cannot be empty)"
+    s"Cannot convert ${rawValue.show} to header access requirement (format: name:value_pattern or ~name:value_pattern - name and value_pattern cannot be empty)"
   }
 }

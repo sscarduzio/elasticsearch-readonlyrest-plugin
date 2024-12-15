@@ -16,37 +16,40 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.utils
 
-import cats.data.NonEmptyList
 import org.elasticsearch.cluster.metadata.AliasMetadata
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.{Conversion, Matchable}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.{Conversion, Matchable}
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.AliasesMap
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 
 class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
 
   import FilterableAliasesMap.{conversion, matchable}
 
-  def filterOutNotAllowedAliases(allowedAliases: NonEmptyList[ClusterIndexName]): AliasesMap = {
+  def filterOutNotAllowedAliases(allowedAliases: Iterable[ClusterIndexName]): AliasesMap = {
     ImmutableOpenMapOps.from {
       filter(value.asSafeEntriesList, allowedAliases).toMap
     }
   }
 
   private def filter(responseIndicesNadAliases: List[(String, java.util.List[AliasMetadata])],
-                     allowedAliases: NonEmptyList[ClusterIndexName]) = {
-    val matcher = PatternsMatcher.create(allowedAliases.toList.map(_.stringify))
-    responseIndicesNadAliases
-      .map { case (indexName, aliasesList) =>
-        val filteredAliases = matcher.filter(aliasesList.asSafeList.toSet)
-        (indexName, filteredAliases.toList.asJava)
-      }
+                     allowedAliases: Iterable[ClusterIndexName]) = {
+    if (allowedAliases.isEmpty) List.empty
+    else {
+      val matcher = PatternsMatcher.create(allowedAliases.stringify)
+      responseIndicesNadAliases
+        .map { case (indexName, aliasesList) =>
+          val filteredAliases = matcher.filter(aliasesList.asSafeList)
+          (indexName, filteredAliases.toList.asJava)
+        }
+    }
   }
 
 }

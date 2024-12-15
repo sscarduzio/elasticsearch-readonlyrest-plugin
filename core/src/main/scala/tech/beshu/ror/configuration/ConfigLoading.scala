@@ -18,8 +18,8 @@ package tech.beshu.ror.configuration
 
 import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
+import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.es.EsEnv
 
 import java.nio.file.Path
@@ -28,6 +28,7 @@ object ConfigLoading {
   type ErrorOr[A] = LoadedRorConfig.Error Either A
   type IndexErrorOr[A] = LoadedRorConfig.LoadingIndexError Either A
   type LoadRorConfig[A] = Free[LoadConfigAction, A]
+
   sealed trait LoadConfigAction[A]
   object LoadConfigAction {
     final case class LoadEsConfig(env: EsEnv) extends LoadConfigAction[ErrorOr[EsConfig]]

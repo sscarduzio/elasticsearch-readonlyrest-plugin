@@ -20,17 +20,17 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest.Method._
-import org.elasticsearch.rest._
+import org.elasticsearch.rest.RestRequest.Method.*
+import org.elasticsearch.rest.*
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
 import java.util
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 @Inject
-class RestRRAdminAction()
+class RestRRAdminAction
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(

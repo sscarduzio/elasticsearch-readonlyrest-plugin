@@ -17,13 +17,13 @@
 package tech.beshu.ror.es.handler.request.queries
 
 import cats.data.NonEmptyList
-import cats.syntax.list._
-import org.elasticsearch.index.query._
+import cats.syntax.list.*
+import org.elasticsearch.index.query.*
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsingFields}
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 trait QueryWithModifiableFields[QUERY <: QueryBuilder] {
 
@@ -81,8 +81,8 @@ object QueryWithModifiableFields {
 
   object instances {
 
-    import QueryFieldsUsage.instances._
-    import QueryType.instances._
+    import QueryFieldsUsage.instances.*
+    import QueryType.instances.*
 
     //term level
     implicit val existsQueryHandler: ModifiableLeafQuery[ExistsQueryBuilder] = ModifiableLeafQuery.instance { (query, notAllowedFields) =>

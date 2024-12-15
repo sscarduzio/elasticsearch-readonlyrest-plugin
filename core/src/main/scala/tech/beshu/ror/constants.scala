@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror
 
-import scala.collection.mutable.{Set => MutableSet}
+import scala.collection.mutable.Set as MutableSet
 
 object constants {
 

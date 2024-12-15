@@ -16,20 +16,21 @@
  */
 package tech.beshu.ror.boot.engines
 
+import tech.beshu.ror.implicits.*
 import cats.data.EitherT
-import cats.implicits._
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
-import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.{StartingFailure, TestEngine}
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
-import tech.beshu.ror.boot.RorInstance._
+import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpirationConfig, EngineState, InitialEngine}
-import tech.beshu.ror.boot.engines.ConfigHash._
+import tech.beshu.ror.boot.engines.ConfigHash.*
 import tech.beshu.ror.configuration.TestRorConfig.Present.ExpirationConfig
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, TestRorConfig}
@@ -66,7 +67,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
                                   ttl: PositiveFiniteDuration)
                                  (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestConfig.Present]] = {
     for {
-      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of ROR test settings was forced (TTL of test engine is ${ttl.toString()}) ..."))
+      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of ROR test settings was forced (TTL of test engine is ${ttl.show}) ..."))
       reloadResult <- reloadInProgress.withPermit {
         value {
           for {
@@ -94,13 +95,13 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
       }
       _ <- Task.delay(reloadResult match {
         case Right(_) =>
-          logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) reloaded!")
+          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${config.hashString().show}) reloaded!")
         case Left(ReloadError(RawConfigReloadError.ConfigUpToDate(oldConfig))) =>
-          logger.info(s"[${requestId.show}] ROR $name engine (id=${oldConfig.hashString()}) already loaded!")
+          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${oldConfig.hashString().show}) already loaded!")
         case Left(ReloadError(RawConfigReloadError.ReloadingFailed(StartingFailure(message, Some(ex))))) =>
-          logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: $message", ex)
+          logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: ${message.show}", ex)
         case Left(ReloadError(RawConfigReloadError.ReloadingFailed(StartingFailure(message, None)))) =>
-          logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: $message")
+          logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: ${message.show}")
         case Left(ReloadError(RawConfigReloadError.RorInstanceStopped)) =>
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
         case Left(IndexConfigSavingError(SavingIndexConfigError.CannotSaveConfig)) =>

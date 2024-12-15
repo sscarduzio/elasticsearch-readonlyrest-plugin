@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.es.handler.request.queries
 
-import org.elasticsearch.index.query._
+import org.elasticsearch.index.query.*
 
 import scala.annotation.nowarn
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 sealed trait QueryType[QUERY <: QueryBuilder]
 

@@ -23,5 +23,7 @@ spec:
           env:
             - name: ROR_ACTIVATION_KEY
               value: "<YOUR_ACTIVATION_KEY/>"
-            - name: I_UNDERSTAND_IMPLICATION_OF_KBN_PATCHING
+            - name: I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING # ROR 1.61.0 and newer
+              value: "yes"
+            - name: I_UNDERSTAND_IMPLICATION_OF_KBN_PATCHING # pre ROR 1.61.0
               value: "yes"

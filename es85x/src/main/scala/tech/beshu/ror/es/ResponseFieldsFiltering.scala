@@ -29,7 +29,7 @@ import org.elasticsearch.xcontent.yaml.YamlXContent
 import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentParserConfiguration, XContentType}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 trait ResponseFieldsFiltering {
   this: Logging =>
@@ -52,9 +52,9 @@ trait ResponseFieldsFiltering {
   private def filterRestResponse(response: RestResponse, fieldsRestrictions: ResponseFieldsRestrictions): RestResponse = {
     val (includes, excludes) = fieldsRestrictions.mode match {
       case AccessMode.Whitelist =>
-        (fieldsRestrictions.responseFields.map(_.value.value), Set.empty[String])
+        (fieldsRestrictions.responseFields.toSet.map(_.value.value), Set.empty[String])
       case AccessMode.Blacklist =>
-        (Set.empty[String], fieldsRestrictions.responseFields.map(_.value.value))
+        (Set.empty[String], fieldsRestrictions.responseFields.toSet.map(_.value.value))
     }
     val xContent =
       if(response.contentType().contains(XContentType.JSON.mediaTypeWithoutParameters())) JsonXContent.jsonXContent

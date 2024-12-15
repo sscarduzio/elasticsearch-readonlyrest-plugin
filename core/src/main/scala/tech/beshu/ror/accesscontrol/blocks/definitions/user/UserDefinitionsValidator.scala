@@ -42,7 +42,7 @@ object UserDefinitionsValidator {
       definitions.items
         .flatMap { definition =>
           (for {
-            localUsers <- UniqueNonEmptyList.fromSortedSet(definition.usernames.patterns.filterNot(_.containsWildcard))
+            localUsers <- UniqueNonEmptyList.from(definition.usernames.patterns.filterNot(_.containsWildcard))
             basicAuthenticationRules <- basicAuthenticationRuleFrom(definition.mode)
           } yield localUsers.toList.map(user => (user, basicAuthenticationRules))).getOrElse(List.empty)
         }
@@ -62,7 +62,7 @@ object UserDefinitionsValidator {
         .flatMap {
           case (localUser, authenticationRules) =>
             UniqueNonEmptyList
-              .fromIterable(findRulesWithNotMatchingCredentials(authenticationRules))
+              .from(findRulesWithNotMatchingCredentials(authenticationRules))
               .map(ruleNames => ValidationError.MultipleUserEntriesWithDifferentCredentials(localUser, ruleNames))
         }
 

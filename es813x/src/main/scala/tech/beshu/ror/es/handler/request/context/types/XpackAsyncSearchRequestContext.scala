@@ -20,18 +20,19 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, IndexAttribute}
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, IndexAttribute, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
-import tech.beshu.ror.es.handler.response.SearchHitOps._
-import tech.beshu.ror.es.handler.request.SearchRequestOps._
+import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
+import tech.beshu.ror.es.handler.response.SearchHitOps.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps.*
 
 class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
                                              esContext: EsContext,
@@ -46,20 +47,19 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
 
   override protected def requestFieldsUsage: RequestFieldsUsage = searchRequest.checkFieldsUsage()
 
-  override protected def indicesFrom(request: ActionRequest): Set[domain.ClusterIndexName] = {
+  override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] =
     searchRequest
       .indices.asSafeSet
-      .flatMap(ClusterIndexName.fromString)
-  }
+      .flatMap(RequestedIndex.fromString)
 
   override protected def update(request: ActionRequest,
-                                indices: NonEmptyList[domain.ClusterIndexName],
+                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 filter: Option[domain.Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     searchRequest
       .applyFilterToQuery(filter)
       .applyFieldLevelSecurity(fieldLevelSecurity)
-      .indices(indices.toList.map(_.stringify): _*)
+      .indices(filteredRequestedIndices.stringify: _*)
 
     ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
   }

@@ -27,14 +27,15 @@ import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
-import tech.beshu.ror.boot.ReadonlyRest._
+import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
+import tech.beshu.ror.boot.ReadonlyRest.*
+import tech.beshu.ror.configuration.*
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
-import tech.beshu.ror.configuration.TestConfigLoading._
-import tech.beshu.ror.configuration._
+import tech.beshu.ror.configuration.TestConfigLoading.*
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
-import tech.beshu.ror.configuration.loader._
+import tech.beshu.ror.configuration.loader.*
 import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
@@ -89,13 +90,13 @@ class ReadonlyRest(coreFactory: CoreFactory,
       case LoadedRorConfig.FileParsingError(message) =>
         StartingFailure(message)
       case LoadedRorConfig.FileNotExist(path) =>
-        StartingFailure(s"Cannot find settings file: ${path.toString}")
+        StartingFailure(s"Cannot find settings file: ${path.show}")
       case LoadedRorConfig.EsFileNotExist(path) =>
-        StartingFailure(s"Cannot find elasticsearch settings file: [${path.toString}]")
+        StartingFailure(s"Cannot find elasticsearch settings file: [${path.show}]")
       case LoadedRorConfig.EsFileMalformed(path, message) =>
-        StartingFailure(s"Settings file is malformed: [${path.toString}], $message")
+        StartingFailure(s"Settings file is malformed: [${path.show}], ${message.show}")
       case LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled(typeOfConfiguration) =>
-        StartingFailure(s"Cannot use ROR $typeOfConfiguration when XPack Security is enabled")
+        StartingFailure(s"Cannot use ROR ${typeOfConfiguration.show} when XPack Security is enabled")
       case LoadedRorConfig.IndexParsingError(message) =>
         StartingFailure(message)
       case LoadedRorConfig.IndexUnknownStructure =>
@@ -111,7 +112,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     EitherT(action.foldMap(compiler))
       .leftMap {
         case LoadedTestRorConfig.IndexParsingError(message) =>
-          logger.error(s"Loading ReadonlyREST test settings from index failed: $message. No test settings will be loaded.")
+          logger.error(s"Loading ReadonlyREST test settings from index failed: ${message.show}. No test settings will be loaded.")
           LoadedTestRorConfig.FallbackConfig(notSetTestRorConfig)
         case LoadedTestRorConfig.IndexUnknownStructure =>
           logger.error("Loading ReadonlyREST test settings from index failed: index content malformed. No test settings will be loaded.")
@@ -156,7 +157,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
               expiration = expirationConfig(testConfig.expiration)
             )
           case Left(startingFailure) =>
-            logger.error(s"Unable to start test engine. Cause: ${startingFailure.message}. Test settings engine will be marked as invalidated.")
+            logger.error(s"Unable to start test engine. Cause: ${startingFailure.message.show}. Test settings engine will be marked as invalidated.")
             TestEngine.Invalidated(testConfig.rawConfig, expirationConfig(testConfig.expiration))
         }
     } yield testEngine
@@ -216,7 +217,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     val auditingTool = createAuditingTool(core)
 
     val decoratedCore = Core(
-      accessControl = new AccessControlLoggingDecorator(
+      accessControl = new AccessControlListLoggingDecorator(
         underlying = core.accessControl,
         auditingTool = auditingTool
       ),
@@ -251,7 +252,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .map(_.reason)
       .map {
         case Reason.Message(msg) => msg
-        case Reason.MalformedValue(yamlString) => s"Malformed settings: $yamlString"
+        case Reason.MalformedValue(yamlString) => s"Malformed settings: ${yamlString.show}"
       }
       .toList
       .mkString("Errors:\n", "\n", "")

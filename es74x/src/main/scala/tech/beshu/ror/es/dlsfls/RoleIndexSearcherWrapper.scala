@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.dlsfls
 
 import cats.data.StateT
-import cats.implicits._
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.DirectoryReader

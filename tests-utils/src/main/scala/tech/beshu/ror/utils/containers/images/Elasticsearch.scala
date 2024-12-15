@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.utils.containers.images
 
-import better.files._
+import better.files.*
 import cats.data.NonEmptyList
 import com.typesafe.scalalogging.LazyLogging
 import os.Path
 import tech.beshu.ror.utils.containers.ContainerUtils
-import tech.beshu.ror.utils.containers.images.Elasticsearch._
+import tech.beshu.ror.utils.containers.images.Elasticsearch.*
 import tech.beshu.ror.utils.misc.Version
 
 object Elasticsearch {

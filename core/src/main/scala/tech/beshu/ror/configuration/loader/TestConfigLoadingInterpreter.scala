@@ -17,19 +17,18 @@
 package tech.beshu.ror.configuration.loader
 
 import cats.data.EitherT
-import cats.implicits._
 import cats.~>
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.configuration.RorProperties.LoadingDelay
-import tech.beshu.ror.configuration.{TestConfigLoading, TestRorConfig}
 import tech.beshu.ror.configuration.TestConfigLoading.LoadTestConfigAction
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.loader.LoadedTestRorConfig._
+import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.*
+import tech.beshu.ror.configuration.{TestConfigLoading, TestRorConfig}
+import tech.beshu.ror.implicits.*
 
 object TestConfigLoadingInterpreter extends Logging {
 
@@ -42,7 +41,7 @@ object TestConfigLoadingInterpreter extends Logging {
           .map { testConfig =>
             testConfig match {
               case TestRorConfig.Present(rawConfig, _, _) =>
-                logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw test config from index: ${rawConfig.raw}")
+                logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw test config from index: ${rawConfig.raw.show}")
               case TestRorConfig.NotSet =>
                 logger.debug("[CLUSTERWIDE SETTINGS] There was no test settings in index. Test settings engine will be not initialized.")
             }
@@ -59,7 +58,7 @@ object TestConfigLoadingInterpreter extends Logging {
   private def logIndexLoadingError(error: LoadedTestRorConfig.LoadingIndexError): Unit = {
     error match {
       case IndexParsingError(message) =>
-        logger.error(s"Loading ReadonlyREST settings from index failed: $message")
+        logger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
       case LoadedTestRorConfig.IndexUnknownStructure =>
         logger.info("Loading ReadonlyREST test settings from index failed: index content malformed")
       case LoadedTestRorConfig.IndexNotExist =>

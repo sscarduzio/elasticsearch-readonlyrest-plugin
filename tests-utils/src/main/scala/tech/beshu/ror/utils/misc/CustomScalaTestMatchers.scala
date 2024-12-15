@@ -20,7 +20,7 @@ import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.{MatchResult, Matcher}
 import tech.beshu.ror.utils.elasticsearch.BaseManager
-import ujson._
+import ujson.*
 
 import scala.language.implicitConversions
 import scala.util.matching.Regex
@@ -96,7 +96,7 @@ trait CustomScalaTestMatchers extends Matchers {
 
   class HaveStatusCode[T <: BaseManager#SimpleResponse](val haveWord: ResultOfHaveWordForExtent[T])
     extends CustomScalaTestMatchers {
-    import org.joor.Reflect._
+    import org.joor.Reflect.*
 
     def statusCode(statusCode: Int): Assertion = {
       val response = on(haveWord).get[T]("left")

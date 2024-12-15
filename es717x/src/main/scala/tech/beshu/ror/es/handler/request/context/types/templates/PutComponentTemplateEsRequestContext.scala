@@ -19,16 +19,17 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 import org.elasticsearch.action.admin.indices.template.put.PutComponentTemplateAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.{RequestedIndex, TemplateName}
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingComponentTemplate
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.RefinedUtils._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class PutComponentTemplateEsRequestContext(actionRequest: PutComponentTemplateAction.Request,
                                            esContext: EsContext,
@@ -43,7 +44,7 @@ class PutComponentTemplateEsRequestContext(actionRequest: PutComponentTemplateAc
       name <- TemplateName
         .fromString(request.name())
         .toRight("Template name should be non-empty")
-      aliases = request.componentTemplate().template().aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet
+      aliases = request.componentTemplate().template().aliases().asSafeMap.keys.flatMap(RequestedIndex.fromString).toCovariantSet
     } yield AddingComponentTemplate(name, aliases)
 
     templateOperation match {

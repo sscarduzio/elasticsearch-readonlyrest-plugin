@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
-import cats.implicits.*
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -28,24 +27,24 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepre
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
-import tech.beshu.ror.accesscontrol.show.logs.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.LoggerOps.*
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.js.JsCompiler
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.net.URI
 import scala.concurrent.duration.*
@@ -69,7 +68,7 @@ object common extends Logging {
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { str =>
-        import tech.beshu.ror.utils.StringWiseSplitter._
+        import tech.beshu.ror.utils.StringWiseSplitter.*
         val (errors, list) = str.split(";")
           .map(_.trim)
           .map { pairString =>
@@ -95,7 +94,7 @@ object common extends Logging {
       .emapE { value =>
         Try(Uri.parse(value)) match {
           case Success(uri) => Right(uri)
-          case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to url")))
+          case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '${value.show}' to url")))
         }
       }
       .decoder
@@ -106,7 +105,7 @@ object common extends Logging {
       .emapE { value =>
         Try(new URI(value)).flatMap(uri => io.lemonlabs.uri.Url.parseTry(uri.toString)) match {
           case Success(url) => Right(url)
-          case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to url")))
+          case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '${value.show}' to url")))
         }
       }
       .decoder
@@ -189,7 +188,7 @@ object common extends Logging {
     override def convert: String => Either[ConvertError, Address] = str => {
       Address.from(str) match {
         case Some(address) => Right(address)
-        case None => Left(ConvertError(s"Cannot create address (IP or hostname) from '$str'"))
+        case None => Left(ConvertError(s"Cannot create address (IP or hostname) from '${str.show}'"))
       }
     }
   }
@@ -232,7 +231,7 @@ object common extends Logging {
       .emapE { str =>
         IpAddress.fromString(str) match {
           case Some(ip) => Right(ip)
-          case None => Left(ValueLevelCreationError(Message(s"Cannot create IP address from $str")))
+          case None => Left(ValueLevelCreationError(Message(s"Cannot create IP address from ${str.show}")))
         }
       }
       .decoder
@@ -244,7 +243,7 @@ object common extends Logging {
       .emapE { int =>
         Port.fromInt(int) match {
           case Some(ip) => Right(ip)
-          case None => Left(ValueLevelCreationError(Message(s"Cannot create port from $int")))
+          case None => Left(ValueLevelCreationError(Message(s"Cannot create port from ${int.show}")))
         }
       }
       .decoder
@@ -256,7 +255,7 @@ object common extends Logging {
       .emapE { str =>
         SocketAddress.fromStringIp(str) match {
           case Some(socketAddress) => Right(socketAddress)
-          case None => Left(ValueLevelCreationError(Message(s"Cannot create socket address from $str")))
+          case None => Left(ValueLevelCreationError(Message(s"Cannot create socket address from ${str.show}")))
         }
       }
       .decoder
@@ -289,7 +288,7 @@ object common extends Logging {
           .left
           .map { ex =>
             logger.errorEx("JSON path compilation failed", ex)
-            DefinitionsLevelCreationError(Message(s"Cannot compile '$jsonPathStr' to JSON path"))
+            DefinitionsLevelCreationError(Message(s"Cannot compile '${jsonPathStr.show}' to JSON path"))
           }
       }
       .decoder
@@ -307,7 +306,7 @@ object common extends Logging {
         case "admin" => Right(KibanaAccess.Admin)
         case "unrestricted" => Right(KibanaAccess.Unrestricted)
         case unknown => Left(CoreCreationError.ValueLevelCreationError(Message(
-          s"Unknown kibana access '$unknown'. Available options: 'ro', 'ro_strict', 'rw', 'api_only', 'admin', 'unrestricted'"
+          s"Unknown kibana access '${unknown.show}'. Available options: 'ro', 'ro_strict', 'rw', 'api_only', 'admin', 'unrestricted'"
         )))
       }
       .decoder
@@ -345,7 +344,7 @@ object common extends Logging {
       .emapE { value =>
         Try(Duration(value)) match {
           case Success(v: FiniteDuration) => Right(v)
-          case Success(_) | Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to duration")))
+          case Success(_) | Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '${value.show}' to duration")))
         }
       }
       .decoder
@@ -356,7 +355,7 @@ object common extends Logging {
       .toSyncDecoder
       .map(_.seconds)
       .withErrorFromCursor { case (element, _) =>
-        ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces}' to duration"))
+        ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces.show}' to duration"))
       }
       .decoder
 

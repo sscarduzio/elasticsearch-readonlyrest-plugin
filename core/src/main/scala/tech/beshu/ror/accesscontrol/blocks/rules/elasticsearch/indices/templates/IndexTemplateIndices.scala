@@ -17,17 +17,17 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
-import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 private[indices] trait IndexTemplateIndices
@@ -65,7 +65,7 @@ private[indices] trait IndexTemplateIndices
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * getting Index Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
-    val existingTemplates = findTemplatesBy(templateNamePatterns.toList.toSet, in = blockContext)
+    val existingTemplates = findTemplatesBy(templateNamePatterns.toList, in = blockContext)
     if (existingTemplates.isEmpty) {
       logger.debug(
         s"""[${blockContext.requestContext.id.show}] * no Index Templates for name patterns [${templateNamePatterns.show}] found ..."""
@@ -85,7 +85,7 @@ private[indices] trait IndexTemplateIndices
 
   protected def addingIndexTemplate(newTemplateName: TemplateName,
                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                    aliases: Set[ClusterIndexName])
+                                    aliases: Set[RequestedIndex[ClusterIndexName]])
                                    (implicit blockContext: TemplateRequestBlockContext,
                                     allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     resultBasedOnCondition(blockContext) {
@@ -95,7 +95,7 @@ private[indices] trait IndexTemplateIndices
 
   protected def addingIndexTemplateAndGetAllowedOnes(newTemplateName: TemplateName,
                                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                                     aliases: Set[ClusterIndexName],
+                                                     aliases: Set[RequestedIndex[ClusterIndexName]],
                                                      requestedTemplateNames: List[TemplateNamePattern])
                                                     (implicit blockContext: TemplateRequestBlockContext,
                                                      allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
@@ -107,7 +107,9 @@ private[indices] trait IndexTemplateIndices
         }
         RuleResult.fulfilled {
           blockContext
-            .withTemplateOperation(AddingIndexTemplateAndGetAllowedOnes(newTemplateName, newTemplateIndicesPatterns, aliases, filteredAllowedTemplates))
+            .withTemplateOperation(
+              AddingIndexTemplateAndGetAllowedOnes(newTemplateName, newTemplateIndicesPatterns, aliases, filteredAllowedTemplates)
+            )
             .withResponseTemplateTransformation(transformation)
         }
       case false =>
@@ -117,7 +119,7 @@ private[indices] trait IndexTemplateIndices
 
   private def processAddingIndexTemplate(newTemplateName: TemplateName,
                                          newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                         aliases: Set[ClusterIndexName])
+                                         aliases: Set[RequestedIndex[ClusterIndexName]])
                                         (implicit blockContext: TemplateRequestBlockContext,
                                          allowedIndices: AllowedIndices): Boolean = {
     logger.debug(
@@ -186,7 +188,7 @@ private[indices] trait IndexTemplateIndices
 
   private def canAddNewIndexTemplate(newTemplateName: TemplateName,
                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                     newTemplateAliases: Set[ClusterIndexName])
+                                     newTemplateAliases: Set[RequestedIndex[ClusterIndexName]])
                                     (implicit blockContext: TemplateRequestBlockContext,
                                      allowedIndices: AllowedIndices) = {
     logger.debug(
@@ -208,7 +210,7 @@ private[indices] trait IndexTemplateIndices
       if (newTemplateAliases.isEmpty) true
       else {
         newTemplateAliases.forall { alias =>
-          val allowed = isAliasAllowed(alias)
+          val allowed = isAliasAllowed(alias.name)
           if (!allowed) logger.debug(
             s"""[${blockContext.requestContext.id.show}] STOP: one of Template's [${newTemplateName.show}]
                | alias [${alias.show}] is forbidden.""".oneLiner
@@ -272,7 +274,7 @@ private[indices] trait IndexTemplateIndices
     findTemplatesBy(Set(namePattern), in)
   }
 
-  private def findTemplatesBy(namePatterns: Set[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.IndexTemplate] = {
+  private def findTemplatesBy(namePatterns: Iterable[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.IndexTemplate] = {
     filterTemplates(namePatterns, in.requestContext.indexTemplates)
   }
 
@@ -282,7 +284,7 @@ private[indices] trait IndexTemplateIndices
       case Template.IndexTemplate(name, patterns, aliases) =>
         val onlyAllowedPatterns = patterns.filter(p => p.isAllowedByAny(allowedIndices.resolved))
         val onlyAllowedAliases = aliases.filter(isAliasAllowed)
-        UniqueNonEmptyList.fromSortedSet(onlyAllowedPatterns) match {
+        UniqueNonEmptyList.from(onlyAllowedPatterns) match {
           case Some(nonEmptyAllowedPatterns) =>
             Set[Template](Template.IndexTemplate(name, nonEmptyAllowedPatterns, onlyAllowedAliases))
           case None =>

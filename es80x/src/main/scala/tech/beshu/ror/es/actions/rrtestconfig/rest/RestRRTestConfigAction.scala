@@ -21,16 +21,16 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
-import org.elasticsearch.rest._
+import org.elasticsearch.rest.*
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, RRTestConfigRequest, RRTestConfigResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
 import java.util
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 @Inject
-class RestRRTestConfigAction()
+class RestRRTestConfigAction
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(

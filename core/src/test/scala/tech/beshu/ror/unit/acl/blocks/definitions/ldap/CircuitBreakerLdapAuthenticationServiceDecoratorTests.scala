@@ -18,24 +18,23 @@ package tech.beshu.ror.unit.acl.blocks.definitions.ldap
 
 import com.unboundid.ldap.sdk.{LDAPSearchException, ResultCode}
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.exceptions.ExecutionRejectedException
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Assertion
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
-import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
-import tech.beshu.ror.utils.WithDummyRequestIdSupport
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, RequestId, User}
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 

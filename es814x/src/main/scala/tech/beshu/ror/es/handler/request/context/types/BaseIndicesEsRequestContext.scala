@@ -17,17 +17,20 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                esContext: EsContext,
@@ -38,60 +41,52 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     with EsRequest[GeneralIndexRequestBlockContext] {
 
   override val initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty,
-    {
-      import tech.beshu.ror.accesscontrol.show.logs._
-      val indices = indicesOrWildcard(indicesFrom(actionRequest))
-      logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
-      indices
-    },
-    Set(ClusterIndexName.Local.wildcard)
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty,
+    filteredIndices = discoverIndices(),
+    allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
   )
 
   override def modifyWhenIndexNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentIndex()
-      if (nonExistentIndex.hasWildcard) {
+      val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
+      if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.nonExistingIndicesFromInitialIndices().toList)
+          .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
-        update(actionRequest, nonExistingIndices, nonExistingIndices)
+        update(actionRequest, nonExistingIndices, nonExistingIndices.map(_.name))
       } else {
         ShouldBeInterrupted
       }
     } else {
-      val randomNonexistingIndex = initialBlockContext.randomNonexistentIndex()
-      update(actionRequest, NonEmptyList.of(randomNonexistingIndex), NonEmptyList.of(randomNonexistingIndex))
+      val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
+      update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
     }
   }
 
   override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
-    (for {
-      filteredIndices <- toSortedNonEmptyList(blockContext.filteredIndices)
-      allAllowedIndices <- toSortedNonEmptyList(blockContext.allAllowedIndices)
-    } yield (filteredIndices, allAllowedIndices)) match {
-      case Some((filteredIndices, allAllowedIndices)) =>
-        update(actionRequest, filteredIndices, allAllowedIndices)
-      case None =>
-        logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
-        ShouldBeInterrupted
+    val result = for {
+      filteredIndices <- NonEmptyList.fromList(blockContext.filteredIndices.toList)
+      allAllowedIndices <- NonEmptyList.fromList(blockContext.allAllowedIndices.toList)
+    } yield update(actionRequest, filteredIndices, allAllowedIndices)
+
+    result.getOrElse {
+      logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
+      ShouldBeInterrupted
     }
   }
 
-  protected def indicesFrom(request: R): Set[ClusterIndexName]
+  protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]]
 
   protected def update(request: R,
-                       filteredIndices: NonEmptyList[ClusterIndexName],
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                        allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult
 
-  private def toSortedNonEmptyList[A: Ordering](values: Iterable[A]) = {
-    NonEmptyList.fromList(values.toList.sorted)
+  private def discoverIndices() = {
+    val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
+    logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
+    indices
   }
-
-  private implicit val indexNameOrdering: Ordering[ClusterIndexName] =
-    Ordering.by[ClusterIndexName, String](_.stringify)(implicitly[Ordering[String]].reverse)
-
 }

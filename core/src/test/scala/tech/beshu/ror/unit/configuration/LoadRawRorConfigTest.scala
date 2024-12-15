@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.configuration
 import cats.{Id, ~>}
 import io.circe.Json
 import org.scalatest.EitherValues
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
@@ -33,7 +33,7 @@ import java.nio.file.Paths
 import scala.language.existentials
 
 class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
-  import LoadRawRorConfigTest._
+  import LoadRawRorConfigTest.*
   "Free monad loader program" should {
     "load forced file" in {
       val steps = List(
@@ -102,7 +102,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
   }
 }
 object LoadRawRorConfigTest {
-  import eu.timepit.refined.auto._
+  import eu.timepit.refined.auto.*
   private val esEnv = EsEnv(Paths.get("unused_file_path"), Paths.get("unused_file_path"))
   private val rawRorConfig = RawRorConfig(Json.False, "forced file config")
   private val rorConfigurationIndex = RorConfigurationIndex(IndexName.Full("rorConfigurationIndex"))

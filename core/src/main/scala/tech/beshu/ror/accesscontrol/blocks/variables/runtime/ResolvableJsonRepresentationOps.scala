@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
-import cats.implicits._
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json.Folder
 import io.circe.{Json, JsonNumber, JsonObject}
@@ -24,8 +24,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.{Convertible, Unresolvable}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.CreationError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.domain.Json.JsonValue._
-import tech.beshu.ror.accesscontrol.domain.Json._
+import tech.beshu.ror.accesscontrol.domain.Json.*
+import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.*
 
 object ResolvableJsonRepresentationOps {
 

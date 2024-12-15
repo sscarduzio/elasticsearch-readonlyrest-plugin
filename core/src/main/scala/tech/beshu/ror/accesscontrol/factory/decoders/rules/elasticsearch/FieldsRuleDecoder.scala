@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.constants
+import tech.beshu.ror.syntax.*
 
 class FieldsRuleDecoder(flsEngine: FlsEngine,
                         variableCreator: RuntimeResolvableVariableCreator)
@@ -48,7 +49,7 @@ private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
     for {
       configuredFields <- configuredFieldsDecoder
       accessMode <- accessModeDecoder[AccessMode](configuredFields)
-      documentFields <- documentFieldsDecoder[DocumentField](configuredFields, constants.FIELDS_ALWAYS_ALLOW.map(NonEmptyString.unsafeFrom).toSet)
+      documentFields <- documentFieldsDecoder[DocumentField](configuredFields, constants.FIELDS_ALWAYS_ALLOW.map(NonEmptyString.unsafeFrom).toCovariantSet)
     } yield RuleDefinition.create(new FieldsRule(FieldsRule.Settings(documentFields, accessMode, flsEngine)))
   }
 

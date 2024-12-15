@@ -21,13 +21,13 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
 class ModifyDataStreamsEsRequestContext(actionRequest: ModifyDataStreamsAction.Request,
                                         esContext: EsContext,
@@ -35,18 +35,22 @@ class ModifyDataStreamsEsRequestContext(actionRequest: ModifyDataStreamsAction.R
                                         override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  private lazy val originIndices: Set[domain.ClusterIndexName] = {
-    actionRequest.getActions.asSafeList.map(_.getIndex).flatMap(ClusterIndexName.fromString).toSet
-  }
+  private lazy val originIndices: Set[RequestedIndex[ClusterIndexName]] =
+    actionRequest
+      .getActions.asSafeSet
+      .map(_.getIndex)
+      .flatMap(RequestedIndex.fromString)
 
   override protected def backingIndicesFrom(request: ModifyDataStreamsAction.Request): DataStreamRequestBlockContext.BackingIndices =
     BackingIndices.IndicesInvolved(originIndices, Set(ClusterIndexName.Local.wildcard))
 
-  override def dataStreamsFrom(request: ModifyDataStreamsAction.Request): Set[domain.DataStreamName] = {
-    request.getActions.asSafeList.map(_.getDataStream).flatMap(DataStreamName.fromString).toSet
-  }
+  override def dataStreamsFrom(request: ModifyDataStreamsAction.Request): Set[DataStreamName] =
+    request
+      .getActions.asSafeSet
+      .map(_.getDataStream)
+      .flatMap(DataStreamName.fromString)
 
-  override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
+  override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult =
     ModificationResult.Modified // data stream and indices already processed by ACL
-  }
+
 }

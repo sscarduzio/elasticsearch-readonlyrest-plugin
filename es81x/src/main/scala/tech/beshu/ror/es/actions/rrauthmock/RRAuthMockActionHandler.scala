@@ -20,13 +20,14 @@ import cats.implicits.toShow
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
-import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.AuthMockApi.AuthMockResponse
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RorInstanceSupplier
+import tech.beshu.ror.implicits.*
 
-class RRAuthMockActionHandler() extends Logging {
+class RRAuthMockActionHandler extends Logging {
 
   private implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 

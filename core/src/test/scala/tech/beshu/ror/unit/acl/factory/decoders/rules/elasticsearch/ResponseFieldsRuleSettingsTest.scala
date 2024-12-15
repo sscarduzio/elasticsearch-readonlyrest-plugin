@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.elasticsearch
 
-import eu.timepit.refined.auto._
-import org.scalatest.matchers.should.Matchers._
+import eu.timepit.refined.auto.*
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering._
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 
 class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[ResponseFieldsRule] {
 
@@ -180,7 +180,7 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
             assertion = errors => {
               errors should have size 1
               errors.head should be(RulesLevelCreationError(Message(
-                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: 'field1','~field2'"
+                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: 'field1', '~field2'"
               )))
             }
           )
@@ -200,7 +200,7 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
             assertion = errors => {
               errors should have size 1
               errors.head should be(RulesLevelCreationError(Message(
-                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}','~field2'"
+                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}', '~field2'"
               )))
             }
           )
@@ -220,7 +220,7 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
             assertion = errors => {
               errors should have size 1
               errors.head should be(RulesLevelCreationError(Message(
-                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}','~@{user}.name'"
+                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}', '~@{user}.name'"
               )))
             }
           )

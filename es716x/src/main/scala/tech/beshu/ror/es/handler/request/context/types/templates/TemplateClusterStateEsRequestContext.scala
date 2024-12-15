@@ -17,8 +17,8 @@
 package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
-import cats.implicits._
-import eu.timepit.refined.auto._
+import cats.implicits.*
+import eu.timepit.refined.auto.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
 import org.elasticsearch.cluster.metadata.Metadata
@@ -34,10 +34,12 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.RefinedUtils._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object TemplateClusterStateEsRequestContext {
 
@@ -81,22 +83,22 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
     blockContext.templateOperation match {
       case GettingLegacyAndIndexTemplates(legacyTemplatesOperation, indexTemplatesOperation) =>
         updateResponse {
-          val func1 = modifyLegacyTemplatesOfResponse(_, legacyTemplatesOperation.namePatterns.toList.toSet, blockContext.responseTemplateTransformation)
-          val func2 = modifyIndexTemplatesOfResponse(_, indexTemplatesOperation.namePatterns.toList.toSet, blockContext.responseTemplateTransformation)
+          val func1 = modifyLegacyTemplatesOfResponse(_, legacyTemplatesOperation.namePatterns.toIterable, blockContext.responseTemplateTransformation)
+          val func2 = modifyIndexTemplatesOfResponse(_, indexTemplatesOperation.namePatterns.toIterable, blockContext.responseTemplateTransformation)
           func1 andThen func2
         }
       case GettingLegacyTemplates(namePatterns) =>
         updateResponse(
-          modifyLegacyTemplatesOfResponse(_, namePatterns.toList.toSet, blockContext.responseTemplateTransformation)
+          modifyLegacyTemplatesOfResponse(_, namePatterns.toIterable, blockContext.responseTemplateTransformation)
         )
       case GettingIndexTemplates(namePatterns) =>
         updateResponse(
-          modifyIndexTemplatesOfResponse(_, namePatterns.toList.toSet, blockContext.responseTemplateTransformation)
+          modifyIndexTemplatesOfResponse(_, namePatterns.toIterable, blockContext.responseTemplateTransformation)
         )
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -111,7 +113,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   }
 
   private def modifyLegacyTemplatesOfResponse(response: ClusterStateResponse,
-                                              allowedTemplates: Set[TemplateNamePattern],
+                                              allowedTemplates: Iterable[TemplateNamePattern],
                                               transformation: TemplatesTransformation) = {
     val oldMetadata = response.getState.metadata()
     val filteredTemplates = GetTemplatesEsRequestContext
@@ -150,7 +152,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   }
 
   private def modifyIndexTemplatesOfResponse(response: ClusterStateResponse,
-                                             allowedTemplates: Set[TemplateNamePattern],
+                                             allowedTemplates: Iterable[TemplateNamePattern],
                                              transformation: TemplatesTransformation) = {
     val oldMetadata = response.getState.metadata()
 
@@ -168,7 +170,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
               allowedTemplates.exists(_.matches(templateName))
             }
         }
-        .toSet
+        .toCovariantSet
 
     val newMetadataWithFilteredTemplatesV2 = oldMetadata
       .templatesV2().keySet().asScala

@@ -19,47 +19,27 @@ package tech.beshu.ror.accesscontrol
 import cats.data.NonEmptyList
 import cats.implicits.*
 import cats.{Order, Show}
+import eu.timepit.refined.api.*
 import eu.timepit.refined.types.string.NonEmptyString
-import io.lemonlabs.uri.Uri
-import squants.information.Information
-import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
-import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
-import tech.beshu.ror.accesscontrol.blocks.Block.{History, Name, Policy, RuleDefinition}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.*
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
 import tech.beshu.ror.accesscontrol.blocks.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, GroupsFromUserAttribute, UniqueMemberAttribute}
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.*
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
-import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
-import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
-import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
-import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
-import tech.beshu.ror.accesscontrol.request.RequestContext.Method
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
-import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.ScalaOps.*
-import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.Base64
@@ -88,6 +68,59 @@ object header {
   }
 }
 
+object headerValues {
+  implicit def nonEmptyListHeaderValue[T: ToHeaderValue]: ToHeaderValue[NonEmptyList[T]] = ToHeaderValue { list =>
+    implicit val nesShow: Show[NonEmptyString] = Show.show(_.value)
+    val tToHeaderValue = implicitly[ToHeaderValue[T]]
+    NonEmptyString.unsafeFrom(list.map(tToHeaderValue.toRawValue).mkString_(","))
+  }
+
+  implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
+  implicit val indexNameHeaderValue: ToHeaderValue[ClusterIndexName] = ToHeaderValue(_.nonEmptyStringify)
+
+  implicit val transientFieldsToHeaderValue: ToHeaderValue[FieldsRestrictions] = ToHeaderValue { fieldsRestrictions =>
+    import upickle.default
+    import default.*
+    implicit val nesW: Writer[NonEmptyString] = StringWriter.comap(_.value)
+    implicit val accessModeW: Writer[AccessMode] = Writer.merge(
+      macroW[AccessMode.Whitelist.type],
+      macroW[AccessMode.Blacklist.type]
+    )
+    implicit val documentFieldW: Writer[DocumentField] = macroW
+    implicit val setW: Writer[UniqueNonEmptyList[DocumentField]] =
+      SeqLikeWriter[UniqueNonEmptyList, DocumentField]
+
+    implicit val fieldsRestrictionsW: Writer[FieldsRestrictions] = macroW
+
+    val fieldsJsonString = upickle.default.write(fieldsRestrictions)
+    NonEmptyString.unsafeFrom(
+      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes("UTF-8"))
+    )
+  }
+
+  implicit val transientFieldsFromHeaderValue: FromHeaderValue[FieldsRestrictions] = (value: NonEmptyString) => {
+    import upickle.default
+    import default.*
+    implicit val nesR: Reader[NonEmptyString] = StringReader.map(NonEmptyString.unsafeFrom)
+    implicit val accessModeR: Reader[AccessMode] = Reader.merge(
+      macroR[AccessMode.Whitelist.type],
+      macroR[AccessMode.Blacklist.type]
+    )
+    implicit val documentFieldR: Reader[DocumentField] = macroR
+
+    implicit val setR: Reader[UniqueNonEmptyList[DocumentField]] =
+      SeqLikeReader[List, DocumentField].map(UniqueNonEmptyList.unsafeFrom)
+
+    implicit val fieldsRestrictionsR: Reader[FieldsRestrictions] = macroR
+
+    Try(upickle.default.read[FieldsRestrictions](
+      new String(Base64.getDecoder.decode(value.value), "UTF-8")
+    ))
+  }
+
+  implicit val groupHeaderValue: ToHeaderValue[GroupId] = ToHeaderValue(_.value)
+}
+
 object orders {
   implicit val nonEmptyStringOrder: Order[NonEmptyString] = Order.by(_.value)
   implicit val headerNameOrder: Order[Header.Name] = Order.by(_.value.value)
@@ -96,7 +129,7 @@ object orders {
     case Address.Ip(value) => value.toString()
     case Address.Name(value) => value.toString
   }
-  implicit val methodOrder: Order[Method] = Order.by(_.value)
+  implicit val methodOrder: Order[RequestContext.Method] = Order.by(_.value)
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by {
     case KibanaApp.FullNameKibanaApp(name) => name.value
@@ -105,7 +138,8 @@ object orders {
   implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
   implicit val actionOrder: Order[Action] = Order.by(_.value)
   implicit val authKeyOrder: Order[PlainTextSecret] = Order.by(_.value)
-  implicit val indexOrder: Order[ClusterIndexName] = Order.by(_.stringify)
+  implicit val custerIndexNameOrder: Order[ClusterIndexName] = Order.by(_.stringify)
+  implicit val requestedIndexOrder: Order[RequestedIndex[ClusterIndexName]] = Order.by(r => (r.excluded, r.name))
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.toString)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
@@ -121,7 +155,7 @@ object orders {
     case ForbiddenCause.ImpersonationNotAllowed => 2
     case ForbiddenCause.ImpersonationNotSupported => 3
   }
-  implicit val repositoryOrder: Order[RepositoryName] =  Order.by {
+  implicit val repositoryOrder: Order[RepositoryName] = Order.by {
     case RepositoryName.Full(value) => value.value
     case RepositoryName.Pattern(value) => value.value
     case RepositoryName.All => "_all"
@@ -146,341 +180,11 @@ object orders {
     case (MustBePresent(_), _) => -1
     case (_, MustBePresent(_)) => 1
   }
-}
 
-object show {
-  trait LogsShowInstances {
-    implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
-    implicit def patternShow[T : Show]: Show[Pattern[T]] = Show.show(_.value.show)
-    implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
-    implicit val userIdPatternsShow: Show[UserIdPatterns] = Show.show(_.patterns.toList.map(_.value.value).mkString_(","))
-    implicit val idPatternShow: Show[User.UserIdPattern] = Show.show(_.value.show)
-    implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value.value)
-    implicit val typeShow: Show[Type] = Show.show(_.value)
-    implicit val actionShow: Show[Action] = Show.show(_.value)
-    implicit val addressShow: Show[Address] = Show.show {
-      case Address.Ip(value) => value.toString
-      case Address.Name(value) => value.toString
-    }
-    implicit val informationShow: Show[Information] = Show.show { i => i.toString }
-    implicit val ipShow: Show[Ip] = Show.show(_.value.toString())
-    implicit val methodShow: Show[Method] = Show.show(_.value)
-    implicit val jsonPathShow: Show[JsonPath] = Show.show(_.rawPath)
-    implicit val uriShow: Show[Uri] = Show.show(_.toJavaURI.toString())
-    implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
-    implicit val kibanaAppShow: Show[KibanaApp] = Show.show {
-      case KibanaApp.FullNameKibanaApp(name) => name.value
-      case KibanaApp.KibanaAppRegex(regex) => regex.value.value
-    }
-    implicit val kibanaAllowedApiPathShow: Show[KibanaAllowedApiPath] = Show.show { p =>
-      val httpMethodStr = p.httpMethod match {
-        case AllowedHttpMethod.Any => "*"
-        case AllowedHttpMethod.Specific(HttpMethod.Get) => "GET"
-        case AllowedHttpMethod.Specific(HttpMethod.Put) => "PUT"
-        case AllowedHttpMethod.Specific(HttpMethod.Post) => "POST"
-        case AllowedHttpMethod.Specific(HttpMethod.Delete) => "DELETE"
-      }
-      s"$httpMethodStr:${p.pathRegex.pattern.pattern()}"
-    }
-    implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
-    implicit val clusterIndexNameShow: Show[ClusterIndexName] = Show.show(_.stringify)
-    implicit val localClusterIndexNameShow: Show[ClusterIndexName.Local] = Show.show(_.stringify)
-    implicit val remoteClusterIndexNameShow: Show[ClusterIndexName.Remote] = Show.show(_.stringify)
-    implicit val clusterNameFullShow: Show[ClusterName.Full] = Show.show(_.value.value)
-    implicit val indexNameShow: Show[IndexName] = Show.show {
-      case f@IndexName.Full(_) => f.show
-      case IndexName.Pattern(namePattern) => namePattern.value
-    }
-    implicit val kibanaIndexNameShow: Show[KibanaIndexName] = Show.show(_.underlying.show)
-    implicit val fullIndexNameShow: Show[IndexName.Full] = Show.show(_.name.value)
-    implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.show)
-    implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
-    implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value.value)
-    implicit val groupIdShow: Show[GroupId] = Show.show(_.value.value)
-    implicit val groupShow: Show[Group] = Show.show(group => s"(id=${group.id.show},name=${group.name.value.value})")
-    implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
-    implicit val jwtTokenShow: Show[Jwt.Token] = Show.show(_.value.value)
-    implicit val uriPathShow: Show[UriPath] = Show.show(_.value.value)
-    implicit val dnShow: Show[Dn] = Show.show(_.value.value)
-    implicit val showGroupSearchFilter: Show[GroupSearchFilter] = Show.show(_.value.value)
-    implicit val showGroupIdAttribute: Show[GroupIdAttribute] = Show.show(_.value.value)
-    implicit val showUniqueMemberAttribute: Show[UniqueMemberAttribute] = Show.show(_.value.value)
-    implicit val showGroupsFromUserAttribute: Show[GroupsFromUserAttribute] = Show.show(_.value.value)
-    implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
-    implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
-    implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
-    implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
-    implicit val snapshotNameShow: Show[SnapshotName] = Show.show(v => SnapshotName.toString(v))
-    implicit def ruleNameShow[T <: RuleName[_]]: Show[T] = Show.show(_.name.value)
-
-    implicit def nonEmptyList[T : Show]: Show[NonEmptyList[T]] = Show[List[T]].contramap(_.toList)
-
-    implicit def blockContextShow[B <: BlockContext](implicit showHeader: Show[Header]): Show[B] =
-      Show.show { bc =>
-        (showOption("user", bc.userMetadata.loggedUser) ::
-          showOption("group", bc.userMetadata.currentGroupId) ::
-          showNamedIterable("av_groups", bc.userMetadata.availableGroups.toList.map(_.id)) ::
-          showNamedIterable("indices", bc.indices) ::
-          showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
-          showOption("fls", bc.fieldLevelSecurity) ::
-          showNamedIterable("response_hdr", bc.responseHeaders) ::
-          showNamedIterable("repositories", bc.repositories) ::
-          showNamedIterable("snapshots", bc.snapshots) ::
-          showNamedIterable("response_transformations", bc.responseTransformations) ::
-          showOption("template", bc.templateOperation) ::
-          Nil flatten) mkString ";"
-      }
-
-    private implicit val responseTransformation: Show[ResponseTransformation] = Show.show {
-      case FilteredResponseFields(ResponseFieldsRestrictions(fields, mode)) =>
-        val fieldPrefix = mode match {
-          case Whitelist => ""
-          case Blacklist => "~"
-        }
-        val commaSeparatedFields = fields.map(fieldPrefix + _.value.value).toList.mkString(",")
-        s"fields=[$commaSeparatedFields]"
-    }
-
-    private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
-      case KibanaAccess.RO => "ro"
-      case KibanaAccess.ROStrict => "ro_strict"
-      case KibanaAccess.RW => "rw"
-      case KibanaAccess.Admin => "admin"
-      case KibanaAccess.ApiOnly => "api_only"
-      case KibanaAccess.Unrestricted => "unrestricted"
-    }
-    private implicit val userOriginShow: Show[UserOrigin] = Show.show(_.value.value)
-    implicit val userMetadataShow: Show[UserMetadata] = Show.show { u =>
-      (showOption("user", u.loggedUser) ::
-        showOption("curr_group", u.currentGroupId) ::
-        showNamedIterable("av_groups", u.availableGroups.toList.map(_.id)) ::
-        showOption("kibana_idx", u.kibanaIndex) ::
-        showNamedIterable("hidden_apps", u.hiddenKibanaApps) ::
-        showNamedIterable("allowed_api_paths", u.allowedKibanaApiPaths) ::
-        showOption("kibana_access", u.kibanaAccess) ::
-        showOption("user_origin", u.userOrigin) ::
-        Nil flatten) mkString ";"
-    }
-
-    implicit val flsStrategyShow: Show[FieldLevelSecurity] = Show.show[FieldLevelSecurity] { fls =>
-      fls.strategy match {
-        case Strategy.FlsAtLuceneLevelApproach => "[strategy: fls_at_lucene_level]"
-        case Strategy.BasedOnBlockContextOnly.EverythingAllowed => "[strategy: fls_at_es_level]"
-        case Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(fields) => s"[strategy: fls_at_es_level, ${showNamedNonEmptyList("not_allowed_fields_used", fields)}]"
-      }
-    }
-
-    implicit val templateOperationShow: Show[TemplateOperation] = Show.show {
-      case TemplateOperation.GettingLegacyAndIndexTemplates(op1, op2) =>
-        s"GETALL(${showIterable(op1.namePatterns.toList)}|${showIterable(op2.namePatterns.toList)})"
-      case TemplateOperation.GettingLegacyTemplates(namePatterns) =>
-        s"GET(${showIterable(namePatterns.toList)})"
-      case TemplateOperation.AddingLegacyTemplate(name, patterns, aliases) =>
-        s"ADD(${name.show}:${showIterable(patterns)}:${showIterable(aliases)})"
-      case TemplateOperation.DeletingLegacyTemplates(namePatterns) =>
-        s"DEL(${showIterable(namePatterns.toList)})"
-      case TemplateOperation.GettingIndexTemplates(namePatterns) =>
-        s"GET(${showIterable(namePatterns.toList)})"
-      case TemplateOperation.AddingIndexTemplate(name, patterns, aliases) =>
-        s"ADD(${name.show}:${showIterable(patterns.toList)}:${showIterable(aliases)})"
-      case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(name, patterns, aliases, allowedTemplates) =>
-        s"ADDGET(${name.show}:${showIterable(patterns.toList)}:${showIterable(aliases)}:${showIterable(allowedTemplates)})"
-      case TemplateOperation.DeletingIndexTemplates(namePatterns) =>
-        s"DEL(${showIterable(namePatterns.toList)})"
-      case TemplateOperation.GettingComponentTemplates(namePatterns) =>
-        s"GET(${showIterable(namePatterns.toList)})"
-      case TemplateOperation.AddingComponentTemplate(name, aliases) =>
-        s"ADD(${name.show}:${showIterable(aliases)})"
-      case TemplateOperation.DeletingComponentTemplates(namePatterns) =>
-        s"DEL(${showIterable(namePatterns.toList)})"
-    }
-
-    implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] = Show.show(_.value)
-    implicit val blockNameShow: Show[Name] = Show.show(_.value)
-
-    implicit def ruleHistoryItemShow[B <: BlockContext]: Show[RuleHistoryItem[B]] = Show.show { hi =>
-      s"${hi.rule.show}->${
-        hi.result match {
-          case RuleResult.Fulfilled(_) => "true"
-          case RuleResult.Rejected(_) => "false"
-        }
-      }"
-    }
-
-    implicit def historyShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[History[B]] =
-      Show.show[History[B]] { h =>
-        val rulesHistoryItemsStr = h.items
-          .collect { case hi: RuleHistoryItem[B] => hi }
-          .map(_.show)
-          .mkStringOrEmptyString(" RULES:[", ", ", "]")
-        val resolvedPart = h.blockContext.show match {
-          case "" => ""
-          case nonEmpty => s" RESOLVED:[$nonEmpty]"
-        }
-        s"""[${h.block.show}->$rulesHistoryItemsStr$resolvedPart]"""
-      }
-
-    implicit val policyShow: Show[Policy] = Show.show {
-      case Allow => "ALLOW"
-      case Forbid(_) => "FORBID"
-    }
-    implicit val blockShow: Show[Block] = Show.show { b =>
-      s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.map(_.name.show).toList.mkString(",")}]"
-    }
-    implicit val runtimeResolvableVariableCreationErrorShow: Show[RuntimeResolvableVariableCreator.CreationError] = Show.show {
-      case RuntimeResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
-        "Cannot use multi value variable in non-array context"
-      case RuntimeResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
-        "Cannot use more than one multi-value variable"
-      case RuntimeResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
-        s"Variable malformed, cause: $cause"
-      case RuntimeResolvableVariableCreator.CreationError.VariableConversionError(cause) =>
-        cause
-    }
-    implicit val startupResolvableVariableCreationErrorShow: Show[StartupResolvableVariableCreator.CreationError] = Show.show {
-      case StartupResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
-        "Cannot use multi value variable in non-array context"
-      case StartupResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
-        "Cannot use more than one multi-value variable"
-      case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
-        s"Variable malformed, cause: $cause"
-    }
-    implicit val variableTypeShow: Show[VariableContext.VariableType] = Show.show {
-      case _: VariableType.User => "user"
-      case _: VariableType.CurrentGroup => "current group"
-      case _: VariableType.AvailableGroups => "available groups"
-      case _: VariableType.Header => "header"
-      case _: VariableType.Jwt => "JWT"
-    }
-
-    implicit val complianceResultShow: Show[ComplianceResult.NonCompliantWith] = Show.show {
-      case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthenticationRule(variableType)) =>
-        s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
-      case ComplianceResult.NonCompliantWith(JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier) =>
-        s"JWT variables are not allowed to be used in Groups rule"
-    }
-
-    def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
-      Show.show[Header] {
-        case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
-        case header => headerShow.show(header)
-      }
-    }
-
-    val headerShow: Show[Header] = Show.show { case Header(name, value) => s"${name.show}=${value.value.show}" }
-
-    def blockValidationErrorShow(block: Block.Name): Show[BlockValidationError] = Show.show {
-      case BlockValidationError.AuthorizationWithoutAuthentication =>
-        s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
-      case BlockValidationError.OnlyOneAuthenticationRuleAllowed(authRules) =>
-        s"The '${block.show}' block should contain only one authentication rule, but contains: [${authRules.map(_.name.show).mkString_(",")}]"
-      case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
-        s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
-      case error: BlockValidationError.KibanaRuleTogetherWith =>
-        val conflictingRule = error match {
-          case KibanaRuleTogetherWith.ActionsRule => ActionsRule.Name.name
-          case KibanaRuleTogetherWith.FilterRule => FilterRule.Name.name
-          case KibanaRuleTogetherWith.FieldsRule => FieldsRule.Name.name
-          case KibanaRuleTogetherWith.ResponseFieldsRule => ResponseFieldsRule.Name.name
-        }
-        s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule (or any deprecated kibana-related rule) and '${conflictingRule.show}' rule. These two cannot be used together in one block."
-      case error: BlockValidationError.KibanaUserDataRuleTogetherWith =>
-        val conflictingRule = error match {
-          case KibanaUserDataRuleTogetherWith.KibanaAccessRule => KibanaAccessRule.Name.name
-          case KibanaUserDataRuleTogetherWith.KibanaIndexRule => KibanaIndexRule.Name.name
-          case KibanaUserDataRuleTogetherWith.KibanaTemplateIndexRule => KibanaTemplateIndexRule.Name.name
-          case KibanaUserDataRuleTogetherWith.KibanaHideAppsRule => KibanaHideAppsRule.Name.name
-        }
-        s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule and '${conflictingRule.show}' rule. The second one is deprecated. The first one offers all the second one is able to provide."
-    }
-
-    private def showNamedIterable[T: Show](name: String, iterable: Iterable[T]) = {
-      if (iterable.isEmpty) None
-      else Some(s"$name=${showIterable(iterable)}")
-    }
-
-    private def showNamedNonEmptyList[T: Show](name: String, nonEmptyList: NonEmptyList[T]) = {
-      showNamedIterable(name, nonEmptyList.toList)
-    }
-
-    private def showOption[T: Show](name: String, option: Option[T]) = {
-      showNamedIterable(name, option.toList)
-    }
-
-    private def showIterable[T: Show](iterable: Iterable[T]) = {
-      iterable.map(_.show).mkString(",")
-    }
-
-    implicit val authorizationValueErrorShow: Show[AuthorizationValueError] = Show.show {
-      case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
-      case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [$value]"
-      case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [$value], reason: [$message]"
-    }
-
-    implicit val unresolvableErrorShow: Show[Unresolvable] = Show.show {
-      case Unresolvable.CannotExtractValue(msg) => s"Cannot extract variable value. $msg"
-      case Unresolvable.CannotInstantiateResolvedValue(msg) => s"Extracted value type doesn't fit. $msg"
-    }
-
-    implicit def accessShow[T: Show]: Show[AccessRequirement[T]] = Show.show {
-      case MustBePresent(value) => value.show
-      case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
+  def userIdOrder(globalSettings: GlobalSettings): Order[User.Id] = Order.by { userId =>
+    globalSettings.userIdCaseSensitivity match {
+      case CaseSensitivity.Enabled => userId.value.value
+      case CaseSensitivity.Disabled => userId.value.value.toLowerCase
     }
   }
-  object logs extends LogsShowInstances
-}
-
-object headerValues {
-  implicit def nonEmptyListHeaderValue[T: ToHeaderValue]: ToHeaderValue[NonEmptyList[T]] = ToHeaderValue { list =>
-    implicit val nesShow: Show[NonEmptyString] = Show.show(_.value)
-    val tToHeaderValue = implicitly[ToHeaderValue[T]]
-    NonEmptyString.unsafeFrom(list.map(tToHeaderValue.toRawValue).mkString_(","))
-  }
-
-  implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
-  implicit val indexNameHeaderValue: ToHeaderValue[ClusterIndexName] = ToHeaderValue(_.nonEmptyStringify)
-
-  implicit val transientFieldsToHeaderValue: ToHeaderValue[FieldsRestrictions] = ToHeaderValue { fieldsRestrictions =>
-    import upickle.default
-    import default._
-
-    implicit val nesW: Writer[NonEmptyString] = StringWriter.comap(_.value)
-    implicit val accessModeW: Writer[AccessMode] = Writer.merge(
-      macroW[AccessMode.Whitelist.type],
-      macroW[AccessMode.Blacklist.type]
-    )
-    implicit val documentFieldW: Writer[DocumentField] = macroW
-    implicit val setW: Writer[UniqueNonEmptyList[DocumentField]] =
-      SeqLikeWriter[UniqueNonEmptyList, DocumentField]
-
-    implicit val fieldsRestrictionsW: Writer[FieldsRestrictions] = macroW
-
-    val fieldsJsonString = upickle.default.write(fieldsRestrictions)
-    NonEmptyString.unsafeFrom(
-      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes("UTF-8"))
-    )
-  }
-
-  implicit val transientFieldsFromHeaderValue: FromHeaderValue[FieldsRestrictions] = (value: NonEmptyString) => {
-    import upickle.default
-    import default._
-
-    implicit val nesR: Reader[NonEmptyString] = StringReader.map(NonEmptyString.unsafeFrom)
-    implicit val accessModeR: Reader[AccessMode] = Reader.merge(
-      macroR[AccessMode.Whitelist.type],
-      macroR[AccessMode.Blacklist.type]
-    )
-    implicit val documentFieldR: Reader[DocumentField] = macroR
-
-    implicit val setR: Reader[UniqueNonEmptyList[DocumentField]] =
-      SeqLikeReader[List, DocumentField].map(UniqueNonEmptyList.unsafeFromIterable)
-
-    implicit val fieldsRestrictionsR: Reader[FieldsRestrictions] = macroR
-
-    Try(upickle.default.read[FieldsRestrictions](
-      new String(Base64.getDecoder.decode(value.value), "UTF-8")
-    ))
-  }
-
-  implicit val groupHeaderValue: ToHeaderValue[GroupId] = ToHeaderValue(_.value)
 }

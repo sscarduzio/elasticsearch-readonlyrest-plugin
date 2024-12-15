@@ -17,10 +17,10 @@
 package tech.beshu.ror.unit.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.StringWiseSplitter
-import tech.beshu.ror.utils.StringWiseSplitter._
+import tech.beshu.ror.utils.StringWiseSplitter.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class StringWiseSplitterTests extends AnyWordSpec {

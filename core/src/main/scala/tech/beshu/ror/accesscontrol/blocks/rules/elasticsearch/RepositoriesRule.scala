@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
-import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
@@ -32,6 +31,8 @@ import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaA
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRepositoryFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class RepositoriesRule(val settings: Settings)
@@ -56,7 +57,7 @@ class RepositoriesRule(val settings: Settings)
   private def checkRepositories[B <: BlockContext](blockContext: RepositoryRequestBlockContext)
                                                   (implicit ev: RepositoryRequestBlockContext <:< B): RuleResult[B] = {
     checkAllowedRepositories(
-      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toSet,
+      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.repositories,
       blockContext.requestContext
     ) match {
@@ -68,7 +69,7 @@ class RepositoriesRule(val settings: Settings)
   private def checkSnapshotRepositories[B <: BlockContext](blockContext: SnapshotRequestBlockContext)
                                                           (implicit ev: SnapshotRequestBlockContext <:< B): RuleResult[B] = {
     checkAllowedRepositories(
-      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toSet,
+      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.repositories,
       blockContext.requestContext
     ) match {
@@ -95,7 +96,7 @@ class RepositoriesRule(val settings: Settings)
           val filteredOutRepositories = repositoriesToCheck.diff(processedRepositories).map(_.show)
           logger.debug(
             s"[${requestContext.id.show}] Write request with repositories cannot proceed because some of the repositories " +
-              s"[${filteredOutRepositories.toList.mkString_(",")}] were filtered out by ACL. The request will be rejected.."
+              s"[${filteredOutRepositories.show}] were filtered out by ACL. The request will be rejected.."
           )
           Left(())
         case CheckResult.Failed =>

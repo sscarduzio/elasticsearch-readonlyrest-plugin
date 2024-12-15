@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
@@ -26,6 +26,8 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                    esContext: EsContext,
@@ -39,24 +41,27 @@ abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](actionRequest
     userMetadata = UserMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    dataStreams = {
-      val dataStreams = dataStreamsOrWildcard(dataStreamsFrom(actionRequest))
-      logger.debug(s"[${id.show}] Discovered data streams: ${dataStreams.map(_.show).mkString(",")}")
-      dataStreams
-    },
-    backingIndices = {
-      val backingIndices = backingIndicesFrom(actionRequest)
-      backingIndices match {
-        case BackingIndices.IndicesInvolved(filteredIndices, _) =>
-          logger.debug(s"[${id.show}] Discovered indices: ${filteredIndices.map(_.show).mkString(",")}")
-        case BackingIndices.IndicesNotInvolved =>
-      }
-      backingIndices
-    },
+    dataStreams = discoverDataStreams(),
+    backingIndices = discoverBackingIndices()
   )
 
   protected def dataStreamsFrom(request: R): Set[DataStreamName]
 
   protected def backingIndicesFrom(request: R): BackingIndices
 
+  private def discoverDataStreams() = {
+    val dataStreams = dataStreamsFrom(actionRequest).orWildcardWhenEmpty
+    logger.debug(s"[${id.show}] Discovered data streams: ${dataStreams.show}")
+    dataStreams
+  }
+
+  private def discoverBackingIndices() = {
+    val backingIndices = backingIndicesFrom(actionRequest)
+    backingIndices match {
+      case BackingIndices.IndicesInvolved(filteredIndices, _) =>
+        logger.debug(s"[${id.show}] Discovered indices: ${filteredIndices.show}")
+      case BackingIndices.IndicesNotInvolved =>
+    }
+    backingIndices
+  }
 }

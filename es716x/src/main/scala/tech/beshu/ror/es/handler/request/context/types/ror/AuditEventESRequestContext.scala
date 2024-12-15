@@ -25,6 +25,7 @@ import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.syntax.*
 
 class AuditEventESRequestContext(actionRequest: RRAuditEventRequest,
                                  esContext: EsContext,
@@ -34,10 +35,10 @@ class AuditEventESRequestContext(actionRequest: RRAuditEventRequest,
     with EsRequest[GeneralNonIndexRequestBlockContext] {
 
   override val initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty
   )
 
   override val generalAuditEvents: JSONObject = actionRequest.auditEvents

@@ -16,11 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.implicits._
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -31,11 +29,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.{Groups, Se
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
+import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
-import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -140,7 +138,7 @@ final class RorKbnAuthRule(val settings: Settings,
       case (NotFound, Groups.NotDefined) =>
         Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case (Found(groups), Groups.Defined(groupsLogic)) =>
-        UniqueNonEmptyList.fromIterable(groups) match {
+        UniqueNonEmptyList.from(groups) match {
           case Some(nonEmptyGroups) =>
             groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
               case Some(matchedGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds.from(matchedGroups)) =>
@@ -152,7 +150,7 @@ final class RorKbnAuthRule(val settings: Settings,
             Left(())
         }
       case (Found(groups), Groups.NotDefined) =>
-        UniqueNonEmptyList.fromIterable(groups) match {
+        UniqueNonEmptyList.from(groups) match {
           case None =>
             Right(blockContext)
           case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds.from(nonEmptyGroups)) =>

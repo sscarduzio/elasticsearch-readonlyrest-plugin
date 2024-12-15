@@ -20,12 +20,12 @@ import org.elasticsearch.action.datastreams.CreateDataStreamAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.DataStreamName
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
+import tech.beshu.ror.syntax.*
 
 class CreateDataStreamEsRequestContext(actionRequest: CreateDataStreamAction.Request,
                                        esContext: EsContext,
@@ -33,14 +33,19 @@ class CreateDataStreamEsRequestContext(actionRequest: CreateDataStreamAction.Req
                                        override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  private lazy val originDataStreams = Option(actionRequest.getName).flatMap(DataStreamName.fromString).toSet
+  private lazy val originDataStreams =
+    Option(actionRequest.getName)
+      .flatMap(DataStreamName.fromString)
+      .toCovariantSet
 
-  override protected def dataStreamsFrom(request: CreateDataStreamAction.Request): Set[domain.DataStreamName] = originDataStreams
+  override protected def dataStreamsFrom(request: CreateDataStreamAction.Request): Set[DataStreamName] =
+    originDataStreams
 
-  override protected def backingIndicesFrom(request: CreateDataStreamAction.Request): BackingIndices = BackingIndices.IndicesNotInvolved
+  override protected def backingIndicesFrom(request: CreateDataStreamAction.Request): BackingIndices =
+    BackingIndices.IndicesNotInvolved
 
-  override protected def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
+  override protected def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult =
     ModificationResult.Modified // data stream already processed by ACL
-  }
+
 }
 

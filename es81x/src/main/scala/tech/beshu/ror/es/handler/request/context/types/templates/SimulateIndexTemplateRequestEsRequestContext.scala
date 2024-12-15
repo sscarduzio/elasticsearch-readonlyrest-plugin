@@ -17,23 +17,25 @@
 package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateRequest, SimulateIndexTemplateResponse}
-import org.elasticsearch.cluster.metadata.{Template => EsMetadataTemplate}
+import org.elasticsearch.cluster.metadata.Template as EsMetadataTemplate
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, RequestedIndex, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseIndicesEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
-import java.util.{List => JList, Map => JMap}
-import scala.jdk.CollectionConverters._
+import java.util.{List as JList, Map as JMap}
+import scala.jdk.CollectionConverters.*
 
 class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexTemplateRequest,
                                                    esContext: EsContext,
@@ -45,23 +47,23 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
 
   override lazy val isReadOnlyRequest: Boolean = true
 
-  override protected def indicesFrom(request: SimulateIndexTemplateRequest): Set[ClusterIndexName] =
+  override protected def requestedIndicesFrom(request: SimulateIndexTemplateRequest): Set[RequestedIndex[ClusterIndexName]] =
     Option(request.getIndexName)
-      .flatMap(ClusterIndexName.fromString)
-      .toSet
+      .flatMap(RequestedIndex.fromString)
+      .toCovariantSet
 
   override protected def update(request: SimulateIndexTemplateRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.toList.mkString(",")}]")
+      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
     }
-    update(request, filteredIndices.head, allAllowedIndices)
+    updateRequest(request, filteredIndices.head, allAllowedIndices)
   }
 
-  private def update(request: SimulateIndexTemplateRequest,
-                     index: ClusterIndexName,
-                     allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+  private def updateRequest(request: SimulateIndexTemplateRequest,
+                            index: RequestedIndex[ClusterIndexName],
+                            allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indexName(index.stringify)
     ModificationResult.UpdateResponse {
       case response: SimulateIndexTemplateResponse =>
@@ -110,7 +112,7 @@ object SimulateIndexTemplateRequestEsRequestContext {
       .aliases().asSafeMap
       .flatMap { case (key, value) => ClusterIndexName.fromString(key).map((_, value)) }
       .view
-      .filterKeys(_.isAllowedBy(allowedIndices.toSet))
+      .filterKeys(_.isAllowedBy(allowedIndices))
       .map { case (key, value) => (key.stringify, value) }
       .toMap
       .asJava

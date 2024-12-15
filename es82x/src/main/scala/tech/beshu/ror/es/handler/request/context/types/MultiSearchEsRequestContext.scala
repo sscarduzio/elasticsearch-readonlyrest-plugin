@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
 import org.elasticsearch.threadpool.ThreadPool
@@ -27,17 +27,19 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, IndexAttribute}
-import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.response.SearchHitOps._
-import tech.beshu.ror.es.handler.request.SearchRequestOps._
+import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.handler.response.SearchHitOps.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   esContext: EsContext,
@@ -62,7 +64,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     actionRequest
       .requests().asScala
       .flatMap(indexAttributesFrom)
-      .toSet
+      .toCovariantSet
   }
 
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {
@@ -125,8 +127,10 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   }
 
   private def indicesFrom(request: SearchRequest) = {
-    val requestIndices = request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
-    indicesOrWildcard(requestIndices)
+    request
+      .indices.asSafeSet
+      .flatMap(RequestedIndex.fromString)
+      .orWildcardWhenEmpty
   }
 
   private def updateRequest(request: SearchRequest,
@@ -144,10 +148,10 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       .applyFieldLevelSecurity(fieldLevelSecurity)
   }
 
-  private def updateRequestWithIndices(request: SearchRequest, indices: Set[ClusterIndexName]) = {
+  private def updateRequestWithIndices(request: SearchRequest, indices: Set[RequestedIndex[ClusterIndexName]]) = {
     indices.toList match {
       case Nil => updateRequestWithNonExistingIndex(request)
-      case nonEmptyIndicesList => request.indices(nonEmptyIndicesList.map(_.stringify): _*)
+      case nonEmptyIndicesList => request.indices(nonEmptyIndicesList.stringify: _*)
     }
   }
 

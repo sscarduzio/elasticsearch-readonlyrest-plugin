@@ -24,5 +24,5 @@ fi
 echo "Installing KBN ROR $ROR_VERSION..."
 /usr/share/kibana/bin/kibana-plugin install "https://api.beshu.tech/download/kbn?esVersion=$KBN_VERSION&pluginVersion=$ROR_VERSION&edition=$ROR_KBN_EDITION&email=ror-sandbox%40readonlyrest.com"
 echo "Patching KBN ROR $ROR_VERSION..."
-/usr/share/kibana/node/bin/node plugins/readonlyrestkbn/ror-tools.js patch
+/usr/share/kibana/node/bin/node plugins/readonlyrestkbn/ror-tools.js patch --I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING=yes
 echo "DONE!"

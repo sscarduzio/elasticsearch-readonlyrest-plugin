@@ -16,20 +16,33 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
-import eu.timepit.refined.auto._
-import org.scalatest.matchers.should.Matchers._
+import cats.Order
+import cats.data.NonEmptySet
+import eu.timepit.refined.auto.*
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.*
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, IndexName, RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.TestsUtils.*
 
 class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
+
+  private implicit val orderUserId: Order[User.Id] = userIdOrder(
+    GlobalSettings(
+      showBasicAuthPrompt = true,
+      forbiddenRequestMessage = "Forbidden",
+      flsEngine = FlsEngine.default,
+      configurationIndex = RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+      userIdCaseSensitivity = CaseSensitivity.Enabled
+    ),
+  )
 
   "A UsersRule" should {
     "be able to be loaded from config" when {
@@ -46,8 +59,8 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val userIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[User.Id]] =
-              UniqueNonEmptyList.of(AlreadyResolved(User.Id("user1").nel))
+            val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] =
+              NonEmptySet.one(AlreadyResolved(User.Id("user1").nel): RuntimeMultiResolvableVariable[User.Id])
             rule.settings.userIds should be(userIds)
           }
         )
@@ -84,8 +97,8 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val userIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[User.Id]] =
-              UniqueNonEmptyList.of(AlreadyResolved(User.Id("user1").nel), AlreadyResolved(User.Id("user2").nel))
+            val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] =
+              NonEmptySet.of(AlreadyResolved(User.Id("user1").nel), AlreadyResolved(User.Id("user2").nel))
             rule.settings.userIds should be(userIds)
           }
         )

@@ -24,6 +24,7 @@ import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode.NonFips
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.implicits.*
 
 import java.nio.file.Path
 
@@ -39,7 +40,7 @@ object FipsConfiguration extends Logging {
         error => Left(error),
         {
           case FipsConfiguration(FipsMode.NonFips) =>
-            logger.info(s"Cannot find FIPS configuration in ${esConfig.toString()} ...")
+            logger.info(s"Cannot find FIPS configuration in ${esConfig.show} ...")
             fallbackToRorConfig(esEnv.configPath)
           case ssl =>
             Right(ssl)
@@ -50,14 +51,13 @@ object FipsConfiguration extends Logging {
   private def fallbackToRorConfig(esConfigFolderPath: Path)
                                  (implicit environmentConfig: EnvironmentConfig) = {
     val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
-    logger.info(s"... trying: ${rorConfig.pathAsString}")
+    logger.info(s"... trying: ${rorConfig.show}")
     if (rorConfig.exists) {
       loadFipsConfigFromFile(rorConfig)
     } else {
       Right(FipsConfiguration(FipsMode.NonFips))
     }
   }
-
 
   private def loadFipsConfigFromFile(configFile: File)
                                     (implicit environmentConfig: EnvironmentConfig): Either[MalformedSettings, FipsConfiguration] = {

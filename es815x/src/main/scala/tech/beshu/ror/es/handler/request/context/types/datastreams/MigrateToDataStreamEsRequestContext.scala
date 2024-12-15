@@ -20,12 +20,12 @@ import org.elasticsearch.action.datastreams.MigrateToDataStreamAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
+import tech.beshu.ror.syntax.*
 
 class MigrateToDataStreamEsRequestContext(actionRequest: MigrateToDataStreamAction.Request,
                                           esContext: EsContext,
@@ -33,15 +33,18 @@ class MigrateToDataStreamEsRequestContext(actionRequest: MigrateToDataStreamActi
                                           override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  private lazy val originIndices = Option(actionRequest.getAliasName).flatMap(ClusterIndexName.fromString).toSet
+  private lazy val originIndex: Option[RequestedIndex[ClusterIndexName]] =
+    Option(actionRequest.getAliasName).flatMap(RequestedIndex.fromString)
 
-  override protected def dataStreamsFrom(request: MigrateToDataStreamAction.Request): Set[domain.DataStreamName] = Set.empty
+  override protected def dataStreamsFrom(request: MigrateToDataStreamAction.Request): Set[DataStreamName] =
+    Set.empty
 
-  override protected def backingIndicesFrom(request: MigrateToDataStreamAction.Request): BackingIndices = {
-    BackingIndices.IndicesInvolved(filteredIndices = originIndices, allAllowedIndices = Set(ClusterIndexName.Local.wildcard))
-  }
+  override protected def backingIndicesFrom(request: MigrateToDataStreamAction.Request): BackingIndices =
+    BackingIndices.IndicesInvolved(
+      filteredIndices = originIndex.toCovariantSet,
+      allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
+    )
 
-  override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
+  override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult =
     ModificationResult.Modified // data stream and indices already processed by ACL
-  }
 }

@@ -18,13 +18,13 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 
 import cats.Show
 import cats.data.NonEmptyList
-import cats.implicits._
-import tech.beshu.ror.accesscontrol.domain.Json._
+import cats.implicits.*
+import tech.beshu.ror.accesscontrol.domain.Json.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.{CorrelationId, Group, KibanaAccess, KibanaApp}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 sealed trait MetadataValue
 

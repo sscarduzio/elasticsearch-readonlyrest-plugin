@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.response
 import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits.*
-import tech.beshu.ror.accesscontrol.AccessControl.{AccessControlStaticContext, ForbiddenCause}
+import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, ForbiddenCause}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings

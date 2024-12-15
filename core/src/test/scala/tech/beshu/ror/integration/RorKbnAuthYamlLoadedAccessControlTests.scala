@@ -16,24 +16,24 @@
  */
 package tech.beshu.ror.integration
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
+import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
+import tech.beshu.ror.syntax.*
 
 class RorKbnAuthYamlLoadedAccessControlTests
   extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
@@ -124,10 +124,10 @@ class RorKbnAuthYamlLoadedAccessControlTests
             .setSubject("test")
             .setClaims(claims)
           val preferredGroup = group("mapped_viewer_group")
-          val index = clusterIndexName("index2")
+
           val request = MockRequestContext.indices.copy(
-            filteredIndices = Set(index),
-            allAllowedIndices = Set(index),
+            filteredIndices = Set(requestedIndex("index2")),
+            allAllowedIndices = Set(clusterIndexName("index2")),
             headers = Set(bearerHeader(jwtBuilder), preferredGroup.id.toCurrentGroupHeader)
           )
 
@@ -140,7 +140,7 @@ class RorKbnAuthYamlLoadedAccessControlTests
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               currentGroup = Some(preferredGroup.id),
               availableGroups = UniqueList.of(preferredGroup),
-              indices = Set(index)
+              indices = Set(requestedIndex("index2"))
             ) {
               blockContext
             }

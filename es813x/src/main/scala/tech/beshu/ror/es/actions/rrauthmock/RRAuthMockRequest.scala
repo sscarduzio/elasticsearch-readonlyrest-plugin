@@ -19,10 +19,11 @@ package tech.beshu.ror.es.actions.rrauthmock
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.AuthMockApi
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.RorActionRequest
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.{constants, RequestId}
+import tech.beshu.ror.utils.ScalaOps.*
 
 class RRAuthMockRequest(authMockApiRequest: AuthMockApi.AuthMockRequest,
                         esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
@@ -45,10 +46,7 @@ object RRAuthMockRequest {
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRAuthMockRequest(
-      new AuthMockApi.AuthMockRequest(
-        requestType,
-        request.content.utf8ToString
-      ),
+      new AuthMockApi.AuthMockRequest(requestType, request.content.utf8ToString),
       request
     )
   }

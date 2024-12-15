@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering._
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.*
 
 sealed trait ResponseTransformation
 

@@ -19,26 +19,25 @@ package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 import cats.data.EitherT
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService, LdapUser}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
-import tech.beshu.ror.utils.TestsUtils.ValueOrIllegalState
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
 import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.utils.RefinedUtils.*
 
 class UnboundIdLdapUsersServiceTests
   extends AnyFreeSpec

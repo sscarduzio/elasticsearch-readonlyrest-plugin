@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.domain
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import org.scalatest.freespec.AnyFreeSpecLike
 import org.scalatest.matchers.should.Matchers
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern

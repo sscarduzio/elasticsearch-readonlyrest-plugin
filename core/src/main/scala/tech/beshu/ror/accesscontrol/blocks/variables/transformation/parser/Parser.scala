@@ -17,12 +17,12 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import monix.execution.atomic.Atomic
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parselet.InfixParselet.{CallParselet, ChainParselet}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parselet.PrefixParselet.NameParselet
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parselet.{InfixParselet, PrefixParselet}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parser._
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parser.*
 
 private[transformation] object Parser {
 
@@ -55,7 +55,7 @@ private class Parser private(tokens: NonEmptyList[Token]) {
       .flatMap { expression =>
         val left = leftTokens.get()
         if (left.nonEmpty) {
-          Left(ParsingError(s"Some tokens left: $left"))
+          Left(ParsingError(s"Some tokens left: ${left.show}"))
         } else {
           Right(expression)
         }

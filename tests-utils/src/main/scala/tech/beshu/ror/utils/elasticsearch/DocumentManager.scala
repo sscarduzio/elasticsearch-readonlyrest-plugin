@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.elasticsearch
 import better.files.File
 import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods._
+import org.apache.http.client.methods.*
 import org.apache.http.entity.{FileEntity, StringEntity}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction

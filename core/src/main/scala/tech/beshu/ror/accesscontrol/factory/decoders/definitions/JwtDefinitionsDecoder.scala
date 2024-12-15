@@ -16,22 +16,23 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
+import cats.Id
 import io.circe.{Decoder, HCursor, Json}
-import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Header, Jwt}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Header, Jwt}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps.fromError
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
-import cats.Id
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.implicits.*
 
 object JwtDefinitionsDecoder {
 
@@ -116,19 +117,19 @@ object JwtDefinitionsDecoder {
           decodeSignatureKey
             .flatMap { key =>
               keyStringToPublicKey("RSA", key).toEither
-                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '$key' seems to be invalid"))))
+                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))))
             }
             .map(SignatureCheckMethod.Rsa.apply)
         case Some("EC") =>
           decodeSignatureKey
             .flatMap { key =>
               keyStringToPublicKey("EC", key).toEither
-                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '$key' seems to be invalid"))))
+                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))))
             }
             .map(SignatureCheckMethod.Ec.apply)
         case Some(unknown) =>
           Left(fromError(
-            DefinitionsLevelCreationError(Message(s"Unrecognised algorithm family '$unknown'. Should be either of: HMAC, EC, RSA, NONE"))
+            DefinitionsLevelCreationError(Message(s"Unrecognised algorithm family '${unknown.show}'. Should be either of: HMAC, EC, RSA, NONE"))
           ))
       }
     } yield checkMethod

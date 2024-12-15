@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
+import tech.beshu.ror.implicits.*
 import cats.Id
 import io.circe.{Decoder, HCursor}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
@@ -87,19 +88,19 @@ object RorKbnDefinitionsDecoder {
           decodeSignatureKey
             .flatMap { key =>
               keyStringToPublicKey("RSA", key).toEither
-                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '$key' seems to be invalid"))))
+                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))))
             }
             .map(SignatureCheckMethod.Rsa.apply)
         case Some("EC") =>
           decodeSignatureKey
             .flatMap { key =>
               keyStringToPublicKey("EC", key).toEither
-                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '$key' seems to be invalid"))))
+                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))))
             }
             .map(SignatureCheckMethod.Ec.apply)
         case Some(unknown) =>
           Left(fromError(
-            DefinitionsLevelCreationError(Message(s"Unrecognised algorithm family '$unknown'. Should be either of: HMAC, EC, RSA, NONE"))
+            DefinitionsLevelCreationError(Message(s"Unrecognised algorithm family '${unknown.show}'. Should be either of: HMAC, EC, RSA, NONE"))
           ))
       }
     } yield checkMethod

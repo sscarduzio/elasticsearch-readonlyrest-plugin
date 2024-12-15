@@ -17,14 +17,18 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
+import cats.data.NonEmptyList
+import cats.implicits.*
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
+import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
 import tech.beshu.ror.constants
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
-import tech.beshu.ror.utils.RefinedUtils._
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
@@ -84,7 +88,9 @@ object KibanaIndexName {
     """^_security_solution$""".r, // eg. .kibana_security_solution
     """^_security_solution_\d+\.\d+\.\d+$""".r, // eg. .kibana_security_solution_8.8.0
     """^_task_manager$""".r, // eg. .kibana_task_manager
-    """^_task_manager_\d+\.\d+\.\d+$""".r, // eg. .kibana_task_manager_8.8.0
+    """^_task_manager_\d+\.\d+\.\d+$""".r, // eg. .kibana_task_manager_8.8.0,
+    """^_usage_counters$""".r, // eg. .kibana_usage_counters
+    """^_usage_counters_\d+\.\d+\.\d+$""".r, // eg. .kibana_usage_counters_8.16.0
   )
 
   implicit class IsRelatedToKibanaIndex(val indexName: ClusterIndexName) extends AnyVal {
@@ -110,6 +116,52 @@ object KibanaIndexName {
 
   implicit class Stringify(val kibanaIndexName: KibanaIndexName) extends AnyVal {
     def stringify: String = kibanaIndexName.underlying.stringify
+  }
+}
+
+final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean)
+object RequestedIndex {
+
+  implicit val eq: Eq[RequestedIndex[ClusterIndexName]] = Eq.by(r => (r.name, r.excluded))
+
+  def fromString(value: String): Option[RequestedIndex[ClusterIndexName]] = {
+    val (excluded, potentialIndexName) = isExcluded(value)
+    ClusterIndexName.fromString(potentialIndexName).map(RequestedIndex(_, excluded))
+  }
+
+  private def isExcluded(indexName: String): (Boolean, String) = {
+    if (indexName.startsWith("-")) (true, indexName.substring(1))
+    else (false, indexName)
+  }
+
+  implicit class Stringify[T <: ClusterIndexName](val requestedIndex: RequestedIndex[T]) extends AnyVal {
+    def stringify: String = s"${if (requestedIndex.excluded) "-" else ""}${requestedIndex.name.stringify}"
+  }
+
+  implicit class IterableStringify[T <: ClusterIndexName](val requestedIndices: Iterable[RequestedIndex[T]]) extends AnyVal {
+
+    def stringify: List[String] = {
+      implicit val ordering: Ordering[RequestedIndex[ClusterIndexName]] = requestedIndexOrder.toOrdering
+      requestedIndices.toList.sorted.map(_.stringify)
+    }
+  }
+
+  implicit class NonEmptyListStringify[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
+    def stringify: List[String] = requestedIndices.toList.stringify
+  }
+
+  implicit class OnlyIncludedIndicesFromIterable[T <: ClusterIndexName](val requestedIndices: Iterable[RequestedIndex[T]]) extends AnyVal {
+    def includedOnly: Set[T] = requestedIndices.filterNot(_.excluded).map(_.name).toCovariantSet
+  }
+
+  implicit class OnlyIncludedIndicesFromNonEmptyList[T <: ClusterIndexName](val requestedIndices: NonEmptyList[RequestedIndex[T]]) extends AnyVal {
+    def includedOnly: Set[T] = requestedIndices.toList.includedOnly
+  }
+
+  implicit class RandomNonexistentRequestedIndex(val requestedIndex: RequestedIndex[ClusterIndexName]) {
+    def randomNonexistentIndex(): RequestedIndex[ClusterIndexName] = {
+      RequestedIndex(requestedIndex.name.randomNonexistentIndex(), excluded = false)
+    }
   }
 }
 
@@ -200,7 +252,7 @@ object ClusterIndexName {
   }
 
   def unsafeFromString(value: String): ClusterIndexName =
-    fromString(value).getOrElse(throw new IllegalStateException(s"Cannot create an index name from '$value'"))
+    fromString(value).getOrElse(throw new IllegalStateException(s"Cannot create an index name from '${value.show}'"))
 
   implicit val matchableClusterIndexName: Matchable[ClusterIndexName] = Matchable.matchable(_.stringify)
 
@@ -245,11 +297,25 @@ object ClusterIndexName {
     }
   }
 
+  implicit class IterableStringify[T <: ClusterIndexName](val iterable: Iterable[T]) extends AnyVal {
+    def stringify: List[String] = iterable.map(_.stringify).toList
+  }
+
+  implicit class NonEmptyListStringify[T <: ClusterIndexName](val nonEmptyList: NonEmptyList[T]) extends AnyVal {
+    def stringify: List[String] = nonEmptyList.toIterable.stringify
+  }
+
   implicit class OnlyIndexName(val remoteIndexName: ClusterIndexName.Remote) extends AnyVal {
     def onlyIndexName: NonEmptyString = remoteIndexName match {
       case Remote(IndexName.Full(name), _) => name
       case Remote(IndexName.Pattern(namePattern), _) => namePattern
     }
+  }
+
+  implicit class OrWildcardWhenEmpty[T <: ClusterIndexName](val indices: Set[RequestedIndex[T]]) extends AnyVal {
+    def orWildcardWhenEmpty: Set[RequestedIndex[ClusterIndexName]] =
+      if (indices.nonEmpty) indices
+      else Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
   }
 
   implicit class HasPrefix(val indexName: ClusterIndexName) extends AnyVal {
@@ -326,23 +392,6 @@ object ClusterIndexName {
 
     private def legacyBackingIndexWildcardNameFrom(nameStr: NonEmptyString) = {
       IndexName.Pattern.unsafeFromNes(NonEmptyString.unsafeFrom(s".ds-$nameStr-*"))
-    }
-  }
-
-  implicit class ExcludingIndicesSorting(val indices: Iterable[ClusterIndexName]) extends AnyVal {
-
-    def sortByNameWithExcludingIndicesAtTheEnd(): Seq[ClusterIndexName] = {
-      indices.toSeq.sorted(ExcludingIndicesSorting.ordering)
-    }
-  }
-  object ExcludingIndicesSorting {
-    private implicit val ordering: Ordering[ClusterIndexName] = Ordering.fromLessThan { case (a, b) =>
-      val aName = a.stringify
-      val bName = b.stringify
-      if (!aName.startsWith("-") && !bName.startsWith("-")) aName < bName
-      else if (aName.startsWith("-") && !bName.startsWith("-")) false
-      else if (!aName.startsWith("-") && bName.startsWith("-")) true
-      else aName < bName
     }
   }
 }

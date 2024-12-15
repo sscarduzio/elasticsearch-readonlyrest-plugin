@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.utils
 
-import eu.timepit.refined.auto._
-import org.scalatest.matchers.should.Matchers._
+import eu.timepit.refined.auto.*
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 
 class ZeroKnowledgeRemoteIndexFilterScalaAdapterTests extends AnyWordSpec {
 

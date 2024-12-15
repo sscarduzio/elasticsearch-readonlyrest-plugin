@@ -16,13 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.implicits._
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
-import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod._
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -31,16 +29,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
+import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
-import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.util.Try
-import tech.beshu.ror.utils.RefinedUtils._
 
 final class JwtAuthRule(val settings: JwtAuthRule.Settings,
                         override val userIdCaseSensitivity: CaseSensitivity)
@@ -139,7 +137,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
           case Some(namesClaim) => s"claims (id:'${groupsConfig.idsClaim.name.show}',name:'${namesClaim.name.show}')"
           case None => s"claim '${groupsConfig.idsClaim.name.show}'"
         }
-        logger.debug(s"[${requestId.show}] JWT resolved groups for $claimsDescription: ${g.show}")
+        logger.debug(s"[${requestId.show}] JWT resolved groups for ${claimsDescription.show}: ${g.show}")
       case _ =>
     }
   }
@@ -161,7 +159,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     else {
       token.show
     }
-    logger.debug(s"[${requestId.show}] JWT token '$printableToken' parsing error: " + ex.getClass.getSimpleName + " " + ex.getMessage)
+    logger.debug(s"[${requestId.show}] JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
   }
 
   private def claimsFrom(token: Jwt.Token)
@@ -216,11 +214,11 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
       case (Some(NotFound), Groups.NotDefined) =>
         Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case (Some(Found(groups)), Groups.Defined(groupsLogic)) =>
-        UniqueNonEmptyList.fromIterable(groups) match {
+        UniqueNonEmptyList.from(groups) match {
           case Some(nonEmptyGroups) =>
             groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
               case Some(matchedGroups) =>
-                checkIfCanContinueWithGroups(blockContext, matchedGroups.toUniqueList)
+                checkIfCanContinueWithGroups(blockContext, UniqueList.from(matchedGroups))
                   .map(_.withUserMetadata(_.addAvailableGroups(matchedGroups)))
               case None =>
                 Left(())
@@ -235,7 +233,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 
   private def checkIfCanContinueWithGroups[B <: BlockContext](blockContext: B,
                                                               groups: UniqueList[Group]) = {
-    UniqueNonEmptyList.fromIterable(groups.toList.map(_.id)) match {
+    UniqueNonEmptyList.from(groups.toList.map(_.id)) match {
       case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds(nonEmptyGroups)) =>
         Right(blockContext)
       case Some(_) | None =>

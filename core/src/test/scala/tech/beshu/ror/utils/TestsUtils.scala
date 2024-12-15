@@ -21,12 +21,11 @@ import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
+import io.lemonlabs.uri.Url
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.matchers.should.Matchers.*
-import io.lemonlabs.uri.Url
 import squants.information.Megabytes
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
@@ -52,10 +51,12 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
+import tech.beshu.ror.utils.yaml.RorYamlParser
 
 import java.nio.file.Path
 import java.time.Duration
@@ -63,7 +64,6 @@ import java.util.Base64
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
-import tech.beshu.ror.utils.yaml.RorYamlParser
 
 object TestsUtils {
 
@@ -116,6 +116,10 @@ object TestsUtils {
   def group(str: String): Group = Group.from(GroupId(NonEmptyString.unsafeFrom(str)))
 
   def group(id: String, name: String): Group = Group(GroupId(NonEmptyString.unsafeFrom(id)), GroupName(NonEmptyString.unsafeFrom(name)))
+
+  def requestedIndex(str: NonEmptyString): RequestedIndex[ClusterIndexName] =
+    RequestedIndex.fromString(str.value)
+      .getOrElse(throw new IllegalArgumentException(s"Cannot create RequestedIndex from '$str'"))
 
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
@@ -185,7 +189,7 @@ object TestsUtils {
         map
           .get(id)
           .map(r => LdapServiceMock {
-            r.map { case (userId, groups) => LdapUserMock(userId, groups) }.toSet
+            r.map { case (userId, groups) => LdapUserMock(userId, groups) }.toCovariantSet
           })
       }
 
@@ -226,7 +230,7 @@ object TestsUtils {
         map
           .get(id)
           .map(r => ExternalAuthorizationServiceMock {
-            r.map { case (userId, groups) => ExternalAuthorizationServiceUserMock(userId, groups) }.toSet
+            r.map { case (userId, groups) => ExternalAuthorizationServiceUserMock(userId, groups) }.toCovariantSet
           })
       }
     }
@@ -264,7 +268,7 @@ object TestsUtils {
                            userOrigin: Option[UserOrigin] = None,
                            jwt: Option[Jwt.Payload] = None,
                            responseHeaders: Set[Header] = Set.empty,
-                           indices: Set[ClusterIndexName] = Set.empty,
+                           indices: Set[RequestedIndex[ClusterIndexName]] = Set.empty,
                            aliases: Set[ClusterIndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,

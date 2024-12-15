@@ -7,9 +7,13 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "_search test"
+    - name: "_search test - user1"
       auth_key: user1:test
       indices: ["all-logs", "logs-*", "test_logs_ds", "alias_ds"]
+
+    - name: "_search test - user2"
+      auth_key: user2:test
+      indices: ["sys_logs-*"]
 
     - name: "::GETTER::"
       auth_key: "unrestricted:dev"
@@ -26,7 +30,7 @@ readonlyrest:
       indices: ["bla*"]
       auth_key: "perfmon:dev"
 
-    - name: myanmar_vietnam
+    - name: "myanmar_vietnam"
       auth_key: "VIET_MYAN:dev"
       kibana:
         access: ro

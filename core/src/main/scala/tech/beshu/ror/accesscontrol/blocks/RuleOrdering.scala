@@ -17,16 +17,16 @@
 package tech.beshu.ror.accesscontrol.blocks
 
 import cats.Order
-import cats.implicits._
+import cats.implicits.*
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth._
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
-import tech.beshu.ror.accesscontrol.blocks.rules.http._
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
+import tech.beshu.ror.accesscontrol.blocks.rules.http.*
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
+import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
+import tech.beshu.ror.accesscontrol.orders.*
 
 class RuleOrdering extends Ordering[Rule] with Logging {
 

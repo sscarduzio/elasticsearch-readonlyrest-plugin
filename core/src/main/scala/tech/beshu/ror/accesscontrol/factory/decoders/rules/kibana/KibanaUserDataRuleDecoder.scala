@@ -23,16 +23,18 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath._
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, JavaRegex, KibanaAccess, KibanaAllowedApiPath, KibanaApp, KibanaIndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{RulesLevelCreationError, ValueLevelCreationError}
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.JsCompiler
 
 import scala.util.{Failure, Success}
@@ -115,7 +117,7 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
         case "PUT" => Right(HttpMethod.Put)
         case "DELETE" => Right(HttpMethod.Delete)
         case unknown => Left(CoreCreationError.ValueLevelCreationError(Message(
-          s"Unsupported HTTP method: '$unknown'. Available options: 'GET', 'POST', 'PUT', 'DELETE'"
+          s"Unsupported HTTP method: '${unknown.show}'. Available options: 'GET', 'POST', 'PUT', 'DELETE'"
         )))
       }
       .decoder
@@ -126,8 +128,8 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
         case Success(regex) =>
           Right(regex)
         case Failure(exception) =>
-          logger.error(s"Cannot compile regex from string: [$str]", exception)
-          Left(ValueLevelCreationError(Message(s"Cannot create Kibana allowed API path regex from [$str]")))
+          logger.error(s"Cannot compile regex from string: [${str.show}]", exception)
+          Left(ValueLevelCreationError(Message(s"Cannot create Kibana allowed API path regex from [${str.show}]")))
       }
     } else {
       Right(JavaRegex.buildFromLiteral(str.value))

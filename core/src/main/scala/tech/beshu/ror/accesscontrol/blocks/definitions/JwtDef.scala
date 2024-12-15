@@ -16,14 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
-import java.security.PublicKey
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Jwt}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 
-final case class JwtDef(id: Name,
+import java.security.PublicKey
+
+final case class JwtDef(override val id: Name,
                         authorizationTokenDef: AuthorizationTokenDef,
                         checkMethod: SignatureCheckMethod,
                         userClaim: Option[Jwt.ClaimName],
@@ -31,7 +32,7 @@ final case class JwtDef(id: Name,
   extends Item {
 
   override type Id = Name
-  override implicit val show: Show[Name] = JwtDef.nameShow
+  override val idShow: Show[Name] = Show.show(_.value.value)
 }
 object JwtDef {
   final case class Name(value: NonEmptyString)
@@ -47,5 +48,4 @@ object JwtDef {
   final case class GroupsConfig(idsClaim: Jwt.ClaimName, namesClaim: Option[Jwt.ClaimName])
 
   implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
-  implicit val nameShow: Show[Name] = Show.show(_.value.value)
 }

@@ -20,16 +20,17 @@ import org.elasticsearch.action.admin.indices.template.put.TransportPutComposabl
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingIndexTemplate
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.{IndexPattern, RequestedIndex, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.RefinedUtils._
 
 class PutComposableIndexTemplateEsRequestContext(actionRequest: TransportPutComposableIndexTemplateAction.Request,
                                                  esContext: EsContext,
@@ -60,10 +61,10 @@ object PutComposableIndexTemplateEsRequestContext {
         .fromString(request.name())
         .toRight("Template name should be non-empty")
       patterns <- UniqueNonEmptyList
-        .fromIterable(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
+        .from(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
-      aliases = request.indexTemplate().template().asSafeSet
-        .flatMap(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet)
+      aliases = Option(request.indexTemplate().template()).toCovariantSet
+        .flatMap(_.aliases().asSafeMap.keys.flatMap(RequestedIndex.fromString).toCovariantSet)
     } yield AddingIndexTemplate(name, patterns, aliases)
   }
 }

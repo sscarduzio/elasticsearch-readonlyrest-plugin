@@ -16,14 +16,16 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
+import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.syntax.*
 
 sealed trait BlockContext {
   def requestContext: RequestContext
@@ -70,7 +72,7 @@ object BlockContext {
                                                override val responseTransformations: List[ResponseTransformation],
                                                snapshots: Set[SnapshotName],
                                                repositories: Set[RepositoryName],
-                                               filteredIndices: Set[ClusterIndexName],
+                                               filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                                                allAllowedIndices: Set[ClusterIndexName])
     extends BlockContext
 
@@ -84,7 +86,7 @@ object BlockContext {
   object DataStreamRequestBlockContext {
     sealed trait BackingIndices
     object BackingIndices {
-      final case class IndicesInvolved(filteredIndices: Set[ClusterIndexName],
+      final case class IndicesInvolved(filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                                        allAllowedIndices: Set[ClusterIndexName]) extends BackingIndices
       case object IndicesNotInvolved extends BackingIndices
     }
@@ -94,8 +96,8 @@ object BlockContext {
                                             override val userMetadata: UserMetadata,
                                             override val responseHeaders: Set[Header],
                                             override val responseTransformations: List[ResponseTransformation],
-                                            aliases: Set[ClusterIndexName],
-                                            indices: Set[ClusterIndexName])
+                                            aliases: Set[RequestedIndex[ClusterIndexName]],
+                                            indices: Set[RequestedIndex[ClusterIndexName]])
     extends BlockContext
 
   final case class TemplateRequestBlockContext(override val requestContext: RequestContext,
@@ -114,7 +116,7 @@ object BlockContext {
                                                    override val userMetadata: UserMetadata,
                                                    override val responseHeaders: Set[Header],
                                                    override val responseTransformations: List[ResponseTransformation],
-                                                   filteredIndices: Set[ClusterIndexName],
+                                                   filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                                                    allAllowedIndices: Set[ClusterIndexName])
     extends BlockContext
 
@@ -122,7 +124,7 @@ object BlockContext {
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
                                                  override val responseTransformations: List[ResponseTransformation],
-                                                 filteredIndices: Set[ClusterIndexName],
+                                                 filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                                                  allAllowedIndices: Set[ClusterIndexName],
                                                  filter: Option[Filter],
                                                  fieldLevelSecurity: Option[FieldLevelSecurity] = None,
@@ -149,7 +151,7 @@ object BlockContext {
   object MultiIndexRequestBlockContext {
     sealed trait Indices
     object Indices {
-      final case class Found(indices: Set[ClusterIndexName]) extends Indices
+      final case class Found(indices:Set[RequestedIndex[ClusterIndexName]]) extends Indices
       case object NotFound extends Indices
     }
   }
@@ -160,39 +162,25 @@ object BlockContext {
                                              override val responseTransformations: List[ResponseTransformation])
     extends BlockContext
 
-  trait HasIndices[B <: BlockContext] {
-    def indices(blockContext: B): Set[ClusterIndexName]
-  }
+  trait HasIndices[B <: BlockContext]
   object HasIndices {
 
     def apply[B <: BlockContext](implicit instance: HasIndices[B]): HasIndices[B] = instance
 
-    implicit val indicesFromFilterableBlockContext: HasIndices[FilterableRequestBlockContext] = new HasIndices[FilterableRequestBlockContext] {
-      override def indices(blockContext: FilterableRequestBlockContext): Set[ClusterIndexName] = blockContext.filteredIndices
-    }
+    implicit val indicesFromFilterableBlockContext: HasIndices[FilterableRequestBlockContext] =
+      new HasIndices[FilterableRequestBlockContext] {}
 
-    implicit val indicesFromGeneralIndexBlockContext: HasIndices[GeneralIndexRequestBlockContext] = new HasIndices[GeneralIndexRequestBlockContext] {
-      override def indices(blockContext: GeneralIndexRequestBlockContext): Set[ClusterIndexName] = blockContext.filteredIndices
-    }
+    implicit val indicesFromGeneralIndexBlockContext: HasIndices[GeneralIndexRequestBlockContext] =
+      new HasIndices[GeneralIndexRequestBlockContext] {}
 
-    implicit val indicesFromAliasRequestBlockContext: HasIndices[AliasRequestBlockContext] = new HasIndices[AliasRequestBlockContext] {
-      override def indices(blockContext: AliasRequestBlockContext): Set[ClusterIndexName] = blockContext.indices
-    }
+    implicit val indicesFromAliasRequestBlockContext: HasIndices[AliasRequestBlockContext] =
+      new HasIndices[AliasRequestBlockContext] {}
 
-    implicit val indicesFromSnapshotRequestBlockContext: HasIndices[SnapshotRequestBlockContext] = new HasIndices[SnapshotRequestBlockContext] {
-      override def indices(blockContext: SnapshotRequestBlockContext): Set[ClusterIndexName] = blockContext.filteredIndices
-    }
+    implicit val indicesFromSnapshotRequestBlockContext: HasIndices[SnapshotRequestBlockContext] =
+      new HasIndices[SnapshotRequestBlockContext] {}
 
-    implicit val indicesFromDataStreamRequestBlockContext: HasIndices[DataStreamRequestBlockContext] = new HasIndices[DataStreamRequestBlockContext] {
-      override def indices(blockContext: DataStreamRequestBlockContext): Set[ClusterIndexName] = blockContext.backingIndices match {
-        case BackingIndices.IndicesInvolved(filteredIndices, _) => filteredIndices
-        case BackingIndices.IndicesNotInvolved => Set.empty
-      }
-    }
-
-    implicit class Ops[B <: BlockContext : HasIndices](blockContext: B) {
-      def indices: Set[ClusterIndexName] = HasIndices[B].indices(blockContext)
-    }
+    implicit def indicesFromDataStreamRequestBlockContext: HasIndices[DataStreamRequestBlockContext] =
+      new HasIndices[DataStreamRequestBlockContext] {}
   }
 
   trait HasIndexPacks[B <: BlockContext] {
@@ -309,7 +297,7 @@ object BlockContext {
   }
 
   implicit class BlockContextWithIndicesUpdaterOps[B <: BlockContext : BlockContextWithIndicesUpdater](blockContext: B) {
-    def withIndices(filteredIndices: Set[ClusterIndexName], allAllowedIndices: Set[ClusterIndexName]): B = {
+    def withIndices(filteredIndices: Set[RequestedIndex[ClusterIndexName]], allAllowedIndices: Set[ClusterIndexName]): B = {
       BlockContextWithIndicesUpdater[B].withIndices(blockContext, filteredIndices, allAllowedIndices)
     }
   }
@@ -336,26 +324,29 @@ object BlockContext {
     def withTemplateOperation(templateOperation: TemplateOperation): TemplateRequestBlockContext = {
       TemplateRequestBlockContextUpdater.withTemplateOperation(blockContext, templateOperation)
     }
+
     def withResponseTemplateTransformation(transformation: Set[Template] => Set[Template]): TemplateRequestBlockContext = {
       TemplateRequestBlockContextUpdater.withResponseTemplateTransformation(blockContext, transformation)
     }
+
     def withAllAllowedIndices(indices: Set[ClusterIndexName]): TemplateRequestBlockContext = {
       TemplateRequestBlockContextUpdater.withAllAllowedIndices(blockContext, indices)
     }
   }
 
   implicit class AliasRequestBlockContextUpdaterOps(val blockContext: AliasRequestBlockContext) extends AnyVal {
-    def withIndices(indices: Set[ClusterIndexName]): AliasRequestBlockContext = {
+    def withIndices(indices: Set[RequestedIndex[ClusterIndexName]]): AliasRequestBlockContext = {
       AliasRequestBlockContextUpdater.withIndices(blockContext, indices)
     }
 
-    def withAliases(aliases: Set[ClusterIndexName]): AliasRequestBlockContext = {
+    def withAliases(aliases: Set[RequestedIndex[ClusterIndexName]]): AliasRequestBlockContext = {
       AliasRequestBlockContextUpdater.withAliases(blockContext, aliases)
     }
   }
 
   implicit class IndicesFromBlockContext(val blockContext: BlockContext) extends AnyVal {
-    def indices: Set[ClusterIndexName] = {
+    def indices: Set[RequestedIndex[ClusterIndexName]] = {
+      import cats.implicits.toFunctorOps
       blockContext match {
         case _: CurrentUserMetadataRequestBlockContext => Set.empty
         case _: GeneralNonIndexRequestBlockContext => Set.empty
@@ -366,14 +357,20 @@ object BlockContext {
           case BackingIndices.IndicesNotInvolved => Set.empty
         }
         case bc: TemplateRequestBlockContext =>
+          def toRequestedIndices(patterns: Iterable[IndexPattern]) =
+            patterns.map(_.value).map(RequestedIndex(_, excluded = false)).toCovariantSet
+
           bc.templateOperation match {
             case TemplateOperation.GettingLegacyAndIndexTemplates(_, _) => Set.empty
             case TemplateOperation.GettingLegacyTemplates(_) => Set.empty
-            case TemplateOperation.AddingLegacyTemplate(_, patterns, aliases) => patterns.unsorted.map(_.value).toSet ++ aliases
+            case TemplateOperation.AddingLegacyTemplate(_, patterns, aliases) =>
+              toRequestedIndices(patterns) ++ aliases
             case TemplateOperation.DeletingLegacyTemplates(_) => Set.empty
             case TemplateOperation.GettingIndexTemplates(_) => Set.empty
-            case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.unsorted.map(_.value).toSet ++ aliases
-            case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(_, patterns, aliases, _) => patterns.unsorted.map(_.value).toSet ++ aliases
+            case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) =>
+              toRequestedIndices(patterns) ++ aliases
+            case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(_, patterns, aliases, _) =>
+              toRequestedIndices(patterns) ++ aliases
             case TemplateOperation.DeletingIndexTemplates(_) => Set.empty
             case TemplateOperation.GettingComponentTemplates(_) => Set.empty
             case TemplateOperation.AddingComponentTemplate(_, aliases) => aliases
@@ -388,13 +385,13 @@ object BlockContext {
       }
     }
 
-    private def extractIndicesFrom(indexPacks: List[Indices]) = {
+    private def extractIndicesFrom(indexPacks: Iterable[Indices]) = {
       indexPacks
         .flatMap {
-          case Indices.Found(indices) => indices.toList
-          case Indices.NotFound => Nil
+          case Indices.Found(indices) => indices
+          case Indices.NotFound => Set.empty
         }
-        .toSet
+        .toCovariantSet
     }
   }
 
@@ -495,13 +492,9 @@ object BlockContext {
 
   implicit class RandomIndexBasedOnBlockContextIndices[B <: BlockContext : HasIndices](blockContext: B) {
 
-    def randomNonexistentIndex(): ClusterIndexName = {
-      import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
-      HasIndices[B].indices(blockContext).toList.randomNonexistentIndex()
-    }
-
-    def nonExistingIndicesFromInitialIndices(): Set[ClusterIndexName] = {
-      HasIndices[B].indices(blockContext).map(_.randomNonexistentIndex())
+    def randomNonexistentIndex(fromIndices: B => Iterable[RequestedIndex[ClusterIndexName]]): RequestedIndex[ClusterIndexName] = {
+      import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
+      fromIndices(blockContext).toList.randomNonexistentIndex()
     }
   }
 
@@ -518,7 +511,7 @@ object BlockContext {
       case _: FilterableRequestBlockContext => hasIndices[FilterableRequestBlockContext]
       case _: FilterableMultiRequestBlockContext => hasIndices[FilterableMultiRequestBlockContext]
       case _: MultiIndexRequestBlockContext => hasIndices[MultiIndexRequestBlockContext]
-      case _: RorApiRequestBlockContext =>  hasIndices[RorApiRequestBlockContext]
+      case _: RorApiRequestBlockContext => hasIndices[RorApiRequestBlockContext]
     }
 
     private implicit def toOption[A](implicit a: A): Option[A] = Some(a)

@@ -49,6 +49,7 @@ class SnapshotAndRestoreApiSuite
   private lazy val dev3SnapshotManager = new SnapshotManager(basicAuthClient("dev3", "test"), esVersionUsed)
   private lazy val dev4SnapshotManager = new SnapshotManager(basicAuthClient("dev4", "test"), esVersionUsed)
   private lazy val dev5SnapshotManager = new SnapshotManager(basicAuthClient("dev5", "test"), esVersionUsed)
+  private lazy val dev6SnapshotManager = new SnapshotManager(basicAuthClient("dev6", "test"), esVersionUsed)
 
   "Snapshot repository management API" when {
     "user creates a repository" should {
@@ -358,6 +359,15 @@ class SnapshotAndRestoreApiSuite
 
           response should have statusCode 403
         }
+        "user has no access to excluded index" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo-")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName = SnapshotNameGenerator.next("dev2-snap-")
+          val response = dev2SnapshotManager.putSnapshot(repositoryName, snapshotName, "index2*", "-index3")
+
+          response should have statusCode 403
+        }
       }
     }
     "user gets snapshots" should {
@@ -550,7 +560,7 @@ class SnapshotAndRestoreApiSuite
             result.snapshots.map(_("snapshot").str) should contain theSameElementsAs(List(snapshotName1))
           }
         }
-        "user asks about all statuses" when {
+        "user asks about all statuses of all repositories" when {
           "he has access to one of them" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
             adminSnapshotManager.putRepository(repositoryName).force()
@@ -580,6 +590,16 @@ class SnapshotAndRestoreApiSuite
 
             result should have statusCode 200
             result.snapshots.map(_("snapshot").str) should contain theSameElementsAs List.empty // only the in-progres ones
+          }
+        }
+        "user asks about all statuses of the given repositories" when {
+          "but no snapshot is in the repository" in {
+            val repositoryName = RepositoryNameGenerator.next("dev6-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val result = dev6SnapshotManager.getStatusesOfSnapshotsOf(repositoryName)
+
+            result should have statusCode 200
           }
         }
       }

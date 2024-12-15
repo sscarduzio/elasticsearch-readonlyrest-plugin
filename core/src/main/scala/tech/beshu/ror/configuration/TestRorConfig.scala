@@ -23,8 +23,8 @@ import java.time.{Clock, Instant}
 
 sealed trait TestRorConfig
 object TestRorConfig {
-  case object NotSet extends TestRorConfig
 
+  case object NotSet extends TestRorConfig
   final case class Present(rawConfig: RawRorConfig,
                            mocks: AuthServicesMocks,
                            expiration: Present.ExpirationConfig) extends TestRorConfig {
