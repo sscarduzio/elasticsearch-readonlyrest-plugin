@@ -72,9 +72,9 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: refined_3-0.11.1.jar
+   file name: refined_3-0.11.2.jar
    ]]></notes>
-        <sha1>c2f32c0e56e9e23ab6ccbd587931a804c7818e5d</sha1>
+        <sha1>444be8623bb171bd83a15ed2c2aff1792a857ad4</sha1>
         <cve>CVE-2021-34364</cve>
     </suppress>
     <suppress>
