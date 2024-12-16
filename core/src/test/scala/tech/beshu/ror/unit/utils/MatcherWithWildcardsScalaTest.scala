@@ -28,8 +28,6 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
 
-import scala.annotation.nowarn
-
 class MatcherWithWildcardsScalaTest
   extends AnyWordSpec
     with ScalaCheckDrivenPropertyChecks {
@@ -227,7 +225,6 @@ object MatcherWithWildcardsScalaTest {
   implicit val arbCaseVulnerableString: Arbitrary[CaseVulnerableString] =
     Arbitrary(Gen.asciiPrintableStr.filter(s => s.neqv(s.toLowerCase())).map(CaseVulnerableString.apply))
 
-  @nowarn
   implicit def arbIterator[A](implicit arb: Arbitrary[A]): Arbitrary[Iterator[A]] =
     Arbitrary(Gen.infiniteStream(arb.arbitrary).map(_.iterator))
 

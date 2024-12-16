@@ -36,6 +36,7 @@ import tech.beshu.ror.utils.RefinedUtils.*
 import java.util.concurrent.{CopyOnWriteArrayList, TimeUnit}
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
+import scala.jdk.DurationConverters.*
 import scala.jdk.FutureConverters.*
 import scala.language.postfixOps
 
@@ -102,7 +103,10 @@ class AsyncHttpClientsFactory extends HttpClientsFactory {
 
   private def newAsyncHttpClient(config: Config) = {
     val timer = new HashedWheelTimer
-    val pool = new DefaultChannelPool(60000, -1, DefaultChannelPool.PoolLeaseStrategy.FIFO, timer, -1)
+    val maxIdleTimeout = 60.seconds
+    val connectionTtl = -1.milliseconds
+    val cleanerPeriod = -1.milliseconds
+    val pool = new DefaultChannelPool(maxIdleTimeout.toJava, connectionTtl.toJava, DefaultChannelPool.PoolLeaseStrategy.FIFO, timer, cleanerPeriod.toJava)
     asyncHttpClient {
       new DefaultAsyncHttpClientConfig.Builder()
         .setNettyTimer(timer)

@@ -63,7 +63,7 @@ dependencyCheck {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(8)
+        languageVersion = JavaLanguageVersion.of(11)
     }
 }
 
@@ -71,15 +71,15 @@ dependencies {
     api project(path: ':audit', configuration: 'default')
     api project(path: ':ror-shadowed-libs', configuration: 'shadow')
 
-    api group: 'org.asynchttpclient',           name: 'async-http-client',                   version: '2.10.5'
+    api group: 'org.asynchttpclient',           name: 'async-http-client',                   version: '3.0.1'
     api group: 'com.github.pathikrit',          name: 'better-files_3',                      version: '3.9.2'
     api group: 'io.circe',                      name: 'circe-core_3',                        version: '0.14.6'
     api group: 'io.circe',                      name: 'circe-generic_3',                     version: '0.14.6'
     api group: 'io.circe',                      name: 'circe-parser_3',                      version: '0.14.6'
     api group: 'io.circe',                      name: 'circe-refined_3',                     version: '0.14.6'
     api group: 'commons-codec',                 name: 'commons-codec',                       version: '1.15'
-    api group: 'org.typelevel',                 name: 'cats-free_3',                         version: '2.10.0'
-    api group: 'com.beachape',                  name: 'enumeratum_3',                        version: '1.7.3'
+    api group: 'org.typelevel',                 name: 'cats-free_3',                         version: '2.12.0'
+    api group: 'com.beachape',                  name: 'enumeratum_3',                        version: '1.7.5'
     api group: 'com.hrakaroo',                  name: 'glob',                                version: '0.9.0'
     api group: 'com.comcast',                   name: 'ip4s-core_3',                         version: '2.0.4'
     api group: 'org.typelevel',                 name: 'jawn-parser_3',                       version: '1.5.1'
@@ -89,22 +89,22 @@ dependencies {
         // jjwt-orgjson:0.11.5 uses json version, which has known security vulnerabilities
         exclude group: 'org.json', module: 'json'
     }
-    api group: 'org.jooq',                  name: 'joor-java-8',                            version: '0.9.13'
+    api group: 'org.jooq',                  name: 'joor',                                   version: '0.9.15'
     api group: 'org.apache.logging.log4j',  name: 'log4j-api-scala_3',                      version: '13.1.0'
     api(group: 'org.apache.logging.log4j',  name: 'log4j-slf4j-impl',                       version: '2.11.2') {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     }
     api group: 'io.monix',                      name: 'monix_3',                            version: '3.4.1'
-    api group: 'eu.timepit',                    name: 'refined_3',                          version: '0.11.1'
+    api group: 'eu.timepit',                    name: 'refined_3',                          version: '0.11.2'
     api group: 'org.reflections',               name: 'reflections',                        version: '0.9.11'
     api group: 'org.mozilla',                   name: 'rhino',                              version: '1.7.14'
-    api group: 'com.github.ben-manes.caffeine', name: 'caffeine',                           version: '2.9.3'
-    api group: 'com.github.tototoshi',          name: 'scala-csv_3',                        version: '1.3.10'
+    api group: 'com.github.ben-manes.caffeine', name: 'caffeine',                           version: '3.1.8'
+    api group: 'com.github.tototoshi',          name: 'scala-csv_3',                        version: '1.4.1'
     api group: 'org.scala-lang.modules',        name: 'scala-parallel-collections_3',       version: '1.0.4'
     api group: 'io.lemonlabs',                  name: 'scala-uri_3',                        version: '4.0.3'
     api group: 'org.typelevel',                 name: 'squants_3',                          version: '1.8.3'
     api group: 'com.unboundid',                 name: 'unboundid-ldapsdk',                  version: '6.0.11'
-    api group: 'com.lihaoyi',                   name: 'upickle_3',                          version: '3.3.0'
+    api group: 'com.lihaoyi',                   name: 'upickle_3',                          version: '4.0.2'
     // https://www.bouncycastle.org/latest_releases.html#1.0.2.4-NONCERT
     api group: 'org.bouncycastle',          name: 'bc-noncert',                             version: '1.0.2.4'
     api(group: 'org.bouncycastle',          name: 'bctls-fips',                             version: '1.0.19') {
@@ -115,14 +115,14 @@ dependencies {
     }
 
     testImplementation  project(':tests-utils')
-    testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                 version: '2.23.1'
+    testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                 version: '2.24.2'
     testRuntimeOnly     group: 'ch.qos.logback',             name: 'logback-classic',            version: '1.3.14'
     testRuntimeOnly     group: 'org.pegdown',                name: 'pegdown',                    version: '1.4.2'
     testImplementation  group: 'com.typesafe.scala-logging', name: 'scala-logging_3',            version: '3.9.5'
     testImplementation  group: 'org.scalamock',              name: 'scalamock_3',                version: '6.0.0'
     testImplementation  group: 'org.scalatestplus',          name: 'scalacheck-1-16_3',          version: '3.2.14.0'
     testImplementation  group: 'org.scalatest',              name: 'scalatest_3',                version: '3.2.16'
-    testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala_3',     version: '0.41.4'
+    testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala-core_3',     version: '0.41.4'
 
     constraints {
         api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.115.Final'
@@ -132,7 +132,7 @@ dependencies {
         api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.115.Final'
         api group: 'com.google.guava',      name: 'guava',                              version: '32.0.1-jre'
         api group: 'io.spray',              name: 'spray-json_3',                       version: '1.3.6'
-        api group: 'org.asynchttpclient',   name: 'async-http-client',                  version: '2.10.5'
+        api group: 'org.asynchttpclient',   name: 'async-http-client',                  version: '3.0.1'
     }
 }
 
