@@ -30,27 +30,6 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: async-http-client-backend-cats_2.12-1.7.2.jar (https://github.com/jeremylong/DependencyCheck/issues/4369)
-   ]]></notes>
-        <sha1>59101893e2c7cf0640da292549cc50b3420ae088</sha1>
-        <cve>CVE-2021-43138</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   file name: async-http-client-backend_2.12-1.7.2.jar (https://github.com/jeremylong/DependencyCheck/issues/4369)
-   ]]></notes>
-        <sha1>ce88877609b732ab2544f90001ca70e815bbc49c</sha1>
-        <cpe>cpe:/a:async_project:async</cpe>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   file name: async-http-client-netty-utils-2.10.5.jar
-   ]]></notes>
-        <sha1>18c813fd76780392a046efb185096b6c55825d1f</sha1>
-        <cpe>cpe:/a:utils_project:utils</cpe>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
    file name: json-20230227.jar - fixed in given version (https://nvd.nist.gov/vuln/detail/CVE-2022-45688)
    ]]></notes>
         <sha1>7a0d4aca76513d8ce81f9b044ce8126b84809ad8</sha1>
@@ -93,9 +72,9 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: refined_3-0.11.1.jar
+   file name: refined_3-0.11.2.jar
    ]]></notes>
-        <sha1>c2f32c0e56e9e23ab6ccbd587931a804c7818e5d</sha1>
+        <sha1>444be8623bb171bd83a15ed2c2aff1792a857ad4</sha1>
         <cve>CVE-2021-34364</cve>
     </suppress>
     <suppress>
