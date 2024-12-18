@@ -34,9 +34,9 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Hasher
 
-abstract class AuthKeyHashingRule(override val settings: BasicAuthenticationRule.Settings[HashedCredentials],
-                                  implicit override val userIdCaseSensitivity: CaseSensitivity,
-                                  hasher: Hasher)
+sealed abstract class AuthKeyHashingRule(override val settings: BasicAuthenticationRule.Settings[HashedCredentials],
+                                         implicit override val userIdCaseSensitivity: CaseSensitivity,
+                                         hasher: Hasher)
   extends BasicAuthenticationRule(settings)
     with Logging {
 
@@ -72,6 +72,7 @@ object AuthKeyHashingRule {
   object HashedCredentials {
 
     final case class HashedUserAndPassword(hash: NonEmptyString) extends HashedCredentials
+
     object HashedUserAndPassword {
       def from(credentials: Credentials, hasher: Hasher): HashedUserAndPassword = HashedUserAndPassword {
         NonEmptyString.unsafeFrom(
@@ -82,6 +83,7 @@ object AuthKeyHashingRule {
     }
 
     final case class HashedOnlyPassword(userId: User.Id, hash: NonEmptyString) extends HashedCredentials
+
     object HashedOnlyPassword {
       def from(credentials: Credentials, hasher: Hasher): HashedOnlyPassword = HashedOnlyPassword(
         credentials.user,
