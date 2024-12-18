@@ -184,7 +184,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
               }
             )
           }
-          "username defined twice, but one for local user and one for auth rule" in {
+          "two usernames used" in {
             assertDecodingSuccess(
               yaml =
                 s"""
@@ -752,7 +752,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
           }
         )
       }
-      "two entries for username disregarding authentication rule" in {
+      "username is used in two definitions" in {
         val basicAuthenticationRules = List("auth_key", "auth_key_sha1", "auth_key_sha256", "auth_key_sha512", "auth_key_pbkdf2", "auth_key_unix")
 
         val testCases = for {
