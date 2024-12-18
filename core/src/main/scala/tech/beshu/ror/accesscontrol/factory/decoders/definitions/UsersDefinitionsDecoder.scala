@@ -234,16 +234,14 @@ object UsersDefinitionsDecoder {
     UserDefinitionsValidator.validate(definitions)
       .leftMap { validationErrors =>
         val cause = validationErrors.map(toErrorMessage).toList.mkString(",")
-        DefinitionsLevelCreationError(Message(s"Users definition sections invalid: $cause"))
+        DefinitionsLevelCreationError(Message(s"The `users` definition is malformed: $cause"))
       }
       .as(definitions)
   }
 
-  private def toErrorMessage(ve: ValidationError) = {
-    ve match {
-      case ValidationError.MultipleUserEntriesWithDifferentCredentials(user, ruleNames) =>
-        s"Multiple sections with different credentials for user '${user.show}' and rules ${ruleNames.map(_.show).mkString("'",",","'")}"
-    }
+  private def toErrorMessage(ve: ValidationError) = ve match {
+    case ValidationError.DuplicatedUsernameForLocalUser(userId) =>
+      s"Username '${userId.show}' is duplicated - full usernames can be used only in one definition."
   }
 
   private object GroupsDecoder {

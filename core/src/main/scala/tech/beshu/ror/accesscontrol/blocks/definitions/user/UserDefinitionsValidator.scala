@@ -18,14 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.user
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth.{SeparateRules, SingleRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
-import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
+import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
-import tech.beshu.ror.utils.Similarity.SimilarityMeasure
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 object UserDefinitionsValidator {
@@ -33,65 +27,31 @@ object UserDefinitionsValidator {
   sealed trait ValidationError
 
   object ValidationError {
-    final case class MultipleUserEntriesWithDifferentCredentials(user: UserIdPattern,
-                                                                 ruleNames: UniqueNonEmptyList[Rule.Name]) extends ValidationError
+    final case class DuplicatedUsernameForLocalUser(userId: User.Id) extends ValidationError
   }
 
   def validate(definitions: Definitions[UserDef]): Either[NonEmptyList[ValidationError], Unit] = {
-    val localUsersWithBasicAuthenticationRule: List[(UserIdPattern, List[BasicAuthenticationRule[?]])] =
-      definitions.items
+    val localUsersPerUserDefinition: List[UniqueNonEmptyList[User.Id]] =
+      definitions
+        .items
         .flatMap { definition =>
-          (for {
-            localUsers <- UniqueNonEmptyList.from(definition.usernames.patterns.filterNot(_.containsWildcard))
-            basicAuthenticationRules <- basicAuthenticationRuleFrom(definition.mode)
-          } yield localUsers.toList.map(user => (user, basicAuthenticationRules))).getOrElse(List.empty)
+          UniqueNonEmptyList.from(definition.usernames.patterns.filterNot(_.containsWildcard).map(_.value))
         }
-        .groupBy {
-          case (userIdPattern, _) => userIdPattern
+
+    val validationErrors =
+      localUsersPerUserDefinition
+        .flatten
+        .groupBy(identity)
+        .filter {
+          case (_, userIdOccurrences) => userIdOccurrences.length > 1
         }
-        .view
-        .mapValues {
-          _.map {
-            case (_, basicAuthenticationRules) => basicAuthenticationRules
-          }
+        .keys
+        .map { userId =>
+          ValidationError.DuplicatedUsernameForLocalUser(userId)
         }
         .toList
 
-    val validationErrors =
-      localUsersWithBasicAuthenticationRule
-        .flatMap {
-          case (localUser, authenticationRules) =>
-            UniqueNonEmptyList
-              .from(findRulesWithNotMatchingCredentials(authenticationRules))
-              .map(ruleNames => ValidationError.MultipleUserEntriesWithDifferentCredentials(localUser, ruleNames))
-        }
-
-    NonEmptyList.fromList(validationErrors) match {
-      case Some(errors) => Left(errors)
-      case None => Right(())
-    }
-  }
-
-  private def basicAuthenticationRuleFrom(mode: UserDef.Mode): Option[BasicAuthenticationRule[?]] = mode match {
-    case Mode.WithoutGroupsMapping(authenticationRule: BasicAuthenticationRule[?], _) => Some(authenticationRule)
-    case Mode.WithoutGroupsMapping(_, _) => None
-    case Mode.WithGroupsMapping(SeparateRules(authenticationRule: BasicAuthenticationRule[?], _), _) => Some(authenticationRule)
-    case Mode.WithGroupsMapping(SeparateRules(_, _), _) => None
-    case Mode.WithGroupsMapping(SingleRule(_: AuthRule), _) => None
-  }
-
-  private def findRulesWithNotMatchingCredentials(authenticationRules: List[BasicAuthenticationRule[?]]) = {
-    authenticationRules.combinations(2).toList.flatMap {
-      case rule1 :: rule2 :: Nil =>
-        BasicAuthenticationRulesSimilarity.similarity(rule1, rule2) match {
-          case SimilarityMeasure.Unrelated => List.empty
-          case SimilarityMeasure.RelatedAndEqual => List.empty // entries with the same credentials
-          case SimilarityMeasure.RelatedAndNotEqual =>
-            List(rule1.name)
-        }
-      case _ => // will not happen for combinations(2)
-        List.empty
-    }
+    NonEmptyList.fromList(validationErrors).toLeft(())
   }
 
 }
