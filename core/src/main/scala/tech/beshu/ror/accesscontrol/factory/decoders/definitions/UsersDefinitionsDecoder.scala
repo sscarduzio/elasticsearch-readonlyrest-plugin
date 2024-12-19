@@ -18,11 +18,14 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import cats.data.NonEmptyList
+import cats.implicits.*
 import io.circe.{ACursor, Decoder, HCursor, Json}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.definitions.user.UserDefinitionsValidator
+import tech.beshu.ror.accesscontrol.blocks.definitions.user.UserDefinitionsValidator.ValidationError
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
@@ -31,6 +34,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, GroupName, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
@@ -85,7 +89,7 @@ object UsersDefinitionsDecoder {
           } yield UserDef(usernamePatterns, mode)
         }
         .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
-    DefinitionsBaseDecoder.instance[Id, UserDef]("users")
+    DefinitionsBaseDecoder.instance[Id, UserDef]("users").emapE(validate)
   }
 
   private implicit val userIdPatternsDecoder: Decoder[UserIdPatterns] =
@@ -226,6 +230,20 @@ object UsersDefinitionsDecoder {
 
   private def decodingFailure(msg: Message) = DecodingFailureOps.fromError(DefinitionsLevelCreationError(msg))
 
+  private def validate(definitions: Definitions[UserDef]): Either[CoreCreationError, Definitions[UserDef]] = {
+    UserDefinitionsValidator.validate(definitions)
+      .leftMap { validationErrors =>
+        val cause = validationErrors.map(toErrorMessage).toList.mkString(",")
+        DefinitionsLevelCreationError(Message(s"The `users` definition is malformed: $cause"))
+      }
+      .as(definitions)
+  }
+
+  private def toErrorMessage(ve: ValidationError) = ve match {
+    case ValidationError.DuplicatedUsernameForLocalUser(userId) =>
+      s"Username '${userId.show}' is duplicated - full usernames can be used only in one definition."
+  }
+
   private object GroupsDecoder {
 
     private object GroupMappingKeys {
@@ -250,9 +268,9 @@ object UsersDefinitionsDecoder {
     implicit lazy val groupMappingsDecoder: Decoder[GroupMappings] = Decoder.instance { c =>
       for {
         mappingsJsons <- NonEmptyList
-            .fromList(c.values.getOrElse(c.value :: Nil).toList)
-            .toRight("Non empty list of groups is required")
-            .left.map(msg => decodingFailure(Message(msg)))
+          .fromList(c.values.getOrElse(c.value :: Nil).toList)
+          .toRight("Non empty list of groups is required")
+          .left.map(msg => decodingFailure(Message(msg)))
         mappingsDecoder = mappingsJsons match {
           case groupMappings if haveSimpleFormatWithGroupIds(groupMappings) =>
             groupsSimpleDecoder
