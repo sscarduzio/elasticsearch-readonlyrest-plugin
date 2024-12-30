@@ -76,6 +76,7 @@ import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
+import tech.beshu.ror.es.handler.request.context.types.xpacksecurity.*
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -245,6 +246,9 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case _ =>
         ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
           case XpackAsyncSearchRequestContext(request) => regularRequestHandler.handle(request)
+          // xpack security
+          case CreateApiKeyEsRequestContext(request) => regularRequestHandler.handle(request)
+          case GrantApiKeyEsRequestContext(request) => regularRequestHandler.handle(request)
           // rollup
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)

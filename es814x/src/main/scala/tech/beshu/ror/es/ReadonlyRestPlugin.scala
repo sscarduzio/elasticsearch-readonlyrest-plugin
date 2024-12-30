@@ -244,4 +244,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       esInitListener.onEsReady()
     }
   }
+
+  def onApiKeyService(apiKeyService: AnyRef): Unit = {
+    println("EXTRACTED:" + apiKeyService.hashCode())
+  }
 }
