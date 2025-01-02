@@ -45,6 +45,14 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
                |  "privileges":["version:$esVersionUsed","login:"]
                |}
                |""".stripMargin
+          ) :: Nil,
+          indexPrivileges = ujson.read(
+            s"""
+               |{
+               |  "names": [".monitoring-*-6-*,.monitoring-*-7-*"],
+               |  "privileges":["read"]
+               |}
+               |""".stripMargin
           ) :: Nil
         )
         response should have statusCode 200
@@ -56,7 +64,11 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
              |  "cluster": {
              |    "monitor": true
              |  },
-             |  "index": {},
+             |  "index": {
+             |    ".monitoring-*-6-*,.monitoring-*-7-*": {
+             |      "read": true
+             |    }
+             |  },
              |  "application":{
              |    "kibana":{
              |      "space:default":{
