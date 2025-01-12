@@ -36,9 +36,9 @@ import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.*
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, RestClientAuditSinkService}
+import tech.beshu.ror.es.services.*
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
@@ -55,6 +55,7 @@ class IndexLevelActionFilter(nodeName: String,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
+                             esApiKeyServiceSupplier: Supplier[Option[EsApiKeyService]],
                              esInitListener: EsInitListener,
                              rorEsConfig: ReadonlyRestEsConfig)
                             (implicit environmentConfig: EnvironmentConfig)
@@ -83,6 +84,7 @@ class IndexLevelActionFilter(nodeName: String,
       client,
       threadPool
     ),
+    esApiKeyServiceSupplier,
     clusterService.getSettings,
     threadPool
   )
@@ -173,15 +175,24 @@ class IndexLevelActionFilter(nodeName: String,
     aclAwareRequestFilter
       .handle(engines, esContext)
       .runAsync {
-        case Right(result) => handleResult(esContext, result)
-        case Left(ex) => esContext.listener.onFailure(new Exception(ex))
+        case Right(Right(())) =>
+        case Right(Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured)) =>
+          handleImpersonatorsEngineNotConfigured(esContext)
+        case Right(Left(AclAwareRequestFilter.Error.RequestCannotBeHandled(cause))) =>
+          handleRequestCannotBeHandled(esContext, cause)
+        case Left(ex) =>
+          esContext.listener.onFailure(new Exception(ex))
       }
   }
 
-  private def handleResult(esContext: EsContext, result: Either[AclAwareRequestFilter.Error, Unit]): Unit = result match {
-    case Right(_) =>
-    case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
-      esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
+  private def handleImpersonatorsEngineNotConfigured(esContext: EsContext): Unit = {
+    logger.info(s"[${esContext.correlationId.show}] Cannot handle the ${esContext.channel.request().path()} (impersonated) request because no Test Settings are configured")
+    esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
+  }
+
+  private def handleRequestCannotBeHandled(esContext: EsContext, cause: String): Unit = {
+    logger.error(s"[${esContext.correlationId.show}] Cannot handle the ${esContext.channel.request().path()} request because: $cause")
+    esContext.listener.onFailure(createOperationNotAllowedResponse())
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {

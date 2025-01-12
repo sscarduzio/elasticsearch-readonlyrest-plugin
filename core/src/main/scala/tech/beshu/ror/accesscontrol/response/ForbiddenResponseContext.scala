@@ -122,6 +122,9 @@ object ForbiddenResponseContext {
     final def createTestSettingsNotConfiguredResponse(): RESPONSE =
       create(new ForbiddenResponseContext(None, NonEmptyList.one(TestSettingsNotConfigured)))
 
+    final def createOperationNotAllowedResponse(): RESPONSE =
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(OperationNotAllowed)))
+
     def create(context: ForbiddenResponseContext): RESPONSE
   }
 

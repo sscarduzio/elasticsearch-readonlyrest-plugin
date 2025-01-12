@@ -77,14 +77,17 @@ import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
 import tech.beshu.ror.es.handler.request.context.types.xpacksecurity.*
+import tech.beshu.ror.es.services.EsApiKeyService
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
 import java.time.Instant
+import java.util.function.Supplier
 import scala.reflect.ClassTag
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
+                            esApiKeyServiceSupplier: Supplier[Option[EsApiKeyService]],
                             settings: Settings,
                             threadPool: ThreadPool)
                            (implicit generator: UniqueIdentifierGenerator,
@@ -93,18 +96,22 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 
   def handle(engines: Engines,
              esContext: EsContext): Task[Either[Error, Unit]] = {
-    esContext
-      .pickEngineToHandle(engines)
-      .map(handleRequestWithEngine(_, esContext))
-      .sequence
+    esContext.pickEngineToHandle(engines) match {
+      case Right(engine) =>
+        handleRequestWithEngine(engine, esContext)
+      case Left(error) =>
+        Task.now(Left(error))
+    }
   }
 
   private def handleRequestWithEngine(engine: Engine,
-                                      esContext: EsContext) = {
+                                      esContext: EsContext): Task[Either[Error, Unit]] = {
     esContext.actionRequest match {
       case request: RRUserMetadataRequest =>
         val handler = new CurrentUserMetadataRequestHandler(engine, esContext)
-        handler.handle(new CurrentUserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
+        handler
+          .handle(new CurrentUserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
+          .map(Right(_))
       case _ =>
         val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool)
         handleEsRestApiRequest(regularRequestHandler, esContext, engine.core.accessControl.staticContext)
@@ -113,7 +120,10 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 
   private def handleEsRestApiRequest(regularRequestHandler: RegularRequestHandler,
                                      esContext: EsContext,
-                                     aclContext: AccessControlStaticContext) = {
+                                     aclContext: AccessControlStaticContext): Task[Either[Error, Unit]] = {
+    import scala.language.implicitConversions
+    implicit def toR(task: Task[Unit]): Task[Either[Nothing, Unit]] = task.map(Right.apply)
+
     esContext.actionRequest match {
       case request: RRAuditEventRequest =>
         regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, clusterService, threadPool))
@@ -248,7 +258,16 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           case XpackAsyncSearchRequestContext(request) => regularRequestHandler.handle(request)
           // xpack security
           case CreateApiKeyEsRequestContext(request) => regularRequestHandler.handle(request)
-          case GrantApiKeyEsRequestContext(request) => regularRequestHandler.handle(request)
+          case GetApiKeyEsRequestContext(creator) =>
+            creator
+              .create(esApiKeyServiceSupplier)
+              .map(regularRequestHandler.handle)
+              .sequence
+          case GrantApiKeyEsRequestContext(creator) =>
+            creator
+              .create(esApiKeyServiceSupplier)
+              .map(regularRequestHandler.handle)
+              .sequence
           // rollup
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
@@ -321,6 +340,7 @@ object AclAwareRequestFilter {
   sealed trait Error
   object Error {
     case object ImpersonatorsEngineNotConfigured extends Error
+    final case class RequestCannotBeHandled(cause: String) extends Error
   }
 }
 
