@@ -177,7 +177,7 @@ tasks.register('buildRorPreBuildDockerImage', DockerBuildImage) {
 tasks.register('removeRorPreBuildDockerImage', DockerRemoveImage) {
     dependsOn buildRorPreBuildDockerImage
     force = true
-    targetImageId buildRorDockerImage.getImageId()
+    targetImageId buildRorPreBuildDockerImage.getImageId()
 }
 
 tasks.register('pushRorPreBuildDockerImage', DockerPushImage) {
