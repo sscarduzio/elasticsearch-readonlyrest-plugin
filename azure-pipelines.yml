@@ -548,7 +548,7 @@ stages:
 
               export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
               
-              if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],'))" ]; then
+              if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
                 echo "Error: No ES versions specified for publishing ROR pre-builds"
                 exit 1
               fi
