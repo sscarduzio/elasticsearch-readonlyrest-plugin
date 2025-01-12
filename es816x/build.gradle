@@ -139,6 +139,14 @@ tasks.register('prepareDockerImageFiles', Copy) {
     into layout.buildDirectory.dir("docker-image")
 }
 
+tasks.register('buildRorDockerImage2', Exec) {
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
+    group 'docker'
+    executable 'docker'
+    workingDir '.'
+    args = ['buildx', 'build', '--platform', 'linux/amd64,linux/arm64', '-t', preBuildDockerImageVersion, '--push', '.']
+}
+
 tasks.register('buildRorDockerImage', DockerBuildImage) {
     dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
 
