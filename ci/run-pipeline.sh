@@ -286,6 +286,21 @@ release_ror_plugin() {
   fi
 }
 
+public_ror_prebuild_plugin() {
+  if [ "$#" -ne 1 ]; then
+    echo "What ES version should I release plugin for?"
+    return 1
+  fi
+
+  local ES_VERSION=$1
+
+  echo ""
+  echo "PUBLISHING ROR PRE-BUILD for ES $ES_VERSION:"
+
+  ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null
+  $DOCKER system prune -fa
+}
+
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es8xx" ]]; then
   release_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
@@ -311,4 +326,8 @@ if [[ $ROR_TASK == "publish_maven_artifacts" ]] && [[ $TRAVIS_BRANCH == "master"
   else
     echo ">>> Skipping publishing audit module artifacts"
   fi
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
+  public_ror_prebuild_plugin "8.14.3"
 fi

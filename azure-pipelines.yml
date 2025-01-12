@@ -25,6 +25,12 @@ trigger:
       - '*.md'
       - '*/*/*.md'
 
+parameters:
+  - name: preBuildVersionsForPublishingToDockerHub
+    type: string
+    displayName: 'Space or comma-separated list of ES version numbers (e.g., "7.17.20 8.15.0")'
+    default: ' '
+
 pool:
   vmImage: 'ubuntu-20.04'
 
@@ -32,6 +38,7 @@ stages:
 
   - stage: CVE
     dependsOn: [ ]
+    condition: ne(variables['Build.Reason'], 'Manual')
     jobs:
       - job:
         steps:
@@ -49,6 +56,7 @@ stages:
 
   - stage: TEST
     dependsOn: [ ]
+    condition: ne(variables['Build.Reason'], 'Manual')
     jobs:
       - job:
         timeoutInMinutes: 20
@@ -266,7 +274,12 @@ stages:
   - stage: BUILD_ROR
     dependsOn:
       - TEST
-    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
+    condition: |
+      and(
+        succeeded('TEST'), 
+        eq(variables.isPullRequest, true), 
+        ne(variables['Build.Reason'], 'Manual')
+      )
     jobs:
       - job:
         timeoutInMinutes: 120
@@ -301,6 +314,7 @@ stages:
   - stage: DETERMINE_CI_TYPE
     dependsOn:
       - TEST
+    condition: ne(variables['Build.Reason'], 'Manual')
     jobs:
       - job: EXTRACT_IS_RELEASE
         steps:
@@ -320,7 +334,8 @@ stages:
       and(
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false)
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
+        ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
       - job:
@@ -363,7 +378,8 @@ stages:
       and(
         succeeded('TEST'), 
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
+        ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
       - job:
@@ -410,7 +426,12 @@ stages:
   - stage: BUILD_MVN_ARTIFACTS
     dependsOn:
       - TEST
-    condition: and(succeeded('TEST'), ne(variables.isMaster, true))
+    condition: |
+      and(
+        succeeded('TEST'), 
+        ne(variables.isMaster, true), 
+        ne(variables['Build.Reason'], 'Manual')
+      )
     jobs:
       - job:
         steps:
@@ -432,7 +453,8 @@ stages:
       and(
         succeeded('TEST'), 
         eq(variables.isMaster, true),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
+        ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
       - job:
@@ -489,3 +511,37 @@ stages:
               VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
               VAR_GPG_KEY_ID: $(GPG_KEY_ID)
             condition: eq(404, variables.mvn_status)
+
+  - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
+    displayName: 'Publish docker images for specified pre-builds'
+    condition: eq(variables['Build.Reason'], 'Manual')
+    jobs:
+      - job: PUBLISH
+        displayName: 'Publishing'
+        timeoutInMinutes: "600"
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              set -ex
+                            
+              export DOCKER=docker
+              docker login -u $var_docker_registry_user -p $var_docker_registry_password
+
+              export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
+              
+              if [ -z "$(echo "BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],'))" ]; then
+                echo "Error: No versions specified for publishing"
+                exit 1
+              fi
+              
+              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Publish docker images for specified pre-builds" && ci/run-pipeline.sh
+            timeoutInMinutes: "600"
+            condition: succeeded()
+            env:
+              ROR_TASK: publish_pre_builds_docker_images
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)

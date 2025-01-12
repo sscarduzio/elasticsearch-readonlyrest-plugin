@@ -26,8 +26,9 @@ plugins {
 def pluginFullName = pluginName + '-' + version
 def projectJavaLanguageVersion = JavaLanguageVersion.of(11)
 def moduleEsVersion = project.property('esVersion') != null ? project.property('esVersion') : project.property('latestSupportedEsVersion')
-def dockerImageLatest = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
-def dockerImageVersion = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
+def releaseDockerImageLatest = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
+def releaseDockerImageVersion = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
+def preBuildDockerImageVersion = 'beshultd/elasticsearch-readonlyrest-dev:' + moduleEsVersion + '-ror-' + pluginVersion
 
 java {
     toolchain {
@@ -152,8 +153,8 @@ tasks.register('buildRorDockerImage', DockerBuildImage) {
             ES_VERSION: project.properties['esVersion'],
             ROR_VERSION: pluginVersion
     ]
-    images.add(dockerImageLatest)
-    images.add(dockerImageVersion)
+    images.add(releaseDockerImageLatest)
+    images.add(releaseDockerImageVersion)
 }
 
 tasks.register('removeRorDockerImage', DockerRemoveImage) {
@@ -165,7 +166,31 @@ tasks.register('removeRorDockerImage', DockerRemoveImage) {
 tasks.register('pushRorDockerImage', DockerPushImage) {
     dependsOn buildRorDockerImage
 
-    images.add(dockerImageLatest)
-    images.add(dockerImageVersion)
+    images.add(releaseDockerImageLatest)
+    images.add(releaseDockerImageVersion)
 }
 pushRorDockerImage.configure { finalizedBy removeRorDockerImage }
+
+tasks.register('buildRorPreBuildDockerImage', DockerBuildImage) {
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
+
+    inputDir = layout.buildDirectory.dir("docker-image")
+    buildArgs = [
+            ES_VERSION: project.properties['esVersion'],
+            ROR_VERSION: pluginVersion
+    ]
+    images.add(preBuildDockerImageVersion)
+}
+
+tasks.register('removeRorPreBuildDockerImage', DockerRemoveImage) {
+    dependsOn buildRorPreBuildDockerImage
+    force = true
+    targetImageId buildRorDockerImage.getImageId()
+}
+
+tasks.register('pushRorPreBuildDockerImage', DockerPushImage) {
+    dependsOn buildRorPreBuildDockerImage
+
+    images.add(preBuildDockerImageVersion)
+}
+pushRorPreBuildDockerImage.configure { finalizedBy removeRorPreBuildDockerImage }
