@@ -409,7 +409,10 @@ stages:
               export aws_secret_access_key=$var_aws_secret_access_key
 
               export DOCKER=docker
-              docker login -u $var_docker_registry_user -p $var_docker_registry_password
+              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
+                echo "Error: Failed to login to Docker registry"
+                exit 1
+              fi
 
               echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
@@ -538,10 +541,14 @@ stages:
                             
               export DOCKER=docker
               docker login -u $var_docker_registry_user -p $var_docker_registry_password
+              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
+                echo "Error: Failed to login to Docker registry"
+                exit 1
+              fi
 
               export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
               
-              if [ -z "$(echo "BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],'))" ]; then
+              if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],'))" ]; then
                 echo "Error: No ES versions specified for publishing ROR pre-builds"
                 exit 1
               fi
