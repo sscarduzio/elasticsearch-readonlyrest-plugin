@@ -37,6 +37,7 @@ pool:
 stages:
 
   - stage: CVE
+    displayName: 'CVE check'
     dependsOn: [ ]
     condition: ne(variables['Build.Reason'], 'Manual')
     jobs:
@@ -55,6 +56,7 @@ stages:
               ROR_TASK: cve_check
 
   - stage: TEST
+    displayName: 'Run all tests'
     dependsOn: [ ]
     condition: ne(variables['Build.Reason'], 'Manual')
     jobs:
@@ -272,6 +274,7 @@ stages:
               ROR_TASK: integration_es67x
 
   - stage: BUILD_ROR
+    displayName: 'Build ROR plugins'
     dependsOn:
       - TEST
     condition: |
@@ -312,6 +315,7 @@ stages:
               ROR_TASK: build_es6xx
 
   - stage: DETERMINE_CI_TYPE
+    displayName: 'Determine if this is release run'
     dependsOn:
       - TEST
     condition: ne(variables['Build.Reason'], 'Manual')
@@ -327,6 +331,7 @@ stages:
             name: IsRelease
 
   - stage: UPLOAD_PRE_ROR
+    displayName: 'Upload to S3 ROR plugin pre-builds'
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
@@ -371,6 +376,7 @@ stages:
               ROR_TASK: upload_pre_es6xx
 
   - stage: RELEASE_ROR
+    displayName: 'Release ROR plugins'
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
@@ -424,6 +430,7 @@ stages:
               ROR_TASK: release_es6xx
 
   - stage: BUILD_MVN_ARTIFACTS
+    displayName: 'Build Maven artifacts'
     dependsOn:
       - TEST
     condition: |
@@ -446,6 +453,7 @@ stages:
               ROR_TASK: audit_compile
 
   - stage: PUBLISH_MVN_ARTIFACTS
+    displayName: 'Publish Maven artifacts'
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
@@ -534,7 +542,7 @@ stages:
               export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
               
               if [ -z "$(echo "BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],'))" ]; then
-                echo "Error: No versions specified for publishing"
+                echo "Error: No ES versions specified for publishing ROR pre-builds"
                 exit 1
               fi
               

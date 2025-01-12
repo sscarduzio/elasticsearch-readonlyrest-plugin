@@ -273,14 +273,33 @@ release_ror_plugin() {
 
   local ROR_VERSION=$1
   local ES_VERSION=$2
+
+  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Invalid ES version format. Expected format: X.Y.Z"
+    return 2
+  fi
+
+  if ! $DOCKER info >/dev/null 2>&1; then
+    echo "Docker daemon not running or not logged in"
+    return 3
+  fi
+
   local TAG="v${ROR_VERSION}_es${ES_VERSION}"
 
   echo ""
   echo "Releasing ROR $ROR_VERSION for ES $ES_VERSION:"
 
   if checkTagNotExist "$TAG"; then
-    ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
-    ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null
+
+    if ! ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null; then
+      echo "Failed to publish plugin to S3"
+      return 3
+    fi
+    if ! ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+      echo "Failed to publish plugin Docker image"
+      return 4
+    fi
+
     tag "$TAG"
     $DOCKER system prune -fa
   fi
@@ -294,10 +313,24 @@ public_ror_prebuild_plugin() {
 
   local ES_VERSION=$1
 
+  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Invalid ES version format. Expected format: X.Y.Z"
+    return 2
+  fi
+
+  if ! $DOCKER info >/dev/null 2>&1; then
+    echo "Docker daemon not running or not logged in"
+    return 3
+  fi
+
   echo ""
   echo "PUBLISHING ROR PRE-BUILD for ES $ES_VERSION:"
 
-  ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null
+  if ! ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+    echo "Failed to publish plugin prebuild Docker image"
+    return 4
+  fi
+
   $DOCKER system prune -fa
 }
 
@@ -329,5 +362,12 @@ if [[ $ROR_TASK == "publish_maven_artifacts" ]] && [[ $TRAVIS_BRANCH == "master"
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
-  public_ror_prebuild_plugin "8.14.3" # todo: fixme
+
+  IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
+  for VERSION in "${VERSIONS[@]}"; do
+    if [ -n "$VERSION" ]; then
+      public_ror_prebuild_plugin "$VERSION"
+    fi
+  done
+
 fi
