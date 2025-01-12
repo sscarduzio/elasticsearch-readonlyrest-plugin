@@ -329,5 +329,5 @@ if [[ $ROR_TASK == "publish_maven_artifacts" ]] && [[ $TRAVIS_BRANCH == "master"
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
-  public_ror_prebuild_plugin "8.14.3"
+  public_ror_prebuild_plugin "8.14.3" # todo: fixme
 fi

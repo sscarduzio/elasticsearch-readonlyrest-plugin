@@ -514,6 +514,7 @@ stages:
 
   - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
     displayName: 'Publish docker images for specified pre-builds'
+    dependsOn: [ ]
     condition: eq(variables['Build.Reason'], 'Manual')
     jobs:
       - job: PUBLISH
