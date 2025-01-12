@@ -16,7 +16,6 @@
  */
 
 plugins {
-    id 'com.bmuschko.docker-remote-api'
     id "readonlyrest.base-common-conventions"
 }
 
@@ -111,4 +110,37 @@ tasks.register('toJar', Jar) {
     dependsOn generateVersionsFile
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from sourceSets.main.getOutput()
+}
+
+tasks.register('prepareMultiplatformBuilder') {
+    group = 'docker'
+    doLast {
+        def output = new ByteArrayOutputStream()
+        exec {
+            executable = 'docker'
+            args = ['buildx', 'inspect']
+            standardOutput = output
+            errorOutput = System.err
+        }
+        def supportedPlatforms = output.toString().find(/Platforms: ([^\n]+)/)?.replace("Platforms: ", "")?.split(',')
+
+        if (supportedPlatforms == null || !(supportedPlatforms.contains('linux/amd64') && supportedPlatforms.contains('linux/arm64'))) {
+            def rorBuilderExists = exec {
+                executable = 'docker'
+                args = ['buildx', 'inspect', 'ror_kbn_builder']
+            }
+
+            if (rorBuilderExists.exitValue != 0) {
+                exec {
+                    executable = 'docker'
+                    args = ['buildx', 'create', '--platform=linux/amd64,linux/arm64', '--name=ror_kbn_builder']
+                }
+            }
+
+            exec {
+                executable = 'docker'
+                args = ['buildx', 'use', 'ror_kbn_builder']
+            }
+        }
+    }
 }
