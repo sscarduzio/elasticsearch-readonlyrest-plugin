@@ -25,13 +25,21 @@ trigger:
       - '*.md'
       - '*/*/*.md'
 
+parameters:
+  - name: preBuildVersionsForPublishingToDockerHub
+    type: string
+    displayName: 'Space or comma-separated list of ES version numbers (e.g., "7.17.20 8.15.0")'
+    default: ' '
+
 pool:
   vmImage: 'ubuntu-20.04'
 
 stages:
 
   - stage: CVE
+    displayName: 'CVE check'
     dependsOn: [ ]
+    condition: ne(variables['Build.Reason'], 'Manual')
     jobs:
       - job:
         steps:
@@ -48,7 +56,9 @@ stages:
               ROR_TASK: cve_check
 
   - stage: TEST
+    displayName: 'Run all tests'
     dependsOn: [ ]
+    condition: ne(variables['Build.Reason'], 'Manual')
     jobs:
       - job:
         timeoutInMinutes: 20
@@ -264,9 +274,15 @@ stages:
               ROR_TASK: integration_es67x
 
   - stage: BUILD_ROR
+    displayName: 'Build ROR plugins'
     dependsOn:
       - TEST
-    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
+    condition: |
+      and(
+        succeeded('TEST'), 
+        eq(variables.isPullRequest, true), 
+        ne(variables['Build.Reason'], 'Manual')
+      )
     jobs:
       - job:
         timeoutInMinutes: 120
@@ -299,8 +315,10 @@ stages:
               ROR_TASK: build_es6xx
 
   - stage: DETERMINE_CI_TYPE
+    displayName: 'Determine if this is release run'
     dependsOn:
       - TEST
+    condition: ne(variables['Build.Reason'], 'Manual')
     jobs:
       - job: EXTRACT_IS_RELEASE
         steps:
@@ -313,6 +331,7 @@ stages:
             name: IsRelease
 
   - stage: UPLOAD_PRE_ROR
+    displayName: 'Upload to S3 ROR plugin pre-builds'
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
@@ -320,7 +339,8 @@ stages:
       and(
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false)
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
+        ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
       - job:
@@ -356,6 +376,7 @@ stages:
               ROR_TASK: upload_pre_es6xx
 
   - stage: RELEASE_ROR
+    displayName: 'Release ROR plugins'
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
@@ -363,7 +384,8 @@ stages:
       and(
         succeeded('TEST'), 
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
+        ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
       - job:
@@ -387,7 +409,10 @@ stages:
               export aws_secret_access_key=$var_aws_secret_access_key
 
               export DOCKER=docker
-              docker login -u $var_docker_registry_user -p $var_docker_registry_password
+              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
+                echo "Error: Failed to login to Docker registry"
+                exit 1
+              fi
 
               echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
@@ -408,9 +433,15 @@ stages:
               ROR_TASK: release_es6xx
 
   - stage: BUILD_MVN_ARTIFACTS
+    displayName: 'Build Maven artifacts'
     dependsOn:
       - TEST
-    condition: and(succeeded('TEST'), ne(variables.isMaster, true))
+    condition: |
+      and(
+        succeeded('TEST'), 
+        ne(variables.isMaster, true), 
+        ne(variables['Build.Reason'], 'Manual')
+      )
     jobs:
       - job:
         steps:
@@ -425,6 +456,7 @@ stages:
               ROR_TASK: audit_compile
 
   - stage: PUBLISH_MVN_ARTIFACTS
+    displayName: 'Publish Maven artifacts'
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
@@ -432,7 +464,8 @@ stages:
       and(
         succeeded('TEST'), 
         eq(variables.isMaster, true),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
+        ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
       - job:
@@ -489,3 +522,42 @@ stages:
               VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
               VAR_GPG_KEY_ID: $(GPG_KEY_ID)
             condition: eq(404, variables.mvn_status)
+
+  - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
+    displayName: 'Publish docker images for specified pre-builds'
+    dependsOn: [ ]
+    condition: eq(variables['Build.Reason'], 'Manual')
+    jobs:
+      - job: PUBLISH
+        displayName: 'Publishing'
+        timeoutInMinutes: "600"
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              set -ex
+                            
+              export DOCKER=docker
+              docker login -u $var_docker_registry_user -p $var_docker_registry_password
+              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
+                echo "Error: Failed to login to Docker registry"
+                exit 1
+              fi
+
+              export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
+              
+              if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
+                echo "Error: No ES versions specified for publishing ROR pre-builds"
+                exit 1
+              fi
+              
+              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Publish docker images for specified pre-builds" && ci/run-pipeline.sh
+            timeoutInMinutes: "600"
+            condition: succeeded()
+            env:
+              ROR_TASK: publish_pre_builds_docker_images
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)

@@ -39,6 +39,10 @@ tasks.register("publishEsRorDockerImage", RorTaskFinder) {
     dependsOn it.findRorTaskForEsVersion('pushRorDockerImage')
 }
 
+tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion('pushRorPreBuildDockerImage')
+}
+
 group = 'tech.beshu.ror'
 version = pluginVersion
 
