@@ -164,7 +164,8 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
 }
 
 tasks.register('localRorDockerImage', Exec) {
-    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
+    // we prepare docker image for local architecture - the image is loaded to local registry
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')  
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'
@@ -172,6 +173,6 @@ tasks.register('localRorDockerImage', Exec) {
             'buildx', 'build',
             '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
             '-t', releaseDockerImageVersion,
-            '--load', '.'
+            '--load', '.' 
     ]
 }
