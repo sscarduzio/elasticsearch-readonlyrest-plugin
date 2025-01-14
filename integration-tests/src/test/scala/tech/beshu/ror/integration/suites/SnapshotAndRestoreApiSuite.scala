@@ -892,7 +892,7 @@ class SnapshotAndRestoreApiSuite
           val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
           adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "*").force()
 
-          val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "*")
+          val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "index3*")
 
           result should have statusCode 403
         }

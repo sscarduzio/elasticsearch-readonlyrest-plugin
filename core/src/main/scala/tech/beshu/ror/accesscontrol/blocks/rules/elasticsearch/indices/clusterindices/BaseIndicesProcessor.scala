@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusteri
 import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.Action.EsAction
+import tech.beshu.ror.accesscontrol.domain.Action.EsAction.restoreSnapshotAction
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason.IndexNotExist
@@ -43,13 +43,13 @@ trait BaseIndicesProcessor {
                                                                   requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                  (implicit indicesManager: IndicesManager[T]): Task[CanPass[Set[RequestedIndex[T]]]] = {
     implicit val requestId: RequestContext.Id = requestContext.id
-    if (shouldBeTreatedAsReadonlyRequest())
+    if (shouldBeTreatedAsReadonlyRequest(requestContext))
       canIndicesReadOnlyRequestPass(requestedIndices, determinedKibanaIndex)
     else
       canIndicesWriteRequestPass(requestedIndices, determinedKibanaIndex)
   }
 
-  private def shouldBeTreatedAsReadonlyRequest() = {
+  private def shouldBeTreatedAsReadonlyRequest(requestContext: RequestContext) = {
     requestContext.action == restoreSnapshotAction || requestContext.isReadOnlyRequest
   }
 

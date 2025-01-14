@@ -38,7 +38,7 @@ sealed trait Action {
 }
 object Action {
   final case class EsAction(override val value: String) extends Action
-  private object EsAction {
+  object EsAction {
     val fieldCapsAction: Action = EsAction("indices:data/read/field_caps")
     val getSettingsAction: Action = EsAction("indices:monitor/settings/get")
     val monitorStateAction: Action = EsAction("cluster:monitor/state")
