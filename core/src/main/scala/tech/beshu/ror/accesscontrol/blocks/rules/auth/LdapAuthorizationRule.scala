@@ -24,10 +24,13 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule.Settings.GroupsLogicForLdapWithGroupsFiltering
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{NegativeGroupsLogic, PositiveGroupsLogic}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class LdapAuthorizationRule(val settings: Settings,
@@ -37,20 +40,38 @@ class LdapAuthorizationRule(val settings: Settings,
 
   override val name: Rule.Name = LdapAuthorizationRule.Name.name
 
-  override protected val groupsPermittedByRule: PermittedGroupIds = settings.permittedGroupsLogic.permittedGroupIds
+  override protected val groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule =
+    settings match
+      case Settings.ForLdapWithoutGroupsFiltering(_, _) =>
+        GroupsPotentiallyPermittedByRule.All
+      case Settings.ForLdapWithGroupsFiltering(_, groupsLogic) =>
+        groupsLogic match
+          case GroupsLogicForLdapWithGroupsFiltering.Negative(_, potentiallyPermittedGroups) =>
+            GroupsPotentiallyPermittedByRule.Selected(potentiallyPermittedGroups)
+          case GroupsLogicForLdapWithGroupsFiltering.Positive(groupsLogic) =>
+            GroupsPotentiallyPermittedByRule.Selected(groupsLogic.groupIds)
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
                                                        user: LoggedUser,
-                                                       permittedGroupIds: Set[GroupIdLike])
+                                                       groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule)
                                                       (implicit requestId: RequestId): Task[UniqueList[Group]] = {
-    settings.ldap match {
-      case ldap: LdapAuthorizationService.WithoutGroupsFiltering => ldap.groupsOf(user.id)
-      case ldap: LdapAuthorizationService.WithGroupsFiltering => ldap.groupsOf(user.id, permittedGroupIds)
-    }
+    settings match
+      case Settings.ForLdapWithoutGroupsFiltering(ldap, _) =>
+        ldap.groupsOf(user.id)
+      case Settings.ForLdapWithGroupsFiltering(ldap, groupsLogic) =>
+        groupsLogic match
+          case GroupsLogicForLdapWithGroupsFiltering.Negative(_, potentiallyPermittedGroups) =>
+            ldap.groupsOf(user.id, potentiallyPermittedGroups.groupIds.toSet)
+          case GroupsLogicForLdapWithGroupsFiltering.Positive(groupsLogic) =>
+            ldap.groupsOf(user.id, groupsLogic.groupIds.groupIds.toSet)
   }
 
   override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
-    settings.permittedGroupsLogic.availableGroupsFrom(usersGroups)
+    settings match
+      case Settings.ForLdapWithoutGroupsFiltering(_, groupsLogic) =>
+        groupsLogic.availableGroupsFrom(usersGroups)
+      case Settings.ForLdapWithGroupsFiltering(_, groupsLogic) =>
+        groupsLogic.groupsLogic.availableGroupsFrom(usersGroups)
 
   override protected def mockedGroupsOf(user: User.Id,
                                         mocksProvider: MocksProvider)
@@ -76,6 +97,24 @@ object LdapAuthorizationRule {
     override val name = Rule.Name("ldap_authorization")
   }
 
-  final case class Settings(ldap: LdapAuthorizationService, permittedGroupsLogic: GroupsLogic)
+  sealed trait Settings {
+    def ldap: LdapAuthorizationService
+  }
+
+  object Settings:
+    final case class ForLdapWithoutGroupsFiltering(ldap: LdapAuthorizationService.WithoutGroupsFiltering,
+                                                   groupsLogic: GroupsLogic) extends Settings
+
+    final case class ForLdapWithGroupsFiltering(ldap: LdapAuthorizationService.WithGroupsFiltering,
+                                                groupsLogic: GroupsLogicForLdapWithGroupsFiltering) extends Settings
+
+    sealed trait GroupsLogicForLdapWithGroupsFiltering {
+      def groupsLogic: GroupsLogic
+    }
+
+    object GroupsLogicForLdapWithGroupsFiltering:
+      final case class Positive(groupsLogic: PositiveGroupsLogic) extends GroupsLogicForLdapWithGroupsFiltering
+
+      final case class Negative(groupsLogic: NegativeGroupsLogic, potentiallyPermittedGroups: GroupIds) extends GroupsLogicForLdapWithGroupsFiltering
 
 }

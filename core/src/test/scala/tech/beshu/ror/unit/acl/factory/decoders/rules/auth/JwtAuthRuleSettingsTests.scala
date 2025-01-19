@@ -127,7 +127,7 @@ class JwtAuthRuleSettingsTests
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
               rule.settings.jwt.groupsConfig should be(None)
-              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
+              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.Or(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               ))))
             }
@@ -160,7 +160,7 @@ class JwtAuthRuleSettingsTests
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
               rule.settings.jwt.groupsConfig should be(None)
-              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.And(PermittedGroupIds(
+              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.And(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               ))))
             }

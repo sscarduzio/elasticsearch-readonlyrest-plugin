@@ -26,10 +26,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.Eligibl
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.{Groups, Settings}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
@@ -64,7 +65,7 @@ final class RorKbnAuthRule(val settings: Settings,
       settings.permittedGroups match {
         case Groups.NotDefined =>
           authorizeUsingJwtToken(blockContext)
-        case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.permittedGroupIds) =>
+        case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(GroupsPotentiallyPermittedByRule.from(groupsLogic)) =>
           authorizeUsingJwtToken(blockContext)
         case Groups.Defined(_) =>
           RuleResult.Rejected()
@@ -141,7 +142,7 @@ final class RorKbnAuthRule(val settings: Settings,
         UniqueNonEmptyList.from(groups) match {
           case Some(nonEmptyGroups) =>
             groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
-              case Some(matchedGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds.from(matchedGroups)) =>
+              case Some(matchedGroups) if blockContext.isCurrentGroupEligible(GroupsPotentiallyPermittedByRule.Selected(GroupIds.from(matchedGroups))) =>
                 Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
               case Some(_) | None =>
                 Left(())
@@ -153,7 +154,7 @@ final class RorKbnAuthRule(val settings: Settings,
         UniqueNonEmptyList.from(groups) match {
           case None =>
             Right(blockContext)
-          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds.from(nonEmptyGroups)) =>
+          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(GroupsPotentiallyPermittedByRule.Selected(GroupIds.from(nonEmptyGroups))) =>
             Right(blockContext)
           case Some(_) =>
             Left(())
@@ -177,9 +178,12 @@ object RorKbnAuthRule {
   }
 
   final case class Settings(rorKbn: RorKbnDef, permittedGroups: Groups)
+
   sealed trait Groups
+
   object Groups {
     case object NotDefined extends Groups
+
     final case class Defined(groupsLogic: GroupsLogic) extends Groups
   }
 

@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
-import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroupIds}
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, GroupIds}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -68,14 +68,14 @@ private object JwtAuthRuleDecoder {
           rorKbnDefName <- c.downField("name").as[JwtDef.Name]
           groupsOrLogic <- {
             val (cursor, key) = c.downFieldsWithKey("roles", "groups", "groups_or")
-            cursor.as[Option[PermittedGroupIds]]
+            cursor.as[Option[GroupIds]]
               .map {
                 _.map(GroupsLogic.Or.apply).map(Groups.Defined.apply).map((_, key))
               }
           }
           groupsAndLogic <- {
             val (cursor, key) = c.downFieldsWithKey("roles_and", "groups_and")
-            cursor.as[Option[PermittedGroupIds]]
+            cursor.as[Option[GroupIds]]
               .map {
                 _.map(GroupsLogic.And.apply).map(Groups.Defined.apply).map((_, key))
               }

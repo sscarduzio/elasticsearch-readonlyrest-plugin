@@ -23,11 +23,11 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule, GroupsOrRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule, GroupsNotAllOfRule, GroupsNotAnyOfRule, GroupsOrRule}
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, ResolvablePermittedGroupIds}
+import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, ResolvableGroupIds}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -57,6 +57,26 @@ class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef],
   }
 }
 
+class GroupsNotAllOfRuleDecoder(usersDefinitions: Definitions[UserDef],
+                           globalSettings: GlobalSettings,
+                           override implicit val variableCreator: RuntimeResolvableVariableCreator)
+  extends BaseGroupsRuleDecoder[GroupsNotAllOfRule](usersDefinitions, variableCreator) {
+
+  override protected def createRule(settings: BaseGroupsRule.Settings): GroupsNotAllOfRule = {
+    new GroupsNotAllOfRule(settings, globalSettings.userIdCaseSensitivity)
+  }
+}
+
+class GroupsNotAnyOfRuleDecoder(usersDefinitions: Definitions[UserDef],
+                                globalSettings: GlobalSettings,
+                                override implicit val variableCreator: RuntimeResolvableVariableCreator)
+  extends BaseGroupsRuleDecoder[GroupsNotAnyOfRule](usersDefinitions, variableCreator) {
+
+  override protected def createRule(settings: BaseGroupsRule.Settings): GroupsNotAnyOfRule = {
+    new GroupsNotAnyOfRule(settings, globalSettings.userIdCaseSensitivity)
+  }
+}
+
 abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : VariableUsage : LocalUsersSupport : ImpersonationWarningExtractor](usersDefinitions: Definitions[UserDef],
                                                                                                                               implicit val variableCreator: RuntimeResolvableVariableCreator)
                                                                                                                              (implicit ev: RuleName[R])
@@ -75,7 +95,7 @@ abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : VariableUsage : Local
           case Some(userDefs) =>
             Right(RuleDefinition.create(
               createRule(
-                BaseGroupsRule.Settings(ResolvablePermittedGroupIds(groups), userDefs)
+                BaseGroupsRule.Settings(ResolvableGroupIds(groups), userDefs)
               )
             ))
           case None =>

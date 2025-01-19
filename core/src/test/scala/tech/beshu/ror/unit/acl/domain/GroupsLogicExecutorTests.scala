@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.domain
 import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroupIds}
+import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, GroupIds}
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -28,7 +28,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
   "GroupsLogic AND" should {
     "handle properly filtering of available groups from user groups" when {
       "permitted groups are all wildcarded" in {
-        val and = GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("a*"), GroupIdLike.from("b*")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -39,7 +39,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "permitted groups are full groups names" in {
-        val and = GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("cba")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -50,7 +50,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "permitted groups are mix of group patterns and full group id" in {
-        val and = GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("c*"), GroupIdLike.from("abc")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -61,7 +61,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "there is one permitted group that doesn't match any of the user groups" in {
-        val and = GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("d*"), GroupIdLike.from("b*"), GroupIdLike.from("c*"), GroupIdLike.from("abc")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -75,7 +75,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
   "GroupsLogic OR" should {
     "handle properly filtering of available groups from user groups" when {
       "permitted groups are all wildcarded" in {
-        val and = GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("a*"), GroupIdLike.from("b*")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -86,7 +86,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "permitted groups are full groups names" in {
-        val and = GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("cba")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -97,7 +97,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "permitted groups are mix of group patterns and full group ids" in {
-        val and = GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("c*"), GroupIdLike.from("abc")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -108,7 +108,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "there is none of permitted group that match any of the user groups" in {
-        val and = GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("d*"), GroupIdLike.from("e*"), GroupIdLike.from("abcde")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(

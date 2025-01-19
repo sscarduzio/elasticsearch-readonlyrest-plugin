@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckM
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.Groups
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroupIds}
+import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, GroupIds}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
@@ -115,7 +115,7 @@ class RorKbnAuthRuleSettingsTests
               rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.settings.permittedGroups should be(
                 Groups.Defined(
-                  GroupsLogic.Or(PermittedGroupIds(
+                  GroupsLogic.Or(GroupIds(
                     UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
                   ))
                 )
@@ -149,7 +149,7 @@ class RorKbnAuthRuleSettingsTests
               rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.permittedGroups should be(
                 Groups.Defined(
-                  GroupsLogic.And(PermittedGroupIds(
+                  GroupsLogic.And(GroupIds(
                     UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
                   ))
                 )

@@ -22,30 +22,25 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, GroupIds, GroupsLogic}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-final class GroupsOrRule(override val settings: BaseGroupsRule.Settings,
-                         override val userIdCaseSensitivity: CaseSensitivity)
+final class GroupsNotAnyOfRule(override val settings: BaseGroupsRule.Settings,
+                               override val userIdCaseSensitivity: CaseSensitivity)
   extends BaseGroupsRule(settings) {
 
-  override val name: Rule.Name = GroupsOrRule.Name.name
+  override val name: Rule.Name = GroupsAndRule.Name.name
 
   override protected def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[Group],
                                                        groupIds: GroupIds): Option[UniqueNonEmptyList[Group]] = {
-    GroupsLogic.Or(groupIds).availableGroupsFrom(userGroups)
+    GroupsLogic.NotAnyOf(groupIds).availableGroupsFrom(userGroups)
   }
 
   override protected def groupsPotentiallyPermittedByRule(groupIds: GroupIds): GroupsPotentiallyPermittedByRule = {
-    GroupsPotentiallyPermittedByRule.Selected(groupIds)
+    GroupsPotentiallyPermittedByRule.All
   }
 
 }
 
-object GroupsOrRule {
-  implicit case object Name extends RuleName[GroupsOrRule] {
-    override val name: Name = Rule.Name("groups_or")
+object GroupsNotAnyOfRule {
+  implicit case object Name extends RuleName[GroupsNotAnyOfRule] {
+    override val name: Name = Rule.Name("groups_not_any_of")
   }
-
-  case object DeprecatedName extends RuleName[GroupsOrRule] {
-    override val name = Rule.Name("groups")
-  }
-
 }

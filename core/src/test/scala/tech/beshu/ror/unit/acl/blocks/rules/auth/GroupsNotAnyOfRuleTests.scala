@@ -17,27 +17,26 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings as GroupsRulesSettings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsNotAnyOfRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class GroupsAndRuleTests extends BaseGroupsRuleTests {
+class GroupsNotAnyOfRuleTests extends BaseGroupsRuleTests {
 
   override def createRule(settings: GroupsRulesSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule = {
-    new GroupsAndRule(settings, caseSensitivity)
+    new GroupsNotAnyOfRule(settings, caseSensitivity)
   }
 
-  "A GroupsAndRule" should {
+  "A GroupsNotAnyOfRule" should {
     "not match" when {
-      "user has not all groups" in {
+      "user has one forbidden group" in {
         val ruleSettings = GroupsRulesSettings(
           groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
@@ -59,10 +58,7 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
           preferredGroupId = None
         )
       }
-    }
-
-    "match" when {
-      "user has exactly all groups" in {
+      "user has all forbidden group" in {
         val ruleSettings = GroupsRulesSettings(
           groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
@@ -77,20 +73,17 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
           ))
         )
         val usr = Some(User.Id("user1"))
-        assertMatchRule(
+        assertNotMatchRule(
           settings = ruleSettings,
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
           preferredGroupId = None
-        )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(
-            user = User.Id("user1"),
-            group = GroupId("g1"),
-            availableGroups = UniqueList.of(group("g1"), group("g2"))
-          )
         )
       }
-      "user has an excess of all required groups" in {
+    }
+
+    "match" when {
+      "user has none of the forbidden groups" in {
         val ruleSettings = GroupsRulesSettings(
           groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
@@ -100,7 +93,7 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
               authenticationRule.matching(User.Id("user1")),
-              groups("g1", "g2", "g3")
+              groups("h1", "h2")
             )
           ))
         )
@@ -113,8 +106,8 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
             user = User.Id("user1"),
-            group = GroupId("g1"),
-            availableGroups = UniqueList.of(group("g1"), group("g2"))
+            group = GroupId("h1"),
+            availableGroups = UniqueList.of(group("h1"), group("h2"))
           )
         )
       }

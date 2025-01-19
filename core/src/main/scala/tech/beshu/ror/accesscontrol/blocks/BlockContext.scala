@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -36,15 +36,20 @@ sealed trait BlockContext {
 
   def responseTransformations: List[ResponseTransformation]
 
-  def isCurrentGroupEligible(permittedGroupIds: PermittedGroupIds): Boolean = {
-    userMetadata.currentGroupId match {
-      case Some(preferredGroupId) =>
-        requestContext.uriPath.isCurrentUserMetadataPath || permittedGroupIds.matches(preferredGroupId)
-      case None =>
+  def isCurrentGroupEligible(groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule): Boolean = {
+    groupsPotentiallyPermittedByRule match
+      case GroupsPotentiallyPermittedByRule.All =>
         true
-    }
+      case GroupsPotentiallyPermittedByRule.Selected(potentiallyPermitted) =>
+        userMetadata.currentGroupId match {
+          case Some(preferredGroupId) =>
+            requestContext.uriPath.isCurrentUserMetadataPath || potentiallyPermitted.matches(preferredGroupId)
+          case None =>
+            true
+        }
   }
 }
+
 object BlockContext {
 
   final case class CurrentUserMetadataRequestBlockContext(override val requestContext: RequestContext,
@@ -83,11 +88,14 @@ object BlockContext {
                                                  dataStreams: Set[DataStreamName],
                                                  backingIndices: DataStreamRequestBlockContext.BackingIndices)
     extends BlockContext
+
   object DataStreamRequestBlockContext {
     sealed trait BackingIndices
+
     object BackingIndices {
       final case class IndicesInvolved(filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                                        allAllowedIndices: Set[ClusterIndexName]) extends BackingIndices
+
       case object IndicesNotInvolved extends BackingIndices
     }
   }
@@ -108,6 +116,7 @@ object BlockContext {
                                                responseTemplateTransformation: TemplatesTransformation,
                                                allAllowedIndices: Set[ClusterIndexName])
     extends BlockContext
+
   object TemplateRequestBlockContext {
     type TemplatesTransformation = Set[Template] => Set[Template]
   }
@@ -150,8 +159,10 @@ object BlockContext {
 
   object MultiIndexRequestBlockContext {
     sealed trait Indices
+
     object Indices {
-      final case class Found(indices:Set[RequestedIndex[ClusterIndexName]]) extends Indices
+      final case class Found(indices: Set[RequestedIndex[ClusterIndexName]]) extends Indices
+
       case object NotFound extends Indices
     }
   }
@@ -163,6 +174,7 @@ object BlockContext {
     extends BlockContext
 
   trait HasIndices[B <: BlockContext]
+
   object HasIndices {
 
     def apply[B <: BlockContext](implicit instance: HasIndices[B]): HasIndices[B] = instance
@@ -186,6 +198,7 @@ object BlockContext {
   trait HasIndexPacks[B <: BlockContext] {
     def indexPacks(blockContext: B): List[Indices]
   }
+
   object HasIndexPacks {
 
     def apply[B <: BlockContext](implicit instance: HasIndexPacks[B]): HasIndexPacks[B] = instance
@@ -206,6 +219,7 @@ object BlockContext {
   trait HasFilter[B <: BlockContext] {
     def filter(blockContext: B): Option[Filter]
   }
+
   object HasFilter {
 
     def apply[B <: BlockContext](implicit instance: HasFilter[B]): HasFilter[B] = instance
@@ -226,6 +240,7 @@ object BlockContext {
   trait HasFieldLevelSecurity[B <: BlockContext] {
     def fieldLevelSecurity(blockContext: B): Option[FieldLevelSecurity]
   }
+
   object HasFieldLevelSecurity {
 
     def apply[B <: BlockContext](implicit instance: HasFieldLevelSecurity[B]): HasFieldLevelSecurity[B] = instance
@@ -246,6 +261,7 @@ object BlockContext {
   trait AllowsFieldsInRequest[B <: BlockContext] {
     def requestFieldsUsage(blockContext: B): RequestFieldsUsage
   }
+
   object AllowsFieldsInRequest {
 
     def apply[B <: BlockContext](implicit instance: AllowsFieldsInRequest[B]): AllowsFieldsInRequest[B] = instance
@@ -346,7 +362,6 @@ object BlockContext {
 
   implicit class IndicesFromBlockContext(val blockContext: BlockContext) extends AnyVal {
     def indices: Set[RequestedIndex[ClusterIndexName]] = {
-      import cats.implicits.toFunctorOps
       blockContext match {
         case _: CurrentUserMetadataRequestBlockContext => Set.empty
         case _: GeneralNonIndexRequestBlockContext => Set.empty

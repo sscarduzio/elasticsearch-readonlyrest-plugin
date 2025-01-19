@@ -111,20 +111,26 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
           name <- c.downField("name").as[LdapService.Name]
           groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
           groupsOr <- c.downFields("groups_or", "groups").as[Option[GroupsLogic.Or]]
+          groupsNotAllOf <- c.downFields("groups_not_all_of", "groups").as[Option[GroupsLogic.NotAllOf]]
+          groupsNotAnyOf <- c.downFields("groups_not_any_of", "groups").as[Option[GroupsLogic.NotAnyOf]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
-        } yield (name, ttl, groupsOr, groupsAnd)
+        } yield (name, ttl, groupsOr, groupsAnd, groupsNotAllOf, groupsNotAnyOf)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (_, _, None, None) =>
+        case (_, _, None, None, None, None) =>
           Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(LdapAuthorizationRule.Name))))
-        case (_, _, Some(_), Some(_)) =>
-          Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(LdapAuthorizationRule.Name))))
-        case (name, ttl, Some(groupsOr), None) =>
+        case (name, ttl, Some(groupsOr), None, None, None) =>
           createLdapAuthorizationRule(name, ttl, groupsOr, ldapDefinitions)
-        case (name, ttl, None, Some(groupsAnd)) =>
+        case (name, ttl, None, Some(groupsAnd), None, None) =>
           createLdapAuthorizationRule(name, ttl, groupsAnd, ldapDefinitions)
+        case (name, ttl, None, None, Some(groupsNotAllOf), None) =>
+          createLdapAuthorizationRule(name, ttl, groupsNotAllOf, ldapDefinitions)
+        case (name, ttl, None, None, None, Some(groupsNotAnyOf)) =>
+          createLdapAuthorizationRule(name, ttl, groupsNotAnyOf, ldapDefinitions)
+        case (_, _, _, _, _, _) =>
+          Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(LdapAuthorizationRule.Name))))
       }
       .decoder
 

@@ -55,6 +55,8 @@ object LocalUsersContext {
     implicit val filterRule: LocalUsersSupport[FilterRule] = NotAvailableLocalUsers()
     implicit val groupsOrRule: LocalUsersSupport[GroupsOrRule] = NotAvailableLocalUsers()
     implicit val groupsAndRule: LocalUsersSupport[GroupsAndRule] = NotAvailableLocalUsers()
+    implicit val groupsNotAnyOfRule: LocalUsersSupport[GroupsNotAnyOfRule] = NotAvailableLocalUsers()
+    implicit val groupsNotAllOfRule: LocalUsersSupport[GroupsNotAllOfRule] = NotAvailableLocalUsers()
     implicit val headersAndRule: LocalUsersSupport[HeadersAndRule] = NotAvailableLocalUsers()
     implicit val headersOrRule: LocalUsersSupport[HeadersOrRule] = NotAvailableLocalUsers()
     implicit val hostsRule: LocalUsersSupport[HostsRule] = NotAvailableLocalUsers()

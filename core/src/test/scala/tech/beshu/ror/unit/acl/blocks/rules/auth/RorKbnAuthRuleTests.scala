@@ -123,7 +123,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            GroupsLogic.Or(PermittedGroupIds(
+            GroupsLogic.Or(GroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2")),
             ))
           ),
@@ -150,7 +150,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            GroupsLogic.Or(PermittedGroupIds(
+            GroupsLogic.Or(GroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
             ))
           ),
@@ -179,7 +179,7 @@ class RorKbnAuthRuleTests
               SignatureCheckMethod.Hmac(key.getEncoded)
             ),
             configuredGroups = Groups.Defined(
-              GroupsLogic.Or(PermittedGroupIds(
+              GroupsLogic.Or(GroupIds(
                 UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2")),
               ))
             ),
@@ -206,7 +206,7 @@ class RorKbnAuthRuleTests
               SignatureCheckMethod.Hmac(key.getEncoded)
             ),
             configuredGroups = Groups.Defined(
-              GroupsLogic.Or(PermittedGroupIds(
+              GroupsLogic.Or(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("*3"), GroupIdLike.from("*2")),
               ))
             ),
@@ -235,7 +235,7 @@ class RorKbnAuthRuleTests
               SignatureCheckMethod.Hmac(key.getEncoded)
             ),
             configuredGroups = Groups.Defined(
-              GroupsLogic.And(PermittedGroupIds(
+              GroupsLogic.And(GroupIds(
                 UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2")),
               ))
             ),
@@ -262,7 +262,7 @@ class RorKbnAuthRuleTests
               SignatureCheckMethod.Hmac(key.getEncoded)
             ),
             configuredGroups = Groups.Defined(
-              GroupsLogic.And(PermittedGroupIds(
+              GroupsLogic.And(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("*3"), GroupIdLike.from(("*2"))),
               ))
             ),
@@ -336,7 +336,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            GroupsLogic.Or(PermittedGroupIds(
+            GroupsLogic.Or(GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"))
             ))
           ),
@@ -355,7 +355,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            GroupsLogic.Or(PermittedGroupIds(
+            GroupsLogic.Or(GroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4")),
             ))
           ),
@@ -374,7 +374,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            GroupsLogic.And(PermittedGroupIds(
+            GroupsLogic.And(GroupIds(
               UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3")),
             ))
           ),
@@ -408,7 +408,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            GroupsLogic.Or(PermittedGroupIds(
+            GroupsLogic.Or(GroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
             ))
           ),

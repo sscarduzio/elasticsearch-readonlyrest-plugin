@@ -22,11 +22,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.ImpersonationNotSupported
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 private[auth] trait BaseAuthorizationRule
@@ -37,11 +38,11 @@ private[auth] trait BaseAuthorizationRule
 
   protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]]
 
-  protected def groupsPermittedByRule: PermittedGroupIds
+  protected def groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule
 
   protected def userGroups[B <: BlockContext](blockContext: B,
                                               user: LoggedUser,
-                                              permittedGroupIds: Set[GroupIdLike])
+                                              groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule)
                                              (implicit requestId: RequestId): Task[UniqueList[Group]]
 
   protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())
@@ -98,9 +99,9 @@ private[auth] trait BaseAuthorizationRule
 
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
-                                                                           userGroupsProvider: (B, LoggedUser, Set[GroupIdLike]) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
-    if (blockContext.isCurrentGroupEligible(groupsPermittedByRule)) {
-      userGroupsProvider(blockContext, user, groupsPermittedByRule.groupIds.toSet)
+                                                                           userGroupsProvider: (B, LoggedUser, GroupsPotentiallyPermittedByRule) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
+    if (blockContext.isCurrentGroupEligible(groupsPotentiallyPermittedByRule)) {
+      userGroupsProvider(blockContext, user, groupsPotentiallyPermittedByRule)
         .map(uniqueList => UniqueNonEmptyList.from(uniqueList.toSet))
         .map {
           case Some(fetchedUserGroups) =>
@@ -119,5 +120,26 @@ private[auth] trait BaseAuthorizationRule
       Task.now(RuleResult.Rejected())
     }
   }
+
+}
+
+object BaseAuthorizationRule {
+
+  sealed trait GroupsPotentiallyPermittedByRule
+
+  object GroupsPotentiallyPermittedByRule:
+    case object All extends GroupsPotentiallyPermittedByRule
+
+    final case class Selected(potentiallyPermitted: GroupIds) extends GroupsPotentiallyPermittedByRule
+
+    def from(groupsLogic: GroupsLogic): GroupsPotentiallyPermittedByRule = groupsLogic match
+      case GroupsLogic.Or(groupIds) =>
+        GroupsPotentiallyPermittedByRule.Selected(groupIds)
+      case GroupsLogic.And(groupIds) =>
+        GroupsPotentiallyPermittedByRule.Selected(groupIds)
+      case GroupsLogic.NotAnyOf(_) =>
+        GroupsPotentiallyPermittedByRule.All
+      case GroupsLogic.NotAllOf(_) =>
+        GroupsPotentiallyPermittedByRule.All
 
 }

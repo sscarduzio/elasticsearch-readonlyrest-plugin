@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.Eligibl
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -69,7 +70,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
         settings.permittedGroups match {
           case Groups.NotDefined =>
             authorizeUsingJwtToken(blockContext)
-          case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.permittedGroupIds) =>
+          case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(GroupsPotentiallyPermittedByRule.from(groupsLogic)) =>
             authorizeUsingJwtToken(blockContext)
           case Groups.Defined(_) =>
             Task.now(RuleResult.Rejected())
@@ -234,7 +235,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   private def checkIfCanContinueWithGroups[B <: BlockContext](blockContext: B,
                                                               groups: UniqueList[Group]) = {
     UniqueNonEmptyList.from(groups.toList.map(_.id)) match {
-      case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds(nonEmptyGroups)) =>
+      case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(GroupsPotentiallyPermittedByRule.Selected(GroupIds(nonEmptyGroups))) =>
         Right(blockContext)
       case Some(_) | None =>
         Left(())
