@@ -156,6 +156,104 @@ class LdapAuthorizationRuleSettingsTests
           }
         )
       }
+      "there is LDAP service with given name and groups_not_all_of are defined" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |    ldap_authorization:
+               |      name: "ldap1"
+               |      groups_not_all_of: ["group3", "group4*"]
+               |
+               |  ldaps:
+               |
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    server_side_groups_filtering: false
+               |""".stripMargin,
+          assertion = rule => {
+            rule.settings.groupsLogic should be(GroupsLogic.NotAllOf(GroupIds(
+              UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
+            )))
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
+          }
+        )
+      }
+      "there is LDAP service (with server-side groups filtering) with given name and groups_not_any_of are defined" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |    ldap_authorization:
+               |      name: "ldap1"
+               |      groups_or: ["group1"]
+               |      groups_not_any_of: ["group3", "group4*"]
+               |
+               |  ldaps:
+               |
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    server_side_groups_filtering: true
+               |""".stripMargin,
+          assertion = rule => {
+            rule.settings.groupsLogic should be(GroupsLogic.NotAnyOf(GroupIds(
+              UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
+            )))
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = true)
+          }
+        )
+      }
+      "there is LDAP service (with server-side groups filtering) with given name and groups_not_all_of are defined" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |    ldap_authorization:
+               |      name: "ldap1"
+               |      groups_or: ["group1"]
+               |      groups_not_all_of: ["group3", "group4*"]
+               |
+               |  ldaps:
+               |
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    server_side_groups_filtering: true
+               |""".stripMargin,
+          assertion = rule => {
+            rule.settings.groupsLogic should be(GroupsLogic.NotAllOf(GroupIds(
+              UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
+            )))
+            assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = true)
+          }
+        )
+      }
       "there is LDAP service with server side groups filtering defined" in {
         assertDecodingSuccess(
           yaml =
@@ -305,6 +403,68 @@ class LdapAuthorizationRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Non empty list of group IDs or/and patterns is required")))
+          }
+        )
+      }
+      "LDAP server-side groups filtering is enabled, but list of potentially permitted groups is not provided for groups_not_all_of" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |    ldap_authorization:
+               |      name: "ldap1"
+               |      groups_not_all_of: ["group3"]
+               |      cache_ttl_in_seconds: 10
+               |
+               |  ldaps:
+               |
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    server_side_groups_filtering: true
+               |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(Message("LDAP server-side groups filtering is enabled, so ldap_authorization rule requires to additionally provide potentially permitted groups as 'groups_or', in addition to `groups_not_all_of` rule")))
+          }
+        )
+      }
+      "LDAP server-side groups filtering is enabled, but list of potentially permitted groups is not provided for groups_not_any_of" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |    ldap_authorization:
+               |      name: "ldap1"
+               |      groups_not_any_of: ["group3"]
+               |      cache_ttl_in_seconds: 10
+               |
+               |  ldaps:
+               |
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    server_side_groups_filtering: true
+               |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(Message("LDAP server-side groups filtering is enabled, so ldap_authorization rule requires to additionally provide potentially permitted groups as 'groups_or', in addition to `groups_not_any_of` rule")))
           }
         )
       }
