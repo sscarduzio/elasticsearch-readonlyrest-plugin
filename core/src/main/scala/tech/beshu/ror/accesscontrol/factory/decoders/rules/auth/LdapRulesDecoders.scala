@@ -177,7 +177,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .mapError(RulesLevelCreationError.apply)
       .emapE {
         case (_, _, None, None, None, None) =>
-          Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(LdapAuthorizationRule.Name))))
+          Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(LdapAuthRule.Name))))
         case (name, ttl, Some(groupsOr), None, None, None) =>
           createLdapAuthRule(name, ttl, None, groupsOr, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
         case (name, ttl, None, Some(groupsAnd), None, None) =>
@@ -200,7 +200,10 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                  userIdCaseSensitivity: CaseSensitivity) = {
     for
       ldapService <- findLdapService[LdapAuthRule](LdapServiceType.Composed, name, ldapDefinitions.items)
-      settings <- ldapAuthorizationRuleSettings(ldapService.ldapAuthorizationService, groupsLogic, potentiallyPermittedOpt)
+      ldapAuthorizationService = LoggableLdapAuthorizationService.create(
+        CacheableLdapAuthorizationService.create(ldapService.ldapAuthorizationService, ttl)
+      )
+      settings <- ldapAuthorizationRuleSettings(ldapAuthorizationService, groupsLogic, potentiallyPermittedOpt)
     yield new LdapAuthRule(
       new LdapAuthenticationRule(
         LdapAuthenticationRule.Settings(

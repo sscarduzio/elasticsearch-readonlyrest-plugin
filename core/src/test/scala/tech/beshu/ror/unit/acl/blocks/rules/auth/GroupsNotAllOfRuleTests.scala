@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class GroupsNotAllOfRuleTests extends BaseGroupsRuleTests {
+class GroupsNotAllOfRuleTests extends BaseGroupsNegativeRuleTests {
 
   override def createRule(settings: GroupsRulesSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule = {
     new GroupsNotAllOfRule(settings, caseSensitivity)
@@ -81,6 +81,12 @@ class GroupsNotAllOfRuleTests extends BaseGroupsRuleTests {
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
           preferredGroupId = None
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(
+            user = User.Id("user1"),
+            group = GroupId("g1"),
+            availableGroups = UniqueList.of(group("g1"))
+          )
         )
       }
       "user has none of the forbidden groups" in {

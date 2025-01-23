@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class GroupsNotAnyOfRuleTests extends BaseGroupsRuleTests {
+class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests {
 
   override def createRule(settings: GroupsRulesSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule = {
     new GroupsNotAnyOfRule(settings, caseSensitivity)
