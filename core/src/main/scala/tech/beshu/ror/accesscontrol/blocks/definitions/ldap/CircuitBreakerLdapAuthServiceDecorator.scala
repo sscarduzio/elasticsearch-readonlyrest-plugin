@@ -49,8 +49,6 @@ object CircuitBreakerLdapAuthorizationService {
 
   def create(ldapService: LdapAuthorizationService,
              circuitBreakerConfig: CircuitBreakerConfig): LdapAuthorizationService = {
-    println(ldapService)
-    println(circuitBreakerConfig)
     ldapService match {
       case ls: LdapAuthorizationService.WithoutGroupsFiltering =>
         new CircuitBreakerLdapAuthorizationService.WithoutGroupsFilteringDecorator(ls, circuitBreakerConfig)
