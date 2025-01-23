@@ -36,357 +36,537 @@ pool:
 
 stages:
 
-  - stage: CVE
-    displayName: 'CVE check'
-    dependsOn: [ ]
-    condition: ne(variables['Build.Reason'], 'Manual')
-    jobs:
-      - job:
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
-              echo "[CVE] executing ROR_TASK=$ROR_TASK"
-              ci/run-pipeline.sh
-            continueOnError: true
-            env:
-              ROR_TASK: cve_check
+#  - stage: CVE
+#    displayName: 'CVE check'
+#    dependsOn: [ ]
+#    condition: ne(variables['Build.Reason'], 'Manual')
+#    jobs:
+#      - job:
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#          - script: |
+#              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+#              echo "[CVE] executing ROR_TASK=$ROR_TASK"
+#              ci/run-pipeline.sh
+#            continueOnError: true
+#            env:
+#              ROR_TASK: cve_check
+#
+#  - stage: TEST
+#    displayName: 'Run all tests'
+#    dependsOn: [ ]
+#    condition: ne(variables['Build.Reason'], 'Manual')
+#    jobs:
+#      - job:
+#        timeoutInMinutes: 20
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#          - script: |
+#              # Translate back env vars to avoid cyclical reference :/
+#              export aws_access_key_id=$var_aws_access_key_id
+#              export aws_secret_access_key=$var_aws_secret_access_key
+#
+#              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+#              ci/run-pipeline.sh
+#            env:
+#              var_aws_access_key_id: $(aws_access_key_id)
+#              var_aws_secret_access_key: $(aws_secret_access_key)
+#          - task: PublishTestResults@2
+#            condition: failed()
+#            inputs:
+#              testRunTitle: "$(ROR_TASK) results"
+#              testResultsFiles: "**/TEST*xml"
+#              mergeTestResults: true
+#        strategy:
+#          maxParallel: 99
+#          matrix:
+#            LICENSE:
+#              ROR_TASK: license
+#            UNIT:
+#              ROR_TASK: core_tests
+#      - job:
+#        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
+#        container: openjdk:22-slim
+#        timeoutInMinutes: 120
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#          - script: |
+#              # Translate back env vars to avoid cyclical reference :/
+#              export aws_access_key_id=$var_aws_access_key_id
+#              export aws_secret_access_key=$var_aws_secret_access_key
+#
+#              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+#              ci/run-pipeline.sh
+#            env:
+#              var_aws_access_key_id: $(aws_access_key_id)
+#              var_aws_secret_access_key: $(aws_secret_access_key)
+#          - task: PublishTestResults@2
+#            condition: failed()
+#            inputs:
+#              testRunTitle: "$(ROR_TASK) results"
+#              testResultsFiles: "**/TEST*xml"
+#              mergeTestResults: true
+#        strategy:
+#          maxParallel: 99
+#          matrix:
+#            IT_es816x:
+#              ROR_TASK: integration_es816x
+#            IT_es815x:
+#              ROR_TASK: integration_es815x
+#            IT_es814x:
+#              ROR_TASK: integration_es814x
+#            IT_es813x:
+#              ROR_TASK: integration_es813x
+#            IT_es812x:
+#              ROR_TASK: integration_es812x
+#            IT_es811x:
+#              ROR_TASK: integration_es811x
+#            IT_es810x:
+#              ROR_TASK: integration_es810x
+#            IT_es89x:
+#              ROR_TASK: integration_es89x
+#            IT_es88x:
+#              ROR_TASK: integration_es88x
+#            IT_es87x:
+#              ROR_TASK: integration_es87x
+#            IT_es85x:
+#              ROR_TASK: integration_es85x
+#            IT_es84x:
+#              ROR_TASK: integration_es84x
+#            IT_es83x:
+#              ROR_TASK: integration_es83x
+#            IT_es82x:
+#              ROR_TASK: integration_es82x
+#            IT_es81x:
+#              ROR_TASK: integration_es81x
+#            IT_es80x:
+#              ROR_TASK: integration_es80x
+#      - job:
+#        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+#        container: openjdk:22-slim
+#        timeoutInMinutes: 120
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#          - script: |
+#              # Translate back env vars to avoid cyclical reference :/
+#              export aws_access_key_id=$var_aws_access_key_id
+#              export aws_secret_access_key=$var_aws_secret_access_key
+#
+#              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+#              ci/run-pipeline.sh
+#            env:
+#              var_aws_access_key_id: $(aws_access_key_id)
+#              var_aws_secret_access_key: $(aws_secret_access_key)
+#          - task: PublishTestResults@2
+#            condition: failed()
+#            inputs:
+#              testRunTitle: "$(ROR_TASK) results"
+#              testResultsFiles: "**/TEST*xml"
+#              mergeTestResults: true
+#        strategy:
+#          maxParallel: 99
+#          matrix:
+#            IT_es816x:
+#              ROR_TASK: integration_es816x
+#            IT_es810x:
+#              ROR_TASK: integration_es810x
+#            IT_es80x:
+#              ROR_TASK: integration_es80x
+#      - job:
+#        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
+#        timeoutInMinutes: 120
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#          - script: |
+#              # Translate back env vars to avoid cyclical reference :/
+#              export aws_access_key_id=$var_aws_access_key_id
+#              export aws_secret_access_key=$var_aws_secret_access_key
+#
+#              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+#              ci/run-pipeline.sh
+#            env:
+#              var_aws_access_key_id: $(aws_access_key_id)
+#              var_aws_secret_access_key: $(aws_secret_access_key)
+#          - task: PublishTestResults@2
+#            condition: failed()
+#            inputs:
+#              testRunTitle: "$(ROR_TASK) results"
+#              testResultsFiles: "**/TEST*xml"
+#              mergeTestResults: true
+#        strategy:
+#          maxParallel: 99
+#          matrix:
+#            IT_es717x:
+#              ROR_TASK: integration_es717x
+#            IT_es716x:
+#              ROR_TASK: integration_es716x
+#            IT_es714x:
+#              ROR_TASK: integration_es714x
+#            IT_es711x:
+#              ROR_TASK: integration_es711x
+#            IT_es710x:
+#              ROR_TASK: integration_es710x
+#            IT_es79x:
+#              ROR_TASK: integration_es79x
+#            IT_es78x:
+#              ROR_TASK: integration_es78x
+#            IT_es77x:
+#              ROR_TASK: integration_es77x
+#            IT_es74x:
+#              ROR_TASK: integration_es74x
+#            IT_es73x:
+#              ROR_TASK: integration_es73x
+#            IT_es72x:
+#              ROR_TASK: integration_es72x
+#            IT_es70x:
+#              ROR_TASK: integration_es70x
+#            IT_es67x:
+#              ROR_TASK: integration_es67x
+#      - job:
+#        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+#        timeoutInMinutes: 120
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#          - script: |
+#              # Translate back env vars to avoid cyclical reference :/
+#              export aws_access_key_id=$var_aws_access_key_id
+#              export aws_secret_access_key=$var_aws_secret_access_key
+#
+#              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+#              ci/run-pipeline.sh
+#            env:
+#              var_aws_access_key_id: $(aws_access_key_id)
+#              var_aws_secret_access_key: $(aws_secret_access_key)
+#          - task: PublishTestResults@2
+#            condition: failed()
+#            inputs:
+#              testRunTitle: "$(ROR_TASK) results"
+#              testResultsFiles: "**/TEST*xml"
+#              mergeTestResults: true
+#        strategy:
+#          maxParallel: 99
+#          matrix:
+#            IT_es717x:
+#              ROR_TASK: integration_es717x
+#            IT_es710x:
+#              ROR_TASK: integration_es710x
+#            IT_es70x:
+#              ROR_TASK: integration_es70x
+#            IT_es67x:
+#              ROR_TASK: integration_es67x
+#
+#  - stage: BUILD_ROR
+#    displayName: 'Build ROR plugins'
+#    dependsOn:
+#      - TEST
+#    condition: |
+#      and(
+#        succeeded('TEST'),
+#        eq(variables.isPullRequest, true),
+#        ne(variables['Build.Reason'], 'Manual')
+#      )
+#    jobs:
+#      - job:
+#        timeoutInMinutes: 120
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#
+#          - script: |
+#              set -e
+#
+#              # Translate back env vars to avoid cyclical reference :/
+#              export aws_access_key_id=$var_aws_access_key_id
+#              export aws_secret_access_key=$var_aws_secret_access_key
+#
+#              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
+#              echo ">>> ($ROR_TASK) Building ROR plugins" && ci/run-pipeline.sh
+#            env:
+#              var_aws_access_key_id: $(aws_access_key_id)
+#              var_aws_secret_access_key: $(aws_secret_access_key)
+#
+#        strategy:
+#          maxParallel: 99
+#          matrix:
+#            BUILD_8xx:
+#              ROR_TASK: build_es8xx
+#            BUILD_7xx:
+#              ROR_TASK: build_es7xx
+#            BUILD_6xx:
+#              ROR_TASK: build_es6xx
+#
+#  - stage: DETERMINE_CI_TYPE
+#    displayName: 'Determine if this is release run'
+#    dependsOn:
+#      - TEST
+#    condition: ne(variables['Build.Reason'], 'Manual')
+#    jobs:
+#      - job: EXTRACT_IS_RELEASE
+#        steps:
+#          - bash: |
+#              IS_RELEASE=true
+#              if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep "\-pre"; then
+#                IS_RELEASE=false
+#              fi
+#              echo "##vso[task.setvariable variable=value;isOutput=true]$IS_RELEASE"
+#            name: IsRelease
+#
+#  - stage: UPLOAD_PRE_ROR
+#    displayName: 'Upload to S3 ROR plugin pre-builds'
+#    dependsOn:
+#      - DETERMINE_CI_TYPE
+#      - TEST
+#    condition: |
+#      and(
+#        succeeded('TEST'),
+#        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+#        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
+#        ne(variables['Build.Reason'], 'Manual')
+#      )
+#    jobs:
+#      - job:
+#        timeoutInMinutes: 600
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#
+#          - script: |
+#              set -e
+#
+#              # Translate back env vars to avoid cyclical reference :/
+#              export aws_access_key_id=$var_aws_access_key_id
+#              export aws_secret_access_key=$var_aws_secret_access_key
+#
+#              echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
+#              echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
+#            timeoutInMinutes: 600
+#            env:
+#              var_aws_access_key_id: $(aws_access_key_id)
+#              var_aws_secret_access_key: $(aws_secret_access_key)
+#
+#        strategy:
+#          maxParallel: 99
+#          matrix:
+#            UPLOAD_PRE_8xx:
+#              ROR_TASK: upload_pre_es8xx
+#            UPLOAD_PRE_7xx:
+#              ROR_TASK: upload_pre_es7xx
+#            UPLOAD_PRE_6xx:
+#              ROR_TASK: upload_pre_es6xx
+#
+#  - stage: RELEASE_ROR
+#    displayName: 'Release ROR plugins'
+#    dependsOn:
+#      - DETERMINE_CI_TYPE
+#      - TEST
+#    condition: |
+#      and(
+#        succeeded('TEST'),
+#        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+#        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
+#        ne(variables['Build.Reason'], 'Manual')
+#      )
+#    jobs:
+#      - job:
+#        timeoutInMinutes: 180
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#            timeoutInMinutes: 180
+#
+#          - script: |
+#              set -e
+#
+#              echo ">>>> Installing dependencies with apt-get"
+#              sudo apt-get update && sudo apt-get install -y git file
+#              git status && echo ">>> Git installed correctly!"
+#
+#              # Translate back env vars to avoid cyclical reference :/
+#              export aws_access_key_id=$var_aws_access_key_id
+#              export aws_secret_access_key=$var_aws_secret_access_key
+#
+#              export DOCKER=docker
+#              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
+#                echo "Error: Failed to login to Docker registry"
+#                exit 1
+#              fi
+#
+#              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
+#              echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
+#            env:
+#              var_aws_access_key_id: $(aws_access_key_id)
+#              var_aws_secret_access_key: $(aws_secret_access_key)
+#              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+#              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
+#
+#        strategy:
+#          maxParallel: 99
+#          matrix:
+#            RELEASE_ES_8xx:
+#              ROR_TASK: release_es8xx
+#            RELEASE_ES_7xx:
+#              ROR_TASK: release_es7xx
+#            RELEASE_ES_6xx:
+#              ROR_TASK: release_es6xx
+#
+#  - stage: BUILD_MVN_ARTIFACTS
+#    displayName: 'Build Maven artifacts'
+#    dependsOn:
+#      - TEST
+#    condition: |
+#      and(
+#        succeeded('TEST'),
+#        ne(variables.isMaster, true),
+#        ne(variables['Build.Reason'], 'Manual')
+#      )
+#    jobs:
+#      - job:
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#          - script: |
+#              echo "[BUILD_MVN_ARTIFACTS] executing ROR_TASK = $ROR_TASK"
+#              ci/run-pipeline.sh
+#            env:
+#              ROR_TASK: audit_compile
+#
+#  - stage: PUBLISH_MVN_ARTIFACTS
+#    displayName: 'Publish Maven artifacts'
+#    dependsOn:
+#      - DETERMINE_CI_TYPE
+#      - TEST
+#    condition: |
+#      and(
+#        succeeded('TEST'),
+#        eq(variables.isMaster, true),
+#        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
+#        ne(variables['Build.Reason'], 'Manual')
+#      )
+#    jobs:
+#      - job:
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#
+#          # Populate the global variable mvn_status for later
+#          - script: |
+#              PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
+#              URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_2.12/$PLUGIN_VER/"
+#              echo "Maven artifact URL to check: $URL"
+#              MVN_STATUS=$(curl --write-out '%{http_code}' --output /dev/null "$URL")
+#              echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS"
+#
+#          - script: |
+#              echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with Maven publishing."
+#            condition: eq(200, variables.mvn_status)
+#
+#          - script: |
+#              echo ">> MVN_STATUS WAS 404. Artifact not present in Maven repository, proceeding with publishing."
+#            condition: eq(404, variables.mvn_status)
+#
+#          - task: DownloadSecureFile@1
+#            name: pgp
+#            displayName: 'Download secret.pgp secret file'
+#            inputs:
+#              secureFile: 'secret.pgp'
+#
+#          - script: |
+#              echo Installing $(pgp.secureFilePath) to directory...
+#              sudo chown root:root $(pgp.secureFilePath)
+#              sudo chmod a+r $(pgp.secureFilePath)
+#              mkdir .travis
+#              sudo ln -s -t .travis/ $(pgp.secureFilePath)
+#              echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
+#            condition: eq(404, variables.mvn_status)
+#
+#          - script: |
+#              echo "[MVN_PUBLISH] executing ROR_TASK=$ROR_TASK"
+#              export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
+#              export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
+#              export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
+#              export GPG_KEY_ID=$VAR_GPG_KEY_ID
+#              export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
+#              echo ">>> ($ROR_TASK) Publishing MVN artifacts" && ci/run-pipeline.sh
+#            env:
+#              ROR_TASK: publish_maven_artifacts
+#              VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
+#              VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
+#              VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
+#              VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
+#              VAR_GPG_KEY_ID: $(GPG_KEY_ID)
+#            condition: eq(404, variables.mvn_status)
+#
+#  - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
+#    displayName: 'Publish docker images for specified pre-builds'
+#    dependsOn: [ ]
+#    condition: eq(variables['Build.Reason'], 'Manual')
+#    jobs:
+#      - job: PUBLISH
+#        displayName: 'Publishing'
+#        timeoutInMinutes: "600"
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#          - script: |
+#              set -ex
+#
+#              export DOCKER=docker
+#              docker login -u $var_docker_registry_user -p $var_docker_registry_password
+#              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
+#                echo "Error: Failed to login to Docker registry"
+#                exit 1
+#              fi
+#
+#              export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
+#
+#              if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
+#                echo "Error: No ES versions specified for publishing ROR pre-builds"
+#                exit 1
+#              fi
+#
+#              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
+#              echo ">>> ($ROR_TASK) Publish docker images for specified pre-builds" && ci/run-pipeline.sh
+#            timeoutInMinutes: "600"
+#            condition: succeeded()
+#            env:
+#              ROR_TASK: publish_pre_builds_docker_images
+#              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+#              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
 
-  - stage: TEST
-    displayName: 'Run all tests'
-    dependsOn: [ ]
-    condition: ne(variables['Build.Reason'], 'Manual')
-    jobs:
-      - job:
-        timeoutInMinutes: 20
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
 
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            LICENSE:
-              ROR_TASK: license
-            UNIT:
-              ROR_TASK: core_tests
-      - job:
-        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
-        container: openjdk:22-slim
-        timeoutInMinutes: 120
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            IT_es816x:
-              ROR_TASK: integration_es816x
-            IT_es815x:
-              ROR_TASK: integration_es815x
-            IT_es814x:
-              ROR_TASK: integration_es814x
-            IT_es813x:
-              ROR_TASK: integration_es813x
-            IT_es812x:
-              ROR_TASK: integration_es812x
-            IT_es811x:
-              ROR_TASK: integration_es811x
-            IT_es810x:
-              ROR_TASK: integration_es810x
-            IT_es89x:
-              ROR_TASK: integration_es89x
-            IT_es88x:
-              ROR_TASK: integration_es88x
-            IT_es87x:
-              ROR_TASK: integration_es87x
-            IT_es85x:
-              ROR_TASK: integration_es85x
-            IT_es84x:
-              ROR_TASK: integration_es84x
-            IT_es83x:
-              ROR_TASK: integration_es83x
-            IT_es82x:
-              ROR_TASK: integration_es82x
-            IT_es81x:
-              ROR_TASK: integration_es81x
-            IT_es80x:
-              ROR_TASK: integration_es80x
-      - job:
-        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
-        container: openjdk:22-slim
-        timeoutInMinutes: 120
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            IT_es816x:
-              ROR_TASK: integration_es816x
-            IT_es810x:
-              ROR_TASK: integration_es810x
-            IT_es80x:
-              ROR_TASK: integration_es80x
-      - job:
-        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
-        timeoutInMinutes: 120
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            IT_es717x:
-              ROR_TASK: integration_es717x
-            IT_es716x:
-              ROR_TASK: integration_es716x
-            IT_es714x:
-              ROR_TASK: integration_es714x
-            IT_es711x:
-              ROR_TASK: integration_es711x
-            IT_es710x:
-              ROR_TASK: integration_es710x
-            IT_es79x:
-              ROR_TASK: integration_es79x
-            IT_es78x:
-              ROR_TASK: integration_es78x
-            IT_es77x:
-              ROR_TASK: integration_es77x
-            IT_es74x:
-              ROR_TASK: integration_es74x
-            IT_es73x:
-              ROR_TASK: integration_es73x
-            IT_es72x:
-              ROR_TASK: integration_es72x
-            IT_es70x:
-              ROR_TASK: integration_es70x
-            IT_es67x:
-              ROR_TASK: integration_es67x
-      - job:
-        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
-        timeoutInMinutes: 120
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            IT_es717x:
-              ROR_TASK: integration_es717x
-            IT_es710x:
-              ROR_TASK: integration_es710x
-            IT_es70x:
-              ROR_TASK: integration_es70x
-            IT_es67x:
-              ROR_TASK: integration_es67x
-
-  - stage: BUILD_ROR
-    displayName: 'Build ROR plugins'
-    dependsOn:
-      - TEST
-    condition: |
-      and(
-        succeeded('TEST'), 
-        eq(variables.isPullRequest, true), 
-        ne(variables['Build.Reason'], 'Manual')
-      )
-    jobs:
-      - job:
-        timeoutInMinutes: 120
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-
-          - script: |
-              set -e
-              
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-              
-              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Building ROR plugins" && ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-
-        strategy:
-          maxParallel: 99
-          matrix:
-            BUILD_8xx:
-              ROR_TASK: build_es8xx
-            BUILD_7xx:
-              ROR_TASK: build_es7xx
-            BUILD_6xx:
-              ROR_TASK: build_es6xx
-
-  - stage: DETERMINE_CI_TYPE
-    displayName: 'Determine if this is release run'
-    dependsOn:
-      - TEST
-    condition: ne(variables['Build.Reason'], 'Manual')
-    jobs:
-      - job: EXTRACT_IS_RELEASE
-        steps:
-          - bash: |
-              IS_RELEASE=true
-              if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep "\-pre"; then
-                IS_RELEASE=false
-              fi
-              echo "##vso[task.setvariable variable=value;isOutput=true]$IS_RELEASE"
-            name: IsRelease
-
-  - stage: UPLOAD_PRE_ROR
-    displayName: 'Upload to S3 ROR plugin pre-builds'
-    dependsOn:
-      - DETERMINE_CI_TYPE
-      - TEST
-    condition: |
-      and(
-        succeeded('TEST'),
-        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
-        ne(variables['Build.Reason'], 'Manual')
-      )
-    jobs:
-      - job:
-        timeoutInMinutes: 600
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-
-          - script: |
-              set -e
-
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
-            timeoutInMinutes: 600
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-
-        strategy:
-          maxParallel: 99
-          matrix:
-            UPLOAD_PRE_8xx:
-              ROR_TASK: upload_pre_es8xx
-            UPLOAD_PRE_7xx:
-              ROR_TASK: upload_pre_es7xx
-            UPLOAD_PRE_6xx:
-              ROR_TASK: upload_pre_es6xx
-
-  - stage: RELEASE_ROR
+#TEMP
+  - stage: RELEASE_ROR2
     displayName: 'Release ROR plugins'
-    dependsOn:
-      - DETERMINE_CI_TYPE
-      - TEST
-    condition: |
-      and(
-        succeeded('TEST'), 
-        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    dependsOn: [ ]
     jobs:
       - job:
         timeoutInMinutes: 180
@@ -431,133 +611,3 @@ stages:
               ROR_TASK: release_es7xx
             RELEASE_ES_6xx:
               ROR_TASK: release_es6xx
-
-  - stage: BUILD_MVN_ARTIFACTS
-    displayName: 'Build Maven artifacts'
-    dependsOn:
-      - TEST
-    condition: |
-      and(
-        succeeded('TEST'), 
-        ne(variables.isMaster, true), 
-        ne(variables['Build.Reason'], 'Manual')
-      )
-    jobs:
-      - job:
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              echo "[BUILD_MVN_ARTIFACTS] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              ROR_TASK: audit_compile
-
-  - stage: PUBLISH_MVN_ARTIFACTS
-    displayName: 'Publish Maven artifacts'
-    dependsOn:
-      - DETERMINE_CI_TYPE
-      - TEST
-    condition: |
-      and(
-        succeeded('TEST'), 
-        eq(variables.isMaster, true),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
-        ne(variables['Build.Reason'], 'Manual')
-      )
-    jobs:
-      - job:
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-
-          # Populate the global variable mvn_status for later
-          - script: |
-              PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
-              URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_2.12/$PLUGIN_VER/"
-              echo "Maven artifact URL to check: $URL"
-              MVN_STATUS=$(curl --write-out '%{http_code}' --output /dev/null "$URL")
-              echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS"
-
-          - script: |
-              echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with Maven publishing."
-            condition: eq(200, variables.mvn_status)
-
-          - script: |
-              echo ">> MVN_STATUS WAS 404. Artifact not present in Maven repository, proceeding with publishing."
-            condition: eq(404, variables.mvn_status)
-
-          - task: DownloadSecureFile@1
-            name: pgp
-            displayName: 'Download secret.pgp secret file'
-            inputs:
-              secureFile: 'secret.pgp'
-
-          - script: |
-              echo Installing $(pgp.secureFilePath) to directory...
-              sudo chown root:root $(pgp.secureFilePath)
-              sudo chmod a+r $(pgp.secureFilePath)
-              mkdir .travis
-              sudo ln -s -t .travis/ $(pgp.secureFilePath)
-              echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
-            condition: eq(404, variables.mvn_status)
-
-          - script: |
-              echo "[MVN_PUBLISH] executing ROR_TASK=$ROR_TASK"
-              export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
-              export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
-              export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
-              export GPG_KEY_ID=$VAR_GPG_KEY_ID
-              export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
-              echo ">>> ($ROR_TASK) Publishing MVN artifacts" && ci/run-pipeline.sh
-            env:
-              ROR_TASK: publish_maven_artifacts
-              VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
-              VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
-              VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
-              VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
-              VAR_GPG_KEY_ID: $(GPG_KEY_ID)
-            condition: eq(404, variables.mvn_status)
-
-  - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
-    displayName: 'Publish docker images for specified pre-builds'
-    dependsOn: [ ]
-    condition: eq(variables['Build.Reason'], 'Manual')
-    jobs:
-      - job: PUBLISH
-        displayName: 'Publishing'
-        timeoutInMinutes: "600"
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              set -ex
-                            
-              export DOCKER=docker
-              docker login -u $var_docker_registry_user -p $var_docker_registry_password
-              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
-                echo "Error: Failed to login to Docker registry"
-                exit 1
-              fi
-
-              export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
-              
-              if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
-                echo "Error: No ES versions specified for publishing ROR pre-builds"
-                exit 1
-              fi
-              
-              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Publish docker images for specified pre-builds" && ci/run-pipeline.sh
-            timeoutInMinutes: "600"
-            condition: succeeded()
-            env:
-              ROR_TASK: publish_pre_builds_docker_images
-              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
-              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
