@@ -149,7 +149,7 @@ tasks.register('pushRorDockerImage', Exec) {
     executable 'docker'
     workingDir 'build/docker-image'
     args = [
-            'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
+            'buildx', 'build', '--platform', 'linux/amd64',
             '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
             '-t', releaseDockerImageLatest, '-t', releaseDockerImageVersion,
             '--push', '.'
@@ -162,7 +162,7 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
     executable 'docker'
     workingDir 'build/docker-image'
     args = [
-            'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
+            'buildx', 'build', '--platform', 'linux/amd64',
             '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
             '-t', preBuildDockerImageVersion,
             '--push', '.'

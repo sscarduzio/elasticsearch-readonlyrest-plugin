@@ -819,6 +819,21 @@ class SnapshotAndRestoreApiSuite
             val verification2 = adminIndexManager.getIndex("restored_index2")
             verification2 should have statusCode 200
           }
+          "all indices from snapshot are restored (when * is requested)" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2*").force()
+
+            val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "*")
+
+            result should have statusCode 200
+            val verification1 = adminIndexManager.getIndex("restored_index1")
+            verification1 should have statusCode 404
+            val verification2 = adminIndexManager.getIndex("restored_index2")
+            verification2 should have statusCode 200
+          }
           "only one index from snapshot is restored" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
             adminSnapshotManager.putRepository(repositoryName).force()
@@ -877,7 +892,7 @@ class SnapshotAndRestoreApiSuite
           val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
           adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "*").force()
 
-          val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "*")
+          val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "index3*")
 
           result should have statusCode 403
         }

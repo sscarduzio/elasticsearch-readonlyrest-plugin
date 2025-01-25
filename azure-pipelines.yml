@@ -279,8 +279,8 @@ stages:
       - TEST
     condition: |
       and(
-        succeeded('TEST'), 
-        eq(variables.isPullRequest, true), 
+        succeeded('TEST'),
+        eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
@@ -293,11 +293,11 @@ stages:
 
           - script: |
               set -e
-              
+
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
-              
+
               echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Building ROR plugins" && ci/run-pipeline.sh
             env:
@@ -382,7 +382,7 @@ stages:
       - TEST
     condition: |
       and(
-        succeeded('TEST'), 
+        succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         ne(variables['Build.Reason'], 'Manual')
@@ -438,8 +438,8 @@ stages:
       - TEST
     condition: |
       and(
-        succeeded('TEST'), 
-        ne(variables.isMaster, true), 
+        succeeded('TEST'),
+        ne(variables.isMaster, true),
         ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
@@ -462,7 +462,7 @@ stages:
       - TEST
     condition: |
       and(
-        succeeded('TEST'), 
+        succeeded('TEST'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         ne(variables['Build.Reason'], 'Manual')
@@ -538,7 +538,7 @@ stages:
             persistCredentials: true
           - script: |
               set -ex
-                            
+
               export DOCKER=docker
               docker login -u $var_docker_registry_user -p $var_docker_registry_password
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
@@ -547,12 +547,12 @@ stages:
               fi
 
               export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
-              
+
               if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
                 echo "Error: No ES versions specified for publishing ROR pre-builds"
                 exit 1
               fi
-              
+
               echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Publish docker images for specified pre-builds" && ci/run-pipeline.sh
             timeoutInMinutes: "600"

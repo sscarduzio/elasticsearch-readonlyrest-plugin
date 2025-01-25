@@ -2,6 +2,8 @@
 
 source "$(dirname "$0")/ci-lib.sh"
 
+trap 'echo "Termination signal received. Exiting..."; exit 1' SIGTERM SIGINT
+
 echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION"
 
 export TRAVIS_BRANCH=$(git symbolic-ref --short -q HEAD)
@@ -295,9 +297,14 @@ release_ror_plugin() {
       echo "Failed to publish plugin to S3"
       return 3
     fi
-    if ! ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
-      echo "Failed to publish plugin Docker image"
-      return 4
+
+    if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}" >/dev/null 2>&1; then
+      if ! ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+        echo "Failed to publish plugin Docker image"
+        return 4
+      fi
+    else
+      echo "WARN: Skipping building and publishing Elasticsearch image with ROR installed because there was no Elasticsearch image for version: $ES_VERSION found in the docker registry"
     fi
 
     tag "$TAG"
