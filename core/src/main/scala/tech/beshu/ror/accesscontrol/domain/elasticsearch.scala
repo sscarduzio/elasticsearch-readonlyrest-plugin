@@ -38,10 +38,11 @@ sealed trait Action {
 }
 object Action {
   final case class EsAction(override val value: String) extends Action
-  private object EsAction {
+  object EsAction {
     val fieldCapsAction: Action = EsAction("indices:data/read/field_caps")
     val getSettingsAction: Action = EsAction("indices:monitor/settings/get")
     val monitorStateAction: Action = EsAction("cluster:monitor/state")
+    val restoreSnapshotAction: Action = EsAction("cluster:admin/snapshot/restore")
   }
 
   abstract sealed class RorAction(override val value: String) extends Action with EnumEntry

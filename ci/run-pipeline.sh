@@ -2,6 +2,8 @@
 
 source "$(dirname "$0")/ci-lib.sh"
 
+trap 'echo "Termination signal received. Exiting..."; exit 1' SIGTERM SIGINT
+
 echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION"
 
 export TRAVIS_BRANCH=$(git symbolic-ref --short -q HEAD)
@@ -273,17 +275,70 @@ release_ror_plugin() {
 
   local ROR_VERSION=$1
   local ES_VERSION=$2
+
+  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Invalid ES version format. Expected format: X.Y.Z"
+    return 2
+  fi
+
+  if ! $DOCKER info >/dev/null 2>&1; then
+    echo "Docker daemon not running or not logged in"
+    return 3
+  fi
+
   local TAG="v${ROR_VERSION}_es${ES_VERSION}"
 
   echo ""
   echo "Releasing ROR $ROR_VERSION for ES $ES_VERSION:"
 
   if checkTagNotExist "$TAG"; then
-    ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
-    ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null
+
+    if ! ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null; then
+      echo "Failed to publish plugin to S3"
+      return 3
+    fi
+
+    if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}" >/dev/null 2>&1; then
+      if ! ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+        echo "Failed to publish plugin Docker image"
+        return 4
+      fi
+    else
+      echo "WARN: Skipping building and publishing Elasticsearch image with ROR installed because there was no Elasticsearch image for version: $ES_VERSION found in the docker registry"
+    fi
+
     tag "$TAG"
     $DOCKER system prune -fa
   fi
+}
+
+public_ror_prebuild_plugin() {
+  if [ "$#" -ne 1 ]; then
+    echo "What ES version should I release plugin for?"
+    return 1
+  fi
+
+  local ES_VERSION=$1
+
+  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Invalid ES version format. Expected format: X.Y.Z"
+    return 2
+  fi
+
+  if ! $DOCKER info >/dev/null 2>&1; then
+    echo "Docker daemon not running or not logged in"
+    return 3
+  fi
+
+  echo ""
+  echo "PUBLISHING ROR PRE-BUILD for ES $ES_VERSION:"
+
+  if ! ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+    echo "Failed to publish plugin prebuild Docker image"
+    return 4
+  fi
+
+  $DOCKER system prune -fa
 }
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es8xx" ]]; then
@@ -311,4 +366,15 @@ if [[ $ROR_TASK == "publish_maven_artifacts" ]] && [[ $TRAVIS_BRANCH == "master"
   else
     echo ">>> Skipping publishing audit module artifacts"
   fi
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
+
+  IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
+  for VERSION in "${VERSIONS[@]}"; do
+    if [ -n "$VERSION" ]; then
+      public_ror_prebuild_plugin "$VERSION"
+    fi
+  done
+
 fi

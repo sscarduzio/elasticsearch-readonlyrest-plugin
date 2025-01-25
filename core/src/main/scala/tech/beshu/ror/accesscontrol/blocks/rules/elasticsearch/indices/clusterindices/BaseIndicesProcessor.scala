@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.Ca
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason.IndexNotExist
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.IndicesCheckContinuation.{continue, stop}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.{CanPass, CheckContinuation}
+import tech.beshu.ror.accesscontrol.domain.Action.EsAction.restoreSnapshotAction
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
@@ -42,8 +43,14 @@ trait BaseIndicesProcessor {
                                                                   requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                  (implicit indicesManager: IndicesManager[T]): Task[CanPass[Set[RequestedIndex[T]]]] = {
     implicit val requestId: RequestContext.Id = requestContext.id
-    if (requestContext.isReadOnlyRequest) canIndicesReadOnlyRequestPass(requestedIndices, determinedKibanaIndex)
-    else canIndicesWriteRequestPass(requestedIndices, determinedKibanaIndex)
+    if (shouldBeTreatedAsReadonlyRequest(requestContext))
+      canIndicesReadOnlyRequestPass(requestedIndices, determinedKibanaIndex)
+    else
+      canIndicesWriteRequestPass(requestedIndices, determinedKibanaIndex)
+  }
+
+  private def shouldBeTreatedAsReadonlyRequest(requestContext: RequestContext) = {
+    requestContext.action == restoreSnapshotAction || requestContext.isReadOnlyRequest
   }
 
   private def canIndicesReadOnlyRequestPass[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]],

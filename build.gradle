@@ -32,11 +32,15 @@ tasks.register("publishRorPlugin", RorTaskFinder) {
 }
 
 tasks.register("buildEsRorDockerImage", RorTaskFinder) {
-    dependsOn it.findRorTaskForEsVersion('buildRorDockerImage')
+    dependsOn it.findRorTaskForEsVersion('localRorDockerImage')
 }
 
 tasks.register("publishEsRorDockerImage", RorTaskFinder) {
     dependsOn it.findRorTaskForEsVersion('pushRorDockerImage')
+}
+
+tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion('pushRorPreBuildDockerImage')
 }
 
 group = 'tech.beshu.ror'

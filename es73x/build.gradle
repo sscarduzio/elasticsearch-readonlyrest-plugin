@@ -14,11 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-import com.bmuschko.gradle.docker.tasks.image.*
 import org.gradle.crypto.checksum.Checksum
 
 plugins {
-    id 'com.bmuschko.docker-remote-api'
     id 'org.gradle.crypto.checksum'
     id "readonlyrest.plugin-common-conventions"
 }
@@ -26,8 +24,9 @@ plugins {
 def pluginFullName = pluginName + '-' + version
 def projectJavaLanguageVersion = JavaLanguageVersion.of(11)
 def moduleEsVersion = project.property('esVersion') != null ? project.property('esVersion') : project.property('latestSupportedEsVersion')
-def dockerImageLatest = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
-def dockerImageVersion = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
+def releaseDockerImageLatest = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
+def releaseDockerImageVersion = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
+def preBuildDockerImageVersion = 'beshultd/elasticsearch-readonlyrest-dev:' + moduleEsVersion + '-ror-' + pluginVersion
 
 java {
     toolchain {
@@ -136,28 +135,42 @@ tasks.register('prepareDockerImageFiles', Copy) {
     into layout.buildDirectory.dir("docker-image")
 }
 
-tasks.register('buildRorDockerImage', DockerBuildImage) {
-    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
-
-    inputDir = layout.buildDirectory.dir("docker-image")
-    buildArgs = [
-            ES_VERSION: project.properties['esVersion'],
-            ROR_VERSION: pluginVersion
+tasks.register('pushRorDockerImage', Exec) {
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles', 'prepareMultiplatformBuilder')
+    group 'docker'
+    executable 'docker'
+    workingDir 'build/docker-image'
+    args = [
+            'buildx', 'build', '--platform', 'linux/amd64',
+            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
+            '-t', releaseDockerImageLatest, '-t', releaseDockerImageVersion,
+            '--push', '.'
     ]
-    images.add(dockerImageLatest)
-    images.add(dockerImageVersion)
 }
 
-tasks.register('removeRorDockerImage', DockerRemoveImage) {
-    dependsOn buildRorDockerImage
-    force = true
-    targetImageId buildRorDockerImage.getImageId()
+tasks.register('pushRorPreBuildDockerImage', Exec) {
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles', 'prepareMultiplatformBuilder')
+    group 'docker'
+    executable 'docker'
+    workingDir 'build/docker-image'
+    args = [
+            'buildx', 'build', '--platform', 'linux/amd64',
+            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
+            '-t', preBuildDockerImageVersion,
+            '--push', '.'
+    ]
 }
 
-tasks.register('pushRorDockerImage', DockerPushImage) {
-    dependsOn buildRorDockerImage
-
-    images.add(dockerImageLatest)
-    images.add(dockerImageVersion)
+tasks.register('localRorDockerImage', Exec) {
+    // we prepare docker image for local architecture - the image is loaded to local registry
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles') 
+    group 'docker'
+    executable 'docker'
+    workingDir 'build/docker-image'
+    args = [
+            'buildx', 'build',
+            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
+            '-t', releaseDockerImageVersion,
+            '--load', '.'
+    ]
 }
-pushRorDockerImage.configure { finalizedBy removeRorDockerImage }
