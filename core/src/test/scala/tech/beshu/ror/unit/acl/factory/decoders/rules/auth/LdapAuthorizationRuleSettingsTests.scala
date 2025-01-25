@@ -87,7 +87,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.groupsLogic should be(GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
-            rule.settings.groupsLogic.groupIds.groupIds.head shouldBe a[GroupIdPattern]
+            rule.settings.groupsLogic.asInstanceOf[GroupsLogic.And].permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
             assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )
@@ -214,9 +214,10 @@ class LdapAuthorizationRuleSettingsTests
                |    server_side_groups_filtering: true
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.groupsLogic should be(GroupsLogic.NotAnyOf(GroupIds(
-              UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
-            )))
+            rule.settings.groupsLogic should be(GroupsLogic.NotAnyOfWithFilter(
+              GroupIds(UniqueNonEmptyList.of(GroupId("group1"))),
+              GroupIds(UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*")))
+            ))
             assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = true)
           }
         )
@@ -247,9 +248,10 @@ class LdapAuthorizationRuleSettingsTests
                |    server_side_groups_filtering: true
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.groupsLogic should be(GroupsLogic.NotAllOf(GroupIds(
-              UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
-            )))
+            rule.settings.groupsLogic should be(GroupsLogic.NotAllOfWithFilter(
+              GroupIds(UniqueNonEmptyList.of(GroupId("group1"))),
+              GroupIds(UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*")))
+            ))
             assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = true)
           }
         )
@@ -433,7 +435,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("LDAP server-side groups filtering is enabled, so ldap_authorization rule requires to additionally provide potentially permitted groups as 'groups_or', in addition to `groups_not_all_of` rule")))
+            errors.head should be(RulesLevelCreationError(Message("It is not allowed to use groups_not_any_of anf groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which merges the groups_not_any_of/groups_not_all_of with groups_or in a single rule.")))
           }
         )
       }
@@ -464,7 +466,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("LDAP server-side groups filtering is enabled, so ldap_authorization rule requires to additionally provide potentially permitted groups as 'groups_or', in addition to `groups_not_any_of` rule")))
+            errors.head should be(RulesLevelCreationError(Message("It is not allowed to use groups_not_any_of anf groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which merges the groups_not_any_of/groups_not_all_of with groups_or in a single rule.")))
           }
         )
       }

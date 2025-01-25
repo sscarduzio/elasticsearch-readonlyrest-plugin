@@ -23,8 +23,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsNotAnyOfRule, GroupsNotAllOfRule, LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupIds, GroupsLogic}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -109,8 +109,8 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
-          groupsOr <- c.downFields("groups_or", "groups").as[Option[GroupsLogic.Or]]
+          groupsAnd <- c.downFields("groups_and", "groups_all_of").as[Option[GroupsLogic.And]]
+          groupsOr <- c.downFields("groups_or", "groups", "groups_any_of").as[Option[GroupsLogic.Or]]
           groupsNotAllOf <- c.downFields("groups_not_all_of").as[Option[GroupsLogic.NotAllOf]]
           groupsNotAnyOf <- c.downFields("groups_not_any_of").as[Option[GroupsLogic.NotAnyOf]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
@@ -122,13 +122,25 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
         case (_, _, None, None, None, None) =>
           Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(LdapAuthorizationRule.Name))))
         case (name, ttl, Some(groupsOr), None, None, None) =>
-          createLdapAuthorizationRule(name, ttl, None, groupsOr, ldapDefinitions)
+          createLdapAuthorizationRule(name, ttl, groupsOr, ldapDefinitions)
         case (name, ttl, None, Some(groupsAnd), None, None) =>
-          createLdapAuthorizationRule(name, ttl, None, groupsAnd, ldapDefinitions)
-        case (name, ttl, groupsOrOpt, None, Some(groupsNotAllOf), None) =>
-          createLdapAuthorizationRule(name, ttl, groupsOrOpt.map(_.groupIds), groupsNotAllOf, ldapDefinitions)
-        case (name, ttl, groupsOrOpt, None, None, Some(groupsNotAnyOf)) =>
-          createLdapAuthorizationRule(name, ttl, groupsOrOpt.map(_.groupIds), groupsNotAnyOf, ldapDefinitions)
+          createLdapAuthorizationRule(name, ttl, groupsAnd, ldapDefinitions)
+        case (name, ttl, None, None, Some(groupsNotAllOf), None) =>
+          createLdapAuthorizationRule(name, ttl, groupsNotAllOf, ldapDefinitions)
+        case (name, ttl, Some(groupsOr), None, Some(groupsNotAllOf), None) =>
+          val logic = GroupsLogic.NotAllOfWithFilter(
+            permittedGroupIds = groupsOr.permittedGroupIds,
+            forbiddenGroupIds = groupsNotAllOf.forbiddenGroupIds,
+          )
+          createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
+        case (name, ttl, None, None, None, Some(groupsNotAnyOf)) =>
+          createLdapAuthorizationRule(name, ttl, groupsNotAnyOf, ldapDefinitions)
+        case (name, ttl, Some(groupsOr), None, None, Some(groupsNotAnyOf)) =>
+          val logic = GroupsLogic.NotAnyOfWithFilter(
+            permittedGroupIds = groupsOr.permittedGroupIds,
+            forbiddenGroupIds = groupsNotAnyOf.forbiddenGroupIds,
+          )
+          createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
         case (_, _, _, _, _, _) =>
           Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(LdapAuthorizationRule.Name))))
       }
@@ -136,13 +148,12 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
 
   private def createLdapAuthorizationRule(name: LdapService.Name,
                                           ttl: Option[PositiveFiniteDuration],
-                                          potentiallyPermittedOpt: Option[GroupIds],
                                           groupsLogic: GroupsLogic,
                                           ldapDefinitions: Definitions[LdapService]): Either[CoreCreationError, LdapAuthorizationRule.Settings] = {
     findLdapService[LdapAuthorizationRule](LdapServiceType.Authorization, name, ldapDefinitions.items)
       .map(CacheableLdapAuthorizationService.createWithCacheableLdapUsersService(_, ttl))
       .map(service => LoggableLdapAuthorizationService.create(service))
-      .flatMap(ldapAuthorizationRuleSettings(_, groupsLogic, potentiallyPermittedOpt))
+      .flatMap(ldapAuthorizationRuleSettings(_, groupsLogic))
   }
 }
 
@@ -166,8 +177,8 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
-          groupsOr <- c.downFields("groups_or", "groups").as[Option[GroupsLogic.Or]]
+          groupsAnd <- c.downFields("groups_and", "groups_all_of").as[Option[GroupsLogic.And]]
+          groupsOr <- c.downFields("groups_or", "groups", "groups_any_of").as[Option[GroupsLogic.Or]]
           groupsNotAllOf <- c.downFields("groups_not_all_of").as[Option[GroupsLogic.NotAllOf]]
           groupsNotAnyOf <- c.downFields("groups_not_any_of").as[Option[GroupsLogic.NotAnyOf]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
@@ -179,13 +190,25 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
         case (_, _, None, None, None, None) =>
           Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(LdapAuthRule.Name))))
         case (name, ttl, Some(groupsOr), None, None, None) =>
-          createLdapAuthRule(name, ttl, None, groupsOr, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
+          createLdapAuthRule(name, ttl, groupsOr, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
         case (name, ttl, None, Some(groupsAnd), None, None) =>
-          createLdapAuthRule(name, ttl, None, groupsAnd, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (name, ttl, groupsOrOpt, None, Some(groupsNotAllOf), None) =>
-          createLdapAuthRule(name, ttl, groupsOrOpt.map(_.groupIds), groupsNotAllOf, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (name, ttl, groupsOrOpt, None, None, Some(groupsNotAnyOf)) =>
-          createLdapAuthRule(name, ttl, groupsOrOpt.map(_.groupIds), groupsNotAnyOf, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
+          createLdapAuthRule(name, ttl, groupsAnd, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
+        case (name, ttl, None, None, Some(groupsNotAllOf), None) =>
+          createLdapAuthRule(name, ttl, groupsNotAllOf, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
+        case (name, ttl, Some(groupsOr), None, Some(groupsNotAllOf), None) =>
+          val logic = GroupsLogic.NotAllOfWithFilter(
+            permittedGroupIds = groupsOr.permittedGroupIds,
+            forbiddenGroupIds = groupsNotAllOf.forbiddenGroupIds,
+          )
+          createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
+        case (name, ttl, None, None, None, Some(groupsNotAnyOf)) =>
+          createLdapAuthRule(name, ttl, groupsNotAnyOf, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
+        case (name, ttl, Some(groupsOr), None, None, Some(groupsNotAnyOf)) =>
+          val logic = GroupsLogic.NotAnyOfWithFilter(
+            permittedGroupIds = groupsOr.permittedGroupIds,
+            forbiddenGroupIds = groupsNotAnyOf.forbiddenGroupIds,
+          )
+          createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
         case (_, _, _, _, _, _) =>
           Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(LdapAuthorizationRule.Name))))
       }
@@ -193,7 +216,6 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
 
   private def createLdapAuthRule(name: LdapService.Name,
                                  ttl: Option[PositiveFiniteDuration],
-                                 potentiallyPermittedOpt: Option[GroupIds],
                                  groupsLogic: GroupsLogic, ldapDefinitions: Definitions[LdapService],
                                  impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                  mocksProvider: MocksProvider,
@@ -203,7 +225,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
       ldapAuthorizationService = LoggableLdapAuthorizationService.create(
         CacheableLdapAuthorizationService.create(ldapService.ldapAuthorizationService, ttl)
       )
-      settings <- ldapAuthorizationRuleSettings(ldapAuthorizationService, groupsLogic, potentiallyPermittedOpt)
+      settings <- ldapAuthorizationRuleSettings(ldapAuthorizationService, groupsLogic)
     yield new LdapAuthRule(
       new LdapAuthenticationRule(
         LdapAuthenticationRule.Settings(
@@ -233,8 +255,8 @@ private object LdapRulesDecodersHelper {
     s"${ruleName.show} rule requires to define 'groups_or'/'groups' or 'groups_and' arrays (but not both)"
   }
 
-  private[rules] def missingListOfPotentiallyPermittedGroups[R <: Rule, GR <: BaseGroupsRule](ruleName: RuleName[R], groupsRuleName: RuleName[GR]) = {
-    s"LDAP server-side groups filtering is enabled, so ${ruleName.show} rule requires to additionally provide potentially permitted groups as 'groups_or', in addition to `${groupsRuleName.show}` rule"
+  private[rules] def negativeGroupsRuleNotAllowedForLdapWithGroupsFiltering = {
+    s"It is not allowed to use groups_not_any_of anf groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which merges the groups_not_any_of/groups_not_all_of with groups_or in a single rule."
   }
 
   private[rules] def findLdapService[R <: Rule : RuleName](toFind: LdapServiceType,
@@ -262,28 +284,18 @@ private object LdapRulesDecodersHelper {
   }
 
   private[rules] def ldapAuthorizationRuleSettings(ldapService: LdapAuthorizationService,
-                                                   groupsLogic: GroupsLogic,
-                                                   potentiallyPermittedGroupIdsOpt: Option[GroupIds]): Either[RulesLevelCreationError, LdapAuthorizationRule.Settings] =
+                                                   groupsLogic: GroupsLogic): Either[RulesLevelCreationError, LdapAuthorizationRule.Settings] =
     ldapService match
       case ldap: LdapAuthorizationService.WithoutGroupsFiltering =>
-        groupsLogic match
-          case groupsLogic: GroupsLogic.PositiveGroupsLogic =>
-            Right(LdapAuthorizationRule.Settings.ForPositiveGroupsLogic(ldap, groupsLogic))
-          case groupsLogic: GroupsLogic.NegativeGroupsLogic =>
-            Right(LdapAuthorizationRule.Settings.ForNegativeGroupsLogicAndLdapWithoutGroupFiltering(ldap, groupsLogic))
+        Right(LdapAuthorizationRule.Settings(ldap, groupsLogic))
       case ldap: LdapAuthorizationService.WithGroupsFiltering =>
         groupsLogic match
+          case groupsLogic: GroupsLogic.CombinedGroupsLogic =>
+            Right(LdapAuthorizationRule.Settings(ldap, groupsLogic))
           case groupsLogic: GroupsLogic.PositiveGroupsLogic =>
-            Right(LdapAuthorizationRule.Settings.ForPositiveGroupsLogic(ldap, groupsLogic))
+            Right(LdapAuthorizationRule.Settings(ldap, groupsLogic))
           case groupsLogic: GroupsLogic.NegativeGroupsLogic =>
-            potentiallyPermittedGroupIdsOpt match
-              case Some(potentiallyPermitted) =>
-                Right(LdapAuthorizationRule.Settings.ForNegativeGroupsLogicAndLdapWithGroupFiltering(ldap, groupsLogic, potentiallyPermitted))
-              case None =>
-                val groupsRuleName = groupsLogic match
-                  case GroupsLogic.NotAnyOf(_) => GroupsNotAnyOfRule.Name
-                  case GroupsLogic.NotAllOf(_) => GroupsNotAllOfRule.Name
-                Left(RulesLevelCreationError(Message(missingListOfPotentiallyPermittedGroups(LdapAuthorizationRule.Name, groupsRuleName))))
+            Left(RulesLevelCreationError(Message(negativeGroupsRuleNotAllowedForLdapWithGroupsFiltering)))
 
   private[auth] sealed trait LdapServiceType {
     type LDAP_SERVICE

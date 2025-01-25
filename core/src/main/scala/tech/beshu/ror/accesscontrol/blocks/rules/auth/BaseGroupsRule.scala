@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIds, GroupsLogic, ResolvableGroupIds, User}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -237,11 +237,7 @@ abstract class BaseGroupsRule(val settings: Settings)
     for {
       externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
       potentiallyPermitted = GroupIds(externalGroupsMappedToLocalGroups)
-      availableLocalGroups <- groupsPotentiallyPermittedByRule(potentiallyPermitted) match
-        case GroupsPotentiallyPermittedByRule.All =>
-          GroupsLogic.Or(potentiallyPermitted).availableGroupsFrom(potentiallyAvailableGroups)
-        case GroupsPotentiallyPermittedByRule.Selected(potentiallyPermitted) =>
-          calculateAllowedGroupsForUser(potentiallyAvailableGroups, potentiallyPermitted)
+      availableLocalGroups <- GroupsLogic.Or(potentiallyPermitted).availableGroupsFrom(potentiallyAvailableGroups)
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
     } yield destinationBlockContext.withUserMetadata(_
       .withLoggedUser(loggedUser)

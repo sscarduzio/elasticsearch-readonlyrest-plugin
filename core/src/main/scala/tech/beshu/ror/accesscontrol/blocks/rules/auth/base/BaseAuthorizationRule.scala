@@ -141,5 +141,9 @@ object BaseAuthorizationRule {
         GroupsPotentiallyPermittedByRule.All
       case GroupsLogic.NotAllOf(_) =>
         GroupsPotentiallyPermittedByRule.All
+      case GroupsLogic.NotAnyOfWithFilter(permittedGroupIds, _) =>
+        GroupsPotentiallyPermittedByRule.Selected(permittedGroupIds)
+      case GroupsLogic.NotAllOfWithFilter(permittedGroupIds, _) =>
+        GroupsPotentiallyPermittedByRule.Selected(permittedGroupIds)
 
 }
