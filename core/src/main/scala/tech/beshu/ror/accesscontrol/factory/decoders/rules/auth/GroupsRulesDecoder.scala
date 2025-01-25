@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule, GroupsNotAllOfRule, GroupsNotAnyOfRule, GroupsOrRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -58,8 +58,8 @@ class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef],
 }
 
 class GroupsNotAllOfRuleDecoder(usersDefinitions: Definitions[UserDef],
-                           globalSettings: GlobalSettings,
-                           override implicit val variableCreator: RuntimeResolvableVariableCreator)
+                                globalSettings: GlobalSettings,
+                                override implicit val variableCreator: RuntimeResolvableVariableCreator)
   extends BaseGroupsRuleDecoder[GroupsNotAllOfRule](usersDefinitions, variableCreator) {
 
   override protected def createRule(settings: BaseGroupsRule.Settings): GroupsNotAllOfRule = {

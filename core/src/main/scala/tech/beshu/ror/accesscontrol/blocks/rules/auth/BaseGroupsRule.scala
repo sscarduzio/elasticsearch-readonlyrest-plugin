@@ -44,10 +44,6 @@ abstract class BaseGroupsRule(val settings: Settings)
   protected def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[Group],
                                               groupIds: GroupIds): Option[UniqueNonEmptyList[Group]]
 
-  private def resolveGroupIds[B <: BlockContext](blockContext: B) = {
-    settings.groupIds.resolveGroupIds(blockContext)
-  }
-
   protected def groupsPotentiallyPermittedByRule(groupIds: GroupIds): GroupsPotentiallyPermittedByRule
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
@@ -286,6 +282,9 @@ abstract class BaseGroupsRule(val settings: Settings)
     }
   }
 
+  private def resolveGroupIds[B <: BlockContext](blockContext: B) = {
+    settings.groupIds.resolveGroupIds(blockContext)
+  }
 }
 
 object BaseGroupsRule {
