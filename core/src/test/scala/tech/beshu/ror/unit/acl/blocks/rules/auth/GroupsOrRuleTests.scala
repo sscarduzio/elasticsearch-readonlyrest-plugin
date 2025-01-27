@@ -26,14 +26,17 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsOrR
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.ResolvableGroupsLogic.Or
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class GroupsOrRuleTests extends BaseGroupsPositiveRuleTests {
+class GroupsOrRuleTests extends BaseGroupsPositiveRuleTests[Or] {
 
-  override def createRule(settings: GroupsRuleSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule = {
+  override def createRule(settings: GroupsRuleSettings[Or], caseSensitivity: CaseSensitivity): BaseGroupsRule[Or] = {
     new GroupsOrRule(settings, caseSensitivity)
   }
+
+  override implicit val logicCreator: ResolvableGroupIds => Or = Or.apply
 
   "A GroupsRule" should {
     "match" when {

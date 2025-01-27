@@ -36,17 +36,21 @@ sealed trait BlockContext {
 
   def responseTransformations: List[ResponseTransformation]
 
-  def isCurrentGroupEligible(groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule): Boolean = {
+  def isCurrentGroupEligible(permittedGroupIds: GroupIds): Boolean = {
+    userMetadata.currentGroupId match {
+      case Some(preferredGroupId) =>
+        requestContext.uriPath.isCurrentUserMetadataPath || permittedGroupIds.matches(preferredGroupId)
+      case None =>
+        true
+    }
+  }
+
+  def isCurrentGroupPotentiallyEligible(groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule): Boolean = {
     groupsPotentiallyPermittedByRule match
       case GroupsPotentiallyPermittedByRule.All =>
         true
       case GroupsPotentiallyPermittedByRule.Selected(potentiallyPermitted) =>
-        userMetadata.currentGroupId match {
-          case Some(preferredGroupId) =>
-            requestContext.uriPath.isCurrentUserMetadataPath || potentiallyPermitted.matches(preferredGroupId)
-          case None =>
-            true
-        }
+        isCurrentGroupEligible(potentiallyPermitted)
   }
 }
 

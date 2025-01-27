@@ -18,25 +18,15 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleName}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, GroupIds, GroupsLogic}
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
+import tech.beshu.ror.accesscontrol.domain.ResolvableGroupsLogic.And
 
-final class GroupsAndRule(override val settings: BaseGroupsRule.Settings,
+final class GroupsAndRule(override val settings: BaseGroupsRule.Settings[And],
                           override val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule(settings) {
+  extends BaseGroupsRule[And](settings) {
 
   override val name: Rule.Name = GroupsAndRule.Name.name
 
-  override protected def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[Group],
-                                                       groupIds: GroupIds): Option[UniqueNonEmptyList[Group]] = {
-    GroupsLogic.And(groupIds).availableGroupsFrom(userGroups)
-  }
-
-  override protected def groupsPotentiallyPermittedByRule(groupIds: GroupIds): GroupsPotentiallyPermittedByRule = {
-    GroupsPotentiallyPermittedByRule.Selected(groupIds)
-  }
-  
 }
 
 object GroupsAndRule {

@@ -38,15 +38,7 @@ class LdapAuthorizationRule(val settings: Settings,
 
   override val name: Rule.Name = LdapAuthorizationRule.Name.name
 
-  override protected val groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule =
-    settings.groupsLogic match {
-      case groupsLogic: GroupsLogic.PositiveGroupsLogic =>
-        GroupsPotentiallyPermittedByRule.Selected(groupsLogic.permittedGroupIds)
-      case _: GroupsLogic.NegativeGroupsLogic =>
-        GroupsPotentiallyPermittedByRule.All
-      case groupsLogic: GroupsLogic.CombinedGroupsLogic =>
-        GroupsPotentiallyPermittedByRule.Selected(groupsLogic.permittedGroupIds)
-    }
+  override val groupsLogic: GroupsLogic = settings.groupsLogic
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
                                                        user: LoggedUser,

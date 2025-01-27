@@ -35,16 +35,11 @@ import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-abstract class BaseGroupsRule(val settings: Settings)
+abstract class BaseGroupsRule[LOGIC <: ResolvableGroupsLogic](val settings: Settings[LOGIC])
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport
     with Logging {
-
-  protected def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[Group],
-                                              groupIds: GroupIds): Option[UniqueNonEmptyList[Group]]
-
-  protected def groupsPotentiallyPermittedByRule(groupIds: GroupIds): GroupsPotentiallyPermittedByRule
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
@@ -57,11 +52,11 @@ abstract class BaseGroupsRule(val settings: Settings)
     Task
       .unit
       .flatMap { _ =>
-        resolveGroupIds(blockContext) match {
+        resolveGroupsLogic(blockContext) match {
           case None =>
             Task.now(Rejected())
-          case Some(groupIds) if blockContext.isCurrentGroupEligible(groupsPotentiallyPermittedByRule(groupIds)) =>
-            continueCheckingWithUserDefinitions(blockContext, groupIds)
+          case Some(groupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(GroupsPotentiallyPermittedByRule.from(groupsLogic)) =>
+            continueCheckingWithUserDefinitions(blockContext, groupsLogic)
           case Some(_) =>
             Task.now(Rejected())
         }
@@ -71,18 +66,22 @@ abstract class BaseGroupsRule(val settings: Settings)
   override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
     Task.now(RuleResult.Fulfilled(blockContext))
 
+  private def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[Group],
+                                            groupsLogic: GroupsLogic): Option[UniqueNonEmptyList[Group]] =
+    groupsLogic.availableGroupsFrom(userGroups)
+
   private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                           groupIds: GroupIds): Task[RuleResult[B]] = {
+                                                                                           groupsLogic: GroupsLogic): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
       case Some(user) =>
         NonEmptyList.fromFoldable(userDefinitionsMatching(user.id)) match {
           case None =>
             Task.now(Rejected())
           case Some(filteredUserDefinitions) =>
-            tryToAuthorizeAndAuthenticateUsing(filteredUserDefinitions, blockContext, groupIds)
+            tryToAuthorizeAndAuthenticateUsing(filteredUserDefinitions, blockContext, groupsLogic)
         }
       case None =>
-        tryToAuthorizeAndAuthenticateUsing(settings.usersDefinitions, blockContext, groupIds)
+        tryToAuthorizeAndAuthenticateUsing(settings.usersDefinitions, blockContext, groupsLogic)
     }
   }
 
@@ -92,12 +91,12 @@ abstract class BaseGroupsRule(val settings: Settings)
 
   private def tryToAuthorizeAndAuthenticateUsing[B <: BlockContext : BlockContextUpdater](userDefs: NonEmptyList[UserDef],
                                                                                           blockContext: B,
-                                                                                          groupIds: GroupIds): Task[RuleResult[B]] = {
+                                                                                          groupsLogic: GroupsLogic): Task[RuleResult[B]] = {
     userDefs
-      .reduceLeftTo(authorizeAndAuthenticate(blockContext, groupIds)) {
+      .reduceLeftTo(authorizeAndAuthenticate(blockContext, groupsLogic)) {
         case (lastUserDefResult: Task[Option[B]], nextUserDef) =>
           OptionT(lastUserDefResult)
-            .orElse(OptionT(authorizeAndAuthenticate(blockContext, groupIds)(nextUserDef)))
+            .orElse(OptionT(authorizeAndAuthenticate(blockContext, groupsLogic)(nextUserDef)))
             .value
       }
       .map {
@@ -107,9 +106,9 @@ abstract class BaseGroupsRule(val settings: Settings)
   }
 
   private def authorizeAndAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                groupIds: GroupIds)
+                                                                                groupsLogic: GroupsLogic)
                                                                                (userDef: UserDef): Task[Option[B]] = {
-    calculateAllowedGroupsForUser(userDef.localGroups, groupIds) match {
+    calculateAllowedGroupsForUser(userDef.localGroups, groupsLogic) match {
       case None =>
         Task.now(None)
       case Some(availableGroups) =>
@@ -282,13 +281,20 @@ abstract class BaseGroupsRule(val settings: Settings)
     }
   }
 
-  private def resolveGroupIds[B <: BlockContext](blockContext: B) = {
-    settings.groupIds.resolveGroupIds(blockContext)
+  private def resolveGroupsLogic[B <: BlockContext](blockContext: B) = {
+    settings.resolvableGroupsLogic.resolve(blockContext)
   }
 }
 
 object BaseGroupsRule {
 
-  final case class Settings(groupIds: ResolvableGroupIds,
-                            usersDefinitions: NonEmptyList[UserDef])
+  final case class Settings[LOGIC <: ResolvableGroupsLogic](resolvableGroupsLogic: LOGIC,
+                                                            usersDefinitions: NonEmptyList[UserDef])
+
+  object Settings {
+    def apply[LOGIC <: ResolvableGroupsLogic](groupIds: ResolvableGroupIds,
+                                              usersDefinitions: NonEmptyList[UserDef])
+                                             (implicit logicCreator: ResolvableGroupIds => LOGIC): Settings[LOGIC] =
+      Settings(logicCreator(groupIds), usersDefinitions)
+  }
 }

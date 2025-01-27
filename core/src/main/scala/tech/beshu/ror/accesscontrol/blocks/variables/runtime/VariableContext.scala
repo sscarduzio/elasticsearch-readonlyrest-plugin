@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.UsingVariable
+import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, ResolvableGroupsLogic}
 
 object VariableContext {
 
@@ -53,10 +54,23 @@ object VariableContext {
 
     implicit val dataStreamsRule: VariableUsage[DataStreamsRule] = UsingVariable[DataStreamsRule](rule => rule.settings.allowedDataStreams.toNonEmptyList)
     implicit val filterRule: VariableUsage[FilterRule] = UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
-    implicit val groupsOrRule: VariableUsage[GroupsOrRule] = UsingVariable[GroupsOrRule](rule => rule.settings.groupIds.groupIds.toNonEmptyList)
-    implicit val groupsAndRule: VariableUsage[GroupsAndRule] = UsingVariable[GroupsAndRule](rule => rule.settings.groupIds.groupIds.toNonEmptyList)
-    implicit val groupsNotAllOfRule: VariableUsage[GroupsNotAllOfRule] = UsingVariable[GroupsNotAllOfRule](rule => rule.settings.groupIds.groupIds.toNonEmptyList)
-    implicit val groupsNotAnyOfRule: VariableUsage[GroupsNotAnyOfRule] = UsingVariable[GroupsNotAnyOfRule](rule => rule.settings.groupIds.groupIds.toNonEmptyList)
+
+    implicit val groupsOrRule: VariableUsage[GroupsOrRule] = UsingVariable[GroupsOrRule](rule => usedVariables(rule.settings.resolvableGroupsLogic))
+    implicit val groupsAndRule: VariableUsage[GroupsAndRule] = UsingVariable[GroupsAndRule](rule => usedVariables(rule.settings.resolvableGroupsLogic))
+    implicit val groupsNotAllOfRule: VariableUsage[GroupsNotAllOfRule] = UsingVariable[GroupsNotAllOfRule](rule => usedVariables(rule.settings.resolvableGroupsLogic))
+    implicit val groupsNotAnyOfRule: VariableUsage[GroupsNotAnyOfRule] = UsingVariable[GroupsNotAnyOfRule](rule => usedVariables(rule.settings.resolvableGroupsLogic))
+
+
+    private def usedVariables(resolvableGroupsLogic: ResolvableGroupsLogic): NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+      resolvableGroupsLogic match {
+        case logic: ResolvableGroupsLogic.PositiveResolvableGroupsLogic =>
+          logic.permittedGroupIds.groupIds.toNonEmptyList
+        case logic: ResolvableGroupsLogic.NegativeResolvableGroupsLogic =>
+          logic.forbiddenGroupIds.groupIds.toNonEmptyList
+        case ResolvableGroupsLogic.CombinedResolvableGroupsLogic(positiveResolvableGroupsLogic, negativeResolvableGroupsLogic) =>
+          positiveResolvableGroupsLogic.permittedGroupIds.groupIds.toNonEmptyList.appendList(negativeResolvableGroupsLogic.forbiddenGroupIds.groupIds.toList)
+      }
+
     implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)
     implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
     implicit val kibanaUserDataRule: VariableUsage[KibanaUserDataRule] = UsingVariable[KibanaUserDataRule](rule =>

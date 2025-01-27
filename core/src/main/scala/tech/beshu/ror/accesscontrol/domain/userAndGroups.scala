@@ -180,16 +180,8 @@ object GroupsLogic {
 
   final case class NotAllOf(override val forbiddenGroupIds: GroupIds) extends NegativeGroupsLogic
 
-  sealed trait CombinedGroupsLogic extends GroupsLogic {
-    val permittedGroupIds: GroupIds
-    val forbiddenGroupIds: GroupIds
-  }
-
-  final case class NotAnyOfWithFilter(override val permittedGroupIds: GroupIds,
-                                      override val forbiddenGroupIds: GroupIds) extends CombinedGroupsLogic
-
-  final case class NotAllOfWithFilter(override val permittedGroupIds: GroupIds,
-                                      override val forbiddenGroupIds: GroupIds) extends CombinedGroupsLogic
+  final case class CombinedGroupsLogic(positiveGroupsLogic: PositiveGroupsLogic,
+                                       negativeGroupsLogic: NegativeGroupsLogic) extends GroupsLogic
 
   implicit class GroupsLogicExecutor(val groupsLogic: GroupsLogic) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
@@ -198,8 +190,7 @@ object GroupsLogic {
         case or@GroupsLogic.Or(_) => or.availableGroupsFrom(userGroups)
         case notAllOf@GroupsLogic.NotAllOf(_) => notAllOf.availableGroupsFrom(userGroups)
         case notAnyOf@GroupsLogic.NotAnyOf(_) => notAnyOf.availableGroupsFrom(userGroups)
-        case notAllOfWithFilter@GroupsLogic.NotAllOfWithFilter(_, _) => notAllOfWithFilter.availableGroupsFrom(userGroups)
-        case notAnyOfWithFilter@GroupsLogic.NotAnyOfWithFilter(_, _) => notAnyOfWithFilter.availableGroupsFrom(userGroups)
+        case combinedGroupsLogic@GroupsLogic.CombinedGroupsLogic(_, _) => combinedGroupsLogic.availableGroupsFrom(userGroups)
       }
     }
   }
@@ -256,19 +247,61 @@ object GroupsLogic {
     }
   }
 
-  implicit class GroupsLogicNotAllOfWithFilterExecutor(val groupsLogic: GroupsLogic.NotAllOfWithFilter) extends AnyVal {
+  implicit class CombinedGroupsLogicExecutor(val groupsLogic: GroupsLogic.CombinedGroupsLogic) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
-      GroupsLogic.Or(groupsLogic.permittedGroupIds).availableGroupsFrom(userGroups)
-        .flatMap(GroupsLogic.NotAllOf(groupsLogic.forbiddenGroupIds).availableGroupsFrom)
+      groupsLogic.positiveGroupsLogic.availableGroupsFrom(userGroups)
+        .flatMap(groupsLogic.negativeGroupsLogic.availableGroupsFrom)
     }
+  }
+}
+
+sealed trait ResolvableGroupsLogic {
+  def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic]
+}
+
+object ResolvableGroupsLogic {
+
+  sealed trait PositiveResolvableGroupsLogic extends ResolvableGroupsLogic {
+    val permittedGroupIds: ResolvableGroupIds
+
+    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.PositiveGroupsLogic]
   }
 
-  implicit class GroupsLogicNotAnyOfWithFilterExecutor(val groupsLogic: GroupsLogic.NotAnyOfWithFilter) extends AnyVal {
-    def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
-      GroupsLogic.Or(groupsLogic.permittedGroupIds).availableGroupsFrom(userGroups)
-        .flatMap(GroupsLogic.NotAnyOf(groupsLogic.forbiddenGroupIds).availableGroupsFrom)
-    }
+  final case class Or(override val permittedGroupIds: ResolvableGroupIds) extends PositiveResolvableGroupsLogic {
+    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.Or] =
+      permittedGroupIds.resolveGroupIds(blockContext).map(GroupsLogic.Or.apply)
   }
+
+  final case class And(override val permittedGroupIds: ResolvableGroupIds) extends PositiveResolvableGroupsLogic {
+    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.And] =
+      permittedGroupIds.resolveGroupIds(blockContext).map(GroupsLogic.And.apply)
+  }
+
+  sealed trait NegativeResolvableGroupsLogic extends ResolvableGroupsLogic {
+    val forbiddenGroupIds: ResolvableGroupIds
+
+    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.NegativeGroupsLogic]
+  }
+
+  final case class NotAnyOf(override val forbiddenGroupIds: ResolvableGroupIds) extends NegativeResolvableGroupsLogic {
+    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.NegativeGroupsLogic] =
+      forbiddenGroupIds.resolveGroupIds(blockContext).map(GroupsLogic.NotAnyOf.apply)
+  }
+
+  final case class NotAllOf(override val forbiddenGroupIds: ResolvableGroupIds) extends NegativeResolvableGroupsLogic {
+    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.NegativeGroupsLogic] =
+      forbiddenGroupIds.resolveGroupIds(blockContext).map(GroupsLogic.NotAllOf.apply)
+  }
+
+  final case class CombinedResolvableGroupsLogic(positiveResolvableGroupsLogic: PositiveResolvableGroupsLogic,
+                                                 negativeResolvableGroupsLogic: NegativeResolvableGroupsLogic) extends ResolvableGroupsLogic {
+    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic] = for {
+      positive <- positiveResolvableGroupsLogic.resolve(blockContext)
+      negative <- negativeResolvableGroupsLogic.resolve(blockContext)
+    } yield GroupsLogic.CombinedGroupsLogic(positive, negative)
+  }
+
+
 }
 
 final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)

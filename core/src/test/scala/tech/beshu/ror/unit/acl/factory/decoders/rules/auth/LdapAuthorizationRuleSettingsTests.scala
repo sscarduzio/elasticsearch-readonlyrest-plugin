@@ -214,9 +214,9 @@ class LdapAuthorizationRuleSettingsTests
                |    server_side_groups_filtering: true
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.groupsLogic should be(GroupsLogic.NotAnyOfWithFilter(
-              GroupIds(UniqueNonEmptyList.of(GroupId("group1"))),
-              GroupIds(UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*")))
+            rule.settings.groupsLogic should be(GroupsLogic.CombinedGroupsLogic(
+              GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("group1")))),
+              GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*")))),
             ))
             assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = true)
           }
@@ -248,9 +248,9 @@ class LdapAuthorizationRuleSettingsTests
                |    server_side_groups_filtering: true
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.groupsLogic should be(GroupsLogic.NotAllOfWithFilter(
-              GroupIds(UniqueNonEmptyList.of(GroupId("group1"))),
-              GroupIds(UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*")))
+            rule.settings.groupsLogic should be(GroupsLogic.CombinedGroupsLogic(
+              GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("group1")))),
+              GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*")))),
             ))
             assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = true)
           }

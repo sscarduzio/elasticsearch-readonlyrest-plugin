@@ -127,19 +127,19 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
           createLdapAuthorizationRule(name, ttl, groupsAnd, ldapDefinitions)
         case (name, ttl, None, None, Some(groupsNotAllOf), None) =>
           createLdapAuthorizationRule(name, ttl, groupsNotAllOf, ldapDefinitions)
-        case (name, ttl, Some(groupsOr), None, Some(groupsNotAllOf), None) =>
-          val logic = GroupsLogic.NotAllOfWithFilter(
-            permittedGroupIds = groupsOr.permittedGroupIds,
-            forbiddenGroupIds = groupsNotAllOf.forbiddenGroupIds,
-          )
-          createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
         case (name, ttl, None, None, None, Some(groupsNotAnyOf)) =>
           createLdapAuthorizationRule(name, ttl, groupsNotAnyOf, ldapDefinitions)
+        case (name, ttl, Some(groupsOr), None, Some(groupsNotAllOf), None) =>
+          val logic = GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAllOf)
+          createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
+        case (name, ttl, None, Some(groupsAnd), Some(groupsNotAllOf), None) =>
+          val logic = GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAllOf)
+          createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
         case (name, ttl, Some(groupsOr), None, None, Some(groupsNotAnyOf)) =>
-          val logic = GroupsLogic.NotAnyOfWithFilter(
-            permittedGroupIds = groupsOr.permittedGroupIds,
-            forbiddenGroupIds = groupsNotAnyOf.forbiddenGroupIds,
-          )
+          val logic = GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAnyOf)
+          createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
+        case (name, ttl, None, Some(groupsAnd), None, Some(groupsNotAnyOf)) =>
+          val logic = GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAnyOf)
           createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
         case (_, _, _, _, _, _) =>
           Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(LdapAuthorizationRule.Name))))
@@ -195,19 +195,19 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
           createLdapAuthRule(name, ttl, groupsAnd, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
         case (name, ttl, None, None, Some(groupsNotAllOf), None) =>
           createLdapAuthRule(name, ttl, groupsNotAllOf, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (name, ttl, Some(groupsOr), None, Some(groupsNotAllOf), None) =>
-          val logic = GroupsLogic.NotAllOfWithFilter(
-            permittedGroupIds = groupsOr.permittedGroupIds,
-            forbiddenGroupIds = groupsNotAllOf.forbiddenGroupIds,
-          )
-          createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
         case (name, ttl, None, None, None, Some(groupsNotAnyOf)) =>
           createLdapAuthRule(name, ttl, groupsNotAnyOf, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
+        case (name, ttl, Some(groupsOr), None, Some(groupsNotAllOf), None) =>
+          val logic = GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAllOf)
+          createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
+        case (name, ttl, None, Some(groupsAnd), Some(groupsNotAllOf), None) =>
+          val logic = GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAllOf)
+          createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
         case (name, ttl, Some(groupsOr), None, None, Some(groupsNotAnyOf)) =>
-          val logic = GroupsLogic.NotAnyOfWithFilter(
-            permittedGroupIds = groupsOr.permittedGroupIds,
-            forbiddenGroupIds = groupsNotAnyOf.forbiddenGroupIds,
-          )
+          val logic = GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAnyOf)
+          createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
+        case (name, ttl, None, Some(groupsAnd), None, Some(groupsNotAnyOf)) =>
+          val logic = GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAnyOf)
           createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
         case (_, _, _, _, _, _) =>
           Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(LdapAuthorizationRule.Name))))

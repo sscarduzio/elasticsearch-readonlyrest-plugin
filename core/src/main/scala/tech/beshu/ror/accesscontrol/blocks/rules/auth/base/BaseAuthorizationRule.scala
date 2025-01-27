@@ -34,11 +34,11 @@ private[auth] trait BaseAuthorizationRule
   extends AuthorizationRule
     with SimpleAuthorizationImpersonationSupport {
 
+  protected def groupsLogic: GroupsLogic
+
   protected def userIdCaseSensitivity: CaseSensitivity
 
   protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]]
-
-  protected def groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule
 
   protected def userGroups[B <: BlockContext](blockContext: B,
                                               user: LoggedUser,
@@ -100,7 +100,8 @@ private[auth] trait BaseAuthorizationRule
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
                                                                            userGroupsProvider: (B, LoggedUser, GroupsPotentiallyPermittedByRule) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
-    if (blockContext.isCurrentGroupEligible(groupsPotentiallyPermittedByRule)) {
+    val groupsPotentiallyPermittedByRule = GroupsPotentiallyPermittedByRule.from(groupsLogic)
+    if (blockContext.isCurrentGroupPotentiallyEligible(groupsPotentiallyPermittedByRule)) {
       userGroupsProvider(blockContext, user, groupsPotentiallyPermittedByRule)
         .map(uniqueList => UniqueNonEmptyList.from(uniqueList.toSet))
         .map {
@@ -127,12 +128,12 @@ object BaseAuthorizationRule {
 
   sealed trait GroupsPotentiallyPermittedByRule
 
-  object GroupsPotentiallyPermittedByRule:
+  object GroupsPotentiallyPermittedByRule {
     case object All extends GroupsPotentiallyPermittedByRule
 
     final case class Selected(potentiallyPermitted: GroupIds) extends GroupsPotentiallyPermittedByRule
 
-    def from(groupsLogic: GroupsLogic): GroupsPotentiallyPermittedByRule = groupsLogic match
+    def from(groupsLogic: GroupsLogic): GroupsPotentiallyPermittedByRule = groupsLogic match {
       case GroupsLogic.Or(groupIds) =>
         GroupsPotentiallyPermittedByRule.Selected(groupIds)
       case GroupsLogic.And(groupIds) =>
@@ -141,9 +142,8 @@ object BaseAuthorizationRule {
         GroupsPotentiallyPermittedByRule.All
       case GroupsLogic.NotAllOf(_) =>
         GroupsPotentiallyPermittedByRule.All
-      case GroupsLogic.NotAnyOfWithFilter(permittedGroupIds, _) =>
-        GroupsPotentiallyPermittedByRule.Selected(permittedGroupIds)
-      case GroupsLogic.NotAllOfWithFilter(permittedGroupIds, _) =>
-        GroupsPotentiallyPermittedByRule.Selected(permittedGroupIds)
-
+      case GroupsLogic.CombinedGroupsLogic(positiveGroupsLogic, _) =>
+        GroupsPotentiallyPermittedByRule.Selected(positiveGroupsLogic.permittedGroupIds)
+    }
+  }
 }

@@ -36,12 +36,11 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
                                 override val impersonation: Impersonation)
   extends BaseAuthorizationRule {
 
-  private val userMatcher = PatternsMatcher.create[User.Id](settings.users.toSet)
-
   override val name: Rule.Name = ExternalAuthorizationRule.Name.name
 
-  override protected val groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule =
-    GroupsPotentiallyPermittedByRule.from(settings.groupsLogic)
+  override val groupsLogic: GroupsLogic = settings.groupsLogic
+
+  private val userMatcher = PatternsMatcher.create[User.Id](settings.users.toSet)
 
   override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = {
     Either.cond(userMatcher.`match`(user.id), (), ())
