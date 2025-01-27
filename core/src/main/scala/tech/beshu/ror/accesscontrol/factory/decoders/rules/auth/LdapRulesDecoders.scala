@@ -256,7 +256,7 @@ private object LdapRulesDecodersHelper {
   }
 
   private[rules] def negativeGroupsRuleNotAllowedForLdapWithGroupsFiltering = {
-    s"It is not allowed to use groups_not_any_of anf groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which merges the groups_not_any_of/groups_not_all_of with groups_or in a single rule."
+    s"It is not allowed to use groups_not_any_of and groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which merges the groups_not_any_of/groups_not_all_of with groups_or in a single rule."
   }
 
   private[rules] def findLdapService[R <: Rule : RuleName](toFind: LdapServiceType,
