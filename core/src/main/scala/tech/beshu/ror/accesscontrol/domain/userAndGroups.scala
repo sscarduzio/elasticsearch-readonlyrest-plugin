@@ -301,7 +301,6 @@ object ResolvableGroupsLogic {
     } yield GroupsLogic.CombinedGroupsLogic(positive, negative)
   }
 
-
 }
 
 final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)

@@ -60,7 +60,6 @@ object VariableContext {
     implicit val groupsNotAllOfRule: VariableUsage[GroupsNotAllOfRule] = UsingVariable[GroupsNotAllOfRule](rule => usedVariables(rule.settings.resolvableGroupsLogic))
     implicit val groupsNotAnyOfRule: VariableUsage[GroupsNotAnyOfRule] = UsingVariable[GroupsNotAnyOfRule](rule => usedVariables(rule.settings.resolvableGroupsLogic))
 
-
     private def usedVariables(resolvableGroupsLogic: ResolvableGroupsLogic): NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
       resolvableGroupsLogic match {
         case logic: ResolvableGroupsLogic.PositiveResolvableGroupsLogic =>
