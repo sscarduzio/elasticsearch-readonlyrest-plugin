@@ -93,6 +93,14 @@ object KibanaIndexName {
     """^_usage_counters_\d+\.\d+\.\d+$""".r, // eg. .kibana_usage_counters_8.16.0
   )
 
+  // todo: improve
+  private def kibanaReportingRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
+    Vector(
+      s"""^\\.ds-\\.kibana-reporting-${kibanaIndex.stringify}-\\d{4}\\.\\d{2}\\.\\d{2}-\\d+$$""".r,
+      s"""^\\.kibana-reporting-${kibanaIndex.stringify}$$""".r
+    )
+  }
+
   implicit class IsRelatedToKibanaIndex(val indexName: ClusterIndexName) extends AnyVal {
     def isRelatedToKibanaIndex(kibanaIndex: KibanaIndexName): Boolean = {
       if (indexName == kibanaIndex.underlying) {
@@ -101,16 +109,20 @@ object KibanaIndexName {
         val indexNameStringWithoutKibanaIndexNamePrefix = getNameWithoutKibanaIndexNamePrefix(kibanaIndex)
         kibanaRelatedIndicesSuffixRegexes.exists(_.matches(indexNameStringWithoutKibanaIndexNamePrefix))
       } else {
-        false
+        isKibanaReportingIndexOrDataStream(kibanaIndex)
       }
     }
 
+    private def isKibanaReportingIndexOrDataStream(kibanaIndex: KibanaIndexName) = {
+      kibanaReportingRelatedIndicesRegexes(kibanaIndex).exists(_.matches(indexName.stringify))
+    }
+
     private def isPrefixedBy(kibanaIndex: KibanaIndexName) = {
-      indexName.stringify.startsWith(kibanaIndex.underlying.stringify)
+      indexName.stringify.startsWith(kibanaIndex.stringify)
     }
 
     private def getNameWithoutKibanaIndexNamePrefix(kibanaIndex: KibanaIndexName) = {
-      indexName.stringify.replace(kibanaIndex.underlying.stringify, "")
+      indexName.stringify.replace(kibanaIndex.stringify, "")
     }
   }
 
