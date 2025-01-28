@@ -80,7 +80,7 @@ class GroupsNotAllOfRuleTests extends BaseGroupsNegativeRuleTests {
           settings = ruleSettings,
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
-          preferredGroupId = Some(GroupId("g2"))
+          preferredGroupId = Some(GroupId("g3"))
         )
       }
     }
