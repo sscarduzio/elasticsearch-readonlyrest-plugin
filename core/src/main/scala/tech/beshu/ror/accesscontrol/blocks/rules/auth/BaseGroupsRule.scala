@@ -27,15 +27,15 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.Eligibl
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.GroupsLogicResolver
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-abstract class BaseGroupsRule[LOGIC <: ResolvableGroupsLogic](val settings: Settings[LOGIC])
+abstract class BaseGroupsRule(val settings: Settings)
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport
@@ -55,7 +55,7 @@ abstract class BaseGroupsRule[LOGIC <: ResolvableGroupsLogic](val settings: Sett
         resolveGroupsLogic(blockContext) match {
           case None =>
             Task.now(Rejected())
-          case Some(groupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(GroupsPotentiallyPermittedByRule.from(groupsLogic)) =>
+          case Some(groupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
             continueCheckingWithUserDefinitions(blockContext, groupsLogic)
           case Some(_) =>
             Task.now(Rejected())
@@ -65,10 +65,6 @@ abstract class BaseGroupsRule[LOGIC <: ResolvableGroupsLogic](val settings: Sett
 
   override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
     Task.now(RuleResult.Fulfilled(blockContext))
-
-  private def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[Group],
-                                            groupsLogic: GroupsLogic): Option[UniqueNonEmptyList[Group]] =
-    groupsLogic.availableGroupsFrom(userGroups)
 
   private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                            groupsLogic: GroupsLogic): Task[RuleResult[B]] = {
@@ -108,7 +104,7 @@ abstract class BaseGroupsRule[LOGIC <: ResolvableGroupsLogic](val settings: Sett
   private def authorizeAndAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                 groupsLogic: GroupsLogic)
                                                                                (userDef: UserDef): Task[Option[B]] = {
-    calculateAllowedGroupsForUser(userDef.localGroups, groupsLogic) match {
+    groupsLogic.availableGroupsFrom(userDef.localGroups) match {
       case None =>
         Task.now(None)
       case Some(availableGroups) =>
@@ -282,19 +278,19 @@ abstract class BaseGroupsRule[LOGIC <: ResolvableGroupsLogic](val settings: Sett
   }
 
   private def resolveGroupsLogic[B <: BlockContext](blockContext: B) = {
-    settings.resolvableGroupsLogic.resolve(blockContext)
+    settings.permittedGroupsLogicResolver.resolve(blockContext)
   }
 }
 
 object BaseGroupsRule {
 
-  final case class Settings[LOGIC <: ResolvableGroupsLogic](resolvableGroupsLogic: LOGIC,
-                                                            usersDefinitions: NonEmptyList[UserDef])
+  final case class Settings(permittedGroupsLogicResolver: GroupsLogicResolver,
+                            usersDefinitions: NonEmptyList[UserDef])
 
   object Settings {
-    def apply[LOGIC <: ResolvableGroupsLogic](groupIds: ResolvableGroupIds,
-                                              usersDefinitions: NonEmptyList[UserDef])
-                                             (implicit logicCreator: ResolvableGroupIds => LOGIC): Settings[LOGIC] =
+    def apply(groupIds: ResolvableGroupIds,
+              usersDefinitions: NonEmptyList[UserDef])
+             (implicit logicCreator: ResolvableGroupIds => GroupsLogicResolver): Settings =
       Settings(logicCreator(groupIds), usersDefinitions)
   }
 }

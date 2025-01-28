@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
+import cats.data.NonEmptyList
 import cats.implicits.*
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
@@ -253,54 +254,71 @@ object GroupsLogic {
         .flatMap(groupsLogic.negativeGroupsLogic.availableGroupsFrom)
     }
   }
-}
 
-sealed trait ResolvableGroupsLogic {
-  def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic]
-}
+  sealed trait GroupsLogicResolver {
+    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic]
 
-object ResolvableGroupsLogic {
-
-  sealed trait PositiveResolvableGroupsLogic extends ResolvableGroupsLogic {
-    val permittedGroupIds: ResolvableGroupIds
-
-    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.PositiveGroupsLogic]
+    def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
   }
 
-  final case class Or(override val permittedGroupIds: ResolvableGroupIds) extends PositiveResolvableGroupsLogic {
-    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.Or] =
-      permittedGroupIds.resolveGroupIds(blockContext).map(GroupsLogic.Or.apply)
+  object GroupsLogicResolver {
+
+    sealed trait PositiveGroupsLogicResolver extends GroupsLogicResolver {
+      override def resolve[B <: BlockContext](blockContext: B): Option[PositiveGroupsLogic]
+    }
+
+    final case class ForAndGroupsLogic(permittedResolvableGroupIds: ResolvableGroupIds) extends PositiveGroupsLogicResolver {
+      override def resolve[B <: BlockContext](blockContext: B): Option[And] =
+        permittedResolvableGroupIds.resolveGroupIds(blockContext).map(And.apply)
+
+      override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+        permittedResolvableGroupIds.groupIds.toNonEmptyList
+    }
+
+    final case class ForOrGroupsLogic(permittedResolvableGroupIds: ResolvableGroupIds) extends PositiveGroupsLogicResolver {
+      override def resolve[B <: BlockContext](blockContext: B): Option[Or] =
+        permittedResolvableGroupIds.resolveGroupIds(blockContext).map(Or.apply)
+
+      override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+        permittedResolvableGroupIds.groupIds.toNonEmptyList
+    }
+
+    sealed trait NegativeGroupsLogicResolver extends GroupsLogicResolver {
+      override def resolve[B <: BlockContext](blockContext: B): Option[NegativeGroupsLogic]
+    }
+
+    final case class ForNotAllOfGroupsLogic(permittedResolvableGroupIds: ResolvableGroupIds) extends NegativeGroupsLogicResolver {
+      override def resolve[B <: BlockContext](blockContext: B): Option[NotAllOf] =
+        permittedResolvableGroupIds.resolveGroupIds(blockContext).map(NotAllOf.apply)
+
+      override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+        permittedResolvableGroupIds.groupIds.toNonEmptyList
+    }
+
+    final case class ForNotAnyOfGroupsLogic(permittedResolvableGroupIds: ResolvableGroupIds) extends NegativeGroupsLogicResolver {
+      override def resolve[B <: BlockContext](blockContext: B): Option[NotAnyOf] =
+        permittedResolvableGroupIds.resolveGroupIds(blockContext).map(NotAnyOf.apply)
+
+      override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+        permittedResolvableGroupIds.groupIds.toNonEmptyList
+    }
+
+    final case class ForCombinedGroupsLogic[
+      POSITIVE <: PositiveGroupsLogic,
+      NEGATIVE <: NegativeGroupsLogic
+    ](
+       positiveGroupsLogicResolver: PositiveGroupsLogicResolver,
+       negativeGroupsLogicResolver: NegativeGroupsLogicResolver,
+     ) extends GroupsLogicResolver {
+      override def resolve[B <: BlockContext](blockContext: B): Option[CombinedGroupsLogic] = for {
+        positiveGroupsLogic <- positiveGroupsLogicResolver.resolve(blockContext)
+        negativeGroupsLogic <- negativeGroupsLogicResolver.resolve(blockContext)
+      } yield CombinedGroupsLogic(positiveGroupsLogic, negativeGroupsLogic)
+
+      override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+        positiveGroupsLogicResolver.usedVariables ::: negativeGroupsLogicResolver.usedVariables
+    }
   }
-
-  final case class And(override val permittedGroupIds: ResolvableGroupIds) extends PositiveResolvableGroupsLogic {
-    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.And] =
-      permittedGroupIds.resolveGroupIds(blockContext).map(GroupsLogic.And.apply)
-  }
-
-  sealed trait NegativeResolvableGroupsLogic extends ResolvableGroupsLogic {
-    val forbiddenGroupIds: ResolvableGroupIds
-
-    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.NegativeGroupsLogic]
-  }
-
-  final case class NotAnyOf(override val forbiddenGroupIds: ResolvableGroupIds) extends NegativeResolvableGroupsLogic {
-    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.NegativeGroupsLogic] =
-      forbiddenGroupIds.resolveGroupIds(blockContext).map(GroupsLogic.NotAnyOf.apply)
-  }
-
-  final case class NotAllOf(override val forbiddenGroupIds: ResolvableGroupIds) extends NegativeResolvableGroupsLogic {
-    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.NegativeGroupsLogic] =
-      forbiddenGroupIds.resolveGroupIds(blockContext).map(GroupsLogic.NotAllOf.apply)
-  }
-
-  final case class CombinedResolvableGroupsLogic(positiveResolvableGroupsLogic: PositiveResolvableGroupsLogic,
-                                                 negativeResolvableGroupsLogic: NegativeResolvableGroupsLogic) extends ResolvableGroupsLogic {
-    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic] = for {
-      positive <- positiveResolvableGroupsLogic.resolve(blockContext)
-      negative <- negativeResolvableGroupsLogic.resolve(blockContext)
-    } yield GroupsLogic.CombinedGroupsLogic(positive, negative)
-  }
-
 }
 
 final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)

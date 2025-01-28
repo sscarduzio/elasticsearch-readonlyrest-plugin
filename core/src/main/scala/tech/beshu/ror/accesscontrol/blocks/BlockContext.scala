@@ -21,9 +21,9 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{CombinedGroupsLogic, NegativeGroupsLogic, PositiveGroupsLogic}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
 
@@ -45,12 +45,15 @@ sealed trait BlockContext {
     }
   }
 
-  def isCurrentGroupPotentiallyEligible(groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule): Boolean = {
-    groupsPotentiallyPermittedByRule match
-      case GroupsPotentiallyPermittedByRule.All =>
+  def isCurrentGroupPotentiallyEligible(groupsLogic: GroupsLogic): Boolean = {
+    groupsLogic match {
+      case _: NegativeGroupsLogic =>
         true
-      case GroupsPotentiallyPermittedByRule.Selected(potentiallyPermitted) =>
-        isCurrentGroupEligible(potentiallyPermitted)
+      case logic: PositiveGroupsLogic =>
+        isCurrentGroupEligible(logic.permittedGroupIds)
+      case logic: CombinedGroupsLogic =>
+        isCurrentGroupEligible(logic.positiveGroupsLogic.permittedGroupIds)
+    }
   }
 }
 

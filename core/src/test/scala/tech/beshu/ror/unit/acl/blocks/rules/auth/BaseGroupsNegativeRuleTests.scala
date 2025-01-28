@@ -45,8 +45,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVa
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.GroupsLogicResolver
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.ResolvableGroupsLogic.NegativeResolvableGroupsLogic
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -57,14 +57,15 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-trait BaseGroupsNegativeRuleTests[LOGIC <: NegativeResolvableGroupsLogic] extends AnyWordSpecLike with Inside with BlockContextAssertion {
+trait BaseGroupsNegativeRuleTests extends AnyWordSpecLike with Inside with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
   implicit val variableCreator: RuntimeResolvableVariableCreator =
     new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 
-  implicit val logicCreator: ResolvableGroupIds => LOGIC
-  def createRule(settings: GroupsRulesSettings[LOGIC], caseSensitivity: CaseSensitivity): BaseGroupsRule[LOGIC]
+  implicit val groupsLogicResolverCreator: ResolvableGroupIds => GroupsLogicResolver
+
+  def createRule(settings: GroupsRulesSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule
 
   // Common tests
 
@@ -720,20 +721,20 @@ trait BaseGroupsNegativeRuleTests[LOGIC <: NegativeResolvableGroupsLogic] extend
     }
   }
 
-  def assertMatchRule(settings: GroupsRulesSettings[LOGIC],
+  def assertMatchRule(settings: GroupsRulesSettings,
                       loggedUser: Option[User.Id],
                       preferredGroupId: Option[GroupId],
                       caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled)
                      (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(settings, loggedUser, preferredGroupId, Some(blockContextAssertion), caseSensitivity)
 
-  def assertNotMatchRule(settings: GroupsRulesSettings[LOGIC],
+  def assertNotMatchRule(settings: GroupsRulesSettings,
                          loggedUser: Option[User.Id],
                          preferredGroupId: Option[GroupId],
                          caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled): Unit =
     assertRule(settings, loggedUser, preferredGroupId, blockContextAssertion = None, caseSensitivity)
 
-  def assertRule(settings: GroupsRulesSettings[LOGIC],
+  def assertRule(settings: GroupsRulesSettings,
                  loggedUser: Option[User.Id],
                  preferredGroupId: Option[GroupId],
                  blockContextAssertion: Option[BlockContext => Unit],

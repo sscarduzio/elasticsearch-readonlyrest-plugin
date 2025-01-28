@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.domain.*
@@ -38,7 +37,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   override val name: Rule.Name = ExternalAuthorizationRule.Name.name
 
-  override val groupsLogic: GroupsLogic = settings.groupsLogic
+  override val groupsLogic: GroupsLogic = settings.permittedGroupsLogic
 
   private val userMatcher = PatternsMatcher.create[User.Id](settings.users.toSet)
 
@@ -47,8 +46,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   }
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
-                                                       user: LoggedUser,
-                                                       groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule)
+                                                       user: LoggedUser)
                                                       (implicit requestId: RequestId): Task[UniqueList[Group]] =
     settings.service.grantsFor(user.id)
 
@@ -69,7 +67,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   }
 
   override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
-    settings.groupsLogic.availableGroupsFrom(usersGroups)
+    settings.permittedGroupsLogic.availableGroupsFrom(usersGroups)
 }
 
 object ExternalAuthorizationRule {
@@ -79,7 +77,7 @@ object ExternalAuthorizationRule {
   }
 
   final case class Settings(service: ExternalAuthorizationService,
-                            groupsLogic: GroupsLogic,
+                            permittedGroupsLogic: GroupsLogic,
                             users: UniqueNonEmptyList[User.Id])
 
 }

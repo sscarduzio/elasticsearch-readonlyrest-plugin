@@ -28,11 +28,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.ResolvableGroupsLogic.*
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.GroupsLogicResolver.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -42,43 +42,31 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.reflect.ClassTag
 
-class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests[Or, GroupsOrRule](GroupsOrRule.Name) {
-  override def createLogic(groupIds: ResolvableGroupIds): Or = Or(groupIds)
-
-  def extractGroupIds(logic: Or): UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = logic.permittedGroupIds.groupIds
+class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.Name) {
+  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = ForOrGroupsLogic(groupIds)
 }
 
-class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests[Or, GroupsOrRule](GroupsOrRule.DeprecatedName) {
-  override def createLogic(groupIds: ResolvableGroupIds): Or = Or(groupIds)
-
-  def extractGroupIds(logic: Or): UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = logic.permittedGroupIds.groupIds
+class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.DeprecatedName) {
+  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = ForOrGroupsLogic(groupIds)
 }
 
 class GroupsAndRuleSettingsTests extends GroupsRuleSettingsTests[And, GroupsAndRule](GroupsAndRule.Name) {
-  override def createLogic(groupIds: ResolvableGroupIds): And = And(groupIds)
-
-  def extractGroupIds(logic: And): UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = logic.permittedGroupIds.groupIds
+  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = ForAndGroupsLogic(groupIds)
 }
 
 class GroupsNotAllOfRuleSettingsTests extends GroupsRuleSettingsTests[NotAllOf, GroupsNotAllOfRule](GroupsNotAllOfRule.Name) {
-  override def createLogic(groupIds: ResolvableGroupIds): NotAllOf = NotAllOf(groupIds)
-
-  def extractGroupIds(logic: NotAllOf): UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = logic.forbiddenGroupIds.groupIds
+  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = ForNotAllOfGroupsLogic(groupIds)
 }
 
 class GroupsNotAnyOfRuleSettingsTests extends GroupsRuleSettingsTests[NotAnyOf, GroupsNotAnyOfRule](GroupsNotAnyOfRule.Name) {
-  override def createLogic(groupIds: ResolvableGroupIds): NotAnyOf = NotAnyOf(groupIds)
-
-  def extractGroupIds(logic: NotAnyOf): UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = logic.forbiddenGroupIds.groupIds
+  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = ForNotAnyOfGroupsLogic(groupIds)
 }
 
-sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R <: BaseGroupsRule[LOGIC] : ClassTag](ruleName: RuleName[R])
+sealed abstract class GroupsRuleSettingsTests[LOGIC <: GroupsLogic, R <: BaseGroupsRule : ClassTag](ruleName: RuleName[R])
   extends BaseRuleSettingsDecoderTest[R]
     with Inside {
 
-  def createLogic(groupIds: ResolvableGroupIds): LOGIC
-
-  def extractGroupIds(logic: LOGIC): UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
+  def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver
 
   "A GroupsOrRule" should {
     "be able to be loaded from config" when {
@@ -103,7 +91,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                    |""".stripMargin,
               assertion = rule => {
                 val groups = ResolvableGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
-                rule.settings.resolvableGroupsLogic should be(createLogic(groups))
+                rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(groups))
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
@@ -135,7 +123,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                    |""".stripMargin,
               assertion = rule => {
                 val permittedGroups = ResolvableGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
-                rule.settings.resolvableGroupsLogic should be(createLogic(permittedGroups))
+                rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(permittedGroups))
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("car*")))))
@@ -167,7 +155,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                    |""".stripMargin,
               assertion = rule => {
                 val groups = ResolvableGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
-                rule.settings.resolvableGroupsLogic should be(createLogic(groups))
+                rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(groups))
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")), User.UserIdPattern(userId("ca*")))))
@@ -203,7 +191,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                    |""".stripMargin,
               assertion = rule => {
                 val groups = ResolvableGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
-                rule.settings.resolvableGroupsLogic should be(createLogic(groups))
+                rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(groups))
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
@@ -242,7 +230,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                    |""".stripMargin,
               assertion = rule => {
                 val groups = ResolvableGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
-                rule.settings.resolvableGroupsLogic should be(createLogic(groups))
+                rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(groups))
                 rule.settings.usersDefinitions.length should be(2)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
@@ -291,7 +279,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                   AlreadyResolved(GroupId("group1").nel),
                   AlreadyResolved(GroupId("group2").nel)
                 ))
-                rule.settings.resolvableGroupsLogic should be(createLogic(groups))
+                rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(groups))
                 rule.settings.usersDefinitions.length should be(2)
                 val sortedUserDefinitions = rule.settings.usersDefinitions
                 inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
@@ -331,9 +319,9 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                    |
                    |""".stripMargin,
               assertion = rule => {
-                extractGroupIds(rule.settings.resolvableGroupsLogic).size shouldBe 2
-                extractGroupIds(rule.settings.resolvableGroupsLogic).head should be(AlreadyResolved(GroupId("group1").nel))
-                extractGroupIds(rule.settings.resolvableGroupsLogic).tail.head shouldBe a[ToBeResolved[_]]
+                rule.settings.permittedGroupsLogicResolver.usedVariables.size shouldBe 2
+                rule.settings.permittedGroupsLogicResolver.usedVariables.head should be(AlreadyResolved(GroupId("group1").nel))
+                rule.settings.permittedGroupsLogicResolver.usedVariables.tail.head shouldBe a[ToBeResolved[_]]
 
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
@@ -400,7 +388,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                 AlreadyResolved(GroupIdLike.from("group1*").nel),
                 AlreadyResolved(GroupId("group2").nel)
               ))
-              rule.settings.resolvableGroupsLogic should be(createLogic(groups))
+              rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(groups))
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
@@ -412,7 +400,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                   BasicAuthenticationRule.Settings(Credentials(userId("cartman"), PlainTextSecret("pass")))
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
-                rule2.asInstanceOf[ExternalAuthorizationRule].settings.groupsLogic should be(
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
                   GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
                 )
               }
@@ -465,7 +453,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                 AlreadyResolved(GroupId("group1").nel),
                 AlreadyResolved(GroupId("group2").nel)
               ))
-              rule.settings.resolvableGroupsLogic should be(createLogic(groups))
+              rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(groups))
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SingleRule(rule1), groupMappings)) =>
@@ -528,7 +516,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                 AlreadyResolved(GroupId("group1").nel),
                 AlreadyResolved(GroupId("group3").nel)
               ))
-              rule.settings.resolvableGroupsLogic should be(createLogic(groups))
+              rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(groups))
               rule.settings.usersDefinitions.length should be(1)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
@@ -543,7 +531,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                   BasicAuthenticationRule.Settings(Credentials(userId("cartman"), PlainTextSecret("pass")))
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
-                rule2.asInstanceOf[ExternalAuthorizationRule].settings.groupsLogic should be(
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
                   GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
                 )
               }
@@ -600,7 +588,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                 AlreadyResolved(GroupId("group1").nel),
                 AlreadyResolved(GroupId("group3").nel)
               ))
-              rule.settings.resolvableGroupsLogic should be(createLogic(groups))
+              rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(groups))
               rule.settings.usersDefinitions.length should be(1)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
@@ -615,7 +603,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
                   BasicAuthenticationRule.Settings(Credentials(userId("cartman"), PlainTextSecret("pass")))
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
-                rule2.asInstanceOf[ExternalAuthorizationRule].settings.groupsLogic should be(
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
                   GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
                 )
               }
@@ -648,7 +636,7 @@ sealed abstract class GroupsRuleSettingsTests[LOGIC <: ResolvableGroupsLogic, R 
             val groups = ResolvableGroupIds(UniqueNonEmptyList.of(
               AlreadyResolved(GroupId("group1").nel)
             ))
-            rule.settings.resolvableGroupsLogic should be(createLogic(groups))
+            rule.settings.permittedGroupsLogicResolver should be(createPermittedGroupsLogicResolver(groups))
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions
             inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(r, localGroups)) =>

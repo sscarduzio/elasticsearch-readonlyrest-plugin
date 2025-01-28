@@ -285,17 +285,19 @@ private object LdapRulesDecodersHelper {
 
   private[rules] def ldapAuthorizationRuleSettings(ldapService: LdapAuthorizationService,
                                                    groupsLogic: GroupsLogic): Either[RulesLevelCreationError, LdapAuthorizationRule.Settings] =
-    ldapService match
-      case ldap: LdapAuthorizationService.WithoutGroupsFiltering =>
-        Right(LdapAuthorizationRule.Settings(ldap, groupsLogic))
-      case ldap: LdapAuthorizationService.WithGroupsFiltering =>
-        groupsLogic match
-          case groupsLogic: GroupsLogic.CombinedGroupsLogic =>
-            Right(LdapAuthorizationRule.Settings(ldap, groupsLogic))
-          case groupsLogic: GroupsLogic.PositiveGroupsLogic =>
-            Right(LdapAuthorizationRule.Settings(ldap, groupsLogic))
-          case groupsLogic: GroupsLogic.NegativeGroupsLogic =>
+    groupsLogic match {
+      case groupsLogic: GroupsLogic.CombinedGroupsLogic =>
+        Right(LdapAuthorizationRule.Settings.CombinedGroupsLogicSettings(ldapService, groupsLogic))
+      case groupsLogic: GroupsLogic.PositiveGroupsLogic =>
+        Right(LdapAuthorizationRule.Settings.PositiveGroupsLogicSettings(ldapService, groupsLogic))
+      case groupsLogic: GroupsLogic.NegativeGroupsLogic =>
+        ldapService match {
+          case ldap: LdapAuthorizationService.WithoutGroupsFiltering =>
+            Right(LdapAuthorizationRule.Settings.NegativeGroupsLogicSettings(ldap, groupsLogic))
+          case _: LdapAuthorizationService.WithGroupsFiltering =>
             Left(RulesLevelCreationError(Message(negativeGroupsRuleNotAllowedForLdapWithGroupsFiltering)))
+        }
+    }
 
   private[auth] sealed trait LdapServiceType {
     type LDAP_SERVICE

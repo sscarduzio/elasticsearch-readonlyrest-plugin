@@ -25,7 +25,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule.GroupsPotentiallyPermittedByRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.domain.*
@@ -41,21 +40,24 @@ class LdapAuthorizationRule(val settings: Settings,
   override val groupsLogic: GroupsLogic = settings.groupsLogic
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
-                                                       user: LoggedUser,
-                                                       groupsPotentiallyPermittedByRule: GroupsPotentiallyPermittedByRule)
+                                                       user: LoggedUser)
                                                       (implicit requestId: RequestId): Task[UniqueList[Group]] = {
-    settings.ldap match {
-      case ldap: LdapAuthorizationService.WithoutGroupsFiltering =>
+    settings match {
+      case Settings.NegativeGroupsLogicSettings(ldap, _) =>
         ldap.groupsOf(user.id)
-      case ldap: LdapAuthorizationService.WithGroupsFiltering =>
-        groupsPotentiallyPermittedByRule match {
-          case GroupsPotentiallyPermittedByRule.All =>
-            throw new IllegalStateException(
-              """Cannot fetch user groups from LDAP, because LDAP has groups filtering enabled and all groups are potentially permitted by the rule.
-                |This situation should never happen, because this case should be detected and not accepted at config parsing stage""".stripMargin
-            )
-          case GroupsPotentiallyPermittedByRule.Selected(potentiallyPermitted) =>
-            ldap.groupsOf(user.id, potentiallyPermitted.groupIds.toSet)
+      case Settings.PositiveGroupsLogicSettings(ldap, groupsLogic) =>
+        ldap match {
+          case ldap: LdapAuthorizationService.WithoutGroupsFiltering =>
+            ldap.groupsOf(user.id)
+          case ldap: LdapAuthorizationService.WithGroupsFiltering =>
+            ldap.groupsOf(user.id, groupsLogic.permittedGroupIds.groupIds.toSet)
+        }
+      case Settings.CombinedGroupsLogicSettings(ldap, groupsLogic) =>
+        ldap match {
+          case ldap: LdapAuthorizationService.WithoutGroupsFiltering =>
+            ldap.groupsOf(user.id)
+          case ldap: LdapAuthorizationService.WithGroupsFiltering =>
+            ldap.groupsOf(user.id, groupsLogic.positiveGroupsLogic.permittedGroupIds.groupIds.toSet)
         }
     }
   }
@@ -87,5 +89,26 @@ object LdapAuthorizationRule {
     override val name = Rule.Name("ldap_authorization")
   }
 
-  final case class Settings(ldap: LdapAuthorizationService, groupsLogic: GroupsLogic)
+  sealed trait Settings {
+    def ldap: LdapAuthorizationService
+
+    def groupsLogic: GroupsLogic
+  }
+
+  object Settings {
+    final case class NegativeGroupsLogicSettings(ldap: LdapAuthorizationService.WithoutGroupsFiltering,
+                                                 groupsLogic: GroupsLogic.NegativeGroupsLogic) extends Settings
+
+    final case class PositiveGroupsLogicSettings(ldap: LdapAuthorizationService,
+                                                 groupsLogic: GroupsLogic.PositiveGroupsLogic) extends Settings
+
+    final case class CombinedGroupsLogicSettings(ldap: LdapAuthorizationService,
+                                                 groupsLogic: GroupsLogic.CombinedGroupsLogic) extends Settings
+
+    def apply(ldap: LdapAuthorizationService,
+              groupsLogic: GroupsLogic.PositiveGroupsLogic): PositiveGroupsLogicSettings = PositiveGroupsLogicSettings(ldap, groupsLogic)
+
+    def apply(ldap: LdapAuthorizationService.WithoutGroupsFiltering,
+              groupsLogic: GroupsLogic.NegativeGroupsLogic): NegativeGroupsLogicSettings = NegativeGroupsLogicSettings(ldap, groupsLogic)
+  }
 }

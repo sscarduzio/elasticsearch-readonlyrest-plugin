@@ -19,11 +19,10 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleName}
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.ResolvableGroupsLogic.NotAnyOf
 
-final class GroupsNotAnyOfRule(override val settings: BaseGroupsRule.Settings[NotAnyOf],
+final class GroupsNotAnyOfRule(override val settings: BaseGroupsRule.Settings,
                                override val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule[NotAnyOf](settings) {
+  extends BaseGroupsRule(settings) {
 
   override val name: Rule.Name = GroupsAndRule.Name.name
 

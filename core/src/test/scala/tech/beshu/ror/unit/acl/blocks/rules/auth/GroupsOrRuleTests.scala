@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
@@ -26,17 +25,17 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsOrR
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.ResolvableGroupsLogic.Or
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.GroupsLogicResolver
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class GroupsOrRuleTests extends BaseGroupsPositiveRuleTests[Or] {
+class GroupsOrRuleTests extends BaseGroupsPositiveRuleTests {
 
-  override def createRule(settings: GroupsRuleSettings[Or], caseSensitivity: CaseSensitivity): BaseGroupsRule[Or] = {
+  override def createRule(settings: GroupsRuleSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule = {
     new GroupsOrRule(settings, caseSensitivity)
   }
 
-  override implicit val logicCreator: ResolvableGroupIds => Or = Or.apply
+  override implicit val logicResolverCreator: ResolvableGroupIds => GroupsLogicResolver = GroupsLogicResolver.ForOrGroupsLogic.apply
 
   "A GroupsRule" should {
     "match" when {

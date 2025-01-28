@@ -27,12 +27,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.domain.ResolvableGroupsLogic.*
-import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, ResolvableGroupIds, ResolvableGroupsLogic}
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
+import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, ResolvableGroupIds}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
@@ -41,72 +40,67 @@ class GroupsOrRuleDecoder(usersDefinitions: Definitions[UserDef],
                           globalSettings: GlobalSettings,
                           override implicit val variableCreator: RuntimeResolvableVariableCreator)
                          (implicit ev: RuleName[GroupsOrRule])
-  extends BaseGroupsRuleDecoder[Or, GroupsOrRule](usersDefinitions, variableCreator) {
+  extends BaseGroupsRuleDecoder[GroupsOrRule](usersDefinitions, variableCreator) {
 
-  override protected def createRule(settings: BaseGroupsRule.Settings[Or]): GroupsOrRule = {
+  override protected def createRule(settings: BaseGroupsRule.Settings): GroupsOrRule = {
     new GroupsOrRule(settings, globalSettings.userIdCaseSensitivity)
   }
 
-  protected def createResolvableGroupsLogic(resolvableGroupIds: ResolvableGroupIds): Or = {
-    Or(resolvableGroupIds)
+  protected def createGroupsLogicResolver(resolvableGroupIds: ResolvableGroupIds): GroupsLogicResolver = {
+    GroupsLogicResolver.ForOrGroupsLogic(resolvableGroupIds)
   }
 }
 
 class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef],
                            globalSettings: GlobalSettings,
                            override implicit val variableCreator: RuntimeResolvableVariableCreator)
-  extends BaseGroupsRuleDecoder[And, GroupsAndRule](usersDefinitions, variableCreator) {
+  extends BaseGroupsRuleDecoder[GroupsAndRule](usersDefinitions, variableCreator) {
 
-  override protected def createRule(settings: BaseGroupsRule.Settings[And]): GroupsAndRule = {
+  override protected def createRule(settings: BaseGroupsRule.Settings): GroupsAndRule = {
     new GroupsAndRule(settings, globalSettings.userIdCaseSensitivity)
   }
 
-  protected def createResolvableGroupsLogic(resolvableGroupIds: ResolvableGroupIds): And = {
-    And(resolvableGroupIds)
+  protected def createGroupsLogicResolver(resolvableGroupIds: ResolvableGroupIds): GroupsLogicResolver = {
+    GroupsLogicResolver.ForAndGroupsLogic(resolvableGroupIds)
   }
 }
 
 class GroupsNotAllOfRuleDecoder(usersDefinitions: Definitions[UserDef],
                                 globalSettings: GlobalSettings,
                                 override implicit val variableCreator: RuntimeResolvableVariableCreator)
-  extends BaseGroupsRuleDecoder[NotAllOf, GroupsNotAllOfRule](usersDefinitions, variableCreator) {
+  extends BaseGroupsRuleDecoder[GroupsNotAllOfRule](usersDefinitions, variableCreator) {
 
-  override protected def createRule(settings: BaseGroupsRule.Settings[NotAllOf]): GroupsNotAllOfRule = {
+  override protected def createRule(settings: BaseGroupsRule.Settings): GroupsNotAllOfRule = {
     new GroupsNotAllOfRule(settings, globalSettings.userIdCaseSensitivity)
   }
 
-  protected def createResolvableGroupsLogic(resolvableGroupIds: ResolvableGroupIds): NotAllOf = {
-    NotAllOf(resolvableGroupIds)
+  protected def createGroupsLogicResolver(resolvableGroupIds: ResolvableGroupIds): GroupsLogicResolver = {
+    GroupsLogicResolver.ForNotAllOfGroupsLogic(resolvableGroupIds)
   }
 }
 
 class GroupsNotAnyOfRuleDecoder(usersDefinitions: Definitions[UserDef],
                                 globalSettings: GlobalSettings,
                                 override implicit val variableCreator: RuntimeResolvableVariableCreator)
-  extends BaseGroupsRuleDecoder[NotAnyOf, GroupsNotAnyOfRule](usersDefinitions, variableCreator) {
+  extends BaseGroupsRuleDecoder[GroupsNotAnyOfRule](usersDefinitions, variableCreator) {
 
-  override protected def createRule(settings: BaseGroupsRule.Settings[NotAnyOf]): GroupsNotAnyOfRule = {
+  override protected def createRule(settings: BaseGroupsRule.Settings): GroupsNotAnyOfRule = {
     new GroupsNotAnyOfRule(settings, globalSettings.userIdCaseSensitivity)
   }
 
-  protected def createResolvableGroupsLogic(resolvableGroupIds: ResolvableGroupIds): NotAnyOf = {
-    NotAnyOf(resolvableGroupIds)
+  protected def createGroupsLogicResolver(resolvableGroupIds: ResolvableGroupIds): GroupsLogicResolver = {
+    GroupsLogicResolver.ForNotAnyOfGroupsLogic(resolvableGroupIds)
   }
 }
 
-abstract class BaseGroupsRuleDecoder[
-  LOGIC <: ResolvableGroupsLogic,
-  R <: BaseGroupsRule[LOGIC] : VariableUsage : LocalUsersSupport : ImpersonationWarningExtractor
-](
-   usersDefinitions: Definitions[UserDef],
-   implicit val variableCreator: RuntimeResolvableVariableCreator
- )(implicit ev: RuleName[R])
+abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : VariableUsage : LocalUsersSupport : ImpersonationWarningExtractor](usersDefinitions: Definitions[UserDef],
+                                                                                                                              implicit val variableCreator: RuntimeResolvableVariableCreator)(implicit ev: RuleName[R])
 
   extends RuleBaseDecoderWithoutAssociatedFields[R] {
 
-  protected def createRule(settings: BaseGroupsRule.Settings[LOGIC]): R
+  protected def createRule(settings: BaseGroupsRule.Settings): R
 
-  protected def createResolvableGroupsLogic(resolvableGroupIds: ResolvableGroupIds): LOGIC
+  protected def createGroupsLogicResolver(resolvableGroupIds: ResolvableGroupIds): GroupsLogicResolver
 
   override protected def decoder: Decoder[RuleDefinition[R]] = {
     DecoderHelpers
@@ -118,7 +112,7 @@ abstract class BaseGroupsRuleDecoder[
           case Some(userDefs) =>
             Right(RuleDefinition.create(
               createRule(
-                BaseGroupsRule.Settings(createResolvableGroupsLogic(ResolvableGroupIds(groups)), userDefs)
+                BaseGroupsRule.Settings(createGroupsLogicResolver(ResolvableGroupIds(groups)), userDefs)
               )
             ))
           case None =>

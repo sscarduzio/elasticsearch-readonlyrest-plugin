@@ -19,11 +19,10 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleName}
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.ResolvableGroupsLogic.Or
 
-final class GroupsOrRule(override val settings: BaseGroupsRule.Settings[Or],
+final class GroupsOrRule(override val settings: BaseGroupsRule.Settings,
                          override val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule[Or](settings) {
+  extends BaseGroupsRule(settings) {
 
   override val name: Rule.Name = GroupsOrRule.Name.name
 
