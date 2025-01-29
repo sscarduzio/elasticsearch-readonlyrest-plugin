@@ -140,24 +140,35 @@ abstract class BaseGroupsRule(val settings: Settings)
                                                                     allowedUserMatcher: GenericPatternMatcher[User.Id],
                                                                     availableGroups: UniqueNonEmptyList[Group],
                                                                     mode: Mode) = {
-    checkRule(auth, blockContext, allowedUserMatcher, mode)
-      .map {
-        case Some(newBlockContext) =>
-          newBlockContext
-            .userMetadata.loggedUser
-            .map { loggedUser =>
-              blockContext.withUserMetadata(_
-                .withLoggedUser(loggedUser)
-                .withAvailableGroups(UniqueList.from(availableGroups))
-              )
-            }
-        case None =>
+    val availableGroupIdsOpt = UniqueNonEmptyList.from(availableGroups.map(_.id)).map(GroupIds.apply)
+    val isCurrentGroupEligible = availableGroupIdsOpt match {
+      case Some(availableGroupIds) =>
+        blockContext.isCurrentGroupEligible(availableGroupIds)
+      case None =>
+        false
+    }
+    if (isCurrentGroupEligible) {
+      checkRule(auth, blockContext, allowedUserMatcher, mode)
+        .map {
+          case Some(newBlockContext) =>
+            newBlockContext
+              .userMetadata.loggedUser
+              .map { loggedUser =>
+                blockContext.withUserMetadata(_
+                  .withLoggedUser(loggedUser)
+                  .withAvailableGroups(UniqueList.from(availableGroups))
+                )
+              }
+          case None =>
+            None
+        }
+        .onErrorRecover { case ex =>
+          logger.debug(s"[${blockContext.requestContext.id.show}] Authentication error", ex)
           None
-      }
-      .onErrorRecover { case ex =>
-        logger.debug(s"[${blockContext.requestContext.id.show}] Authentication error", ex)
-        None
-      }
+        }
+    } else {
+      Task.now(None)
+    }
   }
 
   private def authenticateAndAuthorize[B <: BlockContext : BlockContextUpdater](auth: AuthRule,
