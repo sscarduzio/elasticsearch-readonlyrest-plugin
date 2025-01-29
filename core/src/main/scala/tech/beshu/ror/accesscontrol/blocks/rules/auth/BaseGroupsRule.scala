@@ -105,9 +105,7 @@ abstract class BaseGroupsRule(val settings: Settings)
                                                                                 groupsLogic: GroupsLogic)
                                                                                (userDef: UserDef): Task[Option[B]] = {
     groupsLogic.availableGroupsFrom(userDef.localGroups) match {
-      case None =>
-        Task.now(None)
-      case Some(availableGroups) =>
+      case Some(availableGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(availableGroups)) =>
         val allowedUserMatcher = matchers(userDef)
         userDef.mode match {
           case Mode.WithoutGroupsMapping(auth, _) =>
@@ -132,6 +130,8 @@ abstract class BaseGroupsRule(val settings: Settings)
               userDef.mode
             )
         }
+      case None | Some(_) =>
+        Task.now(None)
     }
   }
 
@@ -140,35 +140,24 @@ abstract class BaseGroupsRule(val settings: Settings)
                                                                     allowedUserMatcher: GenericPatternMatcher[User.Id],
                                                                     availableGroups: UniqueNonEmptyList[Group],
                                                                     mode: Mode) = {
-    val availableGroupIdsOpt = UniqueNonEmptyList.from(availableGroups.map(_.id)).map(GroupIds.apply)
-    val isCurrentGroupEligible = availableGroupIdsOpt match {
-      case Some(availableGroupIds) =>
-        blockContext.isCurrentGroupEligible(availableGroupIds)
-      case None =>
-        false
-    }
-    if (isCurrentGroupEligible) {
-      checkRule(auth, blockContext, allowedUserMatcher, mode)
-        .map {
-          case Some(newBlockContext) =>
-            newBlockContext
-              .userMetadata.loggedUser
-              .map { loggedUser =>
-                blockContext.withUserMetadata(_
-                  .withLoggedUser(loggedUser)
-                  .withAvailableGroups(UniqueList.from(availableGroups))
-                )
-              }
-          case None =>
-            None
-        }
-        .onErrorRecover { case ex =>
-          logger.debug(s"[${blockContext.requestContext.id.show}] Authentication error", ex)
+    checkRule(auth, blockContext, allowedUserMatcher, mode)
+      .map {
+        case Some(newBlockContext) =>
+          newBlockContext
+            .userMetadata.loggedUser
+            .map { loggedUser =>
+              blockContext.withUserMetadata(_
+                .withLoggedUser(loggedUser)
+                .withAvailableGroups(UniqueList.from(availableGroups))
+              )
+            }
+        case None =>
           None
-        }
-    } else {
-      Task.now(None)
-    }
+      }
+      .onErrorRecover { case ex =>
+        logger.debug(s"[${blockContext.requestContext.id.show}] Authentication error", ex)
+        None
+      }
   }
 
   private def authenticateAndAuthorize[B <: BlockContext : BlockContextUpdater](auth: AuthRule,
@@ -238,8 +227,7 @@ abstract class BaseGroupsRule(val settings: Settings)
     val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
     for {
       externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
-      potentiallyPermitted = GroupIds(externalGroupsMappedToLocalGroups)
-      availableLocalGroups <- GroupsLogic.Or(potentiallyPermitted).availableGroupsFrom(potentiallyAvailableGroups)
+      availableLocalGroups = externalGroupsMappedToLocalGroups.toSet.intersect(potentiallyAvailableGroups.toSet)
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
     } yield destinationBlockContext.withUserMetadata(_
       .withLoggedUser(loggedUser)
@@ -273,7 +261,7 @@ abstract class BaseGroupsRule(val settings: Settings)
   private def mapExternalGroupsToLocalGroups(groupMappings: GroupMappings,
                                              externalGroup: UniqueList[Group]) = {
     groupMappings match {
-      case GroupMappings.Simple(localGroups) => UniqueNonEmptyList.from(localGroups.map(_.id))
+      case GroupMappings.Simple(localGroups) => UniqueNonEmptyList.from(localGroups)
       case GroupMappings.Advanced(mappings) => UniqueNonEmptyList.from {
         externalGroup
           .toList
@@ -283,7 +271,6 @@ abstract class BaseGroupsRule(val settings: Settings)
               .filter(m => m.externalGroupIdPatternsMatcher.`match`(externalGroup.id))
               .map(_.local)
           }
-          .map(_.id)
       }
     }
   }

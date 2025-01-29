@@ -69,7 +69,7 @@ trait BaseGroupsPositiveRuleTests extends AnyWordSpecLike with Inside with Block
 
   // Common tests
 
-  "An AbstractGroupsRule" should {
+  "An AbstractPositiveGroupsRule" should {
     "not match" when {
       "groups mapping is not configured" when {
         "no group can be resolved" in {
@@ -539,7 +539,8 @@ trait BaseGroupsPositiveRuleTests extends AnyWordSpecLike with Inside with Block
                  caseSensitivity: CaseSensitivity): Unit = {
     val rule = createRule(settings, caseSensitivity)
     val requestContext = MockRequestContext.metadata.copy(
-      headers = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet
+      headers = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
+      uriPath = UriPath.auditEventPath,
     )
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,

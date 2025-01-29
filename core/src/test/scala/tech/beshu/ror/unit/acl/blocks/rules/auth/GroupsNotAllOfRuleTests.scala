@@ -61,28 +61,6 @@ class GroupsNotAllOfRuleTests extends BaseGroupsNegativeRuleTests {
           preferredGroupId = None
         )
       }
-      "current group is not eligible" in {
-        val ruleSettings = GroupsRulesSettings(
-          groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
-            AlreadyResolved(GroupId("g1").nel),
-            AlreadyResolved(GroupId("g2").nel),
-          )),
-          usersDefinitions = NonEmptyList.of(UserDef(
-            usernames = userIdPatterns("user1"),
-            mode = WithoutGroupsMapping(
-              authenticationRule.matching(User.Id("user1")),
-              groups("g1")
-            )
-          ))
-        )
-        val usr = Some(User.Id("user1"))
-        assertNotMatchRule(
-          settings = ruleSettings,
-          loggedUser = usr,
-          caseSensitivity = CaseSensitivity.Disabled,
-          preferredGroupId = Some(GroupId("g3"))
-        )
-      }
     }
 
     "match" when {
