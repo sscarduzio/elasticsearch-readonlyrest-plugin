@@ -435,7 +435,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("It is not allowed to use groups_not_any_of and groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which merges the groups_not_any_of/groups_not_all_of with groups_or in a single rule.")))
+            errors.head should be(RulesLevelCreationError(Message("It is not allowed to use groups_not_any_of and groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which applies two rules at the same time: groups_or/groups_and together with groups_not_any_of/groups_not_all_of.")))
           }
         )
       }
@@ -466,7 +466,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("It is not allowed to use groups_not_any_of and groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which merges the groups_not_any_of/groups_not_all_of with groups_or in a single rule.")))
+            errors.head should be(RulesLevelCreationError(Message("It is not allowed to use groups_not_any_of and groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which applies two rules at the same time: groups_or/groups_and together with groups_not_any_of/groups_not_all_of.")))
           }
         )
       }
