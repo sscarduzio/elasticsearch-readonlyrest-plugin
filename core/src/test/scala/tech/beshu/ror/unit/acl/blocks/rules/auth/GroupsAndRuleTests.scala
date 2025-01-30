@@ -37,7 +37,7 @@ class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests {
   }
 
   override def groupsLogicResolver(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): GroupsLogicResolver = {
-    GroupsLogicResolver.ForAndGroupsLogic(ResolvableGroupIds(groupIds))
+    GroupsLogicResolver(ResolvableGroupIds(groupIds), GroupsLogic.And.apply)
   }
 
   "A GroupsAndRule" should {

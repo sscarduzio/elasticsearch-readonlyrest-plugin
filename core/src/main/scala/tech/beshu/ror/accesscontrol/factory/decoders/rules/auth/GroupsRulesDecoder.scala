@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSup
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
-import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, ResolvableGroupIds}
+import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, ResolvableGroupIds}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -48,7 +48,7 @@ class GroupsOrRuleDecoder(usersDefinitions: Definitions[UserDef],
   }
 
   protected def createGroupsLogicResolver(resolvableGroupIds: ResolvableGroupIds): GroupsLogicResolver = {
-    GroupsLogicResolver.ForOrGroupsLogic(resolvableGroupIds)
+    GroupsLogicResolver(resolvableGroupIds, GroupsLogic.Or.apply)
   }
 }
 
@@ -62,7 +62,7 @@ class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef],
   }
 
   protected def createGroupsLogicResolver(resolvableGroupIds: ResolvableGroupIds): GroupsLogicResolver = {
-    GroupsLogicResolver.ForAndGroupsLogic(resolvableGroupIds)
+    GroupsLogicResolver(resolvableGroupIds, GroupsLogic.And.apply)
   }
 }
 
@@ -76,7 +76,7 @@ class GroupsNotAllOfRuleDecoder(usersDefinitions: Definitions[UserDef],
   }
 
   protected def createGroupsLogicResolver(resolvableGroupIds: ResolvableGroupIds): GroupsLogicResolver = {
-    GroupsLogicResolver.ForNotAllOfGroupsLogic(resolvableGroupIds)
+    GroupsLogicResolver(resolvableGroupIds, GroupsLogic.NotAllOf.apply)
   }
 }
 
@@ -90,7 +90,7 @@ class GroupsNotAnyOfRuleDecoder(usersDefinitions: Definitions[UserDef],
   }
 
   protected def createGroupsLogicResolver(resolvableGroupIds: ResolvableGroupIds): GroupsLogicResolver = {
-    GroupsLogicResolver.ForNotAnyOfGroupsLogic(resolvableGroupIds)
+    GroupsLogicResolver(resolvableGroupIds, GroupsLogic.NotAnyOf.apply)
   }
 }
 

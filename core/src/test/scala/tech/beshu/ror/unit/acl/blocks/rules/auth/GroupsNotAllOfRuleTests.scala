@@ -37,7 +37,7 @@ class GroupsNotAllOfRuleTests extends BaseGroupsNegativeRuleTests {
   }
 
   override def groupsLogicResolver(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): GroupsLogicResolver = {
-    GroupsLogicResolver.ForNotAllOfGroupsLogic(ResolvableGroupIds(groupIds))
+    GroupsLogicResolver(ResolvableGroupIds(groupIds), GroupsLogic.NotAllOf.apply)
   }
 
   "A GroupsNotAllOfRule" should {

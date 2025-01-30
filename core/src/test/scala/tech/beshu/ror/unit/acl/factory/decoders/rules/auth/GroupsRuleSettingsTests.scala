@@ -31,8 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic.GroupsLogicResolver.*
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.GroupsLogicResolver
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -43,26 +42,26 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.reflect.ClassTag
 
 class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.Name) {
-  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = ForOrGroupsLogic(groupIds)
+  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = GroupsLogicResolver(groupIds, GroupsLogic.Or.apply)
 }
 
 class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.DeprecatedName) {
-  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = ForOrGroupsLogic(groupIds)
+  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = GroupsLogicResolver(groupIds, GroupsLogic.Or.apply)
 }
 
-class GroupsAndRuleSettingsTests extends GroupsRuleSettingsTests[And, GroupsAndRule](GroupsAndRule.Name) {
-  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = ForAndGroupsLogic(groupIds)
+class GroupsAndRuleSettingsTests extends GroupsRuleSettingsTests[GroupsAndRule](GroupsAndRule.Name) {
+  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = GroupsLogicResolver(groupIds, GroupsLogic.And.apply)
 }
 
-class GroupsNotAllOfRuleSettingsTests extends GroupsRuleSettingsTests[NotAllOf, GroupsNotAllOfRule](GroupsNotAllOfRule.Name) {
-  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = ForNotAllOfGroupsLogic(groupIds)
+class GroupsNotAllOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsNotAllOfRule](GroupsNotAllOfRule.Name) {
+  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = GroupsLogicResolver(groupIds, GroupsLogic.NotAllOf.apply)
 }
 
-class GroupsNotAnyOfRuleSettingsTests extends GroupsRuleSettingsTests[NotAnyOf, GroupsNotAnyOfRule](GroupsNotAnyOfRule.Name) {
-  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = ForNotAnyOfGroupsLogic(groupIds)
+class GroupsNotAnyOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsNotAnyOfRule](GroupsNotAnyOfRule.Name) {
+  override def createPermittedGroupsLogicResolver(groupIds: ResolvableGroupIds): GroupsLogicResolver = GroupsLogicResolver(groupIds, GroupsLogic.NotAnyOf.apply)
 }
 
-sealed abstract class GroupsRuleSettingsTests[LOGIC <: GroupsLogic, R <: BaseGroupsRule : ClassTag](ruleName: RuleName[R])
+sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ruleName: RuleName[R])
   extends BaseRuleSettingsDecoderTest[R]
     with Inside {
 
