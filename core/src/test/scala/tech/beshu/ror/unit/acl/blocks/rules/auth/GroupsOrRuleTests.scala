@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings as GroupsRuleSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsOrRule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -35,13 +36,15 @@ class GroupsOrRuleTests extends BaseGroupsPositiveRuleTests {
     new GroupsOrRule(settings, caseSensitivity)
   }
 
-  override implicit val logicResolverCreator: ResolvableGroupIds => GroupsLogicResolver = GroupsLogicResolver.ForOrGroupsLogic.apply
+  override def groupsLogicResolver(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): GroupsLogicResolver = {
+    GroupsLogicResolver.ForOrGroupsLogic(ResolvableGroupIds(groupIds))
+  }
 
   "A GroupsRule" should {
     "match" when {
       "user has not all groups" in {
         val ruleSettings = GroupsRuleSettings(
-          groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
+          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -70,7 +73,7 @@ class GroupsOrRuleTests extends BaseGroupsPositiveRuleTests {
     "match" when {
       "user has all groups" in {
         val ruleSettings = GroupsRuleSettings(
-          groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
+          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),

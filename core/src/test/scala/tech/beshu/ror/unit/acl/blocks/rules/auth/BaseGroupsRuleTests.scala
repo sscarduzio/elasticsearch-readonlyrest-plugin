@@ -39,7 +39,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings as
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -62,7 +62,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
   implicit val variableCreator: RuntimeResolvableVariableCreator =
     new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 
-  implicit val groupsLogicResolverCreator: ResolvableGroupIds => GroupsLogicResolver
+  def groupsLogicResolver(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): GroupsLogicResolver
 
   def createRule(settings: GroupsRulesSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule
 
@@ -72,7 +72,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
     "not match because of not eligible preferred group present" when {
       "groups mapping is not configured" in {
         val ruleSettings = GroupsRulesSettings(
-          groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
+          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -94,7 +94,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
       }
       "groups mapping is configured" in {
         val ruleSettings = GroupsRulesSettings(
-          groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
+          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),

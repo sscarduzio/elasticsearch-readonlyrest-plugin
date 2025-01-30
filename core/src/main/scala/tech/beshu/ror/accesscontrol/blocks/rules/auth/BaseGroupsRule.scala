@@ -281,14 +281,6 @@ abstract class BaseGroupsRule(val settings: Settings)
 }
 
 object BaseGroupsRule {
-
   final case class Settings(permittedGroupsLogicResolver: GroupsLogicResolver,
                             usersDefinitions: NonEmptyList[UserDef])
-
-  object Settings {
-    def apply(groupIds: ResolvableGroupIds,
-              usersDefinitions: NonEmptyList[UserDef])
-             (implicit logicCreator: ResolvableGroupIds => GroupsLogicResolver): Settings =
-      Settings(logicCreator(groupIds), usersDefinitions)
-  }
 }

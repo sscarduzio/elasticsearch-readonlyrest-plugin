@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings as GroupsRulesSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -35,13 +36,15 @@ class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests {
     new GroupsAndRule(settings, caseSensitivity)
   }
 
-  override implicit val logicResolverCreator: ResolvableGroupIds => GroupsLogicResolver = GroupsLogicResolver.ForAndGroupsLogic.apply
+  override def groupsLogicResolver(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): GroupsLogicResolver = {
+    GroupsLogicResolver.ForAndGroupsLogic(ResolvableGroupIds(groupIds))
+  }
 
   "A GroupsAndRule" should {
     "not match" when {
       "user has not all groups" in {
         val ruleSettings = GroupsRulesSettings(
-          groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
+          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -66,7 +69,7 @@ class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests {
     "match" when {
       "user has exactly all groups" in {
         val ruleSettings = GroupsRulesSettings(
-          groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
+          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -94,7 +97,7 @@ class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests {
       }
       "user has an excess of all required groups" in {
         val ruleSettings = GroupsRulesSettings(
-          groupIds = ResolvableGroupIds(UniqueNonEmptyList.of(
+          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
