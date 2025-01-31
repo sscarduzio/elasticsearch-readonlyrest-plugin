@@ -22,29 +22,28 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings as GroupsRulesSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsNotAnyOfRule}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic.GroupsLogicResolver
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests {
+class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.NotAnyOf] {
 
-  override def createRule(settings: GroupsRulesSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule = {
+  override def createRule(settings: GroupsRulesSettings[GroupsLogic.NotAnyOf], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.NotAnyOf] = {
     new GroupsNotAnyOfRule(settings, caseSensitivity)
   }
 
-  override def groupsLogicResolver(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): GroupsLogicResolver = {
-    GroupsLogicResolver(ResolvableGroupIds(groupIds), GroupsLogic.NotAnyOf.apply)
+  override def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GroupsLogic.NotAnyOf] = {
+    RuntimeResolvableGroupsLogic(groupIds, GroupsLogic.NotAnyOf.apply)
   }
 
   "A GroupsNotAnyOfRule" should {
     "not match" when {
       "user has one forbidden group" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -66,7 +65,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests {
       }
       "user has all forbidden group" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -91,7 +90,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests {
     "match" when {
       "user has none of the forbidden groups" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),

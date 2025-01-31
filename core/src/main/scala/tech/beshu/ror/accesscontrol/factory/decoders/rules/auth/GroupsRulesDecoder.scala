@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupLogic, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
@@ -104,7 +104,7 @@ abstract class BaseGroupsRuleDecoder[GL <: GroupsLogic, R <: BaseGroupsRule[GL] 
           case Some(userDefs) =>
             Right(RuleDefinition.create(
               createRule(
-                BaseGroupsRule.Settings(RuntimeResolvableGroupLogic(groups, groupsLogicCreator), userDefs)
+                BaseGroupsRule.Settings(RuntimeResolvableGroupsLogic(groups, groupsLogicCreator), userDefs)
               )
             ))
           case None =>

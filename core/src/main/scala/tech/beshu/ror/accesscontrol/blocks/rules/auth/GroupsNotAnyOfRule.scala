@@ -24,7 +24,7 @@ final class GroupsNotAnyOfRule(override val settings: BaseGroupsRule.Settings[Gr
                                override val userIdCaseSensitivity: CaseSensitivity)
   extends BaseGroupsRule(settings) {
 
-  override val name: Rule.Name = GroupsAndRule.Name.name
+  override val name: Rule.Name = GroupsNotAnyOfRule.Name.name
 
 }
 

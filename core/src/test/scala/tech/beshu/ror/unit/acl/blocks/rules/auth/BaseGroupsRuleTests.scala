@@ -39,12 +39,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings as
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic.GroupsLogicResolver
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.mocks.MockRequestContext
@@ -56,15 +55,15 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextAssertion {
+trait BaseGroupsRuleTests[GL <: GroupsLogic] extends AnyWordSpecLike with Inside with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
   implicit val variableCreator: RuntimeResolvableVariableCreator =
     new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 
-  def groupsLogicResolver(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): GroupsLogicResolver
+  def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GL]
 
-  def createRule(settings: GroupsRulesSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule
+  def createRule(settings: GroupsRulesSettings[GL], caseSensitivity: CaseSensitivity): BaseGroupsRule[GL]
 
   // Common tests
 
@@ -72,7 +71,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
     "not match because of not eligible preferred group present" when {
       "groups mapping is not configured" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -94,7 +93,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
       }
       "groups mapping is configured" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -117,20 +116,20 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
     }
   }
 
-  def assertMatchRule(settings: GroupsRulesSettings,
+  def assertMatchRule(settings: GroupsRulesSettings[GL],
                       loggedUser: Option[User.Id],
                       preferredGroupId: Option[GroupId],
                       caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled)
                      (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(settings, loggedUser, preferredGroupId, Some(blockContextAssertion), caseSensitivity)
 
-  def assertNotMatchRule(settings: GroupsRulesSettings,
+  def assertNotMatchRule(settings: GroupsRulesSettings[GL],
                          loggedUser: Option[User.Id],
                          preferredGroupId: Option[GroupId],
                          caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled): Unit =
     assertRule(settings, loggedUser, preferredGroupId, blockContextAssertion = None, caseSensitivity)
 
-  def assertRule(settings: GroupsRulesSettings,
+  def assertRule(settings: GroupsRulesSettings[GL],
                  loggedUser: Option[User.Id],
                  preferredGroupId: Option[GroupId],
                  blockContextAssertion: Option[BlockContext => Unit],
