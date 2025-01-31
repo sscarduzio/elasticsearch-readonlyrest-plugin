@@ -44,7 +44,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests {
     "not match" when {
       "user has one forbidden group" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -66,7 +66,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests {
       }
       "user has all forbidden group" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -91,7 +91,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests {
     "match" when {
       "user has none of the forbidden groups" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),

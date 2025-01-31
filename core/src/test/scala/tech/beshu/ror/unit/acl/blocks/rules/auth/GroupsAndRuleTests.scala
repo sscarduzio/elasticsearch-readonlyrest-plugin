@@ -44,7 +44,7 @@ class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests {
     "not match" when {
       "user has not all groups" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -69,7 +69,7 @@ class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests {
     "match" when {
       "user has exactly all groups" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -97,7 +97,7 @@ class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests {
       }
       "user has an excess of all required groups" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),

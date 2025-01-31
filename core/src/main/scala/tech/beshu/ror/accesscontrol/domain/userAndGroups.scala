@@ -17,16 +17,12 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
-import cats.data.NonEmptyList
 import cats.implicits.*
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -153,14 +149,6 @@ object GroupIds {
   }
 }
 
-final case class ResolvableGroupIds(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]) {
-  def resolveGroupIds[B <: BlockContext](blockContext: B): Option[GroupIds] = {
-    UniqueNonEmptyList
-      .from(resolveAll(groupIds.toNonEmptyList, blockContext))
-      .map(GroupIds.apply)
-  }
-}
-
 sealed trait GroupsLogic
 
 object GroupsLogic {
@@ -252,23 +240,6 @@ object GroupsLogic {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
       groupsLogic.positiveGroupsLogic.availableGroupsFrom(userGroups)
         .flatMap(groupsLogic.negativeGroupsLogic.availableGroupsFrom)
-    }
-  }
-
-  sealed trait GroupsLogicResolver {
-    def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic]
-
-    def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
-  }
-
-  object GroupsLogicResolver {
-    def apply(groupIds: ResolvableGroupIds,
-              creator: GroupIds => GroupsLogic): GroupsLogicResolver = new GroupsLogicResolver {
-      override def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic] =
-        groupIds.resolveGroupIds(blockContext).map(creator)
-
-      override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
-        groupIds.groupIds.toNonEmptyList
     }
   }
 }

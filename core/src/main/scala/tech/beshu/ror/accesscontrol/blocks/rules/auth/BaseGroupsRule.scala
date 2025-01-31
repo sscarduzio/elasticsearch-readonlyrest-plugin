@@ -28,14 +28,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableGroupLogic
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic.GroupsLogicResolver
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-abstract class BaseGroupsRule(val settings: Settings)
+abstract class BaseGroupsRule[GL <: GroupsLogic](val settings: Settings[GL])
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport
@@ -276,11 +276,11 @@ abstract class BaseGroupsRule(val settings: Settings)
   }
 
   private def resolveGroupsLogic[B <: BlockContext](blockContext: B) = {
-    settings.permittedGroupsLogicResolver.resolve(blockContext)
+    settings.permittedGroupsLogic.resolve(blockContext)
   }
 }
 
 object BaseGroupsRule {
-  final case class Settings(permittedGroupsLogicResolver: GroupsLogicResolver,
-                            usersDefinitions: NonEmptyList[UserDef])
+  final case class Settings[GL <: GroupsLogic](permittedGroupsLogic: RuntimeResolvableGroupLogic[GL],
+                                               usersDefinitions: NonEmptyList[UserDef])
 }

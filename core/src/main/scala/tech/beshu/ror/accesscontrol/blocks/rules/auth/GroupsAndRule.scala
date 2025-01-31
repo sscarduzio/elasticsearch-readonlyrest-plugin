@@ -18,9 +18,9 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleName}
-import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic}
 
-final class GroupsAndRule(override val settings: BaseGroupsRule.Settings,
+final class GroupsAndRule(override val settings: BaseGroupsRule.Settings[GroupsLogic.And],
                           override val userIdCaseSensitivity: CaseSensitivity)
   extends BaseGroupsRule(settings) {
 

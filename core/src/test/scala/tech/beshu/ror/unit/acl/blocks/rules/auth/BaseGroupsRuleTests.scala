@@ -72,7 +72,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
     "not match because of not eligible preferred group present" when {
       "groups mapping is not configured" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -94,7 +94,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
       }
       "groups mapping is configured" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogicResolver = groupsLogicResolver(UniqueNonEmptyList.of(
+          permittedGroupsLogic = groupsLogicResolver(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -216,7 +216,6 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
         Task.raiseError(new Exception("Sth went wrong"))
     }
   }
-
 
   object authorizationRule {
 
