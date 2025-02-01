@@ -317,6 +317,38 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           )
         }
       }
+      "is kibana reporting data stream backing index" in {
+        val customKibanaIndex = kibanaIndexName(".kibana-admin")
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(RW, Some(customKibanaIndex)),
+          Action("indices:data/write/bulk"),
+          requestedIndices = Set(requestedIndex(".ds-.kibana-reporting-.kibana-admin-2025.01.01-000001")),
+          uriPath = Some(UriPath.from("/_bulk")),
+          customKibanaIndex = Some(customKibanaIndex),
+        ) {
+          assertBlockContext(
+            kibanaIndex = Some(kibanaIndexName(".kibana-admin")),
+            kibanaAccess = Some(RW),
+            indices = Set(requestedIndex(".ds-.kibana-reporting-.kibana-admin-2025.01.01-000001"))
+          )
+        }
+      }
+      "is kibana reporting data stream" in {
+        val customKibanaIndex = kibanaIndexName(".kibana-admin")
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(RW, Some(customKibanaIndex)),
+          Action("indices:data/write/bulk"),
+          requestedIndices = Set(requestedIndex(".kibana-reporting-.kibana-admin")),
+          uriPath = Some(UriPath.from("/_bulk")),
+          customKibanaIndex = Some(customKibanaIndex),
+        ) {
+          assertBlockContext(
+            kibanaIndex = Some(kibanaIndexName(".kibana-admin")),
+            kibanaAccess = Some(RW),
+            indices = Set(requestedIndex(".kibana-reporting-.kibana-admin"))
+          )
+        }
+      }
     }
     "Kibana related data stream is used" which {
       "is kibana_sample_data_logs" in {

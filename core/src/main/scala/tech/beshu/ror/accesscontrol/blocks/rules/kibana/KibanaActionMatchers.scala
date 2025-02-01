@@ -35,6 +35,9 @@ object KibanaActionMatchers {
       "indices:data/read/*",
       "indices:admin/resolve/*",
       "indices:admin/aliases/get",
+      "indices:admin/data_stream/get",
+      "cluster:admin/component_template/get",
+      "indices:admin/index_template/get",
       "indices:admin/*/explain",
       "indices:data/read/xpack/rollup/get/*",
       "indices:monitor/*"
@@ -52,9 +55,11 @@ object KibanaActionMatchers {
         "indices:data/write/update*",
         "indices:data/write/bulk*",
         "indices:admin/template/*",
-        "cluster:admin/component_template/*",
         "cluster:admin/settings/*",
         "indices:admin/aliases/*",
+        "indices:admin/data_stream/*",
+        "indices:admin/index_template/*",
+        "cluster:admin/component_template/*",
         "cluster:admin/migration/get_system_feature",
       ).map(Action.apply)
   }

@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.domain
 import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits.*
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -32,7 +33,9 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
+import scala.concurrent.ExecutionContext.global
 import scala.language.postfixOps
+import scala.util.matching.Regex
 import scala.util.{Failure, Random, Success, Try}
 
 sealed trait IndexName
@@ -74,43 +77,51 @@ object IndexName {
 final case class KibanaIndexName(underlying: ClusterIndexName.Local)
 object KibanaIndexName {
 
-  private val kibanaRelatedIndicesSuffixRegexes = Vector(
-    """^_\d+\.\d+\.\d+$""".r, // eg. .kibana_8.0.0
-    """^_\d+\.\d+\.\d+_\d+$""".r, // eg. .kibana_8.0.0_001
-    """^_alerting_cases$""".r, // eg. .kibana_alerting_cases
-    """^_alerting_cases_\d+\.\d+\.\d+$""".r, // eg. .kibana_alerting_cases_8.8.0
-    """^_alerting_cases_\d+\.\d+\.\d+_\d+$""".r, // eg. .kibana_alerting_cases_8.11.3_001
-    """^_analytics$""".r, // eg. .kibana_analytics
-    """^_analytics_\d+\.\d+\.\d+$""".r, // eg. .kibana_analytics_8.0.0
-    """^_ingest$""".r, // eg. .kibana_ingest
-    """^_ingest_\d+\.\d+\.\d+$""".r, // eg. .kibana_ingest_8.0.0
-    """^-event-log-\d+\.\d+\.\d+$""".r, // eg. .kibana-event-log-8.8.0
-    """^_security_solution$""".r, // eg. .kibana_security_solution
-    """^_security_solution_\d+\.\d+\.\d+$""".r, // eg. .kibana_security_solution_8.8.0
-    """^_task_manager$""".r, // eg. .kibana_task_manager
-    """^_task_manager_\d+\.\d+\.\d+$""".r, // eg. .kibana_task_manager_8.8.0,
-    """^_usage_counters$""".r, // eg. .kibana_usage_counters
-    """^_usage_counters_\d+\.\d+\.\d+$""".r, // eg. .kibana_usage_counters_8.16.0
+  private val kibanaIndicesRegexesCache: Cache[KibanaIndexName, Vector[Regex]] =
+    Caffeine.newBuilder()
+      .executor(global)
+      .maximumSize(1000)
+      .build[KibanaIndexName, Vector[Regex]]()
+
+  private def createKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = Vector(
+   s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_8.0.0
+    s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_8.0.0_001
+    s"""^\\.kibana-reporting-${kibanaIndex.stringify}$$""".r, // eg. .kibana_reporting-.kibana
+    s"""^\\.ds-\\.kibana-reporting-${kibanaIndex.stringify}-\\d{4}\\.\\d{2}\\.\\d{2}-\\d+$$""".r, // eg. .ds-.kibana_reporting-.kibana-2025.01.01-000001
+    s"""^${kibanaIndex.stringify}_alerting_cases$$""".r, // eg. .kibana_alerting_cases
+    s"""^${kibanaIndex.stringify}_alerting_cases_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_alerting_cases_8.8.0
+    s"""^${kibanaIndex.stringify}_alerting_cases_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_alerting_cases_8.11.3_001
+    s"""^${kibanaIndex.stringify}_analytics$$""".r, // eg. .kibana_analytics
+    s"""^${kibanaIndex.stringify}_analytics_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_analytics_8.0.0
+    s"""^${kibanaIndex.stringify}_ingest$$""".r, // eg. .kibana_ingest
+    s"""^${kibanaIndex.stringify}_ingest_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_ingest_8.0.0
+    s"""^${kibanaIndex.stringify}-event-log-\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana-event-log-8.8.0
+    s"""^${kibanaIndex.stringify}_security_solution$$""".r, // eg. .kibana_security_solution
+    s"""^${kibanaIndex.stringify}_security_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_security_solution_8.8.0
+    s"""^${kibanaIndex.stringify}_task_manager$$""".r, // eg. .kibana_task_manager
+    s"""^${kibanaIndex.stringify}_task_manager_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_task_manager_8.8.0,
+    s"""^${kibanaIndex.stringify}_usage_counters$$""".r, // eg. .kibana_usage_counters
+    s"""^${kibanaIndex.stringify}_usage_counters_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_usage_counters_8.16.0
   )
+
+  private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
+    Option(kibanaIndicesRegexesCache.getIfPresent(kibanaIndex))
+      .getOrElse {
+        val kibanaIndicesRegexes = createKibanaRelatedIndicesRegexes(kibanaIndex)
+        kibanaIndicesRegexesCache.put(kibanaIndex, kibanaIndicesRegexes)
+        kibanaIndicesRegexes
+      }
+  }
+
 
   implicit class IsRelatedToKibanaIndex(val indexName: ClusterIndexName) extends AnyVal {
     def isRelatedToKibanaIndex(kibanaIndex: KibanaIndexName): Boolean = {
       if (indexName == kibanaIndex.underlying) {
         true
-      } else if (isPrefixedBy(kibanaIndex)) {
-        val indexNameStringWithoutKibanaIndexNamePrefix = getNameWithoutKibanaIndexNamePrefix(kibanaIndex)
-        kibanaRelatedIndicesSuffixRegexes.exists(_.matches(indexNameStringWithoutKibanaIndexNamePrefix))
       } else {
-        false
+        getKibanaRelatedIndicesRegexes(kibanaIndex)
+          .exists(_.matches(indexName.stringify))
       }
-    }
-
-    private def isPrefixedBy(kibanaIndex: KibanaIndexName) = {
-      indexName.stringify.startsWith(kibanaIndex.underlying.stringify)
-    }
-
-    private def getNameWithoutKibanaIndexNamePrefix(kibanaIndex: KibanaIndexName) = {
-      indexName.stringify.replace(kibanaIndex.underlying.stringify, "")
     }
   }
 
