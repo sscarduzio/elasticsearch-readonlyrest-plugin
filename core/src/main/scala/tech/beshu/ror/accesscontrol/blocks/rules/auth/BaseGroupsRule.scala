@@ -227,7 +227,7 @@ abstract class BaseGroupsRule[GL <: GroupsLogic](val settings: Settings[GL])
     val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
     for {
       externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
-      availableLocalGroups <- availableLocalGroupsFromExternalGroupsMappedToLocal(externalGroupsMappedToLocalGroups, potentiallyAvailableGroups)
+      availableLocalGroups <- availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups, potentiallyAvailableGroups)
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
     } yield destinationBlockContext.withUserMetadata(_
       .withLoggedUser(loggedUser)
@@ -235,8 +235,8 @@ abstract class BaseGroupsRule[GL <: GroupsLogic](val settings: Settings[GL])
     )
   }
 
-  private def availableLocalGroupsFromExternalGroupsMappedToLocal(externalGroupsMappedToLocalGroups: UniqueNonEmptyList[GroupIdLike],
-                                                                  potentiallyAvailableGroups: UniqueNonEmptyList[Group]) = {
+  private def availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups: UniqueNonEmptyList[GroupIdLike],
+                                                                        potentiallyAvailableGroups: UniqueNonEmptyList[Group]) = {
     val potentiallyPermitted = GroupIds(externalGroupsMappedToLocalGroups)
     UniqueNonEmptyList.from(potentiallyPermitted.filterOnlyPermitted(potentiallyAvailableGroups))
   }
