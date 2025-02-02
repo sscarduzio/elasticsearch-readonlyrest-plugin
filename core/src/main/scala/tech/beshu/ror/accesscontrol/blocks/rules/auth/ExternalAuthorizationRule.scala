@@ -65,9 +65,6 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
         Groups.CannotCheck
       }
   }
-
-  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
-    settings.permittedGroupsLogic.availableGroupsFrom(usersGroups)
 }
 
 object ExternalAuthorizationRule {

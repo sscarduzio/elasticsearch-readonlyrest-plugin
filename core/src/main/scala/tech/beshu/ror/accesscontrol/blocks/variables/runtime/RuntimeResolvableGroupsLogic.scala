@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-case class RuntimeResolvableGroupsLogic[GL <: GroupsLogic](groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]],
-                                                           creator: GroupIds => GL) {
+class RuntimeResolvableGroupsLogic[GL <: GroupsLogic](val groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]],
+                                                      creator: GroupIds => GL) {
   def resolve[B <: BlockContext](blockContext: B): Option[GL] = {
     UniqueNonEmptyList
       .from(resolveAll(groupIds.toNonEmptyList, blockContext))

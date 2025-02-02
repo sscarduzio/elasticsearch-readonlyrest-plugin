@@ -42,35 +42,34 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.reflect.ClassTag
 
 class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.Or, GroupsOrRule](GroupsOrRule.Name) {
-  override def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GroupsLogic.Or] =
-    RuntimeResolvableGroupsLogic(groupIds, GroupsLogic.Or.apply)
+  protected def groupsLogicCreator: GroupIds => GroupsLogic.Or = GroupsLogic.Or.apply
 }
 
 class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.Or, GroupsOrRule](GroupsOrRule.DeprecatedName) {
-  override def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GroupsLogic.Or] =
-    RuntimeResolvableGroupsLogic(groupIds, GroupsLogic.Or.apply)
+  override protected def groupsLogicCreator: GroupIds => GroupsLogic.Or = GroupsLogic.Or.apply
 }
 
 class GroupsAndRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.And, GroupsAndRule](GroupsAndRule.Name) {
-  override def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GroupsLogic.And] =
-    RuntimeResolvableGroupsLogic(groupIds, GroupsLogic.And.apply)
+  override protected def groupsLogicCreator: GroupIds => GroupsLogic.And = GroupsLogic.And.apply
 }
 
 class GroupsNotAllOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.NotAllOf, GroupsNotAllOfRule](GroupsNotAllOfRule.Name) {
-  override def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GroupsLogic.NotAllOf] =
-    RuntimeResolvableGroupsLogic(groupIds, GroupsLogic.NotAllOf.apply)
+  override protected def groupsLogicCreator: GroupIds => GroupsLogic.NotAllOf = GroupsLogic.NotAllOf.apply
 }
 
 class GroupsNotAnyOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.NotAnyOf, GroupsNotAnyOfRule](GroupsNotAnyOfRule.Name) {
-  override def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GroupsLogic.NotAnyOf] =
-    RuntimeResolvableGroupsLogic(groupIds, GroupsLogic.NotAnyOf.apply)
+  override protected def groupsLogicCreator: GroupIds => GroupsLogic.NotAnyOf = GroupsLogic.NotAnyOf.apply
 }
 
 sealed abstract class GroupsRuleSettingsTests[GL <: GroupsLogic, R <: BaseGroupsRule[GL] : ClassTag](ruleName: RuleName[R])
   extends BaseRuleSettingsDecoderTest[R]
     with Inside {
 
-  def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GL]
+  protected def groupsLogicCreator: GroupIds => GL
+
+  private def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GL] = {
+    RuntimeResolvableGroupsLogic(groupIds, groupsLogicCreator)
+  }
 
   "A GroupsOrRule" should {
     "be able to be loaded from config" when {

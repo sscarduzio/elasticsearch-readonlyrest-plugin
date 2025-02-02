@@ -37,8 +37,6 @@ private[auth] trait BaseAuthorizationRule
 
   protected def userIdCaseSensitivity: CaseSensitivity
 
-  protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]]
-
   protected def userGroups[B <: BlockContext](blockContext: B,
                                               user: LoggedUser)
                                              (implicit requestId: RequestId): Task[UniqueList[Group]]
@@ -102,7 +100,7 @@ private[auth] trait BaseAuthorizationRule
       userGroupsProvider(blockContext, user)
         .map(uniqueList => UniqueNonEmptyList.from(uniqueList.toSet))
         .map {
-          case Some(fetchedUserGroups) =>
+          case Some(fetchedUserGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(fetchedUserGroups)) =>
             calculateAllowedGroupsForUser(fetchedUserGroups) match {
               case Some(availableGroups) =>
                 Fulfilled(blockContext.withUserMetadata(
@@ -111,12 +109,16 @@ private[auth] trait BaseAuthorizationRule
               case None =>
                 RuleResult.Rejected()
             }
-          case None =>
+          case None | Some(_) =>
             RuleResult.Rejected()
         }
     } else {
       Task.now(RuleResult.Rejected())
     }
+  }
+
+  private def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
+    groupsLogic.availableGroupsFrom(usersGroups)
   }
 
 }

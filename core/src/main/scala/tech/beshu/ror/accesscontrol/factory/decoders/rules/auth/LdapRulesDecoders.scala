@@ -109,41 +109,13 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groupsAnd <- c.downFields("groups_and", "groups_all_of").as[Option[GroupsLogic.And]]
-          groupsOr <- c.downFields("groups_or", "groups", "groups_any_of").as[Option[GroupsLogic.Or]]
-          groupsNotAllOf <- c.downFields("groups_not_all_of").as[Option[GroupsLogic.NotAllOf]]
-          groupsNotAnyOf <- c.downFields("groups_not_any_of").as[Option[GroupsLogic.NotAnyOf]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
-        } yield (name, ttl, groupsOr, groupsAnd, groupsNotAllOf, groupsNotAnyOf)
+          groupsLogic <- groupsLogicDecoder[LdapAuthorizationRule].apply(c)
+        } yield (name, ttl, groupsLogic)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
-      .emapE {
-        case (_, _, None, None, None, None) =>
-          Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(LdapAuthorizationRule.Name))))
-        case (name, ttl, Some(groupsOr), None, None, None) =>
-          createLdapAuthorizationRule(name, ttl, groupsOr, ldapDefinitions)
-        case (name, ttl, None, Some(groupsAnd), None, None) =>
-          createLdapAuthorizationRule(name, ttl, groupsAnd, ldapDefinitions)
-        case (name, ttl, None, None, Some(groupsNotAllOf), None) =>
-          createLdapAuthorizationRule(name, ttl, groupsNotAllOf, ldapDefinitions)
-        case (name, ttl, None, None, None, Some(groupsNotAnyOf)) =>
-          createLdapAuthorizationRule(name, ttl, groupsNotAnyOf, ldapDefinitions)
-        case (name, ttl, Some(groupsOr), None, Some(groupsNotAllOf), None) =>
-          val logic = GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAllOf)
-          createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
-        case (name, ttl, None, Some(groupsAnd), Some(groupsNotAllOf), None) =>
-          val logic = GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAllOf)
-          createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
-        case (name, ttl, Some(groupsOr), None, None, Some(groupsNotAnyOf)) =>
-          val logic = GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAnyOf)
-          createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
-        case (name, ttl, None, Some(groupsAnd), None, Some(groupsNotAnyOf)) =>
-          val logic = GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAnyOf)
-          createLdapAuthorizationRule(name, ttl, logic, ldapDefinitions)
-        case (_, _, _, _, _, _) =>
-          Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(LdapAuthorizationRule.Name))))
-      }
+      .emapE { case (name, ttl, groupsLogic) => createLdapAuthorizationRule(name, ttl, groupsLogic, ldapDefinitions) }
       .decoder
 
   private def createLdapAuthorizationRule(name: LdapService.Name,
@@ -177,41 +149,13 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groupsAnd <- c.downFields("groups_and", "groups_all_of").as[Option[GroupsLogic.And]]
-          groupsOr <- c.downFields("groups_or", "groups", "groups_any_of").as[Option[GroupsLogic.Or]]
-          groupsNotAllOf <- c.downFields("groups_not_all_of").as[Option[GroupsLogic.NotAllOf]]
-          groupsNotAnyOf <- c.downFields("groups_not_any_of").as[Option[GroupsLogic.NotAnyOf]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
-        } yield (name, ttl, groupsOr, groupsAnd, groupsNotAllOf, groupsNotAnyOf)
+          groupsLogic <- groupsLogicDecoder[LdapAuthRule].apply(c)
+        } yield (name, ttl, groupsLogic)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
-      .emapE {
-        case (_, _, None, None, None, None) =>
-          Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(LdapAuthRule.Name))))
-        case (name, ttl, Some(groupsOr), None, None, None) =>
-          createLdapAuthRule(name, ttl, groupsOr, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (name, ttl, None, Some(groupsAnd), None, None) =>
-          createLdapAuthRule(name, ttl, groupsAnd, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (name, ttl, None, None, Some(groupsNotAllOf), None) =>
-          createLdapAuthRule(name, ttl, groupsNotAllOf, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (name, ttl, None, None, None, Some(groupsNotAnyOf)) =>
-          createLdapAuthRule(name, ttl, groupsNotAnyOf, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (name, ttl, Some(groupsOr), None, Some(groupsNotAllOf), None) =>
-          val logic = GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAllOf)
-          createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (name, ttl, None, Some(groupsAnd), Some(groupsNotAllOf), None) =>
-          val logic = GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAllOf)
-          createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (name, ttl, Some(groupsOr), None, None, Some(groupsNotAnyOf)) =>
-          val logic = GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAnyOf)
-          createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (name, ttl, None, Some(groupsAnd), None, Some(groupsNotAnyOf)) =>
-          val logic = GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAnyOf)
-          createLdapAuthRule(name, ttl, logic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
-        case (_, _, _, _, _, _) =>
-          Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(LdapAuthorizationRule.Name))))
-      }
+      .emapE { case (name, ttl, groupsLogic) => createLdapAuthRule(name, ttl, groupsLogic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity) }
       .decoder
 
   private def createLdapAuthRule(name: LdapService.Name,
@@ -316,4 +260,40 @@ private object LdapRulesDecodersHelper {
       override type LDAP_SERVICE = ComposedLdapAuthService
     }
   }
+
+  private[auth] def groupsLogicDecoder[T <: Rule](implicit ruleName: RuleName[T]): Decoder[GroupsLogic] =
+    Decoder
+      .instance { c =>
+        for {
+          groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
+          groupsOr <- c.downFields("groups_or", "groups").as[Option[GroupsLogic.Or]]
+          groupsNotAllOf <- c.downFields("groups_not_all_of").as[Option[GroupsLogic.NotAllOf]]
+          groupsNotAnyOf <- c.downFields("groups_not_any_of").as[Option[GroupsLogic.NotAnyOf]]
+        } yield (groupsOr, groupsAnd, groupsNotAllOf, groupsNotAnyOf)
+      }
+      .toSyncDecoder
+      .mapError(RulesLevelCreationError.apply)
+      .emapE[GroupsLogic] {
+        case (None, None, None, None) =>
+          Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(ruleName))))
+        case (Some(groupsOr), None, None, None) =>
+          Right(groupsOr)
+        case (None, Some(groupsAnd), None, None) =>
+          Right(groupsAnd)
+        case (None, None, Some(groupsNotAllOf), None) =>
+          Right(groupsNotAllOf)
+        case (None, None, None, Some(groupsNotAnyOf)) =>
+          Right(groupsNotAnyOf)
+        case (Some(groupsOr), None, Some(groupsNotAllOf), None) =>
+          Right(GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAllOf))
+        case (None, Some(groupsAnd), Some(groupsNotAllOf), None) =>
+          Right(GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAllOf))
+        case (Some(groupsOr), None, None, Some(groupsNotAnyOf)) =>
+          Right(GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAnyOf))
+        case (None, Some(groupsAnd), None, Some(groupsNotAnyOf)) =>
+          Right(GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAnyOf))
+        case (_, _, _, _) =>
+          Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(ruleName))))
+      }
+      .decoder
 }

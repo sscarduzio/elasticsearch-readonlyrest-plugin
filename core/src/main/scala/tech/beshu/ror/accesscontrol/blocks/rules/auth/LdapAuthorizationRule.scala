@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class LdapAuthorizationRule(val settings: Settings,
                             override implicit val userIdCaseSensitivity: CaseSensitivity,
@@ -61,9 +61,6 @@ class LdapAuthorizationRule(val settings: Settings,
         }
     }
   }
-
-  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
-    settings.groupsLogic.availableGroupsFrom(usersGroups)
 
   override protected def mockedGroupsOf(user: User.Id,
                                         mocksProvider: MocksProvider)
@@ -104,11 +101,5 @@ object LdapAuthorizationRule {
 
     final case class CombinedGroupsLogicSettings(ldap: LdapAuthorizationService,
                                                  groupsLogic: GroupsLogic.CombinedGroupsLogic) extends Settings
-
-    def apply(ldap: LdapAuthorizationService,
-              groupsLogic: GroupsLogic.PositiveGroupsLogic): PositiveGroupsLogicSettings = PositiveGroupsLogicSettings(ldap, groupsLogic)
-
-    def apply(ldap: LdapAuthorizationService.WithoutGroupsFiltering,
-              groupsLogic: GroupsLogic.NegativeGroupsLogic): NegativeGroupsLogicSettings = NegativeGroupsLogicSettings(ldap, groupsLogic)
   }
 }

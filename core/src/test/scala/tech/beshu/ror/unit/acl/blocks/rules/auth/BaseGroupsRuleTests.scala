@@ -61,9 +61,13 @@ trait BaseGroupsRuleTests[GL <: GroupsLogic] extends AnyWordSpecLike with Inside
   implicit val variableCreator: RuntimeResolvableVariableCreator =
     new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 
-  def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GL]
+  protected def groupsLogicCreator: GroupIds => GL
 
-  def createRule(settings: GroupsRulesSettings[GL], caseSensitivity: CaseSensitivity): BaseGroupsRule[GL]
+  protected def createRule(settings: GroupsRulesSettings[GL], caseSensitivity: CaseSensitivity): BaseGroupsRule[GL]
+
+  protected final def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GL] = {
+    RuntimeResolvableGroupsLogic(groupIds, groupsLogicCreator)
+  }
 
   // Common tests
 

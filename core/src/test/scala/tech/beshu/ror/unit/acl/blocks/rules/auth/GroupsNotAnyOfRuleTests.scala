@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroup
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings as GroupsRulesSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsNotAnyOfRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.utils.TestsUtils.*
@@ -35,9 +34,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
     new GroupsNotAnyOfRule(settings, caseSensitivity)
   }
 
-  override def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GroupsLogic.NotAnyOf] = {
-    RuntimeResolvableGroupsLogic(groupIds, GroupsLogic.NotAnyOf.apply)
-  }
+  protected def groupsLogicCreator: GroupIds => GroupsLogic.NotAnyOf = GroupsLogic.NotAnyOf.apply
 
   "A GroupsNotAnyOfRule" should {
     "not match" when {
