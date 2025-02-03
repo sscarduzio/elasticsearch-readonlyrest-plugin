@@ -87,7 +87,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.groupsLogic should be(GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
-            rule.settings.groupsLogic.asInstanceOf[GroupsLogic.And].permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+            rule.settings.groupsLogic.asInstanceOf[GroupsLogic.And].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
             assertLdapAuthZServiceLayerTypes(rule.settings.ldap, withServerSideGroupsFiltering = false)
           }
         )

@@ -90,7 +90,7 @@ class ExternalAuthorizationRuleSettingsTests
               groupsLogic should be(
                 GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
               )
-              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -298,7 +298,7 @@ class ExternalAuthorizationRuleSettingsTests
               groupsLogic should be(
                 GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
               )
-              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -350,7 +350,7 @@ class ExternalAuthorizationRuleSettingsTests
               groupsLogic should be(
                 GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
               )
-              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -409,8 +409,8 @@ class ExternalAuthorizationRuleSettingsTests
               groupsLogic should be(GroupsLogic.Or(
                 GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"), GroupIdLike.from("r1")))
               ))
-              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
-              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.groupIds.tail.head shouldBe a[GroupId]
+              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.ids.tail.head shouldBe a[GroupId]
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
           }

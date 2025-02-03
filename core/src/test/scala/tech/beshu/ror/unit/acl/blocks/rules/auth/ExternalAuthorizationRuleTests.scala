@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -38,7 +37,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impers
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
@@ -320,6 +318,76 @@ class ExternalAuthorizationRuleTests
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
           preferredGroupId = None
+        )
+      }
+      "groups NOT_ALL_OF logic is used and all configured groups are matched" in {
+        val service = mockExternalAuthorizationService(
+          name = "service1",
+          groups = Map(User.Id("user2") -> Set(group("g3"), group("g4")))
+        )
+
+        assertNotMatchRule(
+          settings = ExternalAuthorizationRule.Settings(
+            service = service,
+            permittedGroupsLogic = GroupsLogic.NotAllOf(GroupIds(
+              UniqueNonEmptyList.of(GroupId("g3"), GroupIdLike.from("g4"))
+            )),
+            users = UniqueNonEmptyList.of(User.Id("*"))
+          ),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+          preferredGroupId = None
+        )
+      }
+      "groups NOT_ANY_OF logic is used and one of the configured groups is matched" in {
+        val service = mockExternalAuthorizationService(
+          name = "service1",
+          groups = Map(User.Id("user2") -> Set(group("g3"), group("g4")))
+        )
+
+        assertNotMatchRule(
+          settings = ExternalAuthorizationRule.Settings(
+            service = service,
+            permittedGroupsLogic = GroupsLogic.NotAnyOf(GroupIds(
+              UniqueNonEmptyList.of(GroupId("g3"))
+            )),
+            users = UniqueNonEmptyList.of(User.Id("*"))
+          ),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+          preferredGroupId = None
+        )
+      }
+      "groups NOT_ALL_OF logic is used and not eligible preferred group present" in {
+        val service = mockExternalAuthorizationService(
+          name = "ldap1",
+          groups = Map(User.Id("user1") -> Set(group("g1"), group("g2"), group("g3")))
+        )
+        assertNotMatchRule(
+          settings = ExternalAuthorizationRule.Settings(
+            service = service,
+            permittedGroupsLogic = GroupsLogic.NotAllOf(GroupIds(
+              UniqueNonEmptyList.of(GroupId("g3"))
+            )),
+            users = UniqueNonEmptyList.of(User.Id("*"))
+          ),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+          preferredGroupId = Some(GroupId("g4"))
+        )
+      }
+      "groups NOT_ANY_OF logic is used and not eligible preferred group present" in {
+        val service = mockExternalAuthorizationService(
+          name = "ldap1",
+          groups = Map(User.Id("user1") -> Set(group("g1"), group("g2"), group("g3")))
+        )
+        assertNotMatchRule(
+          settings = ExternalAuthorizationRule.Settings(
+            service = service,
+            permittedGroupsLogic = GroupsLogic.NotAnyOf(GroupIds(
+              UniqueNonEmptyList.of(GroupId("g3"))
+            )),
+            users = UniqueNonEmptyList.of(User.Id("*"))
+          ),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+          preferredGroupId = Some(GroupId("g4"))
         )
       }
       "current group is set for a given user but it's not present in intersection groups set" in {

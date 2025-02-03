@@ -50,14 +50,14 @@ class LdapAuthorizationRule(val settings: Settings,
           case ldap: LdapAuthorizationService.WithoutGroupsFiltering =>
             ldap.groupsOf(user.id)
           case ldap: LdapAuthorizationService.WithGroupsFiltering =>
-            ldap.groupsOf(user.id, groupsLogic.permittedGroupIds.groupIds.toSet)
+            ldap.groupsOf(user.id, groupsLogic.permittedGroupIds.ids.toSet)
         }
       case Settings.CombinedGroupsLogicSettings(ldap, groupsLogic) =>
         ldap match {
           case ldap: LdapAuthorizationService.WithoutGroupsFiltering =>
             ldap.groupsOf(user.id)
           case ldap: LdapAuthorizationService.WithGroupsFiltering =>
-            ldap.groupsOf(user.id, groupsLogic.positiveGroupsLogic.permittedGroupIds.groupIds.toSet)
+            ldap.groupsOf(user.id, groupsLogic.positiveGroupsLogic.permittedGroupIds.ids.toSet)
         }
     }
   }
