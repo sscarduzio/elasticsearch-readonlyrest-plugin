@@ -60,30 +60,20 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
         for {
           name <- c.downField("user_groups_provider").as[ExternalAuthorizationService.Name]
           users <- c.downField("users").as[Option[UniqueNonEmptyList[User.Id]]]
-          groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
-          groupsOr <- c.downFields("groups_or", "groups").as[Option[GroupsLogic.Or]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
-        } yield (name, ttl, users, groupsOr, groupsAnd)
+          groupsLogic <- GroupsLogicDecoder.simpleDecoder[ExternalAuthorizationRule].apply(c)
+        } yield (name, ttl, users, groupsLogic)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
-      .emapE {
-        case (_, _, _, None, None) =>
-          Left(RulesLevelCreationError(Message(errorMsgNoGroupsList())))
-        case (_, _, _, Some(_), Some(_)) =>
-          Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList())))
-        case (name, ttl, users, Some(groupsOr), None) =>
-          createExternalAuthorizationSettings(name, ttl, groupsOr, users)
-        case (name, ttl, users, None, Some(groupsAnd)) =>
-          createExternalAuthorizationSettings(name, ttl, groupsAnd, users)
-      }
+      .emapE { case (name, ttl, users, groupsLogic) => createExternalAuthorizationSettings(name, ttl, groupsLogic, users) }
       .decoder
   }
 
   private def createExternalAuthorizationSettings(name: ExternalAuthorizationService.Name,
-                                                ttl: Option[PositiveFiniteDuration],
-                                                groupsLogic: GroupsLogic,
-                                                users: Option[UniqueNonEmptyList[User.Id]]) = {
+                                                  ttl: Option[PositiveFiniteDuration],
+                                                  groupsLogic: GroupsLogic,
+                                                  users: Option[UniqueNonEmptyList[User.Id]]) = {
     findAuthorizationService(authorizationServices.items, name)
       .map { service =>
         ttl match {
@@ -105,12 +95,5 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
       case None => Left(RulesLevelCreationError(Message(s"Cannot find user groups provider with name: ${searchedServiceName.show}")))
     }
   }
-
-  private def errorMsgNoGroupsList() = {
-    s"${ExternalAuthorizationRule.Name.show} rule requires to define 'groups_or'/'groups' or 'groups_and' arrays"
-  }
-
-  private def errorMsgOnlyOneGroupsList() =
-    s"${ExternalAuthorizationRule.Name.show} rule requires to define 'groups_or'/'groups' or 'groups_and' arrays (but not both)"
 
 }

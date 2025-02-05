@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.domain
 
-import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, GroupIds}
@@ -113,6 +112,152 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
           group("abc"), group("bca"), group("cab"), group("cba")
+        ))
+        result should be(None)
+      }
+    }
+  }
+
+  "GroupsLogic NOT_ALL_OF" should {
+    "handle properly filtering of available groups from user groups" when {
+      "forbidden groups are all wildcarded (1)" in {
+        val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("a*"), GroupIdLike.from("b*")
+        )))
+        val result = notAllOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("abc"), group("cab"), group("cba")
+        ))
+        result should be(Some(UniqueNonEmptyList.of(
+          group("abc"), group("cab"), group("cba")
+        )))
+      }
+      "forbidden groups are all wildcarded (2)" in {
+        val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("a*"), GroupIdLike.from("b*")
+        )))
+        val result = notAllOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("abc"), group("bab")
+        ))
+        result should be(None)
+      }
+      "forbidden groups are full groups names (1)" in {
+        val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("abc"), GroupIdLike.from("cba")
+        )))
+        val result = notAllOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("bca"), group("cab"), group("cba")
+        ))
+        result should be(Some(UniqueNonEmptyList.of(
+          group("bca"), group("cab"), group("cba")
+        )))
+      }
+      "forbidden groups are full groups names (2)" in {
+        val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("abc"), GroupIdLike.from("cba")
+        )))
+        val result = notAllOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("abc"), group("bca"), group("cab"), group("cba")
+        ))
+        result should be(None)
+      }
+      "permitted groups are mix of group patterns and full group ids" in {
+        val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("c*"), GroupIdLike.from("abc")
+        )))
+        val result = notAllOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("abc"), group("bca"), group("cab")
+        ))
+        result should be(None)
+      }
+      "there are some, but not all of the forbidden groups present" in {
+        val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("d*"), GroupIdLike.from("e*"), GroupIdLike.from("abcde")
+        )))
+        val result = notAllOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("dbc"), group("bca"), group("cab"), group("abcde")
+        ))
+        result should be(Some(UniqueNonEmptyList.of(
+          group("dbc"), group("bca"), group("cab"), group("abcde")
+        )))
+      }
+      "there are all of the forbidden groups present" in {
+        val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("d*"), GroupIdLike.from("e*"), GroupIdLike.from("abcde")
+        )))
+        val result = notAllOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("dbc"), group("eca"), group("cab"), group("abcde")
+        ))
+        result should be(None)
+      }
+    }
+  }
+
+  "GroupsLogic NOT_ANY_OF" should {
+    "handle properly filtering of available groups from user groups" when {
+      "forbidden groups are all wildcarded (1)" in {
+        val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("a*"), GroupIdLike.from("b*")
+        )))
+        val result = notAnyOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("abc"), group("cab"), group("cba")
+        ))
+        result should be(None)
+      }
+      "forbidden groups are all wildcarded (2)" in {
+        val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("a*"), GroupIdLike.from("b*")
+        )))
+        val result = notAnyOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("cbc"), group("dab")
+        ))
+        result should be(Some(UniqueNonEmptyList.of(
+          group("cbc"), group("dab")
+        )))
+      }
+      "forbidden groups are full groups names (1)" in {
+        val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("abc"), GroupIdLike.from("cba")
+        )))
+        val result = notAnyOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("bca"), group("cab"), group("cbaa")
+        ))
+        result should be(Some(UniqueNonEmptyList.of(
+          group("bca"), group("cab"), group("cbaa")
+        )))
+      }
+      "forbidden groups are full groups names (2)" in {
+        val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("abc"), GroupIdLike.from("cba")
+        )))
+        val result = notAnyOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("abc"), group("bca"), group("cab")
+        ))
+        result should be(None)
+      }
+      "permitted groups are mix of group patterns and full group ids" in {
+        val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("c*"), GroupIdLike.from("abc")
+        )))
+        val result = notAnyOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("abc"), group("bca"), group("cab")
+        ))
+        result should be(None)
+      }
+      "there are some, but not all of the forbidden groups present" in {
+        val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("d*"), GroupIdLike.from("e*"), GroupIdLike.from("abcde")
+        )))
+        val result = notAnyOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("dbc"), group("bca"), group("cab"), group("abcde")
+        ))
+        result should be(None)
+      }
+      "there are all of the forbidden groups present" in {
+        val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("d*"), GroupIdLike.from("e*"), GroupIdLike.from("abcde")
+        )))
+        val result = notAnyOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("dbc"), group("eca"), group("cab"), group("abcde")
         ))
         result should be(None)
       }

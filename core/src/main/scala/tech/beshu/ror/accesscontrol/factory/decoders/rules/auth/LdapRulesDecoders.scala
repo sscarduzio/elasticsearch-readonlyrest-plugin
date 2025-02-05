@@ -110,7 +110,7 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
         for {
           name <- c.downField("name").as[LdapService.Name]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
-          groupsLogic <- groupsLogicDecoder[LdapAuthorizationRule].apply(c)
+          groupsLogic <- GroupsLogicDecoder.simpleDecoder[LdapAuthorizationRule].apply(c)
         } yield (name, ttl, groupsLogic)
       }
       .toSyncDecoder
@@ -150,7 +150,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
         for {
           name <- c.downField("name").as[LdapService.Name]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
-          groupsLogic <- groupsLogicDecoder[LdapAuthRule].apply(c)
+          groupsLogic <- GroupsLogicDecoder.simpleDecoder[LdapAuthRule].apply(c)
         } yield (name, ttl, groupsLogic)
       }
       .toSyncDecoder
@@ -190,14 +190,6 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
 }
 
 private object LdapRulesDecodersHelper {
-
-  private[rules] def errorMsgNoGroupsList[R <: Rule](ruleName: RuleName[R]) = {
-    s"${ruleName.show} rule requires to define 'groups_or'/'groups' or 'groups_and' arrays"
-  }
-
-  private[rules] def errorMsgOnlyOneGroupsList[R <: Rule](ruleName: RuleName[R]) = {
-    s"${ruleName.show} rule requires to define 'groups_or'/'groups' or 'groups_and' arrays (but not both)"
-  }
 
   private[rules] def negativeGroupsRuleNotAllowedForLdapWithGroupsFiltering = {
     s"It is not allowed to use groups_not_any_of and groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which applies two rules at the same time: groups_or/groups_and together with groups_not_any_of/groups_not_all_of."
@@ -260,40 +252,4 @@ private object LdapRulesDecodersHelper {
       override type LDAP_SERVICE = ComposedLdapAuthService
     }
   }
-
-  private[auth] def groupsLogicDecoder[T <: Rule](implicit ruleName: RuleName[T]): Decoder[GroupsLogic] =
-    Decoder
-      .instance { c =>
-        for {
-          groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
-          groupsOr <- c.downFields("groups_or", "groups").as[Option[GroupsLogic.Or]]
-          groupsNotAllOf <- c.downFields("groups_not_all_of").as[Option[GroupsLogic.NotAllOf]]
-          groupsNotAnyOf <- c.downFields("groups_not_any_of").as[Option[GroupsLogic.NotAnyOf]]
-        } yield (groupsOr, groupsAnd, groupsNotAllOf, groupsNotAnyOf)
-      }
-      .toSyncDecoder
-      .mapError(RulesLevelCreationError.apply)
-      .emapE[GroupsLogic] {
-        case (None, None, None, None) =>
-          Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(ruleName))))
-        case (Some(groupsOr), None, None, None) =>
-          Right(groupsOr)
-        case (None, Some(groupsAnd), None, None) =>
-          Right(groupsAnd)
-        case (None, None, Some(groupsNotAllOf), None) =>
-          Right(groupsNotAllOf)
-        case (None, None, None, Some(groupsNotAnyOf)) =>
-          Right(groupsNotAnyOf)
-        case (Some(groupsOr), None, Some(groupsNotAllOf), None) =>
-          Right(GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAllOf))
-        case (None, Some(groupsAnd), Some(groupsNotAllOf), None) =>
-          Right(GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAllOf))
-        case (Some(groupsOr), None, None, Some(groupsNotAnyOf)) =>
-          Right(GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAnyOf))
-        case (None, Some(groupsAnd), None, Some(groupsNotAnyOf)) =>
-          Right(GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAnyOf))
-        case (_, _, _, _) =>
-          Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(ruleName))))
-      }
-      .decoder
 }

@@ -225,11 +225,9 @@ object GroupsLogic {
 
   implicit class GroupsLogicNotAnyOfExecutor(val groupsLogic: GroupsLogic.NotAnyOf) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
-      val forbiddenGroupDetected = groupsLogic.forbiddenGroupIds.ids.toList.widen[GroupIdLike].foldLeft(false) {
-        case (false, forbiddenGroup) =>
-          userGroups.toList.exists(userGroup => forbiddenGroup.matches(userGroup))
-        case (true, _) =>
-          true
+      val userGroupsList = userGroups.toList
+      val forbiddenGroupDetected = groupsLogic.forbiddenGroupIds.ids.toList.widen[GroupIdLike].exists { forbiddenGroup =>
+        userGroupsList.exists(userGroup => forbiddenGroup.matches(userGroup))
       }
       if (forbiddenGroupDetected) None
       else Some(userGroups)
