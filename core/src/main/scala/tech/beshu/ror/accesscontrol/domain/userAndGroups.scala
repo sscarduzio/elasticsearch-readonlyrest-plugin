@@ -236,8 +236,11 @@ object GroupsLogic {
 
   implicit class CombinedGroupsLogicExecutor(val groupsLogic: GroupsLogic.CombinedGroupsLogic) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
-      groupsLogic.positiveGroupsLogic.availableGroupsFrom(userGroups)
-        .flatMap(groupsLogic.negativeGroupsLogic.availableGroupsFrom)
+      for {
+        positiveLogicResult <- groupsLogic.positiveGroupsLogic.availableGroupsFrom(userGroups)
+        negativeLogicResult <- groupsLogic.negativeGroupsLogic.availableGroupsFrom(userGroups)
+        result <- UniqueNonEmptyList.from(positiveLogicResult.toSet.intersect(negativeLogicResult.toSet))
+      } yield result
     }
   }
 }

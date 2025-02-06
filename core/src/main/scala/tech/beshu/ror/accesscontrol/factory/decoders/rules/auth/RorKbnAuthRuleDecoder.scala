@@ -20,7 +20,7 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.Groups
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{LdapAuthRule, RorKbnAuthRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -65,7 +65,7 @@ private object RorKbnAuthRuleDecoder {
       .instance { c =>
         for {
           rorKbnDefName <- c.downField("name").as[RorKbnDef.Name]
-          groupsLogicDecodingResult <- GroupsLogicDecoder.decoder[LdapAuthRule].apply(c)
+          groupsLogicDecodingResult <- GroupsLogicDecoder.decoder[RorKbnAuthRule].apply(c)
         } yield (rorKbnDefName, groupsLogicDecodingResult)
       }
       .toSyncDecoder

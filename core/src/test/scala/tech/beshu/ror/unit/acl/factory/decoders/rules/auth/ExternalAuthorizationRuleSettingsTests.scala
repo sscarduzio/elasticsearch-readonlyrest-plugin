@@ -541,7 +541,7 @@ class ExternalAuthorizationRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "groups_provider_authorization rule requires to define 'groups_or'/'groups' or 'groups_and' arrays"
+              "groups_provider_authorization rule requires to define 'groups_or'/'groups'/'groups_and'/'groups_not_all_of' arrays"
             )))
           }
         )

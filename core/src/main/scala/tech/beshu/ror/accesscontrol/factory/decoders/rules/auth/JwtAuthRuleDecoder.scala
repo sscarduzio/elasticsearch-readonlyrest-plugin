@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, LdapAuthRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -65,7 +65,7 @@ private object JwtAuthRuleDecoder {
       .instance { c =>
         for {
           rorKbnDefName <- c.downField("name").as[JwtDef.Name]
-          groupsLogicDecodingResult <- GroupsLogicDecoder.decoder[LdapAuthRule].apply(c)
+          groupsLogicDecodingResult <- GroupsLogicDecoder.decoder[JwtAuthRule].apply(c)
         } yield (rorKbnDefName, groupsLogicDecodingResult)
       }
       .toSyncDecoder
