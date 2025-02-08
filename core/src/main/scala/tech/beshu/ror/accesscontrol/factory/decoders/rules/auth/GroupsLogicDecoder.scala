@@ -75,8 +75,8 @@ private[auth] object GroupsLogicDecoder {
     Decoder
       .instance { c =>
         for {
-          groupsAllOf <- decodeAsOption[GroupsLogic.AllOf](c, "groups_and", "roles_and")
-          groupsAnyOf <- decodeAsOption[GroupsLogic.AnyOf](c, "groups_or", "groups", "roles")
+          groupsAllOf <- decodeAsOption[GroupsLogic.AllOf](c, "groups_all_of", "groups_and", "roles_and")
+          groupsAnyOf <- decodeAsOption[GroupsLogic.AnyOf](c, "groups_any_of", "groups_or", "groups", "roles")
           groupsNotAllOf <- decodeAsOption[GroupsLogic.NotAllOf](c, "groups_not_all_of")
           groupsNotAnyOf <- decodeAsOption[GroupsLogic.NotAnyOf](c, "groups_not_any_of")
         } yield (groupsAnyOf, groupsAllOf, groupsNotAllOf, groupsNotAnyOf)
