@@ -21,22 +21,22 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings as GroupsRulesSettings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAllOfRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.And] {
+class GroupsAllOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AllOf] {
 
-  override def createRule(settings: GroupsRulesSettings[GroupsLogic.And], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.And] = {
-    new GroupsAndRule(settings, caseSensitivity)
+  override def createRule(settings: GroupsRulesSettings[GroupsLogic.AllOf], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.AllOf] = {
+    new GroupsAllOfRule(GroupsAllOfRule.Name, settings, caseSensitivity)
   }
 
-  protected def groupsLogicCreator: GroupIds => GroupsLogic.And = GroupsLogic.And.apply
+  protected def groupsLogicCreator: GroupIds => GroupsLogic.AllOf = GroupsLogic.AllOf.apply
 
-  "A GroupsAndRule" should {
+  "A GroupsAllOfRule" should {
     "not match" when {
       "user has not all groups" in {
         val ruleSettings = GroupsRulesSettings(

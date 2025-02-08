@@ -222,7 +222,7 @@ private object LdapRulesDecodersHelper {
   private[rules] def ldapAuthorizationRuleSettings(ldapService: LdapAuthorizationService,
                                                    groupsLogic: GroupsLogic): Either[RulesLevelCreationError, LdapAuthorizationRule.Settings] =
     groupsLogic match {
-      case groupsLogic: GroupsLogic.CombinedGroupsLogic =>
+      case groupsLogic: GroupsLogic.Combined =>
         Right(LdapAuthorizationRule.Settings.CombinedGroupsLogicSettings(ldapService, groupsLogic))
       case groupsLogic: GroupsLogic.PositiveGroupsLogic =>
         Right(LdapAuthorizationRule.Settings.PositiveGroupsLogicSettings(ldapService, groupsLogic))

@@ -157,9 +157,9 @@ object GroupsLogic {
     val permittedGroupIds: GroupIds
   }
 
-  final case class Or(override val permittedGroupIds: GroupIds) extends PositiveGroupsLogic
+  final case class AnyOf(override val permittedGroupIds: GroupIds) extends PositiveGroupsLogic
 
-  final case class And(override val permittedGroupIds: GroupIds) extends PositiveGroupsLogic
+  final case class AllOf(override val permittedGroupIds: GroupIds) extends PositiveGroupsLogic
 
   sealed trait NegativeGroupsLogic extends GroupsLogic {
     val forbiddenGroupIds: GroupIds
@@ -169,22 +169,22 @@ object GroupsLogic {
 
   final case class NotAllOf(override val forbiddenGroupIds: GroupIds) extends NegativeGroupsLogic
 
-  final case class CombinedGroupsLogic(positiveGroupsLogic: PositiveGroupsLogic,
-                                       negativeGroupsLogic: NegativeGroupsLogic) extends GroupsLogic
+  final case class Combined(positiveGroupsLogic: PositiveGroupsLogic,
+                            negativeGroupsLogic: NegativeGroupsLogic) extends GroupsLogic
 
   implicit class GroupsLogicExecutor(val groupsLogic: GroupsLogic) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
       groupsLogic match {
-        case and@GroupsLogic.And(_) => and.availableGroupsFrom(userGroups)
-        case or@GroupsLogic.Or(_) => or.availableGroupsFrom(userGroups)
+        case and@GroupsLogic.AllOf(_) => and.availableGroupsFrom(userGroups)
+        case or@GroupsLogic.AnyOf(_) => or.availableGroupsFrom(userGroups)
         case notAllOf@GroupsLogic.NotAllOf(_) => notAllOf.availableGroupsFrom(userGroups)
         case notAnyOf@GroupsLogic.NotAnyOf(_) => notAnyOf.availableGroupsFrom(userGroups)
-        case combinedGroupsLogic@GroupsLogic.CombinedGroupsLogic(_, _) => combinedGroupsLogic.availableGroupsFrom(userGroups)
+        case combinedGroupsLogic@GroupsLogic.Combined(_, _) => combinedGroupsLogic.availableGroupsFrom(userGroups)
       }
     }
   }
 
-  implicit class GroupsLogicAndExecutor(val groupsLogic: GroupsLogic.And) extends AnyVal {
+  implicit class GroupsLogicAndExecutor(val groupsLogic: GroupsLogic.AllOf) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
       val atLeastPermittedGroupNotMatched = false
       val userGroupsMatchedSoFar = Vector.empty[Group]
@@ -207,7 +207,7 @@ object GroupsLogic {
     }
   }
 
-  implicit class GroupsLogicOrExecutor(val groupsLogic: GroupsLogic.Or) extends AnyVal {
+  implicit class GroupsLogicOrExecutor(val groupsLogic: GroupsLogic.AnyOf) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
       val someMatchedUserGroups = groupsLogic.permittedGroupIds.filterOnlyPermitted(userGroups)
       UniqueNonEmptyList.from(someMatchedUserGroups)
@@ -234,7 +234,7 @@ object GroupsLogic {
     }
   }
 
-  implicit class CombinedGroupsLogicExecutor(val groupsLogic: GroupsLogic.CombinedGroupsLogic) extends AnyVal {
+  implicit class CombinedGroupsLogicExecutor(val groupsLogic: GroupsLogic.Combined) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
       for {
         positiveLogicResult <- groupsLogic.positiveGroupsLogic.availableGroupsFrom(userGroups)

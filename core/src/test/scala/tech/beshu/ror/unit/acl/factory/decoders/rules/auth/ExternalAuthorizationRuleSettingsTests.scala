@@ -88,9 +88,9 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultQueryParams = Set.empty
               ))
               groupsLogic should be(
-                GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
               )
-              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.AnyOf].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -144,7 +144,7 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultQueryParams = Set.empty
               ))
               groupsLogic should be(
-                GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2")))
             }
@@ -198,7 +198,7 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultQueryParams = Set.empty
               ))
               groupsLogic should be(
-                GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
@@ -246,7 +246,7 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultQueryParams = Set.empty
               ))
               groupsLogic should be(
-                GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
@@ -296,9 +296,9 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultQueryParams = Set.empty
               ))
               groupsLogic should be(
-                GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
               )
-              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.AnyOf].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -348,9 +348,9 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultQueryParams = Set.empty
               ))
               groupsLogic should be(
-                GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
               )
-              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.AnyOf].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -406,11 +406,11 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultHeaders = Set(Header(("header1", "hValue1")), Header(("header2", "hValue2"))),
                 defaultQueryParams = Set(QueryParam("query1", "value1"), QueryParam("query2", "value2"))
               ))
-              groupsLogic should be(GroupsLogic.Or(
+              groupsLogic should be(GroupsLogic.AnyOf(
                 GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"), GroupIdLike.from("r1")))
               ))
-              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
-              groupsLogic.asInstanceOf[GroupsLogic.Or].permittedGroupIds.ids.tail.head shouldBe a[GroupId]
+              groupsLogic.asInstanceOf[GroupsLogic.AnyOf].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.AnyOf].permittedGroupIds.ids.tail.head shouldBe a[GroupId]
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
           }
@@ -471,7 +471,7 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultQueryParams = Set(QueryParam("query1", "value1"), QueryParam("query2", "value2"))
               ))
               groupsLogic should be(
-                GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }

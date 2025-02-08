@@ -130,8 +130,8 @@ object ImpersonationWarning {
         }
       } yield warning
     )
-    implicit val groupsOrRule: ImpersonationWarningExtractor[GroupsOrRule] = noWarnings[GroupsOrRule]
-    implicit val groupsAndRule: ImpersonationWarningExtractor[GroupsAndRule] = noWarnings[GroupsAndRule]
+    implicit val groupsAnyOfRule: ImpersonationWarningExtractor[GroupsAnyOfRule] = noWarnings[GroupsAnyOfRule]
+    implicit val groupsAllOfRule: ImpersonationWarningExtractor[GroupsAllOfRule] = noWarnings[GroupsAllOfRule]
     implicit val groupsNotAllOfRule: ImpersonationWarningExtractor[GroupsNotAllOfRule] = noWarnings[GroupsNotAllOfRule]
     implicit val groupsNotAnyOfRule: ImpersonationWarningExtractor[GroupsNotAnyOfRule] = noWarnings[GroupsNotAnyOfRule]
     implicit val jwtAuthRule: ImpersonationWarningExtractor[JwtAuthRule] = ImpersonationWarningExtractor[JwtAuthRule] { (rule, blockName, _) =>

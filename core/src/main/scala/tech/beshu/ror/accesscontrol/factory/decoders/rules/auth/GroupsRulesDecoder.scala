@@ -40,26 +40,27 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 class GroupsOrRuleDecoder(usersDefinitions: Definitions[UserDef],
                           globalSettings: GlobalSettings,
                           override implicit val variableCreator: RuntimeResolvableVariableCreator)
-                         (implicit ev: RuleName[GroupsOrRule])
-  extends BaseGroupsRuleDecoder[Or, GroupsOrRule](usersDefinitions, variableCreator) {
+                         (implicit ruleName: RuleName[GroupsAnyOfRule])
+  extends BaseGroupsRuleDecoder[AnyOf, GroupsAnyOfRule](usersDefinitions, variableCreator) {
 
-  override protected def createRule(settings: BaseGroupsRule.Settings[Or]): GroupsOrRule = {
-    new GroupsOrRule(settings, globalSettings.userIdCaseSensitivity)
+  override protected def createRule(settings: BaseGroupsRule.Settings[AnyOf]): GroupsAnyOfRule = {
+    new GroupsAnyOfRule(ruleName, settings, globalSettings.userIdCaseSensitivity)
   }
 
-  override protected def groupsLogicCreator: GroupIds => Or = Or.apply
+  override protected def groupsLogicCreator: GroupIds => AnyOf = AnyOf.apply
 }
 
-class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef],
-                           globalSettings: GlobalSettings,
-                           override implicit val variableCreator: RuntimeResolvableVariableCreator)
-  extends BaseGroupsRuleDecoder[And, GroupsAndRule](usersDefinitions, variableCreator) {
+class GroupsAllOfRuleDecoder(usersDefinitions: Definitions[UserDef],
+                             globalSettings: GlobalSettings,
+                             override implicit val variableCreator: RuntimeResolvableVariableCreator)
+                            (implicit ruleName: RuleName[GroupsAllOfRule])
+  extends BaseGroupsRuleDecoder[AllOf, GroupsAllOfRule](usersDefinitions, variableCreator) {
 
-  override protected def createRule(settings: BaseGroupsRule.Settings[And]): GroupsAndRule = {
-    new GroupsAndRule(settings, globalSettings.userIdCaseSensitivity)
+  override protected def createRule(settings: BaseGroupsRule.Settings[AllOf]): GroupsAllOfRule = {
+    new GroupsAllOfRule(ruleName, settings, globalSettings.userIdCaseSensitivity)
   }
 
-  override protected def groupsLogicCreator: GroupIds => And = And.apply
+  override protected def groupsLogicCreator: GroupIds => AllOf = AllOf.apply
 }
 
 class GroupsNotAllOfRuleDecoder(usersDefinitions: Definitions[UserDef],

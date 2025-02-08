@@ -20,21 +20,27 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleName}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic}
 
-final class GroupsOrRule(override val settings: BaseGroupsRule.Settings[GroupsLogic.Or],
-                         override val userIdCaseSensitivity: CaseSensitivity)
+final class GroupsAnyOfRule(ruleName: RuleName[GroupsAnyOfRule],
+                            override val settings: BaseGroupsRule.Settings[GroupsLogic.AnyOf],
+                            override val userIdCaseSensitivity: CaseSensitivity)
   extends BaseGroupsRule(settings) {
 
-  override val name: Rule.Name = GroupsOrRule.Name.name
+  override val name: Rule.Name = ruleName.name
 
 }
 
-object GroupsOrRule {
-  implicit case object Name extends RuleName[GroupsOrRule] {
+object GroupsAnyOfRule {
+
+  case object Name extends RuleName[GroupsAnyOfRule] {
     override val name: Name = Rule.Name("groups_or")
   }
 
-  case object DeprecatedName extends RuleName[GroupsOrRule] {
-    override val name = Rule.Name("groups")
+  case object NameV2 extends RuleName[GroupsAnyOfRule] {
+    override val name: Name = Rule.Name("groups_or")
+  }
+
+  case object NameV1 extends RuleName[GroupsAnyOfRule] {
+    override val name: Name = Rule.Name("groups")
   }
 
 }

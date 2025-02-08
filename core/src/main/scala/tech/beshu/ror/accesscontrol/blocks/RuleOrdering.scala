@@ -65,8 +65,8 @@ object RuleOrdering {
     classOf[LdapAuthRule],
     classOf[LdapAuthenticationRule],
     classOf[ExternalAuthenticationRule],
-    classOf[GroupsOrRule],
-    classOf[GroupsAndRule],
+    classOf[GroupsAnyOfRule],
+    classOf[GroupsAllOfRule],
     // all authorization rules should be placed after any authentication rule
     classOf[LdapAuthorizationRule],
     classOf[ExternalAuthorizationRule],

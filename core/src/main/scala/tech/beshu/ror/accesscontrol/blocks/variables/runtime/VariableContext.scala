@@ -53,8 +53,8 @@ object VariableContext {
 
     implicit val dataStreamsRule: VariableUsage[DataStreamsRule] = UsingVariable[DataStreamsRule](rule => rule.settings.allowedDataStreams.toNonEmptyList)
     implicit val filterRule: VariableUsage[FilterRule] = UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
-    implicit val groupsOrRule: VariableUsage[GroupsOrRule] = UsingVariable[GroupsOrRule](rule => rule.settings.permittedGroupsLogic.usedVariables)
-    implicit val groupsAndRule: VariableUsage[GroupsAndRule] = UsingVariable[GroupsAndRule](rule => rule.settings.permittedGroupsLogic.usedVariables)
+    implicit val groupsAnyOfRule: VariableUsage[GroupsAnyOfRule] = UsingVariable[GroupsAnyOfRule](rule => rule.settings.permittedGroupsLogic.usedVariables)
+    implicit val groupsAllOfRule: VariableUsage[GroupsAllOfRule] = UsingVariable[GroupsAllOfRule](rule => rule.settings.permittedGroupsLogic.usedVariables)
     implicit val groupsNotAllOfRule: VariableUsage[GroupsNotAllOfRule] = UsingVariable[GroupsNotAllOfRule](rule => rule.settings.permittedGroupsLogic.usedVariables)
     implicit val groupsNotAnyOfRule: VariableUsage[GroupsNotAnyOfRule] = UsingVariable[GroupsNotAnyOfRule](rule => rule.settings.permittedGroupsLogic.usedVariables)
     implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)

@@ -115,7 +115,7 @@ class RorKbnAuthRuleSettingsTests
               rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.settings.permittedGroups should be(
                 Groups.Defined(
-                  GroupsLogic.Or(GroupIds(
+                  GroupsLogic.AnyOf(GroupIds(
                     UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
                   ))
                 )
@@ -149,7 +149,7 @@ class RorKbnAuthRuleSettingsTests
               rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.permittedGroups should be(
                 Groups.Defined(
-                  GroupsLogic.And(GroupIds(
+                  GroupsLogic.AllOf(GroupIds(
                     UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
                   ))
                 )
@@ -391,7 +391,7 @@ class RorKbnAuthRuleSettingsTests
           ("roles", "roles_and"),
           ("groups", "groups_and")
         )
-          .foreach { case (groupsOrKey, groupsAndKey) =>
+          .foreach { case (groupsAnyOfKey, groupsAllOfKey) =>
             assertDecodingFailure(
               yaml =
                 s"""
@@ -402,8 +402,8 @@ class RorKbnAuthRuleSettingsTests
                    |  - name: test_block1
                    |    ror_kbn_auth:
                    |      name: "kbn1"
-                   |      $groupsOrKey: ["group1", "group2"]
-                   |      $groupsAndKey: ["groups1", "groups2"]
+                   |      $groupsAnyOfKey: ["group1", "group2"]
+                   |      $groupsAllOfKey: ["groups1", "groups2"]
                    |  ror_kbn:
                    |
                    |  - name: kbn2
@@ -413,7 +413,7 @@ class RorKbnAuthRuleSettingsTests
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsOrKey' or '$groupsAndKey' for ROR Kibana authorization rule 'kbn1'")
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for ROR Kibana authorization rule 'kbn1'")
                 ))
               }
             )

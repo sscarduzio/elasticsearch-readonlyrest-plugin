@@ -41,16 +41,20 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.reflect.ClassTag
 
-class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.Or, GroupsOrRule](GroupsOrRule.Name) {
-  protected def groupsLogicCreator: GroupIds => GroupsLogic.Or = GroupsLogic.Or.apply
+class GroupsAnyOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.AnyOf, GroupsAnyOfRule](GroupsAnyOfRule.Name) {
+  protected def groupsLogicCreator: GroupIds => GroupsLogic.AnyOf = GroupsLogic.AnyOf.apply
 }
 
-class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.Or, GroupsOrRule](GroupsOrRule.DeprecatedName) {
-  override protected def groupsLogicCreator: GroupIds => GroupsLogic.Or = GroupsLogic.Or.apply
+class DeprecatedV1GroupsAnyOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.AnyOf, GroupsAnyOfRule](GroupsAnyOfRule.NameV1) {
+  override protected def groupsLogicCreator: GroupIds => GroupsLogic.AnyOf = GroupsLogic.AnyOf.apply
 }
 
-class GroupsAndRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.And, GroupsAndRule](GroupsAndRule.Name) {
-  override protected def groupsLogicCreator: GroupIds => GroupsLogic.And = GroupsLogic.And.apply
+class DeprecatedV2GroupsAnyOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.AnyOf, GroupsAnyOfRule](GroupsAnyOfRule.NameV2) {
+  override protected def groupsLogicCreator: GroupIds => GroupsLogic.AnyOf = GroupsLogic.AnyOf.apply
+}
+
+class GroupsAllOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.AllOf, GroupsAllOfRule](GroupsAllOfRule.Name) {
+  override protected def groupsLogicCreator: GroupIds => GroupsLogic.AllOf = GroupsLogic.AllOf.apply
 }
 
 class GroupsNotAllOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.NotAllOf, GroupsNotAllOfRule](GroupsNotAllOfRule.Name) {
@@ -410,7 +414,7 @@ sealed abstract class GroupsRuleSettingsTests[GL <: GroupsLogic, R <: BaseGroups
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
                 rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
-                  GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
+                  GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
                 )
               }
               inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
@@ -543,7 +547,7 @@ sealed abstract class GroupsRuleSettingsTests[GL <: GroupsLogic, R <: BaseGroups
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
                 rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
-                  GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
+                  GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
                 )
               }
             }
@@ -616,7 +620,7 @@ sealed abstract class GroupsRuleSettingsTests[GL <: GroupsLogic, R <: BaseGroups
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
                 rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
-                  GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
+                  GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
                 )
               }
             }

@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import cats.implicits.toShow
-import io.circe.{Decoder, HCursor}
+import io.circe.{ACursor, Decoder}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic
@@ -25,14 +25,17 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.accesscontrol.utils.{SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
 
 private[auth] object GroupsLogicDecoder {
 
+  def decoder[T <: Rule](implicit ruleName: RuleName[T]): Decoder[GroupsLogicDecodingResult] = {
+    syncDecoder.decoder
+  }
+
   def simpleDecoder[T <: Rule](implicit ruleName: RuleName[T]): Decoder[GroupsLogic] = {
-    decoder[T]
-      .toSyncDecoder
-      .mapError(RulesLevelCreationError.apply)
+    syncDecoder[T]
       .emapE[GroupsLogic] {
         case GroupsLogicDecodingResult.Success(groupsLogic) => Right(groupsLogic)
         case GroupsLogicDecodingResult.GroupsLogicNotDefined(error) => Left(error)
@@ -41,49 +44,78 @@ private[auth] object GroupsLogicDecoder {
       .decoder
   }
 
-  def decoder[T <: Rule](implicit ruleName: RuleName[T]): Decoder[GroupsLogicDecodingResult] =
+  private def syncDecoder[T <: Rule](implicit ruleName: RuleName[T]): SyncDecoder[GroupsLogicDecodingResult] = {
+    withGroupsSectionDecoder[T]
+      .flatMap[GroupsLogicDecodingResult] {
+        case success@GroupsLogicDecodingResult.Success(_) =>
+          SyncDecoderCreator.pure(success)
+        case error@GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(_, _) =>
+          SyncDecoderCreator.pure(error)
+        case GroupsLogicDecodingResult.GroupsLogicNotDefined(_) =>
+          legacyWithoutGroupsSectionDecoder
+      }
+  }
+
+  private def withGroupsSectionDecoder[T <: Rule](implicit ruleName: RuleName[T]): SyncDecoder[GroupsLogicDecodingResult] =
     Decoder
       .instance { c =>
+        val groupsSection = c.downField("user_belongs_to_groups")
         for {
-          groupsAnd <- decodeAsOption[GroupsLogic.And](c, "groups_and", "roles_and")
-          groupsOr <- decodeAsOption[GroupsLogic.Or](c, "groups_or", "groups", "roles")
-          groupsNotAllOf <- decodeAsOption[GroupsLogic.NotAllOf](c, "groups_not_all_of")
-          groupsNotAnyOf <- decodeAsOption[GroupsLogic.NotAnyOf](c, "groups_not_any_of")
-        } yield (groupsOr, groupsAnd, groupsNotAllOf, groupsNotAnyOf)
+          groupsAllOf <- decodeAsOption[GroupsLogic.AllOf](groupsSection, "all_of")
+          groupsAnyOf <- decodeAsOption[GroupsLogic.AnyOf](groupsSection, "any_of")
+          groupsNotAllOf <- decodeAsOption[GroupsLogic.NotAllOf](groupsSection, "not_all_of")
+          groupsNotAnyOf <- decodeAsOption[GroupsLogic.NotAnyOf](groupsSection, "not_any_of")
+        } yield (groupsAnyOf, groupsAllOf, groupsNotAllOf, groupsNotAnyOf)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
-      .map[GroupsLogicDecodingResult] {
-        case (None, None, None, None) =>
-          GroupsLogicDecodingResult.GroupsLogicNotDefined(
-            RulesLevelCreationError(Message(errorMsgNoGroupsList(ruleName)))
-          )
-        case (Some((groupsOr, _)), None, None, None) =>
-          GroupsLogicDecodingResult.Success(groupsOr)
-        case (None, Some((groupsAnd, _)), None, None) =>
-          GroupsLogicDecodingResult.Success(groupsAnd)
-        case (None, None, Some((groupsNotAllOf, _)), None) =>
-          GroupsLogicDecodingResult.Success(groupsNotAllOf)
-        case (None, None, None, Some((groupsNotAnyOf, _))) =>
-          GroupsLogicDecodingResult.Success(groupsNotAnyOf)
-        case (Some((groupsOr, _)), None, Some((groupsNotAllOf, _)), None) =>
-          GroupsLogicDecodingResult.Success(GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAllOf))
-        case (None, Some((groupsAnd, _)), Some((groupsNotAllOf, _)), None) =>
-          GroupsLogicDecodingResult.Success(GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAllOf))
-        case (Some((groupsOr, _)), None, None, Some((groupsNotAnyOf, _))) =>
-          GroupsLogicDecodingResult.Success(GroupsLogic.CombinedGroupsLogic(groupsOr, groupsNotAnyOf))
-        case (None, Some((groupsAnd, _)), None, Some((groupsNotAnyOf, _))) =>
-          GroupsLogicDecodingResult.Success(GroupsLogic.CombinedGroupsLogic(groupsAnd, groupsNotAnyOf))
-        case (groupsOrOpt, groupsAndOpt, groupsNotAllOfOpt, groupsNotAnyOfOpt) =>
-          GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(
-            RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(ruleName))),
-            List(groupsOrOpt, groupsAndOpt, groupsNotAllOfOpt, groupsNotAnyOfOpt).flatten.map(_._2),
-          )
+      .map(resultFromLogic)
+
+  private def legacyWithoutGroupsSectionDecoder[T <: Rule](implicit ruleName: RuleName[T]): SyncDecoder[GroupsLogicDecodingResult] =
+    Decoder
+      .instance { c =>
+        for {
+          groupsAllOf <- decodeAsOption[GroupsLogic.AllOf](c, "groups_and", "roles_and")
+          groupsAnyOf <- decodeAsOption[GroupsLogic.AnyOf](c, "groups_or", "groups", "roles")
+          groupsNotAllOf <- decodeAsOption[GroupsLogic.NotAllOf](c, "groups_not_all_of")
+          groupsNotAnyOf <- decodeAsOption[GroupsLogic.NotAnyOf](c, "groups_not_any_of")
+        } yield (groupsAnyOf, groupsAllOf, groupsNotAllOf, groupsNotAnyOf)
       }
-      .decoder
+      .toSyncDecoder
+      .mapError(RulesLevelCreationError.apply)
+      .map(resultFromLogic)
 
+  private def resultFromLogic[T <: Rule](logic: (Option[(GroupsLogic.AnyOf, String)], Option[(GroupsLogic.AllOf, String)], Option[(GroupsLogic.NotAllOf, String)], Option[(GroupsLogic.NotAnyOf, String)]))
+                                        (implicit ruleName: RuleName[T]): GroupsLogicDecodingResult =
+    logic match {
+      case (None, None, None, None) =>
+        GroupsLogicDecodingResult.GroupsLogicNotDefined(
+          RulesLevelCreationError(Message(errorMsgNoGroupsList(ruleName)))
+        )
+      case (Some((groupsAnyOf, _)), None, None, None) =>
+        GroupsLogicDecodingResult.Success(groupsAnyOf)
+      case (None, Some((groupsAllOf, _)), None, None) =>
+        GroupsLogicDecodingResult.Success(groupsAllOf)
+      case (None, None, Some((groupsNotAllOf, _)), None) =>
+        GroupsLogicDecodingResult.Success(groupsNotAllOf)
+      case (None, None, None, Some((groupsNotAnyOf, _))) =>
+        GroupsLogicDecodingResult.Success(groupsNotAnyOf)
+      case (Some((groupsAnyOf, _)), None, Some((groupsNotAllOf, _)), None) =>
+        GroupsLogicDecodingResult.Success(GroupsLogic.Combined(groupsAnyOf, groupsNotAllOf))
+      case (None, Some((groupsAllOf, _)), Some((groupsNotAllOf, _)), None) =>
+        GroupsLogicDecodingResult.Success(GroupsLogic.Combined(groupsAllOf, groupsNotAllOf))
+      case (Some((groupsAnyOf, _)), None, None, Some((groupsNotAnyOf, _))) =>
+        GroupsLogicDecodingResult.Success(GroupsLogic.Combined(groupsAnyOf, groupsNotAnyOf))
+      case (None, Some((groupsAllOf, _)), None, Some((groupsNotAnyOf, _))) =>
+        GroupsLogicDecodingResult.Success(GroupsLogic.Combined(groupsAllOf, groupsNotAnyOf))
+      case (groupsAnyOfOpt, groupsAllOfOpt, groupsNotAllOfOpt, groupsNotAnyOfOpt) =>
+        GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(
+          RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(ruleName))),
+          List(groupsAnyOfOpt, groupsAllOfOpt, groupsNotAllOfOpt, groupsNotAnyOfOpt).flatten.map(_._2),
+        )
+    }
 
-  private def decodeAsOption[GL <: GroupsLogic : Decoder](c: HCursor, field: String, fields: String*) = {
+  private def decodeAsOption[GL <: GroupsLogic : Decoder](c: ACursor, field: String, fields: String*) = {
     val (cursor, key) = c.downFieldsWithKey(field, fields: _*)
     cursor.as[Option[GL]].map(_.map((_, key)))
   }
