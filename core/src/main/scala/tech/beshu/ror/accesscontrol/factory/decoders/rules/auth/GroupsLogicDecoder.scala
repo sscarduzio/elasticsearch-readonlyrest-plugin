@@ -89,11 +89,11 @@ private[auth] object GroupsLogicDecoder {
   }
 
   private[rules] def errorMsgNoGroupsList[R <: Rule](ruleName: RuleName[R]) = {
-    s"${ruleName.show} rule requires to define 'groups_or'/'groups'/'groups_and'/'groups_not_all_of' arrays"
+    s"${ruleName.show} rule requires to define 'groups_or'/'groups_and'/'groups_not_any_of'/'groups_not_all_of' arrays"
   }
 
   private[rules] def errorMsgOnlyOneGroupsList[R <: Rule](ruleName: RuleName[R]) = {
-    s"${ruleName.show} rule requires to define 'groups_or'/'groups'/'groups_and'/'groups_not_all_of' arrays (but not all)"
+    s"${ruleName.show} rule requires to define 'groups_or'/'groups_and'/'groups_not_any_of'/'groups_not_all_of' arrays (but not all)"
   }
 
   sealed trait GroupsLogicDecodingResult

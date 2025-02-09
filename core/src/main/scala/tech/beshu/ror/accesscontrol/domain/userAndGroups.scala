@@ -216,9 +216,12 @@ object GroupsLogic {
 
   implicit class GroupsLogicNotAllOfExecutor(val groupsLogic: GroupsLogic.NotAllOf) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
-      val matchedNotPermittedGroups = groupsLogic.forbiddenGroupIds.filterOnlyPermitted(userGroups)
-      val allForbiddenGroupsDetected = matchedNotPermittedGroups.size == groupsLogic.forbiddenGroupIds.ids.size
-      if (allForbiddenGroupsDetected) None
+      val forbiddenGroupsOneByOne =
+        groupsLogic.forbiddenGroupIds.ids.map(id => GroupIds(UniqueNonEmptyList.of(id)))
+      val allForbiddenGroupsPresent =
+        forbiddenGroupsOneByOne
+          .forall(forbiddenGroup => userGroups.exists(group => forbiddenGroup.matches(group.id)))
+      if (allForbiddenGroupsPresent) None
       else UniqueNonEmptyList.from(userGroups)
     }
   }
@@ -239,7 +242,7 @@ object GroupsLogic {
       for {
         positiveLogicResult <- groupsLogic.positiveGroupsLogic.availableGroupsFrom(userGroups)
         negativeLogicResult <- groupsLogic.negativeGroupsLogic.availableGroupsFrom(userGroups)
-        result <- UniqueNonEmptyList.from(positiveLogicResult.toSet.intersect(negativeLogicResult.toSet))
+        result <- UniqueNonEmptyList.from(positiveLogicResult.toList.intersect(negativeLogicResult.toList))
       } yield result
     }
   }
