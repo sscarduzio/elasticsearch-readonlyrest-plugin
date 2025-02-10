@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class LdapAuthorizationRule(val settings: Settings,
                             override implicit val userIdCaseSensitivity: CaseSensitivity,
@@ -37,20 +37,30 @@ class LdapAuthorizationRule(val settings: Settings,
 
   override val name: Rule.Name = LdapAuthorizationRule.Name.name
 
-  override protected val groupsPermittedByRule: PermittedGroupIds = settings.permittedGroupsLogic.permittedGroupIds
+  override val groupsLogic: GroupsLogic = settings.groupsLogic
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
-                                                       user: LoggedUser,
-                                                       permittedGroupIds: Set[GroupIdLike])
+                                                       user: LoggedUser)
                                                       (implicit requestId: RequestId): Task[UniqueList[Group]] = {
-    settings.ldap match {
-      case ldap: LdapAuthorizationService.WithoutGroupsFiltering => ldap.groupsOf(user.id)
-      case ldap: LdapAuthorizationService.WithGroupsFiltering => ldap.groupsOf(user.id, permittedGroupIds)
+    settings match {
+      case Settings.NegativeGroupsLogicSettings(ldap, _) =>
+        ldap.groupsOf(user.id)
+      case Settings.PositiveGroupsLogicSettings(ldap, groupsLogic) =>
+        ldap match {
+          case ldap: LdapAuthorizationService.WithoutGroupsFiltering =>
+            ldap.groupsOf(user.id)
+          case ldap: LdapAuthorizationService.WithGroupsFiltering =>
+            ldap.groupsOf(user.id, groupsLogic.permittedGroupIds.ids.toSet)
+        }
+      case Settings.CombinedGroupsLogicSettings(ldap, groupsLogic) =>
+        ldap match {
+          case ldap: LdapAuthorizationService.WithoutGroupsFiltering =>
+            ldap.groupsOf(user.id)
+          case ldap: LdapAuthorizationService.WithGroupsFiltering =>
+            ldap.groupsOf(user.id, groupsLogic.positiveGroupsLogic.permittedGroupIds.ids.toSet)
+        }
     }
   }
-
-  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
-    settings.permittedGroupsLogic.availableGroupsFrom(usersGroups)
 
   override protected def mockedGroupsOf(user: User.Id,
                                         mocksProvider: MocksProvider)
@@ -76,6 +86,20 @@ object LdapAuthorizationRule {
     override val name = Rule.Name("ldap_authorization")
   }
 
-  final case class Settings(ldap: LdapAuthorizationService, permittedGroupsLogic: GroupsLogic)
+  sealed trait Settings {
+    def ldap: LdapAuthorizationService
 
+    def groupsLogic: GroupsLogic
+  }
+
+  object Settings {
+    final case class NegativeGroupsLogicSettings(ldap: LdapAuthorizationService.WithoutGroupsFiltering,
+                                                 groupsLogic: GroupsLogic.NegativeGroupsLogic) extends Settings
+
+    final case class PositiveGroupsLogicSettings(ldap: LdapAuthorizationService,
+                                                 groupsLogic: GroupsLogic.PositiveGroupsLogic) extends Settings
+
+    final case class CombinedGroupsLogicSettings(ldap: LdapAuthorizationService,
+                                                 groupsLogic: GroupsLogic.CombinedGroupsLogic) extends Settings
+  }
 }

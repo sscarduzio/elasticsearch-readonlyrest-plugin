@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
@@ -29,17 +28,19 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class GroupsOrRuleTests extends BaseGroupsRuleTests {
+class GroupsOrRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.Or] {
 
-  override def createRule(settings: GroupsRuleSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule = {
+  override def createRule(settings: GroupsRuleSettings[GroupsLogic.Or], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.Or] = {
     new GroupsOrRule(settings, caseSensitivity)
   }
+
+  protected def groupsLogicCreator: GroupIds => GroupsLogic.Or = GroupsLogic.Or.apply
 
   "A GroupsRule" should {
     "match" when {
       "user has not all groups" in {
         val ruleSettings = GroupsRuleSettings(
-          permittedGroupIds = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),
@@ -68,7 +69,7 @@ class GroupsOrRuleTests extends BaseGroupsRuleTests {
     "match" when {
       "user has all groups" in {
         val ruleSettings = GroupsRuleSettings(
-          permittedGroupIds = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
           )),

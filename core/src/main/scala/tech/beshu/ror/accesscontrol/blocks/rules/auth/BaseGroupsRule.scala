@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, OptionT}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
@@ -28,21 +28,18 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableGroupsLogic
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{Group, PermittedGroupIds, ResolvablePermittedGroupIds, User}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
-import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-abstract class BaseGroupsRule(val settings: Settings)
+abstract class BaseGroupsRule[GL <: GroupsLogic](val settings: Settings[GL])
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport
     with Logging {
-
-  protected def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[Group],
-                                              permittedGroupIds: PermittedGroupIds): Option[UniqueNonEmptyList[Group]]
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
@@ -55,11 +52,11 @@ abstract class BaseGroupsRule(val settings: Settings)
     Task
       .unit
       .flatMap { _ =>
-        resolveGroupIds(blockContext) match {
+        resolveGroupsLogic(blockContext) match {
           case None =>
             Task.now(Rejected())
-          case Some(resolvedPermittedGroupIds) if blockContext.isCurrentGroupEligible(resolvedPermittedGroupIds) =>
-            continueCheckingWithUserDefinitions(blockContext, resolvedPermittedGroupIds)
+          case Some(permittedGroupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(permittedGroupsLogic) =>
+            continueCheckingWithUserDefinitions(blockContext, permittedGroupsLogic)
           case Some(_) =>
             Task.now(Rejected())
         }
@@ -70,17 +67,17 @@ abstract class BaseGroupsRule(val settings: Settings)
     Task.now(RuleResult.Fulfilled(blockContext))
 
   private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                           resolvedPermittedGroupIds: PermittedGroupIds): Task[RuleResult[B]] = {
+                                                                                           permittedGroupsLogic: GroupsLogic): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
       case Some(user) =>
         NonEmptyList.fromFoldable(userDefinitionsMatching(user.id)) match {
           case None =>
             Task.now(Rejected())
           case Some(filteredUserDefinitions) =>
-            tryToAuthorizeAndAuthenticateUsing(filteredUserDefinitions, blockContext, resolvedPermittedGroupIds)
+            tryToAuthorizeAndAuthenticateUsing(filteredUserDefinitions, blockContext, permittedGroupsLogic)
         }
       case None =>
-        tryToAuthorizeAndAuthenticateUsing(settings.usersDefinitions, blockContext, resolvedPermittedGroupIds)
+        tryToAuthorizeAndAuthenticateUsing(settings.usersDefinitions, blockContext, permittedGroupsLogic)
     }
   }
 
@@ -90,14 +87,13 @@ abstract class BaseGroupsRule(val settings: Settings)
 
   private def tryToAuthorizeAndAuthenticateUsing[B <: BlockContext : BlockContextUpdater](userDefs: NonEmptyList[UserDef],
                                                                                           blockContext: B,
-                                                                                          resolvedPermittedGroupIds: PermittedGroupIds): Task[RuleResult[B]] = {
+                                                                                          permittedGroupsLogic: GroupsLogic): Task[RuleResult[B]] = {
     userDefs
-      .reduceLeftTo(authorizeAndAuthenticate(blockContext, resolvedPermittedGroupIds)) {
-        case (lastUserDefResult, nextUserDef) =>
-          lastUserDefResult.flatMap {
-            case success@Some(_) => Task.now(success)
-            case None => authorizeAndAuthenticate(blockContext, resolvedPermittedGroupIds)(nextUserDef)
-          }
+      .reduceLeftTo(authorizeAndAuthenticate(blockContext, permittedGroupsLogic)) {
+        case (lastUserDefResult: Task[Option[B]], nextUserDef) =>
+          OptionT(lastUserDefResult)
+            .orElse(OptionT(authorizeAndAuthenticate(blockContext, permittedGroupsLogic)(nextUserDef)))
+            .value
       }
       .map {
         case Some(newBlockContext) => Fulfilled(newBlockContext)
@@ -106,12 +102,10 @@ abstract class BaseGroupsRule(val settings: Settings)
   }
 
   private def authorizeAndAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                resolvedPermittedGroupIds: PermittedGroupIds)
+                                                                                permittedGroupsLogic: GroupsLogic)
                                                                                (userDef: UserDef): Task[Option[B]] = {
-    calculateAllowedGroupsForUser(userDef.localGroups, resolvedPermittedGroupIds) match {
-      case None =>
-        Task.now(None)
-      case Some(availableGroups) =>
+    permittedGroupsLogic.availableGroupsFrom(userDef.localGroups) match {
+      case Some(availableGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(availableGroups)) =>
         val allowedUserMatcher = matchers(userDef)
         userDef.mode match {
           case Mode.WithoutGroupsMapping(auth, _) =>
@@ -136,6 +130,8 @@ abstract class BaseGroupsRule(val settings: Settings)
               userDef.mode
             )
         }
+      case None | Some(_) =>
+        Task.now(None)
     }
   }
 
@@ -231,12 +227,18 @@ abstract class BaseGroupsRule(val settings: Settings)
     val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
     for {
       externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
-      availableLocalGroups <- calculateAllowedGroupsForUser(potentiallyAvailableGroups, PermittedGroupIds(externalGroupsMappedToLocalGroups))
+      availableLocalGroups <- availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups, potentiallyAvailableGroups)
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
     } yield destinationBlockContext.withUserMetadata(_
       .withLoggedUser(loggedUser)
       .withAvailableGroups(UniqueList.from(availableLocalGroups))
     )
+  }
+
+  private def availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups: UniqueNonEmptyList[GroupIdLike],
+                                                                        potentiallyAvailableGroups: UniqueNonEmptyList[Group]) = {
+    val potentiallyPermitted = GroupIds(externalGroupsMappedToLocalGroups)
+    UniqueNonEmptyList.from(potentiallyPermitted.filterOnlyPermitted(potentiallyAvailableGroups))
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule,
@@ -280,13 +282,12 @@ abstract class BaseGroupsRule(val settings: Settings)
     }
   }
 
-  private def resolveGroupIds[B <: BlockContext](blockContext: B) = {
-    settings.permittedGroupIds.resolveGroupIds(blockContext)
+  private def resolveGroupsLogic[B <: BlockContext](blockContext: B) = {
+    settings.permittedGroupsLogic.resolve(blockContext)
   }
 }
 
 object BaseGroupsRule {
-
-  final case class Settings(permittedGroupIds: ResolvablePermittedGroupIds,
-                            usersDefinitions: NonEmptyList[UserDef])
+  final case class Settings[GL <: GroupsLogic](permittedGroupsLogic: RuntimeResolvableGroupsLogic[GL],
+                                               usersDefinitions: NonEmptyList[UserDef])
 }

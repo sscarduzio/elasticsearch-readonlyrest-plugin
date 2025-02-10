@@ -69,6 +69,8 @@ object ruleDecoders {
       case GroupsOrRule.Name.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsOrRule.Name))
       case GroupsOrRule.DeprecatedName.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsOrRule.DeprecatedName))
       case GroupsAndRule.Name.name => Some(new GroupsAndRuleDecoder(definitions.users, globalSettings, variableCreator))
+      case GroupsNotAllOfRule.Name.name => Some(new GroupsNotAllOfRuleDecoder(definitions.users, globalSettings, variableCreator))
+      case GroupsNotAnyOfRule.Name.name => Some(new GroupsNotAnyOfRuleDecoder(definitions.users, globalSettings, variableCreator))
       case HeadersAndRule.Name.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.Name))
       case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)

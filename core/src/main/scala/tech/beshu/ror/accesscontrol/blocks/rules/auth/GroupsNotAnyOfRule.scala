@@ -20,16 +20,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleName}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic}
 
-final class GroupsAndRule(override val settings: BaseGroupsRule.Settings[GroupsLogic.And],
-                          override val userIdCaseSensitivity: CaseSensitivity)
+final class GroupsNotAnyOfRule(override val settings: BaseGroupsRule.Settings[GroupsLogic.NotAnyOf],
+                               override val userIdCaseSensitivity: CaseSensitivity)
   extends BaseGroupsRule(settings) {
 
-  override val name: Rule.Name = GroupsAndRule.Name.name
+  override val name: Rule.Name = GroupsNotAnyOfRule.Name.name
 
 }
 
-object GroupsAndRule {
-  implicit case object Name extends RuleName[GroupsAndRule] {
-    override val name: Name = Rule.Name("groups_and")
+object GroupsNotAnyOfRule {
+  implicit case object Name extends RuleName[GroupsNotAnyOfRule] {
+    override val name: Name = Rule.Name("groups_not_any_of")
   }
 }

@@ -145,8 +145,8 @@ object common extends Logging {
       .withError(ValueLevelCreationError(Message("Non empty list of group IDs or/and patterns is required")))
       .decoder
 
-  implicit val permittedGroupIdsDecoder: Decoder[PermittedGroupIds] =
-    groupIdLikesUniqueNonEmptyListDecoder.map(PermittedGroupIds.apply)
+  implicit val groupIdsDecoder: Decoder[GroupIds] =
+    groupIdLikesUniqueNonEmptyListDecoder.map(GroupIds.apply)
 
   implicit val usersUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[User.Id]] =
     DecoderHelpers
@@ -320,10 +320,16 @@ object common extends Logging {
       .decoder
 
   implicit val groupsLogicAndDecoder: Decoder[GroupsLogic.And] =
-    permittedGroupIdsDecoder.map(GroupsLogic.And.apply)
+    groupIdsDecoder.map(GroupsLogic.And.apply)
 
   implicit val groupsLogicOrDecoder: Decoder[GroupsLogic.Or] =
-    permittedGroupIdsDecoder.map(GroupsLogic.Or.apply)
+    groupIdsDecoder.map(GroupsLogic.Or.apply)
+
+  implicit val groupsLogicNotAllOfDecoder: Decoder[GroupsLogic.NotAllOf] =
+    groupIdsDecoder.map(GroupsLogic.NotAllOf.apply)
+
+  implicit val groupsLogicNotAnyOfDecoder: Decoder[GroupsLogic.NotAnyOf] =
+    groupIdsDecoder.map(GroupsLogic.NotAnyOf.apply)
 
   implicit def resolvableJsonRepresentationDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[ResolvableJsonRepresentation] =
     Decoder
