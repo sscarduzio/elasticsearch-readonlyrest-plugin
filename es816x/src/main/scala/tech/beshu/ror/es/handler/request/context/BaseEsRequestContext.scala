@@ -115,6 +115,10 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
 
+  override lazy val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = clusterService.allSnapshots
+
+  override def snapshotIndices(snapshotName: SnapshotName): Set[ClusterIndexName] = clusterService.snapshotIndices(snapshotName)
+
   override lazy val isCompositeRequest: Boolean = esContext.actionRequest.isInstanceOf[CompositeIndicesRequest]
 
   override lazy val isAllowedForDLS: Boolean = {
