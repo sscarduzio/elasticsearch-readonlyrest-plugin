@@ -59,6 +59,8 @@ object ruleDecoders {
       )
     )
 
+    val optionalGroupsRuleDecoder: Option[RuleDecoder[Rule]] = ???
+
     val optionalRuleDecoder = name match {
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)
@@ -66,6 +68,9 @@ object ruleDecoders {
       case FieldsRule.Name.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine, variableCreator))
       case ResponseFieldsRule.Name.name => Some(new ResponseFieldsRuleDecoder(variableCreator))
       case FilterRule.Name.name => Some(new FilterRuleDecoder(variableCreator))
+
+
+
       case GroupsAnyOfRule.NameV1.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsAnyOfRule.NameV1))
       case GroupsAnyOfRule.NameV2.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsAnyOfRule.NameV2))
       case GroupsAnyOfRule.Name.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsAnyOfRule.Name))
@@ -73,6 +78,8 @@ object ruleDecoders {
       case GroupsAllOfRule.Name.name => Some(new GroupsAllOfRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsAllOfRule.Name))
       case GroupsNotAllOfRule.Name.name => Some(new GroupsNotAllOfRuleDecoder(definitions.users, globalSettings, variableCreator))
       case GroupsNotAnyOfRule.Name.name => Some(new GroupsNotAnyOfRuleDecoder(definitions.users, globalSettings, variableCreator))
+
+
       case HeadersAndRule.Name.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.Name))
       case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)
@@ -105,7 +112,9 @@ object ruleDecoders {
         globalSettings
       )
     }
-    optionalRuleDecoder.map(_.asInstanceOf[RuleDecoder[Rule]])
+    optionalGroupsRuleDecoder
+      .orElse(optionalRuleDecoder)
+      .map(_.asInstanceOf[RuleDecoder[Rule]])
   }
 
   def usersDefinitionsAllowedRulesDecoderBy(name: Rule.Name,

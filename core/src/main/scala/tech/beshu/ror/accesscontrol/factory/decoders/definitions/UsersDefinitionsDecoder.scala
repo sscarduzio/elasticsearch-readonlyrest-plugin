@@ -29,10 +29,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.user.UserDefinitionsValid
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsAnyOfRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, GroupName, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, GroupName, GroupsLogic, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -166,7 +166,7 @@ object UsersDefinitionsDecoder {
   }
 
   private def oneRuleModeFrom(rule: Rule): Decoder[Mode] = rule match {
-    case _: GroupsAnyOfRule =>
+    case _: BaseGroupsRule[GroupsLogic.AnyOf] =>
       failed(DefinitionsLevelCreationError(Message(s"Cannot use '${rule.name.show}' rule in users definition section")))
     case r: AuthRule =>
       Decoder[GroupMappings].map(UserDef.Mode.WithGroupsMapping(Auth.SingleRule(r), _))

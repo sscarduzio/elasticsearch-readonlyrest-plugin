@@ -30,7 +30,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRu
 import tech.beshu.ror.accesscontrol.blocks.rules.http.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{HostsRule, LocalHostsRule}
-import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, RequestId}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.*
 
@@ -130,10 +131,7 @@ object ImpersonationWarning {
         }
       } yield warning
     )
-    implicit val groupsAnyOfRule: ImpersonationWarningExtractor[GroupsAnyOfRule] = noWarnings[GroupsAnyOfRule]
-    implicit val groupsAllOfRule: ImpersonationWarningExtractor[GroupsAllOfRule] = noWarnings[GroupsAllOfRule]
-    implicit val groupsNotAllOfRule: ImpersonationWarningExtractor[GroupsNotAllOfRule] = noWarnings[GroupsNotAllOfRule]
-    implicit val groupsNotAnyOfRule: ImpersonationWarningExtractor[GroupsNotAnyOfRule] = noWarnings[GroupsNotAnyOfRule]
+    implicit def groupsAnyOfRule[GL <: GroupsLogic]: ImpersonationWarningExtractor[BaseGroupsRule[GL]] = noWarnings[BaseGroupsRule[GL]]
     implicit val jwtAuthRule: ImpersonationWarningExtractor[JwtAuthRule] = ImpersonationWarningExtractor[JwtAuthRule] { (rule, blockName, _) =>
       Some(impersonationNotSupportedWarning(rule, blockName))
     }

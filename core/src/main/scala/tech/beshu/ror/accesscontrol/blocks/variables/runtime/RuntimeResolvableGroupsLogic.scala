@@ -22,14 +22,36 @@ import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class RuntimeResolvableGroupsLogic[GL <: GroupsLogic](val groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]],
-                                                      creator: GroupIds => GL) {
-  def resolve[B <: BlockContext](blockContext: B): Option[GL] = {
-    UniqueNonEmptyList
-      .from(resolveAll(groupIds.toNonEmptyList, blockContext))
-      .map(GroupIds.apply)
-      .map(creator)
+trait RuntimeResolvableGroupsLogic[GL <: GroupsLogic] {
+  def resolve[B <: BlockContext](blockContext: B): Option[GL]
+
+  def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
+}
+
+object RuntimeResolvableGroupsLogic {
+  class Simple[GL <: GroupsLogic](val groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]],
+                                  creator: GroupIds => GL) extends RuntimeResolvableGroupsLogic[GL] {
+    override def resolve[B <: BlockContext](blockContext: B): Option[GL] = {
+      UniqueNonEmptyList
+        .from(resolveAll(groupIds.toNonEmptyList, blockContext))
+        .map(GroupIds.apply)
+        .map(creator)
+    }
+
+    override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = groupIds.toNonEmptyList
   }
 
-  def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = groupIds.toNonEmptyList
+  class Combined[GL <: GroupsLogic](val permittedGroupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]],
+                                    val forbiddenGroupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]],
+                                    creator: (GroupIds, GroupIds) => GL) extends RuntimeResolvableGroupsLogic[GL] {
+    override def resolve[B <: BlockContext](blockContext: B): Option[GL] = {
+      for {
+        permitted <- UniqueNonEmptyList.from(resolveAll(permittedGroupIds.toNonEmptyList, blockContext)).map(GroupIds.apply)
+        forbidden <- UniqueNonEmptyList.from(resolveAll(forbiddenGroupIds.toNonEmptyList, blockContext)).map(GroupIds.apply)
+      } yield creator(permitted, forbidden)
+    }
+
+    override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+      permittedGroupIds.toNonEmptyList ::: forbiddenGroupIds.toNonEmptyList
+  }
 }

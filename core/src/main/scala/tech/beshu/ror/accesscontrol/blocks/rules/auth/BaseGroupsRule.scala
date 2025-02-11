@@ -35,7 +35,9 @@ import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-abstract class BaseGroupsRule[GL <: GroupsLogic](val settings: Settings[GL])
+class BaseGroupsRule[GL <: GroupsLogic](override val name: Rule.Name,
+                                        override implicit val userIdCaseSensitivity: CaseSensitivity,
+                                        val settings: Settings[GL])
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport

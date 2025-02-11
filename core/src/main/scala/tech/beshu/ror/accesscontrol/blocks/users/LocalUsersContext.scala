@@ -28,7 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.http.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.LocalUsers
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LocalUsers}
 import tech.beshu.ror.syntax.*
 
 object LocalUsersContext {
@@ -53,10 +54,7 @@ object LocalUsersContext {
     implicit val externalAuthorizationRule: LocalUsersSupport[ExternalAuthorizationRule] = NotAvailableLocalUsers()
     implicit val fieldsRule: LocalUsersSupport[FieldsRule] = NotAvailableLocalUsers()
     implicit val filterRule: LocalUsersSupport[FilterRule] = NotAvailableLocalUsers()
-    implicit val groupsAnyOfRule: LocalUsersSupport[GroupsAnyOfRule] = NotAvailableLocalUsers()
-    implicit val groupsAllOfRule: LocalUsersSupport[GroupsAllOfRule] = NotAvailableLocalUsers()
-    implicit val groupsNotAnyOfRule: LocalUsersSupport[GroupsNotAnyOfRule] = NotAvailableLocalUsers()
-    implicit val groupsNotAllOfRule: LocalUsersSupport[GroupsNotAllOfRule] = NotAvailableLocalUsers()
+    implicit def groupsRule[GL <: GroupsLogic]: LocalUsersSupport[BaseGroupsRule[GL]] = NotAvailableLocalUsers()
     implicit val headersAndRule: LocalUsersSupport[HeadersAndRule] = NotAvailableLocalUsers()
     implicit val headersOrRule: LocalUsersSupport[HeadersOrRule] = NotAvailableLocalUsers()
     implicit val hostsRule: LocalUsersSupport[HostsRule] = NotAvailableLocalUsers()

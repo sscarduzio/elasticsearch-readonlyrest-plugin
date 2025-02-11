@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
 import tech.beshu.ror.accesscontrol.orders.*
 
 class RuleOrdering extends Ordering[Rule] with Logging {
@@ -65,8 +66,10 @@ object RuleOrdering {
     classOf[LdapAuthRule],
     classOf[LdapAuthenticationRule],
     classOf[ExternalAuthenticationRule],
-    classOf[GroupsAnyOfRule],
-    classOf[GroupsAllOfRule],
+    classOf[BaseGroupsRule[AnyOf]],
+    classOf[BaseGroupsRule[AllOf]],
+    classOf[BaseGroupsRule[NotAnyOf]],
+    classOf[BaseGroupsRule[NotAllOf]],
     // all authorization rules should be placed after any authentication rule
     classOf[LdapAuthorizationRule],
     classOf[ExternalAuthorizationRule],

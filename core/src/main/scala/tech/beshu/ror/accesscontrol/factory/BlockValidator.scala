@@ -21,12 +21,13 @@ import cats.data.Validated.*
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{GroupsAllOfRule, GroupsAnyOfRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith, RuleDoesNotMeetRequirement}
 import tech.beshu.ror.implicits.*
 
@@ -54,8 +55,8 @@ object BlockValidator {
       .map(_.rule)
       .collect { case a: AuthenticationRule => a }
       .filter {
-        case _: GroupsAnyOfRule => false
-        case _: GroupsAllOfRule => false
+        case _: BaseGroupsRule[GroupsLogic.AnyOf] => false
+        case _: BaseGroupsRule[GroupsLogic.AllOf] => false
         case _ => true
       } match {
       case Nil | _ :: Nil =>
