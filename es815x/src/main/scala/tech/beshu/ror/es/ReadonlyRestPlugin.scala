@@ -124,6 +124,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         services.clusterService(),
         nodeClient,
         services.threadPool(),
+        services.xContentRegistry(),
         environment,
         new RemoteClusterServiceSupplier(nodeClient),
         () => Some(repositoriesServiceSupplier.get()),

@@ -25,15 +25,16 @@ import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.client.{Request, Response, ResponseListener, RestClient}
+import tech.beshu.ror.accesscontrol.audit.DataStreamAuditSinkCreator
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
-import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.es.DataStreamAndIndexBasedAuditSinkService
 
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import scala.collection.parallel.CollectionConverters.*
 
-class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
-  extends AuditSinkService
+final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
+  extends DataStreamAndIndexBasedAuditSinkService
     with Logging {
 
   override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
@@ -52,6 +53,7 @@ class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
 
   private def createRequest(indexName: String, documentId: String, jsonBody: String) = {
     val request = new Request("PUT", s"/$indexName/_doc/$documentId")
+    request.addParameter("op_type", "create")
     request.setJsonEntity(jsonBody)
     request
   }
@@ -71,6 +73,8 @@ class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
         logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
       }
     }
+
+  override val dataStreamCreator: DataStreamAuditSinkCreator = new DataStreamAuditSinkCreator(clients.map(new RestClientDataStreamService(_)))
 }
 
 object RestClientAuditSinkService {

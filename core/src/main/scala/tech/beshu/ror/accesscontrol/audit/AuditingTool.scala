@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
 import cats.data.NonEmptyList
+import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
@@ -26,18 +27,18 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.{Disab
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate, RorAuditLoggerName}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
-import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.es.{AuditSinkService, DataStreamAndIndexBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.implicits.*
 
 import java.time.Clock
 
-class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
-                          (implicit loggingContext: LoggingContext) {
+final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
+                                (implicit loggingContext: LoggingContext) {
 
   def audit[B <: BlockContext](response: ResponseContext[B]): Task[Unit] = {
     val auditResponseContext = toAuditResponse(response)
@@ -141,18 +142,23 @@ class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
 object AuditingTool extends Logging {
 
   final case class Settings(auditSinks: NonEmptyList[Settings.AuditSink])
+
   object Settings {
 
     sealed trait AuditSink
+
     object AuditSink {
       final case class Enabled(config: AuditSink.Config) extends AuditSink
+
       case object Disabled extends AuditSink
 
       sealed trait Config
+
       object Config {
         final case class EsIndexBasedSink(logSerializer: AuditLogSerializer,
                                           rorAuditIndexTemplate: RorAuditIndexTemplate,
                                           auditCluster: AuditCluster) extends Config
+
         object EsIndexBasedSink {
           val default: EsIndexBasedSink = EsIndexBasedSink(
             logSerializer = new DefaultAuditLogSerializer,
@@ -161,8 +167,21 @@ object AuditingTool extends Logging {
           )
         }
 
+        final case class EsDataStreamBasedSink(logSerializer: AuditLogSerializer,
+                                               rorAuditDataStream: RorAuditDataStream,
+                                               auditCluster: AuditCluster) extends Config
+
+        object EsDataStreamBasedSink {
+          val default: EsDataStreamBasedSink = EsDataStreamBasedSink(
+            logSerializer = new DefaultAuditLogSerializer,
+            rorAuditDataStream = RorAuditDataStream.default,
+            auditCluster = AuditCluster.LocalAuditCluster
+          )
+        }
+
         final case class LogBasedSink(logSerializer: AuditLogSerializer,
                                       loggerName: RorAuditLoggerName) extends Config
+
         object LogBasedSink {
           val default: LogBasedSink = LogBasedSink(
             logSerializer = new DefaultAuditLogSerializer,
@@ -173,17 +192,20 @@ object AuditingTool extends Logging {
     }
   }
 
+  private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink
+
   def create(settings: Settings,
              auditSinkServiceCreator: AuditCluster => AuditSinkService)
             (implicit clock: Clock,
-             loggingContext: LoggingContext): Option[AuditingTool] = {
-    createAuditSinks(settings, auditSinkServiceCreator) match {
+             loggingContext: LoggingContext): Task[Option[AuditingTool]] = {
+    createAuditSinks(settings, auditSinkServiceCreator).map {
       case Some(auditSinks) =>
-        implicit val auditSinkShow: Show[BaseAuditSink] = Show.show {
+        implicit val auditSinkShow: Show[SupportedAuditSink] = Show.show {
           case _: EsIndexBasedAuditSink => "index"
           case _: LogBasedAuditSink => "log"
+          case _: EsDataStreamBasedAuditSink => "data_stream"
         }
-        logger.info(s"The audit is enabled with the given outputs: [${auditSinks.show}]")
+        logger.info(s"The audit is enabled with the given outputs: [${auditSinks.toList.show}]")
         Some(new AuditingTool(auditSinks))
       case None =>
         logger.info("The audit is disabled because no output is enabled")
@@ -193,19 +215,28 @@ object AuditingTool extends Logging {
 
   private def createAuditSinks(settings: Settings,
                                auditSinkServiceCreator: AuditCluster => AuditSinkService)
-                              (implicit clock: Clock): Option[NonEmptyList[BaseAuditSink]] = {
+                              (implicit clock: Clock): Task[Option[NonEmptyList[SupportedAuditSink]]] = {
     settings
       .auditSinks
       .toList
-      .flatMap {
+      .map[Task[Option[SupportedAuditSink]]] {
         case Enabled(AuditSink.Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, auditCluster)) =>
-          EsIndexBasedAuditSink(logSerializer, rorAuditIndexTemplate, auditSinkServiceCreator(auditCluster)).some
+          Task.pure(EsIndexBasedAuditSink(logSerializer, rorAuditIndexTemplate, auditSinkServiceCreator(auditCluster)).some)
+        case Enabled(AuditSink.Config.EsDataStreamBasedSink(logSerializer, rorAuditDataStream, auditCluster)) =>
+          auditSinkServiceCreator(auditCluster) match {
+            case service: DataStreamAndIndexBasedAuditSinkService =>
+              EsDataStreamBasedAuditSink.create(logSerializer, rorAuditDataStream, service).map(_.some)
+            case _: IndexBasedAuditSinkService =>
+              logger.error("Data stream audit output is not supported")
+              Task.pure(None)
+          }
         case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName)) =>
-          new LogBasedAuditSink(serializer, loggerName).some
+          Task.pure(new LogBasedAuditSink(serializer, loggerName).some)
         case Disabled =>
-          None
+          Task.pure(None)
       }
-      .toNel
+      .sequence
+      .map(_.flatten.toNel)
   }
 
 }

@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
-import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.es.{AuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{header, unsafeNes}
@@ -148,7 +148,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     val auditingTool = AuditingTool.create(
       settings = settings,
       auditSinkServiceCreator = _ => auditSinkService
-    ).get
+    ).runSyncUnsafe().get
     new AccessControlListLoggingDecorator(acl, Some(auditingTool))
   }
 
@@ -166,7 +166,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       .group(1)
   }
 
-  private class MockedAuditSinkService extends AuditSinkService {
+  private class MockedAuditSinkService extends IndexBasedAuditSinkService {
     private val submittedIndexAndJson: Promise[(String, String)] = Promise()
 
     override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {

@@ -1,0 +1,39 @@
+readonlyrest:
+
+  audit:
+    enabled: true
+    outputs:
+      - type: index
+        index_template: "'audit_index'"
+        cluster: ["http://{AUDIT_1_HOST}:{AUDIT_1_PORT}"]
+      - type: data_stream
+        data_stream: "audit_data_stream"
+        cluster: [ "http://{AUDIT_1_HOST}:{AUDIT_1_PORT}" ]
+
+  access_control_rules:
+
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
+      auth_key: admin:container
+
+    - name: "Rule 1"
+      methods: GET
+      auth_key: username:dev
+      indices: ["twitter"]
+
+    - name: "Rule 2"
+      verbosity: error
+      methods: GET
+      auth_key: username:dev
+      indices: ["facebook"]
+
+    - name: "Rule 3"
+      methods: POST
+      auth_key: username:dev
+      indices: ["other"]
+      kibana:
+        access: "ro"
+
+    - name: "Rule 4"
+      auth_key: restricted:dev

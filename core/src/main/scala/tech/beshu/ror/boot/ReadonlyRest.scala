@@ -198,44 +198,47 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
     coreFactory
       .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
-      .map { result =>
+      .flatMap { result =>
         result
           .map { core =>
-            val engine = createEngine(httpClientsFactory, ldapConnectionPoolProvider, core)
-            inspectFlsEngine(engine)
-            engine
+            createEngine(httpClientsFactory, ldapConnectionPoolProvider, core)
+              .tapEval { engine =>
+                Task(inspectFlsEngine(engine))
+              }
           }
-          .left
-          .map(handleLoadingCoreErrors)
+          .leftMap(handleLoadingCoreErrors)
+          .sequence
       }
   }
 
   private def createEngine(httpClientsFactory: AsyncHttpClientsFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                           core: Core) = {
+                           core: Core): Task[Engine] = {
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
-    val auditingTool = createAuditingTool(core)
-
-    val decoratedCore = Core(
-      accessControl = new AccessControlListLoggingDecorator(
-        underlying = core.accessControl,
-        auditingTool = auditingTool
-      ),
-      rorConfig = core.rorConfig
-    )
-
-    new Engine(
-      core = decoratedCore,
-      httpClientsFactory = httpClientsFactory,
-      ldapConnectionPoolProvider,
-      auditingTool
-    )
+    createAuditingTool(core)
+      .map { auditingTool =>
+        val decoratedCore = Core(
+          accessControl = new AccessControlListLoggingDecorator(
+            underlying = core.accessControl,
+            auditingTool = auditingTool
+          ),
+          rorConfig = core.rorConfig
+        )
+        new Engine(
+          core = decoratedCore,
+          httpClientsFactory = httpClientsFactory,
+          ldapConnectionPoolProvider,
+          auditingTool
+        )
+      }
   }
 
   private def createAuditingTool(core: Core)
-                                (implicit loggingContext: LoggingContext): Option[AuditingTool] = {
+                                (implicit loggingContext: LoggingContext): Task[Option[AuditingTool]] = {
     core.rorConfig.auditingSettings
-      .flatMap(settings => AuditingTool.create(settings, auditSinkCreator)(environmentConfig.clock, loggingContext))
+      .map(settings => AuditingTool.create(settings, auditSinkCreator)(environmentConfig.clock, loggingContext))
+      .sequence
+      .map(_.flatten)
   }
 
   private def inspectFlsEngine(engine: Engine): Unit = {
@@ -271,13 +274,17 @@ object ReadonlyRest {
                               config: RawRorConfig)
 
   sealed trait TestEngine
+
   object TestEngine {
     object NotConfigured extends TestEngine
+
     final case class Configured(engine: Engine,
                                 config: RawRorConfig,
                                 expiration: Expiration) extends TestEngine
+
     final case class Invalidated(config: RawRorConfig,
                                  expiration: Expiration) extends TestEngine
+
     final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
   }
 

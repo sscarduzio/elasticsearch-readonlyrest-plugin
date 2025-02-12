@@ -28,6 +28,7 @@ import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.*
@@ -40,7 +41,7 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNo
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, RestClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
-import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.es.utils.{ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
@@ -52,6 +53,7 @@ class IndexLevelActionFilter(nodeName: String,
                              clusterService: ClusterService,
                              client: NodeClient,
                              threadPool: ThreadPool,
+                             xContentRegistry: NamedXContentRegistry,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
@@ -93,7 +95,7 @@ class IndexLevelActionFilter(nodeName: String,
 
   private def auditSinkCreator: AuditSinkCreator = {
     case AuditCluster.LocalAuditCluster =>
-      new EsAuditSinkService(client)
+      new EsAuditSinkService(client, new XContentJsonParserFactory(xContentRegistry))
     case remote: AuditCluster.RemoteAuditCluster =>
       RestClientAuditSinkService.create(remote)
   }

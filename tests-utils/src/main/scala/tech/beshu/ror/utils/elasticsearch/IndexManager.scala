@@ -170,6 +170,10 @@ class IndexManager(client: RestClient,
     call(createStatsRequest(indexNames), new StatsResponse(_))
   }
 
+  def refresh(indexName: String): JsonResponse = {
+    call(createRefreshIndexRequest(indexName), new JsonResponse(_))
+  }
+
   private def getAliasRequest(indexOpt: Option[String] = None,
                               aliasOpt: Option[String] = None) = {
     val path = indexOpt match {
@@ -359,6 +363,10 @@ class IndexManager(client: RestClient,
       case Nil => new HttpGet(client.from(s"/_stats"))
       case names => new HttpGet(client.from(s"/${names.mkString(",")}/_stats"))
     }
+  }
+
+  private def createRefreshIndexRequest(indexName: String) = {
+    new HttpPost(client.from(s"/$indexName/_refresh"))
   }
 
   class GetIndexResponse(response: HttpResponse) extends JsonResponse(response) {

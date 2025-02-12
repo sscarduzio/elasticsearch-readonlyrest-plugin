@@ -24,17 +24,17 @@ import tech.beshu.ror.es.AuditSinkService
 
 import java.time.{Clock, Instant}
 
-private[audit] class EsIndexBasedAuditSink private(serializer: AuditLogSerializer,
-                                                   rorAuditIndexTemplate: RorAuditIndexTemplate,
-                                                   auditSinkService: AuditSinkService)
-                                                  (implicit clock: Clock)
+private[audit] final class EsIndexBasedAuditSink private(serializer: AuditLogSerializer,
+                                                         rorAuditIndexTemplate: RorAuditIndexTemplate,
+                                                         auditSinkService: AuditSinkService)
+                                                        (implicit clock: Clock)
   extends BaseAuditSink(serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Task[Unit] = Task {
     auditSinkService.submit(
-      rorAuditIndexTemplate.indexName(Instant.now(clock)).name.value,
-      event.requestContext.id,
-      serializedEvent.toString
+      indexName = rorAuditIndexTemplate.indexName(Instant.now(clock)).name.value,
+      documentId = event.requestContext.id,
+      jsonRecord = serializedEvent.toString
     )
   }
 

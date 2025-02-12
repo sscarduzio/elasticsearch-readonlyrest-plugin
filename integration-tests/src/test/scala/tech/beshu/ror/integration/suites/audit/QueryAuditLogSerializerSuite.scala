@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites
+package tech.beshu.ror.integration.suites.audit
 
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
@@ -35,7 +35,7 @@ class QueryAuditLogSerializerSuite
     with BeforeAndAfterEach
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/query_audit_log_serializer/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/ror_audit/query_audit_log_serializer/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
@@ -43,7 +43,7 @@ class QueryAuditLogSerializerSuite
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    auditIndexManager.truncate
+    auditIndexManager.truncate()
   }
 
   "Request" should {

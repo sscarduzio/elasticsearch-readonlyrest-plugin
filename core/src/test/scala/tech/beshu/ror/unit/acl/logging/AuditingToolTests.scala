@@ -62,14 +62,14 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = _ => mock[AuditSinkService]
-            ).get
+            ).runSyncUnsafe().get
             auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error)).runSyncUnsafe()
           }
           "custom serializer throws exception" in {
             val auditingTool = AuditingTool.create(
               settings = auditSettings(throwingAuditLogSerializer),
               auditSinkServiceCreator = _ => mock[AuditSinkService]
-            ).get
+            ).runSyncUnsafe().get
             an[IllegalArgumentException] should be thrownBy {
               auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
             }
@@ -83,7 +83,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = _ => auditSink
-            ).get
+            ).runSyncUnsafe().get
             auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
           }
           "request was matched by forbidden rule" in {
@@ -93,7 +93,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = _ => auditSink
-            ).get
+            ).runSyncUnsafe().get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = ForbiddenBy(
@@ -117,7 +117,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = _ => auditSink
-            ).get
+            ).runSyncUnsafe().get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = Forbidden(requestContext, Vector.empty)
@@ -131,7 +131,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = _ => auditSink
-            ).get
+            ).runSyncUnsafe().get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = Errored(requestContext, new Exception("error"))
@@ -152,7 +152,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               )
             ),
             auditSinkServiceCreator = _ => mock[AuditSinkService]
-          ).get
+          ).runSyncUnsafe().get
 
           val requestContextId = RequestContext.Id.fromString(UUID.randomUUID().toString)
           val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = requestContextId)

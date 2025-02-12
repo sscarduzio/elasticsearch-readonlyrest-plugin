@@ -30,16 +30,16 @@ import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{Cancellable, RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
-import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.es.IndexBasedAuditSinkService
 import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
 
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import scala.collection.parallel.CollectionConverters.*
 
-class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
-                                             (implicit scheduler: Scheduler)
-  extends AuditSinkService
+final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
+                                                   (implicit scheduler: Scheduler)
+  extends IndexBasedAuditSinkService
     with Logging {
 
   override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {

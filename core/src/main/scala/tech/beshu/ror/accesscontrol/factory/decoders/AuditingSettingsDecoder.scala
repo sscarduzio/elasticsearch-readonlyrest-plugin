@@ -17,16 +17,15 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
-import io.circe.{Decoder, DecodingFailure, HCursor}
+import io.circe.{Decoder, HCursor}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.{EsIndexBasedSink, LogBasedSink}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate, RorAuditLoggerName}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
@@ -64,18 +63,18 @@ object AuditingSettingsDecoder extends Logging {
   }
 
   private def decodeAuditSettings = {
-    decodeAuditSettingsWith(auditSinkConfigSimpleDecoder)
+    decodeAuditSettingsWith(using auditSinkConfigSimpleDecoder)
       .handleErrorWith { error =>
         if (error.aclCreationError.isDefined) {
           // the schema was valid, but the config not
           Decoder.failed(error)
         } else {
-          decodeAuditSettingsWith(auditSinkConfigExtendedDecoder)
+          decodeAuditSettingsWith(using auditSinkConfigExtendedDecoder)
         }
       }
   }
 
-  private def decodeAuditSettingsWith(implicit sinkDecoder: Decoder[AuditSink]) = {
+  private def decodeAuditSettingsWith(using Decoder[AuditSink]) = {
     SyncDecoderCreator
       .instance {
         _.downField("audit").downField("outputs").as[Option[List[AuditSink]]]
@@ -95,24 +94,20 @@ object AuditingSettingsDecoder extends Logging {
   }
 
   private val auditSinkConfigSimpleDecoder: Decoder[AuditSink] = {
-    SyncDecoderCreator
-      .from(Decoder.decodeString)
-      .emapE[AuditSink] {
-        case "index" =>
-          AuditSink.Enabled(Config.EsIndexBasedSink.default).asRight
-        case "log" =>
-          AuditSink.Enabled(Config.LogBasedSink.default).asRight
-        case other =>
-          unsupportedOutputTypeError(
-            unsupportedType = other,
-            supportedTypes = List("index", "log")
-          ).asLeft
+    Decoder[AuditSinkType]
+      .map[AuditSink.Config] {
+        case AuditSinkType.DataStream =>
+          Config.EsDataStreamBasedSink.default
+        case AuditSinkType.Index =>
+          Config.EsIndexBasedSink.default
+        case AuditSinkType.Log =>
+          Config.LogBasedSink.default
       }
-      .decoder
+      .map(AuditSink.Enabled.apply)
   }
 
   private val auditSinkConfigExtendedDecoder: Decoder[AuditSink] = {
-    implicit val loggerNameDecoder: Decoder[RorAuditLoggerName] = {
+    given Decoder[RorAuditLoggerName] = {
       SyncDecoderCreator
         .from(nonEmptyStringDecoder)
         .map(RorAuditLoggerName.apply)
@@ -120,7 +115,7 @@ object AuditingSettingsDecoder extends Logging {
         .decoder
     }
 
-    implicit val logBasedSinkConfigDecoder: Decoder[LogBasedSink] = Decoder.instance { c =>
+    given Decoder[LogBasedSink] = Decoder.instance { c =>
       for {
         logSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
         loggerName <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
@@ -130,7 +125,7 @@ object AuditingSettingsDecoder extends Logging {
       )
     }
 
-    implicit val indexBasedAuditSinkDecoder: Decoder[EsIndexBasedSink] = Decoder.instance { c =>
+    given Decoder[EsIndexBasedSink] = Decoder.instance { c =>
       for {
         auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
         customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
@@ -142,17 +137,26 @@ object AuditingSettingsDecoder extends Logging {
       )
     }
 
+    given Decoder[EsDataStreamBasedSink] = Decoder.instance { c =>
+      for {
+        rorAuditDataStream <- c.downField("data_stream").as[Option[RorAuditDataStream]]
+        customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
+        remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
+      } yield EsDataStreamBasedSink(
+        customAuditSerializer.getOrElse(EsDataStreamBasedSink.default.logSerializer),
+        rorAuditDataStream.getOrElse(EsDataStreamBasedSink.default.rorAuditDataStream),
+        remoteAuditCluster.getOrElse(EsDataStreamBasedSink.default.auditCluster)
+      )
+    }
+
     Decoder
       .instance[AuditSink] { c =>
         for {
-          sinkType <- c.downField("type").as[String]
+          sinkType <- c.downField("type").as[AuditSinkType]
           sinkConfig <- sinkType match {
-            case "index" => c.as[EsIndexBasedSink]
-            case "log" => c.as[LogBasedSink]
-            case other => toDecodingFailure(unsupportedOutputTypeError(
-              unsupportedType = other,
-              supportedTypes = List("index", "log")
-            )).asLeft
+            case AuditSinkType.DataStream => c.as[EsDataStreamBasedSink]
+            case AuditSinkType.Index => c.as[EsIndexBasedSink]
+            case AuditSinkType.Log => c.as[LogBasedSink]
           }
           isSinkEnabled <- c.downField("enabled").as[Option[Boolean]]
         } yield {
@@ -165,7 +169,17 @@ object AuditingSettingsDecoder extends Logging {
       }
   }
 
-  private implicit val rorAuditIndexTemplateDecoder: Decoder[RorAuditIndexTemplate] =
+  private given Decoder[RorAuditDataStream] =
+    SyncDecoderCreator
+      .from(common.nonEmptyStringDecoder)
+      .map { patternStr =>
+        RorAuditDataStream(
+          DataStreamName.Full.fromNes(patternStr)
+        )
+      }
+      .decoder
+
+  private given Decoder[RorAuditIndexTemplate] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { patternStr =>
@@ -182,7 +196,7 @@ object AuditingSettingsDecoder extends Logging {
       .decoder
 
   @nowarn("cat=deprecation")
-  private implicit val customAuditLogSerializer: Decoder[AuditLogSerializer] =
+  private given Decoder[AuditLogSerializer] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { fullClassName =>
@@ -204,23 +218,51 @@ object AuditingSettingsDecoder extends Logging {
       }
       .decoder
 
-  private implicit val remoteAuditClusterDecoder: Decoder[AuditCluster.RemoteAuditCluster] =
+  private given Decoder[AuditCluster.RemoteAuditCluster] =
     SyncDecoderCreator
       .from(Decoder.decodeNonEmptyList[Uri])
       .withError(AuditingSettingsCreationError(Message("Non empty list of valid URI is required")))
       .map(AuditCluster.RemoteAuditCluster.apply)
       .decoder
 
-  private def toDecodingFailure(error: CoreCreationError) = {
-    DecodingFailure("", Nil)
-      .overrideDefaultErrorWith(error)
-  }
 
-  private def unsupportedOutputTypeError(unsupportedType: String,
-                                         supportedTypes: List[String]) = {
-    AuditingSettingsCreationError(Message(
-      s"Unsupported 'type' of audit output: ${unsupportedType.show}. Supported types: [${supportedTypes.show}]"
-    ))
+  private sealed trait AuditSinkType
+
+  private object AuditSinkType {
+    case object DataStream extends AuditSinkType
+
+    case object Index extends AuditSinkType
+
+    case object Log extends AuditSinkType
+
+    def from(value: String): Either[AuditingSettingsCreationError, AuditSinkType] = value match {
+      case "data_stream" =>
+        AuditSinkType.DataStream.asRight
+      case "index" =>
+        AuditSinkType.Index.asRight
+      case "log" =>
+        AuditSinkType.Log.asRight
+      case other =>
+        unsupportedOutputTypeError(
+          unsupportedType = other,
+          supportedTypes = NonEmptyList.of("data_stream", "index", "log")
+        ).asLeft
+    }
+
+    private def unsupportedOutputTypeError(unsupportedType: String,
+                                           supportedTypes: NonEmptyList[String]) = {
+      AuditingSettingsCreationError(Message(
+        s"Unsupported 'type' of audit output: ${unsupportedType.show}. Supported types: [${supportedTypes.toList.show}]"
+      ))
+    }
+
+
+    given Decoder[AuditSinkType] = {
+      SyncDecoderCreator
+        .from(Decoder.decodeString)
+        .emapE(AuditSinkType.from)
+        .decoder
+    }
   }
 
   private object DeprecatedAuditSettingsDecoder {

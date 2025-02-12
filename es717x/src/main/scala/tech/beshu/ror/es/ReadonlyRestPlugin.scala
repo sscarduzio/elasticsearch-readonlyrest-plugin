@@ -130,6 +130,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         clusterService,
         client.asInstanceOf[NodeClient],
         threadPool,
+        xContentRegistry,
         environment,
         TransportServiceInterceptor.remoteClusterServiceSupplier,
         RepositoriesServiceInterceptor.repositoriesServiceSupplier,

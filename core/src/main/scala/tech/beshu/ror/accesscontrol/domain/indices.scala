@@ -538,3 +538,8 @@ object RorAuditIndexTemplate {
     final case class ParsingError(msg: String) extends CreationError
   }
 }
+
+final case class RorAuditDataStream(dataStream: DataStreamName.Full)
+object RorAuditDataStream {
+  val default: RorAuditDataStream = RorAuditDataStream(DataStreamName.Full.fromNes(nes("readonlyrest_audit")))
+}
