@@ -57,6 +57,8 @@ dependencies {
     shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.13.5'
     shadowCompile group: 'org.yaml',                              name: 'snakeyaml',                              version: '2.2'
     shadowCompile group: 'com.jayway.jsonpath',                   name: 'json-path',                              version: '2.9.0'
+    //It's a transitive dependency for json-path, listed here to fix CVE. It can be removed after json-path update
+    shadowCompile group: 'net.minidev',                           name: 'json-smart',                             version: '2.5.2'
 }
 
 shadowJar {
