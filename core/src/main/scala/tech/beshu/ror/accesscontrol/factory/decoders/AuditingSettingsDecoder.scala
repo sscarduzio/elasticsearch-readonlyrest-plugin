@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
@@ -172,10 +172,14 @@ object AuditingSettingsDecoder extends Logging {
   private given Decoder[RorAuditDataStream] =
     SyncDecoderCreator
       .from(common.nonEmptyStringDecoder)
-      .map { patternStr =>
-        RorAuditDataStream(
-          DataStreamName.Full.fromNes(patternStr)
-        )
+      .emapE { patternStr =>
+        RorAuditDataStream(patternStr)
+          .leftMap {
+            case RorAuditDataStream.CreationError.FormatError(msg) =>
+              AuditingSettingsCreationError(Message(
+                s"Illegal format for 'data_stream' - ${msg.show}"
+              ))
+          }
       }
       .decoder
 
