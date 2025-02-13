@@ -379,7 +379,6 @@ class EsServerBasedRorClusterService(nodeName: String,
           repositoriesService.getRepositoryData(RepositoryName.toString(repositoryName), fut)
         }
         repositoryData
-          .getIndices
           .getSnapshotIds.asSafeSet
           .flatMap { sId =>
             SnapshotName

@@ -59,8 +59,8 @@ trait BaseIndicesProcessor {
                                                                                       allowedIndicesManager: IndicesManager[T]): Task[CanPass[Set[RequestedIndex[T]]]] = {
     val result = for {
       _ <- EitherT(allKibanaRelatedIndicesMatched(requestedIndices, determinedKibanaIndex))
-      _ <- EitherT(allIndicesMatchedByWildcard(requestedIndices))
       _ <- EitherT(noneOrAllIndicesMatched(requestedIndices))
+      _ <- EitherT(allIndicesMatchedByWildcard(requestedIndices))
       _ <- EitherT(indicesAliasesDataStreams(requestedIndices))
     } yield ()
     result.value.map(_.left.getOrElse(CanPass.No()))
@@ -432,35 +432,5 @@ object BaseIndicesProcessor {
     def backingIndicesPerDataStreamMap: Task[Map[T, Set[T]]]
 
     def allowedIndicesMatcher: PatternsMatcher[T]
-  }
-
-  private implicit class IndicesFilteredBy[T <: ClusterIndexName](indices: Set[T]) extends AnyVal {
-
-    def filterBy(requestedIndices: Iterable[RequestedIndex[T]]): Set[RequestedIndex[T]] = {
-      val (excluded, included) = requestedIndices.toSet.partition(_.excluded)
-      val excludedRequestedIndices = if (excluded.nonEmpty) {
-        PatternsMatcher
-          .create(excluded.map(_.name))
-          .filter(indices)
-          .map(RequestedIndex(_, excluded = true))
-      } else {
-        Set.empty[RequestedIndex[T]]
-      }
-      val excludedIndicesNames = excludedRequestedIndices.map(_.name)
-      val includedRequestedIndices = if (included.nonEmpty) {
-        PatternsMatcher
-          .create(included.map(_.name))
-          .filter(indices)
-          .filterNot(index => excludedIndicesNames.contains(index))
-          .map(RequestedIndex(_, excluded = false))
-      } else {
-        Set.empty[RequestedIndex[T]]
-      }
-      if(includedRequestedIndices.exists(_.name.hasWildcard)) {
-        includedRequestedIndices ++ excludedRequestedIndices
-      } else {
-        includedRequestedIndices
-      }
-    }
   }
 }

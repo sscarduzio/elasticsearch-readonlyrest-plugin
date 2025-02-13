@@ -24,9 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
-import tech.beshu.ror.accesscontrol.domain.RequestedIndex.*
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -42,10 +39,10 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
                                       override val threadPool: ThreadPool)
   extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  override def modifyWhenIndexNotFound: ModificationResult = super.modifyWhenIndexNotFound
-
   override protected def snapshotsFrom(request: RestoreSnapshotRequest): Set[SnapshotName] =
-    Set(requestedSnapshot(request))
+    SnapshotName
+      .from(request.snapshot())
+      .toCovariantSet
 
   override protected def repositoriesFrom(request: RestoreSnapshotRequest): Set[RepositoryName] = Set {
     RepositoryName
@@ -53,29 +50,17 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Repository name is empty"))
   }
 
-  override protected def requestedIndicesFrom(request: RestoreSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    val requestedIndices = request
+  override protected def requestedIndicesFrom(request: RestoreSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] =
+    request
       .indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
 
-    val snapshotsIndices = clusterService
-      .snapshotIndices(requestedSnapshot(request))
-      .map(RequestedIndex(_, excluded = false))
-
-    // todo: what about excluding syntax?
-    implicit val matchable: Matchable[RequestedIndex[ClusterIndexName]] = Matchable.matchable(_.stringify)
-
-    PatternsMatcher
-      .create(requestedIndices)
-      .filter(snapshotsIndices)
-  }
-
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
-      snapshots <- allowedSnapshotFrom(blockContext)
-      repository <- allowedRepositoryFrom(blockContext)
-      indices <- allowedIndicesFrom(blockContext)
+      snapshots <- snapshotFrom(blockContext)
+      repository <- repositoryFrom(blockContext)
+      indices <- indicesFrom(blockContext)
     } yield update(actionRequest, snapshots, repository, indices)
     updateResult match {
       case Right(_) =>
@@ -86,13 +71,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
     }
   }
 
-  private def requestedSnapshot(request: RestoreSnapshotRequest) = {
-    SnapshotName
-      .from(request.snapshot())
-      .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Snapshot name is empty"))
-  }
-
-  private def allowedSnapshotFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def snapshotFrom(blockContext: SnapshotRequestBlockContext) = {
     val snapshots = blockContext.snapshots.toList
     snapshots match {
       case Nil =>
@@ -105,7 +84,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
     }
   }
 
-  private def allowedRepositoryFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
     val repositories = blockContext.repositories.toList
     repositories match {
       case Nil =>
@@ -118,7 +97,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
     }
   }
 
-  private def allowedIndicesFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def indicesFrom(blockContext: SnapshotRequestBlockContext) = {
     NonEmptyList.fromList(blockContext.filteredIndices.toList) match {
       case None => Left(())
       case Some(indices) => Right(indices)
