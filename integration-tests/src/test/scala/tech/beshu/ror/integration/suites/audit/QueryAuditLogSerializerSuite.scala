@@ -118,8 +118,7 @@ class QueryAuditLogSerializerSuite
         val response = indexManager.getIndex("facebook")
         response should have statusCode 200
 
-        val auditEntriesResponse = auditIndexManager.getEntries
-        auditEntriesResponse should have statusCode 404
+        auditIndexManager.hasNoEntries
       }
     }
   }

@@ -1337,7 +1337,7 @@ class ReadonlyRestStartingTests
   private def readonlyRestBoot(factory: CoreFactory,
                                indexJsonContentService: IndexJsonContentService,
                                configPath: String,
-                               refreshInterval: Option[FiniteDuration] = None,
+                               refreshInterval: Option[FiniteDuration] = Some(2.seconds),
                                maxYamlSize: Option[String] = None): ReadonlyRest = {
     def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
       refreshInterval

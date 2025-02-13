@@ -172,7 +172,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val creationResult = AuditingTool.create(
           Settings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled)),
           _ => mock[AuditSinkService]
-        )
+        ).runSyncUnsafe()
         creationResult should be(None)
       }
     }

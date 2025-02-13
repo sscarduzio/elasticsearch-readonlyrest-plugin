@@ -37,11 +37,6 @@ class DisabledAuditingToolsSuite
 
   private lazy val auditIndexManager = new AuditIndexManager(adminClient, esVersionUsed, "audit_index")
 
-  override def beforeEach(): Unit = {
-    super.beforeEach()
-    auditIndexManager.truncate()
-  }
-
   "Request" should {
     "not be audited" when {
       "rule 1 is matching" in {
