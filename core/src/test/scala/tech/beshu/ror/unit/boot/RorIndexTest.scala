@@ -216,19 +216,12 @@ class RorIndexTest extends AnyWordSpec
 
   private def readonlyRestBoot(factory: CoreFactory,
                                indexJsonContentService: IndexJsonContentService,
-                               configPath: String,
-                               refreshInterval: Option[FiniteDuration] = None) = {
-    def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
-      refreshInterval
-        .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
-        .toMap
-
+                               configPath: String) = {
     implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
       propertiesProvider = TestsPropertiesProvider.usingMap(
-        mapWithIntervalFrom(refreshInterval) ++
-          Map(
-            "com.readonlyrest.settings.loading.delay" -> "0"
-          )
+        Map(
+          "com.readonlyrest.settings.loading.delay" -> "1"
+        )
       )
     )
 
