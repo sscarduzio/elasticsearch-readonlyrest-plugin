@@ -125,7 +125,10 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: RestoreSnapshotRequest =>
         regularRequestHandler.handle(new RestoreSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
       case request: SnapshotsStatusRequest =>
-        regularRequestHandler.handle(new SnapshotsStatusEsRequestContext(request, esContext, clusterService, threadPool))
+        for {
+          requestContext <- SnapshotsStatusEsRequestContext.create(request, esContext, clusterService, threadPool)
+          result <- regularRequestHandler.handle(requestContext)
+        } yield result
       // repositories
       case request: GetRepositoriesRequest =>
         regularRequestHandler.handle(new GetRepositoriesEsRequestContext(request, esContext, clusterService, threadPool))

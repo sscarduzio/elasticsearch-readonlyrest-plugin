@@ -27,13 +27,13 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
-import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.internal.RemoteClusterClient
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, RepositoriesMetadata}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
+import org.elasticsearch.snapshots.SnapshotId
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.domain.*
@@ -43,6 +43,7 @@ import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, In
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService.*
+import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -62,6 +63,8 @@ class EsServerBasedRorClusterService(nodeName: String,
                                     (implicit val scheduler: Scheduler)
   extends RorClusterService
     with Logging {
+
+  import EsServerBasedRorClusterService.*
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metadata.getIndicesLookup
@@ -99,7 +102,11 @@ class EsServerBasedRorClusterService(nodeName: String,
     legacyTemplates() ++ indexTemplates() ++ componentTemplates()
   }
 
-  override def allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = {
+  override def allSnapshots: Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] = {
+    determineAllSnapshots()
+  }
+
+  private def determineAllSnapshots(): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] = {
     val repositoriesMetadata: RepositoriesMetadata = clusterService.state().metadata().custom(RepositoriesMetadata.TYPE)
     repositoriesMetadata
       .repositories().asSafeList
@@ -110,7 +117,9 @@ class EsServerBasedRorClusterService(nodeName: String,
             case r: RepositoryName.Full => Some(r)
             case _ => None
           }
-          .map { name => (name, snapshotsBy(name)) }
+          .map { name =>
+            (name, allSnapshotsFrom(name))
+          }
       }
       .toMap
   }
@@ -376,29 +385,31 @@ class EsServerBasedRorClusterService(nodeName: String,
     }
   }
 
-  private def snapshotsBy(repositoryName: RepositoryName) = {
+  private def allSnapshotsFrom(repository: RepositoryName.Full): Task[Set[SnapshotName.Full]] = {
     repositoriesServiceSupplier.get() match {
       case Some(repositoriesService) =>
-        val repositoryData: RepositoryData = PlainActionFuture.get { (fut: PlainActionFuture[RepositoryData]) =>
-          repositoriesService.getRepositoryData(RepositoryName.toString(repositoryName), fut)
-        }
-        repositoryData
-          .getSnapshotIds.asSafeSet
-          .flatMap { sId =>
-            SnapshotName
-              .from(sId.getName)
-              .flatMap {
-                case SnapshotName.Wildcard => None
-                case SnapshotName.All => None
-                case SnapshotName.Pattern(_) => None
-                case f: SnapshotName.Full => Some(f)
-              }
+        repositoriesService
+          .getSnapshotIds(repository)
+          .map { ids =>
+            ids.flatMap { snapshotId =>
+              snapshotFullNameFrom(snapshotId)
+            }
           }
-          .toCovariantSet
       case None =>
         logger.error("Cannot supply Snapshots Service. Please, report the issue!!!")
-        Set.empty[SnapshotName.Full]
+        Task.now(Set.empty)
     }
+  }
+
+  private def snapshotFullNameFrom(id: SnapshotId): Option[SnapshotName.Full] = {
+    SnapshotName
+      .from(id.getName)
+      .flatMap {
+        case SnapshotName.Wildcard => None
+        case SnapshotName.All => None
+        case SnapshotName.Pattern(_) => None
+        case f: SnapshotName.Full => Some(f)
+      }
   }
 
   private def legacyTemplates(): Set[Template.LegacyTemplate] = {
@@ -497,6 +508,18 @@ class EsServerBasedRorClusterService(nodeName: String,
     documents.toList
       .zip(results)
       .toMap
+  }
+
+}
+object EsServerBasedRorClusterService {
+
+  private implicit class RepositoryServiceOps(val service: RepositoriesService) extends AnyVal {
+
+    def getSnapshotIds(repository: RepositoryName.Full): Task[Set[SnapshotId]] = {
+      val listener = new ActionListenerToTaskAdapter[RepositoryData]()
+      service.getRepositoryData(RepositoryName.toString(repository), listener)
+      listener.result.map(_.getSnapshotIds.asSafeSet)
+    }
   }
 
 }

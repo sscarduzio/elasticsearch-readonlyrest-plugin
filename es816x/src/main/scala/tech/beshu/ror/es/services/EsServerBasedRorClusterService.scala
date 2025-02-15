@@ -338,7 +338,6 @@ class EsServerBasedRorClusterService(nodeName: String,
         new ResolveIndexAction.Request(Array("*")),
         new ActionListener[ResolveIndexAction.Response] {
           override def onResponse(response: ResolveIndexAction.Response): Unit = promise.trySuccess(response)
-
           override def onFailure(e: Exception): Unit = promise.tryFailure(e)
         }
       )
