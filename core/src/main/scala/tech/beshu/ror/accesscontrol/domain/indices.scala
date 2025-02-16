@@ -406,8 +406,7 @@ object ClusterIndexName {
     }
   }
 
-  // todo: write unit tests
-  implicit class IndicesFilteredBy[T <: ClusterIndexName](indices: Set[T]) extends AnyVal {
+  implicit class IndicesFilteredBy[T <: ClusterIndexName](indices: Iterable[T]) extends AnyVal {
 
     def filterBy(requestedIndices: Iterable[RequestedIndex[T]]): Set[RequestedIndex[T]] = {
       val (excluded, included) = requestedIndices.toSet.partition(_.excluded)

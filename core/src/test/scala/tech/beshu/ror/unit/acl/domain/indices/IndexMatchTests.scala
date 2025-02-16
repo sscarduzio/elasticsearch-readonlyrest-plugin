@@ -14,16 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.acl.domain
+package tech.beshu.ror.unit.acl.domain.indices
 
 import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.TestsUtils.*
 
-class IndexNameTests extends AnyWordSpec {
+class IndexMatchTests extends AnyWordSpec {
 
-  "indexName.match" should {
+  "IndexMatch#match" should {
     "follow given rules" in {
       (clusterIndexName("test*") matches clusterIndexName("test*")) should be(true)
       (clusterIndexName("test*") matches clusterIndexName("te*")) should be(false)
