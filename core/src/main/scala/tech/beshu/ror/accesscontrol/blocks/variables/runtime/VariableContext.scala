@@ -54,7 +54,7 @@ object VariableContext {
 
     implicit val dataStreamsRule: VariableUsage[DataStreamsRule] = UsingVariable[DataStreamsRule](rule => rule.settings.allowedDataStreams.toNonEmptyList)
     implicit val filterRule: VariableUsage[FilterRule] = UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
-    implicit def baseGroupsRule[GL <: GroupsLogic]: VariableUsage[BaseGroupsRule[GL]] = UsingVariable[BaseGroupsRule[GL]](rule => rule.settings.permittedGroupsLogic.usedVariables)
+    implicit def groupsRule[GL <: GroupsLogic]: VariableUsage[GroupsRule[GL]] = UsingVariable[GroupsRule[GL]](rule => rule.settings.permittedGroupsLogic.usedVariables)
     implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)
     implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
     implicit val kibanaUserDataRule: VariableUsage[KibanaUserDataRule] = UsingVariable[KibanaUserDataRule](rule =>

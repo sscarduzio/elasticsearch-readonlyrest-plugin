@@ -35,41 +35,24 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 
-private[auth] class RuntimeResolvableGroupsLogicDecoder(implicit runtimeResolvableVariableCreator: RuntimeResolvableVariableCreator)
-  extends GroupsLogicRepresentationDecoder[
-    RuntimeResolvableGroupsLogic[GroupsLogic],
-    RuntimeResolvableGroupsLogic.Simple[PositiveGroupsLogic],
-    RuntimeResolvableGroupsLogic.Simple[NegativeGroupsLogic],
-    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AllOf],
-    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AnyOf],
-    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.NotAllOf],
-    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.NotAnyOf],
-  ]((positive, negative) => RuntimeResolvableGroupsLogic.Combined(positive, negative))
-
-implicit def runtimeResolvableGroupsLogic[GL <: GroupsLogic : GroupsLogic.Creator](implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeResolvableGroupsLogic.Simple[GL]] = {
-  DecoderHelpers
-    .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
-    .map(RuntimeResolvableGroupsLogic.Simple[GL](_))
-}
-
-class BaseGroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
-                            globalSettings: GlobalSettings,
-                            implicit val variableCreator: RuntimeResolvableVariableCreator)
-                           (implicit ev: RuleName[BaseGroupsRule[GroupsLogic]])
-  extends RuleBaseDecoderWithoutAssociatedFields[BaseGroupsRule[GroupsLogic]] {
+class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
+                        globalSettings: GlobalSettings,
+                        implicit val variableCreator: RuntimeResolvableVariableCreator)
+                       (implicit ev: RuleName[GroupsRule[GroupsLogic]])
+  extends RuleBaseDecoderWithoutAssociatedFields[GroupsRule[GroupsLogic]] {
 
   override protected def decodingContext(c: HCursor): ACursor = c
 
-  override protected def decoder: Decoder[RuleDefinition[BaseGroupsRule[GroupsLogic]]] = {
-    new RuntimeResolvableGroupsLogicDecoder()
+  override protected def decoder: Decoder[RuleDefinition[GroupsRule[GroupsLogic]]] = {
+    runtimeResolvableGroupsLogicDecoder
       .syncDecoder
       .emapE {
         case GroupsLogicDecodingResult.Success(groupsLogic) =>
           NonEmptyList.fromList(usersDefinitions.items) match {
             case Some(userDefs) =>
-              val settings = BaseGroupsRule.Settings(groupsLogic, userDefs)
-              val baseGroupsRule = new BaseGroupsRule[GroupsLogic](ev.name, globalSettings.userIdCaseSensitivity, settings)
-              Right(RuleDefinition.create(baseGroupsRule))
+              val settings = GroupsRule.Settings(groupsLogic, userDefs)
+              val groupsRule = new GroupsRule[GroupsLogic](ev.name, globalSettings.userIdCaseSensitivity, settings)
+              Right(RuleDefinition.create(groupsRule))
             case None =>
               Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ev.name.show}` requires them.")))
           }
@@ -80,4 +63,21 @@ class BaseGroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
       }
       .decoder
   }
+
+  private def runtimeResolvableGroupsLogicDecoder = new GroupsLogicRepresentationDecoder[
+    RuntimeResolvableGroupsLogic[GroupsLogic],
+    RuntimeResolvableGroupsLogic.Simple[PositiveGroupsLogic],
+    RuntimeResolvableGroupsLogic.Simple[NegativeGroupsLogic],
+    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AllOf],
+    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AnyOf],
+    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.NotAllOf],
+    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.NotAnyOf],
+  ]((positive, negative) => RuntimeResolvableGroupsLogic.Combined(positive, negative))
+
+  private implicit def runtimeResolvableGroupsLogic[GL <: GroupsLogic : GroupsLogic.Creator]: Decoder[RuntimeResolvableGroupsLogic.Simple[GL]] = {
+    DecoderHelpers
+      .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
+      .map(RuntimeResolvableGroupsLogic.Simple[GL](_))
+  }
+
 }

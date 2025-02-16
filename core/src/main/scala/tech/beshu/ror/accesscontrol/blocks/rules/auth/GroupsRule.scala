@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableGroupsLogic
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -35,9 +35,9 @@ import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class BaseGroupsRule[GL <: GroupsLogic](override val name: Rule.Name,
-                                        override implicit val userIdCaseSensitivity: CaseSensitivity,
-                                        val settings: Settings[GL])
+class GroupsRule[GL <: GroupsLogic](override val name: Rule.Name,
+                                    override implicit val userIdCaseSensitivity: CaseSensitivity,
+                                    val settings: Settings[GL])
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport
@@ -289,9 +289,9 @@ class BaseGroupsRule[GL <: GroupsLogic](override val name: Rule.Name,
   }
 }
 
-object BaseGroupsRule {
+object GroupsRule {
 
-  def name(ruleName: String): RuleName[BaseGroupsRule[GroupsLogic]] = new RuleName[BaseGroupsRule[GroupsLogic]] {
+  def name(ruleName: String): RuleName[GroupsRule[GroupsLogic]] = new RuleName[GroupsRule[GroupsLogic]] {
     override val name: Rule.Name = Rule.Name(ruleName)
   }
 

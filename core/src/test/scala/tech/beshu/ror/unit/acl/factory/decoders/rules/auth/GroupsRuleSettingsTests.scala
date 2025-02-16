@@ -57,14 +57,14 @@ class GroupsNotAllOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogi
 class GroupsNotAnyOfRuleSettingsTests extends GroupsRuleSettingsTests[GroupsLogic.NotAnyOf]("groups_not_any_of", GroupsLogic.NotAnyOf.apply)
 
 sealed abstract class GroupsRuleSettingsTests[GL <: GroupsLogic : GroupsLogic.Creator](ruleName: String, creator: GroupIds => GL)
-  extends BaseRuleSettingsDecoderTest[BaseGroupsRule[GL]]
+  extends BaseRuleSettingsDecoderTest[GroupsRule[GL]]
     with Inside {
 
   private def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic.Simple[GL] = {
     RuntimeResolvableGroupsLogic.Simple(groupIds)
   }
 
-  "A BaseGroupsRule" should {
+  "A GroupsRule" should {
     "be able to be loaded from config" when {
       "a groups mapping is not used" when {
         "only one group is defined" when {

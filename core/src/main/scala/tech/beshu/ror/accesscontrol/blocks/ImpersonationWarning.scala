@@ -131,7 +131,7 @@ object ImpersonationWarning {
         }
       } yield warning
     )
-    implicit def groupsAnyOfRule[GL <: GroupsLogic]: ImpersonationWarningExtractor[BaseGroupsRule[GL]] = noWarnings[BaseGroupsRule[GL]]
+    implicit def groupsRule[GL <: GroupsLogic]: ImpersonationWarningExtractor[GroupsRule[GL]] = noWarnings[GroupsRule[GL]]
     implicit val jwtAuthRule: ImpersonationWarningExtractor[JwtAuthRule] = ImpersonationWarningExtractor[JwtAuthRule] { (rule, blockName, _) =>
       Some(impersonationNotSupportedWarning(rule, blockName))
     }

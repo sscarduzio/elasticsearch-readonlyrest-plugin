@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.user.UserDefinitionsValid
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, GroupName, UserIdPatterns}
@@ -166,7 +166,7 @@ object UsersDefinitionsDecoder {
   }
 
   private def oneRuleModeFrom(rule: Rule): Decoder[Mode] = rule match {
-    case _: BaseGroupsRule[_] =>
+    case _: GroupsRule[_] =>
       failed(DefinitionsLevelCreationError(Message(s"Cannot use '${rule.name.show}' rule in users definition section")))
     case r: AuthRule =>
       Decoder[GroupMappings].map(UserDef.Mode.WithGroupsMapping(Auth.SingleRule(r), _))
