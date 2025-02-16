@@ -113,6 +113,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
     actionRequest.snapshot(SnapshotName.toString(snapshot))
     actionRequest.repository(RepositoryName.toString(repository))
     actionRequest.indices(indices.stringify.asJava)
+    // todo: is it ok?
     actionRequest.includeGlobalState(false)
   }
 }

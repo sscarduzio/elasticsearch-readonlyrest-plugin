@@ -43,8 +43,6 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
                                               override val threadPool: ThreadPool)
   extends BaseSnapshotEsRequestContext[SnapshotsStatusRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  private lazy val allSnapshots = clusterService.allSnapshots
-
   override protected def snapshotsFrom(request: SnapshotsStatusRequest): Set[SnapshotName] =
     request
       .snapshots().asSafeSet
@@ -109,7 +107,7 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
 
   private def repositoryFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, RepositoryName] = {
     val repositories = blockContext.repositories
-    if(allRepositoriesRequested(repositories)) {
+    if (allRepositoriesRequested(repositories)) {
       Right(RepositoryName.All)
     } else {
       fullNamedRepositoriesFrom(repositories).toList match {

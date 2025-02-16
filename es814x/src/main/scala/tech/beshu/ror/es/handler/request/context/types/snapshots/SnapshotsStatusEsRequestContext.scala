@@ -107,7 +107,7 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
 
   private def repositoryFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, RepositoryName] = {
     val repositories = blockContext.repositories
-    if(allRepositoriesRequested(repositories)) {
+    if (allRepositoriesRequested(repositories)) {
       Right(RepositoryName.All)
     } else {
       fullNamedRepositoriesFrom(repositories).toList match {
