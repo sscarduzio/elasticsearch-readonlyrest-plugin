@@ -101,16 +101,14 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
+  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
     clusterService.allIndicesAndAliases
-  }
 
   override lazy val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
     clusterService.allRemoteIndicesAndAliases.memoize
 
-  override lazy val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = {
+  override lazy val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] =
     clusterService.allDataStreamsAndAliases
-  }
 
   override lazy val allRemoteDataStreamsAndAliases: Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
     clusterService.allRemoteDataStreamsAndAliases.memoize
