@@ -374,7 +374,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("ldap_authorization rule requires to define 'groups_or'/'groups'/'groups_and'/'groups_not_all_of' arrays")))
+            errors.head should be(RulesLevelCreationError(Message("ldap_authorization rule requires to define 'groups_or'/'groups_and'/'groups_not_any_of'/'groups_not_all_of' arrays")))
           }
         )
       }

@@ -115,6 +115,26 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         ))
         result should be(None)
       }
+      "there are 2 forbidden group patterns and 2 user groups matching only the first one of the forbidden patters" in {
+        val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("a*"), GroupIdLike.from("b*")
+        )))
+        val result = notAllOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("abc"), group("acb"), group("cab"), group("cba")
+        ))
+        result should be(Some(UniqueNonEmptyList.of(
+          group("abc"), group("acb"), group("cab"), group("cba")
+        )))
+      }
+      "there are 2 forbidden group patterns and one user groups matching each of the forbidden patters" in {
+        val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
+          GroupIdLike.from("a*"), GroupIdLike.from("b*")
+        )))
+        val result = notAllOf.availableGroupsFrom(UniqueNonEmptyList.of(
+          group("abc"), group("bcb"), group("cab"), group("cba")
+        ))
+        result should be(None)
+      }
     }
   }
 
