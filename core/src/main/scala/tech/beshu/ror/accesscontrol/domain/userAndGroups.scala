@@ -153,6 +153,18 @@ sealed trait GroupsLogic
 
 object GroupsLogic {
 
+  trait Creator[GL <: GroupsLogic] {
+    def create(groupIds: GroupIds): GL
+  }
+
+  object Creator {
+    implicit val allOfCreator: Creator[AllOf] = (groupIds: GroupIds) => AllOf.apply(groupIds)
+    implicit val anyOfCreator: Creator[AnyOf] = (groupIds: GroupIds) => AnyOf.apply(groupIds)
+    implicit val notAllOfCreator: Creator[NotAllOf] = (groupIds: GroupIds) => NotAllOf.apply(groupIds)
+    implicit val notAnyOfCreator: Creator[NotAnyOf] = (groupIds: GroupIds) => NotAnyOf.apply(groupIds)
+    def apply[GL <: GroupsLogic](implicit creator: Creator[GL]): Creator[GL] = creator
+  }
+
   sealed trait PositiveGroupsLogic extends GroupsLogic {
     val permittedGroupIds: GroupIds
   }

@@ -18,40 +18,42 @@ package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{NegativeGroupsLogic, PositiveGroupsLogic}
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-trait RuntimeResolvableGroupsLogic[GL <: GroupsLogic] {
+trait RuntimeResolvableGroupsLogic[+GL <: GroupsLogic] {
   def resolve[B <: BlockContext](blockContext: B): Option[GL]
 
   def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
 }
 
 object RuntimeResolvableGroupsLogic {
-  class Simple[GL <: GroupsLogic](val groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]],
-                                  creator: GroupIds => GL) extends RuntimeResolvableGroupsLogic[GL] {
+
+  type RESOLVABLE_GROUP_IDS = UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
+
+  final class Simple[+GL <: GroupsLogic : GroupsLogic.Creator](val groupIds: RESOLVABLE_GROUP_IDS) extends RuntimeResolvableGroupsLogic[GL] {
     override def resolve[B <: BlockContext](blockContext: B): Option[GL] = {
       UniqueNonEmptyList
         .from(resolveAll(groupIds.toNonEmptyList, blockContext))
         .map(GroupIds.apply)
-        .map(creator)
+        .map(GroupsLogic.Creator[GL].create)
     }
 
     override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = groupIds.toNonEmptyList
   }
 
-  class Combined[GL <: GroupsLogic](val permittedGroupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]],
-                                    val forbiddenGroupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]],
-                                    creator: (GroupIds, GroupIds) => GL) extends RuntimeResolvableGroupsLogic[GL] {
-    override def resolve[B <: BlockContext](blockContext: B): Option[GL] = {
+  final class Combined(val positive: Simple[PositiveGroupsLogic],
+                       val negative: Simple[NegativeGroupsLogic]) extends RuntimeResolvableGroupsLogic[GroupsLogic.Combined] {
+    override def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.Combined] = {
       for {
-        permitted <- UniqueNonEmptyList.from(resolveAll(permittedGroupIds.toNonEmptyList, blockContext)).map(GroupIds.apply)
-        forbidden <- UniqueNonEmptyList.from(resolveAll(forbiddenGroupIds.toNonEmptyList, blockContext)).map(GroupIds.apply)
-      } yield creator(permitted, forbidden)
+        permitted <- positive.resolve(blockContext)
+        forbidden <- negative.resolve(blockContext)
+      } yield GroupsLogic.Combined(permitted, forbidden)
     }
 
     override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
-      permittedGroupIds.toNonEmptyList ::: forbiddenGroupIds.toNonEmptyList
+      positive.usedVariables ::: negative.usedVariables
   }
 }

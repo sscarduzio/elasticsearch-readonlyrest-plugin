@@ -55,7 +55,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-trait BaseGroupsRuleTests[GL <: GroupsLogic] extends AnyWordSpecLike with Inside with BlockContextAssertion {
+trait BaseGroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpecLike with Inside with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
   implicit val variableCreator: RuntimeResolvableVariableCreator =
@@ -63,10 +63,10 @@ trait BaseGroupsRuleTests[GL <: GroupsLogic] extends AnyWordSpecLike with Inside
 
   protected def groupsLogicCreator: GroupIds => GL
 
-  protected def createRule(settings: GroupsRulesSettings[GL], caseSensitivity: CaseSensitivity): BaseGroupsRule[GL]
+  protected def createRule(ruleName: Rule.Name, settings: GroupsRulesSettings[GL], caseSensitivity: CaseSensitivity): BaseGroupsRule[GL]
 
   protected final def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GL] = {
-    RuntimeResolvableGroupsLogic(groupIds, groupsLogicCreator)
+    RuntimeResolvableGroupsLogic.Simple(groupIds)
   }
 
   // Common tests
@@ -138,7 +138,7 @@ trait BaseGroupsRuleTests[GL <: GroupsLogic] extends AnyWordSpecLike with Inside
                  preferredGroupId: Option[GroupId],
                  blockContextAssertion: Option[BlockContext => Unit],
                  caseSensitivity: CaseSensitivity): Unit = {
-    val rule = createRule(settings, caseSensitivity)
+    val rule = createRule(Rule.Name("this_rule_name_is_not_important_for_tests"), settings, caseSensitivity)
     val requestContext = MockRequestContext.metadata.copy(
       headers = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
       uriPath = UriPath.auditEventPath,
