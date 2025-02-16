@@ -207,6 +207,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         new ClusterStateRequest().metaData(true),
         new ActionListener[ClusterStateResponse] {
           override def onResponse(response: ClusterStateResponse): Unit = promise.trySuccess(response)
+
           override def onFailure(e: Exception): Unit = promise.tryFailure(e)
         }
       )
@@ -334,10 +335,8 @@ object EsServerBasedRorClusterService {
 
   private implicit class RepositoryServiceOps(val service: SnapshotsService) extends AnyVal {
 
-    private val snapshotServiceAdapter = new EsVersionAwareReflectionBasedSnapshotServiceAdapter(service)
-
     def getSnapshotIds(repository: RepositoryName.Full): Task[Set[SnapshotId]] = {
-      snapshotServiceAdapter
+      new EsVersionAwareReflectionBasedSnapshotServiceAdapter(service)
         .getRepositoryData(repository)
         .map(_.getSnapshotIds.asSafeSet)
     }
