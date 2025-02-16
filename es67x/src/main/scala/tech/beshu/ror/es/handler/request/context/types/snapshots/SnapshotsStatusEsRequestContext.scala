@@ -43,6 +43,8 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
                                               override val threadPool: ThreadPool)
   extends BaseSnapshotEsRequestContext[SnapshotsStatusRequest](actionRequest, esContext, clusterService, threadPool) {
 
+  private lazy val allSnapshots = clusterService.allSnapshots
+
   override protected def snapshotsFrom(request: SnapshotsStatusRequest): Set[SnapshotName] =
     request
       .snapshots().asSafeSet

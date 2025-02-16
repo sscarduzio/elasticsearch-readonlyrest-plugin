@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
+import monix.eval.Task
 import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
@@ -23,10 +24,8 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.domain.RequestedIndex.*
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -36,40 +35,23 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
-                                      esContext: EsContext,
-                                      clusterService: RorClusterService,
-                                      override val threadPool: ThreadPool)
+class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequest,
+                                              requestedRepository: RepositoryName.Full,
+                                              requestedSnapshot: SnapshotName.Full,
+                                              requestedIndices: Set[RequestedIndex[ClusterIndexName]],
+                                              esContext: EsContext,
+                                              clusterService: RorClusterService,
+                                              override val threadPool: ThreadPool)
   extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  override def modifyWhenIndexNotFound: ModificationResult = super.modifyWhenIndexNotFound
-
   override protected def snapshotsFrom(request: RestoreSnapshotRequest): Set[SnapshotName] =
-    Set(requestedSnapshot(request))
+    Set(requestedSnapshot)
 
-  override protected def repositoriesFrom(request: RestoreSnapshotRequest): Set[RepositoryName] = Set {
-    RepositoryName
-      .from(request.repository())
-      .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Repository name is empty"))
-  }
+  override protected def repositoriesFrom(request: RestoreSnapshotRequest): Set[RepositoryName] =
+    Set(requestedRepository)
 
-  override protected def requestedIndicesFrom(request: RestoreSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    val requestedIndices = request
-      .indices.asSafeSet
-      .flatMap(RequestedIndex.fromString)
-      .orWildcardWhenEmpty
-
-    val snapshotsIndices = clusterService
-      .snapshotIndices(requestedSnapshot(request))
-      .map(RequestedIndex(_, excluded = false))
-
-    // todo: what about excluding syntax?
-    implicit val matchable: Matchable[RequestedIndex[ClusterIndexName]] = Matchable.matchable(_.stringify)
-
-    PatternsMatcher
-      .create(requestedIndices)
-      .filter(snapshotsIndices)
-  }
+  override protected def requestedIndicesFrom(request: RestoreSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] =
+    requestedIndices
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
@@ -84,12 +66,6 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
         logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
-  }
-
-  private def requestedSnapshot(request: RestoreSnapshotRequest) = {
-    SnapshotName
-      .from(request.snapshot())
-      .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Snapshot name is empty"))
   }
 
   private def allowedSnapshotFrom(blockContext: SnapshotRequestBlockContext) = {
@@ -132,5 +108,64 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
     request.snapshot(SnapshotName.toString(snapshot))
     request.repository(RepositoryName.toString(repository))
     request.indices(indices.stringify: _*)
+  }
+}
+object RestoreSnapshotEsRequestContext {
+
+  def create(actionRequest: RestoreSnapshotRequest,
+             esContext: EsContext,
+             clusterService: RorClusterService,
+             threadPool: ThreadPool): Task[RestoreSnapshotEsRequestContext] = {
+    for {
+      requestedRepository <- Task(repositoryFrom(actionRequest))
+      requestedSnapshot <- Task(snapshotFrom(actionRequest))
+      requestedIndices <- requestedIndicesFrom(actionRequest, requestedRepository, requestedSnapshot, clusterService)
+    } yield RestoreSnapshotEsRequestContext(
+      actionRequest,
+      requestedRepository,
+      requestedSnapshot,
+      requestedIndices,
+      esContext,
+      clusterService,
+      threadPool
+    )
+  }
+
+  private def repositoryFrom(request: RestoreSnapshotRequest): RepositoryName.Full = {
+    RepositoryName
+      .from(request.repository())
+      .map {
+        case repository@RepositoryName.Full(_) => repository
+        case RepositoryName.Pattern(_) | RepositoryName.All | RepositoryName.Wildcard =>
+          throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Repository name cannot contain wildcard")
+      }
+      .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Repository name is empty"))
+  }
+
+  private def snapshotFrom(request: RestoreSnapshotRequest): SnapshotName.Full = {
+    SnapshotName
+      .from(request.snapshot())
+      .map {
+        case snapshot@SnapshotName.Full(_) => snapshot
+        case SnapshotName.Pattern(_) | SnapshotName.All | SnapshotName.Wildcard =>
+          throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Snapshot name cannot contain wildcard")
+      }
+      .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Snapshot name is empty"))
+  }
+
+  private def requestedIndicesFrom(request: RestoreSnapshotRequest,
+                                   repository: RepositoryName.Full,
+                                   snapshot: SnapshotName.Full,
+                                   clusterService: RorClusterService) = {
+    clusterService
+      .snapshotIndices(repository, snapshot)
+      .map(_.filterBy(indicesFrom(request)))
+  }
+
+  private def indicesFrom(request: RestoreSnapshotRequest) = {
+    request
+      .indices.asSafeSet
+      .flatMap(RequestedIndex.fromString)
+      .orWildcardWhenEmpty
   }
 }
