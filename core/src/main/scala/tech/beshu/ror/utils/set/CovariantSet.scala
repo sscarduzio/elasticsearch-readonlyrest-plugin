@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.utils.set
 
+import cats.*
 import cats.data.NonEmptyList
+import cats.implicits.*
 import cats.kernel.Monoid
 
 import scala.collection.{IterableFactory, IterableFactoryDefaults, IterableOnce, mutable}
@@ -28,7 +30,7 @@ final case class CovariantSet[+A] private[set](private[set] val underlying: Set[
   override def iterableFactory: CovariantSetFactory = CovariantSet
   override def iterator: Iterator[A] = underlying.iterator.asInstanceOf[Iterator[A]]
 }
-object CovariantSet extends CovariantSetFactory with CovariantSetExtensions with CovariantSetInstances
+object CovariantSet extends CovariantSetFactory with CovariantSetExtensions with CovariantSetInstances with CatsInstances
 
 trait CovariantSetFactory extends IterableFactory[CovariantSet] {
 
@@ -103,4 +105,20 @@ trait CovariantSetInstances {
     emptyValue = CovariantSetFactory.empty,
     cmb = (a, b) => a ++ b
   )
+}
+
+trait CatsInstances {
+
+  implicit val covariantSetTraverse: Traverse[CovariantSet] = new Traverse[CovariantSet] {
+    override def traverse[G[_] : Applicative, A, B](fa: CovariantSet[A])(f: A => G[B]): G[CovariantSet[B]] = {
+      val gset: G[Set[Any]] = fa.underlying.asInstanceOf[Set[A]].toList.traverse(f).map(_.toSet)
+      gset.map(new CovariantSet[B](_))
+    }
+
+    override def foldLeft[A, B](fa: CovariantSet[A], b: B)(f: (B, A) => B): B =
+      fa.underlying.foldLeft(b)(f.asInstanceOf[(B, Any) => B])
+
+    override def foldRight[A, B](fa: CovariantSet[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
+      fa.underlying.foldRight(lb)(f.asInstanceOf[(Any, Eval[B]) => Eval[B]])
+  }
 }

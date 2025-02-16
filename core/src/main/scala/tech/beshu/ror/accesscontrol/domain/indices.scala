@@ -269,7 +269,7 @@ object ClusterIndexName {
 
   implicit val eqIndexName: Eq[ClusterIndexName] = Eq.fromUniversalEquals
 
-  implicit class IndexMatch(indexName: ClusterIndexName) {
+  implicit class IndexMatch(val indexName: ClusterIndexName) extends AnyVal {
 
     def matches(otherIndexName: ClusterIndexName): Boolean = indexName match {
       case Local(IndexName.Full(_)) => indexName == otherIndexName
@@ -403,6 +403,36 @@ object ClusterIndexName {
 
     private def legacyBackingIndexWildcardNameFrom(nameStr: NonEmptyString) = {
       IndexName.Pattern.unsafeFromNes(NonEmptyString.unsafeFrom(s".ds-$nameStr-*"))
+    }
+  }
+
+  implicit class IndicesFilteredBy[T <: ClusterIndexName](indices: Iterable[T]) extends AnyVal {
+
+    def filterBy(requestedIndices: Iterable[RequestedIndex[T]]): Set[RequestedIndex[T]] = {
+      val (excluded, included) = requestedIndices.toSet.partition(_.excluded)
+      val excludedRequestedIndices = if (excluded.nonEmpty) {
+        PatternsMatcher
+          .create(excluded.map(_.name))
+          .filter(indices)
+          .map(RequestedIndex(_, excluded = true))
+      } else {
+        Set.empty[RequestedIndex[T]]
+      }
+      val excludedIndicesNames = excludedRequestedIndices.map(_.name)
+      val includedRequestedIndices = if (included.nonEmpty) {
+        PatternsMatcher
+          .create(included.map(_.name))
+          .filter(indices)
+          .filterNot(index => excludedIndicesNames.contains(index))
+          .map(RequestedIndex(_, excluded = false))
+      } else {
+        Set.empty[RequestedIndex[T]]
+      }
+      if (includedRequestedIndices.exists(_.name.hasWildcard)) {
+        includedRequestedIndices ++ excludedRequestedIndices
+      } else {
+        includedRequestedIndices
+      }
     }
   }
 }

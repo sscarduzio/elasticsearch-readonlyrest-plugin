@@ -25,10 +25,10 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.{Inject, Singleton}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.*
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.annotation.unused
