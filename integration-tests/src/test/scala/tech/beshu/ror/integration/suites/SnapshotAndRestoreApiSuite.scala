@@ -19,12 +19,13 @@ package tech.beshu.ror.integration.suites
 import monix.execution.atomic.Atomic
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.SnapshotAndRestoreApiSuite.{RepositoryNameGenerator, SnapshotNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SnapshotManager}
+import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SnapshotManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
@@ -44,6 +45,7 @@ class SnapshotAndRestoreApiSuite
 
   private lazy val adminSnapshotManager = new SnapshotManager(basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
+  private lazy val adminCatManager = new CatManager(basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val dev1SnapshotManager = new SnapshotManager(basicAuthClient("dev1", "test"), esVersionUsed)
   private lazy val dev2SnapshotManager = new SnapshotManager(basicAuthClient("dev2", "test"), esVersionUsed)
   private lazy val dev3SnapshotManager = new SnapshotManager(basicAuthClient("dev3", "test"), esVersionUsed)
@@ -796,12 +798,12 @@ class SnapshotAndRestoreApiSuite
           adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2").force()
 
           val result = dev3SnapshotManager.restoreSnapshot(repositoryName, snapshotName1)
-
           result should have statusCode 200
-          val verification1 = adminIndexManager.getIndex("restored_index1")
-          verification1 should have statusCode 200
-          val verification2 = adminIndexManager.getIndex("restored_index2")
-          verification2 should have statusCode 404
+
+          val allRestoredIndices = adminCatManager.indices("restored_*")
+          allRestoredIndices.results.map(_("index").str).toSet should be(Set {
+            "restored_index1"
+          })
         }
         "user has access to repository and snapshot name" when {
           "all indices from snapshot are restored" in {
@@ -812,12 +814,12 @@ class SnapshotAndRestoreApiSuite
             adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2*").force()
 
             val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "index2*")
-
             result should have statusCode 200
-            val verification1 = adminIndexManager.getIndex("restored_index1")
-            verification1 should have statusCode 404
-            val verification2 = adminIndexManager.getIndex("restored_index2")
-            verification2 should have statusCode 200
+
+            val allRestoredIndices = adminCatManager.indices("restored_*")
+            allRestoredIndices.results.map(_("index").str).toSet should be (Set {
+              "restored_index2"
+            })
           }
           "all indices from snapshot are restored (when * is requested)" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
@@ -827,12 +829,12 @@ class SnapshotAndRestoreApiSuite
             adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2*").force()
 
             val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "*")
-
             result should have statusCode 200
-            val verification1 = adminIndexManager.getIndex("restored_index1")
-            verification1 should have statusCode 404
-            val verification2 = adminIndexManager.getIndex("restored_index2")
-            verification2 should have statusCode 200
+
+            val allRestoredIndices = adminCatManager.indices("restored_*")
+            allRestoredIndices.results.map(_("index").str).toSet should be (Set {
+              "restored_index2"
+            })
           }
           "only one index from snapshot is restored" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
@@ -842,12 +844,104 @@ class SnapshotAndRestoreApiSuite
             adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "*").force()
 
             val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "index2")
-
             result should have statusCode 200
-            val verification1 = adminIndexManager.getIndex("restored_index1")
-            verification1 should have statusCode 404
-            val verification2 = adminIndexManager.getIndex("restored_index2")
-            verification2 should have statusCode 200
+
+            val allRestoredIndices = adminCatManager.indices("restored_*")
+            allRestoredIndices.results.map(_("index").str).toSet should be (Set {
+              "restored_index2"
+            })
+          }
+          "single-index snapshot is restored" when {
+            "restore request with no index is called" in {
+              val repositoryName = RepositoryNameGenerator.next("dev5-repo")
+              adminSnapshotManager.putRepository(repositoryName).force()
+
+              val snapshotName1 = SnapshotNameGenerator.next("dev5-snap")
+              adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index3.2").force()
+
+              val result = dev5SnapshotManager.restoreSnapshot(repositoryName, snapshotName1)
+              result should have statusCode 200
+
+              val allRestoredIndices = adminCatManager.indices("restored_*")
+              allRestoredIndices.results.map(_("index").str).toSet should be(Set {
+                "restored_index3.2"
+              })
+            }
+            "restore request with more specific index pattern than the allowed one is called" in {
+              val repositoryName = RepositoryNameGenerator.next("dev5-repo")
+              adminSnapshotManager.putRepository(repositoryName).force()
+
+              val snapshotName1 = SnapshotNameGenerator.next("dev5-snap")
+              adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index3.2").force()
+
+              val result = dev5SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "index3.*")
+              result should have statusCode 200
+
+              val allRestoredIndices = adminCatManager.indices("restored_*")
+              allRestoredIndices.results.map(_("index").str).toSet should be(Set {
+                "restored_index3.2"
+              })
+            }
+          }
+          "restoring with overlapping wildcard patterns" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index2*").force()
+
+            val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName, "index2*")
+            result should have statusCode 200
+
+            val allRestoredIndices = adminCatManager.indices("restored_*")
+            allRestoredIndices.results.map(_("index").str).toSet should be(Set {
+              "restored_index2"
+            })
+          }
+          "restoring with exclusions" in {
+            val repositoryName = RepositoryNameGenerator.next("dev5-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName = SnapshotNameGenerator.next("dev5-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index3*").force()
+
+            val result = dev5SnapshotManager.restoreSnapshot(repositoryName, snapshotName, "index3*", "-index3.2")
+            result should have statusCode 200
+
+            val allRestoredIndices = adminCatManager.indices("restored_*")
+            allRestoredIndices.results.map(_("index").str).toSet should be(Set(
+              "restored_index3.0", "restored_index3.1", "restored_index3.3"
+            ))
+          }
+          "restoring with broader patterns" in {
+            val repositoryName = RepositoryNameGenerator.next("dev5-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName = SnapshotNameGenerator.next("dev5-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index3.1").force()
+
+            val result = dev5SnapshotManager.restoreSnapshot(repositoryName, snapshotName, "index*")
+            result should have statusCode 200
+
+            val allRestoredIndices = adminCatManager.indices("restored_*")
+            allRestoredIndices.results.map(_("index").str).toSet should be(Set {
+              "restored_index3.1"
+            })
+          }
+          "restoring with narrower patterns" in {
+            val repositoryName = RepositoryNameGenerator.next("dev5-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName = SnapshotNameGenerator.next("dev5-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index3*").force()
+
+            val result = dev5SnapshotManager.restoreSnapshot(repositoryName, snapshotName, "index3.1")
+            result should have statusCode 200
+
+            val allRestoredIndices = adminCatManager.indices("restored_*")
+            allRestoredIndices.results.map(_("index").str).toSet should be(Set {
+              "restored_index3.1"
+            })
           }
         }
       }
@@ -903,21 +997,35 @@ class SnapshotAndRestoreApiSuite
   override protected def beforeEach(): Unit = {
     adminSnapshotManager.deleteAllSnapshots()
     adminSnapshotManager.deleteAllRepositories().force()
-    adminIndexManager.removeIndex("restored_index1")
-    adminIndexManager.removeIndex("restored_index2")
+    SnapshotAndRestoreApiSuite.deleteRestoredIndices(adminIndexManager)
   }
 }
 
 object SnapshotAndRestoreApiSuite {
 
+  private val exampleIndices = Set(
+    "index1",
+    "index2",
+    "index3.0",
+    "index3.1",
+    "index3.2",
+    "index3.3",
+  )
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createFirstDoc("index1", ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createFirstDoc("index2", ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createFirstDoc("index3.0", ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createFirstDoc("index3.1", ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createFirstDoc("index3.2", ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createFirstDoc("index3.3", ujson.read("""{"hello":"world"}""")).force()
+    createIndicesAndExampleDocs(documentManager)
+  }
+
+  private def createIndicesAndExampleDocs(adminDocumentManager: DocumentManager) = {
+    exampleIndices.foreach { index => adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}""")).force() }
+  }
+
+  private def deleteRestoredIndices(adminIndexManager: IndexManager) = {
+    exampleIndices.foreach { index =>
+      val result = adminIndexManager.removeIndex(s"restored_$index")
+      result.responseCode should (be(200) or be(404))
+    }
   }
 
   private object RepositoryNameGenerator {

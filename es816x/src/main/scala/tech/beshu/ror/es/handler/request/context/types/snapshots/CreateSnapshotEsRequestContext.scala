@@ -114,6 +114,5 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
     actionRequest.repository(RepositoryName.toString(repository))
     actionRequest.indices(indices.stringify.asJava)
     // todo: is it ok?
-    actionRequest.includeGlobalState(false)
   }
 }
