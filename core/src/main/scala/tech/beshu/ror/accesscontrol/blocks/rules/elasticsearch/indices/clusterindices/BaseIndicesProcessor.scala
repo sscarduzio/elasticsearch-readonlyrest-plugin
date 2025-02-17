@@ -58,9 +58,9 @@ trait BaseIndicesProcessor {
                                                                                      (implicit requestId: RequestContext.Id,
                                                                                       allowedIndicesManager: IndicesManager[T]): Task[CanPass[Set[RequestedIndex[T]]]] = {
     val result = for {
-      _ <- EitherT(allIndicesMatchedByWildcard(requestedIndices))
       _ <- EitherT(allKibanaRelatedIndicesMatched(requestedIndices, determinedKibanaIndex))
       _ <- EitherT(noneOrAllIndicesMatched(requestedIndices))
+      _ <- EitherT(allIndicesMatchedByWildcard(requestedIndices))
       _ <- EitherT(indicesAliasesDataStreams(requestedIndices))
     } yield ()
     result.value.map(_.left.getOrElse(CanPass.No()))
