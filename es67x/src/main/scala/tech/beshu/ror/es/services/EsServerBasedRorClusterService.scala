@@ -375,11 +375,11 @@ object EsServerBasedRorClusterService {
 
     def getSnapshotIndices(repository: RepositoryName.Full, snapshotId: SnapshotId): Task[Set[ClusterIndexName]] = {
       Task.delay {
-        indicesFrom(
+        indicesFrom {
           service
             .repository(repository.value.value)
             .getSnapshotInfo(snapshotId)
-        )
+        }
       }
     }
 

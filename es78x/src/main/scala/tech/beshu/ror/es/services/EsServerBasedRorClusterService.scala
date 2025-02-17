@@ -490,9 +490,13 @@ object EsServerBasedRorClusterService {
     }
 
     def getSnapshotIndices(repository: RepositoryName.Full, snapshotId: SnapshotId): Task[Set[ClusterIndexName]] = {
-      val listener = new ActionListenerToTaskAdapter[SnapshotInfo]()
-      service.repository(repository.value.value).getSnapshotInfo(snapshotId, listener)
-      listener.result.map(indicesFrom)
+      Task.delay {
+        indicesFrom {
+          service
+            .repository(repository.value.value)
+            .getSnapshotInfo(snapshotId)
+        }
+      }
     }
 
     private def indicesFrom(snapshotInfo: SnapshotInfo) = {

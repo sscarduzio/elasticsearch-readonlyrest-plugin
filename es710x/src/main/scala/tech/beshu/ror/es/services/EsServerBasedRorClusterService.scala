@@ -321,6 +321,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         new ResolveIndexAction.Request(List("*").toArray),
         new ActionListener[ResolveIndexAction.Response] {
           override def onResponse(response: ResolveIndexAction.Response): Unit = promise.trySuccess(response)
+
           override def onFailure(e: Exception): Unit = promise.tryFailure(e)
         }
       )
@@ -494,20 +495,19 @@ object EsServerBasedRorClusterService {
     }
 
     def getSnapshotIndices(repository: RepositoryName.Full, snapshotId: SnapshotId): Task[Set[ClusterIndexName]] = {
-      val listener = new ActionListenerToTaskAdapter[SnapshotInfo]()
-      service.repository(repository.value.value).getSnapshotInfo(snapshotId, listener)
-      listener.result.map(indicesFrom)
+      Task.delay {
+        indicesFrom {
+          service
+            .repository(repository.value.value)
+            .getSnapshotInfo(snapshotId)
+        }
+      }
     }
 
     private def indicesFrom(snapshotInfo: SnapshotInfo) = {
-      val allIndices = snapshotInfo
+      snapshotInfo
         .indices().asScala.toCovariantSet
         .flatMap(ClusterIndexName.fromString)
-      val featureStateIndices = snapshotInfo
-        .featureStates().asScala.toCovariantSet
-        .flatMap(_.getIndices.asScala.toCovariantSet)
-        .flatMap(ClusterIndexName.fromString)
-      allIndices.diff(featureStateIndices)
     }
   }
 
