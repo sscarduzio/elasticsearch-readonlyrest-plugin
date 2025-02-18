@@ -318,7 +318,12 @@ stages:
     displayName: 'Determine if this is release run'
     dependsOn:
       - TEST
-    condition: ne(variables['Build.Reason'], 'Manual')
+    condition: |
+      and(
+        succeeded('TEST'),
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+        ne(variables['Build.Reason'], 'Manual')
+      )
     jobs:
       - job: EXTRACT_IS_RELEASE
         steps:
