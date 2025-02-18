@@ -4,6 +4,7 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
+  runIntegrationTests: ${{ parameters.runIntegrationTests }}
 
 trigger:
   batch: false
@@ -30,6 +31,13 @@ parameters:
     type: string
     displayName: 'Space or comma-separated list of ES version numbers (e.g., "7.17.20 8.15.0")'
     default: ' '
+  - name: runIntegrationTests
+    displayName: 'Run Integration Tests'
+    type: boolean
+    default: false
+    values:
+      - false
+      - true
 
 pool:
   vmImage: 'ubuntu-24.04'
@@ -605,7 +613,11 @@ stages:
   - stage: INTEGRATION_TEST
     displayName: 'Run integration tests'
     dependsOn: [ ]
-    condition: eq(variables['Build.Reason'], 'Manual')
+    condition:
+      and(
+        eq(variables['Build.Reason'], 'Manual'),
+        eq(variables.runIntegrationTests, true)
+      )
     jobs:
       - job:
         container: openjdk:22-slim
