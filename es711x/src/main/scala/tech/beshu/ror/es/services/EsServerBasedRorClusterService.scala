@@ -46,6 +46,7 @@ import tech.beshu.ror.es.RorClusterService.*
 import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
+import tech.beshu.ror.es.utils.EsVersionAwareReflectionBasedSnapshotInfoAdapter.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -494,9 +495,13 @@ object EsServerBasedRorClusterService {
     }
 
     def getSnapshotIndices(repository: RepositoryName.Full, snapshotId: SnapshotId): Task[Set[ClusterIndexName]] = {
-      val listener = new ActionListenerToTaskAdapter[SnapshotInfo]()
-      service.repository(repository.value.value).getSnapshotInfo(snapshotId, listener)
-      listener.result.map(indicesFrom)
+      Task.delay {
+        indicesFrom {
+          service
+            .repository(repository.value.value)
+            .getSnapshotInfo(snapshotId)
+        }
+      }
     }
 
     private def indicesFrom(snapshotInfo: SnapshotInfo) = {
@@ -504,8 +509,7 @@ object EsServerBasedRorClusterService {
         .indices().asScala.toCovariantSet
         .flatMap(ClusterIndexName.fromString)
       val featureStateIndices = snapshotInfo
-        .featureStates().asScala.toCovariantSet
-        .flatMap(_.getIndices.asScala.toCovariantSet)
+        .featureStatesIndices()
         .flatMap(ClusterIndexName.fromString)
       allIndices.diff(featureStateIndices)
     }
