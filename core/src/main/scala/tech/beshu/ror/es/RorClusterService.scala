@@ -41,6 +41,9 @@ trait RorClusterService {
 
   def allSnapshots: Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]]
 
+  def snapshotIndices(repositoryName: RepositoryName.Full,
+                      snapshotName: SnapshotName.Full): Task[Set[ClusterIndexName]]
+
   def verifyDocumentAccessibility(document: Document,
                                   filter: Filter,
                                   id: RequestContext.Id): Task[DocumentAccessibility]
