@@ -20,10 +20,11 @@ import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import org.apache.logging.log4j.scala.{Logger, Logging}
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.{Disabled, Enabled}
+import tech.beshu.ror.accesscontrol.audit.sink.{BaseAuditSink, EsDataStreamBasedAuditSink, EsIndexBasedAuditSink, LogBasedAuditSink}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
@@ -32,7 +33,7 @@ import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
-import tech.beshu.ror.es.{AuditSinkService, DataStreamAndIndexBasedAuditSinkService, IndexBasedAuditSinkService}
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.implicits.*
 
 import java.time.Clock
@@ -192,19 +193,16 @@ object AuditingTool extends Logging {
     }
   }
 
-  private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink
+  private type IndexAuditSinkCreator = AuditCluster => IndexBasedAuditSinkService
+  private type DataStreamAuditSinkCreator = AuditCluster => DataStreamBasedAuditSinkService
 
   def create(settings: Settings,
-             auditSinkServiceCreator: AuditCluster => AuditSinkService)
+             auditSinkServiceCreator: IndexAuditSinkCreator,
+             dataStreamServiceCreator: DataStreamAuditSinkCreator)
             (implicit clock: Clock,
              loggingContext: LoggingContext): Task[Option[AuditingTool]] = {
-    createAuditSinks(settings, auditSinkServiceCreator).map {
+    createAuditSinks(settings, auditSinkServiceCreator, dataStreamServiceCreator).map {
       case Some(auditSinks) =>
-        implicit val auditSinkShow: Show[SupportedAuditSink] = Show.show {
-          case _: EsIndexBasedAuditSink => "index"
-          case _: LogBasedAuditSink => "log"
-          case _: EsDataStreamBasedAuditSink => "data_stream"
-        }
         logger.info(s"The audit is enabled with the given outputs: [${auditSinks.toList.show}]")
         Some(new AuditingTool(auditSinks))
       case None =>
@@ -214,24 +212,19 @@ object AuditingTool extends Logging {
   }
 
   private def createAuditSinks(settings: Settings,
-                               auditSinkServiceCreator: AuditCluster => AuditSinkService)
-                              (implicit clock: Clock): Task[Option[NonEmptyList[SupportedAuditSink]]] = {
+                               auditSinkServiceCreator: IndexAuditSinkCreator,
+                               dataStreamServiceCreator: DataStreamAuditSinkCreator)
+                              (using Clock): Task[Option[NonEmptyList[SupportedAuditSink]]] = {
     settings
       .auditSinks
       .toList
       .map[Task[Option[SupportedAuditSink]]] {
-        case Enabled(AuditSink.Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, auditCluster)) =>
-          Task.pure(EsIndexBasedAuditSink(logSerializer, rorAuditIndexTemplate, auditSinkServiceCreator(auditCluster)).some)
-        case Enabled(AuditSink.Config.EsDataStreamBasedSink(logSerializer, rorAuditDataStream, auditCluster)) =>
-          auditSinkServiceCreator(auditCluster) match {
-            case service: DataStreamAndIndexBasedAuditSinkService =>
-              EsDataStreamBasedAuditSink.create(logSerializer, rorAuditDataStream, service).map(_.some)
-            case _: IndexBasedAuditSinkService =>
-              logger.error("Data stream audit output is not supported")
-              Task.pure(None)
-          }
+        case Enabled(config: AuditSink.Config.EsIndexBasedSink) =>
+          createIndexSink(config, auditSinkServiceCreator).map(_.some)
+        case Enabled(config: AuditSink.Config.EsDataStreamBasedSink) =>
+          createDataStreamSink(config, dataStreamServiceCreator).map(_.some)
         case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName)) =>
-          Task.pure(new LogBasedAuditSink(serializer, loggerName).some)
+          Task.delay(new LogBasedAuditSink(serializer, loggerName).some)
         case Disabled =>
           Task.pure(None)
       }
@@ -239,4 +232,23 @@ object AuditingTool extends Logging {
       .map(_.flatten.toNel)
   }
 
+  private def createIndexSink(config: AuditSink.Config.EsIndexBasedSink,
+                              auditSinkServiceCreator: IndexAuditSinkCreator)(using Clock): Task[SupportedAuditSink] = {
+    val service = auditSinkServiceCreator(config.auditCluster)
+    Task.delay(EsIndexBasedAuditSink(config.logSerializer, config.rorAuditIndexTemplate, service))
+  }
+
+  private def createDataStreamSink(config: AuditSink.Config.EsDataStreamBasedSink,
+                                   auditSinkServiceCreator: DataStreamAuditSinkCreator): Task[SupportedAuditSink] = {
+    val service = auditSinkServiceCreator(config.auditCluster)
+    EsDataStreamBasedAuditSink.create(config.logSerializer, config.rorAuditDataStream, service)
+  }
+
+  private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink
+
+  private given Show[SupportedAuditSink] = Show.show {
+    case _: EsIndexBasedAuditSink => "index"
+    case _: LogBasedAuditSink => "log"
+    case _: EsDataStreamBasedAuditSink => "data_stream"
+  }
 }

@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.configuration.EnvironmentConfig
+import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -51,7 +52,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   protected def factory: RawRorConfigBasedCoreFactory = {
     implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(envVarsProvider = envVarsProvider)
-    new RawRorConfigBasedCoreFactory()
+    new RawRorConfigBasedCoreFactory(EsVersion(8, 17, 0))
   }
 
   def assertDecodingSuccess(yaml: String,

@@ -29,10 +29,11 @@ import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
+import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
-import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
+import tech.beshu.ror.es.{EsEnv, EsVersion, IndexJsonContentService}
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
@@ -228,8 +229,8 @@ class RorIndexTest extends AnyWordSpec
     ReadonlyRest.create(
       factory,
       indexJsonContentService,
-      _ => mock[AuditSinkService],
-      EsEnv(getResourcePath(configPath), getResourcePath(configPath))
+      mock[AuditSinkCreator],
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath), EsVersion(8, 17, 0))
     )
   }
 

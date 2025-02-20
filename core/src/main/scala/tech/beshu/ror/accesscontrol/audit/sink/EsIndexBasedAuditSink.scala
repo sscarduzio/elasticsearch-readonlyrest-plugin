@@ -14,25 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.audit
+package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.es.IndexBasedAuditSinkService
 
-import java.time.{Clock, Instant}
+import java.time.Clock
 
 private[audit] final class EsIndexBasedAuditSink private(serializer: AuditLogSerializer,
                                                          rorAuditIndexTemplate: RorAuditIndexTemplate,
-                                                         auditSinkService: AuditSinkService)
+                                                         auditSinkService: IndexBasedAuditSinkService)
                                                         (implicit clock: Clock)
   extends BaseAuditSink(serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Task[Unit] = Task {
     auditSinkService.submit(
-      indexName = rorAuditIndexTemplate.indexName(Instant.now(clock)).name.value,
+      indexName = rorAuditIndexTemplate.indexName(clock.instant()),
       documentId = event.requestContext.id,
       jsonRecord = serializedEvent.toString
     )
@@ -45,7 +45,7 @@ object EsIndexBasedAuditSink {
 
   def apply(serializer: AuditLogSerializer,
             indexTemplate: RorAuditIndexTemplate,
-            auditSinkService: AuditSinkService)(implicit clock: Clock): EsIndexBasedAuditSink = {
+            auditSinkService: IndexBasedAuditSinkService)(implicit clock: Clock): EsIndexBasedAuditSink = {
     new EsIndexBasedAuditSink(serializer, indexTemplate, auditSinkService)
   }
 }

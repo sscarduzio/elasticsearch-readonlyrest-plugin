@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import cats.{Eq, Show}
-import cats.data.{NonEmptyList, Validated}
+import cats.Eq
+import cats.data.NonEmptyList
 import cats.implicits.*
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import eu.timepit.refined.auto.*
@@ -26,18 +26,14 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
-import tech.beshu.ror.constants
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId}
 import scala.concurrent.ExecutionContext.global
 import scala.language.postfixOps
 import scala.util.matching.Regex
-import scala.util.{Failure, Random, Success, Try}
+import scala.util.Random
 
 sealed trait IndexName
 object IndexName {
@@ -498,101 +494,4 @@ object IndexAttribute {
 
 final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal {
   def toLocal: ClusterIndexName.Local = ClusterIndexName.Local(index)
-}
-
-final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
-                                          rawPattern: String) {
-
-  def indexName(instant: Instant): IndexName.Full = {
-    IndexName.Full(NonEmptyString.unsafeFrom(nameFormatter.format(instant)))
-  }
-
-  def conforms(index: IndexName): Boolean = {
-    index match {
-      case IndexName.Full(name) =>
-        Try(nameFormatter.parse(name.value)).isSuccess
-      case IndexName.Pattern(_) =>
-        IndexName
-          .fromString(rawPattern)
-          .exists { i =>
-            PatternsMatcher
-              .create(Set(index))
-              .`match`(i)
-          }
-    }
-  }
-}
-object RorAuditIndexTemplate {
-  val default: RorAuditIndexTemplate = from(constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).toOption.get
-
-  def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = from(pattern)
-
-  def from(pattern: String): Either[CreationError, RorAuditIndexTemplate] = {
-    Try(DateTimeFormatter.ofPattern(pattern).withZone(ZoneId.of("UTC"))) match {
-      case Success(formatter) => Right(new RorAuditIndexTemplate(formatter, pattern.replaceAll("'", "")))
-      case Failure(ex) => Left(CreationError.ParsingError(ex.getMessage))
-    }
-  }
-
-  sealed trait CreationError
-  object CreationError {
-    final case class ParsingError(msg: String) extends CreationError
-  }
-}
-
-final case class RorAuditDataStream private(dataStream: DataStreamName.Full)
-object RorAuditDataStream {
-  val default: RorAuditDataStream = RorAuditDataStream(DataStreamName.Full.fromNes(nes("readonlyrest_audit")))
-
-  def apply(name: NonEmptyString): Either[CreationError, RorAuditDataStream] = from(name)
-
-  def from(name: NonEmptyString): Either[CreationError, RorAuditDataStream] = {
-    validateFormat(name)
-      .map(DataStreamName.Full.fromNes)
-      .map(RorAuditDataStream.apply)
-      .leftWiden[CreationError]
-  }
-
-  private def validateFormat(value: NonEmptyString): Either[CreationError.FormatError, NonEmptyString] = {
-    // Data stream names must meet the following criteria:
-    // - Lowercase only
-    // - Cannot include \, /, *, ?, ", <, >, |, ,, #, :, or a space character
-    // - Cannot start with -, _, +, or .ds-
-    // - Cannot be . or ..
-    // - Cannot be longer than 255 bytes. Multi-byte characters count towards this limit faster.
-    // https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-data-stream.html#indices-create-data-stream-api-path-params
-
-    val forbiddenCharacters: List[Char] = List('\\', '/', '*', '?', '"', '<', '>', '|', ',', '#', ':', ' ')
-    val forbiddenCharactersSet = forbiddenCharacters.toSet
-    val forbiddenPrefixes = List("-", "_", "+", ".ds-")
-    val forbiddenVariants = List(".", "..")
-    val maxBytes = 255
-
-    implicit val charShow: Show[Char] = Show.show(c => s"'$c'")
-    implicit val stringShow: Show[String] = Show.show(str => s"'$str'")
-
-    List[(String => Boolean, String)](
-      (_.exists(c => c.isLetter && c.isUpper), "name must be lowercase"),
-      (_.exists(forbiddenCharactersSet.contains), s"name must not contain forbidden characters ${forbiddenCharacters.show}"),
-      (value => forbiddenPrefixes.exists(value.startsWith), s"name must not start with ${forbiddenPrefixes.show}"),
-      (value => forbiddenVariants.contains(value), s"name cannot be any of ${forbiddenVariants.show}"),
-      (value => value.getBytes.length > maxBytes, s"name must be not longer than 255 bytes"),
-    )
-      .map {
-        case (test, errorMsg) => Validated.cond(!test(value.value), (), errorMsg).toValidatedNel
-      }
-      .sequence
-      .toEither
-      .leftMap {
-        errors =>
-          CreationError.FormatError(s"Data stream '${value.show}' has an invalid format. Cause: ${errors.toList.mkString(", ")}.")
-
-      }.as(value)
-  }
-
-  sealed trait CreationError
-
-  object CreationError {
-    final case class FormatError(msg: String) extends CreationError
-  }
 }

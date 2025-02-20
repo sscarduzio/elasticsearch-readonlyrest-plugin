@@ -14,27 +14,18 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.audit
+package tech.beshu.ror.es
 
-import monix.eval.Task
-import org.json.JSONObject
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.com.fasterxml.jackson.core.Version
 
-private[audit] abstract class BaseAuditSink(auditLogSerializer: AuditLogSerializer) {
+final case class EsVersion(major: Int, minor: Int, revision: Int) extends Ordered[EsVersion] {
+  override def compare(that: EsVersion): Int = summon[Ordering[EsVersion]].compare(this, that)
 
-  final def submit(auditEvent: AuditResponseContext): Task[Unit] = {
-    safeRunSerializer(auditEvent)
-      .flatMap {
-        case Some(serializedEvent) => submit(auditEvent, serializedEvent)
-        case None => Task.unit
-      }
-  }
+  def formatted: String = s"$major.$minor.$revision"
+}
 
-  def close(): Task[Unit]
-
-  protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Task[Unit]
-
-  private def safeRunSerializer(context: AuditResponseContext) = {
-    Task(auditLogSerializer.onResponse(context))
-  }
+object EsVersion {
+  given Ordering[EsVersion] = Ordering.by[EsVersion, Version](
+    esVersion => Version(esVersion.major, esVersion.minor, esVersion.revision, "", "", "")
+  )(Ordering.by(identity))
 }

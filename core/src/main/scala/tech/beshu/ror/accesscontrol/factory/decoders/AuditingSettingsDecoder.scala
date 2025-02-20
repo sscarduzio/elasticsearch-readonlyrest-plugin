@@ -26,13 +26,14 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.AuditingSettingsCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{AuditingSettingsCreationError, Reason}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
+import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
@@ -41,28 +42,28 @@ import scala.util.{Failure, Success, Try}
 
 object AuditingSettingsDecoder extends Logging {
 
-  lazy val instance: Decoder[Option[AuditingTool.Settings]] = {
+  def instance(esVersion: EsVersion): Decoder[Option[AuditingTool.Settings]] = {
     for {
-      auditSettings <- auditSettingsDecoder
+      auditSettings <- auditSettingsDecoder(esVersion)
       deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance
     } yield auditSettings.orElse(deprecatedAuditSettings)
   }
 
-  private val auditSettingsDecoder: Decoder[Option[AuditingTool.Settings]] = Decoder.instance { c =>
+  private def auditSettingsDecoder(esVersion: EsVersion): Decoder[Option[AuditingTool.Settings]] = Decoder.instance { c =>
     for {
       isAuditEnabled <- YamlKeyDecoder[Boolean](
         segments = NonEmptyList.of("audit", "enabled"),
         default = false
       ).apply(c)
       result <- if (isAuditEnabled) {
-        decodeAuditSettings(c).map(Some.apply)
+        decodeAuditSettings(using esVersion)(c).map(Some.apply)
       } else {
         Right(None)
       }
     } yield result
   }
 
-  private def decodeAuditSettings = {
+  private def decodeAuditSettings(using EsVersion) = {
     decodeAuditSettingsWith(using auditSinkConfigSimpleDecoder)
       .handleErrorWith { error =>
         if (error.aclCreationError.isDefined) {
@@ -93,20 +94,20 @@ object AuditingSettingsDecoder extends Logging {
       .decoder
   }
 
-  private val auditSinkConfigSimpleDecoder: Decoder[AuditSink] = {
+  private def auditSinkConfigSimpleDecoder(using EsVersion): Decoder[AuditSink] = {
     Decoder[AuditSinkType]
-      .map[AuditSink.Config] {
+      .emap[AuditSink.Config] {
         case AuditSinkType.DataStream =>
-          Config.EsDataStreamBasedSink.default
+          Config.EsDataStreamBasedSink.default.asRight
         case AuditSinkType.Index =>
-          Config.EsIndexBasedSink.default
+          Config.EsIndexBasedSink.default.asRight
         case AuditSinkType.Log =>
-          Config.LogBasedSink.default
+          Config.LogBasedSink.default.asRight
       }
       .map(AuditSink.Enabled.apply)
   }
 
-  private val auditSinkConfigExtendedDecoder: Decoder[AuditSink] = {
+  private def auditSinkConfigExtendedDecoder(using EsVersion): Decoder[AuditSink] = {
     given Decoder[RorAuditLoggerName] = {
       SyncDecoderCreator
         .from(nonEmptyStringDecoder)
@@ -154,7 +155,10 @@ object AuditingSettingsDecoder extends Logging {
         for {
           sinkType <- c.downField("type").as[AuditSinkType]
           sinkConfig <- sinkType match {
-            case AuditSinkType.DataStream => c.as[EsDataStreamBasedSink]
+            case AuditSinkType.DataStream =>
+
+
+              c.as[EsDataStreamBasedSink]
             case AuditSinkType.Index => c.as[EsIndexBasedSink]
             case AuditSinkType.Log => c.as[LogBasedSink]
           }
@@ -239,9 +243,14 @@ object AuditingSettingsDecoder extends Logging {
 
     case object Log extends AuditSinkType
 
-    def from(value: String): Either[AuditingSettingsCreationError, AuditSinkType] = value match {
-      case "data_stream" =>
+    def from(value: String, esVersion: EsVersion): Either[AuditingSettingsCreationError, AuditSinkType] = value match {
+      case "data_stream" if esVersion >= dataStreamSupportEsVersion =>
         AuditSinkType.DataStream.asRight
+      case "data_stream" =>
+        Left(AuditingSettingsCreationError(Reason.Message(
+          s"Data stream audit output is supported from Elasticsearch version ${dataStreamSupportEsVersion.formatted}, " +
+            s"but your version is ${esVersion.formatted}. Use 'index' type or upgrade to ${dataStreamSupportEsVersion.formatted} or later."
+        )))
       case "index" =>
         AuditSinkType.Index.asRight
       case "log" =>
@@ -260,13 +269,14 @@ object AuditingSettingsDecoder extends Logging {
       ))
     }
 
-
-    given Decoder[AuditSinkType] = {
+    given auditSinkTypeDecoder(using esVersion: EsVersion): Decoder[AuditSinkType] = {
       SyncDecoderCreator
         .from(Decoder.decodeString)
-        .emapE(AuditSinkType.from)
+        .emapE(AuditSinkType.from(_, esVersion))
         .decoder
     }
+
+    private val dataStreamSupportEsVersion = EsVersion(7, 9, 0)
   }
 
   private object DeprecatedAuditSettingsDecoder {

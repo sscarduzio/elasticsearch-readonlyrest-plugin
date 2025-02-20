@@ -14,25 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.audit
+package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.audit.DataStreamAuditSinkCreator.DataStreamSettings
+import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator.DataStreamSettings
 import tech.beshu.ror.accesscontrol.domain.RorAuditDataStream
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, FieldType, QueryAuditLogSerializer}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-import tech.beshu.ror.es.{AuditSinkService, DataStreamAndIndexBasedAuditSinkService}
+import tech.beshu.ror.es.DataStreamBasedAuditSinkService
 
 private[audit] final class EsDataStreamBasedAuditSink private(serializer: AuditLogSerializer,
                                                               rorAuditDataStream: RorAuditDataStream,
-                                                              auditSinkService: AuditSinkService)
+                                                              auditSinkService: DataStreamBasedAuditSinkService)
   extends BaseAuditSink(serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Task[Unit] = Task {
     auditSinkService.submit(
-      indexName = rorAuditDataStream.dataStream.value.value,
+      dataStreamName = rorAuditDataStream.dataStream,
       documentId = event.requestContext.id,
       jsonRecord = serializedEvent.toString
     )
@@ -45,7 +45,7 @@ private[audit] final class EsDataStreamBasedAuditSink private(serializer: AuditL
 object EsDataStreamBasedAuditSink extends Logging {
   def create(serializer: AuditLogSerializer,
              rorAuditDataStream: RorAuditDataStream,
-             auditSinkService: DataStreamAndIndexBasedAuditSinkService): Task[EsDataStreamBasedAuditSink] = {
+             auditSinkService: DataStreamBasedAuditSinkService): Task[EsDataStreamBasedAuditSink] = {
     val defaultSettings = DataStreamSettings(rorAuditDataStream.dataStream, mappingsForSerializer(serializer))
     auditSinkService
       .dataStreamCreator

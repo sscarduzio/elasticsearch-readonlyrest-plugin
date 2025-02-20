@@ -34,7 +34,7 @@ import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.TestConfigLoading.*
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.*
-import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, EsEnv, IndexBasedAuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -236,7 +236,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Task[Option[AuditingTool]] = {
     core.rorConfig.auditingSettings
-      .map(settings => AuditingTool.create(settings, auditSinkCreator)(environmentConfig.clock, loggingContext))
+      .map(settings => AuditingTool.create(settings, auditSinkCreator.index, auditSinkCreator.dataStream)(using environmentConfig.clock, loggingContext))
       .sequence
       .map(_.flatten)
   }
@@ -266,7 +266,10 @@ class ReadonlyRest(coreFactory: CoreFactory,
 }
 
 object ReadonlyRest {
-  type AuditSinkCreator = AuditCluster => AuditSinkService
+  trait AuditSinkCreator {
+    def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService
+    def index(cluster: AuditCluster): IndexBasedAuditSinkService
+  }
 
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
@@ -306,7 +309,7 @@ object ReadonlyRest {
              env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
-    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory()
+    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(env.esVersion)
     create(coreFactory, indexContentService, auditSinkCreator, env)
   }
 

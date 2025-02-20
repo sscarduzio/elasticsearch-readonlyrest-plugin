@@ -14,19 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.audit
+package tech.beshu.ror.accesscontrol.audit.sink
 
 import cats.data.NonEmptyList
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.audit.DataStreamAuditSinkCreator.DataStreamSettings
+import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator.DataStreamSettings
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
 import tech.beshu.ror.audit.instances.FieldType
 import tech.beshu.ror.es.DataStreamService
 import tech.beshu.ror.implicits.*
 import ujson.Value
-
-import scala.concurrent.duration.*
 
 final class DataStreamAuditSinkCreator(services: NonEmptyList[DataStreamService]) extends Logging {
 

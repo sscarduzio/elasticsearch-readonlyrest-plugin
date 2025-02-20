@@ -23,10 +23,10 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditIndexTemplate}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
-import tech.beshu.ror.es.{AuditSinkService, IndexBasedAuditSinkService}
+import tech.beshu.ror.es.IndexBasedAuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{header, unsafeNes}
@@ -68,7 +68,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         acl.handleRegularRequest(request).runSyncUnsafe()
 
         val (index, jsonString) = Await.result(auditSinkService.result, 5 seconds)
-        index should startWith("readonlyrest_audit-")
+        index.name.value should startWith("readonlyrest_audit-")
         ujson.read(jsonString) should be(ujson.read(
           s"""{
              |  "headers":["x-forwarded-for", "custom-one"],
@@ -105,7 +105,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         acl.handleRegularRequest(request).runSyncUnsafe()
 
         val (index, jsonString) = Await.result(auditSinkService.result, 5 seconds)
-        index should startWith("readonlyrest_audit-")
+        index.name.value should startWith("readonlyrest_audit-")
         ujson.read(jsonString) should be(ujson.read(
           s"""{
              |  "headers":["X-Forwarded-For", "Custom-One"],
@@ -134,7 +134,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     }
   }
 
-  private def auditedAcl(auditSinkService: AuditSinkService) = {
+  private def auditedAcl(auditSinkService: IndexBasedAuditSinkService) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
     val settings = AuditingTool.Settings(
       NonEmptyList.of(
@@ -147,7 +147,8 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     )
     val auditingTool = AuditingTool.create(
       settings = settings,
-      auditSinkServiceCreator = _ => auditSinkService
+      auditSinkServiceCreator = _ => auditSinkService,
+      dataStreamServiceCreator = ??? // todomkp
     ).runSyncUnsafe().get
     new AccessControlListLoggingDecorator(acl, Some(auditingTool))
   }
@@ -167,14 +168,14 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   }
 
   private class MockedAuditSinkService extends IndexBasedAuditSinkService {
-    private val submittedIndexAndJson: Promise[(String, String)] = Promise()
+    private val submittedIndexAndJson: Promise[(IndexName.Full, String)] = Promise()
 
-    override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
+    override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
       submittedIndexAndJson.trySuccess(indexName, jsonRecord)
     }
 
     override def close(): Unit = ()
 
-    def result: Future[(String, String)] = submittedIndexAndJson.future
+    def result: Future[(IndexName.Full, String)] = submittedIndexAndJson.future
   }
 }

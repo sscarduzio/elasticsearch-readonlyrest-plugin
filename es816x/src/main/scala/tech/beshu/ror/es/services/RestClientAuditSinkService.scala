@@ -25,19 +25,28 @@ import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.client.{Request, Response, ResponseListener, RestClient}
-import tech.beshu.ror.accesscontrol.audit.DataStreamAuditSinkCreator
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
-import tech.beshu.ror.es.DataStreamAndIndexBasedAuditSinkService
+import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName}
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import scala.collection.parallel.CollectionConverters.*
 
 final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
-  extends DataStreamAndIndexBasedAuditSinkService
+  extends IndexBasedAuditSinkService
+    with DataStreamBasedAuditSinkService
     with Logging {
 
-  override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+    submit(indexName.name.value, documentId, jsonRecord)
+  }
+
+  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit = {
+    submit(dataStreamName.value.value, documentId, jsonRecord)
+  }
+
+  private def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
     clients.toList.par.foreach { client =>
       client
         .performRequestAsync(

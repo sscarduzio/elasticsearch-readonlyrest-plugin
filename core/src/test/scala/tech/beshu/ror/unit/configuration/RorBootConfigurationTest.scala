@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.configuration.{EnvironmentConfig, MalformedSettings, RorBootConfiguration}
-import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.es.{EsEnv, EsVersion}
 import tech.beshu.ror.utils.TestsUtils.getResourcePath
 
 class RorBootConfigurationTest
@@ -98,6 +98,6 @@ class RorBootConfigurationTest
   }
 
   private def esEnvFrom(configFolderPath: String) = {
-    EsEnv(getResourcePath(configFolderPath), getResourcePath(configFolderPath))
+    EsEnv(getResourcePath(configFolderPath), getResourcePath(configFolderPath), EsVersion(8, 17, 0))
   }
 }

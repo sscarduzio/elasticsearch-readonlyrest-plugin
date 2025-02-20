@@ -29,9 +29,9 @@ import org.elasticsearch.action.{ActionListener, DocWriteRequest}
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{Cancellable, RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
-import tech.beshu.ror.accesscontrol.audit.DataStreamAuditSinkCreator
+import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
-import tech.beshu.ror.es.DataStreamAndIndexBasedAuditSinkService
+import tech.beshu.ror.es.DataStreamBasedAuditSinkService
 import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
 
 import java.security.cert.X509Certificate
@@ -40,7 +40,7 @@ import scala.collection.parallel.CollectionConverters.*
 
 class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
                                              (implicit scheduler: Scheduler)
-  extends DataStreamAndIndexBasedAuditSinkService
+  extends DataStreamBasedAuditSinkService
     with Logging {
 
   override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {

@@ -16,9 +16,13 @@
  */
 package tech.beshu.ror.es
 
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion
+
+
 import cats.implicits.*
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.Version
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.internal.node.NodeClient

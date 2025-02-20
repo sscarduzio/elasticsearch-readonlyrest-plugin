@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
+import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -45,7 +46,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private val factory = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory()
+    new RawRorConfigBasedCoreFactory(EsVersion(8, 17, 0))
   }
 
   private val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))

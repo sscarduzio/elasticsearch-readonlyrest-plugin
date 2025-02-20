@@ -14,22 +14,27 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.audit
+package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
-import org.apache.logging.log4j.{LogManager, Logger}
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.domain.RorAuditLoggerName
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-private[audit] final class LogBasedAuditSink(serializer: AuditLogSerializer,
-                                             loggerName: RorAuditLoggerName) extends BaseAuditSink(serializer) {
+private[audit] abstract class BaseAuditSink(auditLogSerializer: AuditLogSerializer) {
 
-  private val logger: Logger = LogManager.getLogger(loggerName.value.value)
-
-  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Task[Unit] = Task {
-    logger.info(serializedEvent.toString)
+  final def submit(auditEvent: AuditResponseContext): Task[Unit] = {
+    safeRunSerializer(auditEvent)
+      .flatMap {
+        case Some(serializedEvent) => submit(auditEvent, serializedEvent)
+        case None => Task.unit
+      }
   }
 
-  override def close(): Task[Unit] = Task.unit
+  def close(): Task[Unit]
+
+  protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Task[Unit]
+
+  private def safeRunSerializer(context: AuditResponseContext) = {
+    Task(auditLogSerializer.onResponse(context))
+  }
 }

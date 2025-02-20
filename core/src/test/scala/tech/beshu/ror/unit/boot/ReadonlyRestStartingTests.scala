@@ -38,13 +38,13 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
-import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, StartingFailure}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, TestConfig}
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
-import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
+import tech.beshu.ror.es.{EsEnv, EsVersion, IndexJsonContentService}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -1362,8 +1362,8 @@ class ReadonlyRestStartingTests
     ReadonlyRest.create(
       factory,
       indexJsonContentService,
-      _ => mock[AuditSinkService],
-      EsEnv(getResourcePath(configPath), getResourcePath(configPath))
+      mock[AuditSinkCreator],
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath), EsVersion(8, 17, 0))
     )
   }
 

@@ -18,7 +18,7 @@ package tech.beshu.ror.es
 
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
-import org.elasticsearch.ElasticsearchException
+import org.elasticsearch.{Build, ElasticsearchException, Version}
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.internal.node.NodeClient
@@ -103,7 +103,11 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
   private val rorEsConfig = ReadonlyRestEsConfig
-    .load(EsEnv(environment.configFile(), environment.modulesFile()))
+    .load(EsEnv(
+      configPath = environment.configFile(),
+      modulesPath = environment.modulesFile(),
+      esVersion = EsVersion(Version.CURRENT.major, Version.CURRENT.minor, Version.CURRENT.revision)
+    ))
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener
