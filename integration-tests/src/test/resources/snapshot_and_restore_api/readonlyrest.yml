@@ -2,7 +2,7 @@ readonlyrest:
 
   access_control_rules:
 
-    # ES containter initializer need this rule to configure ES instance after startup
+    # ES container initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow
@@ -28,10 +28,7 @@ readonlyrest:
 
     - name: "dev5 block"
       auth_key: dev5:test
-      indices: [
-        "index3*",
-        "-index3*" # at the moment we have it's a workaround because ROR doesn't support excluding indices. We should change it after implementing RORDEV-1274
-      ]
+      indices: [ "index3*" ]
       repositories: ["dev5-repo-*"]
       snapshots: ["dev5-snap-*"]
       

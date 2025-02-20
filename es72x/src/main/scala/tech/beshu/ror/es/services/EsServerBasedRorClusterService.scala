@@ -30,6 +30,8 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.{IndexMetaData, MetaData, RepositoriesMetaData}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
+import org.elasticsearch.repositories.RepositoriesService
+import org.elasticsearch.snapshots.{SnapshotId, SnapshotInfo}
 import org.elasticsearch.snapshots.SnapshotsService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
@@ -37,6 +39,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService.*
@@ -45,6 +48,7 @@ import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.function.Supplier
@@ -59,6 +63,8 @@ class EsServerBasedRorClusterService(nodeName: String,
                                      threadPool: ThreadPool)
   extends RorClusterService
     with Logging {
+
+  import EsServerBasedRorClusterService.*
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup
@@ -87,7 +93,33 @@ class EsServerBasedRorClusterService(nodeName: String,
 
   override def allTemplates: Set[Template] = legacyTemplates()
 
-  override def allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = {
+  override def allSnapshots: Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] = {
+    determineAllSnapshots().view.mapValues(_.map(_.map(_.name))).toMap
+  }
+
+  override def snapshotIndices(repositoryName: RepositoryName.Full,
+                               snapshotName: SnapshotName.Full): Task[Set[ClusterIndexName]] = {
+    determineAllSnapshots().get(repositoryName) match {
+      case Some(getSnapshots) =>
+        val snapshotNameMatcher = PatternsMatcher.create((snapshotName: SnapshotName) :: Nil)
+        getSnapshots
+          .flatMap { snapshots =>
+            snapshots
+              .map {
+                case snapshot if snapshotNameMatcher.`match`(snapshot.name) =>
+                  snapshot.fetchIndices
+                case _ =>
+                  Task.now(Set.empty)
+              }
+              .sequence
+              .map(_.flatten)
+          }
+      case None =>
+        Task.now(Set.empty)
+    }
+  }
+
+  private def determineAllSnapshots(): Map[RepositoryName.Full, Task[Set[Snapshot]]] = {
     val repositoriesMetadata: RepositoriesMetaData = clusterService.state().metaData().custom(RepositoriesMetaData.TYPE)
     repositoriesMetadata
       .repositories().asSafeList
@@ -98,7 +130,9 @@ class EsServerBasedRorClusterService(nodeName: String,
             case r: RepositoryName.Full => Some(r)
             case _ => None
           }
-          .map { name => (name, snapshotsBy(name)) }
+          .map { name =>
+            (name, allSnapshotsFrom(name))
+          }
       }
       .toMap
   }
@@ -224,28 +258,37 @@ class EsServerBasedRorClusterService(nodeName: String,
     }
   }
 
-  private def snapshotsBy(repositoryName: RepositoryName) = {
+  private def allSnapshotsFrom(repository: RepositoryName.Full): Task[Set[Snapshot]] = {
     snapshotsServiceSupplier.get() match {
       case Some(snapshotsService) =>
-        snapshotsService
-          .getRepositoryData(RepositoryName.toString(repositoryName))
-          .getAllSnapshotIds.asSafeSet
-          .flatMap { sId =>
-            SnapshotName
-              .from(sId.getName)
-              .flatMap {
-                case SnapshotName.Wildcard => None
-                case SnapshotName.All => None
-                case SnapshotName.Pattern(_) => None
-                case f: SnapshotName.Full => Some(f)
+        Task.delay {
+          snapshotsService
+            .getSnapshotIds(repository)
+            .flatMap { snapshotId =>
+              snapshotFullNameFrom(snapshotId).map {
+                name => Snapshot(name, snapshotsService.getRepositoriesService.getSnapshotIndices(repository, snapshotId))
               }
-          }
-          .toCovariantSet
+            }
+        }
       case None =>
         logger.error("Cannot supply Snapshots Service. Please, report the issue!!!")
-        Set.empty[SnapshotName.Full]
+        Task.now(Set.empty[Snapshot])
     }
   }
+
+  private def snapshotFullNameFrom(id: SnapshotId): Option[SnapshotName.Full] = {
+    SnapshotName
+      .from(id.getName)
+      .flatMap {
+        case SnapshotName.Wildcard => None
+        case SnapshotName.All => None
+        case SnapshotName.Pattern(_) => None
+        case f: SnapshotName.Full => Some(f)
+      }
+  }
+
+  private final class Snapshot(val name: SnapshotName.Full,
+                               val fetchIndices: Task[Set[ClusterIndexName]])
 
   private def legacyTemplates(): Set[Template] = {
     val templates = clusterService.state.metaData().templates()
@@ -311,6 +354,37 @@ class EsServerBasedRorClusterService(nodeName: String,
     documents.toList
       .zip(results)
       .toMap
+  }
+
+}
+object EsServerBasedRorClusterService {
+
+  private implicit class SnapshotsServiceOps(val service: SnapshotsService) extends AnyVal {
+
+    def getSnapshotIds(repository: RepositoryName.Full): Set[SnapshotId] = {
+      service
+        .getRepositoryData(RepositoryName.toString(repository))
+        .getSnapshotIds.asSafeSet
+    }
+  }
+
+  private implicit class RepositoriesServiceOps(val service: RepositoriesService) extends AnyVal {
+
+    def getSnapshotIndices(repository: RepositoryName.Full, snapshotId: SnapshotId): Task[Set[ClusterIndexName]] = {
+      Task.delay {
+        indicesFrom {
+          service
+            .repository(repository.value.value)
+            .getSnapshotInfo(snapshotId)
+        }
+      }
+    }
+
+    private def indicesFrom(snapshotInfo: SnapshotInfo) = {
+      snapshotInfo
+        .indices().asScala.toCovariantSet
+        .flatMap(ClusterIndexName.fromString)
+    }
   }
 
 }

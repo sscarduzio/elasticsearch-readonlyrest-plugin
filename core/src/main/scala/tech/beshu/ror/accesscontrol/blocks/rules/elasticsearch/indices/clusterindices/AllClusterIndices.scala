@@ -64,7 +64,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
                                   allAllowedIndices: Set[ClusterIndexName.Local],
                                   requestedIndices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName.Local]],
                                   determinedKibanaIndex: Option[KibanaIndexName]): Task[ProcessResult] = {
-    implicit val indicesManager: LocalIndicesManager = new LocalIndicesManager(
+    implicit val allowedIndicesManager: LocalIndicesManager = new LocalIndicesManager(
       requestContext,
       PatternsMatcher.create(allAllowedIndices)
     )
