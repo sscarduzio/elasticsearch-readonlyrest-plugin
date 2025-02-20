@@ -33,12 +33,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.mocks.{MockRequestContext, MockUserMetadataRequestContext}
 import tech.beshu.ror.syntax
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
+import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -1386,6 +1387,138 @@ class GroupsRuleSettingsTests
       }
     }
   }
+
+  s"A Combined GroupsRule settings" should {
+    "be able to be loaded from config" when {
+      "a groups mapping is not used" when {
+        "only one group is defined" when {
+          "one, full username is used" in {
+            assertDecodingSuccess(
+              yaml =
+                s"""
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    user_belongs_to_groups:
+                   |      any_of: ["group3", "group4*"]
+                   |      not_any_of: ["group5", "group6*"]
+                   |
+                   |  users:
+                   |  - username: cartman
+                   |    groups: ["group1", "group3"]
+                   |    auth_key: "cartman:pass"
+                   |
+                   |""".stripMargin,
+              assertion = rule => {
+                val resolvedGroupsLogic = rule.settings.permittedGroupsLogic.resolve(currentUserMetadataRequestBlockContextFrom())
+                val expectedGroupsLogic = GroupsLogic.Combined(
+                  GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"), GroupIdPattern.fromNes(nes("group4*"))))),
+                  GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group5"), GroupIdPattern.fromNes(nes("group6*"))))),
+                )
+                resolvedGroupsLogic should contain(expectedGroupsLogic)
+
+                val permittedGroupsLogic = rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Combined]
+                permittedGroupsLogic.positive.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AnyOf]].groupIds should
+                  be(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group3").nel), AlreadyResolved(GroupIdPattern.fromNes("group4*").nel)))
+                permittedGroupsLogic.negative.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic.NotAnyOf]].groupIds should
+                  be(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group5").nel), AlreadyResolved(GroupIdPattern.fromNes("group6*").nel)))
+
+                rule.settings.usersDefinitions.length should be(1)
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
+                  patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
+                  authRule shouldBe an[AuthKeyRule]
+                  authRule.asInstanceOf[AuthKeyRule].settings should be {
+                    BasicAuthenticationRule.Settings(Credentials(userId("cartman"), PlainTextSecret("pass")))
+                  }
+                }
+              }
+            )
+          }
+        }
+      }
+      "a groups mapping is used" when {
+        "advanced groups mapping with structured groups is used" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 |readonlyrest:
+                 |
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    user_belongs_to_groups:
+                 |      any_of: ["group3", "group4*"]
+                 |      not_all_of: ["group5", "group6*"]
+                 |
+                 |  users:
+                 |  - username: cartman
+                 |    groups:
+                 |     - local_group:
+                 |         id: group1
+                 |         name: Group 1
+                 |       external_group_ids: ["ldap_group3"]
+                 |     - local_group:
+                 |         id: group2
+                 |         name: Group 2
+                 |       external_group_ids: ["ldap_group4"]
+                 |    auth_key: "cartman:pass"
+                 |    groups_provider_authorization:
+                 |      user_groups_provider: GroupsService1
+                 |      groups: ["ldap_group3", "ldap_group4"]
+                 |
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                 |    ssl_enabled: false
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=People,dc=example,dc=com"
+                 |
+                 |  user_groups_providers:
+                 |  - name: GroupsService1
+                 |    groups_endpoint: "http://localhost:8080/groups"
+                 |    auth_token_name: "user"
+                 |    auth_token_passed_as: QUERY_PARAM
+                 |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+                 |
+                 |""".stripMargin,
+            assertion = rule => {
+              val permittedGroupsLogic = rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Combined]
+              permittedGroupsLogic.positive.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AnyOf]].groupIds should
+                be(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group3").nel), AlreadyResolved(GroupIdPattern.fromNes("group4*").nel)))
+              permittedGroupsLogic.negative.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic.NotAllOf]].groupIds should
+                be(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group5").nel), AlreadyResolved(GroupIdPattern.fromNes("group6*").nel)))
+
+              rule.settings.usersDefinitions.length should be(1)
+              val sortedUserDefinitions = rule.settings.usersDefinitions
+              inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
+                patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
+                groupMappings should be(GroupMappings.Advanced(UniqueNonEmptyList.of(
+                  Mapping(group("group1", "Group 1"), UniqueNonEmptyList.of(GroupId("ldap_group3"))),
+                  Mapping(group("group2", "Group 2"), UniqueNonEmptyList.of(GroupId("ldap_group4")))
+                )))
+
+                rule1 shouldBe an[AuthKeyRule]
+                rule1.asInstanceOf[AuthKeyRule].settings should be {
+                  BasicAuthenticationRule.Settings(Credentials(userId("cartman"), PlainTextSecret("pass")))
+                }
+                rule2 shouldBe an[ExternalAuthorizationRule]
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
+                  GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
+                )
+              }
+            }
+          )
+        }
+      }
+    }
+  }
+
 
   private def currentUserMetadataRequestBlockContextFrom(update: UserMetadata => UserMetadata = identity,
                                                          requestContext: MockUserMetadataRequestContext = MockRequestContext.metadata) = {
