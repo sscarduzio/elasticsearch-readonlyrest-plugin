@@ -22,10 +22,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.GroupsLogicRepresentationDecoder.{GroupsLogicDecodingResult, declaredName}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.{SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
+
+import scala.compiletime.ops.string.Matches
+import scala.compiletime.{constValue, error}
 
 private[auth] class GroupsLogicRepresentationDecoder[
   RULE_REPRESENTATION,
@@ -65,13 +68,13 @@ private[auth] class GroupsLogicRepresentationDecoder[
   private def withGroupsSectionDecoder[T <: Rule](implicit ruleName: RuleName[T]): SyncDecoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] =
     Decoder
       .instance { c =>
-          val groupsSection = c.downField("user_belongs_to_groups")
-          for {
-            groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](groupsSection, "all_of")
-            groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](groupsSection, "any_of")
-            groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](groupsSection, "not_all_of")
-            groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](groupsSection, "not_any_of")
-          } yield (groupsAllOf, groupsAnyOf, groupsNotAllOf, groupsNotAnyOf)
+        val groupsSection = c.downField(declaredName["user_belongs_to_groups"])
+        for {
+          groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](groupsSection)("all_of")
+          groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](groupsSection)("any_of")
+          groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](groupsSection)("not_all_of")
+          groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](groupsSection)("not_any_of")
+        } yield (groupsAllOf, groupsAnyOf, groupsNotAllOf, groupsNotAnyOf)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
@@ -82,10 +85,23 @@ private[auth] class GroupsLogicRepresentationDecoder[
       .instance { c =>
         val section = c
         for {
-          groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](section, "groups_all_of", "groups_and", "roles_and")
-          groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](section, "groups_any_of", "groups_or", "groups", "roles")
-          groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](section, "groups_not_all_of")
-          groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](section, "groups_not_any_of")
+          groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](section)(
+            declaredName["groups_all_of"],
+            declaredName["groups_and"],
+            declaredName["roles_and"],
+          )
+          groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](section)(
+            declaredName["groups_any_of"],
+            declaredName["groups_or"],
+            declaredName["groups"],
+            declaredName["roles"],
+          )
+          groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](section)(
+            declaredName["groups_not_all_of"],
+          )
+          groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](section)(
+            declaredName["groups_not_any_of"],
+          )
         } yield (groupsAllOf, groupsAnyOf, groupsNotAllOf, groupsNotAnyOf)
       }
       .toSyncDecoder
@@ -122,7 +138,7 @@ private[auth] class GroupsLogicRepresentationDecoder[
         )
     }
 
-  private def decodeAsOption[REPRESENTATION: Decoder](c: ACursor, field: String, fields: String*) = {
+  private def decodeAsOption[REPRESENTATION: Decoder](c: ACursor)(field: String, fields: String*) = {
     val (cursor, key) = c.downFieldsWithKey(field, fields: _*)
     cursor.as[Option[REPRESENTATION]].map(_.map((_, key)))
   }
@@ -138,13 +154,18 @@ private[auth] class GroupsLogicRepresentationDecoder[
 }
 
 object GroupsLogicRepresentationDecoder {
-  val applicableNames: List[String] = List(
-    "user_belongs_to_groups",
-    "groups_all_of", "groups_and", "roles_and",
-    "groups_any_of", "groups_or", "groups", "roles",
-    "groups_not_all_of",
-    "groups_not_any_of",
-  )
+
+  private type APPLICABLE_NAMES = "user_belongs_to_groups|groups_all_of|groups_and|roles_and|groups_any_of|groups_or|groups|roles|groups_not_all_of|groups_not_any_of"
+
+  private inline def declaredName[S <: String : ValueOf]: String = {
+    inline if (constValue[Matches[S, APPLICABLE_NAMES]]) {
+      constValue[S]
+    } else {
+      error("Name is not declared as applicable name of groups rule")
+    }
+  }
+
+  val applicableNames: List[String] = constValue[APPLICABLE_NAMES].split('|').toList
 
   sealed trait GroupsLogicDecodingResult[RULE_REPRESENTATION]
 
