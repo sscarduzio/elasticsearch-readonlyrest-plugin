@@ -25,14 +25,14 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.{ActionListener, DocWriteRequest}
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
+import org.elasticsearch.action.{ActionListener, DocWriteRequest}
 import org.elasticsearch.client.{Cancellable, RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName}
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
@@ -50,6 +50,10 @@ final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHi
 
   override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit = {
     submitDocument(dataStreamName.value.value, documentId, jsonRecord)
+  }
+
+  override def close(): Unit = {
+    clients.toList.par.foreach(_.close())
   }
 
   private def submitDocument(index: String, documentId: String, jsonRecord: String): Unit = {
@@ -72,10 +76,6 @@ final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHi
             logger.error(s"Cannot submit audit event [index: $index, doc: $documentId]", ex)
         }
     }
-  }
-
-  override def close(): Unit = {
-    clients.toList.par.foreach(_.close())
   }
 
   override val dataStreamCreator: DataStreamAuditSinkCreator =

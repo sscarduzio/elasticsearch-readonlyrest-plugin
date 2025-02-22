@@ -19,26 +19,35 @@ package tech.beshu.ror.accesscontrol.audit.sink
 import cats.data.NonEmptyList
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator.DataStreamSettings
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.audit.instances.FieldType
 import tech.beshu.ror.es.DataStreamService
+import tech.beshu.ror.es.DataStreamService.DataStreamSettings
+import tech.beshu.ror.es.DataStreamService.DataStreamSettings.LifecyclePolicy
 import tech.beshu.ror.implicits.*
-import ujson.Value
+import tech.beshu.ror.utils.RefinedUtils.*
+
+import java.util.concurrent.TimeUnit
 
 final class DataStreamAuditSinkCreator(services: NonEmptyList[DataStreamService]) extends Logging {
 
-  def createIfNotExists(streamSettings: DataStreamSettings): Task[Unit] = {
-    services.toList.traverse(createIfNotExists(_, streamSettings)).map((_: List[Unit]) => ())
+  def createIfNotExists(dataStreamName: DataStreamName.Full,
+                        documentMappings: Map[String, FieldType]): Task[Unit] = {
+    services.toList.traverse(createIfNotExists(_, dataStreamName, documentMappings)).map((_: List[Unit]) => ())
   }
 
-  private def createIfNotExists(service: DataStreamService, settings: DataStreamSettings): Task[Unit] = {
+  private def createIfNotExists(service: DataStreamService, dataStreamName: DataStreamName.Full, documentMappings: Map[String, FieldType]): Task[Unit] = {
     service
-      .checkDataStreamExists(settings.dataStreamName)
+      .checkDataStreamExists(dataStreamName)
       .flatMap {
         case true =>
-          Task.delay(logger.info(s"Data stream ${settings.dataStreamName.show} already exists"))
+          Task.delay(logger.info(s"Data stream ${dataStreamName.show} already exists"))
         case false =>
+          val settings = DataStreamSettings(
+            dataStreamName,
+            defaultLifecyclePolicy,
+            documentMappings
+          )
           setupDataStream(service, settings)
       }
   }
@@ -46,128 +55,27 @@ final class DataStreamAuditSinkCreator(services: NonEmptyList[DataStreamService]
   private def setupDataStream(service: DataStreamService, settings: DataStreamSettings): Task[Unit] = {
     for {
       _ <- Task.delay(logger.info(s"Trying to setup ROR audit sink with data stream ${settings.dataStreamName.show}.."))
-      _ <- service.createIndexLifecyclePolicy(settings.lifecyclePolicy, settings.lifecyclePolicyJson(service.capabilities.ilmMaxPrimaryShardSize))
-      _ <- service.createComponentTemplateForMappings(settings.componentTemplateMappingsId, settings.mappings, settings.mappingsMetadata)
-      _ <- service.createComponentTemplateForIndex(settings.componentTemplateSettingsId, settings.lifecyclePolicy, settings.indexSettingsMetadata)
-      _ <- service.createIndexTemplate(settings.indexTemplate, settings.dataStreamName, NonEmptyList.of(settings.componentTemplateMappingsId, settings.componentTemplateSettingsId), settings.indexTemplateMetadata)
-      _ <- service.createDataStream(settings.dataStreamName)
+      _ <- service.fullySetupDataStream(settings)
       _ <- Task.delay(logger.info(s"ROR audit data stream ${settings.dataStreamName.show} created."))
     } yield ()
   }
+
+  private val defaultLifecyclePolicy = LifecyclePolicy(
+    hotPhase = LifecyclePolicy.HotPhase(
+      LifecyclePolicy.Rollover(
+        maxAge = positiveFiniteDuration(1, TimeUnit.DAYS),
+        maxPrimaryShardSizeInGb = Some(positiveInt(50))
+      )
+    ),
+    warmPhase = Some(LifecyclePolicy.WarmPhase(
+      minAge = positiveFiniteDuration(14, TimeUnit.DAYS),
+      shrink = Some(LifecyclePolicy.Shrink(numberOfShards = positiveInt(1))),
+      forceMerge = Some(LifecyclePolicy.ForceMerge(maxNumSegments = positiveInt(1)))
+    )),
+    coldPhase = Some(LifecyclePolicy.ColdPhase(
+      minAge = positiveFiniteDuration(30, TimeUnit.DAYS),
+      freeze = true
+    ))
+  )
 }
 
-
-object DataStreamAuditSinkCreator {
-
-  final case class DataStreamSettings(dataStreamName: DataStreamName.Full,
-                                      documentMappings: Map[String, FieldType]) {
-    def lifecyclePolicy: String = s"${dataStreamName.value.value}-lifecycle-policy"
-
-    def componentTemplateSettingsId: TemplateName = templateNameFrom(s"${dataStreamName.value.value}-settings")
-
-    def componentTemplateMappingsId: TemplateName = templateNameFrom(s"${dataStreamName.value.value}-mappings")
-
-    def indexTemplate: TemplateName = templateNameFrom(s"${dataStreamName.value.value}-template")
-
-    private def templateNameFrom(value: String) = {
-      TemplateName
-        .fromString(value)
-        .getOrElse(throw new IllegalStateException("Template name should be non-empty"))
-    }
-
-    val mappings: Value = serializeMappings(documentMappings)
-
-    val mappingsMetadata: Map[String, String] = {
-      Map(
-        "description" -> "Data mappings for ReadonlyREST audit data stream"
-      )
-    }
-
-    val indexSettingsMetadata: Map[String, String] = {
-      Map(
-        "description" -> "Index settings for ReadonlyREST audit data stream"
-      )
-    }
-
-    val indexTemplateMetadata: Map[String, String] = {
-      Map(
-        "description" -> "Index template for ReadonlyREST audit data stream"
-      )
-    }
-
-    def lifecyclePolicyJson(maxPrimaryShardSizeInRollover: Boolean): Value = {
-      ujson.Obj(
-        "phases" -> ujson.Obj(
-          "hot" -> ujson.Obj(
-            "actions" -> ujson.Obj(
-              "rollover" -> ujson.Obj.from(
-                List[(String, Value)]("max_age" -> "1d") ++
-                Option.when[(String, Value)](maxPrimaryShardSizeInRollover)("max_primary_shard_size" -> "50gb").toList
-              )
-            )
-          ),
-          "warm" -> ujson.Obj(
-            "min_age" -> "14d",
-            "actions" ->ujson.Obj(
-              "shrink" -> ujson.Obj(
-                "number_of_shards" -> 1
-              ),
-              "forcemerge" -> ujson.Obj(
-                "max_num_segments" -> 1
-              )
-            )
-          ),
-          "cold" -> ujson.Obj(
-            "min_age"-> "30d",
-            "actions" -> ujson.Obj(
-              "freeze" -> ujson.Obj()
-            )
-          )
-        )
-      )
-    }
-
-    private def serializeMappings(mappings: Map[String, FieldType]): ujson.Value = {
-      val properties = mappings
-        .view
-        .mapValues {
-          case FieldType.Str =>
-            ujson.read(
-              """
-                |{
-                |  "type": "text"
-                |}
-                |""".stripMargin
-            )
-          case FieldType.Long =>
-            ujson.read(
-              """
-                |{
-                |  "type": "long"
-                |}
-                |""".stripMargin
-            )
-          case FieldType.Bool =>
-            ujson.read(
-              """
-                |{
-                |  "type": "boolean"
-                |}
-                |""".stripMargin
-            )
-          case FieldType.Date =>
-            ujson.read(
-              """
-                |{
-                |  "type": "date",
-                |  "format": "date_optional_time||epoch_millis"
-                |}
-                |""".stripMargin
-            )
-        }
-      ujson.Obj("properties" -> ujson.Obj.from(properties))
-    }
-
-
-  }
-}

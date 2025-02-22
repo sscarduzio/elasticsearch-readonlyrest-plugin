@@ -31,13 +31,14 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.IndexNotFoundException
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
 import tech.beshu.ror.es.DataStreamService
-import tech.beshu.ror.es.DataStreamService.CreationResult
+import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.es.services.DataStreamSettingsOps.toJson
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import tech.beshu.ror.utils.ReflecUtils
 
-import scala.jdk.CollectionConverters.*
 import java.lang.reflect.Modifier
 import java.time.Instant
+import scala.jdk.CollectionConverters.*
 
 final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)
   extends DataStreamService
@@ -81,9 +82,9 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     client.executeAck(enhancedActionType.action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override def createIndexLifecyclePolicy(policyName: String, policyJson: ujson.Value): Task[CreationResult] = execute {
+  override def createIndexLifecyclePolicy(policyName: String, policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
     val enhancedActionType = client.findActionUnsafe[AcknowledgedResponse]("cluster:admin/ilm/put")
-    val parser = jsonParserFactory.create(policyJson)
+    val parser = jsonParserFactory.create(policy.toJson)
     val lifecyclePolicyClass = enhancedActionType.loadClass("org.elasticsearch.xpack.core.ilm.LifecyclePolicy")
     val lifecyclePolicy =
       ReflecUtils

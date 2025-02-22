@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.audit.sink
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator.DataStreamSettings
 import tech.beshu.ror.accesscontrol.domain.RorAuditDataStream
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, FieldType, QueryAuditLogSerializer}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
@@ -46,10 +45,10 @@ object EsDataStreamBasedAuditSink extends Logging {
   def create(serializer: AuditLogSerializer,
              rorAuditDataStream: RorAuditDataStream,
              auditSinkService: DataStreamBasedAuditSinkService): Task[EsDataStreamBasedAuditSink] = {
-    val defaultSettings = DataStreamSettings(rorAuditDataStream.dataStream, mappingsForSerializer(serializer))
+    val mappings = mappingsForSerializer(serializer)
     auditSinkService
       .dataStreamCreator
-      .createIfNotExists(defaultSettings)
+      .createIfNotExists(rorAuditDataStream.dataStream, mappings)
       .map((_: Unit) => new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService))
   }
 

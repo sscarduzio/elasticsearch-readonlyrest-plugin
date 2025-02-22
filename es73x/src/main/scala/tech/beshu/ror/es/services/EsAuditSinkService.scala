@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.services
 
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.client.Client
@@ -53,6 +54,7 @@ final class EsAuditSinkService(client: Client)
       new IndexRequest(indexName)
         .id(documentId)
         .source(jsonRecord, XContentType.JSON)
+        .opType(DocWriteRequest.OpType.CREATE)
     )
   }
 

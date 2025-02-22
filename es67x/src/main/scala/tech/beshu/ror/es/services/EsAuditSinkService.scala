@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.services
 
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.client.Client
@@ -44,14 +45,19 @@ final class EsAuditSinkService(client: Client)
       .build
 
   override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
-    bulkProcessor.add(
-      new IndexRequest(indexName.name.value, "ror_audit_evt", documentId)
-        .source(jsonRecord, XContentType.JSON)
-    )
+    submitDocument(indexName, documentId, jsonRecord)
   }
 
   override def close(): Unit = {
     bulkProcessor.close()
+  }
+
+  private def submitDocument(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+    bulkProcessor.add(
+      new IndexRequest(indexName.name.value, "ror_audit_evt", documentId)
+        .source(jsonRecord, XContentType.JSON)
+        .opType(DocWriteRequest.OpType.CREATE)
+    )
   }
 
   private class AuditSinkBulkProcessorListener extends BulkProcessor.Listener {

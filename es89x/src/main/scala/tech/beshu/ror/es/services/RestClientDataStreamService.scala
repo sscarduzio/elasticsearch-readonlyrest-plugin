@@ -22,7 +22,8 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.client.{Request, Response, ResponseException, RestClient}
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
 import tech.beshu.ror.es.DataStreamService
-import tech.beshu.ror.es.DataStreamService.CreationResult
+import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.es.services.DataStreamSettingsOps.toJson
 import tech.beshu.ror.es.utils.RestResponseOps.*
 import ujson.Value
 
@@ -47,9 +48,9 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override def createIndexLifecyclePolicy(policyName: String, policyJson: Value): Task[CreationResult] = execute {
+  override def createIndexLifecyclePolicy(policyName: String, policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
     val request = new Request("PUT", s"/_ilm/policy/$policyName")
-    val requestBody = ujson.Obj("policy" -> policyJson)
+    val requestBody = ujson.Obj("policy" -> policy.toJson)
     request.setJsonBody(requestBody)
     perform(request)
       .flatMap {

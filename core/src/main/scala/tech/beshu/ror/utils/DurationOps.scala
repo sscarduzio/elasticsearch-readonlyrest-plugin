@@ -28,6 +28,7 @@ object DurationOps {
   implicit class RefinedDurationOps(val duration: Duration) extends AnyVal {
     def toRefinedPositive: Either[String, PositiveFiniteDuration] = duration match {
       case v: FiniteDuration if v.toMillis > 0 =>
+        v.toCoarsest
         Right(Refined.unsafeApply(v))
       case _ =>
         Left(s"Cannot map '${duration.toString}' to finite duration.")
@@ -35,6 +36,20 @@ object DurationOps {
 
     def toRefinedPositiveUnsafe: PositiveFiniteDuration =
       toRefinedPositive.fold(err => throw new IllegalArgumentException(err), identity)
+
+    def inShortFormat: String = {
+      val d = duration.toCoarsest
+      val unit = d.unit match {
+        case java.util.concurrent.TimeUnit.DAYS => "d"
+        case java.util.concurrent.TimeUnit.HOURS => "h"
+        case java.util.concurrent.TimeUnit.MINUTES => "m"
+        case java.util.concurrent.TimeUnit.SECONDS => "s"
+        case java.util.concurrent.TimeUnit.MILLISECONDS => "ms"
+        case java.util.concurrent.TimeUnit.MICROSECONDS => "μs"
+        case java.util.concurrent.TimeUnit.NANOSECONDS => "ns"
+      }
+      s"${d.length}$unit"
+    }
   }
 
 }
