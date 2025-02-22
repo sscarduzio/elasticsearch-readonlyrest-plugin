@@ -67,7 +67,7 @@ import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, Transport
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier}
+import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsEnvFactory, EsPatchVerifier}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.nio.file.Path
@@ -102,7 +102,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
   private val rorEsConfig = ReadonlyRestEsConfig
-    .load(EsEnv(environment.configFile(), environment.modulesFile()))
+    .load(EsEnvFactory.create(environment))
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener

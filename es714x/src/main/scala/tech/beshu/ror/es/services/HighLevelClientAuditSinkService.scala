@@ -30,8 +30,8 @@ import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{Cancellable, RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
-import tech.beshu.ror.es.DataStreamBasedAuditSinkService
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName}
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
 
 import java.security.cert.X509Certificate
@@ -40,10 +40,26 @@ import scala.collection.parallel.CollectionConverters.*
 
 final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
                                                    (implicit scheduler: Scheduler)
-  extends DataStreamBasedAuditSinkService
+  extends IndexBasedAuditSinkService
+    with DataStreamBasedAuditSinkService
     with Logging {
 
-  override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+    submitDocument(indexName.name.value, documentId, jsonRecord)
+  }
+
+  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit = {
+    submitDocument(dataStreamName.value.value, documentId, jsonRecord)
+  }
+
+  override def close(): Unit = {
+    clients.toList.par.foreach(_.close())
+  }
+
+  override val dataStreamCreator: DataStreamAuditSinkCreator =
+    new DataStreamAuditSinkCreator(clients.map(client => new RestClientDataStreamService(client.getLowLevelClient)))
+
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String): Unit = {
     clients.toList.par.foreach { client =>
       val request =
         new IndexRequest(indexName)
@@ -64,13 +80,6 @@ final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHi
         }
     }
   }
-
-  override def close(): Unit = {
-    clients.toList.par.foreach(_.close())
-  }
-
-  override val dataStreamCreator: DataStreamAuditSinkCreator =
-    new DataStreamAuditSinkCreator(clients.map(client => new RestClientDataStreamService(client.getLowLevelClient)))
 }
 
 object HighLevelClientAuditSinkService {

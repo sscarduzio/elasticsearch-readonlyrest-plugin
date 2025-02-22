@@ -39,14 +39,18 @@ final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient]
     with Logging {
 
   override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
-    submit(indexName.name.value, documentId, jsonRecord)
+    submitDocument(indexName.name.value, documentId, jsonRecord)
   }
 
   override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit = {
-    submit(dataStreamName.value.value, documentId, jsonRecord)
+    submitDocument(dataStreamName.value.value, documentId, jsonRecord)
   }
 
-  private def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
+  override def close(): Unit = {
+    clients.toList.par.foreach(_.close())
+  }
+
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String): Unit = {
     clients.toList.par.foreach { client =>
       client
         .performRequestAsync(
@@ -54,10 +58,6 @@ final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient]
           createResponseListener(indexName, documentId)
         )
     }
-  }
-
-  override def close(): Unit = {
-    clients.toList.par.foreach(_.close())
   }
 
   private def createRequest(indexName: String, documentId: String, jsonBody: String) = {

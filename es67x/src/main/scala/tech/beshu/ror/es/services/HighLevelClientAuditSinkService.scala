@@ -29,7 +29,7 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName}
 import tech.beshu.ror.es.IndexBasedAuditSinkService
 import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
 
@@ -42,9 +42,10 @@ final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHi
   extends IndexBasedAuditSinkService
     with Logging {
 
-  override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
     clients.toList.par.foreach { client =>
-      val request = new IndexRequest(indexName, "ror_audit_evt", documentId).source(jsonRecord, XContentType.JSON)
+      val index = indexName.name.value
+      val request = new IndexRequest(index, "ror_audit_evt", documentId).source(jsonRecord, XContentType.JSON)
       val options = RequestOptions.DEFAULT
       val indexAsyncCall: ActionListener[IndexResponse] => Unit = client.indexAsync(request, options, _)
 
@@ -53,9 +54,9 @@ final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHi
         .runAsync {
           case Right(resp) if resp.status().getStatus / 100 == 2 =>
           case Right(resp) =>
-            logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${resp.status().getStatus}")
+            logger.error(s"Cannot submit audit event [index: $index, doc: $documentId] - response code: ${resp.status().getStatus}")
           case Left(ex) =>
-            logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
+            logger.error(s"Cannot submit audit event [index: $index, doc: $documentId]", ex)
         }
     }
   }

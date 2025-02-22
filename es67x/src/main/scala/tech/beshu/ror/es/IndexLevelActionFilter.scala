@@ -19,7 +19,6 @@ package tech.beshu.ror.es
 import cats.implicits.*
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.Version
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
@@ -41,7 +40,7 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNo
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
-import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.es.utils.{EsEnvFactory, ThreadRepo}
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
@@ -69,7 +68,7 @@ class IndexLevelActionFilter(nodeName: String,
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
     auditSinkCreator,
-    EsEnv(env.configFile(), env.modulesFile())
+    EsEnvFactory.create(env)
   )
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
@@ -93,11 +92,16 @@ class IndexLevelActionFilter(nodeName: String,
     startRorInstance()
   }
 
-  private def auditSinkCreator: AuditSinkCreator = {
-    case AuditCluster.LocalAuditCluster =>
-      new EsAuditSinkService(client)
-    case remote: AuditCluster.RemoteAuditCluster =>
-      HighLevelClientAuditSinkService.create(remote)
+  private def auditSinkCreator: AuditSinkCreator = new AuditSinkCreator {
+    override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService =
+      throw new IllegalStateException("Data stream audit sink is not supported in this version")
+
+    override def index(cluster: AuditCluster): IndexBasedAuditSinkService = cluster match {
+      case AuditCluster.LocalAuditCluster =>
+        new EsAuditSinkService(client)
+      case remote: AuditCluster.RemoteAuditCluster =>
+        HighLevelClientAuditSinkService.create(remote)
+    }
   }
 
   override def order(): Int = 0
@@ -218,8 +222,11 @@ class IndexLevelActionFilter(nodeName: String,
 }
 
 private sealed trait RorInstanceStartingState
+
 private object RorInstanceStartingState {
   case object Starting extends RorInstanceStartingState
+
   final case class Started(instance: RorInstance) extends RorInstanceStartingState
+
   final case class NotStarted(cause: StartingFailureException) extends RorInstanceStartingState
 }

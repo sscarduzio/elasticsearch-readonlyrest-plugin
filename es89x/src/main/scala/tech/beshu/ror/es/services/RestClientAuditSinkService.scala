@@ -34,7 +34,8 @@ import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import scala.collection.parallel.CollectionConverters.*
 
 final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
-  extends DataStreamBasedAuditSinkService
+  extends IndexBasedAuditSinkService
+    with DataStreamBasedAuditSinkService
     with Logging {
 
   override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {

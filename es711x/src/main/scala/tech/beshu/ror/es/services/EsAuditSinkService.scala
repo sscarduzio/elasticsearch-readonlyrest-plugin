@@ -26,12 +26,14 @@ import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.common.xcontent.XContentType
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator
+import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName}
 import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
-import tech.beshu.ror.es.DataStreamBasedAuditSinkService
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 
 final class EsAuditSinkService(client: NodeClient, threadPool: ThreadPool, jsonParserFactory: XContentJsonParserFactory)
-  extends DataStreamBasedAuditSinkService
+  extends IndexBasedAuditSinkService
+    with DataStreamBasedAuditSinkService
     with Logging {
 
   private val bulkProcessor =
@@ -44,17 +46,23 @@ final class EsAuditSinkService(client: NodeClient, threadPool: ThreadPool, jsonP
       .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))
       .build
 
-  override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
-    bulkProcessor.add(
-      new IndexRequest(indexName)
-        .id(documentId)
-        .source(jsonRecord, XContentType.JSON)
-        .opType(DocWriteRequest.OpType.CREATE)
-    )
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+    bulkProcessor.add(indexRequest(indexName.name.value, documentId, jsonRecord))
+  }
+
+  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit = {
+    bulkProcessor.add(indexRequest(dataStreamName.value.value, documentId, jsonRecord))
   }
 
   override def close(): Unit = {
     bulkProcessor.close()
+  }
+
+  private def indexRequest(indexName: String, documentId: String, jsonRecord: String) = {
+    new IndexRequest(indexName)
+      .id(documentId)
+      .source(jsonRecord, XContentType.JSON)
+      .opType(DocWriteRequest.OpType.CREATE)
   }
 
   private class AuditSinkBulkProcessorListener extends BulkProcessor.Listener {

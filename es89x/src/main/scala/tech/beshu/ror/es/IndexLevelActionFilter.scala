@@ -70,7 +70,7 @@ class IndexLevelActionFilter(nodeName: String,
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
     auditSinkCreator,
-    EsEnv(env.configFile(), env.modulesFile())
+    EsEnvFactory.create(env)
   )
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
@@ -93,11 +93,19 @@ class IndexLevelActionFilter(nodeName: String,
     startRorInstance()
   }
 
-  private def auditSinkCreator: AuditSinkCreator = {
-    case AuditCluster.LocalAuditCluster =>
-      new EsAuditSinkService(client, new XContentJsonParserFactory(xContentRegistry))
-    case remote: AuditCluster.RemoteAuditCluster =>
-      RestClientAuditSinkService.create(remote)
+  private def auditSinkCreator: AuditSinkCreator = new AuditSinkCreator {
+    override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = createService(cluster)
+
+    override def index(cluster: AuditCluster): IndexBasedAuditSinkService = createService(cluster)
+
+    private def createService(cluster: AuditCluster): IndexBasedAuditSinkService & DataStreamBasedAuditSinkService = {
+      cluster match {
+        case AuditCluster.LocalAuditCluster =>
+          new EsAuditSinkService(client, new XContentJsonParserFactory(xContentRegistry))
+        case remote: AuditCluster.RemoteAuditCluster =>
+          RestClientAuditSinkService.create(remote)
+      }
+    }
   }
 
   override def order(): Int = 0

@@ -33,7 +33,8 @@ import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import java.util.function.BiConsumer
 
 final class EsAuditSinkService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)
-  extends DataStreamBasedAuditSinkService
+  extends IndexBasedAuditSinkService
+    with DataStreamBasedAuditSinkService
     with Logging {
 
   private val bulkProcessor =

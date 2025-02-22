@@ -18,7 +18,7 @@ package tech.beshu.ror.es
 
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
-import org.elasticsearch.{Build, ElasticsearchException, Version}
+import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.internal.node.NodeClient
@@ -65,7 +65,7 @@ import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, Transpo
 import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier, RemoteClusterServiceSupplier}
+import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsEnvFactory, EsPatchVerifier, RemoteClusterServiceSupplier}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
 
@@ -103,11 +103,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
   private val rorEsConfig = ReadonlyRestEsConfig
-    .load(EsEnv(
-      configPath = environment.configFile(),
-      modulesPath = environment.modulesFile(),
-      esVersion = EsVersion(Version.CURRENT.major, Version.CURRENT.minor, Version.CURRENT.revision)
-    ))
+    .load(EsEnvFactory.create(environment))
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener

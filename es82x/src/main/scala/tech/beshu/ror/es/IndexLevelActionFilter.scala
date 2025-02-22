@@ -16,13 +16,9 @@
  */
 package tech.beshu.ror.es
 
-import org.apache.maven.artifact.versioning.DefaultArtifactVersion
-
-
 import cats.implicits.*
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.Version
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.internal.node.NodeClient
@@ -45,7 +41,7 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNo
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, RestClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
-import tech.beshu.ror.es.utils.{ThreadRepo, XContentJsonParserFactory}
+import tech.beshu.ror.es.utils.{EsEnvFactory, ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
@@ -74,7 +70,7 @@ class IndexLevelActionFilter(nodeName: String,
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
     auditSinkCreator,
-    EsEnv(env.configFile(), env.modulesFile())
+    EsEnvFactory.create(env)
   )
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
@@ -97,11 +93,19 @@ class IndexLevelActionFilter(nodeName: String,
     startRorInstance()
   }
 
-  private def auditSinkCreator: AuditSinkCreator = {
-    case AuditCluster.LocalAuditCluster =>
-      new EsAuditSinkService(client, threadPool, new XContentJsonParserFactory(xContentRegistry))
-    case remote: AuditCluster.RemoteAuditCluster =>
-      RestClientAuditSinkService.create(remote)
+  private def auditSinkCreator: AuditSinkCreator = new AuditSinkCreator {
+    override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = createService(cluster)
+
+    override def index(cluster: AuditCluster): IndexBasedAuditSinkService = createService(cluster)
+
+    private def createService(cluster: AuditCluster): IndexBasedAuditSinkService & DataStreamBasedAuditSinkService = {
+      cluster match {
+        case AuditCluster.LocalAuditCluster =>
+          new EsAuditSinkService(client, threadPool, new XContentJsonParserFactory(xContentRegistry))
+        case remote: AuditCluster.RemoteAuditCluster =>
+          RestClientAuditSinkService.create(remote)
+      }
+    }
   }
 
   override def order(): Int = 0

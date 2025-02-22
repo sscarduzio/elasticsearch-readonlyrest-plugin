@@ -17,11 +17,13 @@
 package tech.beshu.ror.es.services
 
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.client.Client
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.common.xcontent.XContentType
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
 import tech.beshu.ror.es.IndexBasedAuditSinkService
 
@@ -42,16 +44,21 @@ final class EsAuditSinkService(client: Client)
       .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))
       .build
 
-  override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
-    bulkProcessor.add(
-      new IndexRequest(indexName)
-        .id(documentId)
-        .source(jsonRecord, XContentType.JSON)
-    )
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+    submitDocument(indexName.name.value, documentId, jsonRecord)
   }
 
   override def close(): Unit = {
     bulkProcessor.close()
+  }
+
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String): Unit = {
+    bulkProcessor.add(
+      new IndexRequest(indexName)
+        .id(documentId)
+        .source(jsonRecord, XContentType.JSON)
+        .opType(DocWriteRequest.OpType.CREATE)
+    )
   }
 
   private class AuditSinkBulkProcessorListener extends BulkProcessor.Listener {

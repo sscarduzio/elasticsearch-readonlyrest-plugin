@@ -29,7 +29,7 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName}
 import tech.beshu.ror.es.IndexBasedAuditSinkService
 import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
 
@@ -42,7 +42,15 @@ final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHi
   extends IndexBasedAuditSinkService
     with Logging {
 
-  override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+    submitDocument(indexName.name.value, documentId, jsonRecord)
+  }
+
+  override def close(): Unit = {
+    clients.toList.par.foreach(_.close())
+  }
+
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String): Unit = {
     clients.toList.par.foreach { client =>
       val request = new IndexRequest(indexName).id(documentId).source(jsonRecord, XContentType.JSON)
       val options = RequestOptions.DEFAULT
@@ -58,10 +66,6 @@ final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHi
             logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
         }
     }
-  }
-
-  override def close(): Unit = {
-    clients.toList.par.foreach(_.close())
   }
 }
 
