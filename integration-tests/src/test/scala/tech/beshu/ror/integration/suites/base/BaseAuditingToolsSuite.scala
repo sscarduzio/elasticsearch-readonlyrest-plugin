@@ -47,8 +47,10 @@ trait BaseAuditingToolsSuite
 
   protected def baseAuditDataStreamName: Option[String]
 
+  private lazy val baseAuditIndexName = "audit_index"
+
   private lazy val adminAuditManagers =
-    (List("audit_index") ++ baseAuditDataStreamName.toList)
+    (List(baseAuditIndexName) ++ baseAuditDataStreamName.toList)
       .map { indexName =>
         (indexName, new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, indexName))
       }
@@ -340,6 +342,35 @@ trait BaseAuditingToolsSuite
     }
   }
 
+  "ROR audit index setup" should {
+    "create an index if not exist" in {
+      val initialConfig = getResourceContent("/ror_audit/disabled_auditing_tools/readonlyrest.yml")
+      val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
+      rorApiManager.updateRorInIndexConfig(initialConfig).forceOkStatus()
+
+      val newIndex = s"audit-index-${UUID.randomUUID().toString}"
+      rorApiManager.updateRorInIndexConfig(rorConfigWithIndexAudit(newIndex)).forceOkStatus()
+
+      val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
+      val indexResponse = indexManager.getIndex("twitter")
+      indexResponse should have statusCode 200
+
+      val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newIndex)
+
+      eventually {
+        val auditEntries = adminAuditManager.getEntries.force().jsons
+        auditEntries.size shouldBe 1
+
+        val firstEntry = auditEntries(0)
+        firstEntry("final_state").str shouldBe "ALLOWED"
+        firstEntry("user").str shouldBe "username"
+        firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
+      }
+
+      assertDynamicIndexMappings(newIndex)
+    }
+  }
+
   "ROR audit data stream setup" should {
     "create an audit data stream if not exist" excludeES(allEs6x, allEs7xBelowEs79x) in {
       val initialConfig = getResourceContent("/ror_audit/disabled_auditing_tools/readonlyrest.yml")
@@ -359,8 +390,6 @@ trait BaseAuditingToolsSuite
         response.force().allDataStreams should contain(newDataStream)
       }
 
-      assertAuditDataStreamSettings(newDataStream)
-
       val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
       val indexResponse = indexManager.getIndex("twitter")
       indexResponse should have statusCode 200
@@ -374,6 +403,8 @@ trait BaseAuditingToolsSuite
         firstEntry("user").str shouldBe "username"
         firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
       }
+
+      assertAuditDataStreamSettings(newDataStream)
     }
     "use existing data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
       val initialConfig = getResourceContent("/ror_audit/disabled_auditing_tools/readonlyrest.yml")
@@ -400,6 +431,13 @@ trait BaseAuditingToolsSuite
         firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
       }
     }
+  }
+
+  private def rorConfigWithIndexAudit(indexName: String) = {
+    baseRorConfig.replace(
+      baseAuditIndexName,
+      indexName
+    )
   }
 
   private def rorConfigWithDataStreamAudit(dataStreamName: String) = {
@@ -587,5 +625,20 @@ trait BaseAuditingToolsSuite
     val dataStreamResponse = dataStreamManager.getDataStream(dataStreamName)
     dataStreamResponse.indexTemplateByDataStream(dataStreamName) shouldBe indexTemplateName
     dataStreamResponse.ilmPolicyByDataStream(dataStreamName) shouldBe policyName
+
+    dataStreamResponse.backingIndices.foreach { backingIndex =>
+      assertDynamicIndexMappings(backingIndex)
+    }
+  }
+
+  private def assertDynamicIndexMappings(indexName: String) = {
+    val indexManager = new IndexManager(destNodeClientProvider.adminClient, esVersionUsed)
+    val expectedProperties = List(
+      "@timestamp", "acl_history", "action", "block", "content_len", "content_len_kb",
+      "correlation_id", "destination", "final_state", "headers", "id", "indices", "match",
+      "origin", "path", "processingMillis", "req_method", "task_id", "type", "user"
+    )
+    val mappings = indexManager.getMappings(indexName).responseJson(indexName)("mappings").obj
+    mappings("properties").obj.keySet should contain allElementsOf (expectedProperties)
   }
 }

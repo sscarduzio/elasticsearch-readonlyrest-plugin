@@ -20,7 +20,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.domain.RorAuditDataStream
-import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, FieldType, QueryAuditLogSerializer}
+import tech.beshu.ror.audit.instances.FieldType
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.DataStreamBasedAuditSinkService
 
@@ -54,8 +54,8 @@ object EsDataStreamBasedAuditSink extends Logging {
 
   private def mappingsForSerializer(serializer: AuditLogSerializer): Map[String, FieldType] = {
     serializer match {
-      case _: QueryAuditLogSerializer => QueryAuditLogSerializer.defaultIndexedMappings
-      case _: DefaultAuditLogSerializer => DefaultAuditLogSerializer.defaultIndexedMappings
+//      case _: QueryAuditLogSerializer => QueryAuditLogSerializer.defaultIndexedMappings
+//      case _: DefaultAuditLogSerializer => DefaultAuditLogSerializer.defaultIndexedMappings
       case _ =>
       // ES data streams require the timestamp field.
       // It would be hard to pass the additional field mappings through the ROR yaml config, so only the timestamp field is here

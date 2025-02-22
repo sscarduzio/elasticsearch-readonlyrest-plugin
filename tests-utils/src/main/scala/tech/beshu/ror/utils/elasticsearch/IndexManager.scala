@@ -132,6 +132,10 @@ class IndexManager(client: RestClient,
     call(createGetMappingRequest(indexName, field), new JsonResponse(_))
   }
 
+  def getMappings(indexName: String): JsonResponse = {
+    call(createGetMappingsRequest(indexName), new JsonResponse(_))
+  }
+
   def createIndexWithMapping(indexName: String, propertiesJson: JSON): JsonResponse = {
     call(createIndexRequest(indexName, None, Map.empty), new JsonResponse(_)).force()
     call(createPutMappingRequest(indexName, propertiesJson), new JsonResponse(_))
@@ -237,6 +241,10 @@ class IndexManager(client: RestClient,
 
   private def createGetMappingRequest(indexName: String, field: String) = {
     new HttpGet(client.from(s"/$indexName/_mapping/field/$field"))
+  }
+
+  private def createGetMappingsRequest(indexName: String) = {
+    new HttpGet(client.from(s"/$indexName/_mapping"))
   }
 
   private def createPutMappingRequest(indexName: String, propertiesJson: JSON) = {

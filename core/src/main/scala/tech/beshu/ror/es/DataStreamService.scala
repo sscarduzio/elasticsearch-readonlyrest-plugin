@@ -41,7 +41,7 @@ trait DataStreamService {
 
   def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean]
 
-  def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult]
+  protected def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult]
 
   protected def createIndexLifecyclePolicy(policyName: String, policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult]
 
