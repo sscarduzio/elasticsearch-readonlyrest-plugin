@@ -100,6 +100,6 @@ object LdapAuthorizationRule {
                                                  groupsLogic: GroupsLogic.PositiveGroupsLogic) extends Settings
 
     final case class CombinedGroupsLogicSettings(ldap: LdapAuthorizationService,
-                                                 groupsLogic: GroupsLogic.CombinedGroupsLogic) extends Settings
+                                                 groupsLogic: GroupsLogic.Combined) extends Settings
   }
 }
