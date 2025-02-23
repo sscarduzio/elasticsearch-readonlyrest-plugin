@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.services
 
-import cats.data.NonEmptyList
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutComposableIndexTemplateAction}
@@ -29,10 +28,11 @@ import org.elasticsearch.cluster.metadata.{ComponentTemplate, ComposableIndexTem
 import org.elasticsearch.common.compress.CompressedXContent
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.IndexNotFoundException
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.DataStreamService
+import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
-import tech.beshu.ror.es.services.DataStreamSettingsOps.toJson
+import tech.beshu.ror.es.services.DataStreamSettingsOps.*
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import tech.beshu.ror.utils.ReflecUtils
 
@@ -82,14 +82,14 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     client.executeAck(enhancedActionType.action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override def createIndexLifecyclePolicy(policyName: String, policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
+  override def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
     val enhancedActionType = client.findActionUnsafe[AcknowledgedResponse]("cluster:admin/ilm/put")
     val parser = jsonParserFactory.create(policy.toJson)
     val lifecyclePolicyClass = enhancedActionType.loadClass("org.elasticsearch.xpack.core.ilm.LifecyclePolicy")
     val lifecyclePolicy =
       ReflecUtils
         .getMethodOf(lifecyclePolicyClass, Modifier.PUBLIC, "parse", 2)
-        .invoke(null, parser, policyName)
+        .invoke(null, parser, policy.id.value)
 
     val lifecycleRequestClass =
       enhancedActionType.loadClass("org.elasticsearch.xpack.core.ilm.action.PutLifecycleAction$Request")
@@ -103,68 +103,54 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     client.executeAck(enhancedActionType.action, actionRequest).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override def createComponentTemplateForMappings(templateName: TemplateName,
-                                                  mappingsJson: ujson.Value,
-                                                  metadata: Map[String, String]): Task[CreationResult] = execute {
-    val request: PutComponentTemplateAction.Request = componentTemplateMappings(templateName, mappingsJson, metadata)
+  override def createComponentTemplateForMappings(settings: ComponentMappings): Task[CreationResult] = execute {
+    val request: PutComponentTemplateAction.Request = componentTemplateMappings(settings)
     val action = PutComponentTemplateAction.INSTANCE
 
     client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override def createComponentTemplateForIndex(templateName: TemplateName,
-                                               lifecyclePolicyName: String,
-                                               metadata: Map[String, String]): Task[CreationResult] = execute {
-    val request = componentTemplateIndexSettingsRequest(templateName, lifecyclePolicyName, metadata)
+  override def createComponentTemplateForIndex(settings: ComponentSettings): Task[CreationResult] = execute {
+    val request = componentTemplateIndexSettingsRequest(settings)
     val action = PutComponentTemplateAction.INSTANCE
     client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override def createIndexTemplate(templateName: TemplateName,
-                                   dataStreamName: DataStreamName.Full,
-                                   componentTemplates: NonEmptyList[TemplateName],
-                                   metadata: Map[String, String]): Task[CreationResult] = execute {
-    val request = createIndexTemplateRequest(templateName, dataStreamName, componentTemplates, metadata)
+  override def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult] = execute {
+    val request = createIndexTemplateRequest(settings)
     val action = PutComposableIndexTemplateAction.INSTANCE
     client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  private def componentTemplateMappings(templateName: TemplateName,
-                                        mappingsJson: ujson.Value,
-                                        metadata: Map[String, String]) = {
-    val template = new Template(null, CompressedXContent(ujson.write(mappingsJson)), null)
+  private def componentTemplateMappings(settings: ComponentMappings) = {
+    val template = new Template(null, CompressedXContent(ujson.write(settings.mappingsJson)), null)
     val version: java.lang.Long = null
-    val componentTemplate = new ComponentTemplate(template, version, metadata.asInstanceOf[Map[String, Object]].asJava)
-    new PutComponentTemplateAction.Request(templateName.value.value).componentTemplate(componentTemplate).create(true)
+    val componentTemplate = new ComponentTemplate(template, version, settings.metadata.asInstanceOf[Map[String, Object]].asJava)
+    new PutComponentTemplateAction.Request(settings.templateName.value.value).componentTemplate(componentTemplate).create(true)
   }
 
-  private def componentTemplateIndexSettingsRequest(templateName: TemplateName,
-                                                    lifecyclePolicyName: String,
-                                                    metadata: Map[String, String]) = {
-    val settings = Settings.builder().put("index.lifecycle.name", lifecyclePolicyName).build()
-    val template = new Template(settings, null, null)
+  private def componentTemplateIndexSettingsRequest(settings: ComponentSettings) = {
+    val componentSettings = Settings.builder().put("index.lifecycle.name", settings.lifecyclePolicyId.value).build()
+    val template = new Template(componentSettings, null, null)
     val version: java.lang.Long = null
-    val componentTemplate = new ComponentTemplate(template, version, metadata.asInstanceOf[Map[String, Object]].asJava)
-    new PutComponentTemplateAction.Request(templateName.value.value).componentTemplate(componentTemplate).create(true)
+    val componentTemplate = new ComponentTemplate(template, version, settings.metadata.asInstanceOf[Map[String, Object]].asJava)
+    new PutComponentTemplateAction.Request(settings.templateName.value.value).componentTemplate(componentTemplate).create(true)
   }
 
-  private def createIndexTemplateRequest(templateName: TemplateName,
-                                         dataStreamName: DataStreamName.Full,
-                                         componentTemplates: NonEmptyList[TemplateName],
-                                         metadata: Map[String, String]) = {
+  private def createIndexTemplateRequest(settings: IndexTemplateSettings) = {
     val template: Template = null
     val priority: java.lang.Long = 500
     val version: java.lang.Long = null
     val indexTemplate = new ComposableIndexTemplate(
-      List(dataStreamName.value.value).asJava,
+      List(settings.dataStreamName.value.value).asJava,
       template,
-      componentTemplates.toList.map(_.value.value).asJava,
+      settings.componentTemplates.toList.map(_.value.value).asJava,
       priority,
       version,
-      metadata.asInstanceOf[Map[String, AnyRef]].asJava,
+      settings.metadata.asInstanceOf[Map[String, AnyRef]].asJava,
       new DataStreamTemplate()
     )
-    new PutComposableIndexTemplateAction.Request(templateName.value.value).indexTemplate(indexTemplate).create(true)
+    new PutComposableIndexTemplateAction.Request(settings.templateName.value.value).indexTemplate(indexTemplate).create(true)
   }
 
   private def execute[A](value: => Task[A]) = Task(value).flatten

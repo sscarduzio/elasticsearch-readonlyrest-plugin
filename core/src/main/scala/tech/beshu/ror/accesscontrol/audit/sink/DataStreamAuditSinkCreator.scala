@@ -17,13 +17,13 @@
 package tech.beshu.ror.accesscontrol.audit.sink
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.domain.DataStreamName
-import tech.beshu.ror.audit.instances.FieldType
+import tech.beshu.ror.accesscontrol.domain.{DataStreamName, RorAuditDataStream, TemplateName}
 import tech.beshu.ror.es.DataStreamService
 import tech.beshu.ror.es.DataStreamService.DataStreamSettings
-import tech.beshu.ror.es.DataStreamService.DataStreamSettings.LifecyclePolicy
+import tech.beshu.ror.es.DataStreamService.DataStreamSettings.{ComponentMappings, ComponentSettings, IndexTemplateSettings, LifecyclePolicy}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.*
 
@@ -31,23 +31,18 @@ import java.util.concurrent.TimeUnit
 
 final class DataStreamAuditSinkCreator(services: NonEmptyList[DataStreamService]) extends Logging {
 
-  def createIfNotExists(dataStreamName: DataStreamName.Full,
-                        documentMappings: Map[String, FieldType]): Task[Unit] = {
-    services.toList.traverse(createIfNotExists(_, dataStreamName, documentMappings)).map((_: List[Unit]) => ())
+  def createIfNotExists(dataStreamName: RorAuditDataStream): Task[Unit] = {
+    services.toList.traverse(createIfNotExists(_, dataStreamName)).map((_: List[Unit]) => ())
   }
 
-  private def createIfNotExists(service: DataStreamService, dataStreamName: DataStreamName.Full, documentMappings: Map[String, FieldType]): Task[Unit] = {
+  private def createIfNotExists(service: DataStreamService, dataStreamName: RorAuditDataStream): Task[Unit] = {
     service
-      .checkDataStreamExists(dataStreamName)
+      .checkDataStreamExists(dataStreamName.dataStream)
       .flatMap {
         case true =>
-          Task.delay(logger.info(s"Data stream ${dataStreamName.show} already exists"))
+          Task.delay(logger.info(s"Data stream ${dataStreamName.dataStream.show} already exists"))
         case false =>
-          val settings = DataStreamSettings(
-            dataStreamName,
-            defaultLifecyclePolicy,
-            documentMappings
-          )
+          val settings = defaultSettingsFor(dataStreamName.dataStream)
           setupDataStream(service, settings)
       }
   }
@@ -60,22 +55,61 @@ final class DataStreamAuditSinkCreator(services: NonEmptyList[DataStreamService]
     } yield ()
   }
 
-  private val defaultLifecyclePolicy = LifecyclePolicy(
-    hotPhase = LifecyclePolicy.HotPhase(
-      LifecyclePolicy.Rollover(
-        maxAge = positiveFiniteDuration(1, TimeUnit.DAYS),
-        maxPrimaryShardSizeInGb = Some(positiveInt(50))
-      )
-    ),
-    warmPhase = Some(LifecyclePolicy.WarmPhase(
-      minAge = positiveFiniteDuration(14, TimeUnit.DAYS),
-      shrink = Some(LifecyclePolicy.Shrink(numberOfShards = positiveInt(1))),
-      forceMerge = Some(LifecyclePolicy.ForceMerge(maxNumSegments = positiveInt(1)))
-    )),
-    coldPhase = Some(LifecyclePolicy.ColdPhase(
-      minAge = positiveFiniteDuration(30, TimeUnit.DAYS),
-      freeze = true
-    ))
-  )
+  private def defaultSettingsFor(dataStreamName: DataStreamName.Full) = {
+    val defaultLifecyclePolicy = LifecyclePolicy(
+      id = NonEmptyString.unsafeFrom(s"${dataStreamName.value.value}-lifecycle-policy"),
+      hotPhase = LifecyclePolicy.HotPhase(
+        LifecyclePolicy.Rollover(
+          maxAge = positiveFiniteDuration(1, TimeUnit.DAYS),
+          maxPrimaryShardSizeInGb = Some(positiveInt(50))
+        )
+      ),
+      warmPhase = Some(LifecyclePolicy.WarmPhase(
+        minAge = positiveFiniteDuration(14, TimeUnit.DAYS),
+        shrink = Some(LifecyclePolicy.Shrink(numberOfShards = positiveInt(1))),
+        forceMerge = Some(LifecyclePolicy.ForceMerge(maxNumSegments = positiveInt(1)))
+      )),
+      coldPhase = Some(LifecyclePolicy.ColdPhase(
+        minAge = positiveFiniteDuration(30, TimeUnit.DAYS),
+        freeze = true
+      ))
+    )
+
+    val defaultMappings = ComponentMappings(
+      templateName = templateNameFrom(s"${dataStreamName.value.value}-mappings"),
+      timestampField = "@timestamp",
+      metadata = metadata("Data mappings for ReadonlyREST audit data stream")
+    )
+
+    val settings = ComponentSettings(
+      templateName = templateNameFrom(s"${dataStreamName.value.value}-settings"),
+      lifecyclePolicyId = defaultLifecyclePolicy.id,
+      metadata = metadata("Index settings for ReadonlyREST audit data stream")
+    )
+
+    val indexTemplate = IndexTemplateSettings(
+      templateName = templateNameFrom(s"${dataStreamName.value.value}-template"),
+      dataStreamName = dataStreamName,
+      componentTemplates = NonEmptyList.of(defaultMappings.templateName, settings.templateName),
+      metadata = metadata("Index template for ReadonlyREST audit data stream")
+    )
+
+    DataStreamSettings(
+      dataStreamName,
+      defaultLifecyclePolicy,
+      defaultMappings,
+      settings,
+      indexTemplate,
+    )
+  }
+
+  private def templateNameFrom(value: String) = {
+    TemplateName
+      .fromString(value)
+      .getOrElse(throw new IllegalStateException("Template name should be non-empty"))
+  }
+
+  private def metadata(description: String) = Map("description" -> description)
+
 }
 

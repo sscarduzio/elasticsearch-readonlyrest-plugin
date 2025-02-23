@@ -20,7 +20,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext._
-import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer.Keys
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 
 import scala.collection.JavaConverters._
@@ -55,30 +54,30 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
                           requestContext: AuditRequestContext,
                           error: Option[Throwable]) = {
     new JSONObject()
-      .put(Keys.`match`, matched)
-      .put(Keys.block, reason)
-      .put(Keys.id, requestContext.id)
-      .put(Keys.finalState, finalState)
-      .put(Keys.timestamp, timestampFormatter.format(requestContext.timestamp))
-      .put(Keys.correlationId, requestContext.correlationId)
-      .put(Keys.processingMillis, duration.toMillis)
-      .put(Keys.errorType, error.map(_.getClass.getSimpleName).orNull)
-      .put(Keys.errorMessage, error.map(_.getMessage).orNull)
-      .put(Keys.contentLength, requestContext.contentLength)
-      .put(Keys.contentLengthKb, requestContext.contentLength / 1024)
-      .put(Keys.`type`, requestContext.`type`)
-      .put(Keys.origin, requestContext.remoteAddress)
-      .put(Keys.destination, requestContext.localAddress)
-      .put(Keys.xforwarderFor, requestContext.requestHeaders.getValue("X-Forwarded-For").flatMap(_.headOption).orNull)
-      .put(Keys.taskId, requestContext.taskId)
-      .put(Keys.requestMethod, requestContext.httpMethod)
-      .put(Keys.headers, requestContext.requestHeaders.names.asJava)
-      .put(Keys.path, requestContext.uriPath)
-      .put(Keys.user, SerializeUser.serialize(requestContext).orNull)
-      .put(Keys.impersonatedBy, requestContext.impersonatedByUserName.orNull)
-      .put(Keys.action, requestContext.action)
-      .put(Keys.indices, if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava)
-      .put(Keys.aclHistory, requestContext.history)
+      .put("match", matched)
+      .put("block", reason)
+      .put("id", requestContext.id)
+      .put("final_state", finalState)
+      .put("@timestamp", timestampFormatter.format(requestContext.timestamp))
+      .put("correlation_id", requestContext.correlationId)
+      .put("processingMillis", duration.toMillis)
+      .put("error_type", error.map(_.getClass.getSimpleName).orNull)
+      .put("error_message", error.map(_.getMessage).orNull)
+      .put("content_len", requestContext.contentLength)
+      .put("content_len_kb", requestContext.contentLength / 1024)
+      .put("type", requestContext.`type`)
+      .put("origin", requestContext.remoteAddress)
+      .put("destination", requestContext.localAddress)
+      .put("xff", requestContext.requestHeaders.getValue("X-Forwarded-For").flatMap(_.headOption).orNull)
+      .put("task_id", requestContext.taskId)
+      .put("req_method", requestContext.httpMethod)
+      .put("headers", requestContext.requestHeaders.names.asJava)
+      .put("path", requestContext.uriPath)
+      .put("user", SerializeUser.serialize(requestContext).orNull)
+      .put("impersonated_by", requestContext.impersonatedByUserName.orNull)
+      .put("action", requestContext.action)
+      .put("indices", if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava)
+      .put("acl_history", requestContext.history)
       .mergeWith(requestContext.generalAuditEvents)
   }
 
@@ -96,49 +95,4 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       Option(JSONObject.getNames(json)).toList.flatten
     }
   }
-}
-
-private[ror] object DefaultAuditLogSerializer {
-
-  private[DefaultAuditLogSerializer] object Keys {
-    val `match` = "match"
-    val block = "block"
-    val id = "id"
-    val finalState = "final_state"
-    val timestamp = "@timestamp"
-    val correlationId = "correlation_id"
-    val processingMillis = "processingMillis"
-    val errorType = "error_type"
-    val errorMessage = "error_message"
-    val contentLength = "content_len"
-    val contentLengthKb = "content_len_kb"
-    val `type` = "type"
-    val origin = "origin"
-    val destination = "destination"
-    val xforwarderFor = "xff"
-    val taskId = "task_id"
-    val requestMethod = "req_method"
-    val headers = "headers"
-    val path = "path"
-    val user = "user"
-    val impersonatedBy = "impersonated_by"
-    val action = "action"
-    val indices = "indices"
-    val aclHistory = "acl_history"
-  }
-
-  import Keys._
-  import FieldType._
-
-  val defaultIndexedMappings: Map[String, FieldType] = Map(
-    `match` -> Bool,
-    block -> Str,
-    id -> Str,
-    finalState -> Str,
-    timestamp -> Date,
-    correlationId -> Str,
-    user -> Str,
-    action -> Str
-  )
-
 }

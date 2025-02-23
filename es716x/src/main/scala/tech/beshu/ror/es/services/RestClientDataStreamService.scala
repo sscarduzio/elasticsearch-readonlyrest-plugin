@@ -16,16 +16,15 @@
  */
 package tech.beshu.ror.es.services
 
-import cats.data.NonEmptyList
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.client.{Request, Response, ResponseException, RestClient}
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.DataStreamService
+import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.DataStreamSettingsOps.*
 import tech.beshu.ror.es.utils.RestResponseOps.*
-import ujson.Value
 
 final class RestClientDataStreamService(client: RestClient) extends DataStreamService with Logging {
 
@@ -48,7 +47,8 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override def createIndexLifecyclePolicy(policyName: String, policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
+  override def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
+    val policyName = policy.id.value
     val request = new Request("PUT", s"/_ilm/policy/$policyName")
     val requestBody = ujson.Obj("policy" -> policy.toJson)
     request.setJsonBody(requestBody)
@@ -61,14 +61,12 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override def createComponentTemplateForMappings(templateName: TemplateName,
-                                                  mappingsJson: Value,
-                                                  metadata: Map[String, String]): Task[CreationResult] = execute {
-    val templateId = templateName.value.value
+  override def createComponentTemplateForMappings(settings: ComponentMappings): Task[CreationResult] = execute {
+    val templateId = settings.templateName.value.value
     val request = new Request("PUT", s"/_component_template/$templateId")
     val requestBody = ujson.Obj(
-      "template" -> ujson.Obj("mappings" -> mappingsJson),
-      "_meta" -> metadata
+      "template" -> ujson.Obj("mappings" -> settings.mappingsJson),
+      "_meta" -> settings.metadata
     )
     request.setJsonBody(requestBody)
     perform(request)
@@ -80,14 +78,12 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override def createComponentTemplateForIndex(templateName: TemplateName,
-                                               lifecyclePolicyName: String,
-                                               metadata: Map[String, String]): Task[CreationResult] = execute {
-    val templateId = templateName.value.value
+  override def createComponentTemplateForIndex(settings: ComponentSettings): Task[CreationResult] = execute {
+    val templateId = settings.templateName.value.value
     val request = new Request("PUT", s"/_component_template/$templateId")
     val requestBody = ujson.Obj(
-      "template" -> ujson.Obj("settings" -> ujson.Obj("index.lifecycle.name" -> lifecyclePolicyName)),
-      "_meta" -> metadata
+      "template" -> ujson.Obj("settings" -> ujson.Obj("index.lifecycle.name" -> settings.lifecyclePolicyId.value)),
+      "_meta" -> settings.metadata
     )
     request.setJsonBody(requestBody)
     perform(request)
@@ -99,18 +95,15 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override def createIndexTemplate(templateName: TemplateName,
-                                   dataStreamName: DataStreamName.Full,
-                                   componentTemplates: NonEmptyList[TemplateName],
-                                   metadata: Map[String, String]): Task[CreationResult] = execute {
-    val templateId = templateName.value.value
+  override def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult] = execute {
+    val templateId = settings.templateName.value.value
     val request = new Request("PUT", s"/_index_template/$templateId")
     val requestBody = ujson.Obj(
-      "index_patterns" -> List(dataStreamName.value.value),
+      "index_patterns" -> List(settings.dataStreamName.value.value),
       "data_stream" -> Map.empty,
-      "composed_of" -> componentTemplates.toList.map(_.value.value),
+      "composed_of" -> settings.componentTemplates.toList.map(_.value.value),
       "priority" -> 500,
-      "_meta" -> metadata
+      "_meta" -> settings.metadata
     )
     request.setJsonBody(requestBody)
     perform(request)

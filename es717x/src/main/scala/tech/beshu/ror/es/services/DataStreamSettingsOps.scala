@@ -16,11 +16,23 @@
  */
 package tech.beshu.ror.es.services
 
-import tech.beshu.ror.es.DataStreamService.DataStreamSettings.LifecyclePolicy
+import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
 import ujson.{Obj, Value}
 
 private[services] object DataStreamSettingsOps {
+
+  extension (mappings: ComponentMappings) {
+    def mappingsJson: Value = {
+      ujson.Obj("properties" -> ujson.Obj(
+        mappings.timestampField -> ujson.Obj(
+          "type" -> "date",
+          "format" -> "date_optional_time||epoch_millis"
+        )
+      ))
+    }
+  }
+
   extension (policy: LifecyclePolicy) {
 
     def toJson: Value = {

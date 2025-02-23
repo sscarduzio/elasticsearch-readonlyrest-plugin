@@ -26,8 +26,3 @@ class QueryAuditLogSerializer extends DefaultAuditLogSerializer {
       .map(_.put("content", responseContext.requestContext.content))
   }
 }
-
-private[ror] object QueryAuditLogSerializer {
-  // we don't want to add to index request content, so we take the base class mappings
-  val defaultIndexedMappings: Map[String, FieldType] = DefaultAuditLogSerializer.defaultIndexedMappings
-}
