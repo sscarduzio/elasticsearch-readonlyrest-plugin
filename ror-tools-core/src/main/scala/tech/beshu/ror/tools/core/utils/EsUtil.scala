@@ -21,8 +21,8 @@ import os.Path
 
 object EsUtil {
 
-  private val elasticsearchJar = """^elasticsearch-(\d+\.\d+\.\d+)\.jar$""".r
-  private val transportNetty4JarNameRegex = """^transport-netty4-\d+\.\d+\.\d+\.jar$""".r
+  private val elasticsearchJar = """^elasticsearch-(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)\.jar$""".r
+  private val transportNetty4JarNameRegex = """^transport-netty4-(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)\.jar$""".r
 
   val es8150: SemVer = SemVer.unsafeParse("8.15.0")
   val es8140: SemVer = SemVer.unsafeParse("8.14.0")
@@ -46,7 +46,7 @@ object EsUtil {
       .view
       .flatMap { file =>
         file.last match {
-          case elasticsearchJar(version) => SemVer.parse(version).toOption
+          case elasticsearchJar(version, _) => SemVer.parse(version).toOption
           case _ => None
         }
       }
