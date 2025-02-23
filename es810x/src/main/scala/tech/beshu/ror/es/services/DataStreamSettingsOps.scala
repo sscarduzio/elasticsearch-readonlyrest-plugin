@@ -22,7 +22,7 @@ import ujson.{Obj, Value}
 
 private[services] object DataStreamSettingsOps {
 
-  extension (mappings: ComponentMappings) {
+  extension (mappings: ComponentTemplateMappings) {
     def mappingsJson: Value = {
       ujson.Obj("properties" -> ujson.Obj(
         mappings.timestampField -> ujson.Obj(

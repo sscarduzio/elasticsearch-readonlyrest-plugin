@@ -60,7 +60,7 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override protected def createComponentTemplateForMappings(settings: ComponentMappings): Task[CreationResult] = execute {
+  override protected def createComponentTemplateForMappings(settings: ComponentTemplateMappings): Task[CreationResult] = execute {
     val templateId = settings.templateName.value.value
     val request = new Request("PUT", s"/_component_template/$templateId")
     val requestBody = ujson.Obj(
@@ -77,7 +77,7 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override protected def createComponentTemplateForIndex(settings: ComponentSettings): Task[CreationResult] = execute {
+  override protected def createComponentTemplateForIndex(settings: ComponentTemplateSettings): Task[CreationResult] = execute {
     val templateId = settings.templateName.value.value
     val request = new Request("PUT", s"/_component_template/$templateId")
     val requestBody = ujson.Obj(

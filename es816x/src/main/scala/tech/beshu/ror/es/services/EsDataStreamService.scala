@@ -88,14 +88,14 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     client.executeAck(enhancedActionType.action, actionRequest).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override protected def createComponentTemplateForMappings(settings: ComponentMappings): Task[CreationResult] = execute {
+  override protected def createComponentTemplateForMappings(settings: ComponentTemplateMappings): Task[CreationResult] = execute {
     val request: PutComponentTemplateAction.Request = componentTemplateMappings(settings)
     val action = PutComponentTemplateAction.INSTANCE
 
     client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override protected def createComponentTemplateForIndex(settings: ComponentSettings): Task[CreationResult] = execute {
+  override protected def createComponentTemplateForIndex(settings: ComponentTemplateSettings): Task[CreationResult] = execute {
     val request = componentTemplateIndexSettingsRequest(settings)
     val action = PutComponentTemplateAction.INSTANCE
     client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
@@ -107,14 +107,14 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  private def componentTemplateMappings(settings: ComponentMappings) = {
+  private def componentTemplateMappings(settings: ComponentTemplateMappings) = {
     val template = new Template(null, CompressedXContent(ujson.write(settings.mappingsJson)), null)
     val version: java.lang.Long = null
     val componentTemplate = new ComponentTemplate(template, version, settings.metadata.asInstanceOf[Map[String, Object]].asJava)
     new PutComponentTemplateAction.Request(settings.templateName.value.value).componentTemplate(componentTemplate).create(true)
   }
 
-  private def componentTemplateIndexSettingsRequest(settings: ComponentSettings): PutComponentTemplateAction.Request = {
+  private def componentTemplateIndexSettingsRequest(settings: ComponentTemplateSettings): PutComponentTemplateAction.Request = {
     val componentSettings: Settings = Settings.builder().loadFromMap(Map("index.lifecycle.name" -> settings.lifecyclePolicyId.value).asJava).build()
     val template = new Template(componentSettings, null, null)
     val version: java.lang.Long = null

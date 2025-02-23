@@ -75,13 +75,13 @@ final class DataStreamAuditSinkCreator(services: NonEmptyList[DataStreamService]
       ))
     )
 
-    val defaultMappings = ComponentMappings(
+    val defaultMappings = ComponentTemplateMappings(
       templateName = templateNameFrom(s"${dataStreamName.value.value}-mappings"),
       timestampField = "@timestamp",
       metadata = metadata("Data mappings for ReadonlyREST audit data stream")
     )
 
-    val settings = ComponentSettings(
+    val settings = ComponentTemplateSettings(
       templateName = templateNameFrom(s"${dataStreamName.value.value}-settings"),
       lifecyclePolicyId = defaultLifecyclePolicy.id,
       metadata = metadata("Index settings for ReadonlyREST audit data stream")

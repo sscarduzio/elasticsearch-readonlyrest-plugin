@@ -43,9 +43,9 @@ trait DataStreamService {
 
   protected def createIndexLifecyclePolicy(policy: LifecyclePolicy): Task[CreationResult]
 
-  protected def createComponentTemplateForMappings(settings: ComponentMappings): Task[CreationResult]
+  protected def createComponentTemplateForMappings(settings: ComponentTemplateMappings): Task[CreationResult]
 
-  protected def createComponentTemplateForIndex(settings: ComponentSettings): Task[CreationResult]
+  protected def createComponentTemplateForIndex(settings: ComponentTemplateSettings): Task[CreationResult]
 
   protected def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult]
 }
@@ -54,8 +54,8 @@ object DataStreamService {
 
   final case class DataStreamSettings(dataStreamName: DataStreamName.Full,
                                       lifecyclePolicy: LifecyclePolicy,
-                                      mappings: ComponentMappings,
-                                      componentSettings: ComponentSettings,
+                                      mappings: ComponentTemplateMappings,
+                                      componentSettings: ComponentTemplateSettings,
                                       templateSettings: IndexTemplateSettings)
 
   object DataStreamSettings {
@@ -78,13 +78,13 @@ object DataStreamService {
       final case class ColdPhase(minAge: PositiveFiniteDuration, freeze: Boolean)
     }
 
-    final case class ComponentMappings(templateName: TemplateName,
-                                       timestampField: String,
-                                       metadata: Map[String, String])
+    final case class ComponentTemplateMappings(templateName: TemplateName,
+                                               timestampField: String,
+                                               metadata: Map[String, String])
 
-    final case class ComponentSettings(templateName: TemplateName,
-                                       lifecyclePolicyId: NonEmptyString,
-                                       metadata: Map[String, String])
+    final case class ComponentTemplateSettings(templateName: TemplateName,
+                                               lifecyclePolicyId: NonEmptyString,
+                                               metadata: Map[String, String])
 
     final case class IndexTemplateSettings(templateName: TemplateName,
                                            dataStreamName: DataStreamName.Full,
