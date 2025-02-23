@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -320,7 +319,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
 
   private val factory = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory()
+    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
   }
 
 }

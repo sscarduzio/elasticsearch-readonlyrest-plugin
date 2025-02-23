@@ -154,6 +154,7 @@ trait LogsShowInstances
   implicit val kibanaIndexNameShow: Show[KibanaIndexName] = Show.show(_.underlying.show)
   implicit val fullIndexNameShow: Show[IndexName.Full] = Show.show(_.name.value)
   implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.show)
+  implicit val fullDataStreamShow: Show[DataStreamName.Full] = Show.show(_.value.value)
   implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
   implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value.value)
   implicit val groupIdShow: Show[GroupId] = Show.show(_.value.value)
@@ -298,7 +299,7 @@ trait LogsShowInstances
     case Forbid(_) => "FORBID"
   }
   implicit val blockShow: Show[Block] = Show.show { b =>
-    s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.map(_.name).show}]"
+    s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.toList.map(_.name).show}]"
   }
   implicit val runtimeResolvableVariableCreationErrorShow: Show[RuntimeResolvableVariableCreator.CreationError] = Show.show {
     case RuntimeResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>

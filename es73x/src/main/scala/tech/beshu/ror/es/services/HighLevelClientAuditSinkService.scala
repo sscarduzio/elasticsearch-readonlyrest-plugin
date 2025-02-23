@@ -29,20 +29,28 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
-import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName}
+import tech.beshu.ror.es.IndexBasedAuditSinkService
 import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
 
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import scala.collection.parallel.CollectionConverters.*
 
-class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
-                                             (implicit scheduler: Scheduler)
-  extends AuditSinkService
+final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
+                                                   (implicit scheduler: Scheduler)
+  extends IndexBasedAuditSinkService
     with Logging {
 
-  override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+    submitDocument(indexName.name.value, documentId, jsonRecord)
+  }
+
+  override def close(): Unit = {
+    clients.toList.par.foreach(_.close())
+  }
+
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String): Unit = {
     clients.toList.par.foreach { client =>
       val request = new IndexRequest(indexName).id(documentId).source(jsonRecord, XContentType.JSON)
       val options = RequestOptions.DEFAULT
@@ -58,10 +66,6 @@ class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLeve
             logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
         }
     }
-  }
-
-  override def close(): Unit = {
-    clients.toList.par.foreach(_.close())
   }
 }
 

@@ -16,31 +16,31 @@
  */
 package tech.beshu.ror.es.actions.rrconfig
 
-import java.util
 import cats.implicits.*
 import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.action.support.ActionFilters
 import org.elasticsearch.action.support.nodes.TransportNodesAction
 import org.elasticsearch.cluster.node.DiscoveryNode
 import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.injection.guice.Inject
 import org.elasticsearch.common.io.stream.{StreamInput, Writeable}
 import org.elasticsearch.env.Environment
+import org.elasticsearch.injection.guice.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.configuration.EnvironmentConfig
-import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
 import tech.beshu.ror.configuration.loader.*
-import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
+import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, NodeConfigRequest, RawRorConfigLoadingAction, Timeout}
+import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
+import tech.beshu.ror.es.utils.EsEnvProvider
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
+import java.util
 import java.util.concurrent.Executor
 import scala.annotation.unused
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest
 
 class TransportRRConfigAction(actionName: String,
                               clusterService: ClusterService,
@@ -98,7 +98,7 @@ class TransportRRConfigAction(actionName: String,
 
    private def loadConfig() = doPrivileged {
     RawRorConfigLoadingAction
-      .load(EsEnv(env.configFile(), env.modulesFile()), indexContentProvider)
+      .load(EsEnvProvider.create(env), indexContentProvider)
       .map(_.map(_.map(_.raw)))
   }
 

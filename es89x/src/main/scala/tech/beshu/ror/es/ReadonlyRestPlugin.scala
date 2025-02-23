@@ -38,8 +38,8 @@ import org.elasticsearch.http.{HttpPreRequest, HttpServerTransport}
 import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.IgnoredFieldMapper
 import org.elasticsearch.indices.breaker.CircuitBreakerService
-import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins.*
+import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
@@ -69,7 +69,7 @@ import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, Transpo
 import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier, RemoteClusterServiceSupplier}
+import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsEnvProvider, EsPatchVerifier, RemoteClusterServiceSupplier}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
 
@@ -107,7 +107,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
   private val rorEsConfig = ReadonlyRestEsConfig
-    .load(EsEnv(environment.configFile(), environment.modulesFile()))
+    .load(EsEnvProvider.create(environment))
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener
@@ -136,6 +136,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         clusterService,
         client.asInstanceOf[NodeClient],
         threadPool,
+        xContentRegistry,
         environment,
         new RemoteClusterServiceSupplier(repositoriesServiceSupplier),
         () => Some(repositoriesServiceSupplier.get()),

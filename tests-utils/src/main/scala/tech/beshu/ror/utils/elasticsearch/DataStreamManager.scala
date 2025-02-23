@@ -76,12 +76,40 @@ class DataStreamManager(client: RestClient, esVersion: String)
       dataStreamWithBackingIndices(dataStream)
     }
 
+    def ilmPolicyByDataStream(dataStream: String): String = {
+      dataStreamWithIlmPolicy(dataStream)
+    }
+
+    def indexTemplateByDataStream(dataStream: String): String = {
+      dataStreamWithTemplate(dataStream)
+    }
+
     private lazy val dataStreamWithBackingIndices: Map[String, List[String]] =
       responseJson("data_streams").arr
         .map { dataStream =>
           (
             dataStream("name").str,
             dataStream("indices").arr.map(_("index_name").str).toList
+          )
+        }
+        .toMap
+
+    private lazy val dataStreamWithTemplate: Map[String, String] =
+      responseJson("data_streams").arr
+        .map { dataStream =>
+          (
+            dataStream("name").str,
+            dataStream("template").str
+          )
+        }
+        .toMap
+
+    private lazy val dataStreamWithIlmPolicy: Map[String, String] =
+      responseJson("data_streams").arr
+        .map { dataStream =>
+          (
+            dataStream("name").str,
+            dataStream("ilm_policy").str
           )
         }
         .toMap

@@ -4,7 +4,7 @@ readonlyrest:
   audit:
     enabled: true
     outputs:
-      - type: index
+      - type: data_stream
 
   access_control_rules:
 
