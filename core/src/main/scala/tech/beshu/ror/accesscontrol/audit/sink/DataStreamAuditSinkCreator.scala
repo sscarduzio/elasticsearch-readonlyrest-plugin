@@ -23,7 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, RorAuditDataStream, TemplateName}
 import tech.beshu.ror.es.DataStreamService
 import tech.beshu.ror.es.DataStreamService.DataStreamSettings
-import tech.beshu.ror.es.DataStreamService.DataStreamSettings.{ComponentMappings, ComponentSettings, IndexTemplateSettings, LifecyclePolicy}
+import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.*
 
@@ -49,7 +49,7 @@ final class DataStreamAuditSinkCreator(services: NonEmptyList[DataStreamService]
 
   private def setupDataStream(service: DataStreamService, settings: DataStreamSettings): Task[Unit] = {
     for {
-      _ <- Task.delay(logger.info(s"Trying to setup ROR audit sink with data stream ${settings.dataStreamName.show}.."))
+      _ <- Task.delay(logger.info(s"Trying to setup ROR audit sink with default settings for data stream ${settings.dataStreamName.show}.."))
       _ <- service.fullySetupDataStream(settings)
       _ <- Task.delay(logger.info(s"ROR audit data stream ${settings.dataStreamName.show} created."))
     } yield ()

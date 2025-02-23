@@ -27,14 +27,14 @@ import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 trait DataStreamService {
 
-  final def fullySetupDataStream(settings: DataStreamSettings): Task[CreationResult] = {
+  final def fullySetupDataStream(settings: DataStreamSettings): Task[Unit] = {
     for {
       _ <- createIndexLifecyclePolicy(settings.lifecyclePolicy)
       _ <- createComponentTemplateForMappings(settings.mappings)
       _ <- createComponentTemplateForIndex(settings.componentSettings)
       _ <- createIndexTemplate(settings.templateSettings)
-      result <- createDataStream(settings.dataStreamName)
-    } yield result
+      _ <- createDataStream(settings.dataStreamName)
+    } yield ()
   }
 
   def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean]

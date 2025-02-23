@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.services
 
-import tech.beshu.ror.es.DataStreamService.DataStreamSettings.{ComponentMappings, LifecyclePolicy}
+import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
 import ujson.{Obj, Value}
 

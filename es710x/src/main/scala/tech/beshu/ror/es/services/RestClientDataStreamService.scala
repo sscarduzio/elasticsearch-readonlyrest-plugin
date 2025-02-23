@@ -46,7 +46,7 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
+  override protected def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
     val policyName = policy.id.value
     val request = new Request("PUT", s"/_ilm/policy/$policyName")
     val requestBody = ujson.Obj("policy" -> policy.toJson)
@@ -60,7 +60,7 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override def createComponentTemplateForMappings(settings: ComponentMappings): Task[CreationResult] = execute {
+  override protected def createComponentTemplateForMappings(settings: ComponentMappings): Task[CreationResult] = execute {
     val templateId = settings.templateName.value.value
     val request = new Request("PUT", s"/_component_template/$templateId")
     val requestBody = ujson.Obj(
@@ -77,7 +77,7 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override def createComponentTemplateForIndex(settings: ComponentSettings): Task[CreationResult] = execute {
+  override protected def createComponentTemplateForIndex(settings: ComponentSettings): Task[CreationResult] = execute {
     val templateId = settings.templateName.value.value
     val request = new Request("PUT", s"/_component_template/$templateId")
     val requestBody = ujson.Obj(
@@ -94,7 +94,7 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult] = execute {
+  override protected def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult] = execute {
     val templateId = settings.templateName.value.value
     val request = new Request("PUT", s"/_index_template/$templateId")
     val requestBody = ujson.Obj(
@@ -114,7 +114,7 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       }
   }
 
-  override def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult] = execute {
+  override protected def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult] = execute {
     val name = dataStreamName.value.value
     val request = new Request("PUT", s"/_data_stream/$name")
     perform(request)

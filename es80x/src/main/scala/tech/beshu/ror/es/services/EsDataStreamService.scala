@@ -70,7 +70,7 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
       }
   }
 
-  override def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult] = execute {
+  override protected def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult] = execute {
     val enhancedActionType = client.findActionUnsafe[AcknowledgedResponse]("indices:admin/data_stream/create")
     val createRequestClass = enhancedActionType.loadClass("org.elasticsearch.xpack.core.action.CreateDataStreamAction$Request")
     val request =
@@ -82,7 +82,7 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     client.executeAck(enhancedActionType.action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
+  override protected def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
     val enhancedActionType = client.findActionUnsafe[AcknowledgedResponse]("cluster:admin/ilm/put")
     val parser = jsonParserFactory.create(policy.toJson)
     val lifecyclePolicyClass = enhancedActionType.loadClass("org.elasticsearch.xpack.core.ilm.LifecyclePolicy")
@@ -103,20 +103,20 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     client.executeAck(enhancedActionType.action, actionRequest).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override def createComponentTemplateForMappings(settings: ComponentMappings): Task[CreationResult] = execute {
+  override protected def createComponentTemplateForMappings(settings: ComponentMappings): Task[CreationResult] = execute {
     val request: PutComponentTemplateAction.Request = componentTemplateMappings(settings)
     val action = PutComponentTemplateAction.INSTANCE
 
     client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override def createComponentTemplateForIndex(settings: ComponentSettings): Task[CreationResult] = execute {
+  override protected def createComponentTemplateForIndex(settings: ComponentSettings): Task[CreationResult] = execute {
     val request = componentTemplateIndexSettingsRequest(settings)
     val action = PutComponentTemplateAction.INSTANCE
     client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
-  override def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult] = execute {
+  override protected def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult] = execute {
     val request = createIndexTemplateRequest(settings)
     val action = PutComposableIndexTemplateAction.INSTANCE
     client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
