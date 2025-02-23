@@ -148,8 +148,6 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es90x:
-              ROR_TASK: integration_es90x
             IT_es816x:
               ROR_TASK: integration_es816x
             IT_es815x:
