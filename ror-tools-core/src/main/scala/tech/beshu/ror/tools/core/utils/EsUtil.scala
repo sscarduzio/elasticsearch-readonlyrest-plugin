@@ -21,8 +21,8 @@ import os.Path
 
 object EsUtil {
 
-  private val elasticsearchJar = """^elasticsearch-(\d+\.\d+\.\d+)\.jar$""".r
-  private val transportNetty4JarNameRegex = """^transport-netty4-\d+\.\d+\.\d+\.jar$""".r
+  private val elasticsearchJar = """^elasticsearch-(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)\.jar$""".r
+  private val transportNetty4JarNameRegex = """^transport-netty4-(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)\.jar$""".r
 
   val es8150: SemVer = SemVer.unsafeParse("8.15.0")
   val es8140: SemVer = SemVer.unsafeParse("8.14.0")
@@ -40,13 +40,14 @@ object EsUtil {
   val es700: SemVer = SemVer.unsafeParse("7.0.0")
   val es670: SemVer = SemVer.unsafeParse("6.7.0")
 
-  def readEsVersion(esDirectory: EsDirectory): SemVer = {
+  def readEsVersion(esDirectory: EsDirectory): SemVer =
     os
       .list(esDirectory.path / "lib")
       .view
       .flatMap { file =>
+        val ma = elasticsearchJar.matches(file.last)
         file.last match {
-          case elasticsearchJar(version) => SemVer.parse(version).toOption
+          case elasticsearchJar(version, _) => SemVer.parse(version).toOption
           case _ => None
         }
       }
@@ -54,7 +55,6 @@ object EsUtil {
       .getOrElse {
         throw new IllegalArgumentException("Cannot determine Elasticsearch version")
       }
-  }
 
   def findTransportNetty4JarIn(path: os.Path): Option[Path] = {
     os
