@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.services
 
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.client.{Request, Response, ResponseException, RestClient}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.DataStreamService
@@ -26,7 +25,7 @@ import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.DataStreamSettingsOps.*
 import tech.beshu.ror.es.utils.RestResponseOps.*
 
-final class RestClientDataStreamService(client: RestClient) extends DataStreamService with Logging {
+final class RestClientDataStreamService(client: RestClient) extends DataStreamService {
 
   override def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean] = execute {
     val name = dataStreamName.value.value
