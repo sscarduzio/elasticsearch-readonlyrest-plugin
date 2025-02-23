@@ -44,8 +44,8 @@ object RuntimeResolvableGroupsLogic {
     override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = groupIds.toNonEmptyList
   }
 
-  final class Combined(val positive: Simple[PositiveGroupsLogic],
-                       val negative: Simple[NegativeGroupsLogic]) extends RuntimeResolvableGroupsLogic[GroupsLogic.Combined] {
+  final class Combined(val positive: RuntimeResolvableGroupsLogic[PositiveGroupsLogic],
+                       val negative: RuntimeResolvableGroupsLogic[NegativeGroupsLogic]) extends RuntimeResolvableGroupsLogic[GroupsLogic.Combined] {
     override def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.Combined] = {
       for {
         permitted <- positive.resolve(blockContext)

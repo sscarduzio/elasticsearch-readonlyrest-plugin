@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 class GroupsAllOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AllOf] {
 
   override def createRule(ruleName: Rule.Name, settings: GroupsRulesSettings[GroupsLogic.AllOf], caseSensitivity: CaseSensitivity): GroupsRule[GroupsLogic.AllOf] = {
-    new GroupsRule(ruleName, caseSensitivity, settings)
+    GroupsRule.Creator[GroupsLogic.AllOf].create(ruleName, settings, caseSensitivity)
   }
 
   protected def groupsLogicCreator: GroupIds => GroupsLogic.AllOf = GroupsLogic.AllOf.apply

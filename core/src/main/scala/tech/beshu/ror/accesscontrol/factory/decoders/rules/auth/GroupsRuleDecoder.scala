@@ -47,11 +47,10 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
     runtimeResolvableGroupsLogicDecoder
       .syncDecoder
       .emapE {
-        case GroupsLogicDecodingResult.Success(groupsLogic) =>
+        case GroupsLogicDecodingResult.Success(groupsRuleCreator) =>
           NonEmptyList.fromList(usersDefinitions.items) match {
             case Some(userDefs) =>
-              val settings = GroupsRule.Settings(groupsLogic, userDefs)
-              val groupsRule = new GroupsRule[GroupsLogic](ev.name, globalSettings.userIdCaseSensitivity, settings)
+              val groupsRule = groupsRuleCreator(userDefs)
               Right(RuleDefinition.create(groupsRule))
             case None =>
               Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ev.name.show}` requires them.")))
@@ -65,19 +64,36 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
   }
 
   private def runtimeResolvableGroupsLogicDecoder = new GroupsLogicRepresentationDecoder[
-    RuntimeResolvableGroupsLogic[GroupsLogic],
-    RuntimeResolvableGroupsLogic.Simple[PositiveGroupsLogic],
-    RuntimeResolvableGroupsLogic.Simple[NegativeGroupsLogic],
-    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AllOf],
-    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AnyOf],
-    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.NotAllOf],
-    RuntimeResolvableGroupsLogic.Simple[GroupsLogic.NotAnyOf],
-  ]((positive, negative) => RuntimeResolvableGroupsLogic.Combined(positive, negative))
+    NonEmptyList[UserDef] => GroupsRule[GroupsLogic],
+    NonEmptyList[UserDef] => GroupsRule[PositiveGroupsLogic],
+    NonEmptyList[UserDef] => GroupsRule[NegativeGroupsLogic],
+    NonEmptyList[UserDef] => GroupsRule[GroupsLogic.AllOf],
+    NonEmptyList[UserDef] => GroupsRule[GroupsLogic.AnyOf],
+    NonEmptyList[UserDef] => GroupsRule[GroupsLogic.NotAllOf],
+    NonEmptyList[UserDef] => GroupsRule[GroupsLogic.NotAnyOf],
+  ](createCombinedGroupsRule)
 
-  private implicit def runtimeResolvableGroupsLogic[GL <: GroupsLogic : GroupsLogic.Creator]: Decoder[RuntimeResolvableGroupsLogic.Simple[GL]] = {
+  private def createCombinedGroupsRule(positive: NonEmptyList[UserDef] => GroupsRule[PositiveGroupsLogic],
+                                       negative: NonEmptyList[UserDef] => GroupsRule[NegativeGroupsLogic]) = {
+    (userDefs: NonEmptyList[UserDef]) => {
+      val positiveLogic = positive(userDefs).settings.permittedGroupsLogic
+      val negativeLogic = negative(userDefs).settings.permittedGroupsLogic
+      val logic = RuntimeResolvableGroupsLogic.Combined(positiveLogic, negativeLogic)
+      val settings = GroupsRule.Settings(logic, userDefs)
+      new CombinedGroupsRule(ev.name, settings)(globalSettings.userIdCaseSensitivity)
+    }
+  }
+
+  private implicit def runtimeResolvableGroupsLogic[GL <: GroupsLogic : GroupsLogic.Creator: GroupsRule.Creator]: Decoder[NonEmptyList[UserDef] => GroupsRule[GL]] = {
     DecoderHelpers
       .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
       .map(RuntimeResolvableGroupsLogic.Simple[GL](_))
+      .map{ logic =>
+        (userDefs: NonEmptyList[UserDef]) => {
+          val settings = GroupsRule.Settings(logic, userDefs)
+          GroupsRule.Creator[GL].create(ev.name, settings, globalSettings.userIdCaseSensitivity)
+        }
+      }
   }
 
 }

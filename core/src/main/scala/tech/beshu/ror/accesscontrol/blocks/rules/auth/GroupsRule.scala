@@ -23,9 +23,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableGroupsLogic
@@ -35,9 +35,29 @@ import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class GroupsRule[GL <: GroupsLogic](override val name: Rule.Name,
-                                    override implicit val userIdCaseSensitivity: CaseSensitivity,
-                                    val settings: Settings[GL])
+class AnyOfGroupsRule(override val name: Rule.Name, override val settings: Settings[GroupsLogic.AnyOf])
+                     (override implicit val userIdCaseSensitivity: CaseSensitivity)
+  extends GroupsRule[GroupsLogic.AnyOf](name, settings)
+
+class AllOfGroupsRule(override val name: Rule.Name, override val settings: Settings[GroupsLogic.AllOf])
+                     (override implicit val userIdCaseSensitivity: CaseSensitivity)
+  extends GroupsRule[GroupsLogic.AllOf](name, settings)
+
+class NotAnyOfGroupsRule(override val name: Rule.Name, override val settings: Settings[GroupsLogic.NotAnyOf])
+                        (override implicit val userIdCaseSensitivity: CaseSensitivity)
+  extends GroupsRule[GroupsLogic.NotAnyOf](name, settings)
+
+class NotAllOfGroupsRule(override val name: Rule.Name, override val settings: Settings[GroupsLogic.NotAllOf])
+                        (override implicit val userIdCaseSensitivity: CaseSensitivity)
+  extends GroupsRule[GroupsLogic.NotAllOf](name, settings)
+
+class CombinedGroupsRule(override val name: Rule.Name, override val settings: Settings[GroupsLogic.Combined])
+                        (override implicit val userIdCaseSensitivity: CaseSensitivity)
+  extends GroupsRule[GroupsLogic.Combined](name, settings)
+
+abstract class GroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
+                                              val settings: Settings[GL])
+                                             (override implicit val userIdCaseSensitivity: CaseSensitivity)
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport
@@ -295,6 +315,23 @@ object GroupsRule {
     override val name: Rule.Name = Rule.Name(ruleName)
   }
 
-  final case class Settings[GL <: GroupsLogic](permittedGroupsLogic: RuntimeResolvableGroupsLogic[GL],
-                                               usersDefinitions: NonEmptyList[UserDef])
+  final case class Settings[+GL <: GroupsLogic](permittedGroupsLogic: RuntimeResolvableGroupsLogic[GL],
+                                                usersDefinitions: NonEmptyList[UserDef])
+
+  trait Creator[GL <: GroupsLogic] {
+    def create(name: Rule.Name,
+               settings: Settings[GL],
+               userIdCaseSensitivity: CaseSensitivity): GroupsRule[GL]
+  }
+
+  object Creator {
+    implicit val allOfTypeInfo: Creator[GroupsLogic.AllOf] = new AllOfGroupsRule(_, _)(_)
+    implicit val anyOfTypeInfo: Creator[GroupsLogic.AnyOf] = new AnyOfGroupsRule(_, _)(_)
+    implicit val notAllOfTypeInfo: Creator[GroupsLogic.NotAllOf] = new NotAllOfGroupsRule(_, _)(_)
+    implicit val notAnyOfTypeInfo: Creator[GroupsLogic.NotAnyOf] = new NotAnyOfGroupsRule(_, _)(_)
+    implicit val combinedTypeInfo: Creator[GroupsLogic.Combined] = new CombinedGroupsRule(_, _)(_)
+
+    def apply[GL <: GroupsLogic](implicit creator: Creator[GL]): Creator[GL] = creator
+  }
+
 }

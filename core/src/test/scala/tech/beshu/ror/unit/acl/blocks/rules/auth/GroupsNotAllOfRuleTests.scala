@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 class GroupsNotAllOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.NotAllOf] {
 
   override def createRule(ruleName: Rule.Name, settings: GroupsRulesSettings[GroupsLogic.NotAllOf], caseSensitivity: CaseSensitivity): GroupsRule[GroupsLogic.NotAllOf] = {
-    new GroupsRule(ruleName, caseSensitivity, settings)
+    GroupsRule.Creator[GroupsLogic.NotAllOf].create(ruleName, settings, caseSensitivity)
   }
 
   protected def groupsLogicCreator: GroupIds => GroupsLogic.NotAllOf = GroupsLogic.NotAllOf.apply
