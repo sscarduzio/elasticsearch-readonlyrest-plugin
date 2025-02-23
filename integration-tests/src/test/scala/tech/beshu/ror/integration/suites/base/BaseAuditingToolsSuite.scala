@@ -639,6 +639,14 @@ trait BaseAuditingToolsSuite
       "origin", "path", "processingMillis", "req_method", "task_id", "type", "user"
     )
     val mappings = indexManager.getMappings(indexName).responseJson(indexName)("mappings").obj
-    mappings("properties").obj.keySet should contain allElementsOf (expectedProperties)
+    val properties = {
+      if (Version.greaterOrEqualThan(esVersionUsed, 7,0,0)) {
+        mappings("properties").obj.keySet
+      } else {
+        mappings("ror_audit_evt")("properties").obj.keySet
+      }
+    }
+
+    properties should contain allElementsOf (expectedProperties)
   }
 }
