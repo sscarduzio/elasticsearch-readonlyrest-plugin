@@ -50,9 +50,8 @@ object EsDirectory {
       Failure(EsPathException(s"Directory $esPath doesn't exist!"))
     } else if (!esPath.toIO.isDirectory) {
       Failure(EsPathException(s"Directory $esPath is not a directory!"))
-      // todo: uncomment me
-//    } else if (!doesItLookLikeEsDirectory(esPath)) {
-//      Failure(EsPathException(s"Directory $esPath location doesn't look like Elasticsearch installation directory!"))
+    } else if (!doesItLookLikeEsDirectory(esPath)) {
+      Failure(EsPathException(s"Directory $esPath location doesn't look like Elasticsearch installation directory!"))
     } else {
       Success(EsDirectory(esPath))
     }

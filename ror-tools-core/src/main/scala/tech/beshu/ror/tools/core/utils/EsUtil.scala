@@ -40,12 +40,11 @@ object EsUtil {
   val es700: SemVer = SemVer.unsafeParse("7.0.0")
   val es670: SemVer = SemVer.unsafeParse("6.7.0")
 
-  def readEsVersion(esDirectory: EsDirectory): SemVer =
+  def readEsVersion(esDirectory: EsDirectory): SemVer = {
     os
       .list(esDirectory.path / "lib")
       .view
       .flatMap { file =>
-        val ma = elasticsearchJar.matches(file.last)
         file.last match {
           case elasticsearchJar(version, _) => SemVer.parse(version).toOption
           case _ => None
@@ -55,6 +54,7 @@ object EsUtil {
       .getOrElse {
         throw new IllegalArgumentException("Cannot determine Elasticsearch version")
       }
+  }
 
   def findTransportNetty4JarIn(path: os.Path): Option[Path] = {
     os

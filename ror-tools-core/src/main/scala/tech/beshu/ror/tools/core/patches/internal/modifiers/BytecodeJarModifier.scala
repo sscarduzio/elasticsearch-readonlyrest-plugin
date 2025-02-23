@@ -25,7 +25,7 @@ import java.nio.file.{FileSystems, Files, Paths, StandardCopyOption}
 import java.util.jar.JarFile
 import scala.jdk.CollectionConverters.*
 
-private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = true)
+private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = false)
   extends FileModifier with AsmDebug {
 
   protected def modifyFileInJar(jar: File,
