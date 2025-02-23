@@ -20,7 +20,7 @@ import org.elasticsearch.Version
 import org.elasticsearch.env.Environment
 import tech.beshu.ror.es.{EsEnv, EsVersion}
 
-object EsEnvFactory {
+object EsEnvProvider {
   def create(environment: Environment): EsEnv = {
     EsEnv(
       configPath = environment.configFile(),

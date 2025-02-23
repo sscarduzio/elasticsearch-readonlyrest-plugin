@@ -41,7 +41,7 @@ import scala.annotation.unused
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest
-import tech.beshu.ror.es.utils.EsEnvFactory
+import tech.beshu.ror.es.utils.EsEnvProvider
 
 class TransportRRConfigAction(actionName: String,
                               clusterService: ClusterService,
@@ -99,7 +99,7 @@ class TransportRRConfigAction(actionName: String,
 
    private def loadConfig() = doPrivileged {
     RawRorConfigLoadingAction
-      .load(EsEnvFactory.create(env), indexContentProvider)
+      .load(EsEnvProvider.create(env), indexContentProvider)
       .map(_.map(_.map(_.raw)))
   }
 

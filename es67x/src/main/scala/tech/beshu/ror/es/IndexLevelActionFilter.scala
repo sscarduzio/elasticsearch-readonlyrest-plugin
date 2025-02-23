@@ -40,7 +40,7 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNo
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
-import tech.beshu.ror.es.utils.{EsEnvFactory, ThreadRepo}
+import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo}
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
@@ -68,7 +68,7 @@ class IndexLevelActionFilter(nodeName: String,
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
     auditSinkCreator,
-    EsEnvFactory.create(env)
+    EsEnvProvider.create(env)
   )
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
