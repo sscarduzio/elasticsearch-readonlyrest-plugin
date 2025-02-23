@@ -28,10 +28,10 @@ import org.elasticsearch.snapshots.SnapshotsService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.audit.sink.{AuditSinkServiceCreator, IndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.*
-import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
@@ -67,7 +67,7 @@ class IndexLevelActionFilter(nodeName: String,
 
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
-    auditSinkCreator,
+    auditSinkServiceCreator,
     EsEnvProvider.create(env)
   )
 
@@ -92,10 +92,7 @@ class IndexLevelActionFilter(nodeName: String,
     startRorInstance()
   }
 
-  private def auditSinkCreator: AuditSinkCreator = new AuditSinkCreator {
-    override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService =
-      throw new IllegalStateException("Data stream audit sink is not supported in this version")
-
+  private def auditSinkServiceCreator: AuditSinkServiceCreator = new IndexBasedAuditSinkServiceCreator {
     override def index(cluster: AuditCluster): IndexBasedAuditSinkService = cluster match {
       case AuditCluster.LocalAuditCluster =>
         new EsAuditSinkService(client)

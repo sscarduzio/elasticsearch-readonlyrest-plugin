@@ -29,10 +29,10 @@ import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.audit.sink.{AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.*
-import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
@@ -69,7 +69,7 @@ class IndexLevelActionFilter(nodeName: String,
 
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
-    auditSinkCreator,
+    auditSinkServiceCreator,
     EsEnvProvider.create(env)
   )
 
@@ -93,7 +93,7 @@ class IndexLevelActionFilter(nodeName: String,
     startRorInstance()
   }
 
-  private def auditSinkCreator: AuditSinkCreator = new AuditSinkCreator {
+  private def auditSinkServiceCreator: AuditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
     override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = createService(cluster)
 
     override def index(cluster: AuditCluster): IndexBasedAuditSinkService = createService(cluster)

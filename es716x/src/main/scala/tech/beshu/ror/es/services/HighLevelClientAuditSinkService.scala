@@ -29,7 +29,7 @@ import org.elasticsearch.action.{ActionListener, DocWriteRequest}
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{Cancellable, RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.xcontent.XContentType
-import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator
+import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName}
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
@@ -80,8 +80,8 @@ final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHi
     }
   }
 
-  override val dataStreamCreator: DataStreamAuditSinkCreator =
-    new DataStreamAuditSinkCreator(clients.map(client => new RestClientDataStreamService(client.getLowLevelClient)))
+  override val dataStreamCreator: AuditDataStreamCreator =
+    new AuditDataStreamCreator(clients.map(client => new RestClientDataStreamService(client.getLowLevelClient)))
 }
 
 object HighLevelClientAuditSinkService {

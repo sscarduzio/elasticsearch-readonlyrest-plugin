@@ -26,9 +26,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
-import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
@@ -228,7 +228,7 @@ class RorIndexTest extends AnyWordSpec
     ReadonlyRest.create(
       factory,
       indexJsonContentService,
-      mock[AuditSinkCreator],
+      mock[AuditSinkServiceCreator],
       EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests)
     )
   }

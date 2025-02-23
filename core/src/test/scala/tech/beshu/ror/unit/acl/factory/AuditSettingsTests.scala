@@ -1072,7 +1072,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 config,
-                expectedErrorMessage = "Illegal format for 'data_stream' - Data stream '.ds-INVALID-data-stream-name#' has an invalid format. Cause: " +
+                expectedErrorMessage = "Illegal format for ROR audit 'data_stream' name - Data stream '.ds-INVALID-data-stream-name#' has an invalid format. Cause: " +
                   "name must be lowercase, " +
                   "name must not contain forbidden characters '\\', '/', '*', '?', '\"', '<', '>', '|', ',', '#', ':', ' ', " +
                   "name must not start with '-', '_', '+', '.ds-'."
@@ -1181,6 +1181,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             assertInvalidSettings(
               config,
               expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [data_stream, index, log]"
+            )
+
+            assertInvalidSettings(
+              config,
+              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [index, log]",
+              esVersion = EsVersion(7, 8, 0)
             )
           }
           "'outputs' array is empty" in {

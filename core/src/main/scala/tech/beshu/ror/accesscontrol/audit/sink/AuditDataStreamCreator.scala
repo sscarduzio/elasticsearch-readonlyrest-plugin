@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.util.concurrent.TimeUnit
 
-final class DataStreamAuditSinkCreator(services: NonEmptyList[DataStreamService]) extends Logging {
+final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) extends Logging {
 
   def createIfNotExists(dataStreamName: RorAuditDataStream): Task[Unit] = {
     services.toList.traverse(createIfNotExists(_, dataStreamName)).map((_: List[Unit]) => ())
@@ -49,7 +49,7 @@ final class DataStreamAuditSinkCreator(services: NonEmptyList[DataStreamService]
 
   private def setupDataStream(service: DataStreamService, settings: DataStreamSettings): Task[Unit] = {
     for {
-      _ <- Task.delay(logger.info(s"Trying to setup ROR audit sink with default settings for data stream ${settings.dataStreamName.show}.."))
+      _ <- Task.delay(logger.info(s"Trying to setup ROR audit data stream ${settings.dataStreamName.show} with settings.."))
       _ <- service.fullySetupDataStream(settings)
       _ <- Task.delay(logger.info(s"ROR audit data stream ${settings.dataStreamName.show} created."))
     } yield ()

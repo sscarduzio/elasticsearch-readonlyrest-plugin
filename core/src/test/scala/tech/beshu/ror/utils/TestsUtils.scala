@@ -73,6 +73,8 @@ object TestsUtils {
 
   val defaultEsVersionForTests: EsVersion = EsVersion(8, 17, 0)
 
+  inline def nes(str : String): NonEmptyString = RefinedUtils.nes(str)
+
   def basicAuthHeader(value: String): Header =
     new Header(
       Header.Name.authorization,
@@ -163,7 +165,7 @@ object TestsUtils {
 
   def fullIndexName(str: NonEmptyString): IndexName.Full = IndexName.Full.fromString(str.value).get
 
-  def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromString(str.value).get
+  def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromNes(str.value)
 
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 

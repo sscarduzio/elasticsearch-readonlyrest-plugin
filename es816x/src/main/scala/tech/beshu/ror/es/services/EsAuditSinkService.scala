@@ -25,7 +25,7 @@ import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue}
 import org.elasticsearch.core.TimeValue
 import org.elasticsearch.xcontent.XContentType
-import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator
+import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName}
 import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
@@ -97,6 +97,6 @@ final class EsAuditSinkService(client: NodeClient, jsonParserFactory: XContentJs
     }
   }
 
-  override val dataStreamCreator: DataStreamAuditSinkCreator =
-    DataStreamAuditSinkCreator(NonEmptyList.one(new EsDataStreamService(client, jsonParserFactory)))
+  override val dataStreamCreator: AuditDataStreamCreator =
+    AuditDataStreamCreator(NonEmptyList.one(new EsDataStreamService(client, jsonParserFactory)))
 }

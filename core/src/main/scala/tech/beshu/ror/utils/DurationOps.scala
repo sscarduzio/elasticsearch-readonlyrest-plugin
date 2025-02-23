@@ -19,6 +19,7 @@ package tech.beshu.ror.utils
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 
+import java.util.concurrent.TimeUnit as JTimeUnit
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 object DurationOps {
@@ -28,7 +29,6 @@ object DurationOps {
   implicit class RefinedDurationOps(val duration: Duration) extends AnyVal {
     def toRefinedPositive: Either[String, PositiveFiniteDuration] = duration match {
       case v: FiniteDuration if v.toMillis > 0 =>
-        v.toCoarsest
         Right(Refined.unsafeApply(v))
       case _ =>
         Left(s"Cannot map '${duration.toString}' to finite duration.")
@@ -40,13 +40,13 @@ object DurationOps {
     def inShortFormat: String = {
       val d = duration.toCoarsest
       val unit = d.unit match {
-        case java.util.concurrent.TimeUnit.DAYS => "d"
-        case java.util.concurrent.TimeUnit.HOURS => "h"
-        case java.util.concurrent.TimeUnit.MINUTES => "m"
-        case java.util.concurrent.TimeUnit.SECONDS => "s"
-        case java.util.concurrent.TimeUnit.MILLISECONDS => "ms"
-        case java.util.concurrent.TimeUnit.MICROSECONDS => "μs"
-        case java.util.concurrent.TimeUnit.NANOSECONDS => "ns"
+        case JTimeUnit.DAYS => "d"
+        case JTimeUnit.HOURS => "h"
+        case JTimeUnit.MINUTES => "m"
+        case JTimeUnit.SECONDS => "s"
+        case JTimeUnit.MILLISECONDS => "ms"
+        case JTimeUnit.MICROSECONDS => "μs"
+        case JTimeUnit.NANOSECONDS => "ns"
       }
       s"${d.length}$unit"
     }

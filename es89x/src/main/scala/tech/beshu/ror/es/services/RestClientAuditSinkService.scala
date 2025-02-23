@@ -25,7 +25,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.client.{Request, Response, ResponseListener, RestClient}
-import tech.beshu.ror.accesscontrol.audit.sink.DataStreamAuditSinkCreator
+import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName}
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
@@ -83,7 +83,7 @@ final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient]
       }
     }
 
-  override val dataStreamCreator: DataStreamAuditSinkCreator = new DataStreamAuditSinkCreator(clients.map(new RestClientDataStreamService(_)))
+  override val dataStreamCreator: AuditDataStreamCreator = new AuditDataStreamCreator(clients.map(new RestClientDataStreamService(_)))
 }
 
 object RestClientAuditSinkService {

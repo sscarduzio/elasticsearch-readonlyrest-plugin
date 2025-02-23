@@ -20,10 +20,11 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorConfigBasedCoreFactory}
@@ -34,14 +35,14 @@ import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.TestConfigLoading.*
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.*
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, EsEnv, IndexBasedAuditSinkService, IndexJsonContentService}
+import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
 
 class ReadonlyRest(coreFactory: CoreFactory,
-                   auditSinkCreator: AuditSinkCreator,
+                   auditSinkServiceCreator: AuditSinkServiceCreator,
                    val indexConfigManager: IndexConfigManager,
                    val indexTestConfigManager: IndexTestConfigManager,
                    val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
@@ -236,7 +237,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Task[Option[AuditingTool]] = {
     core.rorConfig.auditingSettings
-      .map(settings => AuditingTool.create(settings, auditSinkCreator.index, auditSinkCreator.dataStream)(using environmentConfig.clock, loggingContext))
+      .map(settings => AuditingTool.create(settings, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
       .sequence
       .map(_.flatten)
   }
@@ -266,10 +267,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
 }
 
 object ReadonlyRest {
-  trait AuditSinkCreator {
-    def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService
-    def index(cluster: AuditCluster): IndexBasedAuditSinkService
-  }
 
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
@@ -305,17 +302,17 @@ object ReadonlyRest {
   }
 
   def create(indexContentService: IndexJsonContentService,
-             auditSinkCreator: AuditSinkCreator,
+             auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(env.esVersion)
-    create(coreFactory, indexContentService, auditSinkCreator, env)
+    create(coreFactory, indexContentService, auditSinkServiceCreator, env)
   }
 
   def create(coreFactory: CoreFactory,
              indexContentService: IndexJsonContentService,
-             auditSinkCreator: AuditSinkCreator,
+             auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
@@ -323,6 +320,6 @@ object ReadonlyRest {
     val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
-    new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env)
+    new ReadonlyRest(coreFactory, auditSinkServiceCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env)
   }
 }

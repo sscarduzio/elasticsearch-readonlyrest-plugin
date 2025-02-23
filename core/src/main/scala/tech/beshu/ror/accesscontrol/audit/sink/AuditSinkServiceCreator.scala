@@ -14,21 +14,24 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.accesscontrol.audit.sink
 
-import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName}
+import tech.beshu.ror.accesscontrol.domain.AuditCluster
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
-sealed trait AuditSinkService {
-  def close(): Unit
+sealed trait AuditSinkServiceCreator
+
+trait IndexBasedAuditSinkServiceCreator
+  extends AuditSinkServiceCreator {
+
+  def index(cluster: AuditCluster): IndexBasedAuditSinkService
 }
 
-trait IndexBasedAuditSinkService extends AuditSinkService {
-  def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit
+trait DataStreamAndIndexBasedAuditSinkServiceCreator
+  extends AuditSinkServiceCreator
+    with IndexBasedAuditSinkServiceCreator {
+
+  def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService
 }
 
-trait DataStreamBasedAuditSinkService extends AuditSinkService {
-  def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit
 
-  def dataStreamCreator: AuditDataStreamCreator
-}

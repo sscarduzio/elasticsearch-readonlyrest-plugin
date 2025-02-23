@@ -26,8 +26,8 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{AuditingSettingsCreationError, Reason}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{AuditingSettingsCreationError, Reason}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
@@ -181,7 +181,7 @@ object AuditingSettingsDecoder extends Logging {
           .leftMap {
             case RorAuditDataStream.CreationError.FormatError(msg) =>
               AuditingSettingsCreationError(Message(
-                s"Illegal format for 'data_stream' - ${msg.show}"
+                s"Illegal format for ROR audit 'data_stream' name - ${msg.show}"
               ))
           }
       }
@@ -258,7 +258,12 @@ object AuditingSettingsDecoder extends Logging {
       case other =>
         unsupportedOutputTypeError(
           unsupportedType = other,
-          supportedTypes = NonEmptyList.of("data_stream", "index", "log")
+          supportedTypes =
+            if (esVersion >= dataStreamSupportEsVersion) {
+              NonEmptyList.of("data_stream", "index", "log")
+            } else {
+              NonEmptyList.of("index", "log")
+            }
         ).asLeft
     }
 
