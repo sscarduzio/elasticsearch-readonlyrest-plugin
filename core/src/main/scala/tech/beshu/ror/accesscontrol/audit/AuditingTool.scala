@@ -20,7 +20,7 @@ import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.{Logger, Logging}
+import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.{Disabled, Enabled}
@@ -197,11 +197,11 @@ object AuditingTool extends Logging {
   private type DataStreamAuditSinkCreator = AuditCluster => DataStreamBasedAuditSinkService
 
   def create(settings: Settings,
-             auditSinkServiceCreator: IndexAuditSinkCreator,
-             dataStreamServiceCreator: DataStreamAuditSinkCreator)
+             indexAuditSinkCreator: IndexAuditSinkCreator,
+             dataStreamAuditSinkCreator: DataStreamAuditSinkCreator)
             (implicit clock: Clock,
              loggingContext: LoggingContext): Task[Option[AuditingTool]] = {
-    createAuditSinks(settings, auditSinkServiceCreator, dataStreamServiceCreator).map {
+    createAuditSinks(settings, indexAuditSinkCreator, dataStreamAuditSinkCreator).map {
       case Some(auditSinks) =>
         logger.info(s"The audit is enabled with the given outputs: [${auditSinks.toList.show}]")
         Some(new AuditingTool(auditSinks))

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -31,7 +30,6 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
-import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
@@ -389,6 +387,6 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
   private val factory: CoreFactory = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory(EsVersion(8, 17, 0))
+    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
   }
 }

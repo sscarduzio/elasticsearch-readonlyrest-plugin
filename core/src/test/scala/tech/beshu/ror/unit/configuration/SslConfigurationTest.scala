@@ -23,9 +23,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.SslConfiguration.*
 import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.{FileBasedConfiguration, KeystoreBasedConfiguration}
 import tech.beshu.ror.configuration.{EnvironmentConfig, MalformedSettings, RorSsl}
-import tech.beshu.ror.es.{EsEnv, EsVersion}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.getResourcePath
+import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath}
 
 class SslConfigurationTest
   extends AnyWordSpec with Inside {
@@ -215,6 +215,6 @@ class SslConfigurationTest
   }
 
   private def esEnvFrom(configFolderPath: String) = {
-    EsEnv(getResourcePath(configFolderPath), getResourcePath(configFolderPath), EsVersion(8, 17, 0))
+    EsEnv(getResourcePath(configFolderPath), getResourcePath(configFolderPath), defaultEsVersionForTests)
   }
 }

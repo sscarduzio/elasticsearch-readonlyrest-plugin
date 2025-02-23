@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.boot
 import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.implicits.*
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -44,12 +43,11 @@ import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
-import tech.beshu.ror.es.{EsEnv, EsVersion, IndexJsonContentService}
+import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
-import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 import java.time.Clock
 import java.util.UUID
@@ -1363,7 +1361,7 @@ class ReadonlyRestStartingTests
       factory,
       indexJsonContentService,
       mock[AuditSinkCreator],
-      EsEnv(getResourcePath(configPath), getResourcePath(configPath), EsVersion(8, 17, 0))
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests)
     )
   }
 

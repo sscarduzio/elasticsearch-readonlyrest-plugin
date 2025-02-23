@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.factory
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import monix.execution.Scheduler.Implicits.global
@@ -44,9 +43,9 @@ import scala.reflect.ClassTag
 
 class AuditSettingsTests extends AnyWordSpec with Inside {
 
-  private val factory = {
+  private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory(EsVersion(8, 17, 0))
+    new RawRorConfigBasedCoreFactory(esVersion)
   }
 
   private val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
@@ -169,7 +168,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               |
             """.stripMargin)
 
-          val core = factory
+          val core = factory()
             .createCoreFrom(
               config,
               RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -764,6 +763,46 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
             )
           }
+          "ES version is greater than or equal 7.9.0" in {
+            val esVersions =
+              List(
+                EsVersion(8,17,0),
+                EsVersion(8,1,0),
+                EsVersion(8,0,0),
+                EsVersion(7,17,27),
+                EsVersion(7,10,0),
+                EsVersion(7,9,1),
+                EsVersion(7,9,0),
+              )
+
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: data_stream
+                |      data_stream: "custom_audit_data_stream"
+                |      serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+                |      cluster: ["1.1.1.1"]
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            esVersions.foreach { esVersion =>
+              assertDataStreamAuditSinkSettingsPresent[QueryAuditLogSerializer](
+                config,
+                expectedDataStreamName = "custom_audit_data_stream",
+                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1"))),
+                esVersion = esVersion
+              )
+            }
+          }
         }
 
         "all output types defined" in {
@@ -786,7 +825,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               |
             """.stripMargin)
 
-          val core = factory
+          val core = factory()
             .createCoreFrom(
               config,
               RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -845,7 +884,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               |
             """.stripMargin)
 
-          val core = factory
+          val core = factory()
             .createCoreFrom(
               config,
               RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1062,6 +1101,43 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 config,
                 expectedErrorMessage = "Non empty list of valid URI is required"
               )
+            }
+            "es version is lower than 7.9.0" in {
+              val esVersions =
+                List(
+                  EsVersion(7, 8, 2),
+                  EsVersion(7, 8, 1),
+                  EsVersion(7, 8, 0),
+                  EsVersion(7, 7, 0),
+                  EsVersion(7, 0, 0),
+                  EsVersion(6, 8, 23),
+                  EsVersion(5, 0, 5),
+                )
+
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+
+              esVersions.foreach { esVersion =>
+                assertInvalidSettings(
+                  config,
+                  expectedErrorMessage = s"Data stream audit output is supported from Elasticsearch version 7.9.0, " +
+                    s"but your version is ${esVersion.major}.${esVersion.minor}.${esVersion.revision}. Use 'index' type or upgrade to 7.9.0 or later.",
+                  esVersion = esVersion
+                )
+              }
             }
           }
           "unknown output type is set" in {
@@ -1595,7 +1671,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   }
 
   private def assertSettingsNoPresent(config: RawRorConfig): Unit = {
-    val core = factory
+    val core = factory()
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1608,7 +1684,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   }
 
   private def assertSettings(config: RawRorConfig, expectedConfigs: NonEmptyList[AuditSink]): Unit = {
-    val core = factory
+    val core = factory()
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1626,7 +1702,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
                                                                                       expectedIndexName: NonEmptyString,
                                                                                       expectedAuditCluster: AuditCluster) = {
-    val core = factory
+    val core = factory()
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1653,8 +1729,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private def assertDataStreamAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
                                                                                       expectedDataStreamName: NonEmptyString,
-                                                                                      expectedAuditCluster: AuditCluster) = {
-    val core = factory
+                                                                                      expectedAuditCluster: AuditCluster,
+                                                                                      esVersion: EsVersion = defaultEsVersionForTests) = {
+    val core = factory(esVersion)
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1681,7 +1758,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private def assertLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
                                                                                     expectedLoggerName: NonEmptyString) = {
-    val core = factory
+    val core = factory()
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1706,8 +1783,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   }
 
   private def assertInvalidSettings(config: RawRorConfig,
-                                    expectedErrorMessage: String): Unit = {
-    val core = factory
+                                    expectedErrorMessage: String,
+                                    esVersion: EsVersion = defaultEsVersionForTests): Unit = {
+    val core = factory(esVersion)
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),

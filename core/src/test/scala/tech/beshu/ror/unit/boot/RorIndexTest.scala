@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.boot
 
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -33,7 +32,8 @@ import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
-import tech.beshu.ror.es.{EsEnv, EsVersion, IndexJsonContentService}
+import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
@@ -41,7 +41,6 @@ import tech.beshu.ror.utils.TestsUtils.*
 import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.syntax.*
 
 class RorIndexTest extends AnyWordSpec
   with Inside with OptionValues with EitherValues
@@ -230,7 +229,7 @@ class RorIndexTest extends AnyWordSpec
       factory,
       indexJsonContentService,
       mock[AuditSinkCreator],
-      EsEnv(getResourcePath(configPath), getResourcePath(configPath), EsVersion(8, 17, 0))
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests)
     )
   }
 

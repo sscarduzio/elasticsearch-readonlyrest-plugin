@@ -61,16 +61,16 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           "request was allowed and verbosity level was ERROR" in {
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
-              auditSinkServiceCreator = _ => mock[IndexBasedAuditSinkService],
-              dataStreamServiceCreator = _ => mock[DataStreamBasedAuditSinkService]
+              indexAuditSinkCreator = _ => mock[IndexBasedAuditSinkService],
+              dataStreamAuditSinkCreator = _ => mock[DataStreamBasedAuditSinkService]
             ).runSyncUnsafe().get
             auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error)).runSyncUnsafe()
           }
           "custom serializer throws exception" in {
             val auditingTool = AuditingTool.create(
               settings = auditSettings(throwingAuditLogSerializer),
-              auditSinkServiceCreator = _ => mock[IndexBasedAuditSinkService],
-              dataStreamServiceCreator = _ => mock[DataStreamBasedAuditSinkService]
+              indexAuditSinkCreator = _ => mock[IndexBasedAuditSinkService],
+              dataStreamAuditSinkCreator = _ => mock[DataStreamBasedAuditSinkService]
             ).runSyncUnsafe().get
             an[IllegalArgumentException] should be thrownBy {
               auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
@@ -84,8 +84,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
-              auditSinkServiceCreator = _ => auditSink,
-              dataStreamServiceCreator = _ => mock[DataStreamBasedAuditSinkService]
+              indexAuditSinkCreator = _ => auditSink,
+              dataStreamAuditSinkCreator = _ => mock[DataStreamBasedAuditSinkService]
             ).runSyncUnsafe().get
             auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
           }
@@ -95,8 +95,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
-              auditSinkServiceCreator = _ => auditSink,
-              dataStreamServiceCreator = _ => mock[DataStreamBasedAuditSinkService]
+              indexAuditSinkCreator = _ => auditSink,
+              dataStreamAuditSinkCreator = _ => mock[DataStreamBasedAuditSinkService]
             ).runSyncUnsafe().get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
@@ -120,8 +120,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
-              auditSinkServiceCreator = _ => auditSink,
-              dataStreamServiceCreator = _ => mock[DataStreamBasedAuditSinkService]
+              indexAuditSinkCreator = _ => auditSink,
+              dataStreamAuditSinkCreator = _ => mock[DataStreamBasedAuditSinkService]
             ).runSyncUnsafe().get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
@@ -135,8 +135,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
-              auditSinkServiceCreator = _ => auditSink,
-              dataStreamServiceCreator = _ => mock[DataStreamBasedAuditSinkService]
+              indexAuditSinkCreator = _ => auditSink,
+              dataStreamAuditSinkCreator = _ => mock[DataStreamBasedAuditSinkService]
             ).runSyncUnsafe().get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
@@ -157,8 +157,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 ))
               )
             ),
-            auditSinkServiceCreator = _ => mock[IndexBasedAuditSinkService],
-            dataStreamServiceCreator = _ => mock[DataStreamBasedAuditSinkService]
+            indexAuditSinkCreator = _ => mock[IndexBasedAuditSinkService],
+            dataStreamAuditSinkCreator = _ => mock[DataStreamBasedAuditSinkService]
           ).runSyncUnsafe().get
 
           val requestContextId = RequestContext.Id.fromString(UUID.randomUUID().toString)
@@ -178,8 +178,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       "be disabled" in {
         val creationResult = AuditingTool.create(
           settings = Settings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled)),
-          auditSinkServiceCreator = _ => mock[IndexBasedAuditSinkService],
-          dataStreamServiceCreator = _ => mock[DataStreamBasedAuditSinkService]
+          indexAuditSinkCreator = _ => mock[IndexBasedAuditSinkService],
+          dataStreamAuditSinkCreator = _ => mock[DataStreamBasedAuditSinkService]
         ).runSyncUnsafe()
         creationResult should be(None)
       }
