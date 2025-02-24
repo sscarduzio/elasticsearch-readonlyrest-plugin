@@ -92,7 +92,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override lazy val content: String = Option(restRequest.content()).map(_.utf8ToString()).getOrElse("")
+  override val content: String = Option(restRequest.content()).map(_.utf8ToString()).getOrElse("")
 
   override lazy val indexAttributes: Set[IndexAttribute] = {
     esContext.actionRequest match {
