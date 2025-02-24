@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.services
 
-import cats.data.NonEmptyList
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
@@ -24,21 +23,17 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName}
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
-import tech.beshu.ror.es.utils.XContentJsonParserFactory
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
+import tech.beshu.ror.es.IndexBasedAuditSinkService
 
-final class EsAuditSinkService(client: NodeClient, threadPool: ThreadPool, jsonParserFactory: XContentJsonParserFactory)
+final class NodeClientBasedAuditSinkService(client: NodeClient)
   extends IndexBasedAuditSinkService
-    with DataStreamBasedAuditSinkService
     with Logging {
 
   private val bulkProcessor =
     BulkProcessor
-      .builder(client, new AuditSinkBulkProcessorListener, threadPool, threadPool, () => ())
+      .builder(client, new AuditSinkBulkProcessorListener)
       .setBulkActions(AUDIT_SINK_MAX_ITEMS)
       .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB))
       .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS))
@@ -48,10 +43,6 @@ final class EsAuditSinkService(client: NodeClient, threadPool: ThreadPool, jsonP
 
   override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
     submitDocument(indexName.name.value, documentId, jsonRecord)
-  }
-
-  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit = {
-    submitDocument(dataStreamName.value.value, documentId, jsonRecord)
   }
 
   override def close(): Unit = {
@@ -91,6 +82,4 @@ final class EsAuditSinkService(client: NodeClient, threadPool: ThreadPool, jsonP
     }
   }
 
-  override val dataStreamCreator: AuditDataStreamCreator =
-    AuditDataStreamCreator(NonEmptyList.one(new EsDataStreamService(client, jsonParserFactory)))
 }

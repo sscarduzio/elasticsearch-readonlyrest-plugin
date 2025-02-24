@@ -31,7 +31,7 @@ import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
-final class EsAuditSinkService(client: NodeClient, threadPool: ThreadPool, jsonParserFactory: XContentJsonParserFactory)
+final class NodeClientBasedAuditSinkService(client: NodeClient, threadPool: ThreadPool, jsonParserFactory: XContentJsonParserFactory)
   extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
     with Logging {

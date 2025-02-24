@@ -21,7 +21,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue}
 import org.elasticsearch.core.TimeValue
 import org.elasticsearch.threadpool.ThreadPool
@@ -32,7 +32,9 @@ import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 
-final class EsAuditSinkService(client: NodeClient, threadPool: ThreadPool, jsonParserFactory: XContentJsonParserFactory)
+final class NodeClientBasedAuditSinkService(client: NodeClient,
+                               threadPool: ThreadPool,
+                               jsonParserFactory: XContentJsonParserFactory)
   extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
     with Logging {

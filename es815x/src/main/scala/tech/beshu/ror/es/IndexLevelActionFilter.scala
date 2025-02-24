@@ -39,7 +39,7 @@ import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, RestClientAuditSinkService}
+import tech.beshu.ror.es.services.{NodeClientBasedAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, RestClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.exceptions.StartingFailureException
@@ -101,7 +101,7 @@ class IndexLevelActionFilter(nodeName: String,
     private def createService(cluster: AuditCluster): IndexBasedAuditSinkService & DataStreamBasedAuditSinkService = {
       cluster match {
         case AuditCluster.LocalAuditCluster =>
-          new EsAuditSinkService(client, new XContentJsonParserFactory(xContentRegistry))
+          new NodeClientBasedAuditSinkService(client, new XContentJsonParserFactory(xContentRegistry))
         case remote: AuditCluster.RemoteAuditCluster =>
           RestClientAuditSinkService.create(remote)
       }

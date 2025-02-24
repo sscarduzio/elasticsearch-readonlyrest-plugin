@@ -20,20 +20,21 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.client.Client
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.common.xcontent.XContentType
+import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
 import tech.beshu.ror.es.IndexBasedAuditSinkService
 
-final class EsAuditSinkService(client: Client)
+final class NodeClientBasedAuditSinkService(client: NodeClient, threadPool: ThreadPool)
   extends IndexBasedAuditSinkService
     with Logging {
 
   private val bulkProcessor =
     BulkProcessor
-      .builder(client, new AuditSinkBulkProcessorListener)
+      .builder(client, new AuditSinkBulkProcessorListener, threadPool, threadPool, () => ())
       .setBulkActions(AUDIT_SINK_MAX_ITEMS)
       .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB))
       .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS))

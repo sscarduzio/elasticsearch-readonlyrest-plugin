@@ -33,7 +33,7 @@ import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkSe
 
 import java.util.function.BiConsumer
 
-final class EsAuditSinkService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)
+final class NodeClientBasedAuditSinkService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)
   extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
     with Logging {

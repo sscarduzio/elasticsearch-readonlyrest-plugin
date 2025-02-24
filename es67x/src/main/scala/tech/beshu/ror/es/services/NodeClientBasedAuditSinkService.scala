@@ -20,7 +20,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.client.Client
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.IndexName
@@ -29,14 +29,14 @@ import tech.beshu.ror.es.IndexBasedAuditSinkService
 
 import scala.annotation.nowarn
 
-final class EsAuditSinkService(client: Client)
+final class NodeClientBasedAuditSinkService(client: NodeClient)
   extends IndexBasedAuditSinkService
     with Logging {
 
-  @nowarn("cat=deprecation")
+  @nowarn("msg=deprecated")
   private val bulkProcessor =
     BulkProcessor
-      .builder(client, new AuditSinkBulkProcessorListener) // deprecated since es 7.5.0
+      .builder(client, new AuditSinkBulkProcessorListener) // deprecated since es 6.8.5
       .setBulkActions(AUDIT_SINK_MAX_ITEMS)
       .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB))
       .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS))
@@ -45,17 +45,16 @@ final class EsAuditSinkService(client: Client)
       .build
 
   override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
-    submitDocument(indexName.name.value, documentId, jsonRecord)
+    submitDocument(indexName, documentId, jsonRecord)
   }
 
   override def close(): Unit = {
     bulkProcessor.close()
   }
 
-  private def submitDocument(indexName: String, documentId: String, jsonRecord: String): Unit = {
+  private def submitDocument(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
     bulkProcessor.add(
-      new IndexRequest(indexName)
-        .id(documentId)
+      new IndexRequest(indexName.name.value, "ror_audit_evt", documentId)
         .source(jsonRecord, XContentType.JSON)
         .opType(DocWriteRequest.OpType.CREATE)
     )
