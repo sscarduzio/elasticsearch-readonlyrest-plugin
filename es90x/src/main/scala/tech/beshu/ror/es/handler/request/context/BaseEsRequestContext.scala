@@ -81,7 +81,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .from(restRequest.path())
       .getOrElse(UriPath.from(nes("/")))
 
-  override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
+  override lazy val contentLength: Information = Bytes(restRequest.contentLength())
 
   override lazy val `type`: Type = Type {
     val requestClazz = esContext.actionRequest.getClass
