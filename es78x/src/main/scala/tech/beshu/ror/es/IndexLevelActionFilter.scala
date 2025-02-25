@@ -27,19 +27,19 @@ import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.audit.sink.{AuditSinkServiceCreator, IndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.*
-import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, RestClientAuditSinkService}
+import tech.beshu.ror.es.services.{EsIndexJsonContentService, EsServerBasedRorClusterService, NodeClientBasedAuditSinkService, RestClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
-import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo}
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -67,8 +67,8 @@ class IndexLevelActionFilter(nodeName: String,
 
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
-    auditSinkCreator,
-    EsEnv(env.configFile(), env.modulesFile())
+    auditSinkServiceCreator,
+    EsEnvProvider.create(env)
   )
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
@@ -91,11 +91,13 @@ class IndexLevelActionFilter(nodeName: String,
     startRorInstance()
   }
 
-  private def auditSinkCreator: AuditSinkCreator = {
-    case AuditCluster.LocalAuditCluster =>
-      new EsAuditSinkService(client, threadPool)
-    case remote: AuditCluster.RemoteAuditCluster =>
-      RestClientAuditSinkService.create(remote)
+  private def auditSinkServiceCreator: AuditSinkServiceCreator = new IndexBasedAuditSinkServiceCreator {
+    override def index(cluster: AuditCluster): IndexBasedAuditSinkService = cluster match {
+      case AuditCluster.LocalAuditCluster =>
+        new NodeClientBasedAuditSinkService(client, threadPool)
+      case remote: AuditCluster.RemoteAuditCluster =>
+        RestClientAuditSinkService.create(remote)
+    }
   }
 
   override def order(): Int = 0

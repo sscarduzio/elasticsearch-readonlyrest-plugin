@@ -132,6 +132,10 @@ class IndexManager(client: RestClient,
     call(createGetMappingRequest(indexName, field), new JsonResponse(_))
   }
 
+  def getMappings(indexName: String): JsonResponse = {
+    call(createGetMappingsRequest(indexName), new JsonResponse(_))
+  }
+
   def createIndexWithMapping(indexName: String, propertiesJson: JSON): JsonResponse = {
     call(createIndexRequest(indexName, None, Map.empty), new JsonResponse(_)).force()
     call(createPutMappingRequest(indexName, propertiesJson), new JsonResponse(_))
@@ -168,6 +172,10 @@ class IndexManager(client: RestClient,
 
   def stats(indexNames: String*): StatsResponse = {
     call(createStatsRequest(indexNames), new StatsResponse(_))
+  }
+
+  def refresh(indexName: String): JsonResponse = {
+    call(createRefreshIndexRequest(indexName), new JsonResponse(_))
   }
 
   private def getAliasRequest(indexOpt: Option[String] = None,
@@ -233,6 +241,10 @@ class IndexManager(client: RestClient,
 
   private def createGetMappingRequest(indexName: String, field: String) = {
     new HttpGet(client.from(s"/$indexName/_mapping/field/$field"))
+  }
+
+  private def createGetMappingsRequest(indexName: String) = {
+    new HttpGet(client.from(s"/$indexName/_mapping"))
   }
 
   private def createPutMappingRequest(indexName: String, propertiesJson: JSON) = {
@@ -359,6 +371,10 @@ class IndexManager(client: RestClient,
       case Nil => new HttpGet(client.from(s"/_stats"))
       case names => new HttpGet(client.from(s"/${names.mkString(",")}/_stats"))
     }
+  }
+
+  private def createRefreshIndexRequest(indexName: String) = {
+    new HttpPost(client.from(s"/$indexName/_refresh"))
   }
 
   class GetIndexResponse(response: HttpResponse) extends JsonResponse(response) {
