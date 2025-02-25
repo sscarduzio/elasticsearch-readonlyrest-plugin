@@ -224,6 +224,7 @@ object AuditingTool extends Logging {
             case creator: DataStreamAndIndexBasedAuditSinkServiceCreator =>
               createDataStreamSink(config, creator).map(_.some)
             case _: IndexBasedAuditSinkServiceCreator =>
+              // todo improvement - make this state impossible
               Task.raiseError(new IllegalStateException("Data stream audit sink is not supported in this version"))
           }
         case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName)) =>
@@ -236,16 +237,15 @@ object AuditingTool extends Logging {
   }
 
   private def createIndexSink(config: AuditSink.Config.EsIndexBasedSink,
-                              serviceCreator: IndexBasedAuditSinkServiceCreator)(using Clock): Task[SupportedAuditSink] = {
+                              serviceCreator: IndexBasedAuditSinkServiceCreator)(using Clock): Task[SupportedAuditSink] = Task.delay {
     val service = serviceCreator.index(config.auditCluster)
-    Task.delay(EsIndexBasedAuditSink(config.logSerializer, config.rorAuditIndexTemplate, service))
+    EsIndexBasedAuditSink(config.logSerializer, config.rorAuditIndexTemplate, service)
   }
 
   private def createDataStreamSink(config: AuditSink.Config.EsDataStreamBasedSink,
-                                   serviceCreator: DataStreamAndIndexBasedAuditSinkServiceCreator): Task[SupportedAuditSink] = {
-    val service = serviceCreator.dataStream(config.auditCluster)
-    EsDataStreamBasedAuditSink.create(config.logSerializer, config.rorAuditDataStream, service)
-  }
+                                   serviceCreator: DataStreamAndIndexBasedAuditSinkServiceCreator): Task[SupportedAuditSink] =
+    Task.delay(serviceCreator.dataStream(config.auditCluster))
+      .flatMap(EsDataStreamBasedAuditSink.create(config.logSerializer, config.rorAuditDataStream, _))
 
   private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink
 
