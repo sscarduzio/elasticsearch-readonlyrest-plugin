@@ -16,8 +16,11 @@
  */
 package tech.beshu.ror.es.services
 
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.ResourceNotFoundException
+import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction}
 import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, TransportPutComposableIndexTemplateAction}
 import org.elasticsearch.action.datastreams.{CreateDataStreamAction, GetDataStreamAction}
 import org.elasticsearch.action.support.TransportAction
@@ -30,7 +33,7 @@ import org.elasticsearch.common.compress.CompressedXContent
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.core.TimeValue
 import org.elasticsearch.index.IndexNotFoundException
-import tech.beshu.ror.accesscontrol.domain.DataStreamName
+import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
 import tech.beshu.ror.es.DataStreamService
 import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
@@ -67,6 +70,35 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     client.executeAck(actionType, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
+  override protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean] = execute {
+    val enhancedActionType = client.findActionUnsafe[ActionResponse]("cluster:admin/ilm/get")
+    val getLifecycleRequestClass =
+      enhancedActionType.loadClass("org.elasticsearch.xpack.core.ilm.action.GetLifecycleAction$Request")
+
+    val request =
+      getLifecycleRequestClass
+        .getConstructor(masterNodeTimeout.getClass, ackTimeout.getClass, classOf[Array[String]]) // varargs
+        .newInstance(masterNodeTimeout, ackTimeout, Array(policyId.value))
+        .asInstanceOf[ActionRequest]
+
+    client.executeT(enhancedActionType.action, request)
+      .map { response =>
+        ReflecUtils
+          .invokeMethod(response, response.getClass, "getPolicies")
+          .asInstanceOf[java.util.List[Object]]
+          .asScala
+          .map { obj =>
+            val policy = ReflecUtils.invokeMethod(obj, obj.getClass, "getLifecyclePolicy")
+            ReflecUtils.invokeMethod(policy, policy.getClass, "getName").asInstanceOf[String]
+          }
+          .toList
+          .contains(policyId.value)
+      }
+      .onErrorRecoverWith {
+        case _: ResourceNotFoundException => Task.pure(false)
+      }
+  }
+
   override protected def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
     val enhancedActionType = client.findActionUnsafe[AcknowledgedResponse]("cluster:admin/ilm/put")
     val parser = jsonParserFactory.create(policy.toJson)
@@ -88,6 +120,22 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     client.executeAck(enhancedActionType.action, actionRequest).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
+  override protected def checkComponentTemplateExists(templateName: TemplateName): Task[Boolean] = execute {
+    val request = GetComponentTemplateAction.Request(templateName.value.value)
+    val action = GetComponentTemplateAction.INSTANCE
+    client.executeT(action, request)
+      .map { response =>
+        response
+          .getComponentTemplates
+          .asScala
+          .keySet
+          .contains(templateName.value.value)
+      }
+      .onErrorRecoverWith {
+        case _: ResourceNotFoundException => Task.pure(false)
+      }
+  }
+
   override protected def createComponentTemplateForMappings(settings: ComponentTemplateMappings): Task[CreationResult] = execute {
     val request: PutComponentTemplateAction.Request = componentTemplateMappings(settings)
     val action = PutComponentTemplateAction.INSTANCE
@@ -99,6 +147,17 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     val request = componentTemplateIndexSettingsRequest(settings)
     val action = PutComponentTemplateAction.INSTANCE
     client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
+  }
+
+  override protected def checkIndexTemplateExists(templateName: TemplateName): Task[Boolean] = {
+    val request = GetComposableIndexTemplateAction.Request(templateName.value.value)
+    val action = GetComposableIndexTemplateAction.INSTANCE
+    client
+      .executeT(action, request)
+      .map(_.indexTemplates.asScala.keySet.contains(templateName.value.value))
+      .onErrorRecoverWith {
+        case _: ResourceNotFoundException => Task.pure(false)
+      }
   }
 
   override protected def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult] = execute {

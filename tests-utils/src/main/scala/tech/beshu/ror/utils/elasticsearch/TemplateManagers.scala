@@ -41,14 +41,16 @@ abstract class BaseTemplateManager(client: RestClient,
   def putTemplate(templateName: String,
                   indexPatterns: NonEmptyList[String],
                   aliases: Set[String] = Set.empty,
-                  priority: Int = 0): SimpleResponse =
-    call(createIndexTemplateRequest(templateName, putTemplateBodyJson(indexPatterns, aliases, priority)), new SimpleResponse(_))
+                  priority: Int = 0,
+                  forDataStream: Boolean = false): SimpleResponse =
+    call(createIndexTemplateRequest(templateName, putTemplateBodyJson(indexPatterns, aliases, priority, forDataStream)), new SimpleResponse(_))
 
   def putTemplateAndWaitForIndexing(templateName: String,
                                     indexPatterns: NonEmptyList[String],
                                     aliases: Set[String] = Set.empty,
-                                    priority: Int = 0): Unit = {
-    putTemplate(templateName, indexPatterns, aliases, priority).force()
+                                    priority: Int = 0,
+                                    forDataStream: Boolean = false): Unit = {
+    putTemplate(templateName, indexPatterns, aliases, priority, forDataStream).force()
     waitForCondition(s"Putting index template $templateName") {
       getTemplate(templateName).responseCode == 200
     }
@@ -73,7 +75,8 @@ abstract class BaseTemplateManager(client: RestClient,
 
   protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String],
                                     aliases: Set[String],
-                                    priority: Int): JSON
+                                    priority: Int,
+                                    forDataStream: Boolean): JSON
 
   class TemplateResponse(response: HttpResponse,
                          parseTemplates: JSON => List[Template])
@@ -136,7 +139,10 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
     request
   }
 
-  override protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String], aliases: Set[String], priority: Int): JSON = {
+  override protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String],
+                                             aliases: Set[String],
+                                             priority: Int,
+                                             forDataStream: Boolean): JSON = {
     val allIndexPattern = indexPatterns.toList
     val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
     if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
@@ -270,7 +276,8 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
 
   override protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String],
                                              aliases: Set[String],
-                                             priority: Int): JSON = {
+                                             priority: Int,
+                                             forDataStream: Boolean): JSON = {
     val allIndexPattern = indexPatterns.toList
     val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
     ujson.read {
@@ -278,6 +285,7 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
          |{
          |  "index_patterns":[$patternsString],
          |  "priority": $priority,
+         |  ${Option.when(forDataStream)("\"data_stream\": {},").getOrElse("")}
          |  "template": {
          |    "aliases":{
          |      ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}
@@ -303,7 +311,7 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
 
   private def createSimulateTemplateRequest(indexPatterns: NonEmptyList[String], aliases: Set[String]) = {
     val request = new HttpPost(client.from(s"/_index_template/_simulate/"))
-    request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases, 1))))
+    request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases, 1, false))))
     request.setHeader("Content-Type", "application/json")
     request.setHeader("timeout", "50s")
     request
