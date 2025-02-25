@@ -26,7 +26,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.*
 
-class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAndRule] {
+class HeadersAllOfRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAndRule] {
 
   "A HeadersAndRule" should {
     "be able to be loaded from config" when {

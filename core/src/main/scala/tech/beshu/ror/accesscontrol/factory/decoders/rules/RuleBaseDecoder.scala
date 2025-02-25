@@ -34,9 +34,11 @@ sealed abstract class RuleDecoder[T <: Rule : RuleName] extends Decoder[RuleDeco
 
   def ruleName: Rule.Name = implicitly[RuleName[T]].name
 
+  protected def decodingContext(c: HCursor): ACursor = c.downField(ruleName.value)
+
   override def apply(c: HCursor): Decoder.Result[RuleDecoder.Result[T]] = {
     decode(
-      c.downField(ruleName.value),
+      decodingContext(c),
       c.withKeysOnly(associatedFields)
     ) map { ruleWithVariable =>
       RuleDecoder.Result(ruleWithVariable, c.withoutKeys(associatedFields + ruleName.value))

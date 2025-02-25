@@ -27,7 +27,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
   "GroupsLogic AND" should {
     "handle properly filtering of available groups from user groups" when {
       "permitted groups are all wildcarded" in {
-        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("a*"), GroupIdLike.from("b*")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -38,7 +38,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "permitted groups are full groups names" in {
-        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("cba")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -49,7 +49,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "permitted groups are mix of group patterns and full group id" in {
-        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("c*"), GroupIdLike.from("abc")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -60,7 +60,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "there is one permitted group that doesn't match any of the user groups" in {
-        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("d*"), GroupIdLike.from("b*"), GroupIdLike.from("c*"), GroupIdLike.from("abc")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -74,7 +74,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
   "GroupsLogic OR" should {
     "handle properly filtering of available groups from user groups" when {
       "permitted groups are all wildcarded" in {
-        val and = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("a*"), GroupIdLike.from("b*")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -85,7 +85,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "permitted groups are full groups names" in {
-        val and = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("cba")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -96,7 +96,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "permitted groups are mix of group patterns and full group ids" in {
-        val and = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("c*"), GroupIdLike.from("abc")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -107,7 +107,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "there is none of permitted group that match any of the user groups" in {
-        val and = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("d*"), GroupIdLike.from("e*"), GroupIdLike.from("abcde")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
@@ -287,13 +287,13 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
   "GroupsLogic.Combined" should {
     "handle properly filtering of available groups from user groups" when {
       "OR rule with wildcards and NOT_ANY_OF rule with full names (1)" in {
-        val or = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
+        val or = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("a*"), GroupIdLike.from("b*")
         )))
         val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("bac")
         )))
-        val combined = GroupsLogic.CombinedGroupsLogic(or, notAnyOf)
+        val combined = GroupsLogic.Combined(or, notAnyOf)
         val result = combined.availableGroupsFrom(UniqueNonEmptyList.of(
           group("aaa"), group("bbb"), group("caa")
         ))
@@ -302,26 +302,26 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "OR rule with wildcards and NOT_ANY_OF rule with full names (2)" in {
-        val or = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
+        val or = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("a*"), GroupIdLike.from("b*")
         )))
         val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("bac")
         )))
-        val combined = GroupsLogic.CombinedGroupsLogic(or, notAnyOf)
+        val combined = GroupsLogic.Combined(or, notAnyOf)
         val result = combined.availableGroupsFrom(UniqueNonEmptyList.of(
           group("aaa"), group("bbb"), group("caa"), group("abc")
         ))
         result should be(None)
       }
       "OR rule with full names and NOT_ANY_OF rule with wildcards (1)" in {
-        val or = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
+        val or = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("bca"), GroupIdLike.from("cab")
         )))
         val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("a*"), GroupIdLike.from("b*")
         )))
-        val combined = GroupsLogic.CombinedGroupsLogic(or, notAnyOf)
+        val combined = GroupsLogic.Combined(or, notAnyOf)
         val result = combined.availableGroupsFrom(UniqueNonEmptyList.of(
           group("cab")
         ))
@@ -330,26 +330,26 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "OR rule with full names and NOT_ANY_OF rule with wildcards (2)" in {
-        val or = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
+        val or = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("bca"), GroupIdLike.from("cab")
         )))
         val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("a*"), GroupIdLike.from("b*")
         )))
-        val combined = GroupsLogic.CombinedGroupsLogic(or, notAnyOf)
+        val combined = GroupsLogic.Combined(or, notAnyOf)
         val result = combined.availableGroupsFrom(UniqueNonEmptyList.of(
           group("cab"), group("abc")
         ))
         result should be(None)
       }
       "AND rule with full names and NOT_ANY_OF rule with wildcards (1)" in {
-        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("bca"), GroupIdLike.from("cab")
         )))
         val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("d*"), GroupIdLike.from("e*")
         )))
-        val combined = GroupsLogic.CombinedGroupsLogic(and, notAnyOf)
+        val combined = GroupsLogic.Combined(and, notAnyOf)
         val result = combined.availableGroupsFrom(UniqueNonEmptyList.of(
           group("abc"),   group("bca"), group("cab")
         ))
@@ -358,26 +358,26 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "AND rule with full names and NOT_ANY_OF rule with wildcards (2)" in {
-        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("bca"), GroupIdLike.from("cab")
         )))
         val notAnyOf = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("d*"), GroupIdLike.from("e*")
         )))
-        val combined = GroupsLogic.CombinedGroupsLogic(and, notAnyOf)
+        val combined = GroupsLogic.Combined(and, notAnyOf)
         val result = combined.availableGroupsFrom(UniqueNonEmptyList.of(
           group("abc"), group("bca"), group("cab"), group("eee")
         ))
         result should be(None)
       }
       "AND rule with full names and NOT_ALL_OF rule with wildcards (1)" in {
-        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("bca"), GroupIdLike.from("cab")
         )))
         val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("d*"), GroupIdLike.from("e*")
         )))
-        val combined = GroupsLogic.CombinedGroupsLogic(and, notAllOf)
+        val combined = GroupsLogic.Combined(and, notAllOf)
         val result = combined.availableGroupsFrom(UniqueNonEmptyList.of(
           group("abc"), group("bca"), group("cab")
         ))
@@ -386,26 +386,26 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "AND rule with full names and NOT_ALL_OF rule with wildcards (2)" in {
-        val and = GroupsLogic.And(GroupIds(UniqueNonEmptyList.of(
+        val and = GroupsLogic.AllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("bca"), GroupIdLike.from("cab")
         )))
         val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("d*"), GroupIdLike.from("e*")
         )))
-        val combined = GroupsLogic.CombinedGroupsLogic(and, notAllOf)
+        val combined = GroupsLogic.Combined(and, notAllOf)
         val result = combined.availableGroupsFrom(UniqueNonEmptyList.of(
           group("abc"), group("bca"), group("cab"), group("eee"), group("dee")
         ))
         result should be(None)
       }
       "OR rule with full names and NOT_ALL_OF rule with wildcards (1)" in {
-        val or = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
+        val or = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("bca"), GroupIdLike.from("cab")
         )))
         val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("d*"), GroupIdLike.from("e*")
         )))
-        val combined = GroupsLogic.CombinedGroupsLogic(or, notAllOf)
+        val combined = GroupsLogic.Combined(or, notAllOf)
         val result = combined.availableGroupsFrom(UniqueNonEmptyList.of(
           group("abc"), group("bca")
         ))
@@ -414,13 +414,13 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
         )))
       }
       "OR rule with full names and NOT_ALL_OF rule with wildcards (2)" in {
-        val or = GroupsLogic.Or(GroupIds(UniqueNonEmptyList.of(
+        val or = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("abc"), GroupIdLike.from("bca"), GroupIdLike.from("cab")
         )))
         val notAllOf = GroupsLogic.NotAllOf(GroupIds(UniqueNonEmptyList.of(
           GroupIdLike.from("d*"), GroupIdLike.from("e*")
         )))
-        val combined = GroupsLogic.CombinedGroupsLogic(or, notAllOf)
+        val combined = GroupsLogic.Combined(or, notAllOf)
         val result = combined.availableGroupsFrom(UniqueNonEmptyList.of(
           group("abc"), group("bca"), group("eee"), group("dee")
         ))

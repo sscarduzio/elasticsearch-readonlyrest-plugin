@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
-class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
+class HeaderAnyOfRuleTests extends AnyWordSpec with MockFactory {
 
   "A HeadersAndRule" should {
     "match" when {

@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.UsingVariable
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 
 object VariableContext {
 
@@ -53,10 +54,7 @@ object VariableContext {
 
     implicit val dataStreamsRule: VariableUsage[DataStreamsRule] = UsingVariable[DataStreamsRule](rule => rule.settings.allowedDataStreams.toNonEmptyList)
     implicit val filterRule: VariableUsage[FilterRule] = UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
-    implicit val groupsOrRule: VariableUsage[GroupsOrRule] = UsingVariable[GroupsOrRule](rule => rule.settings.permittedGroupsLogic.usedVariables)
-    implicit val groupsAndRule: VariableUsage[GroupsAndRule] = UsingVariable[GroupsAndRule](rule => rule.settings.permittedGroupsLogic.usedVariables)
-    implicit val groupsNotAllOfRule: VariableUsage[GroupsNotAllOfRule] = UsingVariable[GroupsNotAllOfRule](rule => rule.settings.permittedGroupsLogic.usedVariables)
-    implicit val groupsNotAnyOfRule: VariableUsage[GroupsNotAnyOfRule] = UsingVariable[GroupsNotAnyOfRule](rule => rule.settings.permittedGroupsLogic.usedVariables)
+    implicit def groupsRule[GL <: GroupsLogic]: VariableUsage[GroupsRule[GL]] = UsingVariable[GroupsRule[GL]](rule => rule.settings.permittedGroupsLogic.usedVariables)
     implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)
     implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
     implicit val kibanaUserDataRule: VariableUsage[KibanaUserDataRule] = UsingVariable[KibanaUserDataRule](rule =>

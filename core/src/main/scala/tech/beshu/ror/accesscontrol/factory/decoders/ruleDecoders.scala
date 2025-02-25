@@ -60,17 +60,14 @@ object ruleDecoders {
     )
 
     val optionalRuleDecoder = name match {
+      case ruleName if GroupsLogicRepresentationDecoder.applicableNames.contains(ruleName.value) =>
+        Some(new GroupsRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsRule.name(ruleName.value)))
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)
       case DataStreamsRule.Name.name => Some(new DataStreamsRuleDecoder(variableCreator))
       case FieldsRule.Name.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine, variableCreator))
       case ResponseFieldsRule.Name.name => Some(new ResponseFieldsRuleDecoder(variableCreator))
       case FilterRule.Name.name => Some(new FilterRuleDecoder(variableCreator))
-      case GroupsOrRule.Name.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsOrRule.Name))
-      case GroupsOrRule.DeprecatedName.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsOrRule.DeprecatedName))
-      case GroupsAndRule.Name.name => Some(new GroupsAndRuleDecoder(definitions.users, globalSettings, variableCreator))
-      case GroupsNotAllOfRule.Name.name => Some(new GroupsNotAllOfRuleDecoder(definitions.users, globalSettings, variableCreator))
-      case GroupsNotAnyOfRule.Name.name => Some(new GroupsNotAnyOfRuleDecoder(definitions.users, globalSettings, variableCreator))
       case HeadersAndRule.Name.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.Name))
       case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)
