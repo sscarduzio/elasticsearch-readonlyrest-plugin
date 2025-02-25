@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -51,7 +50,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   protected def factory: RawRorConfigBasedCoreFactory = {
     implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(envVarsProvider = envVarsProvider)
-    new RawRorConfigBasedCoreFactory()
+    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
   }
 
   def assertDecodingSuccess(yaml: String,

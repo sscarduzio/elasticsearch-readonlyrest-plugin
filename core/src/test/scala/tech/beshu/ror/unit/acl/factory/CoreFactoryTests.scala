@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.factory
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -31,7 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RorConfigurationI
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.syntax.*
@@ -39,9 +38,9 @@ import tech.beshu.ror.utils.TestsUtils.*
 
 class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
 
-  private val factory = {
+  private val factory: CoreFactory = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory()
+    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
   }
 
   "A RorAclFactory" should {

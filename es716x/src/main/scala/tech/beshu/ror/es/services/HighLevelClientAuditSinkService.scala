@@ -25,12 +25,13 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.ActionListener
+import org.elasticsearch.action.{ActionListener, DocWriteRequest}
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{Cancellable, RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.xcontent.XContentType
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
-import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName}
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
 
 import java.security.cert.X509Certificate
@@ -39,14 +40,31 @@ import scala.annotation.nowarn
 import scala.collection.parallel.CollectionConverters.*
 
 @nowarn("cat=deprecation")
-class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
-                                             (implicit scheduler: Scheduler)
-  extends AuditSinkService
+final class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
+                                                   (implicit scheduler: Scheduler)
+  extends IndexBasedAuditSinkService
+    with DataStreamBasedAuditSinkService
     with Logging {
 
-  override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+    submitDocument(indexName.name.value, documentId, jsonRecord)
+  }
+
+  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit = {
+    submitDocument(dataStreamName.value.value, documentId, jsonRecord)
+  }
+
+  override def close(): Unit = {
+    clients.toList.par.foreach(_.close())
+  }
+
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String): Unit = {
     clients.toList.par.foreach { client =>
-      val request = new IndexRequest(indexName).id(documentId).source(jsonRecord, XContentType.JSON)
+      val request =
+        new IndexRequest(indexName)
+          .id(documentId)
+          .source(jsonRecord, XContentType.JSON)
+          .opType(DocWriteRequest.OpType.CREATE)
       val options = RequestOptions.DEFAULT
       val indexAsyncCall: ActionListener[IndexResponse] => Cancellable = client.indexAsync(request, options, _)
 
@@ -62,9 +80,8 @@ class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLeve
     }
   }
 
-  override def close(): Unit = {
-    clients.toList.par.foreach(_.close())
-  }
+  override val dataStreamCreator: AuditDataStreamCreator =
+    new AuditDataStreamCreator(clients.map(client => new RestClientDataStreamService(client.getLowLevelClient)))
 }
 
 object HighLevelClientAuditSinkService {

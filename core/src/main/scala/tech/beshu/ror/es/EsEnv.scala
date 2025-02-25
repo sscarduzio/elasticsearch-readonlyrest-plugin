@@ -20,7 +20,7 @@ import better.files.File
 
 import java.nio.file.Path
 
-final case class EsEnv(configPath: Path, modulesPath: Path) {
+final case class EsEnv(configPath: Path, modulesPath: Path, esVersion: EsVersion) {
 
   def isOssDistribution: Boolean = {
     !modulesPath.resolve("x-pack-security").toFile.exists()

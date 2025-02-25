@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.factory
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import monix.execution.Scheduler.Implicits.global
@@ -35,6 +34,7 @@ import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
+import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -43,9 +43,9 @@ import scala.reflect.ClassTag
 
 class AuditSettingsTests extends AnyWordSpec with Inside {
 
-  private val factory = {
+  private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory()
+    new RawRorConfigBasedCoreFactory(esVersion)
   }
 
   private val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
@@ -158,7 +158,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               |readonlyrest:
               |  audit:
               |    enabled: true
-              |    outputs: [index, log]
+              |    outputs: [index, log, data_stream]
               |
               |  access_control_rules:
               |
@@ -168,7 +168,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               |
             """.stripMargin)
 
-          val core = factory
+          val core = factory()
             .createCoreFrom(
               config,
               RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -178,7 +178,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             )
             .runSyncUnsafe()
           inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
-            auditingSettings.auditSinks.size should be(2)
+            auditingSettings.auditSinks.size should be(3)
 
             val sink1 = auditingSettings.auditSinks.head
             sink1 shouldBe a[AuditSink.Enabled]
@@ -196,6 +196,15 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
             sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
             sink2Config.logSerializer shouldBe a[DefaultAuditLogSerializer]
+
+            val sink3 = auditingSettings.auditSinks.toList(2)
+            sink3 shouldBe a[AuditSink.Enabled]
+            val enabledSink3 = sink3.asInstanceOf[AuditSink.Enabled].config
+            enabledSink3 shouldBe a[Config.EsDataStreamBasedSink]
+            val sink3Config = enabledSink3.asInstanceOf[Config.EsDataStreamBasedSink]
+            sink3Config.rorAuditDataStream.dataStream should be(fullDataStreamName("readonlyrest_audit"))
+            sink3Config.logSerializer shouldBe a[DefaultAuditLogSerializer]
+            sink3Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
           }
         }
         "'log' output type defined" when {
@@ -559,6 +568,243 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             )
           }
         }
+        "'data_stream' output type defined" when {
+          "only type is set" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: data_stream
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertDataStreamAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+              config,
+              expectedDataStreamName = "readonlyrest_audit",
+              expectedAuditCluster = LocalAuditCluster
+            )
+          }
+          "the output's enabled flag is set" when {
+            "set to true" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      enabled: true
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+
+              assertDataStreamAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedDataStreamName = "readonlyrest_audit",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "set to false" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      enabled: false
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+
+              assertSettings(
+                config,
+                expectedConfigs = NonEmptyList.of(AuditSink.Disabled)
+              )
+            }
+          }
+          "custom audit data stream name is set" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: data_stream
+                |      data_stream: "custom_audit_data_stream"
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertDataStreamAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+              config,
+              expectedDataStreamName = "custom_audit_data_stream",
+              expectedAuditCluster = LocalAuditCluster
+            )
+          }
+          "custom serializer is set" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: data_stream
+                |      serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertDataStreamAuditSinkSettingsPresent[QueryAuditLogSerializer](
+              config,
+              expectedDataStreamName = "readonlyrest_audit",
+              expectedAuditCluster = LocalAuditCluster
+            )
+          }
+          "deprecated custom serializer is set" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: data_stream
+                |      serializer: "tech.beshu.ror.requestcontext.QueryAuditLogSerializer"
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertDataStreamAuditSinkSettingsPresent[DeprecatedAuditLogSerializerAdapter[_]](
+              config,
+              expectedDataStreamName = "readonlyrest_audit",
+              expectedAuditCluster = LocalAuditCluster
+            )
+          }
+          "custom audit cluster is set" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: data_stream
+                |      cluster: ["1.1.1.1"]
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertDataStreamAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+              config,
+              expectedDataStreamName = "readonlyrest_audit",
+              expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+            )
+          }
+          "all audit settings are custom" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: data_stream
+                |      data_stream: "custom_audit_data_stream"
+                |      serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+                |      cluster: ["1.1.1.1"]
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertDataStreamAuditSinkSettingsPresent[QueryAuditLogSerializer](
+              config,
+              expectedDataStreamName = "custom_audit_data_stream",
+              expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+            )
+          }
+          "ES version is greater than or equal 7.9.0" in {
+            val esVersions =
+              List(
+                EsVersion(8,17,0),
+                EsVersion(8,1,0),
+                EsVersion(8,0,0),
+                EsVersion(7,17,27),
+                EsVersion(7,10,0),
+                EsVersion(7,9,1),
+                EsVersion(7,9,0),
+              )
+
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: data_stream
+                |      data_stream: "custom_audit_data_stream"
+                |      serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+                |      cluster: ["1.1.1.1"]
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            esVersions.foreach { esVersion =>
+              assertDataStreamAuditSinkSettingsPresent[QueryAuditLogSerializer](
+                config,
+                expectedDataStreamName = "custom_audit_data_stream",
+                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1"))),
+                esVersion = esVersion
+              )
+            }
+          }
+        }
+
         "all output types defined" in {
           val config = rorConfigFromUnsafe(
             """
@@ -569,6 +815,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               |    - type: index
               |    - type: log
               |      serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+              |    - type: data_stream
               |
               |  access_control_rules:
               |
@@ -578,7 +825,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               |
             """.stripMargin)
 
-          val core = factory
+          val core = factory()
             .createCoreFrom(
               config,
               RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -588,7 +835,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             )
             .runSyncUnsafe()
           inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
-            auditingSettings.auditSinks.size should be(2)
+            auditingSettings.auditSinks.size should be(3)
 
             val sink1 = auditingSettings.auditSinks.head
             sink1 shouldBe a[AuditSink.Enabled]
@@ -606,6 +853,15 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
             sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
             sink2Config.logSerializer shouldBe a[QueryAuditLogSerializer]
+
+            val sink3 = auditingSettings.auditSinks.toList(2)
+            sink3 shouldBe a[AuditSink.Enabled]
+            val enabledSink3 = sink3.asInstanceOf[AuditSink.Enabled].config
+            enabledSink3 shouldBe a[Config.EsDataStreamBasedSink]
+            val sink3Config = enabledSink3.asInstanceOf[Config.EsDataStreamBasedSink]
+            sink3Config.rorAuditDataStream.dataStream should be(fullDataStreamName("readonlyrest_audit"))
+            sink3Config.logSerializer shouldBe a[DefaultAuditLogSerializer]
+            sink3Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
           }
         }
         "one of outputs is disabled" in {
@@ -628,7 +884,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               |
             """.stripMargin)
 
-          val core = factory
+          val core = factory()
             .createCoreFrom(
               config,
               RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -772,6 +1028,118 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
             }
           }
+          "'data_stream' output type" when {
+            "not supported custom serializer is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+              )
+            }
+            "data stream name is invalid" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      data_stream: ".ds-INVALID-data-stream-name#"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Illegal format for ROR audit 'data_stream' name - Data stream '.ds-INVALID-data-stream-name#' has an invalid format. Cause: " +
+                  "name must be lowercase, " +
+                  "name must not contain forbidden characters '\\', '/', '*', '?', '\"', '<', '>', '|', ',', '#', ':', ' ', " +
+                  "name must not start with '-', '_', '+', '.ds-'."
+
+              )
+            }
+            "remote cluster is empty list" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      cluster: []
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Non empty list of valid URI is required"
+              )
+            }
+            "es version is lower than 7.9.0" in {
+              val esVersions =
+                List(
+                  EsVersion(7, 8, 2),
+                  EsVersion(7, 8, 1),
+                  EsVersion(7, 8, 0),
+                  EsVersion(7, 7, 0),
+                  EsVersion(7, 0, 0),
+                  EsVersion(6, 8, 23),
+                  EsVersion(5, 0, 5),
+                )
+
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+
+              esVersions.foreach { esVersion =>
+                assertInvalidSettings(
+                  config,
+                  expectedErrorMessage = s"Data stream audit output is supported from Elasticsearch version 7.9.0, " +
+                    s"but your version is ${esVersion.major}.${esVersion.minor}.${esVersion.revision}. Use 'index' type or upgrade to 7.9.0 or later.",
+                  esVersion = esVersion
+                )
+              }
+            }
+          }
           "unknown output type is set" in {
             val config = rorConfigFromUnsafe(
               """
@@ -791,7 +1159,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               config,
-              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [index, log]"
+              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [data_stream, index, log]"
             )
           }
           "unknown output type is set when using simple format" in {
@@ -812,7 +1180,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               config,
-              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [index, log]"
+              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [data_stream, index, log]"
+            )
+
+            assertInvalidSettings(
+              config,
+              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [index, log]",
+              esVersion = EsVersion(7, 8, 0)
             )
           }
           "'outputs' array is empty" in {
@@ -1303,7 +1677,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   }
 
   private def assertSettingsNoPresent(config: RawRorConfig): Unit = {
-    val core = factory
+    val core = factory()
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1316,7 +1690,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   }
 
   private def assertSettings(config: RawRorConfig, expectedConfigs: NonEmptyList[AuditSink]): Unit = {
-    val core = factory
+    val core = factory()
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1334,7 +1708,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
                                                                                       expectedIndexName: NonEmptyString,
                                                                                       expectedAuditCluster: AuditCluster) = {
-    val core = factory
+    val core = factory()
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1359,9 +1733,38 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
+  private def assertDataStreamAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
+                                                                                      expectedDataStreamName: NonEmptyString,
+                                                                                      expectedAuditCluster: AuditCluster,
+                                                                                      esVersion: EsVersion = defaultEsVersionForTests) = {
+    val core = factory(esVersion)
+      .createCoreFrom(
+        config,
+        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        MockHttpClientsFactory,
+        MockLdapConnectionPoolProvider,
+        NoOpMocksProvider
+      )
+      .runSyncUnsafe()
+    inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
+      auditingSettings.auditSinks.size should be(1)
+
+      val headSink = auditingSettings.auditSinks.head
+      headSink shouldBe a[AuditSink.Enabled]
+
+      val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
+      headSinkConfig shouldBe a[Config.EsDataStreamBasedSink]
+
+      val sinkConfig = headSinkConfig.asInstanceOf[Config.EsDataStreamBasedSink]
+      sinkConfig.rorAuditDataStream.dataStream should be(fullDataStreamName(expectedDataStreamName))
+      sinkConfig.logSerializer shouldBe a[EXPECTED_SERIALIZER]
+      sinkConfig.auditCluster shouldBe expectedAuditCluster
+    }
+  }
+
   private def assertLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
                                                                                     expectedLoggerName: NonEmptyString) = {
-    val core = factory
+    val core = factory()
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1386,8 +1789,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   }
 
   private def assertInvalidSettings(config: RawRorConfig,
-                                    expectedErrorMessage: String): Unit = {
-    val core = factory
+                                    expectedErrorMessage: String,
+                                    esVersion: EsVersion = defaultEsVersionForTests): Unit = {
+    val core = factory(esVersion)
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
@@ -1401,4 +1805,5 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       errors.head should be(AuditingSettingsCreationError(Message(expectedErrorMessage)))
     }
   }
+
 }

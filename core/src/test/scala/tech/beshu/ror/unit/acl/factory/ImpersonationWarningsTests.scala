@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -29,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvid
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorConfigurationIndex}
-import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.{CoreFactory, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.syntax.*
@@ -386,8 +385,8 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
       .runSyncUnsafe()
   }
 
-  private val factory = {
+  private val factory: CoreFactory = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory()
+    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
   }
 }

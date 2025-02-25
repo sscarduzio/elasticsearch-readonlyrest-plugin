@@ -51,6 +51,7 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
@@ -69,6 +70,10 @@ object TestsUtils {
 
   implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
   val rorYamlParser = new RorYamlParser(Megabytes(3))
+
+  val defaultEsVersionForTests: EsVersion = EsVersion(8, 17, 0)
+
+  inline def nes(str : String): NonEmptyString = RefinedUtils.nes(str)
 
   def basicAuthHeader(value: String): Header =
     new Header(
@@ -160,7 +165,7 @@ object TestsUtils {
 
   def fullIndexName(str: NonEmptyString): IndexName.Full = IndexName.Full.fromString(str.value).get
 
-  def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromString(str.value).get
+  def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromNes(str.value)
 
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
