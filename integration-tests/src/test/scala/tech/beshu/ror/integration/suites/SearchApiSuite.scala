@@ -23,7 +23,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
-import tech.beshu.ror.utils.elasticsearch.{DataStreamManager, DocumentManager, EnhancedDataStreamManager, IndexManager, IndexTemplateManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, EnhancedDataStreamManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
@@ -295,10 +295,8 @@ object SearchApiSuite {
     val indexManager = new IndexManager(adminRestClient, esVersion)
 
     if (Version.greaterOrEqualThan(esVersion, 7, 9, 0)) {
-      val dataStreamManager = new DataStreamManager(adminRestClient, esVersion)
-      val templateManager = new IndexTemplateManager(adminRestClient, esVersion)
-      val enhancedDataStreamManager = new EnhancedDataStreamManager(dataStreamManager, documentManager, indexManager, templateManager)
-      createDataStreamAndDocuments(enhancedDataStreamManager, indexManager, esVersion)
+      val enhancedDataStreamManager = EnhancedDataStreamManager(adminRestClient, esVersion)
+      createDataStreamAndDocuments(enhancedDataStreamManager, esVersion)
     }
 
     createSearchEndpointIndicesAndExampleDocs(indexManager, documentManager)
@@ -306,7 +304,6 @@ object SearchApiSuite {
   }
 
   private def createDataStreamAndDocuments(enhancedDataStreamManager: EnhancedDataStreamManager,
-                                           indexManager: IndexManager,
                                            esVersion: String): Unit = {
     enhancedDataStreamManager.createDataStream("test_logs_ds")
     enhancedDataStreamManager.createDocsInDataStream(
@@ -316,11 +313,8 @@ object SearchApiSuite {
     )
 
     if (Version.greaterOrEqualThan(esVersion, 7, 14, 0)) {
-      indexManager
-        .updateAliases(
-          AliasAction.Add(index = "test_logs_ds", alias = "alias_ds"),
-        )
-        .force()
+      enhancedDataStreamManager
+        .addAlias("test_logs_ds", "alias_ds")
     }
   }
 

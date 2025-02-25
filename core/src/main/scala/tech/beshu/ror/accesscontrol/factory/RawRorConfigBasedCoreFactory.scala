@@ -50,6 +50,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
+import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -66,7 +67,7 @@ trait CoreFactory {
                      mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
 }
 
-class RawRorConfigBasedCoreFactory()
+class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
                                   (implicit environmentConfig: EnvironmentConfig)
   extends CoreFactory with Logging {
 
@@ -316,7 +317,7 @@ class RawRorConfigBasedCoreFactory()
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
-        auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
+        auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esVersion))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
