@@ -52,6 +52,10 @@ run_integration_tests() {
   ./gradlew integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es90x" ]]; then
+  run_integration_tests "es90x"
+fi
+
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es816x" ]]; then
   run_integration_tests "es816x"
 fi
@@ -199,6 +203,10 @@ build_ror_plugin() {
   ./gradlew buildRorPlugin "-PesVersion=$ROR_VERSION" </dev/null
 }
 
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es9xx" ]]; then
+  build_ror_plugins "ci/supported-es-versions/es9x.txt"
+fi
+
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es8xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
@@ -240,6 +248,10 @@ upload_pre_ror_plugin() {
 
   ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
 }
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es9xx" ]]; then
+  upload_pre_ror_plugins "ci/supported-es-versions/es9x.txt"
+fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es8xx" ]]; then
   upload_pre_ror_plugins "ci/supported-es-versions/es8x.txt"
@@ -340,6 +352,10 @@ public_ror_prebuild_plugin() {
 
   $DOCKER system prune -fa
 }
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es9xx" ]]; then
+  release_ror_plugins "ci/supported-es-versions/es9x.txt"
+fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es8xx" ]]; then
   release_ror_plugins "ci/supported-es-versions/es8x.txt"
