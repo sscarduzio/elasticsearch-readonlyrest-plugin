@@ -17,16 +17,34 @@
 package tech.beshu.ror.es
 
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
+import org.elasticsearch.http.HttpChannel
+import org.elasticsearch.rest.{AbstractRestChannel, RestChannel as EsRestChannel, RestRequest as EsRestRequest, RestResponse as EsRestResponse}
+import squants.information.{Bytes, Information}
+import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.es.handler.request.RestRequestOps.*
 import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.syntax.*
 
-class RorRestChannel(underlying: RestChannel)
+final class RorRestChannel(underlying: EsRestChannel)
   extends AbstractRestChannel(underlying.request(), true)
     with ResponseFieldsFiltering
     with Logging {
 
-  override def sendResponse(response: RestResponse): Unit = {
+  val restRequest: RorRestRequest = new RorRestRequest(underlying.request())
+
+  override def sendResponse(response: EsRestResponse): Unit = {
     ThreadRepo.removeRestChannel(this)
     underlying.sendResponse(filterRestResponse(response))
   }
+}
+
+final class RorRestRequest(underlying: EsRestRequest) {
+
+  lazy val method: String = underlying.method().name()
+  lazy val path: String = underlying.path()
+  lazy val allHeaders: Set[Header] = underlying.allHeaders() // todo: all headers refactor
+  lazy val httpChannel: HttpChannel = underlying.getHttpChannel
+
+  val content: String = Option(underlying.content()).map(_.utf8ToString()).getOrElse("")
+  val contentLength: Information = Bytes(underlying.contentLength())
 }

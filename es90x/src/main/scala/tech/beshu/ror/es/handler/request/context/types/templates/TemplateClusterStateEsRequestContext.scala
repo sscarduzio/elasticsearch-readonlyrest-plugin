@@ -48,7 +48,7 @@ object TemplateClusterStateEsRequestContext {
            clusterService: RorClusterService,
            settings: Settings,
            threadPool: ThreadPool): Option[TemplateClusterStateEsRequestContext] = {
-    UriPath.from(esContext.channel.request().uri()) match {
+    UriPath.from(esContext.channel.restRequest.path) match {
       case Some(TemplatePath(_) | CatTemplatePath(_)) =>
         Some(new TemplateClusterStateEsRequestContext(actionRequest, esContext, clusterService, settings, threadPool))
       case _ =>

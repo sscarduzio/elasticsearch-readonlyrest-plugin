@@ -153,7 +153,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
 
 object EsqlIndicesEsRequestContext {
   def unapply(arg: ReflectionBasedActionRequest): Option[EsqlIndicesEsRequestContext] = {
-    if (arg.esContext.channel.request().path().startsWith("/_query")) {
+    if (arg.esContext.channel.restRequest.path.startsWith("/_query")) {
       Some(new EsqlIndicesEsRequestContext(
         arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
         arg.esContext,
