@@ -60,7 +60,16 @@ object ruleDecoders {
     )
 
     val optionalRuleDecoder = name match {
-      case ruleName if GroupsLogicRepresentationDecoder.applicableNames.contains(ruleName.value) =>
+      case ruleName@(
+        GroupsRule.GroupsSubruleSectionName.name |
+        AllOfGroupsRule.NameV1.name |
+        AllOfGroupsRule.NameV2.name |
+        AnyOfGroupsRule.NameV1.name |
+        AnyOfGroupsRule.NameV2.name |
+        AnyOfGroupsRule.NameV3.name |
+        AnyOfGroupsRule.NameV4.name |
+        NotAllOfGroupsRule.NameV1.name |
+        NotAnyOfGroupsRule.NameV1.name) =>
         Some(new GroupsRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsRule.name(ruleName.value)))
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)

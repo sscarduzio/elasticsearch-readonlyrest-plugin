@@ -187,8 +187,8 @@ object GroupsLogic {
   implicit class GroupsLogicExecutor(val groupsLogic: GroupsLogic) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
       groupsLogic match {
-        case and@GroupsLogic.AllOf(_) => and.availableGroupsFrom(userGroups)
-        case or@GroupsLogic.AnyOf(_) => or.availableGroupsFrom(userGroups)
+        case allOf@GroupsLogic.AllOf(_) => allOf.availableGroupsFrom(userGroups)
+        case anyOf@GroupsLogic.AnyOf(_) => anyOf.availableGroupsFrom(userGroups)
         case notAllOf@GroupsLogic.NotAllOf(_) => notAllOf.availableGroupsFrom(userGroups)
         case notAnyOf@GroupsLogic.NotAnyOf(_) => notAnyOf.availableGroupsFrom(userGroups)
         case combinedGroupsLogic@GroupsLogic.Combined(_, _) => combinedGroupsLogic.availableGroupsFrom(userGroups)

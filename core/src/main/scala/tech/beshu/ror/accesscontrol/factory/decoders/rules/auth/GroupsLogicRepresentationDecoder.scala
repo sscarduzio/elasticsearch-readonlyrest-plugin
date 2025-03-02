@@ -20,15 +20,13 @@ import cats.implicits.toShow
 import io.circe.{ACursor, Decoder}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.GroupsLogicRepresentationDecoder.{GroupsLogicDecodingResult, declaredName}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.{SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
-
-import scala.compiletime.ops.string.Matches
-import scala.compiletime.{constValue, error}
 
 private[auth] class GroupsLogicRepresentationDecoder[
   RULE_REPRESENTATION,
@@ -68,12 +66,12 @@ private[auth] class GroupsLogicRepresentationDecoder[
   private def withGroupsSectionDecoder[T <: Rule](implicit ruleName: RuleName[T]): SyncDecoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] =
     Decoder
       .instance { c =>
-        val groupsSection = c.downField(declaredName["user_belongs_to_groups"])
+        val groupsSection = c.downField(GroupsRule.GroupsSubruleSectionName.name.value)
         for {
-          groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](groupsSection)("all_of")
-          groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](groupsSection)("any_of")
-          groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](groupsSection)("not_all_of")
-          groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](groupsSection)("not_any_of")
+          groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](groupsSection)(AllOfGroupsRule.NameInsideGroupsSubruleSection.name.value)
+          groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](groupsSection)(AnyOfGroupsRule.NameInsideGroupsSubruleSection.name.value)
+          groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](groupsSection)(NotAllOfGroupsRule.NameInsideGroupsSubruleSection.name.value)
+          groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](groupsSection)(NotAnyOfGroupsRule.NameInsideGroupsSubruleSection.name.value)
         } yield (groupsAllOf, groupsAnyOf, groupsNotAllOf, groupsNotAnyOf)
       }
       .toSyncDecoder
@@ -86,21 +84,20 @@ private[auth] class GroupsLogicRepresentationDecoder[
         val section = c
         for {
           groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](section)(
-            declaredName["groups_all_of"],
-            declaredName["groups_and"],
-            declaredName["roles_and"],
+            AllOfGroupsRule.NameV1.name.value,
+            AllOfGroupsRule.NameV2.name.value,
           )
           groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](section)(
-            declaredName["groups_any_of"],
-            declaredName["groups_or"],
-            declaredName["groups"],
-            declaredName["roles"],
+            AnyOfGroupsRule.NameV1.name.value,
+            AnyOfGroupsRule.NameV2.name.value,
+            AnyOfGroupsRule.NameV3.name.value,
+            AnyOfGroupsRule.NameV4.name.value,
           )
           groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](section)(
-            declaredName["groups_not_all_of"],
+            NotAllOfGroupsRule.NameV1.name.value
           )
           groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](section)(
-            declaredName["groups_not_any_of"],
+            NotAnyOfGroupsRule.NameV1.name.value
           )
         } yield (groupsAllOf, groupsAnyOf, groupsNotAllOf, groupsNotAnyOf)
       }
@@ -154,19 +151,6 @@ private[auth] class GroupsLogicRepresentationDecoder[
 }
 
 object GroupsLogicRepresentationDecoder {
-
-  private type APPLICABLE_NAMES = "user_belongs_to_groups|groups_all_of|groups_and|roles_and|groups_any_of|groups_or|groups|roles|groups_not_all_of|groups_not_any_of"
-
-  private inline def declaredName[S <: String : ValueOf]: String = {
-    inline if (constValue[Matches[S, APPLICABLE_NAMES]]) {
-      constValue[S]
-    } else {
-      error("Name is not declared as applicable name of groups rule")
-    }
-  }
-
-  val applicableNames: List[String] = constValue[APPLICABLE_NAMES].split('|').toList
-
   sealed trait GroupsLogicDecodingResult[RULE_REPRESENTATION]
 
   object GroupsLogicDecodingResult {

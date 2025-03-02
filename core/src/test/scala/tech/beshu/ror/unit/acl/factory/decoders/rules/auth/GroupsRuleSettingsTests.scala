@@ -50,7 +50,7 @@ class GroupsRuleSettingsTests
     with ScalaCheckPropertyChecks {
 
   private val testParams = Table[String, String, GroupIds => GroupsLogic](
-    ("rule_name", "rule_name_in_section", "creator"),
+    ("deprecated_subrule_name", "subrule_name_in_user_belongs_to_groups_section", "creator"),
     ("groups_any_of", "any_of", GroupsLogic.AnyOf.apply),
     ("groups_or", "any_of", GroupsLogic.AnyOf.apply),
     ("groups_all_of", "all_of", GroupsLogic.AllOf.apply),
@@ -59,8 +59,8 @@ class GroupsRuleSettingsTests
     ("groups_not_any_of", "not_any_of", GroupsLogic.NotAnyOf.apply)
   )
 
-  forAll(testParams) { (ruleName, ruleNameInSection, creator) =>
-  s"A GroupsRule settings test for $ruleName" should {
+  forAll(testParams) { (deprecatedSubruleName, subruleName, creator) =>
+  s"A GroupsRule settings test for $deprecatedSubruleName" should {
     "be able to be loaded from config" when {
       "a groups mapping is not used" when {
         "only one group is defined" when {
@@ -73,7 +73,7 @@ class GroupsRuleSettingsTests
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    $ruleName: group1
+                   |    $deprecatedSubruleName: group1
                    |
                    |  users:
                    |  - username: cartman
@@ -109,7 +109,7 @@ class GroupsRuleSettingsTests
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    $ruleName: group1
+                   |    $deprecatedSubruleName: group1
                    |
                    |  users:
                    |  - username: car*
@@ -142,7 +142,7 @@ class GroupsRuleSettingsTests
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    $ruleName: group1
+                   |    $deprecatedSubruleName: group1
                    |
                    |  users:
                    |  - username: [cartman, "ca*"]
@@ -175,7 +175,7 @@ class GroupsRuleSettingsTests
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    $ruleName: group1
+                   |    $deprecatedSubruleName: group1
                    |
                    |  users:
                    |  - username: cartman
@@ -212,7 +212,7 @@ class GroupsRuleSettingsTests
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    $ruleName: group1
+                   |    $deprecatedSubruleName: group1
                    |
                    |  users:
                    |  - username: cartman
@@ -262,7 +262,7 @@ class GroupsRuleSettingsTests
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    $ruleName: [group1, group2]
+                   |    $deprecatedSubruleName: [group1, group2]
                    |
                    |  users:
                    |  - username: cartman
@@ -311,7 +311,7 @@ class GroupsRuleSettingsTests
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    $ruleName: [group1, "group_@{header:test}"]
+                   |    $deprecatedSubruleName: [group1, "group_@{header:test}"]
                    |
                    |  users:
                    |  - username: cartman
@@ -346,7 +346,7 @@ class GroupsRuleSettingsTests
                    |
                    |  - name: test_block1
                    |    user_belongs_to_groups:
-                   |      $ruleNameInSection: [group1, "group_@{header:test}"]
+                   |      $subruleName: [group1, "group_@{header:test}"]
                    |
                    |  users:
                    |  - username: cartman
@@ -383,7 +383,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    $ruleName: [group1*, group2]
+                 |    $deprecatedSubruleName: [group1*, group2]
                  |
                  |  users:
                  |  - username: cartman
@@ -460,7 +460,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    $ruleName: [group1, group2]
+                 |    $deprecatedSubruleName: [group1, group2]
                  |
                  |  users:
                  |  - username: cartman
@@ -518,7 +518,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    $ruleName: [group1, group3]
+                 |    $deprecatedSubruleName: [group1, group3]
                  |
                  |  users:
                  |  - username: cartman
@@ -585,7 +585,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    $ruleName: [group1, group3]
+                 |    $deprecatedSubruleName: [group1, group3]
                  |
                  |  users:
                  |  - username: cartman
@@ -659,7 +659,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName: ["group1"]
+               |    $deprecatedSubruleName: ["group1"]
                |
                |  users:
                |  - username: "*"
@@ -709,7 +709,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName:
+               |    $deprecatedSubruleName:
                |
                |  users:
                |  - username: cartman
@@ -719,7 +719,7 @@ class GroupsRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `$ruleName` requires them.")))
+            errors.head should be(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `$deprecatedSubruleName` requires them.")))
           }
         )
       }
@@ -732,12 +732,12 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName: group1
+               |    $deprecatedSubruleName: group1
                |
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `$ruleName` requires them.")))
+            errors.head should be(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `$deprecatedSubruleName` requires them.")))
           }
         )
       }
@@ -750,7 +750,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName: group1
+               |    $deprecatedSubruleName: group1
                |
                |  users:
                |  - username:
@@ -773,7 +773,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName: group1
+               |    $deprecatedSubruleName: group1
                |
                |  users:
                |  - username: []
@@ -796,7 +796,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName: group1
+               |    $deprecatedSubruleName: group1
                |
                |  users:
                |  - groups: ["group1", "group3"]
@@ -826,7 +826,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    $ruleName: ["group*"]
+                 |    $deprecatedSubruleName: ["group*"]
                  |
                  |  users:
                  |  - username: cartman
@@ -855,7 +855,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName:
+               |    $deprecatedSubruleName:
                |
                |  users:
                |  - username: cartman
@@ -878,7 +878,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName:
+               |    $deprecatedSubruleName:
                |
                |  users:
                |  - username: cartman
@@ -901,7 +901,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName: [group1, group3]
+               |    $deprecatedSubruleName: [group1, group3]
                |
                |  users:
                |  - username: cartman
@@ -955,7 +955,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName: [group1, group3]
+               |    $deprecatedSubruleName: [group1, group3]
                |
                |  users:
                |  - username: cartman
@@ -1002,7 +1002,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName: [group1, group3]
+               |    $deprecatedSubruleName: [group1, group3]
                |
                |  users:
                |  - username: cartman
@@ -1052,7 +1052,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName: [group1, group3]
+               |    $deprecatedSubruleName: [group1, group3]
                |
                |  users:
                |  - username: cartman
@@ -1102,7 +1102,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    $ruleName: [group1, group3]
+               |    $deprecatedSubruleName: [group1, group3]
                |
                |  users:
                |  - username: cartman
@@ -1153,7 +1153,7 @@ class GroupsRuleSettingsTests
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    $ruleName: ["group1"]
+             |    $deprecatedSubruleName: ["group1"]
              |
              |  users:
              |  - username: cartman
@@ -1181,7 +1181,7 @@ class GroupsRuleSettingsTests
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    $ruleName: ["group1"]
+             |    $deprecatedSubruleName: ["group1"]
              |
              |  users:
              |  - username: cartman
@@ -1229,7 +1229,7 @@ class GroupsRuleSettingsTests
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    $ruleName:
+             |    $deprecatedSubruleName:
              |
              |  users:
              |  - username: cartman
@@ -1270,7 +1270,7 @@ class GroupsRuleSettingsTests
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    $ruleName:
+             |    $deprecatedSubruleName:
              |
              |  users:
              |  - username: cartman
@@ -1320,7 +1320,7 @@ class GroupsRuleSettingsTests
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    $ruleName: group1
+             |    $deprecatedSubruleName: group1
              |
              |  users:
              |  - username: cartman
@@ -1347,7 +1347,7 @@ class GroupsRuleSettingsTests
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    $ruleName:
+             |    $deprecatedSubruleName:
              |
              |  users:
              |  - username: cartman
@@ -1371,7 +1371,7 @@ class GroupsRuleSettingsTests
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    $ruleName: group1
+             |    $deprecatedSubruleName: group1
              |
              |  users:
              |  - username: a*
