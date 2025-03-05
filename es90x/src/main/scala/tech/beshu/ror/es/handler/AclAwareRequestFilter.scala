@@ -287,6 +287,11 @@ object AclAwareRequestFilter {
         .map(CorrelationId.apply)
         .getOrElse(CorrelationId.random)
 
+    private lazy val isImpersonationHeader = 
+      channel.restRequest
+        .allHeaders
+        .exists { case Header(name, _) => name === Header.Name.impersonateAs }
+
     def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
       val impersonationHeaderPresent = isImpersonationHeader
       engines.impersonatorsEngine match {
@@ -294,10 +299,6 @@ object AclAwareRequestFilter {
         case None if impersonationHeaderPresent => Left(Error.ImpersonatorsEngineNotConfigured)
         case Some(_) | None => Right(engines.mainEngine)
       }
-    }
-
-    private def isImpersonationHeader = {
-      channel.restRequest.allHeaders.exists { case Header(name, _) => name === Header.Name.impersonateAs }
     }
   }
 

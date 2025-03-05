@@ -202,6 +202,10 @@ final case class UriPath private(value: NonEmptyString) {
 
   def isCatIndicesPath: Boolean = value.value.startsWith("/_cat/indices")
 
+  def isSqlQueryPath: Boolean = value.value.startsWith("/_sql")
+  
+  def isEsqlQueryPath: Boolean = value.value.startsWith("/_query")
+  
   def isAliasesPath: Boolean =
     value.value.startsWith("/_cat/aliases") ||
       value.value.startsWith("/_alias") ||

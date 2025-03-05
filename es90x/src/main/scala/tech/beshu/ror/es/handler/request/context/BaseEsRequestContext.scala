@@ -74,12 +74,9 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .flatMap(Address.from)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
 
-  override lazy val method: Method = Method.fromStringUnsafe(restRequest.method)
+  override lazy val method: Method = restRequest.method
 
-  override lazy val uriPath: UriPath =
-    UriPath
-      .from(restRequest.path)
-      .getOrElse(UriPath.from(nes("/")))
+  override lazy val uriPath: UriPath = restRequest.path
 
   override lazy val contentLength: Information = restRequest.contentLength
 
