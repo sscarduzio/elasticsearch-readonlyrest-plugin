@@ -19,6 +19,7 @@ package tech.beshu.ror.es.handler.request.queries
 import cats.data.NonEmptyList
 import cats.syntax.list.*
 import org.elasticsearch.index.query.*
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsingFields}
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
@@ -95,10 +96,10 @@ object QueryWithModifiableFields {
       QueryBuilders
         .fuzzyQuery(notAllowedFields.head.obfuscate.value, query.value())
         .fuzziness(query.fuzziness())
-        .maxExpansions(query.maxExpansions())
-        .prefixLength(query.prefixLength())
+        .maxExpansions(on(query).field("maxExpansions").get[Int]())
+        .prefixLength(on(query).field("prefixLength").get[Int]())
         .transpositions(query.transpositions())
-        .rewrite(query.rewrite())
+        .rewrite(on(query).field("rewrite").get[String]())
         .boost(query.boost())
     }
 
@@ -155,12 +156,12 @@ object QueryWithModifiableFields {
 
     implicit val matchBoolPrefixQueryHandler: ModifiableLeafQuery[MatchBoolPrefixQueryBuilder] = ModifiableLeafQuery.instance { (query, notAllowedFields) =>
       val newQuery = new MatchBoolPrefixQueryBuilder(notAllowedFields.head.obfuscate.value, query.value())
-        .analyzer(query.analyzer())
+        .analyzer(on(query).field("analyzer").get[String]())
         .minimumShouldMatch(query.minimumShouldMatch())
-        .fuzzyRewrite(query.fuzzyRewrite())
+        .fuzzyRewrite(on(query).field("fuzzyRewrite").get[String]())
         .fuzzyTranspositions(query.fuzzyTranspositions())
-        .maxExpansions(query.maxExpansions())
-        .operator(query.operator())
+        .maxExpansions(on(query).field("maxExpansions").get[Int]())
+        .operator(on(query).field("operator").get[Operator]())
         .prefixLength(query.prefixLength())
         .boost(query.boost())
 
@@ -184,7 +185,7 @@ object QueryWithModifiableFields {
 
     implicit val matchPhrasePrefixQueryHandler: ModifiableLeafQuery[MatchPhrasePrefixQueryBuilder] = ModifiableLeafQuery.instance { (query, notAllowedFields) =>
       QueryBuilders.matchPhrasePrefixQuery(notAllowedFields.head.obfuscate.value, query.value())
-        .analyzer(query.analyzer())
+        .analyzer(on(query).field("analyzer").get[String]())
         .maxExpansions(query.maxExpansions())
         .slop(query.slop())
         .boost(query.boost())

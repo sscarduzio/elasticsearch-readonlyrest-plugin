@@ -62,7 +62,6 @@ import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, Transport
 import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
-import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier, RemoteClusterServiceSupplier}
@@ -103,7 +102,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
   private val rorEsConfig = ReadonlyRestEsConfig
-    .load(EsEnv(environment.configFile(), environment.modulesFile()))
+    .load(EsEnv(environment.configDir(), environment.modulesDir()))
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener
@@ -211,7 +210,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
       // wrappers
       new ActionHandler(RorWrappedCatActionType.instance, classOf[TransportRorWrappedCatAction]),
-      new ActionHandler(RorWrappedUpgradeActionType.instance, classOf[TransportRorWrappedUpgradeAction]),
     ).asJava
   }
 

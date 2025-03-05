@@ -98,7 +98,7 @@ class TransportRRConfigAction(actionName: String,
 
    private def loadConfig() = doPrivileged {
     RawRorConfigLoadingAction
-      .load(EsEnv(env.configFile(), env.modulesFile()), indexContentProvider)
+      .load(EsEnv(env.configDir(), env.modulesDir()), indexContentProvider)
       .map(_.map(_.map(_.raw)))
   }
 

@@ -66,7 +66,6 @@ object QueryType {
 
     implicit val constantScoreQueryType: Compound[ConstantScoreQueryBuilder] = Compound.oneInnerQuery(_.innerQuery())
 
-    implicit object CommonTermsQueryType extends Leaf[CommonTermsQueryBuilder]
     implicit object ExistsQueryType extends Leaf[ExistsQueryBuilder]
     implicit object FuzzyQueryType extends Leaf[FuzzyQueryBuilder]
     implicit object PrefixQueryType extends Leaf[PrefixQueryBuilder]

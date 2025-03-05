@@ -105,9 +105,6 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
 
   override def getDelegate: LeafReader = in
 
-  override def document(docID: Int, visitor: StoredFieldVisitor): Unit =
-    super.document(docID, new RorStoredFieldVisitorDecorator(visitor))
-
   override def storedFields(): StoredFields = {
     val storedFields = super.storedFields()
     new StoredFields {

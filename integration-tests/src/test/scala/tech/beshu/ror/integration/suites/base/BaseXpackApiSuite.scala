@@ -285,7 +285,7 @@ trait BaseXpackApiSuite
   "Rollup API" when {
     "create rollup job method is used" should {
       "be allowed to be used" when {
-        "there is no indices rule defined" excludeES (allES8xAboveEs815x) in {
+        "there is no indices rule defined" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           val result = adminXpackApiManager.rollup(jobName, "test3*", "admin_t3")
 
@@ -294,7 +294,7 @@ trait BaseXpackApiSuite
           rollupJobsResult should have statusCode 200
           rollupJobsResult.jobs.size should be(1)
         }
-        "user has access to both: index pattern and rollup_index" excludeES (allES8xAboveEs815x) in {
+        "user has access to both: index pattern and rollup_index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           val result = dev3XpackApiManager.rollup(jobName, "test3*", s"rollup_test3_$jobName")
 
@@ -305,17 +305,17 @@ trait BaseXpackApiSuite
         }
       }
       "not be allowed to be used" when {
-        "user has no access to rollup_index" excludeES (allES8xAboveEs815x) in {
+        "user has no access to rollup_index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test3*", "rollup_index")
 
           result should have statusCode 403
         }
-        "user has no access to passed index"  excludeES (allES8xAboveEs815x) in {
+        "user has no access to passed index"  excludeES (allES8xAboveEs815x, allEs9x) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test1_index", "rollup_index")
 
           result should have statusCode 403
         }
-        "user has no access to given index pattern" excludeES (allES8xAboveEs815x) in {
+        "user has no access to given index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test*", "rollup_index")
 
           result should have statusCode 403
@@ -324,7 +324,7 @@ trait BaseXpackApiSuite
     }
     "get rollup job capabilities method is used" should {
       "return non-empty list" when {
-        "there is not indices rule defined" excludeES (allES8xAboveEs815x) in {
+        "there is not indices rule defined" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test4*", "admin_t4").force()
 
@@ -334,7 +334,7 @@ trait BaseXpackApiSuite
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_ ("job_id").str) should contain(jobName)
         }
-        "user has access to requested indices" excludeES (allES8xAboveEs815x) in {
+        "user has access to requested indices" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test4_index_a", s"rollup_test4_$jobName1").force()
@@ -350,7 +350,7 @@ trait BaseXpackApiSuite
             job("index_pattern").str should startWith("test4")
           }
         }
-        "user has access to requested index pattern" excludeES (allES8xAboveEs815x) in {
+        "user has access to requested index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           val jobName3 = NextRollupJobName.get
@@ -369,7 +369,7 @@ trait BaseXpackApiSuite
             job("index_pattern").str should startWith("test4")
           }
         }
-        "user has access to one index of requested index pattern" excludeES (allES8xAboveEs815x) in {
+        "user has access to one index of requested index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           val jobName3 = NextRollupJobName.get
@@ -390,7 +390,7 @@ trait BaseXpackApiSuite
         }
       }
       "return empty list" when {
-        "user has no access to requested index" excludeES (allES8xAboveEs815x) in {
+        "user has no access to requested index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test3_index_a", s"rollup_test3_$jobName").force()
 
@@ -400,7 +400,7 @@ trait BaseXpackApiSuite
           val jobs = result.capabilities.values.toList.flatten
           jobs.size should be(0)
         }
-        "user had no access to requested index pattern" excludeES (allES8xAboveEs815x) in {
+        "user had no access to requested index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test4*", s"rollup_test4_$jobName").force()
 
@@ -414,7 +414,7 @@ trait BaseXpackApiSuite
     }
     "get rollup index capabilities method is used" should {
       "return non-empty list" when {
-        "there is not indices rule defined" excludeES (allES8xAboveEs815x) in {
+        "there is not indices rule defined" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test5*", "admin_t5").force()
 
@@ -424,7 +424,7 @@ trait BaseXpackApiSuite
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_ ("job_id").str) should contain(jobName)
         }
-        "user has access to requested indices" excludeES (allES8xAboveEs815x) in {
+        "user has access to requested indices" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
@@ -440,7 +440,7 @@ trait BaseXpackApiSuite
             job("index_pattern").str should startWith("test5")
           }
         }
-        "user has access to requested index pattern" excludeES (allES8xAboveEs815x) in {
+        "user has access to requested index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
@@ -456,7 +456,7 @@ trait BaseXpackApiSuite
             job("index_pattern").str should startWith("test5")
           }
         }
-        "user has access to one index of requested index patten" excludeES (allES8xAboveEs815x) in {
+        "user has access to one index of requested index patten" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
@@ -474,7 +474,7 @@ trait BaseXpackApiSuite
         }
       }
       "return empty list" when {
-        "user had no access to requested index pattern" excludeES (allES8xAboveEs815x) in {
+        "user had no access to requested index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test5*", s"rollup_test5_$jobName").force()
 
@@ -486,7 +486,7 @@ trait BaseXpackApiSuite
         }
       }
       "return 404" when {
-        "user has no access to requested index" excludeES (allES8xAboveEs815x) in {
+        "user has no access to requested index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test3_index_a", s"rollup_test3_$jobName").force()
 
@@ -498,7 +498,7 @@ trait BaseXpackApiSuite
     }
     "rollup search method is used" should {
       "be allowed to be used" when {
-        "user has access to called rollup index" excludeES (allES8xAboveEs815x) in {
+        "user has access to called rollup index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           val rollupIndex6a = s"rollup_test6_$jobName1"
@@ -511,7 +511,7 @@ trait BaseXpackApiSuite
         }
       }
       "return 404" when {
-        "user has no access to called rollup index" excludeES (allES8xAboveEs815x) in {
+        "user has no access to called rollup index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           val rollupIndex = s"rollup_test4_$jobName"
           adminXpackApiManager.rollup(jobName, "test4*", rollupIndex).force()

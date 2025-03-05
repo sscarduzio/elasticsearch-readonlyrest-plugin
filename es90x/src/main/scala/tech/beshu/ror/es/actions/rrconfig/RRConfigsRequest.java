@@ -26,7 +26,7 @@ import tech.beshu.ror.configuration.loader.distributed.internode.NodeConfigReque
 import java.io.IOException;
 import java.util.Arrays;
 
-public class RRConfigsRequest extends BaseNodesRequest<RRConfigsRequest> {
+public class RRConfigsRequest extends BaseNodesRequest {
     
     public RRConfigsRequest(DiscoveryNode... concreteNodes) {
         super(concreteNodes);

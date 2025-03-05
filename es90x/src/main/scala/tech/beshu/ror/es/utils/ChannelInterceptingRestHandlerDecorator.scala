@@ -17,13 +17,11 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.client.internal.node.NodeClient
-import org.elasticsearch.rest.action.admin.indices.RestUpgradeActionDeprecated
 import org.elasticsearch.rest.action.cat.RestCatAction
 import org.elasticsearch.rest.{RestChannel, RestHandler, RestRequest, Scope}
 import org.joor.Reflect.on
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
-import tech.beshu.ror.es.actions.wrappers._upgrade.rest.RorWrappedRestUpgradeAction
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
@@ -50,8 +48,6 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
 
   override def getServerlessScope: Scope = underlying.getServerlessScope
 
-  override def allowsUnsafeBuffers(): Boolean = underlying.allowsUnsafeBuffers()
-
   override def routes(): util.List[RestHandler.Route] = underlying.routes()
 
   override def allowSystemIndexAccessByDefault(): Boolean = underlying.allowSystemIndexAccessByDefault()
@@ -61,7 +57,6 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   private def wrapSomeActions(ofHandler: RestHandler) = {
     unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
       case action: RestCatAction => new RorWrappedRestCatAction(action)
-      case action: RestUpgradeActionDeprecated => new RorWrappedRestUpgradeAction(action)
       case action => action
     }
   }

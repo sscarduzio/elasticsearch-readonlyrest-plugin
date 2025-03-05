@@ -18,10 +18,11 @@ package tech.beshu.ror.es.services
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
+import org.elasticsearch.action.bulk.{BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.client.internal.Client
-import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue}
+import org.elasticsearch.common.BackoffPolicy
+import org.elasticsearch.common.unit.ByteSizeValue
 import org.elasticsearch.core.TimeValue
 import org.elasticsearch.injection.guice.Inject
 import org.elasticsearch.xcontent.XContentType
@@ -39,7 +40,7 @@ class EsAuditSinkService(client: Client)
     BulkProcessor
       .builder(BulkRequestHandler, new AuditSinkBulkProcessorListener, "ror-audit-bulk-processor")
       .setBulkActions(AUDIT_SINK_MAX_ITEMS)
-      .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB))
+      .setBulkSize(ByteSizeValue.ofKb(AUDIT_SINK_MAX_KB))
       .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS))
       .setConcurrentRequests(1)
       .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))

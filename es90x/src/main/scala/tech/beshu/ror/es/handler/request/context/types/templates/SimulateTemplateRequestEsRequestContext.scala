@@ -34,6 +34,7 @@ import tech.beshu.ror.es.handler.request.context.types.templates.SimulateIndexTe
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
+import org.joor.Reflect.on
 
 object SimulateTemplateRequestEsRequestContext {
   def from(actionRequest: SimulateTemplateAction.Request,
@@ -100,7 +101,7 @@ class SimulateExistingTemplateRequestEsRequestContext(existingTemplateName: Temp
 
   override def modifyWhenTemplateNotFound: ModificationResult = {
     val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(existingTemplateName)
-    actionRequest.templateName(nonExistentTemplateNamePattern.value.value)
+    on(actionRequest).set("templateName", nonExistentTemplateNamePattern.value.value)
     ModificationResult.Modified
   }
 

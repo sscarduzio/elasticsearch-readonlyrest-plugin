@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.index.query.*
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsedField, UsingFields}
 import tech.beshu.ror.es.handler.request.queries.QueryType.instances.*
@@ -45,8 +46,7 @@ object QueryFieldsUsage extends Logging {
   object instances {
     implicit val idsQueryFields: QueryFieldsUsage[IdsQueryBuilder] = QueryFieldsUsage.notUsing
 
-    implicit val commonTermsQueryFields: QueryFieldsUsage[CommonTermsQueryBuilder] = QueryFieldsUsage.one(_.getWriteableName())
-    implicit val matchBoolPrefixQueryFields: QueryFieldsUsage[MatchBoolPrefixQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
+    implicit val matchBoolPrefixQueryFields: QueryFieldsUsage[MatchBoolPrefixQueryBuilder] = QueryFieldsUsage.one(q => on(q).field("fieldName").get[String]())
     implicit val matchQueryFields: QueryFieldsUsage[MatchQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
     implicit val matchPhraseQueryFields: QueryFieldsUsage[MatchPhraseQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
     implicit val matchPhrasePrefixQueryFields: QueryFieldsUsage[MatchPhrasePrefixQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
@@ -75,7 +75,6 @@ object QueryFieldsUsage extends Logging {
       case builder: DisMaxQueryBuilder => resolveFieldsUsageForCompoundQuery(builder)
 
       //leaf
-      case builder: CommonTermsQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder: MatchBoolPrefixQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder: MatchQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder: MatchPhraseQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
