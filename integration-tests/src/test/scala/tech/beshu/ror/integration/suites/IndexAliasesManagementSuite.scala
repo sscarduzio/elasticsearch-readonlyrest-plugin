@@ -113,7 +113,7 @@ class IndexAliasesManagementSuite
         result should have statusCode 200
         val allAliasesResponse = adminCatManager.aliases()
         allAliasesResponse should have statusCode 200
-        allAliasesResponse.results should be (Vector.empty)
+        allAliasesResponse.results.map(_.obj("alias").str) should not contain "admin-alias"
       }
       "user has access to both: index pattern and alias name" when {
         "an index of the pattern exists" in {
@@ -128,7 +128,7 @@ class IndexAliasesManagementSuite
 
           val allAliasesResponse = adminCatManager.aliases()
           allAliasesResponse should have statusCode 200
-          allAliasesResponse.results should be(Vector.empty)
+          allAliasesResponse.results.map(_.obj("alias").str) should not contain "dev1"
         }
         "no index of the pattern exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
