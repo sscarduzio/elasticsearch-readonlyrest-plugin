@@ -39,7 +39,7 @@ stages:
   - stage: CVE
     displayName: 'CVE check'
     dependsOn: [ ]
-    condition: ne(variables['Build.Reason'], 'Manual')
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job:
         steps:
@@ -58,7 +58,7 @@ stages:
   - stage: TEST
     displayName: 'Run all tests'
     dependsOn: [ ]
-    condition: ne(variables['Build.Reason'], 'Manual')
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job:
         timeoutInMinutes: 20
@@ -339,6 +339,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(), 
         succeeded('TEST'),
         eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
@@ -382,6 +383,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(), 
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         ne(variables['Build.Reason'], 'Manual')
@@ -404,6 +406,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
@@ -451,6 +454,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
@@ -509,6 +513,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(),
         succeeded('TEST'),
         ne(variables.isMaster, true),
         ne(variables['Build.Reason'], 'Manual')
@@ -533,6 +538,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(),
         succeeded('TEST'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
@@ -597,7 +603,7 @@ stages:
   - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
     displayName: 'Publish docker images for specified pre-builds'
     dependsOn: [ ]
-    condition: eq(variables['Build.Reason'], 'Manual')
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: PUBLISH
         displayName: 'Publishing'
