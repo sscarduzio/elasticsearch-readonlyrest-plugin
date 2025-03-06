@@ -68,7 +68,6 @@ import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.*
-import tech.beshu.ror.es.handler.request.RestRequestOps.*
 import tech.beshu.ror.es.handler.request.context.types.*
 import tech.beshu.ror.es.handler.request.context.types.datastreams.*
 import tech.beshu.ror.es.handler.request.context.types.repositories.*

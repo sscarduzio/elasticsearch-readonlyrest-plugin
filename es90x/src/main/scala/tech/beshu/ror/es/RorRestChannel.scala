@@ -22,7 +22,6 @@ import org.elasticsearch.rest.{AbstractRestChannel, RestChannel as EsRestChannel
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain.{Header, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
-import tech.beshu.ror.es.handler.request.RestRequestOps.*
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
