@@ -29,6 +29,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
+import java.net.InetSocketAddress
 import java.util.{Locale, UUID}
 import scala.util.Try
 
@@ -164,6 +165,14 @@ object Address {
     parseCidr(value) orElse
       parseIpAddress(value) orElse
       parseHostname(value)
+  }
+  
+  def from(inetSocketAddress: InetSocketAddress): Option[Address] = {
+    for {
+      inetAddress <- Option(inetSocketAddress.getAddress)
+      hostAddress <- Option(inetAddress.getHostAddress)
+      address <- Address.from(hostAddress)
+    } yield address
   }
 
   private def parseCidr(value: String) =

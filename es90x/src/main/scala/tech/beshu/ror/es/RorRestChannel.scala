@@ -20,12 +20,13 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.http.HttpChannel
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel as EsRestChannel, RestRequest as EsRestRequest, RestResponse as EsRestResponse}
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.domain.{Header, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 
+import java.net.InetSocketAddress
 import scala.jdk.CollectionConverters.*
 
 final class RorRestChannel(underlying: EsRestChannel)
@@ -44,21 +45,33 @@ final class RorRestChannel(underlying: EsRestChannel)
 final class RorRestRequest(underlying: EsRestRequest) {
 
   lazy val method: Method = Method.fromStringUnsafe(underlying.method().name())
-  
+
   lazy val path: UriPath = UriPath
     .from(underlying.path())
     .getOrElse(UriPath.from(nes("/")))
-  
+
   lazy val allHeaders: Set[Header] = Header.fromRawHeaders(
     underlying
-    .getHeaders.asScala
-    .view.mapValues(_.asScala.toList)
-    .toMap
+      .getHeaders.asScala
+      .view.mapValues(_.asScala.toList)
+      .toMap
   )
-  
-  lazy val httpChannel: HttpChannel = underlying.getHttpChannel
+
+  lazy val localAddress: Address = 
+    createAddressFrom(_.getLocalAddress)
+      .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
+
+  lazy val remoteAddress: Option[Address] = createAddressFrom(_.getRemoteAddress)
 
   val content: String = Option(underlying.content()).map(_.utf8ToString()).getOrElse("")
-  
+
   val contentLength: Information = Bytes(underlying.contentLength())
+
+  private def createAddressFrom(extractInetSocketAddress: HttpChannel => InetSocketAddress) = {
+    for {
+      channel <- Option(underlying.getHttpChannel)
+      inetSocketAddress <- Option(extractInetSocketAddress(channel))
+      address <- Address.from(inetSocketAddress)
+    } yield address
+  }
 }

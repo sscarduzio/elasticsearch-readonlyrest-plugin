@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.RCUtils
 import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Instant
@@ -58,21 +57,9 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val headers: Set[Header] = restRequest.allHeaders
 
-  override lazy val remoteAddress: Option[Address] =
-    Option(restRequest.httpChannel)
-      .flatMap(c => Option(c.getRemoteAddress))
-      .flatMap(isa => Option(isa.getAddress))
-      .flatMap(a => Option(a.getHostAddress))
-      .map { remoteHost => if (RCUtils.isLocalHost(remoteHost)) RCUtils.LOCALHOST else remoteHost }
-      .flatMap(Address.from)
+  override lazy val remoteAddress: Option[Address] = restRequest.remoteAddress
 
-  override lazy val localAddress: Address =
-    Option(restRequest.httpChannel)
-      .flatMap(c => Option(c.getLocalAddress))
-      .flatMap(isa => Option(isa.getAddress))
-      .flatMap(a => Option(a.getHostAddress))
-      .flatMap(Address.from)
-      .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
+  override lazy val localAddress: Address = restRequest.localAddress
 
   override lazy val method: Method = restRequest.method
 
