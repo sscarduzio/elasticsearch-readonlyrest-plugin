@@ -86,6 +86,7 @@ private[auth] class GroupsLogicRepresentationDecoder[
           groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](section)(
             AllOfGroupsRule.NameV1.name.value,
             AllOfGroupsRule.NameV2.name.value,
+            AllOfGroupsRule.NameV3.name.value,
           )
           groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](section)(
             AnyOfGroupsRule.NameV1.name.value,

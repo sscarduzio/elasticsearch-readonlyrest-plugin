@@ -64,6 +64,7 @@ object ruleDecoders {
         GroupsRule.GroupsSubruleSectionName.name |
         AllOfGroupsRule.NameV1.name |
         AllOfGroupsRule.NameV2.name |
+        AllOfGroupsRule.NameV3.name |
         AnyOfGroupsRule.NameV1.name |
         AnyOfGroupsRule.NameV2.name |
         AnyOfGroupsRule.NameV3.name |

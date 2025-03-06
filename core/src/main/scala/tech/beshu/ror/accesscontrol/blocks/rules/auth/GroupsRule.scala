@@ -71,12 +71,16 @@ object AllOfGroupsRule {
     override val name: Name = Rule.Name("all_of")
   }
 
-  case object NameV2 extends RuleName[AllOfGroupsRule] {
+  case object NameV3 extends RuleName[AllOfGroupsRule] {
     override val name: Name = Rule.Name("groups_all_of")
   }
 
-  case object NameV1 extends RuleName[AllOfGroupsRule] {
+  case object NameV2 extends RuleName[AllOfGroupsRule] {
     override val name: Name = Rule.Name("groups_and")
+  }
+
+  case object NameV1 extends RuleName[AllOfGroupsRule] {
+    override val name: Name = Rule.Name("roles_and")
   }
 }
 
