@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.{BaseGroupsRule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
@@ -131,7 +131,7 @@ object ImpersonationWarning {
         }
       } yield warning
     )
-    implicit def groupsRule[GL <: GroupsLogic]: ImpersonationWarningExtractor[GroupsRule[GL]] = noWarnings[GroupsRule[GL]]
+    implicit def groupsRule[GL <: GroupsLogic]: ImpersonationWarningExtractor[BaseGroupsRule[GL]] = noWarnings[BaseGroupsRule[GL]]
     implicit val jwtAuthRule: ImpersonationWarningExtractor[JwtAuthRule] = ImpersonationWarningExtractor[JwtAuthRule] { (rule, blockName, _) =>
       Some(impersonationNotSupportedWarning(rule, blockName))
     }

@@ -21,8 +21,9 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsRule.Settings as GroupsRuleSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.AnyOfGroupsRule.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings as GroupsRuleSettings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -31,8 +32,8 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class GroupsAnyOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AnyOf] {
 
-  override def createRule(ruleName: Rule.Name, settings: GroupsRuleSettings[GroupsLogic.AnyOf], caseSensitivity: CaseSensitivity): GroupsRule[GroupsLogic.AnyOf] = {
-    GroupsRule.Creator[GroupsLogic.AnyOf].create(ruleName, settings, caseSensitivity)
+  override def createRule(ruleName: Rule.Name, settings: GroupsRuleSettings[GroupsLogic.AnyOf], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.AnyOf] = {
+    BaseGroupsRule.Creator[GroupsLogic.AnyOf].create(ruleName, settings, caseSensitivity)
   }
 
   protected def groupsLogicCreator: GroupIds => GroupsLogic.AnyOf = GroupsLogic.AnyOf.apply

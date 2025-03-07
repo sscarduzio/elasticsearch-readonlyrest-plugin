@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.*
@@ -54,7 +55,7 @@ object VariableContext {
 
     implicit val dataStreamsRule: VariableUsage[DataStreamsRule] = UsingVariable[DataStreamsRule](rule => rule.settings.allowedDataStreams.toNonEmptyList)
     implicit val filterRule: VariableUsage[FilterRule] = UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
-    implicit def groupsRule[GL <: GroupsLogic]: VariableUsage[GroupsRule[GL]] = UsingVariable[GroupsRule[GL]](rule => rule.settings.permittedGroupsLogic.usedVariables)
+    implicit def groupsRule[GL <: GroupsLogic]: VariableUsage[BaseGroupsRule[GL]] = UsingVariable[BaseGroupsRule[GL]](rule => rule.settings.permittedGroupsLogic.usedVariables)
     implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)
     implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
     implicit val kibanaUserDataRule: VariableUsage[KibanaUserDataRule] = UsingVariable[KibanaUserDataRule](rule =>

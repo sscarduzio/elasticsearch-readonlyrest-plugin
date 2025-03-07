@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsM
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.{BaseGroupsRule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -45,7 +45,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class GroupsRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[GroupsRule[GroupsLogic]]
+  extends BaseRuleSettingsDecoderTest[BaseGroupsRule[GroupsLogic]]
     with Inside
     with ScalaCheckPropertyChecks {
 

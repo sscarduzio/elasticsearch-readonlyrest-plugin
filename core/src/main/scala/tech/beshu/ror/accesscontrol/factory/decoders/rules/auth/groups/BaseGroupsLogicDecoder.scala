@@ -14,21 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
+package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups
 
 import cats.implicits.toShow
 import io.circe.{ACursor, Decoder}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.BaseGroupsRuleExtendedSyntaxName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.BaseGroupsLogicDecoder.GroupsLogicDecodingResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.{SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
 
-private[auth] class GroupsLogicRepresentationDecoder[
+// It is a common implementation of decoder for GroupsLogic. It is used in 2 contexts:
+// - for Authorization rules, where the logic is represented as `GroupsLogic` (`GroupsLogicDecoder`)
+// - for BaseGroupsRule implementations, where the logic is represented by (`GroupsLogicDecoder`)
+private[auth] class BaseGroupsLogicDecoder[
   RULE_REPRESENTATION,
   POSITIVE_RULE_REPRESENTATION <: RULE_REPRESENTATION,
   NEGATIVE_RULE_REPRESENTATION <: RULE_REPRESENTATION,
@@ -66,12 +70,12 @@ private[auth] class GroupsLogicRepresentationDecoder[
   private def withGroupsSectionDecoder[T <: Rule](implicit ruleName: RuleName[T]): SyncDecoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] =
     Decoder
       .instance { c =>
-        val groupsSection = c.downField(GroupsRule.GroupsSubruleSectionName.name.value)
+        val groupsSection = c.downField(BaseGroupsRuleExtendedSyntaxName.name.value)
         for {
-          groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](groupsSection)(AllOfGroupsRule.NameInsideGroupsSubruleSection.name.value)
-          groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](groupsSection)(AnyOfGroupsRule.NameInsideGroupsSubruleSection.name.value)
-          groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](groupsSection)(NotAllOfGroupsRule.NameInsideGroupsSubruleSection.name.value)
-          groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](groupsSection)(NotAnyOfGroupsRule.NameInsideGroupsSubruleSection.name.value)
+          groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](groupsSection)(AllOfGroupsRule.ExtendedSyntaxName)
+          groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](groupsSection)(AnyOfGroupsRule.ExtendedSyntaxName)
+          groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](groupsSection)(NotAllOfGroupsRule.ExtendedSyntaxName)
+          groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](groupsSection)(NotAnyOfGroupsRule.ExtendedSyntaxName)
         } yield (groupsAllOf, groupsAnyOf, groupsNotAllOf, groupsNotAnyOf)
       }
       .toSyncDecoder
@@ -84,21 +88,21 @@ private[auth] class GroupsLogicRepresentationDecoder[
         val section = c
         for {
           groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](section)(
-            AllOfGroupsRule.NameV1.name.value,
-            AllOfGroupsRule.NameV2.name.value,
-            AllOfGroupsRule.NameV3.name.value,
+            AllOfGroupsRule.DeprecatedSimpleSyntaxNameV1,
+            AllOfGroupsRule.DeprecatedSimpleSyntaxNameV2,
+            AllOfGroupsRule.SimpleSyntaxName,
           )
           groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](section)(
-            AnyOfGroupsRule.NameV1.name.value,
-            AnyOfGroupsRule.NameV2.name.value,
-            AnyOfGroupsRule.NameV3.name.value,
-            AnyOfGroupsRule.NameV4.name.value,
+            AnyOfGroupsRule.DeprecatedSimpleSyntaxNameV1,
+            AnyOfGroupsRule.DeprecatedSimpleSyntaxNameV2,
+            AnyOfGroupsRule.DeprecatedSimpleSyntaxNameV3,
+            AnyOfGroupsRule.SimpleSyntaxName,
           )
           groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](section)(
-            NotAllOfGroupsRule.NameV1.name.value
+            NotAllOfGroupsRule.SimpleSyntaxName
           )
           groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](section)(
-            NotAnyOfGroupsRule.NameV1.name.value
+            NotAnyOfGroupsRule.SimpleSyntaxName
           )
         } yield (groupsAllOf, groupsAnyOf, groupsNotAllOf, groupsNotAnyOf)
       }
@@ -110,9 +114,7 @@ private[auth] class GroupsLogicRepresentationDecoder[
                                         (implicit ruleName: RuleName[T]): GroupsLogicDecodingResult[RULE_REPRESENTATION] =
     logic match {
       case (None, None, None, None) =>
-        GroupsLogicDecodingResult.GroupsLogicNotDefined(
-          RulesLevelCreationError(Message(errorMsgNoGroupsList(ruleName)))
-        )
+        GroupsLogicDecodingResult.GroupsLogicNotDefined(RulesLevelCreationError(Message(errorMsgNoGroupsList(ruleName))))
       case (Some((groupsAllOf, _)), None, None, None) =>
         GroupsLogicDecodingResult.Success(groupsAllOf)
       case (None, Some((groupsAnyOf, _)), None, None) =>
@@ -136,7 +138,9 @@ private[auth] class GroupsLogicRepresentationDecoder[
         )
     }
 
-  private def decodeAsOption[REPRESENTATION: Decoder](c: ACursor)(field: String, fields: String*) = {
+  private def decodeAsOption[REPRESENTATION: Decoder](c: ACursor)(ruleName: RuleName[_], ruleNames: RuleName[_]*) = {
+    val field = ruleName.name.value
+    val fields = ruleNames.map(_.name.value)
     val (cursor, key) = c.downFieldsWithKey(field, fields: _*)
     cursor.as[Option[REPRESENTATION]].map(_.map((_, key)))
   }
@@ -151,7 +155,7 @@ private[auth] class GroupsLogicRepresentationDecoder[
 
 }
 
-object GroupsLogicRepresentationDecoder {
+object BaseGroupsLogicDecoder {
   sealed trait GroupsLogicDecodingResult[RULE_REPRESENTATION]
 
   object GroupsLogicDecodingResult {

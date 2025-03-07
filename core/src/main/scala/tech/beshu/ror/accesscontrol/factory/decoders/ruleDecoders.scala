@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.*
@@ -37,6 +38,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.*
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsRuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.http.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana.*
@@ -61,17 +63,17 @@ object ruleDecoders {
 
     val optionalRuleDecoder = name match {
       case ruleName@(
-        GroupsRule.GroupsSubruleSectionName.name |
-        AllOfGroupsRule.NameV1.name |
-        AllOfGroupsRule.NameV2.name |
-        AllOfGroupsRule.NameV3.name |
-        AnyOfGroupsRule.NameV1.name |
-        AnyOfGroupsRule.NameV2.name |
-        AnyOfGroupsRule.NameV3.name |
-        AnyOfGroupsRule.NameV4.name |
-        NotAllOfGroupsRule.NameV1.name |
-        NotAnyOfGroupsRule.NameV1.name) =>
-        Some(new GroupsRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsRule.name(ruleName.value)))
+        BaseGroupsRule.BaseGroupsRuleExtendedSyntaxName.name |
+        AllOfGroupsRule.DeprecatedSimpleSyntaxNameV1.name |
+        AllOfGroupsRule.DeprecatedSimpleSyntaxNameV2.name |
+        AllOfGroupsRule.SimpleSyntaxName.name |
+        AnyOfGroupsRule.DeprecatedSimpleSyntaxNameV1.name |
+        AnyOfGroupsRule.DeprecatedSimpleSyntaxNameV2.name |
+        AnyOfGroupsRule.DeprecatedSimpleSyntaxNameV3.name |
+        AnyOfGroupsRule.SimpleSyntaxName.name |
+        NotAllOfGroupsRule.SimpleSyntaxName.name |
+        NotAnyOfGroupsRule.SimpleSyntaxName.name) =>
+        Some(new GroupsRuleDecoder(definitions.users, globalSettings, variableCreator)(BaseGroupsRule.name(ruleName.value)))
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)
       case DataStreamsRule.Name.name => Some(new DataStreamsRuleDecoder(variableCreator))

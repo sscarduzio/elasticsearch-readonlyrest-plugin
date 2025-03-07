@@ -34,8 +34,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsRule.Settings as GroupsRulesSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings as GroupsRulesSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
@@ -63,7 +63,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
 
   protected def groupsLogicCreator: GroupIds => GL
 
-  protected def createRule(ruleName: Rule.Name, settings: GroupsRulesSettings[GL], caseSensitivity: CaseSensitivity): GroupsRule[GL]
+  protected def createRule(ruleName: Rule.Name, settings: GroupsRulesSettings[GL], caseSensitivity: CaseSensitivity): BaseGroupsRule[GL]
 
   protected final def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GL] = {
     RuntimeResolvableGroupsLogic.Simple(groupIds)

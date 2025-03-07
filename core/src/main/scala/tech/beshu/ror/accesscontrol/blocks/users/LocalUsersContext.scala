@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.*
@@ -54,7 +55,7 @@ object LocalUsersContext {
     implicit val externalAuthorizationRule: LocalUsersSupport[ExternalAuthorizationRule] = NotAvailableLocalUsers()
     implicit val fieldsRule: LocalUsersSupport[FieldsRule] = NotAvailableLocalUsers()
     implicit val filterRule: LocalUsersSupport[FilterRule] = NotAvailableLocalUsers()
-    implicit def groupsRule[GL <: GroupsLogic]: LocalUsersSupport[GroupsRule[GL]] = NotAvailableLocalUsers()
+    implicit def groupsRule[GL <: GroupsLogic]: LocalUsersSupport[BaseGroupsRule[GL]] = NotAvailableLocalUsers()
     implicit val headersAndRule: LocalUsersSupport[HeadersAndRule] = NotAvailableLocalUsers()
     implicit val headersOrRule: LocalUsersSupport[HeadersOrRule] = NotAvailableLocalUsers()
     implicit val hostsRule: LocalUsersSupport[HostsRule] = NotAvailableLocalUsers()

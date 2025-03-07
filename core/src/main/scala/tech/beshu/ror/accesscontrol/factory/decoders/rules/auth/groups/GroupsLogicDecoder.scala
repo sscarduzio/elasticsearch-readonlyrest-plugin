@@ -14,14 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
+package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups
 
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{NegativeGroupsLogic, PositiveGroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 
 private[auth] object GroupsLogicDecoder
-  extends GroupsLogicRepresentationDecoder[
+  extends BaseGroupsLogicDecoder[
     GroupsLogic,
     PositiveGroupsLogic,
     NegativeGroupsLogic,
