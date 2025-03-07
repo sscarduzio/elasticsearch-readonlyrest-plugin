@@ -60,7 +60,7 @@ class MiscSuite
     }
   }
   "Warning response header" should {
-    "be exposed in ror response" excludeES(allEs6x, allEs8x) in {
+    "be exposed in ror response" excludeES(allEs6x, allEs8x, allEs9x) in {
       // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
       val indexResponse = adminIndexManager.createIndex(
         index = "typed_index",
