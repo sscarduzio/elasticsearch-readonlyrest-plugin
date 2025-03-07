@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateResponse, SimulateTemplateAction}
-import org.elasticsearch.action.admin.indices.template.put.PutComposableIndexTemplateAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
