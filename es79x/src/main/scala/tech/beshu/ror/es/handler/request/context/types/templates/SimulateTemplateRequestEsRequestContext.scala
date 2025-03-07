@@ -32,7 +32,6 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.es.handler.request.context.types.templates.SimulateIndexTemplateRequestEsRequestContext.TunedSimulateIndexTemplateResponse
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 object SimulateTemplateRequestEsRequestContext {
@@ -66,11 +65,11 @@ class SimulateNewTemplateRequestEsRequestContext(actionRequest: SimulateTemplate
             operation.name, operation.patterns, operation.aliases, List(TemplateNamePattern.wildcard)
           )
           case Left(msg) =>
-            throw RequestSeemsToBeInvalid[PutComposableIndexTemplateAction.Request](msg)
+            throw RequestSeemsToBeInvalid[SimulateTemplateAction.Request](msg)
         }
       }
       .getOrElse {
-        throw RequestSeemsToBeInvalid[PutComposableIndexTemplateAction.Request]("Index template definition doesn't exist")
+        throw RequestSeemsToBeInvalid[SimulateTemplateAction.Request]("Index template definition doesn't exist")
       }
   }
 

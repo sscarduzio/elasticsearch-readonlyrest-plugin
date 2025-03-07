@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.es.handler.request.context
 
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
-import squants.information.{Bytes, Information}
+import squants.information.Information
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
@@ -30,11 +29,8 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.RCUtils
-import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Instant
-import scala.jdk.CollectionConverters.*
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -42,7 +38,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override type BLOCK_CONTEXT = B
 
-  private val restRequest = esContext.channel.request()
+  private val restRequest = esContext.channel.restRequest
 
   override val rorKibanaSessionId: CorrelationId = esContext.correlationId
 
@@ -57,32 +53,17 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val action: Action = esContext.action
 
-  override lazy val headers: Set[Header] = esContext.allHeaders
+  override lazy val headers: Set[Header] = restRequest.allHeaders
 
-  override lazy val remoteAddress: Option[Address] =
-    Option(restRequest.getHttpChannel)
-      .flatMap(c => Option(c.getRemoteAddress))
-      .flatMap(isa => Option(isa.getAddress))
-      .flatMap(a => Option(a.getHostAddress))
-      .map { remoteHost => if (RCUtils.isLocalHost(remoteHost)) RCUtils.LOCALHOST else remoteHost }
-      .flatMap(Address.from)
+  override lazy val remoteAddress: Option[Address] = restRequest.remoteAddress
 
-  override lazy val localAddress: Address =
-    Option(restRequest.getHttpChannel)
-      .flatMap(c => Option(c.getLocalAddress))
-      .flatMap(isa => Option(isa.getAddress))
-      .flatMap(a => Option(a.getHostAddress))
-      .flatMap(Address.from)
-      .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
+  override lazy val localAddress: Address = restRequest.localAddress
 
-  override lazy val method: Method = Method.fromStringUnsafe(restRequest.method().name())
+  override lazy val method: Method = restRequest.method
 
-  override lazy val uriPath: UriPath =
-    UriPath
-      .from(restRequest.path())
-      .getOrElse(UriPath.from(nes("/")))
+  override lazy val uriPath: UriPath = restRequest.path
 
-  override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
+  override lazy val contentLength: Information = restRequest.contentLength
 
   override lazy val `type`: Type = Type {
     val requestClazz = esContext.actionRequest.getClass
@@ -93,7 +74,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override lazy val content: String = Option(restRequest.content()).map(_.utf8ToString()).getOrElse("")
+  override lazy val content: String = restRequest.content
 
   override lazy val indexAttributes: Set[IndexAttribute] = {
     esContext.actionRequest match {
