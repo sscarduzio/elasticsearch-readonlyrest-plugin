@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.BaseGroupsLogicDecoder.GroupsLogicDecodingResult
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
 
 class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
                         globalSettings: GlobalSettings,
@@ -41,7 +41,7 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
   override protected def decodingContext: RuleDecoder.DecodingContext = RuleDecoder.DecodingContext.RuleNameWithValue
 
   override protected def decoder: Decoder[RuleDefinition[BaseGroupsRule[GroupsLogic]]] = {
-    new RuntimeResolvableGroupsLogicDecoder()(ev.name, usersDefinitions, globalSettings.userIdCaseSensitivity, variableCreator)
+    new BaseGroupsRuleDecoder()(ev.name, usersDefinitions, globalSettings.userIdCaseSensitivity, variableCreator)
       .syncDecoder
       .emapE {
         case GroupsLogicDecodingResult.Success(Right(rule)) =>

@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{NegativeGroupsLogic, Pos
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 
 private[auth] object GroupsLogicDecoder
-  extends BaseGroupsLogicDecoder[
+  extends GroupsLogicRepresentationDecoder[
     GroupsLogic,
     PositiveGroupsLogic,
     NegativeGroupsLogic,

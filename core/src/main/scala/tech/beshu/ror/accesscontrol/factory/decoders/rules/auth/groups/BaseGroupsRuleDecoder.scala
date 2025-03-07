@@ -34,14 +34,14 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.RuntimeResolvableGroupsLogicDecoder.*
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.BaseGroupsRuleDecoder.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 
-private[auth] class RuntimeResolvableGroupsLogicDecoder(implicit ruleName: Rule.Name,
-                                                        usersDefinitions: Definitions[UserDef],
-                                                        userIdCaseSensitivity: CaseSensitivity,
-                                                        variableCreator: RuntimeResolvableVariableCreator)
-  extends BaseGroupsLogicDecoder[
+private[auth] class BaseGroupsRuleDecoder(implicit ruleName: Rule.Name,
+                                          usersDefinitions: Definitions[UserDef],
+                                          userIdCaseSensitivity: CaseSensitivity,
+                                          variableCreator: RuntimeResolvableVariableCreator)
+  extends GroupsLogicRepresentationDecoder[
     Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic]],
     Either[RulesLevelCreationError, BaseGroupsRule[PositiveGroupsLogic]],
     Either[RulesLevelCreationError, BaseGroupsRule[NegativeGroupsLogic]],
@@ -51,13 +51,13 @@ private[auth] class RuntimeResolvableGroupsLogicDecoder(implicit ruleName: Rule.
     Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic.NotAnyOf]],
   ](createCombinedGroupsRule)
 
-private[auth] object RuntimeResolvableGroupsLogicDecoder {
+private[auth] object BaseGroupsRuleDecoder {
 
-  def createCombinedGroupsRule(positive: Either[RulesLevelCreationError, BaseGroupsRule[PositiveGroupsLogic]],
-                               negative: Either[RulesLevelCreationError, BaseGroupsRule[NegativeGroupsLogic]])
-                              (implicit ruleName: Rule.Name,
-                               usersDefinitions: Definitions[UserDef],
-                               userIdCaseSensitivity: CaseSensitivity): Either[RulesLevelCreationError, CombinedGroupsRule] = {
+  private def createCombinedGroupsRule(positive: Either[RulesLevelCreationError, BaseGroupsRule[PositiveGroupsLogic]],
+                                       negative: Either[RulesLevelCreationError, BaseGroupsRule[NegativeGroupsLogic]])
+                                      (implicit ruleName: Rule.Name,
+                                       usersDefinitions: Definitions[UserDef],
+                                       userIdCaseSensitivity: CaseSensitivity): Either[RulesLevelCreationError, CombinedGroupsRule] = {
     for {
       positiveLogic <- positive
       negativeLogic <- negative
@@ -86,8 +86,8 @@ private[auth] object RuntimeResolvableGroupsLogicDecoder {
       }
   }
 
-  def userDefs(implicit ruleName: Rule.Name,
-               usersDefinitions: Definitions[UserDef]): Either[RulesLevelCreationError, NonEmptyList[UserDef]] = {
+  private def userDefs(implicit ruleName: Rule.Name,
+                       usersDefinitions: Definitions[UserDef]): Either[RulesLevelCreationError, NonEmptyList[UserDef]] = {
     Either.fromOption(
       NonEmptyList.fromList(usersDefinitions.items),
       RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ruleName.show}` requires them.")),

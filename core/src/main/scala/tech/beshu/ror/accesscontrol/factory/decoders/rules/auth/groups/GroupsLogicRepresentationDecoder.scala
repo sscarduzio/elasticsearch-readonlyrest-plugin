@@ -24,15 +24,18 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.BaseGroupsRuleExtendedSyntaxName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.BaseGroupsLogicDecoder.GroupsLogicDecodingResult
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.{SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
 
 // It is a common implementation of decoder for GroupsLogic. It is used in 2 contexts:
 // - for Authorization rules, where the logic is represented as `GroupsLogic` (`GroupsLogicDecoder`)
-// - for BaseGroupsRule implementations, where the logic is represented by (`GroupsLogicDecoder`)
-private[auth] class BaseGroupsLogicDecoder[
+// - for BaseGroupsRule implementations, where the logic is represented by `BaseGroupsRule[GroupsLogic]` (`BaseGroupsRuleDecoder`)
+//
+// Those 2 usages are different, because for authorization rules (LDAP, External, JWT etc.) we use GroupIds representation underneath, and for GroupsRule the runtime resolvable representation.
+// todo: We should unify those 2 implementations, probably by using the runtime resolvable representation everywhere.
+private[auth] class GroupsLogicRepresentationDecoder[
   RULE_REPRESENTATION,
   POSITIVE_RULE_REPRESENTATION <: RULE_REPRESENTATION,
   NEGATIVE_RULE_REPRESENTATION <: RULE_REPRESENTATION,
@@ -155,7 +158,7 @@ private[auth] class BaseGroupsLogicDecoder[
 
 }
 
-object BaseGroupsLogicDecoder {
+object GroupsLogicRepresentationDecoder {
   sealed trait GroupsLogicDecodingResult[RULE_REPRESENTATION]
 
   object GroupsLogicDecodingResult {
