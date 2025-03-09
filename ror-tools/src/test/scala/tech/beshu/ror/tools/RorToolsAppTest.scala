@@ -27,8 +27,49 @@ import java.nio.file.Files.*
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
+import scala.jdk.CollectionConverters.*
+import scala.sys.process._
 
 class RorToolsAppTest extends AnyFunSuite with BeforeAndAfter {
+
+  def extractFolderFromDocker(version: String, containerPath: String, localPath: String): Unit = {
+    val image = s"docker.elastic.co/elasticsearch/elasticsearch:$version"
+    s"docker pull $image".!
+    val containerId = s"docker create $image".!!.trim
+    try {
+      s"sudo pwd".!
+      cleanDirectory(localPath)
+      s"docker start $containerId".!
+      // Define the tar file path inside the container
+      val tarFile = "/tmp/extracted.tar"
+      // Tar the target directory inside the container
+      s"docker exec $containerId tar -cf $tarFile -C $containerPath .".!
+      // Ensure the local path exists
+      s"mkdir -p $localPath".!
+      // Copy the tar file from the container to the host
+      s"docker cp $containerId:$tarFile $localPath/extracted.tar".!
+      // Extract the tar file to the target directory
+      s"pwd".!
+      s"sudo tar -xf  $localPath/extracted.tar -C $localPath".!
+    } catch {
+      case ex: Exception => println(ex)
+    }
+    finally {
+      s"docker stop $containerId".!
+      s"docker rm $containerId".!
+      cleanDirectory(localPath)
+    }
+  }
+
+  test("Elasticsearch Docker Image should extract configuration files correctly") {
+    val version = "8.13.0"
+    val containerPath = "/usr/share/elasticsearch"
+    val localPath = Path.of(getClass.getResource(s"/test-es-directory").getPath).toString
+    extractFolderFromDocker(version, containerPath, localPath)
+    val extractedFiles = new java.io.File(localPath).list()
+    println(extractedFiles.toList)
+  }
+
 
   test("Patching is successful for ES installation that was not patched (with consent given in arg)") {
     withTestDirectory("test-es-not-patched") { testDirectory =>
