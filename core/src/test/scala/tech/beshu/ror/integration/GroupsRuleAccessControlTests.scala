@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.*
@@ -130,8 +130,9 @@ class GroupsRuleAccessControlTests
     "auth_key is used with local groups" should {
       "allow when authorization satisfies all groups" in {
         val request = MockRequestContext.indices.copy(
-          headers = Set(header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes))),
-          filteredIndices = Set(requestedIndex("g34_index")),
+          restRequest = MockRestRequest(allHeaders = Set(
+            header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes))
+          ))
         )
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 1
@@ -146,7 +147,7 @@ class GroupsRuleAccessControlTests
       "allow to proceed" when {
         "proxy auth user is correct one" in {
           val request = MockRequestContext.indices.copy(
-            headers = Set(header("X-Auth-Token", "user1-proxy-id")),
+            restRequest = MockRestRequest(allHeaders = Set(header("X-Auth-Token", "user1-proxy-id"))),
             filteredIndices = Set(requestedIndex("g12_index")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
@@ -161,7 +162,7 @@ class GroupsRuleAccessControlTests
       "not allow to proceed" when {
         "proxy auth user is unknown" in {
           val request = MockRequestContext.indices.copy(
-            headers = Set(header("X-Auth-Token", "user1-invalid")),
+            restRequest = MockRestRequest(allHeaders = Set(header("X-Auth-Token", "user1-invalid"))),
             filteredIndices = Set(requestedIndex("g12_index")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
@@ -180,7 +181,7 @@ class GroupsRuleAccessControlTests
             "roles" := List("group5", "group6", "group7")
           ))
           val request = MockRequestContext.indices.copy(
-            headers = Set(bearerHeader(jwt)),
+            restRequest = MockRestRequest(allHeaders = Set(bearerHeader(jwt))),
             filteredIndices = Set(requestedIndex("g*")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
@@ -197,10 +198,7 @@ class GroupsRuleAccessControlTests
       "allow to proceed" when {
         "user can be authenticated and authorized (externally and locally)" in {
           val request = MockRequestContext.indices.copy(
-            headers = Set(
-              basicAuthHeader("morgan:user1"),
-              currentGroupHeader( "admin")
-            ),
+            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("morgan:user1"), currentGroupHeader( "admin"))),
             filteredIndices = Set(requestedIndex(".kibana")),
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
           )

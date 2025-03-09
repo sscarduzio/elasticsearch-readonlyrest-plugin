@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, HttpClientsFactory}
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.{LdapContainer, WireMockContainer, WireMockScalaAdapter}
@@ -240,7 +240,9 @@ class CurrentUserMetadataAccessControlTests
     "handling current user metadata kibana plugin request" should {
       "allow to proceed" when {
         "several blocks are matched" in {
-          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("user1:pass")))
+          val request = MockRequestContext.metadata.copy(
+            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("user1:pass")))
+          )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1"))))
@@ -255,7 +257,7 @@ class CurrentUserMetadataAccessControlTests
         }
         "several blocks are matched and current group is set" in {
           val loginRequest = MockRequestContext.metadata.copy(
-            headers = Set(basicAuthHeader("user4:pass"), currentGroupHeader("group6"))
+            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("user4:pass"), currentGroupHeader("group6")))
           )
           val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
           inside(loginResponse.result) { case Allow(userMetadata, _) =>
@@ -270,7 +272,7 @@ class CurrentUserMetadataAccessControlTests
           }
 
           val switchTenancyRequest = MockRequestContext.metadata.copy(
-            headers = Set(basicAuthHeader("user4:pass"), currentGroupHeader("group5"))
+            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("user4:pass"), currentGroupHeader("group5")))
           )
           val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
           inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
@@ -285,7 +287,9 @@ class CurrentUserMetadataAccessControlTests
           }
         }
         "at least one block is matched" in {
-          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("user2:pass")))
+          val request = MockRequestContext.metadata.copy(
+            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("user2:pass")))
+          )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
@@ -302,7 +306,9 @@ class CurrentUserMetadataAccessControlTests
           }
         }
         "block with no available groups collected is matched" in {
-          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("user3:pass")))
+          val request = MockRequestContext.metadata.copy(
+            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("user3:pass")))
+          )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3"))))
@@ -317,7 +323,9 @@ class CurrentUserMetadataAccessControlTests
         }
         "available groups are collected from all blocks with external services" when {
           "the service is some HTTP service" in {
-            val request1 = MockRequestContext.metadata.copy(headers = Set(header("X-Forwarded-User", "user5")))
+            val request1 = MockRequestContext.metadata.copy(
+              restRequest = MockRestRequest(allHeaders = Set(header("X-Forwarded-User", "user5")))
+            )
             val result1 = acl.handleMetadataRequest(request1).runSyncUnsafe()
 
             inside(result1.result) { case Allow(userMetadata, _) =>
@@ -326,7 +334,7 @@ class CurrentUserMetadataAccessControlTests
             }
 
             val request2 = MockRequestContext.metadata.copy(
-              headers = Set(header("X-Forwarded-User", "user5"), currentGroupHeader("service1_group2"))
+              restRequest = MockRestRequest(allHeaders = Set(header("X-Forwarded-User", "user5"), currentGroupHeader("service1_group2")))
             )
             val result2 = acl.handleMetadataRequest(request2).runSyncUnsafe()
 
@@ -336,7 +344,7 @@ class CurrentUserMetadataAccessControlTests
             }
 
             val request3 = MockRequestContext.metadata.copy(
-              headers = Set(header("X-Forwarded-User", "user7"), currentGroupHeader("service3_group1"))
+              restRequest = MockRestRequest(allHeaders = Set(header("X-Forwarded-User", "user7"), currentGroupHeader("service3_group1")))
             )
             val result3 = acl.handleMetadataRequest(request3).runSyncUnsafe()
 
@@ -346,7 +354,9 @@ class CurrentUserMetadataAccessControlTests
             }
           }
           "the service is LDAP" in {
-            val request1 = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("user6:user2")))
+            val request1 = MockRequestContext.metadata.copy(
+              restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("user6:user2")))
+            )
             val result1 = acl.handleMetadataRequest(request1).runSyncUnsafe()
 
             inside(result1.result) { case Allow(userMetadata, _) =>
@@ -355,7 +365,7 @@ class CurrentUserMetadataAccessControlTests
             }
 
             val request2 = MockRequestContext.metadata.copy(
-              headers = Set(basicAuthHeader("user6:user2"), currentGroupHeader("ldap2_group2"))
+              restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("user6:user2"), currentGroupHeader("ldap2_group2")))
             )
             val result2 = acl.handleMetadataRequest(request2).runSyncUnsafe()
 
@@ -368,7 +378,9 @@ class CurrentUserMetadataAccessControlTests
       }
       "return forbidden" when {
         "no block is matched" in {
-          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("userXXX:pass")))
+          val request = MockRequestContext.metadata.copy(
+            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("userXXX:pass")))
+          )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Forbidden(causes) =>
             causes should be (NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
@@ -376,7 +388,7 @@ class CurrentUserMetadataAccessControlTests
         }
         "current group is set but it doesn't exist on available groups list" in {
           val request = MockRequestContext.metadata.copy(
-            headers = Set(basicAuthHeader("user4:pass"), currentGroupHeader("group7"))
+            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("user4:pass"), currentGroupHeader("group7")))
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Forbidden(causes) =>
@@ -385,7 +397,7 @@ class CurrentUserMetadataAccessControlTests
         }
         "block with no available groups collected is matched and current group is set" in {
           val request = MockRequestContext.metadata.copy(
-            headers = Set(basicAuthHeader("user3:pass"), currentGroupHeader("group7"))
+            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("user3:pass"), currentGroupHeader("group7")))
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Forbidden(causes) =>

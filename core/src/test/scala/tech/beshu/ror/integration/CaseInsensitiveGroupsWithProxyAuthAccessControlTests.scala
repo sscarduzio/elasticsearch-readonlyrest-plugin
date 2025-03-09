@@ -22,7 +22,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.Allow
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -58,13 +58,14 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
       "allow to proceed" when {
         "user is user1" in {
           val request = MockRequestContext.indices.copy(
-            headers = Set(header("X-Auth-Token", "user1-proxy-id")),
+            restRequest = MockRestRequest(allHeaders = Set(header("X-Auth-Token", "user1-proxy-id"))),
             filteredIndices = Set(requestedIndex("g12_index")),
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("g12_index")),
               fullLocalIndexWithAliases(fullIndexName("g34_index"))
             )
           )
+
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
@@ -74,13 +75,14 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
         }
         "user is User1" in {
           val request = MockRequestContext.indices.copy(
-            headers = Set(header("X-Auth-Token", "User1-proxy-id")),
+            restRequest = MockRestRequest(allHeaders = Set(header("X-Auth-Token", "User1-proxy-id"))),
             filteredIndices = Set(requestedIndex("g12_index")),
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("g12_index")),
               fullLocalIndexWithAliases(fullIndexName("g34_index"))
             )
           )
+
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>

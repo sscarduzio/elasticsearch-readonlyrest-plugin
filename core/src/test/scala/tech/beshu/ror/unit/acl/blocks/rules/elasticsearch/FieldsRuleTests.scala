@@ -230,7 +230,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
         val requestContext = mock[RequestContext]
         val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
-        (() => requestContext.uriPath).expects().returning(UriPath.from("/_search"))
+        (() => requestContext.restRequest.path).expects().returning(UriPath.from("/_search"))
         (() => requestContext.action).expects().returning(MockRequestContext.roAction).anyNumberOfTimes()
 
         inside(rule.check(incomingBlockContext).runSyncStep) {

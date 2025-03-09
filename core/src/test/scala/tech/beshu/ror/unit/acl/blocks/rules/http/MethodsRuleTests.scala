@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class MethodsRuleTests extends AnyWordSpec with MockFactory {
 
@@ -67,7 +66,7 @@ class MethodsRuleTests extends AnyWordSpec with MockFactory {
   private def assertRule(configuredMethods: NonEmptySet[Method], requestMethod: Method, isMatched: Boolean) = {
     val rule = new MethodsRule(MethodsRule.Settings(configuredMethods))
     val requestContext = mock[RequestContext]
-    (() => requestContext.method).expects().returning(requestMethod)
+    (() => requestContext.restRequest.method).expects().returning(requestMethod)
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

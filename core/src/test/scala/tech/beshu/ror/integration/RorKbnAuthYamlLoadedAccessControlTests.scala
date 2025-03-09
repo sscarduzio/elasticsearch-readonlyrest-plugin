@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -100,7 +100,9 @@ class RorKbnAuthYamlLoadedAccessControlTests
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
             .setSubject("test")
             .setClaims(claims)
-          val request = MockRequestContext.indices.copy(headers = Set(bearerHeader(jwtBuilder)))
+          val request = MockRequestContext.indices.copy(
+            restRequest = MockRestRequest(allHeaders = Set(bearerHeader(jwtBuilder)))
+          )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -124,9 +126,9 @@ class RorKbnAuthYamlLoadedAccessControlTests
           val preferredGroup = group("mapped_viewer_group")
 
           val request = MockRequestContext.indices.copy(
-            filteredIndices = Set(requestedIndex("index2")),
+            restRequest = MockRestRequest(allHeaders = Set(bearerHeader(jwtBuilder), preferredGroup.id.toCurrentGroupHeader)),
             allAllowedIndices = Set(clusterIndexName("index2")),
-            headers = Set(bearerHeader(jwtBuilder), preferredGroup.id.toCurrentGroupHeader)
+            filteredIndices = Set(requestedIndex("index2")),
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()

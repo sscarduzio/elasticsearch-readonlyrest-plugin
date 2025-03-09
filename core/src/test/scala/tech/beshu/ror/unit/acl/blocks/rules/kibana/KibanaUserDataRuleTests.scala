@@ -15,6 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
+
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -34,7 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -192,7 +193,7 @@ class KibanaUserDataRuleTests
 
   private def checkRule(rule: KibanaUserDataRule): BlockContext = {
     val requestContext = MockRequestContext.indices.copy(
-      headers = Set(currentGroupHeader("mygroup"))
+      restRequest = MockRestRequest(allHeaders = Set(currentGroupHeader("mygroup")))
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,

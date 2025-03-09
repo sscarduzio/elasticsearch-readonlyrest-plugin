@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVa
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{UriPath, User}
 import tech.beshu.ror.accesscontrol.orders.patternOrder
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
@@ -122,7 +122,7 @@ class UriRegexRuleTests extends AnyWordSpec {
                          loggedUser: Option[User.Id],
                          isMatched: Boolean) = {
     val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
-    val requestContext = MockRequestContext.metadata.copy(uriPath = uriPath)
+    val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(path = uriPath))
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext = requestContext,
       userMetadata = loggedUser match {

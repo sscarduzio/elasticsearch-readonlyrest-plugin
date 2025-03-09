@@ -38,7 +38,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils.*
@@ -512,7 +512,7 @@ class ExternalAuthorizationRuleTests
                          assertionType: AssertionType): Unit = {
     val rule = new ExternalAuthorizationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.copy(
-      headers = preferredGroup.map(_.toCurrentGroupHeader).toCovariantSet
+      restRequest = MockRestRequest(allHeaders = preferredGroup.map(_.toCurrentGroupHeader).toCovariantSet)
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,

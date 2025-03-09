@@ -71,7 +71,7 @@ class MaxBodyLengthRuleTests extends AnyWordSpec with MockFactory {
   private def assertRule(configuredMaxContentLength: Information, body: String, isMatched: Boolean) = {
     val rule = new MaxBodyLengthRule(MaxBodyLengthRule.Settings(configuredMaxContentLength))
     val requestContext = mock[RequestContext]
-    (() => requestContext.contentLength).expects().returning(Bytes(body.length))
+    (() => requestContext.restRequest.contentLength).expects().returning(Bytes(body.length))
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right{
       if (isMatched) Fulfilled(blockContext)

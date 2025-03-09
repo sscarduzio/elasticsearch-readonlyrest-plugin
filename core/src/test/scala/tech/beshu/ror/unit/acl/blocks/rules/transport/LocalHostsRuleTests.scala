@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders.*
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
@@ -83,7 +83,7 @@ class LocalHostsRuleTests extends AnyWordSpec with MockFactory {
       LocalHostsRule.Settings(configuredAddresses),
       new Ip4sBasedHostnameResolver
     )
-    val requestContext = MockRequestContext.metadata.copy(localAddress = localAddress)
+    val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(localAddress = localAddress))
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {
       if (isMatched) Fulfilled(blockContext)
