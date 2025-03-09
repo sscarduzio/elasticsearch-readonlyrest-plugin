@@ -47,6 +47,7 @@ import tech.beshu.ror.utils.AccessControllerHelper.*
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import java.util.function.Supplier
+import tech.beshu.ror.implicits.*
 
 class IndexLevelActionFilter(nodeName: String,
                              clusterService: ClusterService,
@@ -185,12 +186,12 @@ class IndexLevelActionFilter(nodeName: String,
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {
-    logger.warn(s"[${esContext.correlationId.show}] Cannot handle the request ${esContext.channel.restRequest.path} because ReadonlyREST hasn't started yet")
+    logger.warn(s"[${esContext.correlationId.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet")
     rorNotAvailableRequestHandler.handleRorNotReadyYet(esContext)
   }
 
   private def handleRorFailedToStart(esContext: EsContext): Unit = {
-    logger.error(s"[${esContext.correlationId.show}] Cannot handle the ${esContext.channel.restRequest.path} request because ReadonlyREST failed to start")
+    logger.error(s"[${esContext.correlationId.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST failed to start")
     rorNotAvailableRequestHandler.handleRorFailedToStart(esContext)
   }
 

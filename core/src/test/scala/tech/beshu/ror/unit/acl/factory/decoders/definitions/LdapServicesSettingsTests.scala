@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.joor.Reflect.on
 import org.scalatest.compatible.Assertion

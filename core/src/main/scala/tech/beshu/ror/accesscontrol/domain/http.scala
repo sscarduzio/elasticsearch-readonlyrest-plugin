@@ -166,7 +166,7 @@ object Address {
       parseIpAddress(value) orElse
       parseHostname(value)
   }
-  
+
   def from(inetSocketAddress: InetSocketAddress): Option[Address] = {
     for {
       inetAddress <- Option(inetSocketAddress.getAddress)
@@ -212,6 +212,8 @@ final case class UriPath private(value: NonEmptyString) {
   def isCatIndicesPath: Boolean = value.value.startsWith("/_cat/indices")
 
   def isSqlQueryPath: Boolean = value.value.startsWith("/_sql")
+
+  def isXpackSqlQueryPath: Boolean = value.value.startsWith("/_xpack/sql")
   
   def isEsqlQueryPath: Boolean = value.value.startsWith("/_query")
   

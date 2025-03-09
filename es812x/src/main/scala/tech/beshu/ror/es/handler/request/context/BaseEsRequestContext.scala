@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.es.handler.request.context
-
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest

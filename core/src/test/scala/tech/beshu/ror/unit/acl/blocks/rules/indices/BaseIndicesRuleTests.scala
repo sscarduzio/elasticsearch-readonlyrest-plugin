@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.NonEmptySet
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global

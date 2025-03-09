@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest, GetIndexTemplatesResponse}
@@ -37,8 +36,6 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 

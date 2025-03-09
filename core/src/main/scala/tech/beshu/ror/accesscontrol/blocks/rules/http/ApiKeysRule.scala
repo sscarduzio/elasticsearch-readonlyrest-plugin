@@ -35,7 +35,8 @@ class ApiKeysRule(val settings: Settings)
     RuleResult.resultBasedOnCondition(blockContext) {
       blockContext
         .requestContext
-        .headers
+        .restRequest
+        .allHeaders
         .find(_.name === xApiKeyHeaderName)
         .exists { header => settings.apiKeys.contains(ApiKey(header.value)) }
     }

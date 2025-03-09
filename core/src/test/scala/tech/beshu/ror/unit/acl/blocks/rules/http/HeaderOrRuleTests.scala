@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules.http
 
 import cats.data.NonEmptySet
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
@@ -175,9 +174,9 @@ class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
                          isMatched: Boolean) = {
     val rule = new HeadersOrRule(HeadersOrRule.Settings(configuredHeaders))
     val requestContext = mock[RequestContext]
-    (() => requestContext.headers).expects().returning(requestHeaders)
+    (() => requestContext.restRequest.allHeaders).expects().returning(requestHeaders)
     (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-    (() => requestContext.uriPath).expects().returning(UriPath.from("/_cat/indices"))
+    (() => requestContext.restRequest.path).expects().returning(UriPath.from("/_cat/indices"))
     val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

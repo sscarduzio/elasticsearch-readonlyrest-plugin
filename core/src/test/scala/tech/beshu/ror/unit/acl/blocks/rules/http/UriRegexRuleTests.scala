@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.http
 
 import cats.data.NonEmptySet
 import cats.implicits.*
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*

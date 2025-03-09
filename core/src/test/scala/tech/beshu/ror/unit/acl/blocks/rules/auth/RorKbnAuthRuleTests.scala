@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.auth
-
-import eu.timepit.refined.auto.*
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global

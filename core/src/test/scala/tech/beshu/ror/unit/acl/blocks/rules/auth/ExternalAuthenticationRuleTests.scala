@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

@@ -18,7 +18,6 @@ package tech.beshu.ror.integration
 
 import cats.data.NonEmptySet
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec

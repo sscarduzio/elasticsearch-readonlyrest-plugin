@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context
 
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
@@ -30,7 +29,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Instant
 

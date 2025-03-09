@@ -102,7 +102,6 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
   }
 }
 object LoadRawRorConfigTest {
-  import eu.timepit.refined.auto.*
   private val esEnv = EsEnv(Paths.get("unused_file_path"), Paths.get("unused_file_path"))
   private val rawRorConfig = RawRorConfig(Json.False, "forced file config")
   private val rorConfigurationIndex = RorConfigurationIndex(IndexName.Full("rorConfigurationIndex"))

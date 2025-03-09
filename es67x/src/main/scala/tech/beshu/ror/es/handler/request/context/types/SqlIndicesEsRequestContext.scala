@@ -144,7 +144,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
 
 object SqlIndicesEsRequestContext {
   def unapply(arg: ReflectionBasedActionRequest): Option[SqlIndicesEsRequestContext] = {
-    if (arg.esContext.channel.restRequest.path.isSqlQueryPath) {
+    if (arg.esContext.channel.restRequest.path.isXpackSqlQueryPath) {
       Some(new SqlIndicesEsRequestContext(
         arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
         arg.esContext,

@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.boot
 import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.implicits.*
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory

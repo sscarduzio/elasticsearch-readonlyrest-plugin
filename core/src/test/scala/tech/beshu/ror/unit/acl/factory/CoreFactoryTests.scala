@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.factory
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory

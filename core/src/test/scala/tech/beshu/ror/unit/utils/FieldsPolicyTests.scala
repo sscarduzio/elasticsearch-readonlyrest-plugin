@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.utils
 
-import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions

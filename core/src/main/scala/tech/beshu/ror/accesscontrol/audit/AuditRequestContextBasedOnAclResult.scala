@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.audit.{AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.syntax.*
 
 import java.time.Instant
 import scala.collection.immutable.{Set => ScalaSet}
@@ -54,31 +53,31 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
       .initialBlockContext.indices
       .map(_.stringify).toSet
   override val action: String = requestContext.action.value
-  override val headers: Map[String, String] = requestContext.headers.map(h => (h.name.value.value, h.value.value)).toMap
+  override val headers: Map[String, String] = requestContext.restRequest.allHeaders.map(h => (h.name.value.value, h.value.value)).toMap
   override val requestHeaders: Headers = new Headers(
-    requestContext.headers
+    requestContext.restRequest.allHeaders
       .foldLeft(Map.empty[String, ScalaSet[String]]) {
         case (acc, header) =>
           val headerNames: ScalaSet[String] = acc.get(header.name.value.value).toList.flatten.toSet
           acc + (header.name.value.value -> (headerNames + header.value.value))
       }
   )
-  override val uriPath: String = requestContext.uriPath.value.value
+  override val uriPath: String = requestContext.restRequest.path.value.value
   override val history: String = historyEntries.map(h => historyShow(showHeader).show(h)).mkString(", ")
-  override val content: String = requestContext.content
-  override val contentLength: Integer = requestContext.contentLength.toBytes.toInt
-  override val remoteAddress: String = requestContext.remoteAddress match {
+  override val content: String = requestContext.restRequest.content
+  override val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
+  override val remoteAddress: String = requestContext.restRequest.remoteAddress match {
     case Some(Address.Ip(value)) => value.toString
     case Some(Address.Name(value)) => value.toString
     case None => "N/A"
   }
-  override val localAddress: String = requestContext.localAddress match {
+  override val localAddress: String = requestContext.restRequest.localAddress match {
     case Address.Ip(value) => value.toString
     case Address.Name(value) => value.toString
   }
   override val `type`: String = requestContext.`type`.value
   override val taskId: Long = requestContext.taskId
-  override val httpMethod: String = requestContext.method.value
+  override val httpMethod: String = requestContext.restRequest.method.value
   override val loggedInUserName: Option[String] = loggedUser.map(_.id.value.value)
   override val impersonatedByUserName: Option[String] =
     loggedUser

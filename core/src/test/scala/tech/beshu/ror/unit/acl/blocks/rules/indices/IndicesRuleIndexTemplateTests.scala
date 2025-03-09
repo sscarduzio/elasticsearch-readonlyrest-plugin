@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.{NonEmptyList, NonEmptySet}
-import eu.timepit.refined.auto.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.domain.Template.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplate, DeletingIndexTemplates, GettingIndexTemplates}

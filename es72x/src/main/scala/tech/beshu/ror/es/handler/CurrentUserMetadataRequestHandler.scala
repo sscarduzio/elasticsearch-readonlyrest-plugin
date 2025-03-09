@@ -83,7 +83,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def onPassThrough(requestContext: RequestContext): Unit = {
-    logger.warn(s"[${requestContext.id.toRequestId.show}] Cannot handle the ${esContext.channel.restRequest.path} request because ReadonlyREST plugin was disabled in settings")
+    logger.warn(s"[${requestContext.id.toRequestId.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST plugin was disabled in settings")
     esContext.listener.onFailure(createRorNotEnabledResponse())
   }
 

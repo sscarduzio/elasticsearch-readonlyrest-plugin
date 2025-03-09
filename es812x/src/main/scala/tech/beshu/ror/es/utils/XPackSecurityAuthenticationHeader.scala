@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.es.utils
-
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.{TransportVersion, TransportVersions}
 import org.elasticsearch.common.bytes.BytesReference

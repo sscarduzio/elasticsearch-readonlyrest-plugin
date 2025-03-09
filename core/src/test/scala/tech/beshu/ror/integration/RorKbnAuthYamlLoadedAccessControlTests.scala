@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.integration
-
-import eu.timepit.refined.auto.*
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.Keys

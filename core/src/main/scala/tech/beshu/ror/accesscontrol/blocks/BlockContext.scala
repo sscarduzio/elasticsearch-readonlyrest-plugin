@@ -37,7 +37,7 @@ sealed trait BlockContext {
   def responseTransformations: List[ResponseTransformation]
 
   def isCurrentGroupEligible(permittedGroupIds: GroupIds): Boolean = {
-    if (requestContext.uriPath.isCurrentUserMetadataPath) {
+    if (requestContext.restRequest.path.isCurrentUserMetadataPath) {
       true
     } else {
       userMetadata.currentGroupId match {

@@ -97,7 +97,7 @@ object Rule {
     protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
 
     private def isAuditEventRequest(blockContext: GeneralNonIndexRequestBlockContext): Boolean = {
-      blockContext.requestContext.uriPath.isAuditEventPath
+      blockContext.requestContext.restRequest.path.isAuditEventPath
     }
 
   }

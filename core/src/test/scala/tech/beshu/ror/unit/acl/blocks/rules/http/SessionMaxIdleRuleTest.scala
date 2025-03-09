@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.http
-
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -142,7 +140,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
       case None => Set.empty[Header]
     }
     (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
-    (() => requestContext.headers).expects().returning(headers)
+    (() => requestContext.restRequest.allHeaders).expects().returning(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,
       loggedUser match {

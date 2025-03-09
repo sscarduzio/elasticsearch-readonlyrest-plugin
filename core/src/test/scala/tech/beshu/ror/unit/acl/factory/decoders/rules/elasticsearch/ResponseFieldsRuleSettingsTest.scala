@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.elasticsearch
 
-import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
