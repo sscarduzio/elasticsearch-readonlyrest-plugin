@@ -17,11 +17,10 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups
 
 import cats.implicits.toShow
-import io.circe.{ACursor, Decoder}
+import io.circe.{ACursor, Decoder, FailedCursor}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.BaseGroupsRuleExtendedSyntaxName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
@@ -73,7 +72,7 @@ private[auth] class GroupsLogicRepresentationDecoder[
   private def withGroupsSectionDecoder[T <: Rule](implicit ruleName: RuleName[T]): SyncDecoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] =
     Decoder
       .instance { c =>
-        val groupsSection = c.downField(BaseGroupsRuleExtendedSyntaxName.name.value)
+        val groupsSection = c.downField("groups")
         for {
           groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](groupsSection)(AllOfGroupsRule.ExtendedSyntaxName)
           groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](groupsSection)(AnyOfGroupsRule.ExtendedSyntaxName)
@@ -145,7 +144,10 @@ private[auth] class GroupsLogicRepresentationDecoder[
     val field = ruleName.name.value
     val fields = ruleNames.map(_.name.value)
     val (cursor, key) = c.downFieldsWithKey(field, fields: _*)
-    cursor.as[Option[REPRESENTATION]].map(_.map((_, key)))
+    cursor match {
+      case _: FailedCursor => Right(None)
+      case _ => cursor.as[Option[REPRESENTATION]].map(_.map((_, key)))
+    }
   }
 
   private[rules] def errorMsgNoGroupsList[R <: Rule](ruleName: RuleName[R]) = {

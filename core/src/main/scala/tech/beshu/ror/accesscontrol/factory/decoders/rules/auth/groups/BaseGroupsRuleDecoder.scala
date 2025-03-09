@@ -57,7 +57,7 @@ private[auth] object BaseGroupsRuleDecoder {
                                        negative: Either[RulesLevelCreationError, BaseGroupsRule[NegativeGroupsLogic]])
                                       (implicit ruleName: Rule.Name,
                                        usersDefinitions: Definitions[UserDef],
-                                       userIdCaseSensitivity: CaseSensitivity): Either[RulesLevelCreationError, CombinedGroupsRule] = {
+                                       userIdCaseSensitivity: CaseSensitivity): Either[RulesLevelCreationError, CombinedLogicGroupsRule] = {
     for {
       positiveLogic <- positive
       negativeLogic <- negative
@@ -65,7 +65,7 @@ private[auth] object BaseGroupsRuleDecoder {
     } yield {
       val logic = RuntimeResolvableGroupsLogic.Combined(positiveLogic.settings.permittedGroupsLogic, negativeLogic.settings.permittedGroupsLogic)
       val settings = BaseGroupsRule.Settings(logic, userDefsNel)
-      new CombinedGroupsRule(ruleName, settings)(userIdCaseSensitivity)
+      new CombinedLogicGroupsRule(settings)(userIdCaseSensitivity)
     }
   }
 
@@ -81,7 +81,7 @@ private[auth] object BaseGroupsRuleDecoder {
       .map { logic =>
         userDefs.map { userDefs =>
           val settings = BaseGroupsRule.Settings(logic, userDefs)
-          BaseGroupsRule.Creator[GL].create(ruleName, settings, userIdCaseSensitivity)
+          BaseGroupsRule.Creator[GL].create(settings, userIdCaseSensitivity)
         }
       }
   }

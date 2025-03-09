@@ -121,7 +121,7 @@ class LdapAuthorizationRuleSettingsTests
           }
         )
       }
-      "there is LDAP service with given name and groups all_of rule is defined (in user_belongs_to_groups section)" in {
+      "there is LDAP service with given name and groups all_of rule is defined (in groups section)" in {
         assertDecodingSuccess(
           yaml =
             s"""
@@ -133,7 +133,7 @@ class LdapAuthorizationRuleSettingsTests
                |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                |    ldap_authorization:
                |      name: "ldap1"
-               |      user_belongs_to_groups:
+               |      groups:
                |        all_of: ["g*"]
                |
                |  ldaps:
@@ -216,7 +216,7 @@ class LdapAuthorizationRuleSettingsTests
           }
         )
       }
-      "there is LDAP service with given name and groups any_of rule is defined (in user_belongs_to_groups section)" in {
+      "there is LDAP service with given name and groups any_of rule is defined (in groups section)" in {
         assertDecodingSuccess(
           yaml =
             s"""
@@ -228,7 +228,7 @@ class LdapAuthorizationRuleSettingsTests
                |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                |    ldap_authorization:
                |      name: "ldap1"
-               |      user_belongs_to_groups:
+               |      groups:
                |        any_of: ["group3", "group4*"]
                |
                |  ldaps:
@@ -281,7 +281,7 @@ class LdapAuthorizationRuleSettingsTests
           }
         )
       }
-      "there is LDAP service with given name and groups_not_any_of are defined (in user_belongs_to_groups section)" in {
+      "there is LDAP service with given name and groups_not_any_of are defined (in groups section)" in {
         assertDecodingSuccess(
           yaml =
             s"""
@@ -293,7 +293,7 @@ class LdapAuthorizationRuleSettingsTests
                |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                |    ldap_authorization:
                |      name: "ldap1"
-               |      user_belongs_to_groups:
+               |      groups:
                |        not_any_of: ["group3", "group4*"]
                |
                |  ldaps:
@@ -346,7 +346,7 @@ class LdapAuthorizationRuleSettingsTests
           }
         )
       }
-      "there is LDAP service with given name and groups_not_all_of are defined (in user_belongs_to_groups section)" in {
+      "there is LDAP service with given name and groups_not_all_of are defined (in groups section)" in {
         assertDecodingSuccess(
           yaml =
             s"""
@@ -358,7 +358,7 @@ class LdapAuthorizationRuleSettingsTests
                |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                |    ldap_authorization:
                |      name: "ldap1"
-               |      user_belongs_to_groups:
+               |      groups:
                |        not_all_of: ["group3", "group4*"]
                |
                |  ldaps:
@@ -425,7 +425,7 @@ class LdapAuthorizationRuleSettingsTests
                |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                |    ldap_authorization:
                |      name: "ldap1"
-               |      user_belongs_to_groups:
+               |      groups:
                |        any_of: ["group1"]
                |        not_any_of: ["group3", "group4*"]
                |
@@ -494,7 +494,7 @@ class LdapAuthorizationRuleSettingsTests
                |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                |    ldap_authorization:
                |      name: "ldap1"
-               |      user_belongs_to_groups:
+               |      groups:
                |        any_of: ["group1"]
                |        not_all_of: ["group3", "group4*"]
                |

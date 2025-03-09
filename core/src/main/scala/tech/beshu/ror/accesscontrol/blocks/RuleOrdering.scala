@@ -70,7 +70,7 @@ object RuleOrdering {
     classOf[AllOfGroupsRule],
     classOf[NotAnyOfGroupsRule],
     classOf[NotAllOfGroupsRule],
-    classOf[CombinedGroupsRule],
+    classOf[CombinedLogicGroupsRule],
     // all authorization rules should be placed after any authentication rule
     classOf[LdapAuthorizationRule],
     classOf[ExternalAuthorizationRule],

@@ -1376,7 +1376,7 @@ class GroupsRuleSettingsTests
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    user_belongs_to_groups:
+                   |    groups:
                    |      any_of: ["group3", "group4*"]
                    |      not_any_of: ["group5", "group6*"]
                    |
@@ -1424,7 +1424,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    user_belongs_to_groups:
+                 |    groups:
                  |      any_of: ["group3", "group4*"]
                  |      not_all_of: ["group5", "group6*"]
                  |
@@ -1505,7 +1505,7 @@ class GroupsRuleSettingsTests
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    user_belongs_to_groups:
+               |    groups:
                |      $extendedSyntaxName: [group1, "group_@{header:test}"]
                |
                |  users:

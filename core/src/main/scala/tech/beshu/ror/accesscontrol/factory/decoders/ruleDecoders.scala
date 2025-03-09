@@ -63,7 +63,7 @@ object ruleDecoders {
 
     val optionalRuleDecoder = name match {
       case ruleName@(
-        BaseGroupsRule.BaseGroupsRuleExtendedSyntaxName.name |
+        Rule.Name("groups") |
         AllOfGroupsRule.DeprecatedSimpleSyntaxNameV1.name |
         AllOfGroupsRule.DeprecatedSimpleSyntaxNameV2.name |
         AllOfGroupsRule.SimpleSyntaxName.name |

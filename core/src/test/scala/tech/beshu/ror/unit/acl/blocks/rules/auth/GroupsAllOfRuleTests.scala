@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AllOfGroupsRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings as GroupsRulesSettings
@@ -32,8 +31,8 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class GroupsAllOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AllOf] {
 
-  override def createRule(ruleName: Rule.Name, settings: GroupsRulesSettings[GroupsLogic.AllOf], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.AllOf] = {
-    BaseGroupsRule.Creator[GroupsLogic.AllOf].create(ruleName, settings, caseSensitivity)
+  override def createRule(settings: GroupsRulesSettings[GroupsLogic.AllOf], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.AllOf] = {
+    BaseGroupsRule.Creator[GroupsLogic.AllOf].create(settings, caseSensitivity)
   }
 
   protected def groupsLogicCreator: GroupIds => GroupsLogic.AllOf = GroupsLogic.AllOf.apply

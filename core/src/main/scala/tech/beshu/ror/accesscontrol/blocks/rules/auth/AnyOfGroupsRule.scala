@@ -22,13 +22,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.{Creator, Settings}
 import tech.beshu.ror.accesscontrol.domain.*
 
-class AnyOfGroupsRule(override val name: Rule.Name, override val settings: Settings[GroupsLogic.AnyOf])
+class AnyOfGroupsRule(override val settings: Settings[GroupsLogic.AnyOf])
                      (override implicit val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule[GroupsLogic.AnyOf](name, settings)
+  extends BaseGroupsRule[GroupsLogic.AnyOf](AnyOfGroupsRule.SimpleSyntaxName.name, settings)
 
 
 object AnyOfGroupsRule {
-  implicit val anyOfTypeInfo: Creator[GroupsLogic.AnyOf] = new AnyOfGroupsRule(_, _)(_)
+  implicit val anyOfCreator: Creator[GroupsLogic.AnyOf] = new AnyOfGroupsRule(_)(_)
 
   case object ExtendedSyntaxName extends RuleName[AnyOfGroupsRule] {
     override val name: Name = Rule.Name("any_of")

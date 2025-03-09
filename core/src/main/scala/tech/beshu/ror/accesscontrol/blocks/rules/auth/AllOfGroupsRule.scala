@@ -22,12 +22,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.{Creator, Settings}
 import tech.beshu.ror.accesscontrol.domain.*
 
-class AllOfGroupsRule(override val name: Rule.Name, override val settings: Settings[GroupsLogic.AllOf])
+class AllOfGroupsRule(override val settings: Settings[GroupsLogic.AllOf])
                      (override implicit val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule[GroupsLogic.AllOf](name, settings)
+  extends BaseGroupsRule[GroupsLogic.AllOf](AllOfGroupsRule.SimpleSyntaxName.name, settings)
 
 object AllOfGroupsRule {
-  implicit val allOfTypeInfo: Creator[GroupsLogic.AllOf] = new AllOfGroupsRule(_, _)(_)
+  implicit val allOfCreator: Creator[GroupsLogic.AllOf] = new AllOfGroupsRule(_)(_)
 
   case object ExtendedSyntaxName extends RuleName[AllOfGroupsRule] {
     override val name: Name = Rule.Name("all_of")

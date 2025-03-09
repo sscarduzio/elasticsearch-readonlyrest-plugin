@@ -22,12 +22,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.{Creator, Settings}
 import tech.beshu.ror.accesscontrol.domain.*
 
-class NotAnyOfGroupsRule(override val name: Rule.Name, override val settings: Settings[GroupsLogic.NotAnyOf])
+class NotAnyOfGroupsRule(override val settings: Settings[GroupsLogic.NotAnyOf])
                         (override implicit val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule[GroupsLogic.NotAnyOf](name, settings)
+  extends BaseGroupsRule[GroupsLogic.NotAnyOf](NotAnyOfGroupsRule.SimpleSyntaxName.name, settings)
 
 object NotAnyOfGroupsRule {
-  implicit val notAnyOfTypeInfo: Creator[GroupsLogic.NotAnyOf] = new NotAnyOfGroupsRule(_, _)(_)
+  implicit val notAnyOfCreator: Creator[GroupsLogic.NotAnyOf] = new NotAnyOfGroupsRule(_)(_)
 
   case object ExtendedSyntaxName extends RuleName[NotAnyOfGroupsRule] {
     override val name: Name = Rule.Name("not_any_of")

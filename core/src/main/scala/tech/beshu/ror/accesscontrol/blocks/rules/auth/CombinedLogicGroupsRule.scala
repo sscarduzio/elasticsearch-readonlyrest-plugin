@@ -17,14 +17,21 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.{Creator, Settings}
 import tech.beshu.ror.accesscontrol.domain.*
 
-class CombinedGroupsRule(override val name: Rule.Name, override val settings: Settings[GroupsLogic.Combined])
-                        (override implicit val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule[GroupsLogic.Combined](name, settings)
+class CombinedLogicGroupsRule(override val settings: Settings[GroupsLogic.Combined])
+                             (override implicit val userIdCaseSensitivity: CaseSensitivity)
+  extends BaseGroupsRule[GroupsLogic.Combined](CombinedLogicGroupsRule.Name.name, settings)
 
-object CombinedGroupsRule {
-  implicit val combinedTypeInfo: Creator[GroupsLogic.Combined] = new CombinedGroupsRule(_, _)(_)
+object CombinedLogicGroupsRule {
+
+  case object Name extends RuleName[AllOfGroupsRule] {
+    override val name: Rule.Name = Rule.Name("groups_combined")
+  }
+
+  implicit val combinedLogicCreator: Creator[GroupsLogic.Combined] = new CombinedLogicGroupsRule(_)(_)
+
 }

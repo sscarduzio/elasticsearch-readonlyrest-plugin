@@ -291,10 +291,6 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
 
 object BaseGroupsRule {
 
-  case object BaseGroupsRuleExtendedSyntaxName extends RuleName[BaseGroupsRule[GroupsLogic]] {
-    override val name: Name = Rule.Name("user_belongs_to_groups")
-  }
-
   def name(ruleName: String): RuleName[BaseGroupsRule[GroupsLogic]] = new RuleName[BaseGroupsRule[GroupsLogic]] {
     override val name: Rule.Name = Rule.Name(ruleName)
   }
@@ -303,8 +299,7 @@ object BaseGroupsRule {
                                                 usersDefinitions: NonEmptyList[UserDef])
 
   trait Creator[GL <: GroupsLogic] {
-    def create(name: Rule.Name,
-               settings: Settings[GL],
+    def create(settings: Settings[GL],
                userIdCaseSensitivity: CaseSensitivity): BaseGroupsRule[GL]
   }
 
