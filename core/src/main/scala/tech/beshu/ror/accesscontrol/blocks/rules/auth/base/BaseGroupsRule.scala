@@ -291,10 +291,6 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
 
 object BaseGroupsRule {
 
-  def name(ruleName: String): RuleName[BaseGroupsRule[GroupsLogic]] = new RuleName[BaseGroupsRule[GroupsLogic]] {
-    override val name: Rule.Name = Rule.Name(ruleName)
-  }
-
   final case class Settings[+GL <: GroupsLogic](permittedGroupsLogic: RuntimeResolvableGroupsLogic[GL],
                                                 usersDefinitions: NonEmptyList[UserDef])
 

@@ -21,8 +21,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
@@ -73,7 +73,10 @@ object ruleDecoders {
         AnyOfGroupsRule.SimpleSyntaxName.name |
         NotAllOfGroupsRule.SimpleSyntaxName.name |
         NotAnyOfGroupsRule.SimpleSyntaxName.name) =>
-        Some(new GroupsRuleDecoder(definitions.users, globalSettings, variableCreator)(BaseGroupsRule.name(ruleName.value)))
+        implicit val ruleNameForDecoder: RuleName[BaseGroupsRule[GroupsLogic]] = new RuleName[BaseGroupsRule[GroupsLogic]] {
+          override val name: Rule.Name = ruleName
+        }
+        Some(new GroupsRuleDecoder(definitions.users, globalSettings, variableCreator))
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)
       case DataStreamsRule.Name.name => Some(new DataStreamsRuleDecoder(variableCreator))

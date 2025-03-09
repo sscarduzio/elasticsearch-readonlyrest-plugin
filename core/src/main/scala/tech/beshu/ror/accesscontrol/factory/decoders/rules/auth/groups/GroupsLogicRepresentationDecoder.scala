@@ -151,11 +151,11 @@ private[auth] class GroupsLogicRepresentationDecoder[
   }
 
   private[rules] def errorMsgNoGroupsList[R <: Rule](ruleName: RuleName[R]) = {
-    s"${ruleName.show} rule requires to define 'groups_or'/'groups_and'/'groups_not_any_of'/'groups_not_all_of' arrays"
+    s"${ruleName.show} rule requires to define 'groups_any_of'/'groups_all_of'/'groups_not_any_of'/'groups_not_all_of' arrays"
   }
 
   private[rules] def errorMsgOnlyOneGroupsList[R <: Rule](ruleName: RuleName[R]) = {
-    s"${ruleName.show} rule requires to define 'groups_or'/'groups_and'/'groups_not_any_of'/'groups_not_all_of' arrays (but not all)"
+    s"${ruleName.show} rule requires to define 'groups_any_of'/'groups_all_of'/'groups_not_any_of'/'groups_not_all_of' arrays (but not all)"
   }
 
 }
