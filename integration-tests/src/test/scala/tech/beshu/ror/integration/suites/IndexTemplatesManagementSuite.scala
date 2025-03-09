@@ -402,19 +402,6 @@ class IndexTemplatesManagementSuite
             user1Template should have statusCode 200
             user1Template.templates should be(List(Template("new_template", Set("custom_dev1_index_*"), Set.empty)))
           }
-          "template applies to generic index pattern (ES < 6.0.0)" excludeES(allEs6x, allEs7x, allEs8x) in {
-            val result = dev1TemplateManager.putTemplate(
-              templateName = "new_template",
-              indexPatterns = NonEmptyList.one("custom_dev1_index_*"),
-              aliases = Set.empty
-            )
-
-            result should have statusCode 200
-
-            val user1Template = adminTemplateManager.getTemplate("new_template")
-            user1Template should have statusCode 200
-            user1Template.templates should be(List(Template("new_template", Set("custom_dev1_index_*"), Set.empty)))
-          }
         }
         "be allowed to override an existing template" which {
           "belongs to him" in {
