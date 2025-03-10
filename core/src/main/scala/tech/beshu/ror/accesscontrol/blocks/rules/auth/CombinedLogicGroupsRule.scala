@@ -17,19 +17,21 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleName}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.{Creator, Settings}
+import tech.beshu.ror.accesscontrol.domain.*
 
-final class GroupsNotAnyOfRule(override val settings: BaseGroupsRule.Settings[GroupsLogic.NotAnyOf],
-                               override val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule(settings) {
+class CombinedLogicGroupsRule(override val settings: Settings[GroupsLogic.Combined])
+                             (override implicit val userIdCaseSensitivity: CaseSensitivity)
+  extends BaseGroupsRule[GroupsLogic.Combined](CombinedLogicGroupsRule.Name.name, settings)
 
-  override val name: Rule.Name = GroupsNotAnyOfRule.Name.name
+object CombinedLogicGroupsRule {
 
-}
-
-object GroupsNotAnyOfRule {
-  implicit case object Name extends RuleName[GroupsNotAnyOfRule] {
-    override val name: Name = Rule.Name("groups_not_any_of")
+  case object Name extends RuleName[AllOfGroupsRule] {
+    override val name: Rule.Name = Rule.Name("groups_combined")
   }
+
+  implicit val combinedLogicCreator: Creator[GroupsLogic.Combined] = new CombinedLogicGroupsRule(_)(_)
+
 }

@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.auth
+package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import cats.data.{NonEmptyList, OptionT}
 import monix.eval.Task
@@ -23,10 +23,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableGroupsLogic
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -35,7 +35,9 @@ import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-abstract class BaseGroupsRule[GL <: GroupsLogic](val settings: Settings[GL])
+abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
+                                                  val settings: Settings[GL])
+                                                 (override implicit val userIdCaseSensitivity: CaseSensitivity)
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport
@@ -288,6 +290,17 @@ abstract class BaseGroupsRule[GL <: GroupsLogic](val settings: Settings[GL])
 }
 
 object BaseGroupsRule {
-  final case class Settings[GL <: GroupsLogic](permittedGroupsLogic: RuntimeResolvableGroupsLogic[GL],
-                                               usersDefinitions: NonEmptyList[UserDef])
+
+  final case class Settings[+GL <: GroupsLogic](permittedGroupsLogic: RuntimeResolvableGroupsLogic[GL],
+                                                usersDefinitions: NonEmptyList[UserDef])
+
+  trait Creator[GL <: GroupsLogic] {
+    def create(settings: Settings[GL],
+               userIdCaseSensitivity: CaseSensitivity): BaseGroupsRule[GL]
+  }
+
+  object Creator {
+    def apply[GL <: GroupsLogic](implicit creator: Creator[GL]): Creator[GL] = creator
+  }
+
 }
