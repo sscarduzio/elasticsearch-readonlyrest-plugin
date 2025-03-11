@@ -1,3 +1,4 @@
+
 /*
  *    This file is part of ReadonlyREST.
  *
@@ -17,19 +18,23 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleName}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.{Creator, Settings}
+import tech.beshu.ror.accesscontrol.domain.*
 
-final class GroupsNotAllOfRule(override val settings: BaseGroupsRule.Settings[GroupsLogic.NotAllOf],
-                               override val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule(settings) {
+class NotAllOfGroupsRule(override val settings: Settings[GroupsLogic.NotAllOf])
+                        (override implicit val userIdCaseSensitivity: CaseSensitivity)
+  extends BaseGroupsRule[GroupsLogic.NotAllOf](NotAllOfGroupsRule.SimpleSyntaxName.name, settings)
 
-  override val name: Rule.Name = GroupsNotAllOfRule.Name.name
+object NotAllOfGroupsRule {
+  implicit val notAllOfCreator: Creator[GroupsLogic.NotAllOf] = new NotAllOfGroupsRule(_)(_)
 
-}
+  case object ExtendedSyntaxName extends RuleName[NotAllOfGroupsRule] {
+    override val name: Name = Rule.Name("not_all_of")
+  }
 
-object GroupsNotAllOfRule {
-  implicit case object Name extends RuleName[GroupsNotAllOfRule] {
+  case object SimpleSyntaxName extends RuleName[NotAllOfGroupsRule] {
     override val name: Name = Rule.Name("groups_not_all_of")
   }
 }

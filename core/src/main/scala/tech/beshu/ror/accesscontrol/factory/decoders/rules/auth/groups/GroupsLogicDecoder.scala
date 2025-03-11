@@ -14,22 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.auth
+package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups
 
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleName}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic}
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{NegativeGroupsLogic, PositiveGroupsLogic}
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 
-final class GroupsAndRule(override val settings: BaseGroupsRule.Settings[GroupsLogic.And],
-                          override val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule(settings) {
-
-  override val name: Rule.Name = GroupsAndRule.Name.name
-
-}
-
-object GroupsAndRule {
-  implicit case object Name extends RuleName[GroupsAndRule] {
-    override val name: Name = Rule.Name("groups_and")
-  }
-}
+private[auth] object GroupsLogicDecoder
+  extends GroupsLogicRepresentationDecoder[
+    GroupsLogic,
+    PositiveGroupsLogic,
+    NegativeGroupsLogic,
+    GroupsLogic.AllOf,
+    GroupsLogic.AnyOf,
+    GroupsLogic.NotAllOf,
+    GroupsLogic.NotAnyOf,
+  ](GroupsLogic.Combined.apply)

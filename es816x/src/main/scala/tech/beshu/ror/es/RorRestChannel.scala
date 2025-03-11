@@ -64,9 +64,13 @@ final class RorRestRequest(underlying: EsRestRequest) extends RestRequest {
 
   override lazy val remoteAddress: Option[Address] = createAddressFrom(_.getRemoteAddress)
 
-  override lazy val content: String = Option(underlying.content()).map(_.utf8ToString()).getOrElse("")
+  override lazy val content: String =
+    if (underlying.isFullContent) Option(underlying.content()).map(_.utf8ToString()).getOrElse("")
+    else ""
 
-  override lazy val contentLength: Information = Bytes(underlying.contentLength())
+  override lazy val contentLength: Information =
+    if (underlying.isFullContent) Bytes(underlying.contentLength())
+    else Bytes(0)
 
   private def createAddressFrom(extractInetSocketAddress: HttpChannel => InetSocketAddress) = {
     for {

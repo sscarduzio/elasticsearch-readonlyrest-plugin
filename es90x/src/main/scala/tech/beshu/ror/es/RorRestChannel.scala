@@ -63,9 +63,13 @@ final class RorRestRequest(underlying: EsRestRequest) {
 
   lazy val remoteAddress: Option[Address] = createAddressFrom(_.getRemoteAddress)
 
-  val content: String = Option(underlying.content()).map(_.utf8ToString()).getOrElse("")
+  val content: String =
+    if (underlying.isFullContent) Option(underlying.content()).map(_.utf8ToString()).getOrElse("")
+    else ""
 
-  val contentLength: Information = Bytes(underlying.contentLength())
+  val contentLength: Information =
+    if (underlying.isFullContent) Bytes(underlying.contentLength())
+    else Bytes(0)
 
   private def createAddressFrom(extractInetSocketAddress: HttpChannel => InetSocketAddress) = {
     for {

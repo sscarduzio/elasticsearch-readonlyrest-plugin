@@ -393,7 +393,7 @@ class JwtAuthRuleTests
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
             ))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -427,7 +427,7 @@ class JwtAuthRuleTests
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
             ))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("*2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -461,7 +461,7 @@ class JwtAuthRuleTests
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
             ))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.And(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group1"), GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -495,7 +495,7 @@ class JwtAuthRuleTests
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
             ))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.And(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupIdLike.from("*1"), GroupIdLike.from("*2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -637,7 +637,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
             groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups.subgroups")), None))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group1"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -657,7 +657,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
             groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -677,7 +677,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
             groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.And(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -715,7 +715,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
             groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt),

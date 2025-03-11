@@ -20,8 +20,9 @@ import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings as GroupsRulesSettings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsNotAnyOfRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.NotAnyOfGroupsRule.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings as GroupsRulesSettings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -31,7 +32,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.NotAnyOf] {
 
   override def createRule(settings: GroupsRulesSettings[GroupsLogic.NotAnyOf], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.NotAnyOf] = {
-    new GroupsNotAnyOfRule(settings, caseSensitivity)
+    BaseGroupsRule.Creator[GroupsLogic.NotAnyOf].create(settings, caseSensitivity)
   }
 
   protected def groupsLogicCreator: GroupIds => GroupsLogic.NotAnyOf = GroupsLogic.NotAnyOf.apply

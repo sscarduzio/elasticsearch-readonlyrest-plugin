@@ -20,26 +20,27 @@ import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings as GroupsRulesSettings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.AnyOfGroupsRule.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings as GroupsRuleSettings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.And] {
+class GroupsAnyOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AnyOf] {
 
-  override def createRule(settings: GroupsRulesSettings[GroupsLogic.And], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.And] = {
-    new GroupsAndRule(settings, caseSensitivity)
+  override def createRule(settings: GroupsRuleSettings[GroupsLogic.AnyOf], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.AnyOf] = {
+    BaseGroupsRule.Creator[GroupsLogic.AnyOf].create(settings, caseSensitivity)
   }
 
-  protected def groupsLogicCreator: GroupIds => GroupsLogic.And = GroupsLogic.And.apply
+  protected def groupsLogicCreator: GroupIds => GroupsLogic.AnyOf = GroupsLogic.AnyOf.apply
 
-  "A GroupsAndRule" should {
-    "not match" when {
+  "A GroupsAnyOfRule" should {
+    "match" when {
       "user has not all groups" in {
-        val ruleSettings = GroupsRulesSettings(
+        val ruleSettings = GroupsRuleSettings(
           permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
@@ -53,18 +54,22 @@ class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.And] {
           ))
         )
         val usr = Some(User.Id("user1"))
-        assertNotMatchRule(
+        assertMatchRule(
           settings = ruleSettings,
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
           preferredGroupId = None
-        )
+        )(defaultOutputBlockContextAssertion(
+          user = User.Id("user1"),
+          group = GroupId("g1"),
+          availableGroups = UniqueList.of(group("g1"))
+        ))
       }
     }
 
     "match" when {
-      "user has exactly all groups" in {
-        val ruleSettings = GroupsRulesSettings(
+      "user has all groups" in {
+        val ruleSettings = GroupsRuleSettings(
           permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
             AlreadyResolved(GroupId("g1").nel),
             AlreadyResolved(GroupId("g2").nel),
@@ -91,35 +96,6 @@ class GroupsAndRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.And] {
           )
         )
       }
-      "user has an excess of all required groups" in {
-        val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-            AlreadyResolved(GroupId("g1").nel),
-            AlreadyResolved(GroupId("g2").nel),
-          )),
-          usersDefinitions = NonEmptyList.of(UserDef(
-            usernames = userIdPatterns("user1"),
-            mode = WithoutGroupsMapping(
-              authenticationRule.matching(User.Id("user1")),
-              groups("g1", "g2", "g3")
-            )
-          ))
-        )
-        val usr = Some(User.Id("user1"))
-        assertMatchRule(
-          settings = ruleSettings,
-          loggedUser = usr,
-          caseSensitivity = CaseSensitivity.Disabled,
-          preferredGroupId = None
-        )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(
-            user = User.Id("user1"),
-            group = GroupId("g1"),
-            availableGroups = UniqueList.of(group("g1"), group("g2"))
-          )
-        )
-      }
     }
   }
-
 }
