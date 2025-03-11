@@ -156,7 +156,12 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
       )
       case None => MockRequestContext.indices
     }
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+    val blockContext = CurrentUserMetadataRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.empty,
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
+    )
     rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()

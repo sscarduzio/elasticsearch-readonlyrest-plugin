@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersOrRule
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders.*
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -173,11 +173,18 @@ class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
                          requestHeaders: Set[Header],
                          isMatched: Boolean) = {
     val rule = new HeadersOrRule(HeadersOrRule.Settings(configuredHeaders))
+    val restRequest = mock[RestRequest]
+    (() => restRequest.allHeaders).expects().returning(requestHeaders)
+    (() => restRequest.path).expects().returning(UriPath.from("/_cat/indices"))
     val requestContext = mock[RequestContext]
-    (() => requestContext.restRequest.allHeaders).expects().returning(requestHeaders)
+    (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
     (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-    (() => requestContext.restRequest.path).expects().returning(UriPath.from("/_cat/indices"))
-    val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+    val blockContext = GeneralNonIndexRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.empty,
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
+    )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()

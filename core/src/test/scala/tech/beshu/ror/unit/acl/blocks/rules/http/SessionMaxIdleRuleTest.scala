@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, User}
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.blocks.rules.http.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
@@ -134,21 +134,23 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
                          isMatched: Boolean)
                         (implicit clock: Clock) = {
     val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle), CaseSensitivity.Enabled)
-    val requestContext = mock[RequestContext]
+    val restRequest = mock[RestRequest]
     val headers = NonEmptyString.unapply(rawCookie) match {
       case Some(cookieHeader) => Set(headerFrom("Cookie" -> cookieHeader.value))
       case None => Set.empty[Header]
     }
+    (() => restRequest.allHeaders).expects().returning(headers)
+    val requestContext = mock[RequestContext]
+    (() => requestContext.restRequest).expects().returning(restRequest)
     (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
-    (() => requestContext.restRequest.allHeaders).expects().returning(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
-      requestContext,
-      loggedUser match {
+      requestContext = requestContext,
+      userMetadata = loggedUser match {
         case Some(user) => UserMetadata.empty.withLoggedUser(user)
         case None => UserMetadata.empty
       },
-      Set.empty,
-      List.empty
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) {

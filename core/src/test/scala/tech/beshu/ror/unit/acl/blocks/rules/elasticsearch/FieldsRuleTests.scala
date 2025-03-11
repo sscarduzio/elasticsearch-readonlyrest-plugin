@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{RequestFieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.mocks.{MockRequestContext, MockSimpleRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.blocks.rules.elasticsearch.FieldsRuleTests.{BlockContextCreator, Configuration, Fields, RequestContextCreator}
@@ -227,12 +227,18 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
             fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
           )
         )
+        val restRequest = mock[RestRequest]
+        (() => restRequest.path).expects().returning(UriPath.from("/_search"))
         val requestContext = mock[RequestContext]
-        val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-
-        (() => requestContext.restRequest.path).expects().returning(UriPath.from("/_search"))
+        (() => requestContext.restRequest).expects().returning(restRequest)
         (() => requestContext.action).expects().returning(MockRequestContext.roAction).anyNumberOfTimes()
 
+        val incomingBlockContext = GeneralNonIndexRequestBlockContext(
+          requestContext = requestContext,
+          userMetadata = UserMetadata.empty,
+          responseHeaders = Set.empty,
+          responseTransformations = List.empty
+        )
         inside(rule.check(incomingBlockContext).runSyncStep) {
           case Right(Fulfilled(outBlockContext)) =>
             outBlockContext shouldBe incomingBlockContext

@@ -130,9 +130,8 @@ class GroupsRuleAccessControlTests
     "auth_key is used with local groups" should {
       "allow when authorization satisfies all groups" in {
         val request = MockRequestContext.indices.copy(
-          restRequest = MockRestRequest(allHeaders = Set(
-            header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes))
-          ))
+          restRequest = MockRestRequest(allHeaders = Set(header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes)))),
+          filteredIndices = Set(requestedIndex("g34_index"))
         )
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 1
