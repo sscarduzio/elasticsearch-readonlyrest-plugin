@@ -81,7 +81,13 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .from(restRequest.path())
       .getOrElse(UriPath.from(nes("/")))
 
-  override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
+  override lazy val contentLength: Information =
+    if (restRequest.isFullContent) Bytes(restRequest.contentLength())
+    else Bytes(0)
+
+  override lazy val content: String =
+    if (restRequest.isFullContent) Option(restRequest.content()).map(_.utf8ToString()).getOrElse("")
+    else ""
 
   override lazy val `type`: Type = Type {
     val requestClazz = esContext.actionRequest.getClass
@@ -92,8 +98,6 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override lazy val content: String = Option(restRequest.content()).map(_.utf8ToString()).getOrElse("")
-
   override lazy val indexAttributes: Set[IndexAttribute] = {
     esContext.actionRequest match {
       case req: IndicesRequest => indexAttributesFrom(req)
@@ -101,23 +105,19 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
+  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
     clusterService.allIndicesAndAliases
-  }
 
   override lazy val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
     clusterService.allRemoteIndicesAndAliases.memoize
 
-  override lazy val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = {
+  override lazy val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] =
     clusterService.allDataStreamsAndAliases
-  }
 
   override lazy val allRemoteDataStreamsAndAliases: Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
     clusterService.allRemoteDataStreamsAndAliases.memoize
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
-
-  override lazy val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = clusterService.allSnapshots
 
   override lazy val isCompositeRequest: Boolean = esContext.actionRequest.isInstanceOf[CompositeIndicesRequest]
 

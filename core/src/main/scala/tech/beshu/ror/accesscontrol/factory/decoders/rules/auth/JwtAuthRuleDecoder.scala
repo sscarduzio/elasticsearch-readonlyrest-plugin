@@ -21,14 +21,14 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
-import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroupIds}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.JwtDefinitionsDecoder.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 
@@ -66,34 +66,23 @@ private object JwtAuthRuleDecoder {
       .instance { c =>
         for {
           rorKbnDefName <- c.downField("name").as[JwtDef.Name]
-          groupsOrLogic <- {
-            val (cursor, key) = c.downFieldsWithKey("roles", "groups", "groups_or")
-            cursor.as[Option[PermittedGroupIds]]
-              .map {
-                _.map(GroupsLogic.Or.apply).map(Groups.Defined.apply).map((_, key))
-              }
-          }
-          groupsAndLogic <- {
-            val (cursor, key) = c.downFieldsWithKey("roles_and", "groups_and")
-            cursor.as[Option[PermittedGroupIds]]
-              .map {
-                _.map(GroupsLogic.And.apply).map(Groups.Defined.apply).map((_, key))
-              }
-          }
-        } yield (rorKbnDefName, groupsOrLogic, groupsAndLogic)
+          groupsLogicDecodingResult <- GroupsLogicDecoder.decoder[JwtAuthRule].apply(c)
+        } yield (rorKbnDefName, groupsLogicDecodingResult)
       }
       .toSyncDecoder
       .emapE {
-        case (name, Some((_, groupsOrKey)), Some((_, groupsAndKey))) =>
-          Left(RulesLevelCreationError(Message(
-            s"Please specify either '${groupsOrKey.show}' or '${groupsAndKey.show}' for JWT authorization rule '${name.show}'"
-          )))
-        case (name, Some((groupsOrLogic, _)), None) =>
-          Right((name, groupsOrLogic))
-        case (name, None, Some((groupsAndLogic, _))) =>
-          Right((name, groupsAndLogic))
-        case (name, None, None) =>
-          Right((name, Groups.NotDefined: Groups))
+        case (name, groupsLogicDecodingResult) =>
+          groupsLogicDecodingResult match {
+            case GroupsLogicDecodingResult.Success(groupsLogic) =>
+              Right((name, Groups.Defined(groupsLogic)))
+            case GroupsLogicDecodingResult.GroupsLogicNotDefined(_) =>
+              Right((name, Groups.NotDefined: Groups))
+            case GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(_, fields) =>
+              val fieldsStr = fields.map(f => s"'$f'").mkString(" or ")
+              Left(RulesLevelCreationError(Message(
+                s"Please specify either $fieldsStr for JWT authorization rule '${name.show}'"
+              )))
+          }
       }
       .decoder
 

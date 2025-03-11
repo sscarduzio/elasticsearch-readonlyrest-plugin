@@ -36,7 +36,7 @@ readonlyrest:
     indices: ["index-*"]
     fields: ["~plugins_name"]
 
-  # ES containter initializer need this rule to configure ES instance after startup
+  # ES container initializer need this rule to configure ES instance after startup
   - name: "CONTAINER ADMIN"
     auth_key: admin:container
     verbosity: error

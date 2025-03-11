@@ -19,36 +19,58 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 import cats.data.NonEmptyList
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.{BaseGroupsRule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.mocks.{MockRequestContext, MockUserMetadataRequestContext}
+import tech.beshu.ror.syntax
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
+import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.reflect.ClassTag
+class GroupsRuleSettingsTests
+  extends BaseRuleSettingsDecoderTest[BaseGroupsRule[GroupsLogic]]
+    with Inside
+    with ScalaCheckPropertyChecks {
 
-class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.Name)
-class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.DeprecatedName)
-class GroupsAndRuleSettingsTests extends GroupsRuleSettingsTests(GroupsAndRule.Name)
+  private val simpleSyntaxTestParams = Table[String, GroupIds => GroupsLogic](
+    ("simple_syntax_name", "creator"),
+    ("roles", GroupsLogic.AnyOf.apply),
+    ("groups", GroupsLogic.AnyOf.apply),
+    ("groups_or", GroupsLogic.AnyOf.apply),
+    ("groups_any_of", GroupsLogic.AnyOf.apply),
+    ("groups_and", GroupsLogic.AllOf.apply),
+    ("groups_all_of", GroupsLogic.AllOf.apply),
+    ("groups_not_all_of", GroupsLogic.NotAllOf.apply),
+    ("groups_not_any_of", GroupsLogic.NotAnyOf.apply)
+  )
 
-sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ruleName: RuleName[R])
-  extends BaseRuleSettingsDecoderTest[R]
-    with Inside {
+  private val extendedSyntaxTestParams = Table[String, GroupIds => GroupsLogic](
+    ("extended_syntax_name", "creator"),
+    ("any_of", GroupsLogic.AnyOf.apply),
+    ("all_of", GroupsLogic.AllOf.apply),
+    ("not_all_of", GroupsLogic.NotAllOf.apply),
+    ("not_any_of", GroupsLogic.NotAnyOf.apply)
+  )
 
-  "A GroupsOrRule" should {
+  forAll(simpleSyntaxTestParams) { (simpleSyntaxName, creator) =>
+  s"A GroupsRule settings test for $simpleSyntaxName" should {
     "be able to be loaded from config" when {
       "a groups mapping is not used" when {
         "only one group is defined" when {
@@ -61,7 +83,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    ${ruleName.name.value}: group1
+                   |    $simpleSyntaxName: group1
                    |
                    |  users:
                    |  - username: cartman
@@ -70,8 +92,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
-                rule.settings.permittedGroupIds should be(groups)
+                val resolvedGroupsLogic = rule.settings.permittedGroupsLogic.resolve(currentUserMetadataRequestBlockContextFrom())
+                val expectedGroupsLogic = creator(GroupIds(UniqueNonEmptyList.of(GroupId("group1"))))
+                resolvedGroupsLogic should contain(expectedGroupsLogic)
+                val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+                  UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel))
+                rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
@@ -93,7 +119,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    ${ruleName.name.value}: group1
+                   |    $simpleSyntaxName: group1
                    |
                    |  users:
                    |  - username: car*
@@ -102,8 +128,9 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                val permittedGroups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
-                rule.settings.permittedGroupIds should be(permittedGroups)
+                val permittedGroups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+                  UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel))
+                rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(permittedGroups)
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("car*")))))
@@ -125,7 +152,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    ${ruleName.name.value}: group1
+                   |    $simpleSyntaxName: group1
                    |
                    |  users:
                    |  - username: [cartman, "ca*"]
@@ -134,8 +161,9 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
-                rule.settings.permittedGroupIds should be(groups)
+                val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+                  UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel))
+                rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")), User.UserIdPattern(userId("ca*")))))
@@ -157,7 +185,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    ${ruleName.name.value}: group1
+                   |    $simpleSyntaxName: group1
                    |
                    |  users:
                    |  - username: cartman
@@ -170,8 +198,9 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
-                rule.settings.permittedGroupIds should be(groups)
+                val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+                  UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel))
+                rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
@@ -193,7 +222,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    ${ruleName.name.value}: group1
+                   |    $simpleSyntaxName: group1
                    |
                    |  users:
                    |  - username: cartman
@@ -209,8 +238,9 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
-                rule.settings.permittedGroupIds should be(groups)
+                val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+                  UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel))
+                rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
                 rule.settings.usersDefinitions.length should be(2)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
@@ -242,7 +272,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    ${ruleName.name.value}: [group1, group2]
+                   |    $simpleSyntaxName: [group1, group2]
                    |
                    |  users:
                    |  - username: cartman
@@ -255,11 +285,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
-                  AlreadyResolved(GroupId("group1").nel),
-                  AlreadyResolved(GroupId("group2").nel)
-                ))
-                rule.settings.permittedGroupIds should be(groups)
+                val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+                  UniqueNonEmptyList.of(
+                    AlreadyResolved(GroupId("group1").nel),
+                    AlreadyResolved(GroupId("group2").nel)
+                  )
+                rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
                 rule.settings.usersDefinitions.length should be(2)
                 val sortedUserDefinitions = rule.settings.usersDefinitions
                 inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
@@ -290,7 +321,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    ${ruleName.name.value}: [group1, "group_@{header:test}"]
+                   |    $simpleSyntaxName: [group1, "group_@{header:test}"]
                    |
                    |  users:
                    |  - username: cartman
@@ -299,9 +330,9 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                rule.settings.permittedGroupIds.permittedGroupIds.size shouldBe 2
-                rule.settings.permittedGroupIds.permittedGroupIds.head should be(AlreadyResolved(GroupId("group1").nel))
-                rule.settings.permittedGroupIds.permittedGroupIds.tail.head shouldBe a[ToBeResolved[_]]
+                rule.settings.permittedGroupsLogic.usedVariables.size shouldBe 2
+                rule.settings.permittedGroupsLogic.usedVariables.head should be(AlreadyResolved(GroupId("group1").nel))
+                rule.settings.permittedGroupsLogic.usedVariables.tail.head shouldBe a[ToBeResolved[_]]
 
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
@@ -327,7 +358,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    ${ruleName.name.value}: [group1*, group2]
+                 |    $simpleSyntaxName: [group1*, group2]
                  |
                  |  users:
                  |  - username: cartman
@@ -364,11 +395,11 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = UniqueNonEmptyList.of(
                 AlreadyResolved(GroupIdLike.from("group1*").nel),
                 AlreadyResolved(GroupId("group2").nel)
-              ))
-              rule.settings.permittedGroupIds should be(groups)
+              )
+              rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
@@ -381,7 +412,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
                 rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
-                  GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
+                  GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
                 )
               }
               inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
@@ -404,7 +435,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    ${ruleName.name.value}: [group1, group2]
+                 |    $simpleSyntaxName: [group1, group2]
                  |
                  |  users:
                  |  - username: cartman
@@ -429,11 +460,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupId("group1").nel),
-                AlreadyResolved(GroupId("group2").nel)
-              ))
-              rule.settings.permittedGroupIds should be(groups)
+              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+                UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupId("group1").nel),
+                  AlreadyResolved(GroupId("group2").nel)
+                )
+              rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SingleRule(rule1), groupMappings)) =>
@@ -461,7 +493,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    ${ruleName.name.value}: [group1, group3]
+                 |    $simpleSyntaxName: [group1, group3]
                  |
                  |  users:
                  |  - username: cartman
@@ -492,11 +524,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupId("group1").nel),
-                AlreadyResolved(GroupId("group3").nel)
-              ))
-              rule.settings.permittedGroupIds should be(groups)
+              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+                UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupId("group1").nel),
+                  AlreadyResolved(GroupId("group3").nel)
+                )
+              rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
               rule.settings.usersDefinitions.length should be(1)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
@@ -512,7 +545,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
                 rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
-                  GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
+                  GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
                 )
               }
             }
@@ -527,7 +560,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    ${ruleName.name.value}: [group1, group3]
+                 |    $simpleSyntaxName: [group1, group3]
                  |
                  |  users:
                  |  - username: cartman
@@ -564,11 +597,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupId("group1").nel),
-                AlreadyResolved(GroupId("group3").nel)
-              ))
-              rule.settings.permittedGroupIds should be(groups)
+              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+                UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupId("group1").nel),
+                  AlreadyResolved(GroupId("group3").nel)
+                )
+              rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
               rule.settings.usersDefinitions.length should be(1)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
@@ -584,7 +618,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
                 rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
-                  GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
+                  GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
                 )
               }
             }
@@ -600,7 +634,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: ["group1"]
+               |    $simpleSyntaxName: ["group1"]
                |
                |  users:
                |  - username: "*"
@@ -613,10 +647,11 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |
                |""".stripMargin,
           assertion = rule => {
-            val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
-              AlreadyResolved(GroupId("group1").nel)
-            ))
-            rule.settings.permittedGroupIds should be(groups)
+            val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+              UniqueNonEmptyList.of(
+                AlreadyResolved(GroupId("group1").nel)
+              )
+            rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions
             inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(r, localGroups)) =>
@@ -649,7 +684,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}:
+               |    $simpleSyntaxName:
                |
                |  users:
                |  - username: cartman
@@ -659,10 +694,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              s"""${ruleName.name.value}: null
-                 |""".stripMargin
-            )))
+            errors.head should be(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `$simpleSyntaxName` requires them.")))
           }
         )
       }
@@ -675,12 +707,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: group1
+               |    $simpleSyntaxName: group1
                |
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ruleName.name.value}` requires them.")))
+            errors.head should be(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `$simpleSyntaxName` requires them.")))
           }
         )
       }
@@ -693,7 +725,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: group1
+               |    $simpleSyntaxName: group1
                |
                |  users:
                |  - username:
@@ -716,7 +748,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: group1
+               |    $simpleSyntaxName: group1
                |
                |  users:
                |  - username: []
@@ -739,7 +771,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: group1
+               |    $simpleSyntaxName: group1
                |
                |  users:
                |  - groups: ["group1", "group3"]
@@ -769,7 +801,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    ${ruleName.name.value}: ["group*"]
+                 |    $simpleSyntaxName: ["group*"]
                  |
                  |  users:
                  |  - username: cartman
@@ -798,7 +830,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}:
+               |    $simpleSyntaxName:
                |
                |  users:
                |  - username: cartman
@@ -821,7 +853,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}:
+               |    $simpleSyntaxName:
                |
                |  users:
                |  - username: cartman
@@ -844,7 +876,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: [group1, group3]
+               |    $simpleSyntaxName: [group1, group3]
                |
                |  users:
                |  - username: cartman
@@ -898,7 +930,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: [group1, group3]
+               |    $simpleSyntaxName: [group1, group3]
                |
                |  users:
                |  - username: cartman
@@ -945,7 +977,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: [group1, group3]
+               |    $simpleSyntaxName: [group1, group3]
                |
                |  users:
                |  - username: cartman
@@ -995,7 +1027,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: [group1, group3]
+               |    $simpleSyntaxName: [group1, group3]
                |
                |  users:
                |  - username: cartman
@@ -1045,7 +1077,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: [group1, group3]
+               |    $simpleSyntaxName: [group1, group3]
                |
                |  users:
                |  - username: cartman
@@ -1096,7 +1128,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    ${ruleName.name.value}: ["group1"]
+             |    $simpleSyntaxName: ["group1"]
              |
              |  users:
              |  - username: cartman
@@ -1124,7 +1156,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    ${ruleName.name.value}: ["group1"]
+             |    $simpleSyntaxName: ["group1"]
              |
              |  users:
              |  - username: cartman
@@ -1172,7 +1204,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    ${ruleName.name.value}:
+             |    $simpleSyntaxName:
              |
              |  users:
              |  - username: cartman
@@ -1213,7 +1245,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    ${ruleName.name.value}:
+             |    $simpleSyntaxName:
              |
              |  users:
              |  - username: cartman
@@ -1263,7 +1295,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    ${ruleName.name.value}: group1
+             |    $simpleSyntaxName: group1
              |
              |  users:
              |  - username: cartman
@@ -1290,7 +1322,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    ${ruleName.name.value}:
+             |    $simpleSyntaxName:
              |
              |  users:
              |  - username: cartman
@@ -1314,7 +1346,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
              |  access_control_rules:
              |
              |  - name: test_block1
-             |    ${ruleName.name.value}: group1
+             |    $simpleSyntaxName: group1
              |
              |  users:
              |  - username: a*
@@ -1328,5 +1360,187 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         }
       )
     }
+  }
+  }
+
+  s"A Combined GroupsRule settings" should {
+    "be able to be loaded from config" when {
+      "a groups mapping is not used" when {
+        "only one group is defined" when {
+          "one, full username is used" in {
+            assertDecodingSuccess(
+              yaml =
+                s"""
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    groups:
+                   |      any_of: ["group3", "group4*"]
+                   |      not_any_of: ["group5", "group6*"]
+                   |
+                   |  users:
+                   |  - username: cartman
+                   |    groups: ["group1", "group3"]
+                   |    auth_key: "cartman:pass"
+                   |
+                   |""".stripMargin,
+              assertion = rule => {
+                val resolvedGroupsLogic = rule.settings.permittedGroupsLogic.resolve(currentUserMetadataRequestBlockContextFrom())
+                val expectedGroupsLogic = GroupsLogic.Combined(
+                  GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"), GroupIdPattern.fromNes(nes("group4*"))))),
+                  GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group5"), GroupIdPattern.fromNes(nes("group6*"))))),
+                )
+                resolvedGroupsLogic should contain(expectedGroupsLogic)
+
+                val permittedGroupsLogic = rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Combined]
+                permittedGroupsLogic.positive.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AnyOf]].groupIds should
+                  be(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group3").nel), AlreadyResolved(GroupIdPattern.fromNes("group4*").nel)))
+                permittedGroupsLogic.negative.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic.NotAnyOf]].groupIds should
+                  be(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group5").nel), AlreadyResolved(GroupIdPattern.fromNes("group6*").nel)))
+
+                rule.settings.usersDefinitions.length should be(1)
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
+                  patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
+                  authRule shouldBe an[AuthKeyRule]
+                  authRule.asInstanceOf[AuthKeyRule].settings should be {
+                    BasicAuthenticationRule.Settings(Credentials(userId("cartman"), PlainTextSecret("pass")))
+                  }
+                }
+              }
+            )
+          }
+        }
+      }
+      "a groups mapping is used" when {
+        "advanced groups mapping with structured groups is used" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 |readonlyrest:
+                 |
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    groups:
+                 |      any_of: ["group3", "group4*"]
+                 |      not_all_of: ["group5", "group6*"]
+                 |
+                 |  users:
+                 |  - username: cartman
+                 |    groups:
+                 |     - local_group:
+                 |         id: group1
+                 |         name: Group 1
+                 |       external_group_ids: ["ldap_group3"]
+                 |     - local_group:
+                 |         id: group2
+                 |         name: Group 2
+                 |       external_group_ids: ["ldap_group4"]
+                 |    auth_key: "cartman:pass"
+                 |    groups_provider_authorization:
+                 |      user_groups_provider: GroupsService1
+                 |      groups: ["ldap_group3", "ldap_group4"]
+                 |
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                 |    ssl_enabled: false
+                 |    users:
+                 |      search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    groups:
+                 |      search_groups_base_DN: "ou=People,dc=example,dc=com"
+                 |
+                 |  user_groups_providers:
+                 |  - name: GroupsService1
+                 |    groups_endpoint: "http://localhost:8080/groups"
+                 |    auth_token_name: "user"
+                 |    auth_token_passed_as: QUERY_PARAM
+                 |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+                 |
+                 |""".stripMargin,
+            assertion = rule => {
+              val permittedGroupsLogic = rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Combined]
+              permittedGroupsLogic.positive.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AnyOf]].groupIds should
+                be(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group3").nel), AlreadyResolved(GroupIdPattern.fromNes("group4*").nel)))
+              permittedGroupsLogic.negative.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic.NotAllOf]].groupIds should
+                be(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group5").nel), AlreadyResolved(GroupIdPattern.fromNes("group6*").nel)))
+
+              rule.settings.usersDefinitions.length should be(1)
+              val sortedUserDefinitions = rule.settings.usersDefinitions
+              inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
+                patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
+                groupMappings should be(GroupMappings.Advanced(UniqueNonEmptyList.of(
+                  Mapping(group("group1", "Group 1"), UniqueNonEmptyList.of(GroupId("ldap_group3"))),
+                  Mapping(group("group2", "Group 2"), UniqueNonEmptyList.of(GroupId("ldap_group4")))
+                )))
+
+                rule1 shouldBe an[AuthKeyRule]
+                rule1.asInstanceOf[AuthKeyRule].settings should be {
+                  BasicAuthenticationRule.Settings(Credentials(userId("cartman"), PlainTextSecret("pass")))
+                }
+                rule2 shouldBe an[ExternalAuthorizationRule]
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
+                  GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
+                )
+              }
+            }
+          )
+        }
+      }
+    }
+  }
+
+  forAll(extendedSyntaxTestParams) { (extendedSyntaxName, creator) =>
+    s"A GroupsRule settings test for $extendedSyntaxName extended syntax" should {
+      "correctly parse and use extended syntax" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    groups:
+               |      $extendedSyntaxName: [group1, "group_@{header:test}"]
+               |
+               |  users:
+               |  - username: cartman
+               |    groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |
+               |""".stripMargin,
+          assertion = rule => {
+            rule.settings.permittedGroupsLogic.usedVariables.size shouldBe 2
+            rule.settings.permittedGroupsLogic.usedVariables.head should be(AlreadyResolved(GroupId("group1").nel))
+            rule.settings.permittedGroupsLogic.usedVariables.tail.head shouldBe a[ToBeResolved[_]]
+
+            rule.settings.usersDefinitions.length should be(1)
+            inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
+              patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
+              localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
+              authRule shouldBe an[AuthKeyRule]
+              authRule.asInstanceOf[AuthKeyRule].settings should be {
+                BasicAuthenticationRule.Settings(Credentials(userId("cartman"), PlainTextSecret("pass")))
+              }
+            }
+          }
+        )
+      }
+    }
+  }
+
+  private def currentUserMetadataRequestBlockContextFrom(update: UserMetadata => UserMetadata = identity,
+                                                         requestContext: MockUserMetadataRequestContext = MockRequestContext.metadata) = {
+    CurrentUserMetadataRequestBlockContext(
+      requestContext,
+      update(UserMetadata.from(requestContext)),
+      syntax.Set.empty,
+      List.empty
+    )
   }
 }

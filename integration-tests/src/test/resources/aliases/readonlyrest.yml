@@ -2,7 +2,7 @@ readonlyrest:
 
   access_control_rules:
 
-    # ES containter initializer need this rule to configure ES instance after startup
+    # ES container initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow
@@ -19,4 +19,3 @@ readonlyrest:
     - name: "dev3 block"
       indices: ["dev3*"]
       auth_key: dev3:test
-

@@ -39,7 +39,7 @@ stages:
   - stage: CVE
     displayName: 'CVE check'
     dependsOn: [ ]
-    condition: ne(variables['Build.Reason'], 'Manual')
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job:
         steps:
@@ -58,7 +58,7 @@ stages:
   - stage: TEST
     displayName: 'Run all tests'
     dependsOn: [ ]
-    condition: ne(variables['Build.Reason'], 'Manual')
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job:
         timeoutInMinutes: 20
@@ -90,6 +90,36 @@ stages:
               ROR_TASK: license
             UNIT:
               ROR_TASK: core_tests
+      - job:
+        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        container: openjdk:22-slim
+        timeoutInMinutes: 120
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es90x:
+              ROR_TASK: integration_es90x
       - job:
         condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
         container: openjdk:22-slim
@@ -150,6 +180,36 @@ stages:
               ROR_TASK: integration_es81x
             IT_es80x:
               ROR_TASK: integration_es80x
+      - job:
+        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        container: openjdk:22-slim
+        timeoutInMinutes: 120
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es90x:
+              ROR_TASK: integration_es90x
       - job:
         condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         container: openjdk:22-slim
@@ -279,6 +339,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(), 
         succeeded('TEST'),
         eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
@@ -307,6 +368,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            BUILD_9xx:
+              ROR_TASK: build_es9xx
             BUILD_8xx:
               ROR_TASK: build_es8xx
             BUILD_7xx:
@@ -318,7 +381,13 @@ stages:
     displayName: 'Determine if this is release run'
     dependsOn:
       - TEST
-    condition: ne(variables['Build.Reason'], 'Manual')
+    condition: |
+      and(
+        succeeded(), 
+        succeeded('TEST'),
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+        ne(variables['Build.Reason'], 'Manual')
+      )
     jobs:
       - job: EXTRACT_IS_RELEASE
         steps:
@@ -337,6 +406,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
@@ -368,6 +438,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            UPLOAD_PRE_9xx:
+              ROR_TASK: upload_pre_es9xx
             UPLOAD_PRE_8xx:
               ROR_TASK: upload_pre_es8xx
             UPLOAD_PRE_7xx:
@@ -382,6 +454,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
@@ -425,6 +498,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            RELEASE_ES_9xx:
+              ROR_TASK: release_es9xx
             RELEASE_ES_8xx:
               ROR_TASK: release_es8xx
             RELEASE_ES_7xx:
@@ -438,6 +513,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(),
         succeeded('TEST'),
         ne(variables.isMaster, true),
         ne(variables['Build.Reason'], 'Manual')
@@ -462,6 +538,7 @@ stages:
       - TEST
     condition: |
       and(
+        succeeded(),
         succeeded('TEST'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
@@ -526,7 +603,7 @@ stages:
   - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
     displayName: 'Publish docker images for specified pre-builds'
     dependsOn: [ ]
-    condition: eq(variables['Build.Reason'], 'Manual')
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: PUBLISH
         displayName: 'Publishing'

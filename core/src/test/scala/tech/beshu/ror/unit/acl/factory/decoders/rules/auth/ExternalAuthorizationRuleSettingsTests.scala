@@ -71,7 +71,7 @@ class ExternalAuthorizationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
+            inside(rule.settings) { case Settings(service, groupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
@@ -87,10 +87,10 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultHeaders = Set.empty,
                 defaultQueryParams = Set.empty
               ))
-              permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
+              groupsLogic should be(
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
               )
-              permittedGroupsLogic.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.AnyOf].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -127,7 +127,7 @@ class ExternalAuthorizationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
+            inside(rule.settings) { case Settings(service, groupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService2"))
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
@@ -143,8 +143,8 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultHeaders = Set.empty,
                 defaultQueryParams = Set.empty
               ))
-              permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
+              groupsLogic should be(
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2")))
             }
@@ -178,7 +178,7 @@ class ExternalAuthorizationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
+            inside(rule.settings) { case Settings(service, groupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
@@ -197,8 +197,8 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultHeaders = Set.empty,
                 defaultQueryParams = Set.empty
               ))
-              permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
+              groupsLogic should be(
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
@@ -229,7 +229,7 @@ class ExternalAuthorizationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
+            inside(rule.settings) { case Settings(service, groupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
@@ -245,8 +245,8 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultHeaders = Set.empty,
                 defaultQueryParams = Set.empty
               ))
-              permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
+              groupsLogic should be(
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
@@ -279,7 +279,7 @@ class ExternalAuthorizationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
+            inside(rule.settings) { case Settings(service, groupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
@@ -295,10 +295,10 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultHeaders = Set.empty,
                 defaultQueryParams = Set.empty
               ))
-              permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
+              groupsLogic should be(
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
               )
-              permittedGroupsLogic.permittedGroupIds.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.AnyOf].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -331,7 +331,7 @@ class ExternalAuthorizationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
+            inside(rule.settings) { case Settings(service, groupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[HttpExternalAuthorizationService]
@@ -347,10 +347,10 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultHeaders = Set.empty,
                 defaultQueryParams = Set.empty
               ))
-              permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
+              groupsLogic should be(
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
               )
-              permittedGroupsLogic.permittedGroupIds.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.AnyOf].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -386,7 +386,7 @@ class ExternalAuthorizationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
+            inside(rule.settings) { case Settings(service, groupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
@@ -406,11 +406,11 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultHeaders = Set(Header(("header1", "hValue1")), Header(("header2", "hValue2"))),
                 defaultQueryParams = Set(QueryParam("query1", "value1"), QueryParam("query2", "value2"))
               ))
-              permittedGroupsLogic should be(GroupsLogic.Or(
-                PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"), GroupIdLike.from("r1")))
+              groupsLogic should be(GroupsLogic.AnyOf(
+                GroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"), GroupIdLike.from("r1")))
               ))
-              permittedGroupsLogic.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
-              permittedGroupsLogic.permittedGroupIds.groupIds.tail.head shouldBe a[GroupId]
+              groupsLogic.asInstanceOf[GroupsLogic.AnyOf].permittedGroupIds.ids.head shouldBe a[GroupIdPattern]
+              groupsLogic.asInstanceOf[GroupsLogic.AnyOf].permittedGroupIds.ids.tail.head shouldBe a[GroupId]
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
           }
@@ -450,7 +450,7 @@ class ExternalAuthorizationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
+            inside(rule.settings) { case Settings(service, groupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service.serviceTimeout.value should be(10 seconds)
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
@@ -470,8 +470,8 @@ class ExternalAuthorizationRuleSettingsTests
                 defaultHeaders = Set(Header(("header1", "hValue1")), Header(("header2", "hValue2"))),
                 defaultQueryParams = Set(QueryParam("query1", "value1"), QueryParam("query2", "value2"))
               ))
-              permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
+              groupsLogic should be(
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
@@ -541,7 +541,7 @@ class ExternalAuthorizationRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "groups_provider_authorization rule requires to define 'groups_or'/'groups' or 'groups_and' arrays"
+              "groups_provider_authorization rule requires to define 'groups_any_of'/'groups_all_of'/'groups_not_any_of'/'groups_not_all_of' arrays"
             )))
           }
         )
