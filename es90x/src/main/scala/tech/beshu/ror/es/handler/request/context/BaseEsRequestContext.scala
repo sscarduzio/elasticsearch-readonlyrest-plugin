@@ -15,20 +15,18 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.es.handler.request.context
+
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
-import squants.information.Information
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Instant
 
@@ -38,7 +36,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override type BLOCK_CONTEXT = B
 
-  private val restRequest = esContext.channel.restRequest
+  override val restRequest = esContext.channel.restRequest
 
   override val rorKibanaSessionId: CorrelationId = esContext.correlationId
 
@@ -53,18 +51,6 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val action: Action = esContext.action
 
-  override lazy val headers: Set[Header] = restRequest.allHeaders
-
-  override lazy val remoteAddress: Option[Address] = restRequest.remoteAddress
-
-  override lazy val localAddress: Address = restRequest.localAddress
-
-  override lazy val method: Method = restRequest.method
-
-  override lazy val uriPath: UriPath = restRequest.path
-
-  override lazy val contentLength: Information = restRequest.contentLength
-
   override lazy val `type`: Type = Type {
     val requestClazz = esContext.actionRequest.getClass
     val simpleName = requestClazz.getSimpleName
@@ -73,8 +59,6 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       case _ => simpleName
     }
   }
-
-  override val content: String = restRequest.content
 
   override lazy val indexAttributes: Set[IndexAttribute] = {
     esContext.actionRequest match {

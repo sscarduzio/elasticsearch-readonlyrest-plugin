@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import cats.implicits.*
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}

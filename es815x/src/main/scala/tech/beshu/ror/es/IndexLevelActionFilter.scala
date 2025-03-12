@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import cats.implicits.*
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
@@ -46,7 +45,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
-import tech.beshu.ror.implicits.*
+
 import java.util.function.Supplier
 
 class IndexLevelActionFilter(nodeName: String,
