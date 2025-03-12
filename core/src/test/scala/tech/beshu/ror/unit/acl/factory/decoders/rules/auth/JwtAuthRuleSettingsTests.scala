@@ -127,7 +127,7 @@ class JwtAuthRuleSettingsTests
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
               rule.settings.jwt.groupsConfig should be(None)
-              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.Or(GroupIds(
+              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.AnyOf(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               ))))
             }
@@ -160,7 +160,7 @@ class JwtAuthRuleSettingsTests
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
               rule.settings.jwt.groupsConfig should be(None)
-              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.And(GroupIds(
+              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.AllOf(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               ))))
             }
@@ -697,7 +697,7 @@ class JwtAuthRuleSettingsTests
           ("roles", "roles_and"),
           ("groups", "groups_and")
         )
-          .foreach { case (groupsOrKey, groupsAndKey) =>
+          .foreach { case (groupsAnyOfKey, groupsAllOfKey) =>
             assertDecodingFailure(
               yaml =
                 s"""
@@ -708,8 +708,8 @@ class JwtAuthRuleSettingsTests
                    |  - name: test_block1
                    |    jwt_auth:
                    |      name: "jwt1"
-                   |      $groupsOrKey: ["group1","group2"]
-                   |      $groupsAndKey: ["group1","group2"]
+                   |      $groupsAnyOfKey: ["group1","group2"]
+                   |      $groupsAllOfKey: ["group1","group2"]
                    |
                    |  jwt:
                    |
@@ -720,7 +720,7 @@ class JwtAuthRuleSettingsTests
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsOrKey' or '$groupsAndKey' for JWT authorization rule 'jwt1'"
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for JWT authorization rule 'jwt1'"
                 )))
               }
             )

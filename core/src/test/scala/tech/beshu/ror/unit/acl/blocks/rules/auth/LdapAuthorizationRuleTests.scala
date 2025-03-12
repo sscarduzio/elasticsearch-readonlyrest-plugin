@@ -68,7 +68,7 @@ class LdapAuthorizationRuleTests
           assertMatchRule(
             settings = ldapAuthorizationRuleSettings(
               ldap = ldapService,
-              groupsLogic = GroupsLogic.Or(GroupIds(
+              groupsLogic = GroupsLogic.AnyOf(GroupIds(
                 UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
               ))
             ),
@@ -90,7 +90,7 @@ class LdapAuthorizationRuleTests
           assertMatchRule(
             settings = ldapAuthorizationRuleSettings(
               ldap = ldapService,
-              groupsLogic = GroupsLogic.Or(GroupIds(
+              groupsLogic = GroupsLogic.AnyOf(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("*3"), GroupIdLike.from("*2"))
               ))
             ),
@@ -114,7 +114,7 @@ class LdapAuthorizationRuleTests
           assertMatchRule(
             settings = ldapAuthorizationRuleSettings(
               ldap = ldapService,
-              groupsLogic = GroupsLogic.And(GroupIds(
+              groupsLogic = GroupsLogic.AllOf(GroupIds(
                 UniqueNonEmptyList.of(GroupId("g2"), GroupId("g1"))
               ))
             ),
@@ -136,7 +136,7 @@ class LdapAuthorizationRuleTests
           assertMatchRule(
             settings = ldapAuthorizationRuleSettings(
               ldap = ldapService,
-              groupsLogic = GroupsLogic.And(GroupIds(
+              groupsLogic = GroupsLogic.AllOf(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("*2"), GroupId("g1"))
               ))
             ),
@@ -230,7 +230,7 @@ class LdapAuthorizationRuleTests
             assertMatchRule(
               settings = ldapAuthorizationRuleSettings(
                 ldap = ldapService,
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
                 ))
               ),
@@ -259,7 +259,7 @@ class LdapAuthorizationRuleTests
         assertNotMatchRule(
           settings = ldapAuthorizationRuleSettings(
             ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-            groupsLogic = GroupsLogic.Or(GroupIds(
+            groupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
             ))
           ),
@@ -275,7 +275,7 @@ class LdapAuthorizationRuleTests
         assertNotMatchRule(
           settings = ldapAuthorizationRuleSettings(
             ldap = ldapService,
-            groupsLogic = GroupsLogic.Or(GroupIds(
+            groupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g2"), GroupId("g1"))
             ))
           ),
@@ -287,7 +287,7 @@ class LdapAuthorizationRuleTests
         assertNotMatchRule(
           settings = ldapAuthorizationRuleSettings(
             ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-            groupsLogic = GroupsLogic.Or(GroupIds(
+            groupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g2"), GroupId("g1"))
             ))
           ),
@@ -303,7 +303,7 @@ class LdapAuthorizationRuleTests
         assertNotMatchRule(
           settings = ldapAuthorizationRuleSettings(
             ldap = ldapService,
-            groupsLogic = GroupsLogic.And(GroupIds(
+            groupsLogic = GroupsLogic.AllOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g2"), GroupIdLike.from("*1"))
             ))
           ),
@@ -399,7 +399,7 @@ class LdapAuthorizationRuleTests
         assertRuleThrown(
           settings = ldapAuthorizationRuleSettings(
             ldap = mockFailedLdapService("service1", TestException("LDAP failed")),
-            groupsLogic = GroupsLogic.Or(GroupIds(
+            groupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g2"), GroupId("g1"))
             ))
           ),
@@ -418,7 +418,7 @@ class LdapAuthorizationRuleTests
             assertNotMatchRule(
               settings = ldapAuthorizationRuleSettings(
                 ldap = ldapService,
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
                 ))
               ),
@@ -440,7 +440,7 @@ class LdapAuthorizationRuleTests
             assertNotMatchRule(
               settings = ldapAuthorizationRuleSettings(
                 ldap = ldapService,
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
                 ))
               ),
@@ -462,7 +462,7 @@ class LdapAuthorizationRuleTests
             assertNotMatchRule(
               settings = ldapAuthorizationRuleSettings(
                 ldap = ldapService,
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
                 ))
               ),
@@ -481,7 +481,7 @@ class LdapAuthorizationRuleTests
             assertNotMatchRule(
               settings = ldapAuthorizationRuleSettings(
                 ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g3"), GroupId("g2"), GroupId("g1"))
                 ))
               ),
