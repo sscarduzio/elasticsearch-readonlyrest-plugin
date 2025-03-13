@@ -64,11 +64,11 @@ final class RorRestRequest(underlying: EsRestRequest) extends RestRequest {
 
   override lazy val remoteAddress: Option[Address] = createAddressFrom(_.getRemoteAddress)
 
-  override lazy val content: String =
+  override val content: String =
     if (underlying.isFullContent) Option(underlying.content()).map(_.utf8ToString()).getOrElse("")
     else ""
 
-  override lazy val contentLength: Information =
+  override val contentLength: Information =
     if (underlying.isFullContent) Bytes(underlying.contentLength())
     else Bytes(0)
 

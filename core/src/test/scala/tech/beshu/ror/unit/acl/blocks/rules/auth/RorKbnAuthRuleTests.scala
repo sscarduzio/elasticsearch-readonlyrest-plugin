@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
-import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
+import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.JwtUtils.*
@@ -436,9 +436,9 @@ class RorKbnAuthRuleTests
                          preferredGroupId: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), CaseSensitivity.Enabled)
-    val requestContext = MockRequestContext.indices.copy(restRequest = MockRestRequest(
-      allHeaders = Set(tokenHeader) ++ preferredGroupId.map(_.toCurrentGroupHeader).toSet
-    ))
+    val requestContext = MockRequestContext.indices.withHeaders(
+      preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
+    )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
       userMetadata = UserMetadata.from(requestContext),

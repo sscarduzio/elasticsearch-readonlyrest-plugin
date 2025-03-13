@@ -100,9 +100,7 @@ class RorKbnAuthYamlLoadedAccessControlTests
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
             .setSubject("test")
             .setClaims(claims)
-          val request = MockRequestContext.indices.copy(
-            restRequest = MockRestRequest(allHeaders = Set(bearerHeader(jwtBuilder)))
-          )
+          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwtBuilder))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -125,11 +123,12 @@ class RorKbnAuthYamlLoadedAccessControlTests
             .setClaims(claims)
           val preferredGroup = group("mapped_viewer_group")
 
-          val request = MockRequestContext.indices.copy(
-            restRequest = MockRestRequest(allHeaders = Set(bearerHeader(jwtBuilder), preferredGroup.id.toCurrentGroupHeader)),
-            allAllowedIndices = Set(clusterIndexName("index2")),
-            filteredIndices = Set(requestedIndex("index2")),
-          )
+          val request = MockRequestContext.indices
+            .withHeaders(bearerHeader(jwtBuilder), preferredGroup.id.toCurrentGroupHeader)
+            .copy(
+              allAllowedIndices = Set(clusterIndexName("index2")),
+              filteredIndices = Set(requestedIndex("index2")),
+            )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 

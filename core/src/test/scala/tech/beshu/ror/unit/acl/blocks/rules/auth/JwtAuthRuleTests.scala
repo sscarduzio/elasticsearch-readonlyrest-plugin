@@ -40,7 +40,7 @@ import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
-import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
+import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -744,8 +744,8 @@ class JwtAuthRuleTests
                          preferredGroup: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups), CaseSensitivity.Enabled)
-    val requestContext = MockRequestContext.indices.copy(
-      restRequest = MockRestRequest(allHeaders = Set(tokenHeader) ++ preferredGroup.map(_.toCurrentGroupHeader).toSet)
+    val requestContext = MockRequestContext.indices.withHeaders(
+      preferredGroup.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,

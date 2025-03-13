@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.{LdapAuthRule, LdapAuthent
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
+import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
@@ -596,9 +596,7 @@ class LdapAuthRuleTests
       authentication = new LdapAuthenticationRule(authenticationSettings, CaseSensitivity.Enabled, impersonation),
       authorization = new LdapAuthorizationRule(authorizationSettings, CaseSensitivity.Enabled, impersonation)
     )
-    val requestContext = MockRequestContext.indices.copy(
-      restRequest = MockRestRequest(allHeaders = headers)
-    )
+    val requestContext = MockRequestContext.indices.withHeaders(headers)
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
       userMetadata = UserMetadata.from(requestContext),

@@ -39,7 +39,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
+import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils.*
@@ -531,9 +531,7 @@ class LdapAuthorizationRuleTests
                          preferredGroupId: Option[GroupId],
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthorizationRule(settings, CaseSensitivity.Enabled, impersonation)
-    val requestContext = MockRequestContext.indices.copy(
-      restRequest = MockRestRequest(allHeaders = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet)
-    )
+    val requestContext = MockRequestContext.indices.withHeaders(preferredGroupId.map(_.toCurrentGroupHeader))
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
       userMetadata = loggedUser match {

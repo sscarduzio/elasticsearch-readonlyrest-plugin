@@ -95,11 +95,12 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
     "kibana index and kibana access rules are used" should {
       "allow to proceed" when {
         "indices monitor request is called" in {
-          val request = MockRequestContext.indices.copy(
-            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("john:dev"))),
-            action = Action("indices:monitor/*"),
-            filteredIndices = Set(requestedIndex(".readonlyrest"))
-          )
+          val request = MockRequestContext.indices
+            .withHeaders(basicAuthHeader("john:dev"))
+            .copy(
+              action = Action("indices:monitor/*"),
+              filteredIndices = Set(requestedIndex(".readonlyrest"))
+            )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -215,11 +216,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
     }
     "kibana index and kibana access rules are used (when current user metadata request was called first)" should {
       "allow to proceed" in {
-        val loginRequest = MockRequestContext.metadata.copy(
-          restRequest = MockRestRequest(
-            allHeaders = Set(basicAuthHeader("admin:dev")),
-          )
-        )
+        val loginRequest = MockRequestContext.metadata.withHeaders(basicAuthHeader("admin:dev"))
 
         val loginResult = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
 

@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
-import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
+import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -192,9 +192,7 @@ class KibanaUserDataRuleTests
   }
 
   private def checkRule(rule: KibanaUserDataRule): BlockContext = {
-    val requestContext = MockRequestContext.indices.copy(
-      restRequest = MockRestRequest(allHeaders = Set(currentGroupHeader("mygroup")))
-    )
+    val requestContext = MockRequestContext.indices.withHeaders(currentGroupHeader("mygroup"))
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
       userMetadata = UserMetadata

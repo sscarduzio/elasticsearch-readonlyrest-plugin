@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.MockOnce
 import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.ResolveResult.{ResolvedIps, Unresolvable}
-import tech.beshu.ror.mocks.{MockHostnameResolver, MockRequestContext, MockRestRequest}
+import tech.beshu.ror.mocks.{MockHostnameResolver, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils.*
@@ -151,9 +151,7 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
                          isMatched: Boolean) = {
     val rule = new XForwardedForRule(settings, hostnameResolver)
     val requestContext = xForwardedForHeaderValue match {
-      case Some(value) => MockRequestContext.indices.copy(
-        restRequest = MockRestRequest(allHeaders = Set(headerFrom("X-Forwarded-For" -> value)))
-      )
+      case Some(value) => MockRequestContext.indices.withHeaders(headerFrom("X-Forwarded-For" -> value))
       case None => MockRequestContext.indices
     }
     val blockContext = CurrentUserMetadataRequestBlockContext(

@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
+import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.*
@@ -129,10 +129,9 @@ class GroupsRuleAccessControlTests
   "An ACL" when {
     "auth_key is used with local groups" should {
       "allow when authorization satisfies all groups" in {
-        val request = MockRequestContext.indices.copy(
-          restRequest = MockRestRequest(allHeaders = Set(header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes)))),
-          filteredIndices = Set(requestedIndex("g34_index"))
-        )
+        val request = MockRequestContext.indices
+          .withHeaders(header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes)))
+          .copy(filteredIndices = Set(requestedIndex("g34_index")))
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 1
         inside (result.result) {
@@ -145,11 +144,12 @@ class GroupsRuleAccessControlTests
     "proxy auth is used together with groups" should {
       "allow to proceed" when {
         "proxy auth user is correct one" in {
-          val request = MockRequestContext.indices.copy(
-            restRequest = MockRestRequest(allHeaders = Set(header("X-Auth-Token", "user1-proxy-id"))),
-            filteredIndices = Set(requestedIndex("g12_index")),
-            allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
-          )
+          val request = MockRequestContext.indices
+            .withHeaders(header("X-Auth-Token", "user1-proxy-id"))
+            .copy(
+              filteredIndices = Set(requestedIndex("g12_index")),
+              allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+            )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 2
           inside(result.result) { case Allow(blockContext, _) =>
@@ -160,11 +160,12 @@ class GroupsRuleAccessControlTests
       }
       "not allow to proceed" when {
         "proxy auth user is unknown" in {
-          val request = MockRequestContext.indices.copy(
-            restRequest = MockRestRequest(allHeaders = Set(header("X-Auth-Token", "user1-invalid"))),
-            filteredIndices = Set(requestedIndex("g12_index")),
-            allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
-          )
+          val request = MockRequestContext.indices
+            .withHeaders(header("X-Auth-Token", "user1-invalid"))
+            .copy(
+              filteredIndices = Set(requestedIndex("g12_index")),
+              allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+            )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 5
           inside(result.result) { case ForbiddenByMismatched(_) =>
@@ -179,11 +180,12 @@ class GroupsRuleAccessControlTests
             "userId" := "user3",
             "roles" := List("group5", "group6", "group7")
           ))
-          val request = MockRequestContext.indices.copy(
-            restRequest = MockRestRequest(allHeaders = Set(bearerHeader(jwt))),
-            filteredIndices = Set(requestedIndex("g*")),
-            allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
-          )
+          val request = MockRequestContext.indices
+            .withHeaders(bearerHeader(jwt))
+            .copy(
+              filteredIndices = Set(requestedIndex("g*")),
+              allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+            )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 4
           inside(result.result) { case Allow(blockContext, _) =>
@@ -196,11 +198,12 @@ class GroupsRuleAccessControlTests
     "ldap auth with groups mapping is used together with groups" should {
       "allow to proceed" when {
         "user can be authenticated and authorized (externally and locally)" in {
-          val request = MockRequestContext.indices.copy(
-            restRequest = MockRestRequest(allHeaders = Set(basicAuthHeader("morgan:user1"), currentGroupHeader( "admin"))),
-            filteredIndices = Set(requestedIndex(".kibana")),
-            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
-          )
+          val request = MockRequestContext.indices
+            .withHeaders(basicAuthHeader("morgan:user1"), currentGroupHeader( "admin"))
+            .copy(
+              filteredIndices = Set(requestedIndex(".kibana")),
+              allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
+            )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 5
           inside(result.result) { case Allow(blockContext, _) =>

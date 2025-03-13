@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
-import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
+import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.header
 
@@ -60,10 +60,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       "is passed using lower cases" in {
         val auditSinkService = new MockedAuditSinkService()
         val acl = auditedAcl(auditSinkService)
-        val request = MockRequestContext.indices.copy(restRequest = MockRestRequest(allHeaders = Set(
-          header("x-forwarded-for", "192.168.0.1"),
-          header("custom-one", "test")
-        )))
+        val request = MockRequestContext.indices.withHeaders(
+          header("x-forwarded-for", "192.168.0.1"), header("custom-one", "test")
+        )
 
         acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -97,10 +96,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       "is passed normally" in {
         val auditSinkService = new MockedAuditSinkService()
         val acl = auditedAcl(auditSinkService)
-        val request = MockRequestContext.indices.copy(restRequest = MockRestRequest(allHeaders = Set(
-          header("X-Forwarded-For", "192.168.0.1"),
-          header("Custom-One", "test")
-        )))
+        val request = MockRequestContext.indices.withHeaders(
+          header("X-Forwarded-For", "192.168.0.1"), header("Custom-One", "test")
+        )
 
         acl.handleRegularRequest(request).runSyncUnsafe()
 
