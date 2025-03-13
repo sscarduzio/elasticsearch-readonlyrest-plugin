@@ -105,7 +105,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
   )
 
   def withHeaders(header: Header, headers: Header*): MockGeneralIndexRequestContext = {
-    withHeaders(headers :+ header)
+    withHeaders(header :: headers.toList)
   }
 
   def withHeaders(headers: Iterable[Header]): MockGeneralIndexRequestContext = {
@@ -190,8 +190,13 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
   )
 
   def withHeaders(header: Header, headers: Header*): MockSearchRequestContext = {
-    this.copy(restRequest = this.restRequest.copy(allHeaders = Set(headers :+ header: _*)))
+    withHeaders(header :: headers.toList)
   }
+
+  def withHeaders(headers: Iterable[Header]): MockSearchRequestContext = {
+    this.copy(restRequest = this.restRequest.copy(allHeaders = headers.toCovariantSet))
+  }
+
 }
 
 final case class MockRepositoriesRequestContext(override val timestamp: Instant,
@@ -289,8 +294,13 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
   )
 
   def withHeaders(header: Header, headers: Header*): MockUserMetadataRequestContext = {
-    this.copy(restRequest = this.restRequest.copy(allHeaders = Set(headers :+ header: _*)))
+    withHeaders(header :: headers.toList)
   }
+
+  def withHeaders(headers: Iterable[Header]): MockUserMetadataRequestContext = {
+    this.copy(restRequest = this.restRequest.copy(allHeaders = headers.toCovariantSet))
+  }
+
 }
 
 final case class MockTemplateRequestContext(override val timestamp: Instant,
