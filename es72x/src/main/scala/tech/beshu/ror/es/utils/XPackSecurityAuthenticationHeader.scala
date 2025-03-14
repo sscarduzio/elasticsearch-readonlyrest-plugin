@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.utils
 
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.Version
 import org.elasticsearch.common.bytes.BytesReference

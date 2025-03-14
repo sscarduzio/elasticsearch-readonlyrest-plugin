@@ -17,9 +17,9 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.collect.ImmutableOpenMap
-import tech.beshu.ror.syntax.*
 
 import scala.jdk.CollectionConverters.*
+import tech.beshu.ror.syntax.*
 
 object EsCollectionsScalaUtils {
 

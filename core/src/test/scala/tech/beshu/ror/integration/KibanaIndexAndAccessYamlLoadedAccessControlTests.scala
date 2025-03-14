@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.integration
-
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -29,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -97,11 +95,12 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
     "kibana index and kibana access rules are used" should {
       "allow to proceed" when {
         "indices monitor request is called" in {
-          val request = MockRequestContext.indices.copy(
-            headers = Set(basicAuthHeader("john:dev")),
-            action = Action("indices:monitor/*"),
-            filteredIndices = Set(requestedIndex(".readonlyrest"))
-          )
+          val request = MockRequestContext.indices
+            .withHeaders(basicAuthHeader("john:dev"))
+            .copy(
+              action = Action("indices:monitor/*"),
+              filteredIndices = Set(requestedIndex(".readonlyrest"))
+            )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -119,9 +118,11 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
         }
         "component template creation request is called (in case of `admin` kibana access)" in {
           val request = MockRequestContext.nonIndices.copy(
-            headers = Set(basicAuthHeader("john:dev")),
+            restRequest = MockRestRequest(
+              allHeaders = Set(basicAuthHeader("john:dev")),
+              path = UriPath.from("/_component_template/test")
+            ),
             action = Action("cluster:admin/component_template/put"),
-            uriPath = UriPath.from("/_component_template/test")
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -139,9 +140,11 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
         }
         "component template creation request is called (in case of `rw` kibana access)" in {
           val request = MockRequestContext.nonIndices.copy(
-            headers = Set(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
+            restRequest = MockRestRequest(
+              allHeaders = Set(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
+              path = UriPath.from("/_component_template/test")
+            ),
             action = Action("cluster:admin/component_template/put"),
-            uriPath = UriPath.from("/_component_template/test")
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -161,9 +164,11 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
         }
         "index template creation request is called (in case of `admin` kibana access)" in {
           val request = MockRequestContext.nonIndices.copy(
-            headers = Set(basicAuthHeader("john:dev")),
+            restRequest = MockRestRequest(
+              allHeaders = Set(basicAuthHeader("john:dev")),
+              path = UriPath.from("/_component_template/test")
+            ),
             action = Action("cluster:admin/component_template/put"),
-            uriPath = UriPath.from("/_component_template/test")
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -184,9 +189,10 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
     "kibana index and kibana access rules are used (but the index one is behind the access one)" should {
       "allow to proceed" in {
         val request = MockRequestContext.indices.copy(
-          headers = Set(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
-          uriPath = UriPath.from("/.kibana_ror_custom/_doc/dashboard:d3d40550-b889-11eb-a1e1-914af9365d47"),
-          method = Method.PUT,
+          restRequest = MockRestRequest(
+            allHeaders = Set(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
+            path = UriPath.from("/.kibana_ror_custom/_doc/dashboard:d3d40550-b889-11eb-a1e1-914af9365d47"),
+          ),
           action = Action("indices:data/write/index"),
           filteredIndices = Set(requestedIndex(".kibana_ror_custom"))
         )
@@ -210,9 +216,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
     }
     "kibana index and kibana access rules are used (when current user metadata request was called first)" should {
       "allow to proceed" in {
-        val loginRequest = MockRequestContext.metadata.copy(
-          headers = Set(basicAuthHeader("admin:dev"))
-        )
+        val loginRequest = MockRequestContext.metadata.withHeaders(basicAuthHeader("admin:dev"))
 
         val loginResult = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
 
@@ -235,12 +239,11 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
         }
 
         val request = MockRequestContext.indices.copy(
-          headers = Set(
-            basicAuthHeader("admin:dev"),
-            currentGroupHeader("Administrators")
+          restRequest = MockRestRequest(
+            method = Method.PUT,
+            allHeaders = Set(basicAuthHeader("admin:dev"), currentGroupHeader("Administrators")),
+            path = UriPath.from("/.kibana_admins/_create/index-pattern:3b2fa1b0-bcb2-11eb-a20e-8daf1d07a2b2")
           ),
-          uriPath = UriPath.from("/.kibana_admins/_create/index-pattern:3b2fa1b0-bcb2-11eb-a20e-8daf1d07a2b2"),
-          method = Method.PUT,
           action = Action("indices:data/write/index"),
           filteredIndices = Set(requestedIndex(".kibana_admins"))
         )

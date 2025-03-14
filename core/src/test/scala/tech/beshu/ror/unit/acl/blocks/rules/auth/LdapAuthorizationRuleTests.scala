@@ -531,9 +531,7 @@ class LdapAuthorizationRuleTests
                          preferredGroupId: Option[GroupId],
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthorizationRule(settings, CaseSensitivity.Enabled, impersonation)
-    val requestContext = MockRequestContext.indices.copy(
-      headers = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet
-    )
+    val requestContext = MockRequestContext.indices.withHeaders(preferredGroupId.map(_.toCurrentGroupHeader))
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
       userMetadata = loggedUser match {

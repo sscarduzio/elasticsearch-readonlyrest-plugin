@@ -23,7 +23,6 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allow, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class ActionYamlLoadedAccessControlTest extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 

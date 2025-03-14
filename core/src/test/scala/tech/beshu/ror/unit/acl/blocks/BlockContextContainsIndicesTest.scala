@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.acl.blocks
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{HasIndexPacks, HasIndices}
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class BlockContextContainsIndicesTest extends AnyWordSpec {
 

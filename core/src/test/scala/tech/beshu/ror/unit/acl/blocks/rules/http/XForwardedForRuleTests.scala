@@ -151,10 +151,15 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
                          isMatched: Boolean) = {
     val rule = new XForwardedForRule(settings, hostnameResolver)
     val requestContext = xForwardedForHeaderValue match {
-      case Some(value) => MockRequestContext.indices.copy(headers = Set(headerFrom("X-Forwarded-For" -> value)))
+      case Some(value) => MockRequestContext.indices.withHeaders(headerFrom("X-Forwarded-For" -> value))
       case None => MockRequestContext.indices
     }
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+    val blockContext = CurrentUserMetadataRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.empty,
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
+    )
     rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()

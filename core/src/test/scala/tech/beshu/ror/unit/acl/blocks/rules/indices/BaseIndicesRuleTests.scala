@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.NonEmptySet
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
@@ -41,7 +40,7 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWi
 import tech.beshu.ror.accesscontrol.domain.Template.{ComponentTemplate, IndexTemplate, LegacyTemplate}
 import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
-import tech.beshu.ror.mocks.{MockFilterableMultiRequestContext, MockGeneralIndexRequestContext, MockRequestContext, MockTemplateRequestContext}
+import tech.beshu.ror.mocks.{MockFilterableMultiRequestContext, MockGeneralIndexRequestContext, MockRequestContext, MockRestRequest, MockTemplateRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, fullDataStreamName, fullIndexName, fullLocalIndexWithAliases, indexPattern, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -135,9 +134,9 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
     )
     val requestContext = modifyRequestContext apply MockRequestContext.filterableMulti
       .copy(
+        restRequest = MockRestRequest(method = Method.POST),
         indexPacks = indexPacks,
         action = Action("indices:data/read/mget"),
-        method = Method.POST,
         allIndicesAndAliases = Set(
           fullLocalIndexWithAliases(fullIndexName("test1"), Set.empty),
           fullLocalIndexWithAliases(fullIndexName("test2"), Set.empty),

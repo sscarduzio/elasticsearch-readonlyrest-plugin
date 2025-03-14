@@ -46,7 +46,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -139,10 +139,10 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
                  blockContextAssertion: Option[BlockContext => Unit],
                  caseSensitivity: CaseSensitivity): Unit = {
     val rule = createRule(settings, caseSensitivity)
-    val requestContext = MockRequestContext.metadata.copy(
-      headers = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
-      uriPath = UriPath.auditEventPath,
-    )
+    val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(
+      allHeaders = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
+      path = UriPath.auditEventPath
+    ))
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,
       loggedUser match {
@@ -186,7 +186,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       )(blockContext)
     }
 
-  protected def createVariable[T: Convertible](text: NonEmptyString) = {
+  protected def createVariable[T: Convertible](text: NonEmptyString): Either[RuntimeResolvableVariableCreator.CreationError, RuntimeMultiResolvableVariable[T]] = {
     variableCreator.createMultiResolvableVariableFrom[T](text)
   }
 

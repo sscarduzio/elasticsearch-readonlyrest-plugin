@@ -69,7 +69,8 @@ object RorSessionCookie extends Logging {
 
   private def extractRorHttpCookie(context: RequestContext) = {
     context
-      .headers
+      .restRequest
+      .allHeaders
       .find(_.name === Header.Name.cookie)
       .flatMap(h => parseCookie(h.value.value))
       .flatMap(_.find(_.getName === rorCookieName))

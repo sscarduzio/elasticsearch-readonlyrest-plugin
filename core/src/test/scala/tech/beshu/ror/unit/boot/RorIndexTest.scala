@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.boot
 
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

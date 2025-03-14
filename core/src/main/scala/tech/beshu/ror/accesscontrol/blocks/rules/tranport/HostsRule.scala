@@ -53,7 +53,7 @@ class HostsRule(val settings: Settings,
   }
 
   private def checkRemoteAddress[B <: BlockContext](blockContext: B): Task[RuleResult[B]] = {
-    blockContext.requestContext.remoteAddress match {
+    blockContext.requestContext.restRequest.remoteAddress match {
       case Some(remoteAddress) =>
         checkAllowedAddresses(blockContext)(
           allowedAddresses = settings.allowedHosts,

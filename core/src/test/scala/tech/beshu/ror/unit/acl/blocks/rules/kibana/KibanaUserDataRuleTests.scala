@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -193,9 +192,7 @@ class KibanaUserDataRuleTests
   }
 
   private def checkRule(rule: KibanaUserDataRule): BlockContext = {
-    val requestContext = MockRequestContext.indices.copy(
-      headers = Set(currentGroupHeader("mygroup"))
-    )
+    val requestContext = MockRequestContext.indices.withHeaders(currentGroupHeader("mygroup"))
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
       userMetadata = UserMetadata

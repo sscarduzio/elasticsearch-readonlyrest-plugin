@@ -26,10 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.orders.*
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class MethodsRuleTests extends AnyWordSpec with MockFactory {
 
@@ -66,9 +65,16 @@ class MethodsRuleTests extends AnyWordSpec with MockFactory {
 
   private def assertRule(configuredMethods: NonEmptySet[Method], requestMethod: Method, isMatched: Boolean) = {
     val rule = new MethodsRule(MethodsRule.Settings(configuredMethods))
+    val restRequest = mock[RestRequest]
+    (() => restRequest.method).expects().returning(requestMethod)
     val requestContext = mock[RequestContext]
-    (() => requestContext.method).expects().returning(requestMethod)
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+    (() => requestContext.restRequest).expects().returning(restRequest)
+    val blockContext = CurrentUserMetadataRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.empty,
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
+    )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()

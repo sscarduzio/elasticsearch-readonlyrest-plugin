@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -220,7 +219,7 @@ class TokenAuthenticationRuleTests
                          headers: Set[Header],
                          assertionType: AssertionType): Unit = {
     val rule = new TokenAuthenticationRule(settings, CaseSensitivity.Enabled, impersonation)
-    val requestContext = MockRequestContext.metadata.copy(headers = headers)
+    val requestContext = MockRequestContext.indices.withHeaders(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext = requestContext,
       userMetadata = UserMetadata.from(requestContext),

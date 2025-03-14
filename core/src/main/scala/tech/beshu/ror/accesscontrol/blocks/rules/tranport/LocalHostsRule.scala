@@ -34,7 +34,7 @@ class LocalHostsRule(val settings: Settings,
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     checkAllowedAddresses(blockContext)(
       allowedAddresses = settings.allowedAddresses,
-      addressToCheck = blockContext.requestContext.localAddress
+      addressToCheck = blockContext.requestContext.restRequest.localAddress
     ).map(condition => RuleResult.resultBasedOnCondition(blockContext)(condition))
   }
 

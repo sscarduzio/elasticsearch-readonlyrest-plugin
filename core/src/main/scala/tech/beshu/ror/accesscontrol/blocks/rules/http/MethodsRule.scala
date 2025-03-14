@@ -36,7 +36,7 @@ class MethodsRule(val settings: Settings)
    */
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.resultBasedOnCondition(blockContext) {
-      settings.methods.contains(blockContext.requestContext.method)
+      settings.methods.contains(blockContext.requestContext.restRequest.method)
     }
   }
 }

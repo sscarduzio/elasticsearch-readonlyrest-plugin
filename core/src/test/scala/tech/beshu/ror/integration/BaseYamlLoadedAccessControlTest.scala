@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration
 
 import cats.implicits.*
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider

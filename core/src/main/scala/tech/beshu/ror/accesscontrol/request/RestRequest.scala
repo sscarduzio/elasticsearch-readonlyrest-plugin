@@ -14,23 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.handler.request
+package tech.beshu.ror.accesscontrol.request
 
-import org.elasticsearch.rest.RestRequest
-import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.syntax.*
+import squants.information.Information
+import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
+import tech.beshu.ror.syntax.Set
 
-import scala.jdk.CollectionConverters.*
+trait RestRequest {
+  def method: Method
+  def path: UriPath
 
-object RestRequestOps {
-  implicit class HeadersOps(val request: RestRequest) extends AnyVal {
-    def allHeaders(): Set[Header] = Header.fromRawHeaders(
-      request
-        .getHeaders.asScala
-        .view
-        .mapValues(_.asScala.toList)
-        .toMap
-    )
-  }
+  def allHeaders: Set[Header]
+
+  def localAddress: Address
+  def remoteAddress: Option[Address]
+
+  def content: String
+  def contentLength: Information
 }
-

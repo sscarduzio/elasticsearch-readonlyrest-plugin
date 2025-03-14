@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.integration
-
-import eu.timepit.refined.auto.*
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -27,7 +25,6 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -128,9 +125,7 @@ class CurrentGroupHandlingAccessControlTests
   "An ACL" should {
     "handle properly login request and change tenancy request" when {
       "groups rule with auth_key is used" in {
-        val loginRequest = MockRequestContext.metadata.copy(
-          headers = Set(basicAuthHeader("user1:pass"))
-        )
+        val loginRequest = MockRequestContext.metadata.withHeaders(basicAuthHeader("user1:pass"))
         val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1"))))
@@ -138,8 +133,8 @@ class CurrentGroupHandlingAccessControlTests
           userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
         }
 
-        val switchTenancyRequest = MockRequestContext.metadata.copy(
-          headers = Set(basicAuthHeader("user1:pass"), currentGroupHeader("group3"))
+        val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
+          basicAuthHeader("user1:pass"), currentGroupHeader("group3")
         )
         val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
@@ -154,9 +149,7 @@ class CurrentGroupHandlingAccessControlTests
           "user" := "user2",
           "groups" := List("kbn_group1", "kbn_group2", "kbn_group3")
         ))
-        val loginRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt))
-        )
+        val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
@@ -164,8 +157,8 @@ class CurrentGroupHandlingAccessControlTests
           userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
         }
 
-        val switchTenancyRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt), currentGroupHeader("group3"))
+        val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
+          bearerHeader(jwt), currentGroupHeader("group3")
         )
         val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
@@ -180,9 +173,7 @@ class CurrentGroupHandlingAccessControlTests
             "user" := "user3",
             "groups" := List("group1", "group3")
           ))
-        val loginRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt))
-        )
+        val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3"))))
@@ -190,8 +181,8 @@ class CurrentGroupHandlingAccessControlTests
           userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
         }
 
-        val switchTenancyRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt), currentGroupHeader("group3"))
+        val switchTenancyRequest = MockRequestContext.metadata
+          .withHeaders(bearerHeader(jwt), currentGroupHeader("group3")
         )
         val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
@@ -206,9 +197,7 @@ class CurrentGroupHandlingAccessControlTests
             "user" := "user4",
             "groups" := List("group1", "group2", "group3")
           ))
-        val loginRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt))
-        )
+        val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
@@ -216,8 +205,8 @@ class CurrentGroupHandlingAccessControlTests
           userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
         }
 
-        val switchTenancyRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt), currentGroupHeader("group3"))
+        val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
+          bearerHeader(jwt), currentGroupHeader("group3")
         )
         val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
@@ -232,9 +221,7 @@ class CurrentGroupHandlingAccessControlTests
             "user" := "user5",
             "groups" := List("jwt_group1", "jwt_group2", "jwt_group3")
           ))
-        val loginRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt))
-        )
+        val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
@@ -242,8 +229,8 @@ class CurrentGroupHandlingAccessControlTests
           userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
         }
 
-        val switchTenancyRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt), currentGroupHeader("group3"))
+        val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
+          bearerHeader(jwt), currentGroupHeader("group3")
         )
         val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
@@ -258,9 +245,7 @@ class CurrentGroupHandlingAccessControlTests
             "user" := "user6",
             "groups" := List("group1", "group3")
           ))
-        val loginRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt))
-        )
+        val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
@@ -268,8 +253,8 @@ class CurrentGroupHandlingAccessControlTests
           userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
         }
 
-        val switchTenancyRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt), currentGroupHeader("group3"))
+        val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
+          bearerHeader(jwt), currentGroupHeader("group3")
         )
         val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
@@ -284,9 +269,7 @@ class CurrentGroupHandlingAccessControlTests
             "user" := "user7",
             "groups" := List("group1", "group2", "group3")
           ))
-        val loginRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt))
-        )
+        val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user7"))))
@@ -294,8 +277,8 @@ class CurrentGroupHandlingAccessControlTests
           userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
         }
 
-        val switchTenancyRequest = MockRequestContext.metadata.copy(
-          headers = Set(bearerHeader(jwt), currentGroupHeader("group3"))
+        val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
+          bearerHeader(jwt), currentGroupHeader("group3")
         )
         val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>

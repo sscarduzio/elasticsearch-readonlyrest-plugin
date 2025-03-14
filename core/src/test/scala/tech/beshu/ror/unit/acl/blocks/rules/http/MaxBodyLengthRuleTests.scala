@@ -25,9 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataReque
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class MaxBodyLengthRuleTests extends AnyWordSpec with MockFactory {
 
@@ -70,9 +69,16 @@ class MaxBodyLengthRuleTests extends AnyWordSpec with MockFactory {
 
   private def assertRule(configuredMaxContentLength: Information, body: String, isMatched: Boolean) = {
     val rule = new MaxBodyLengthRule(MaxBodyLengthRule.Settings(configuredMaxContentLength))
+    val restRequest = mock[RestRequest]
+    (() => restRequest.contentLength).expects().returning(Bytes(body.length))
     val requestContext = mock[RequestContext]
-    (() => requestContext.contentLength).expects().returning(Bytes(body.length))
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+    (() => requestContext.restRequest).expects().returning(restRequest)
+    val blockContext = CurrentUserMetadataRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.empty,
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
+    )
     rule.check(blockContext).runSyncStep shouldBe Right{
       if (isMatched) Fulfilled(blockContext)
       else Rejected()
