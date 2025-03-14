@@ -19,6 +19,7 @@ package tech.beshu.ror.es.handler.request.context
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
+import org.elasticsearch.action.support.IndicesOptions.WildcardStates
 import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
