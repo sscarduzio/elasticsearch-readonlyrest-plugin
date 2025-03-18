@@ -78,7 +78,10 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   private def onForbidden(requestContext: RequestContext, causes: NonEmptySet[ForbiddenCause]): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(ForbiddenResponse.create(
-      ForbiddenResponseContext.from(causes.toNonEmptyList, engine.core.accessControl.staticContext)
+      ForbiddenResponseContext.from(
+        causes.toNonEmptyList.map(ForbiddenResponseContext.Cause.fromMismatchedCause),
+        engine.core.accessControl.staticContext
+      )
     ))
   }
 
