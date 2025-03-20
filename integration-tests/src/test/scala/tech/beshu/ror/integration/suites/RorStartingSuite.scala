@@ -131,7 +131,7 @@ class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
           .responseJson("error")
           .obj("root_cause")
           .arr.exists { json =>
-          json("reason").str == "forbidden" &&
+          json("reason").str == "Forbidden by ReadonlyREST" &&
             json("due_to").str == "READONLYREST_NOT_READY_YET"
         }
       }

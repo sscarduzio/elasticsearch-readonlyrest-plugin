@@ -156,7 +156,7 @@ trait BaseIndexApiSuite
           val response = dev9IndexManager.getIndex("index9")
 
           response should have statusCode forbiddenStatusReturned
-          response.responseJson should be(forbiddenByBlockResponse("forbidden"))
+          response.responseJson should be(forbiddenByBlockResponse("Forbidden by ReadonlyREST"))
         }
         "custom forbidden response for block configured" in {
           val response = dev10IndexManager.getIndex("index10")

@@ -111,7 +111,7 @@ class RegularRequestHandler(engine: Engine,
   private def onForbidden(requestContext: RequestContext, causes: NonEmptyList[ForbiddenResponseContext.Cause]): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(ForbiddenResponse.create(
-      ForbiddenResponseContext.create(causes, engine.core.accessControl.staticContext)
+      ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext)
     ))
   }
 

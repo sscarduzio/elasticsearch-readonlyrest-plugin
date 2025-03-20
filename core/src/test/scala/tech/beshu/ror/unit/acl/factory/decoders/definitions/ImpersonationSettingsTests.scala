@@ -35,7 +35,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
   new ImpersonationDefinitionsDecoderCreator(
     GlobalSettings(
       showBasicAuthPrompt = true,
-      forbiddenRequestMessage = "forbidden",
+      forbiddenRequestMessage = "Forbidden by ReadonlyREST",
       flsEngine = FlsEngine.ES,
       configurationIndex = RorConfigurationIndex(fullIndexName(".readonlyrest")),
       userIdCaseSensitivity = CaseSensitivity.Enabled

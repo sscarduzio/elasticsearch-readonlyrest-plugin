@@ -1198,12 +1198,12 @@ trait BaseAdminApiSuite
         |    "root_cause":[
         |      {
         |        "type":"forbidden_response",
-        |        "reason":"forbidden",
+        |        "reason":"Forbidden by ReadonlyREST",
         |        "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
         |      }
         |    ],
         |    "type":"forbidden_response",
-        |    "reason":"forbidden",
+        |    "reason":"Forbidden by ReadonlyREST",
         |    "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
         |  },
         |  "status":403
@@ -1268,12 +1268,12 @@ trait BaseAdminApiSuite
         |    "root_cause":[
         |      {
         |        "type":"forbidden_response",
-        |        "reason":"forbidden",
+        |        "reason":"Forbidden by ReadonlyREST",
         |        "due_to":"OPERATION_NOT_ALLOWED"
         |      }
         |    ],
         |  "type":"forbidden_response",
-        |  "reason":"forbidden",
+        |  "reason":"Forbidden by ReadonlyREST",
         |  "due_to":"OPERATION_NOT_ALLOWED"
         |  },
         |  "status":403
@@ -1291,12 +1291,12 @@ trait BaseAdminApiSuite
         |    "root_cause":[
         |      {
         |        "type":"forbidden_response",
-        |        "reason":"forbidden",
+        |        "reason":"Forbidden by ReadonlyREST",
         |        "due_to":"IMPERSONATION_NOT_ALLOWED"
         |      }
         |    ],
         |  "type":"forbidden_response",
-        |  "reason":"forbidden",
+        |  "reason":"Forbidden by ReadonlyREST",
         |  "due_to":"IMPERSONATION_NOT_ALLOWED"
         |  },
         |  "status":403
