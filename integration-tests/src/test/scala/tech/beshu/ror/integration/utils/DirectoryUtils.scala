@@ -16,11 +16,29 @@
  */
 package tech.beshu.ror.integration.utils
 
+import java.io.IOException
+import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
 
-object DirectoryHashCalculator {
+object DirectoryUtils {
+
+  def clean(dir: Path): Unit = {
+    if (dir.toFile.exists()) {
+      Files.walkFileTree(dir, new java.nio.file.SimpleFileVisitor[java.nio.file.Path]() {
+        override def visitFile(file: java.nio.file.Path, attrs: BasicFileAttributes): java.nio.file.FileVisitResult = {
+          Files.delete(file)
+          java.nio.file.FileVisitResult.CONTINUE
+        }
+
+        override def postVisitDirectory(dir: java.nio.file.Path, exc: IOException): java.nio.file.FileVisitResult = {
+          Files.delete(dir)
+          java.nio.file.FileVisitResult.CONTINUE
+        }
+      })
+    }
+  }
 
   def calculateHash(dir: Path): String = {
     val digest = MessageDigest.getInstance("SHA-256")

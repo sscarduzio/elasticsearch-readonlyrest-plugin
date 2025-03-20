@@ -25,7 +25,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers.include
 import org.scalatest.matchers.should.Matchers.{equal, should, shouldNot}
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.utils.{DirectoryHashCalculator, ESVersionSupportForAnyWordSpecLike}
+import tech.beshu.ror.integration.utils.{DirectoryUtils, ESVersionSupportForAnyWordSpecLike}
 import tech.beshu.ror.tools.RorToolsAppHandler
 import tech.beshu.ror.tools.RorToolsAppHandler.Result
 import tech.beshu.ror.utils.containers.*
@@ -34,7 +34,6 @@ import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecuri
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 
 import java.io.{Console as _, *}
-import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.CollectionHasAsScala
@@ -56,7 +55,6 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
   // - on each test this file is uncompressed and the fresh copy of the ES directory is used
   override protected def beforeAll(): Unit = {
     withTestEsContainer { esContainer =>
-      // Tar and copy the entire elasticsearch directory from the ES container
       esContainer.execInContainer("tar", "-cvf", "/tmp/elasticsearch.tar", "-C", "/usr/share/elasticsearch", "modules", "bin", "lib", "plugins", "tmp")
       esContainer.copyFileFromContainer("/tmp/elasticsearch.tar", s"$localPath/elasticsearch.tar")
     }
@@ -64,7 +62,6 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
   }
 
   "ROR tools app" should {
-
     "Patching is successful for ES installation that was not patched (with consent given in arg)" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutput {
         () => RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", esLocalPath.toString))
@@ -78,7 +75,6 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
           .stripMargin
       )
     }
-
     "Patching is successful for ES installation that was not patched (with consent given in interactive mode)" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutputWithInteraction(
         () => RorToolsAppHandler.handle(Array("patch", "--es-path", esLocalPath.toString)),
@@ -94,7 +90,6 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
           |""".stripMargin
       )
     }
-
     "Patching does not start when user declines to accept implications of patching (in arg)" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutput {
         () => RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "no"))
@@ -106,7 +101,6 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
           |""".stripMargin
       )
     }
-
     "Patching does not start when user declines to accept implications of patching (in interactive mode)" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutputWithInteraction(
         () => RorToolsAppHandler.handle(Array("patch")),
@@ -120,7 +114,6 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
           |""".stripMargin
       )
     }
-
     "Patching not started because of not existing directory" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutput {
         () => RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", "/wrong_directory"))
@@ -131,10 +124,9 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
           |Try --help for more information.""".stripMargin
       )
     }
-
     "Successfully patch, verify and unpatch" in withFreshEsDirectory { () =>
       // Patch
-      val hashBeforePatching = DirectoryHashCalculator.calculateHash(esLocalPath)
+      val hashBeforePatching = DirectoryUtils.calculateHash(esLocalPath)
       val (patchResult, patchOutput) = captureResultAndOutput {
         () => RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", esLocalPath.toString))
       }
@@ -146,7 +138,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
           |Elasticsearch is patched! ReadonlyREST is ready to use"""
           .stripMargin
       )
-      val hashAfterPatching = DirectoryHashCalculator.calculateHash(esLocalPath)
+      val hashAfterPatching = DirectoryUtils.calculateHash(esLocalPath)
 
       // Verify
       val (verifyResult, verifyOutput) = captureResultAndOutput {
@@ -161,7 +153,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
       )
 
       // Unpatch
-      val hashBeforeUnpatching = DirectoryHashCalculator.calculateHash(esLocalPath)
+      val hashBeforeUnpatching = DirectoryUtils.calculateHash(esLocalPath)
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
         () => RorToolsAppHandler.handle(Array("unpatch", "--es-path", esLocalPath.toString))
       }
@@ -172,7 +164,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
           |Elasticsearch is unpatched! ReadonlyREST can be removed now"""
           .stripMargin
       )
-      val hashAfterUnpatching = DirectoryHashCalculator.calculateHash(esLocalPath)
+      val hashAfterUnpatching = DirectoryUtils.calculateHash(esLocalPath)
 
       hashBeforePatching should equal(hashAfterUnpatching)
       hashAfterPatching should equal(hashBeforeUnpatching)
@@ -187,7 +179,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
     (result, stream.toString)
   }
 
-  def captureResultAndOutputWithInteraction(block: () => Result, response: String): (Result, String) = {
+  private def captureResultAndOutputWithInteraction(block: () => Result, response: String): (Result, String) = {
     val outStream = new ByteArrayOutputStream()
     val printStream = new PrintStream(outStream)
     val inputStream = new ByteArrayInputStream(response.getBytes)
@@ -195,7 +187,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
     (result, outStream.toString)
   }
 
-  def withTestEsContainer(withStartedEs: EsContainer => Unit): Unit = {
+  private def withTestEsContainer(withStartedEs: EsContainer => Unit): Unit = {
     val manager = new TestEsContainerManager
     try {
       manager.start()
@@ -221,7 +213,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
 
   private def withFreshEsDirectory(perform: () => Unit): Unit = {
     try {
-      cleanDirectory(esLocalPath)
+      DirectoryUtils.clean(esLocalPath)
       File(s"$esLocalPath").mkdirs
       unTar(Path.of(s"$localPath/elasticsearch.tar"), Path.of(s"$esLocalPath"))
       File(s"$esLocalPath/plugins/readonlyrest/").mkdirs
@@ -235,25 +227,10 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
       )
       perform()
     } finally {
-      cleanDirectory(esLocalPath)
+      DirectoryUtils.clean(esLocalPath)
     }
   }
 
-  private def cleanDirectory(dir: Path): Unit = {
-    if (dir.toFile.exists()) {
-      Files.walkFileTree(dir, new java.nio.file.SimpleFileVisitor[java.nio.file.Path]() {
-        override def visitFile(file: java.nio.file.Path, attrs: BasicFileAttributes): java.nio.file.FileVisitResult = {
-          Files.delete(file)
-          java.nio.file.FileVisitResult.CONTINUE
-        }
-
-        override def postVisitDirectory(dir: java.nio.file.Path, exc: IOException): java.nio.file.FileVisitResult = {
-          Files.delete(dir)
-          java.nio.file.FileVisitResult.CONTINUE
-        }
-      })
-    }
-  }
 }
 
 class TestEsContainerManager extends EsContainerCreator {

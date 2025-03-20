@@ -79,7 +79,6 @@ object RorToolsAppHandler {
     }
   }
 
-
   private object PatchCommandHandler {
 
     import tech.beshu.ror.tools.RorToolsAppHandler.UserUnderstandsAndAcceptsESPatching.*
@@ -216,9 +215,7 @@ object RorToolsAppHandler {
 
   private object Command {
     final case class Patch(customEsPath: Option[os.Path]) extends Command
-
     final case class Unpatch(customEsPath: Option[os.Path]) extends Command
-
     final case class Verify(customEsPath: Option[os.Path]) extends Command
   }
 
@@ -226,9 +223,7 @@ object RorToolsAppHandler {
 
   private object UserUnderstandsAndAcceptsESPatching {
     case object Yes extends UserUnderstandsAndAcceptsESPatching
-
     case object No extends UserUnderstandsAndAcceptsESPatching
-
     case object AnswerNotGiven extends UserUnderstandsAndAcceptsESPatching
   }
 
@@ -236,9 +231,7 @@ object RorToolsAppHandler {
 
   object Result {
     case object CommandNotParsed extends Result
-
     case object Success extends Result
-
     final case class Failure(exitCode: Int) extends Result
   }
 
