@@ -26,7 +26,10 @@ import scala.concurrent.duration.FiniteDuration
 object ReadonlyRestWithEnabledXpackSecurityPlugin {
   final case class Config(rorConfig: File,
                           rorPlugin: File,
-                          attributes: Attributes)
+                          rorProperties: File,
+                          rorSecurityPolicy: File,
+                          attributes: Attributes,
+                          performInstallation: Boolean)
   object Config {
     final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
                                 rorCustomSettingsIndex: Option[String],
@@ -61,7 +64,7 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
                                                  config: Config)
   extends Elasticsearch.Plugin {
 
-  private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig())
+  private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig(), config.performInstallation)
   private val xpackSecurityPlugin = new XpackSecurityPlugin(esVersion, createXpackSecurityConfig())
 
   override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
@@ -90,6 +93,8 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
     ReadonlyRestPlugin.Config(
       rorConfig = config.rorConfig,
       rorPlugin = config.rorPlugin,
+      rorProperties = config.rorProperties,
+      rorSecurityPolicy = config.rorSecurityPolicy,
       attributes = ReadonlyRestPlugin.Config.Attributes(
         config.attributes.rorConfigReloading,
         config.attributes.rorCustomSettingsIndex,

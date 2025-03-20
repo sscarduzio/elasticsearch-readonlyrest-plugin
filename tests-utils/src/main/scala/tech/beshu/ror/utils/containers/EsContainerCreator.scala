@@ -46,8 +46,8 @@ trait EsContainerCreator {
       case EsVersion.SpecificVersion(version) => RorPluginGradleProject.customModule(version)
     }
     nodeSettings.securityType match {
-      case SecurityType.RorWithXpackSecurity(attributes) =>
-        createEsWithRorAndXpackSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies)
+      case SecurityType.RorWithXpackSecurity(attributes, performInstallation) =>
+        createEsWithRorAndXpackSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, performInstallation)
       case SecurityType.RorSecurity(attributes) =>
         createEsWithRorContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies)
       case SecurityType.XPackSecurity(attributes) =>
@@ -62,8 +62,10 @@ trait EsContainerCreator {
                                                        project: RorPluginGradleProject,
                                                        nodeDataInitializer: ElasticsearchNodeDataInitializer,
                                                        attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
-                                                       startedClusterDependencies: StartedClusterDependencies) = {
-    val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
+                                                       startedClusterDependencies: StartedClusterDependencies,
+                                                       performInstallation: Boolean) = {
+    val (rorPluginFile, rorPropertiesFile, rorSecurityPolicyFile): (File, File, File) =
+      project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
@@ -82,8 +84,11 @@ trait EsContainerCreator {
       ),
       securityConfig = ReadonlyRestWithEnabledXpackSecurityPlugin.Config(
         rorPlugin = rorPluginFile.toScala,
+        rorProperties = rorPropertiesFile.toScala,
+        rorSecurityPolicy = rorSecurityPolicyFile.toScala,
         rorConfig = adjustedRorConfig,
-        attributes = attributes
+        attributes = attributes,
+        performInstallation = performInstallation,
       ),
       initializer = nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies
@@ -96,7 +101,8 @@ trait EsContainerCreator {
                                        nodeDataInitializer: ElasticsearchNodeDataInitializer,
                                        attributes: ReadonlyRestPlugin.Config.Attributes,
                                        startedClusterDependencies: StartedClusterDependencies) = {
-    val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
+    val (rorPluginFile, rorPropertiesFile, rorSecurityPolicyFile): (File, File, File) =
+      project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
@@ -115,6 +121,8 @@ trait EsContainerCreator {
       ),
       rorConfig = ReadonlyRestPlugin.Config(
         rorPlugin = rorPluginFile.toScala,
+        rorProperties = rorPropertiesFile.toScala,
+        rorSecurityPolicy = rorSecurityPolicyFile.toScala,
         rorConfig = adjustedRorConfig,
         attributes = attributes
       ),

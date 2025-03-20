@@ -83,6 +83,9 @@ class EsStartupChecker private(name: String,
                 logger.info(s"[$name] ES is ready")
                 Task.unit
             }
+          case 401 =>
+            logger.warn(s"[$name] ES ready, but with status 401 (ROR probably not installed)")
+            Task.unit
           case otherStatus =>
             logger.info(s"[$name] ES not ready yet, received HTTP $otherStatus")
             Task.raiseError(ClusterNotReady)

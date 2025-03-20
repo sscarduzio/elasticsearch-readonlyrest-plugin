@@ -60,19 +60,21 @@ class RorPluginGradleProject(val moduleName: String) {
       .create(RorPluginGradleProject.getRootProject)
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
-  def assemble: Option[JFile] = {
+  def assemble: Option[(JFile, JFile, JFile)] = {
     runTask(moduleName + ":packageRorPlugin")
-    val plugin = new JFile(project, "build/distributions/" + pluginName)
-    if (!plugin.exists) None
-    else Some(plugin)
+    val plugin = new JFile(project, "build/distributions/" + pluginVersion + ".zip")
+    val rorProperties = new JFile(project, "build/tmp/" + pluginVersion + "/plugin-descriptor.properties")
+    val rorSecurityPolicy = new JFile(project, "build/tmp/" + pluginVersion + "/plugin-security.policy")
+    if (!plugin.exists || !rorProperties.exists() || !rorSecurityPolicy.exists()) None
+    else Some((plugin, rorProperties, rorSecurityPolicy))
   }
 
   def getModuleESVersion: String = esProjectProperties.getProperty("latestSupportedEsVersion")
 
   private def esProject(esProjectName: String) = new JFile(RorPluginGradleProject.getRootProject, esProjectName)
 
-  private def pluginName =
-    s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion.zip"
+  private def pluginVersion =
+    s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion"
 
   private def runTask(task: String): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)

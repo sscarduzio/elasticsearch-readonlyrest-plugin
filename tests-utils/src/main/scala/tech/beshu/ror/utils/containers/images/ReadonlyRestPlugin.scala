@@ -19,8 +19,7 @@ package tech.beshu.ror.utils.containers.images
 import better.files.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch.{configDir, esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{InternodeSsl, RestSsl}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.misc.Version
 
@@ -29,6 +28,8 @@ import scala.concurrent.duration.FiniteDuration
 object ReadonlyRestPlugin {
   final case class Config(rorConfig: File,
                           rorPlugin: File,
+                          rorProperties: File,
+                          rorSecurityPolicy: File,
                           attributes: Attributes)
   object Config {
     final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
@@ -60,20 +61,29 @@ object ReadonlyRestPlugin {
   }
 }
 class ReadonlyRestPlugin(esVersion: String,
-                         config: Config)
+                         config: Config,
+                         performInstallation: Boolean)
   extends Elasticsearch.Plugin {
 
   override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
-    image
+    val withoutInstallation = image
       .copyFile(os.root / "tmp" / config.rorPlugin.name, config.rorPlugin)
-      .copyFile(configDir / "readonlyrest.yml", config.rorConfig)
+      .copyFile(esDir / "tmp" / config.rorProperties.name, config.rorProperties)
+      .copyFile(esDir / "tmp" / config.rorSecurityPolicy.name, config.rorSecurityPolicy)
       .copyFile(configDir / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
       .copyFile(configDir / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
       .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
       .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
       .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .updateFipsDependencies()
-      .installRorPlugin()
+
+    if (performInstallation) {
+      withoutInstallation
+        .copyFile(configDir / "readonlyrest.yml", config.rorConfig)
+        .installRorPlugin()
+    } else {
+      withoutInstallation
+    }
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {

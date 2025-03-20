@@ -62,8 +62,7 @@ configurations {
 
 dependencies {
     implementation project(path: ':ror-tools-core')
-    implementation      group: 'com.github.scopt',  name: 'scopt_3',      version: '4.1.0'
-    testImplementation  group: 'org.scalatest',     name: 'scalatest_3',  version: '3.2.16'
+    implementation group: 'com.github.scopt',              name: 'scopt_3',                       version: '4.1.0'
 }
 
 java {
