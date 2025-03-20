@@ -118,10 +118,10 @@ class ReadonlyRestPlugin(esVersion: String,
         .run(s"${esDir.toString()}/bin/elasticsearch-plugin install --batch file:///tmp/${config.rorPlugin.name}")
         .user("root")
         .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
-          command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I-understand-implications-of-ES-patching yes"
+          command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I-understand-and-accept-ES-patching yes"
         )
         .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
-          command = s"$$JAVA_HOME/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I-understand-implications-of-ES-patching yes"
+          command = s"$$JAVA_HOME/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I-understand-and-accept-ES-patching yes"
         )
         .user("elasticsearch")
     }

@@ -12,7 +12,7 @@ if $INVOKE_ROR_TOOLS verify | grep -q "Elasticsearch is NOT patched"; then
            "user. "
       exit 1
     else
-      $INVOKE_ROR_TOOLS patch --I-understand-implications-of-ES-patching yes
+      $INVOKE_ROR_TOOLS patch --I-understand-and-accept-ES-patching yes
     fi
   else
     echo "Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation:" \

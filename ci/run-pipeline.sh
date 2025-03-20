@@ -40,11 +40,6 @@ if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "core_tests" ]]; then
   ./gradlew --stacktrace core:test
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_tests" ]]; then
-  echo ">>> Running ror-tools tests.."
-  ./gradlew --stacktrace ror-tools:test
-fi
-
 run_integration_tests() {
   if [ "$#" -ne 1 ]; then
     echo "What ES module should I run integration tests for?"

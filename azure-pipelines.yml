@@ -90,8 +90,6 @@ stages:
               ROR_TASK: license
             UNIT:
               ROR_TASK: core_tests
-            UNIT:
-              ROR_TASK: ror_tools_tests
       - job:
         condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
         container: openjdk:22-slim

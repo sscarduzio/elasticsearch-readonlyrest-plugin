@@ -55,11 +55,11 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
   // - the tar file is stored in the /temp_directory_for_ror_tools_app_suite directory in resources
   // - on each test this file is uncompressed and the fresh copy of the ES directory is used
   override protected def beforeAll(): Unit = {
-    //    withTestEsContainer { esContainer =>
-    //      // Tar and copy the entire elasticsearch directory from the ES container
-    //      esContainer.execInContainer("tar", "-cvf", "/tmp/elasticsearch.tar", "-C", "/usr/share/elasticsearch", "modules", "bin", "lib", "plugins", "tmp")
-    //      esContainer.copyFileFromContainer("/tmp/elasticsearch.tar", s"$localPath/elasticsearch.tar")
-    //    }
+    withTestEsContainer { esContainer =>
+      // Tar and copy the entire elasticsearch directory from the ES container
+      esContainer.execInContainer("tar", "-cvf", "/tmp/elasticsearch.tar", "-C", "/usr/share/elasticsearch", "modules", "bin", "lib", "plugins", "tmp")
+      esContainer.copyFileFromContainer("/tmp/elasticsearch.tar", s"$localPath/elasticsearch.tar")
+    }
     super.beforeAll()
   }
 
