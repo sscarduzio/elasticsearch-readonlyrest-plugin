@@ -106,7 +106,8 @@ object SingleExtractable {
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = withTransformation(transformation) {
       blockContext
         .requestContext
-        .headers
+        .restRequest
+        .allHeaders
         .find(_.name === header)
         .map(_.value.value) match {
         case Some(value) => Right(value)

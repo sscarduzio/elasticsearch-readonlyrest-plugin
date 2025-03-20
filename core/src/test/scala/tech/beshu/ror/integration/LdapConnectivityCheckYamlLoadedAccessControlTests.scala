@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -30,7 +29,6 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
-import tech.beshu.ror.syntax.*
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests
   extends AnyWordSpec
@@ -108,7 +106,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     "be successful" when {
       "one server is unreachable, but is configured to ignore connectivity problems" when {
         "HA is enabled and one of LDAP hosts is unavailable" in {
-          val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("cartman:user2")))
+          val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
@@ -119,7 +117,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
           }
         }
         "ROR is configured to ignore connectivity problems, but connection is possible" in {
-          val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("kyle:user2")))
+          val request = MockRequestContext.indices.withHeaders(basicAuthHeader("kyle:user2"))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 2
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
@@ -133,7 +131,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     }
     "not be successful" when {
       "person from unreachable ldap is authenticated" in {
-        val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("unreachableldapperson:somepass")))
+        val request = MockRequestContext.indices.withHeaders(basicAuthHeader("unreachableldapperson:somepass"))
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 3
         inside(result.result) { case RegularRequestResult.ForbiddenByMismatched(causes) =>

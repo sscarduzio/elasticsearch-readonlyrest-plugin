@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.integration
-
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
@@ -28,7 +26,6 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
 
 import java.util.Base64
@@ -59,7 +56,7 @@ class AuthKeyYamlLoadedAccessControlTests
     "two blocks with auth_keys are configured" should {
       "allow to proceed" when {
         "request is sent in behalf on admin user" taggedAs Tag("es70x") in {
-          val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("admin:container")))
+          val request = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:container"))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, block) =>
@@ -70,13 +67,12 @@ class AuthKeyYamlLoadedAccessControlTests
           }
         }
         "request is sent in behalf of admin user, but the authorization token header is lower case string" taggedAs Tag("es63x") in {
-          val request = MockRequestContext.indices.copy(headers = Set(
+          val request = MockRequestContext.indices.withHeaders(
             new Header(
               Name(NonEmptyString.unsafeFrom("authorization")),
               NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString("admin:container".getBytes))
             )
-          ))
-
+          )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, block) =>

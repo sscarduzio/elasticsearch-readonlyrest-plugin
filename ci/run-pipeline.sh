@@ -293,7 +293,7 @@ release_ror_plugin() {
   local ROR_VERSION=$1
   local ES_VERSION=$2
 
-  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
     echo "Invalid ES version format. Expected format: X.Y.Z"
     return 2
   fi
@@ -337,7 +337,7 @@ public_ror_prebuild_plugin() {
 
   local ES_VERSION=$1
 
-  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
     echo "Invalid ES version format. Expected format: X.Y.Z"
     return 2
   fi

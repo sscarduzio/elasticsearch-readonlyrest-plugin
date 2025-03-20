@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.integration
-
-import eu.timepit.refined.auto.*
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.Keys
@@ -28,7 +26,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -102,7 +100,7 @@ class RorKbnAuthYamlLoadedAccessControlTests
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
             .setSubject("test")
             .setClaims(claims)
-          val request = MockRequestContext.indices.copy(headers = Set(bearerHeader(jwtBuilder)))
+          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwtBuilder))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -125,11 +123,12 @@ class RorKbnAuthYamlLoadedAccessControlTests
             .setClaims(claims)
           val preferredGroup = group("mapped_viewer_group")
 
-          val request = MockRequestContext.indices.copy(
-            filteredIndices = Set(requestedIndex("index2")),
-            allAllowedIndices = Set(clusterIndexName("index2")),
-            headers = Set(bearerHeader(jwtBuilder), preferredGroup.id.toCurrentGroupHeader)
-          )
+          val request = MockRequestContext.indices
+            .withHeaders(bearerHeader(jwtBuilder), preferredGroup.id.toCurrentGroupHeader)
+            .copy(
+              allAllowedIndices = Set(clusterIndexName("index2")),
+              filteredIndices = Set(requestedIndex("index2")),
+            )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 

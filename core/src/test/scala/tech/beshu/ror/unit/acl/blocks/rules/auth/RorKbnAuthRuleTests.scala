@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.auth
-
-import eu.timepit.refined.auto.*
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global
@@ -34,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.Groups
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Jwt => _, *}
+import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -438,8 +436,8 @@ class RorKbnAuthRuleTests
                          preferredGroupId: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), CaseSensitivity.Enabled)
-    val requestContext = MockRequestContext.indices.copy(
-      headers = Set(tokenHeader) ++ preferredGroupId.map(_.toCurrentGroupHeader).toSet
+    val requestContext = MockRequestContext.indices.withHeaders(
+      preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,

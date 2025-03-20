@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
@@ -745,8 +744,8 @@ class JwtAuthRuleTests
                          preferredGroup: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups), CaseSensitivity.Enabled)
-    val requestContext = MockRequestContext.indices.copy(
-      headers = Set(tokenHeader) ++ preferredGroup.map(_.toCurrentGroupHeader).toSet
+    val requestContext = MockRequestContext.indices.withHeaders(
+      preferredGroup.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,

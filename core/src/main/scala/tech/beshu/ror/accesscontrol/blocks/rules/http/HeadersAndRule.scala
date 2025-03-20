@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.syntax.*
 
 /**
   * We match headers in a way that the header name is case-insensitive, and the header value is case-sensitive
@@ -39,7 +38,7 @@ class HeadersAndRule(val settings: Settings)
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.resultBasedOnCondition(blockContext) {
-      val requestHeaders = blockContext.requestContext.headers
+      val requestHeaders = blockContext.requestContext.restRequest.allHeaders
       settings
         .headerAccessRequirements
         .forall { headerAccessRequirement =>

@@ -596,7 +596,7 @@ class LdapAuthRuleTests
       authentication = new LdapAuthenticationRule(authenticationSettings, CaseSensitivity.Enabled, impersonation),
       authorization = new LdapAuthorizationRule(authorizationSettings, CaseSensitivity.Enabled, impersonation)
     )
-    val requestContext = MockRequestContext.indices.copy(headers = headers)
+    val requestContext = MockRequestContext.indices.withHeaders(headers)
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
       userMetadata = UserMetadata.from(requestContext),

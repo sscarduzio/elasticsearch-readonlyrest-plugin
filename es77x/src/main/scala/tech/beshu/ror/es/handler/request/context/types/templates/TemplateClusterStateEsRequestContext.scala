@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
 import org.elasticsearch.cluster.metadata.MetaData
@@ -35,7 +34,6 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -48,8 +46,8 @@ object TemplateClusterStateEsRequestContext {
            clusterService: RorClusterService,
            settings: Settings,
            threadPool: ThreadPool): Option[TemplateClusterStateEsRequestContext] = {
-    UriPath.from(esContext.channel.request().uri()) match {
-      case Some(TemplatePath(_) | CatTemplatePath(_)) =>
+    esContext.channel.restRequest.path match {
+      case TemplatePath(_) | CatTemplatePath(_) =>
         Some(new TemplateClusterStateEsRequestContext(actionRequest, esContext, clusterService, settings, threadPool))
       case _ =>
         None

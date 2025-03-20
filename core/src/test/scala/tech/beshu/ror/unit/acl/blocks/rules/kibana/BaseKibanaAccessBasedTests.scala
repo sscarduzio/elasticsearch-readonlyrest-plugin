@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
-
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -32,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -433,9 +431,9 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
                                             uriPath: Option[UriPath],
                                             blockContextAssertion: Option[BlockContext => Unit]) = {
     val requestContext = MockRequestContext.indices.copy(
+      restRequest = MockRestRequest(path = uriPath.getOrElse(UriPath.from("/undefined"))),
       action = action,
       filteredIndices = requestedIndices,
-      uriPath = uriPath.getOrElse(UriPath.from("/undefined"))
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
@@ -455,9 +453,9 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
                                                 uriPath: Option[UriPath],
                                                 blockContextAssertion: Option[BlockContext => Unit]) = {
     val requestContext = MockRequestContext.dataStreams.copy(
+      restRequest = MockRestRequest(path = uriPath.getOrElse(UriPath.from("/undefined"))),
       action = action,
       dataStreams = requestedDataStreams,
-      uriPath = uriPath.getOrElse(UriPath.from("/undefined"))
     )
     val blockContext = DataStreamRequestBlockContext(
       requestContext = requestContext,

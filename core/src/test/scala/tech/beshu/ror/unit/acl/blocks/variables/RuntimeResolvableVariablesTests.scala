@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.variables
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.impl.DefaultClaims
 import org.scalamock.scalatest.MockFactory
@@ -50,42 +49,42 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
       "given variable has corresponding header in request context" in {
         val variable = forceCreateSingleVariable("@{key1}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x,y")))
+            requestContext = MockRequestContext.metadata.withHeaders(headerFrom("key1" -> "x,y"))
           ))
         variable shouldBe Right("x,y")
       }
       "given multivariable has corresponding header in request context" in {
         val variable = forceCreateMultiVariable("test_@explode{key1}#{to_lowercase}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "X,Y,Z")))
+            requestContext = MockRequestContext.metadata.withHeaders(headerFrom("key1" -> "X,Y,Z"))
           ))
         variable shouldBe Right(NonEmptyList.of("test_x", "test_y", "test_z"))
       }
       "given variable has corresponding header in request context but upper-case" in {
         val variable = forceCreateSingleVariable("h:@{key1}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("KEY1" -> "x")))
+            requestContext = MockRequestContext.metadata.withHeaders(headerFrom("KEY1" -> "x"))
           ))
         variable shouldBe Right("h:x")
       }
       "given variable has corresponding header in request context and is defined with new format" in {
         val variable = forceCreateSingleVariable("@{header:key1}_ok")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x")))
+            requestContext = MockRequestContext.metadata.withHeaders(headerFrom("key1" -> "x"))
           ))
         variable shouldBe Right("x_ok")
       }
       "given variable has corresponding header in request context and is defined with new format (with transformation)" in {
         val variable = forceCreateSingleVariable(s"""@{header:key1}#{replace_first("x","z")}_ok""")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x")))
+            requestContext = MockRequestContext.metadata.withHeaders(headerFrom("key1" -> "x"))
           ))
         variable shouldBe Right("z_ok")
       }
       "given variable has corresponding header in request context and is defined with new format using '${}' syntax" in {
         val variable = forceCreateSingleVariable("h_${header:key1}_ok")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x")))
+            requestContext = MockRequestContext.metadata.withHeaders(headerFrom("key1" -> "x"))
           ))
         variable shouldBe Right("h_x_ok")
       }
@@ -94,7 +93,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
       "given variable doesn't have corresponding header in request context" in {
         val variable = forceCreateSingleVariable("@{key1}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key2" -> "x")))
+            requestContext = MockRequestContext.metadata.withHeaders(headerFrom("key2" -> "x"))
           ))
         variable shouldBe Left(CannotExtractValue("Cannot extract user header 'key1' from request context"))
       }
@@ -166,7 +165,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
         variable shouldBe Right("g1")
       }
       "current group variable is used and initial group is present" in {
-        val requestContext = MockRequestContext.metadata.copy(headers = Set(currentGroupHeader("g1")))
+        val requestContext = MockRequestContext.metadata.withHeaders(currentGroupHeader("g1"))
         val variable = forceCreateSingleVariable("@{acl:current_group}")
           .resolve(currentUserMetadataRequestBlockContextFrom(requestContext = requestContext))
         variable shouldBe Right("g1")
@@ -310,7 +309,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
   "Variables" should {
     "have been resolved" when {
       "@ is used as usual char" in {
-        val requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x")))
+        val requestContext = MockRequestContext.metadata.withHeaders(headerFrom("key1" -> "x"))
 
         val variable1 = forceCreateSingleVariable("@@@@{key1}")
         variable1.resolve(currentUserMetadataRequestBlockContextFrom(requestContext = requestContext)) shouldBe Right("@@@x")
@@ -322,12 +321,12 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
         variable3.resolve(currentUserMetadataRequestBlockContextFrom(requestContext = requestContext)) shouldBe Right(".@one@two.x@three@@@")
       }
       "@ can be used as usual char inside header name" in {
-        val requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("@key" -> "x")))
+        val requestContext = MockRequestContext.metadata.withHeaders(headerFrom("@key" -> "x"))
         val variable1 = forceCreateSingleVariable("test_@{@key}_sth")
         variable1.resolve(currentUserMetadataRequestBlockContextFrom(requestContext = requestContext)) shouldBe Right("test_x_sth")
       }
       "used together" in {
-        val requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x")))
+        val requestContext = MockRequestContext.metadata.withHeaders(headerFrom("key1" -> "x"))
         val variable = forceCreateSingleVariable("u:@{user}_@{key1}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
             _.withLoggedUser(DirectlyLoggedUser(User.Id("simone"))),

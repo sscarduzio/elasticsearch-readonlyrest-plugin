@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import org.scalatest.concurrent.Eventually
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}

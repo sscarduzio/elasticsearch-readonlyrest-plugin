@@ -20,7 +20,6 @@ import cats.data.*
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import com.unboundid.ldap.sdk.LDAPSearchException
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

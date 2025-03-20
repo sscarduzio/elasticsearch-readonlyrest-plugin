@@ -30,10 +30,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders.*
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -101,8 +100,7 @@ class HostsRuleTests extends AnyWordSpec {
       new Ip4sBasedHostnameResolver
     )
     val requestContext = MockRequestContext.metadata.copy(
-      remoteAddress = address,
-      headers = Set.empty
+      restRequest = MockRestRequest(allHeaders = Set.empty, remoteAddress = address)
     )
     val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {

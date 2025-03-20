@@ -511,8 +511,8 @@ class ExternalAuthorizationRuleTests
                          preferredGroup: Option[GroupId],
                          assertionType: AssertionType): Unit = {
     val rule = new ExternalAuthorizationRule(settings, CaseSensitivity.Enabled, impersonation)
-    val requestContext = MockRequestContext.indices.copy(
-      headers = preferredGroup.map(_.toCurrentGroupHeader).toCovariantSet
+    val requestContext = MockRequestContext.indices.withHeaders(
+      preferredGroup.map(_.toCurrentGroupHeader)
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
