@@ -70,6 +70,7 @@ test {
         def module = project.properties['esModule']
         systemProperty "esModule", module
         dependsOn(":$module:packageRorPlugin")
+        dependsOn(":es67x:packageRorPlugin") // For RemoteReindexSuite
         tags {
             exclude 'tech.beshu.tags.ExcludeESModule.' + module
         }
