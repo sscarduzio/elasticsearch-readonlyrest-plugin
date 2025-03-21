@@ -1,3 +1,9 @@
+buildscript {
+    ext {
+        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
+    }
+}
+
 plugins {
     id "readonlyrest.base-common-conventions"
 
@@ -8,6 +14,15 @@ repositories {
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
     maven { url 'https://jitpack.io' }
     maven { url 'https://artifacts.elastic.co/maven' }
+    maven {
+        url = "s3://" + s3BucketName + "/build"
+        authentication {
+            awsIm(AwsImAuthentication)
+        }
+        metadataSources {
+            artifact()
+        }
+    }
 }
 
 java {
@@ -65,9 +80,10 @@ test {
 }
 
 dependencies {
-    implementation     project(path: ':ror-tools')
-    implementation     project(path: ':ror-tools-core')
-    testImplementation project(':tests-utils')
+    testImplementation project(path: ':core')
+    testImplementation project(path: ':ror-tools')
+    testImplementation project(path: ':ror-tools-core')
+    testImplementation project(path: ':tests-utils')
 
     testImplementation  group: 'jakarta.xml.bind',              name: 'jakarta.xml.bind-api',       version: '2.3.2'
     testImplementation  group: 'org.glassfish.jaxb',            name: 'jaxb-runtime',               version: '2.3.2'
