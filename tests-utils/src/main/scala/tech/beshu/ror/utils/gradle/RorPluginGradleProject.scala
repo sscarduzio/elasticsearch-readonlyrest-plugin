@@ -16,13 +16,10 @@
  */
 package tech.beshu.ror.utils.gradle
 
-import java.io.{File => JFile}
-import java.nio.file.Paths
-
 import better.files.*
-import org.gradle.tooling.GradleConnector
 
-import scala.util.Try
+import java.io.File as JFile
+import java.nio.file.Paths
 
 object RorPluginGradleProject {
   def fromSystemProperty: RorPluginGradleProject =
@@ -31,7 +28,7 @@ object RorPluginGradleProject {
       .getOrElse(throw new IllegalStateException("No 'esModule' system property set"))
 
   def customModule(moduleName: String): RorPluginGradleProject =
-      new RorPluginGradleProject(moduleName)
+    new RorPluginGradleProject(moduleName)
 
   def getRootProject: JFile = {
     Option(System.getProperty("project.dir"))
@@ -61,7 +58,6 @@ class RorPluginGradleProject(val moduleName: String) {
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
   def assemble: Option[(JFile, JFile, JFile)] = {
-    runTask(moduleName + ":packageRorPlugin")
     val plugin = new JFile(project, "build/distributions/" + pluginVersion + ".zip")
     val rorProperties = new JFile(project, "build/tmp/" + pluginVersion + "/plugin-descriptor.properties")
     val rorSecurityPolicy = new JFile(project, "build/tmp/" + pluginVersion + "/plugin-security.policy")
@@ -76,12 +72,5 @@ class RorPluginGradleProject(val moduleName: String) {
   private def pluginVersion =
     s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion"
 
-  private def runTask(task: String): Unit = {
-    val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)
-    val connect = Try(connector.connect())
-    val result = connect.map(_.newBuild().forTasks(task).run())
-    connect.map(_.close())
-    result.fold(throw _, _ => ())
-  }
 }
 

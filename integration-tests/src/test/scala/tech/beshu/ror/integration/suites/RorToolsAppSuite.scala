@@ -235,7 +235,7 @@ class TestEsContainerManager extends EsContainerCreator {
 
   private val uniqueClusterId: AtomicInt = AtomicInt(1)
 
-  val esContainer: EsContainer = createEsContainer
+  lazy val esContainer: EsContainer = createEsContainer
 
   def start(): Task[Unit] = Task.delay(esContainer.start())
 
