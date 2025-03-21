@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.atomic.AtomicInt
+import monix.execution.atomic.{AtomicAny, AtomicInt}
 import org.apache.commons.compress.archivers.tar.TarFile
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers.include
@@ -28,6 +28,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.utils.{DirectoryUtils, ESVersionSupportForAnyWordSpecLike}
 import tech.beshu.ror.tools.RorToolsAppHandler
 import tech.beshu.ror.tools.RorToolsAppHandler.Result
+import tech.beshu.ror.tools.core.utils.InOut
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
@@ -64,7 +65,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
   "ROR tools app" should {
     "Patching is successful for ES installation that was not patched (with consent given in arg)" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutput {
-        () => RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", esLocalPath.toString))
+        RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", esLocalPath.toString))(_)
       }
       result should equal(Result.Success)
       output should include(
@@ -77,7 +78,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
     }
     "Patching is successful for ES installation that was not patched (with consent given in interactive mode)" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutputWithInteraction(
-        () => RorToolsAppHandler.handle(Array("patch", "--es-path", esLocalPath.toString)),
+        RorToolsAppHandler.handle(Array("patch", "--es-path", esLocalPath.toString))(_),
         response = "yes"
       )
       result should equal(Result.Success)
@@ -92,7 +93,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
     }
     "Patching does not start when user declines to accept implications of patching (in arg)" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutput {
-        () => RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "no"))
+        RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "no"))(_)
       }
       result should equal(Result.Failure(1))
       output should equal(
@@ -103,7 +104,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
     }
     "Patching does not start when user declines to accept implications of patching (in interactive mode)" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutputWithInteraction(
-        () => RorToolsAppHandler.handle(Array("patch")),
+        RorToolsAppHandler.handle(Array("patch"))(_),
         response = "no"
       )
       result should equal(Result.Failure(1))
@@ -116,7 +117,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
     }
     "Patching not started because of not existing directory" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutput {
-        () => RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", "/wrong_directory"))
+        RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", "/wrong_directory"))(_)
       }
       result should equal(Result.CommandNotParsed)
       output should include(
@@ -128,7 +129,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
       // Patch
       val hashBeforePatching = DirectoryUtils.calculateHash(esLocalPath)
       val (patchResult, patchOutput) = captureResultAndOutput {
-        () => RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", esLocalPath.toString))
+        RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", esLocalPath.toString))(_)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
@@ -142,7 +143,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
 
       // Verify
       val (verifyResult, verifyOutput) = captureResultAndOutput {
-        () => RorToolsAppHandler.handle(Array("verify", "--es-path", esLocalPath.toString))
+        RorToolsAppHandler.handle(Array("verify", "--es-path", esLocalPath.toString))(_)
       }
 
       verifyResult should equal(Result.Success)
@@ -155,7 +156,7 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
       // Unpatch
       val hashBeforeUnpatching = DirectoryUtils.calculateHash(esLocalPath)
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
-        () => RorToolsAppHandler.handle(Array("unpatch", "--es-path", esLocalPath.toString))
+        RorToolsAppHandler.handle(Array("unpatch", "--es-path", esLocalPath.toString))(_)
       }
       unpatchResult should equal(Result.Success)
       unpatchOutput should include(
@@ -172,19 +173,16 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
     }
   }
 
-  private def captureResultAndOutput(block: () => Result): (Result, String) = {
-    val stream = new ByteArrayOutputStream()
-    val printStream = new PrintStream(stream)
-    val result = Console.withErr(printStream)(Console.withOut(printStream)(block()))
-    (result, stream.toString)
+  private def captureResultAndOutput(block: InOut => Result): (Result, String) = {
+    val inOut = new CapturingOutputAndMockingInput()
+    val result = block(inOut)
+    (result, inOut.getOutputBuffer)
   }
 
-  private def captureResultAndOutputWithInteraction(block: () => Result, response: String): (Result, String) = {
-    val outStream = new ByteArrayOutputStream()
-    val printStream = new PrintStream(outStream)
-    val inputStream = new ByteArrayInputStream(response.getBytes)
-    val result = Console.withErr(printStream)(Console.withIn(inputStream)(Console.withOut(printStream)(block())))
-    (result, outStream.toString)
+  private def captureResultAndOutputWithInteraction(block: InOut => Result, response: String): (Result, String) = {
+    val inOut = new CapturingOutputAndMockingInput(Some(response))
+    val result = block(inOut)
+    (result, inOut.getOutputBuffer)
   }
 
   private def withTestEsContainer(withStartedEs: EsContainer => Unit): Unit = {
@@ -265,4 +263,22 @@ class TestEsContainerManager extends EsContainerCreator {
       startedClusterDependencies = StartedClusterDependencies(List.empty)
     )
   }
+}
+
+class CapturingOutputAndMockingInput(mockedInput: Option[String] = None) extends InOut {
+
+  val outputBuffer: AtomicAny[String] = AtomicAny[String]("")
+
+  override def print(str: String): Unit = outputBuffer.getAndTransform(old => old + str)
+
+  override def println(str: String): Unit = outputBuffer.getAndTransform(old => old + str + "\n")
+
+  override def printErr(str: String): Unit = print(str)
+
+  override def printlnErr(str: String): Unit = println(str)
+
+  override def readLine(): String = mockedInput.getOrElse(throw new Exception("No mocked input provided"))
+
+  def getOutputBuffer: String = outputBuffer.getAndSet("")
+
 }

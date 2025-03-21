@@ -17,13 +17,13 @@
 package tech.beshu.ror.tools
 
 import os.Path
-import scopt.OParser
+import scopt.{DefaultOEffectSetup, OParser}
 import tech.beshu.ror.tools.RorToolsAppHandler.Result
 import tech.beshu.ror.tools.core.actions.*
 import tech.beshu.ror.tools.core.patches.base.EsPatch
-import tech.beshu.ror.tools.core.utils.{EsDirectory, RorToolsException}
+import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
+import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsException}
 
-import scala.io.StdIn
 import scala.util.{Failure, Success, Try}
 
 object RorToolsApp {
@@ -32,7 +32,7 @@ object RorToolsApp {
   // 1. option: return success when already patched/unpatched
   // 2. restore backup when fails to patch
   def main(args: Array[String]): Unit = {
-    RorToolsAppHandler.handle(args) match {
+    RorToolsAppHandler.handle(args)(ConsoleInOut) match {
       case Result.Success =>
         ()
       case Result.Failure(exitCode) =>
@@ -48,38 +48,46 @@ object RorToolsApp {
 
 object RorToolsAppHandler {
 
-  def handle(args: Array[String]): Result = {
-    OParser.parse(
+  def handle(args: Array[String])(implicit inOut: InOut): Result = {
+    OParser.runParser(
       parser,
       args.map(arg => if (arg.startsWith("--")) arg.toLowerCase else arg),
       Arguments(Command.Verify(None), UserUnderstandsAndAcceptsESPatching.AnswerNotGiven)
     ) match {
-      case None =>
-        Result.CommandNotParsed
-      case Some(config) =>
-        Try {
-          config.command match {
-            case command: Command.Patch =>
-              PatchCommandHandler.handle(command, config)
-            case command: Command.Unpatch =>
-              UnpatchCommandHandler.handle(command)
-            case command: Command.Verify =>
-              VerifyCommandHandler.handle(command)
-          }
-        } match {
-          case Failure(ex: RorToolsException) =>
-            println(s"ERROR: ${ex.getMessage()}\n${ex.printStackTrace()}")
-            Result.Failure(1)
-          case Failure(ex: Throwable) =>
-            println(s"UNEXPECTED ERROR: ${ex.getMessage()}\n${ex.printStackTrace()}")
-            Result.Failure(1)
-          case Success(result) =>
-            result
+      case (result, effects) =>
+        OParser.runEffects(effects, new DefaultOEffectSetup {
+          override def displayToOut(msg: String): Unit = inOut.println(msg)
+
+          override def displayToErr(msg: String): Unit = inOut.printlnErr(msg)
+        })
+        result match {
+          case None =>
+            Result.CommandNotParsed
+          case Some(config) =>
+            Try {
+              config.command match {
+                case command: Command.Patch =>
+                  new PatchCommandHandler().handle(command, config)
+                case command: Command.Unpatch =>
+                  new UnpatchCommandHandler().handle(command)
+                case command: Command.Verify =>
+                  new VerifyCommandHandler().handle(command)
+              }
+            } match {
+              case Failure(ex: RorToolsException) =>
+                inOut.println(s"ERROR: ${ex.getMessage()}\n${ex.printStackTrace()}")
+                Result.Failure(1)
+              case Failure(ex: Throwable) =>
+                inOut.println(s"UNEXPECTED ERROR: ${ex.getMessage()}\n${ex.printStackTrace()}")
+                Result.Failure(1)
+              case Success(result) =>
+                result
+            }
         }
     }
   }
 
-  private object PatchCommandHandler {
+  private class PatchCommandHandler(implicit inOut: InOut) {
 
     import tech.beshu.ror.tools.RorToolsAppHandler.UserUnderstandsAndAcceptsESPatching.*
 
@@ -106,21 +114,21 @@ object RorToolsAppHandler {
     }
 
     private def patchingAbortedBecauseUserDidNotAcceptConsequences(): Result = {
-      println("You have to confirm, that You understand the implications of ES patching in order to perform it.\nYou can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.")
+      inOut.println("You have to confirm, that You understand the implications of ES patching in order to perform it.\nYou can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.")
       Result.Failure(1)
     }
 
     private def userConfirmsUnderstandingOfTheESPatchingImplications(): Boolean = {
-      println("Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.")
-      print("Do you understand the implications of ES patching? (yes/no): ")
-      StdIn.readLine().toLowerCase match
+      inOut.println("Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.")
+      inOut.print("Do you understand the implications of ES patching? (yes/no): ")
+      inOut.readLine().toLowerCase match
         case "yes" => true
         case _ => false
     }
 
   }
 
-  private object UnpatchCommandHandler {
+  private class UnpatchCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Unpatch): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
       new UnpatchAction(EsPatch.create(esDirectory)).execute()
@@ -128,7 +136,7 @@ object RorToolsAppHandler {
     }
   }
 
-  private object VerifyCommandHandler {
+  private class VerifyCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Verify): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
       new VerifyAction(EsPatch.create(esDirectory)).execute()

@@ -65,7 +65,8 @@ test {
 }
 
 dependencies {
-    testImplementation project(':ror-tools')
+    implementation     project(path: ':ror-tools')
+    implementation     project(path: ':ror-tools-core')
     testImplementation project(':tests-utils')
 
     testImplementation  group: 'jakarta.xml.bind',              name: 'jakarta.xml.bind-api',       version: '2.3.2'

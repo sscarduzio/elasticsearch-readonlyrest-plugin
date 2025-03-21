@@ -18,6 +18,7 @@ package tech.beshu.ror.tools.core
 
 import tech.beshu.ror.tools.core.patches.base.EsPatch
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
+import tech.beshu.ror.tools.core.utils.InOut
 import tech.beshu.ror.tools.core.utils.RorToolsException.{EsAlreadyPatchedException, EsNotPatchedException}
 
 import scala.language.postfixOps
@@ -40,13 +41,13 @@ object actions {
     }
   }
 
-  class VerifyAction(patch: EsPatch) {
+  class VerifyAction(patch: EsPatch)(implicit inOut: InOut) {
     def execute(): Unit = {
       patch.isPatched match {
         case IsPatched.Yes =>
-          println("Elasticsearch is patched! ReadonlyREST can be used")
+          inOut.println("Elasticsearch is patched! ReadonlyREST can be used")
         case IsPatched.No(cause) =>
-          println(cause.message)
+          inOut.println(cause.message)
       }
     }
   }
