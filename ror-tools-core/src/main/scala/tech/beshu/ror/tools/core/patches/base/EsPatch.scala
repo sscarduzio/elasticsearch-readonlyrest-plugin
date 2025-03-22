@@ -21,8 +21,9 @@ import tech.beshu.ror.tools.core.patches.*
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No.Cause
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.{No, Yes}
-import tech.beshu.ror.tools.core.utils.EsDirectory
+import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut}
 import tech.beshu.ror.tools.core.utils.EsUtil.*
+import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 
 trait EsPatch {
 
@@ -82,10 +83,10 @@ object EsPatch {
   }
 
   def create(esPath: os.Path): EsPatch = {
-    create(EsDirectory.from(esPath))
+    create(EsDirectory.from(esPath))(ConsoleInOut)
   }
 
-  def create(esDirectory: EsDirectory): EsPatch = {
+  def create(esDirectory: EsDirectory)(implicit inOut: InOut): EsPatch = {
     val rorPluginDirectory = new RorPluginDirectory(esDirectory)
     new EsPatchLoggingDecorator(
       readEsVersion(esDirectory) match {

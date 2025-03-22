@@ -76,6 +76,7 @@ class Elasticsearch(esVersion: String,
         file = log4jFileFromResources
       )
       .user("root")
+      .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
       .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()

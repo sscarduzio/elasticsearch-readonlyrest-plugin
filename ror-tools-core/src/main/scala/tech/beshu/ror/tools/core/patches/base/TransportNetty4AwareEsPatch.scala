@@ -74,7 +74,7 @@ private [patches] abstract class TransportNetty4AwareEsPatch(rorPluginDirectory:
         rorPluginDirectory.copyToPluginPath(transportNetty4Jar)
         filePatches.patch()
       case None =>
-        new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")
+        throw new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")
     }
   }
 

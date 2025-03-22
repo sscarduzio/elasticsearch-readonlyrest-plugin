@@ -179,7 +179,7 @@ object EsVersion {
 
 sealed trait SecurityType
 object SecurityType {
-  final case class RorWithXpackSecurity(attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes) extends SecurityType
+  final case class RorWithXpackSecurity(attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes, performInstallation: Boolean = true) extends SecurityType
   final case class RorSecurity(attributes: ReadonlyRestPlugin.Config.Attributes) extends SecurityType
   final case class XPackSecurity(attributes: XpackSecurityPlugin.Config.Attributes) extends SecurityType
   case object NoSecurityCluster extends SecurityType
