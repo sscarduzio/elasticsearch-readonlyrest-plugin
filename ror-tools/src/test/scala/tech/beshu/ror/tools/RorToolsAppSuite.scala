@@ -64,7 +64,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
   "ROR tools app" should {
     "Patching is successful for ES installation that was not patched (with consent given in arg)" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutput {
-        RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsAppHandler.handle(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
       }
       result should equal(Result.Success)
       output should include(
@@ -92,7 +92,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
     }
     "Patching does not start when user declines to accept implications of patching (in arg)" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutput {
-        RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "no"))(_)
+        RorToolsAppHandler.handle(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "no"))(_)
       }
       result should equal(Result.Failure(1))
       output should equal(
@@ -116,7 +116,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
     }
     "Patching not started because of not existing directory" in withFreshEsDirectory { () =>
       val (result, output) = captureResultAndOutput {
-        RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", "/wrong_directory"))(_)
+        RorToolsAppHandler.handle(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", "/wrong_directory"))(_)
       }
       result should equal(Result.CommandNotParsed)
       output should include(
@@ -128,7 +128,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
       // Patch
       val hashBeforePatching = DirectoryUtils.calculateHash(esLocalPath)
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsAppHandler.handle(Array("patch", "--I-understand-and-accept-ES-patching", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsAppHandler.handle(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(

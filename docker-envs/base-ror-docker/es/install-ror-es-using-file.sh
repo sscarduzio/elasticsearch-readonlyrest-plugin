@@ -13,6 +13,6 @@ echo "Installing ES ROR from file..."
 /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/ror.zip
 if verlte "6.5.0" "$ES_VERSION"; then
   echo "Patching ES ROR..."
-  /usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch --I-understand-and-accept-ES-patching yes
+  /usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING yes
 fi
 echo "DONE!"

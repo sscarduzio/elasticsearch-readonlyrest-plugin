@@ -158,7 +158,7 @@ object RorToolsAppHandler {
     programName("java -jar ror-tools.jar"),
     patchCommand,
     note(""),
-    opt[String]("i-understand-and-accept-es-patching").optional()
+    opt[String]("i_understand_and_accept_es_patching")
       .valueName("<yes/no>")
       .validate {
         case "yes" => success
