@@ -48,6 +48,16 @@ tasks.withType(ScalaCompile).configureEach {
     scalaCompileOptions.additionalParameters = parameters
 }
 
+sourceSets {
+    test {
+        resources {
+            srcDirs += [
+                    "$rootDir/tests-utils/src/main/resources"
+            ]
+        }
+    }
+}
+
 test {
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')

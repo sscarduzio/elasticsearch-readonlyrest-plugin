@@ -63,7 +63,7 @@ trait EsContainerCreator {
                                                        attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
                                                        startedClusterDependencies: StartedClusterDependencies,
                                                        performInstallation: Boolean) = {
-    val pluginFiles: PluginFiles = project.getPluginFiles.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
+    val pluginFiles: PluginFiles = project.getPluginFiles.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
     val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
@@ -99,7 +99,7 @@ trait EsContainerCreator {
                                        nodeDataInitializer: ElasticsearchNodeDataInitializer,
                                        attributes: ReadonlyRestPlugin.Config.Attributes,
                                        startedClusterDependencies: StartedClusterDependencies) = {
-    val pluginFiles: PluginFiles = project.getPluginFiles.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
+    val pluginFiles: PluginFiles = project.getPluginFiles.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
     val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(

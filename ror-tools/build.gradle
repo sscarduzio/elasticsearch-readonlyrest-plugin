@@ -46,6 +46,16 @@ dependencyCheck {
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
 
+sourceSets {
+    test {
+        resources {
+            srcDirs += [
+                    "$rootDir/tests-utils/src/main/resources"
+            ]
+        }
+    }
+}
+
 test {
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')
@@ -66,7 +76,8 @@ configurations {
 }
 
 dependencies {
-    testImplementation project (':tests-utils')
+    testImplementation(project(':tests-utils'))
+    testFixtures(project(':tests-utils'))
     testImplementation group:  'ch.qos.logback',        name: 'logback-classic',  version: '1.3.14'
     testImplementation group:  'com.github.pathikrit',  name: 'better-files_3',   version: '3.9.2'
 
