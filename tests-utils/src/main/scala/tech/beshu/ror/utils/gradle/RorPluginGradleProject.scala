@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.gradle
 
 import better.files.*
+import tech.beshu.ror.utils.gradle.RorPluginGradleProject.PluginFiles
 
 import java.io.File as JFile
 import java.nio.file.Paths
@@ -44,6 +45,11 @@ object RorPluginGradleProject {
       .map(_.name)
       .filter(_.matches("^es\\d{2,3}x$"))
       .toList
+
+  final case class PluginFiles(plugin: JFile,
+                               rorProperties: JFile,
+                               rorSecurityPolicy: JFile)
+
 }
 
 class RorPluginGradleProject(val moduleName: String) {
@@ -57,12 +63,12 @@ class RorPluginGradleProject(val moduleName: String) {
       .create(RorPluginGradleProject.getRootProject)
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
-  def assemble: Option[(JFile, JFile, JFile)] = {
+  def getPluginFiles: Option[PluginFiles] = {
     val plugin = new JFile(project, "build/distributions/" + pluginVersion + ".zip")
     val rorProperties = new JFile(project, "build/tmp/" + pluginVersion + "/plugin-descriptor.properties")
     val rorSecurityPolicy = new JFile(project, "build/tmp/" + pluginVersion + "/plugin-security.policy")
     if (!plugin.exists || !rorProperties.exists() || !rorSecurityPolicy.exists()) None
-    else Some((plugin, rorProperties, rorSecurityPolicy))
+    else Some(PluginFiles(plugin, rorProperties, rorSecurityPolicy))
   }
 
   def getModuleESVersion: String = esProjectProperties.getProperty("latestSupportedEsVersion")

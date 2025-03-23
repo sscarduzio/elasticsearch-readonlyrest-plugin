@@ -14,25 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites
+package tech.beshu.ror.tools
 
-import cats.data.NonEmptyList
-import monix.eval.Task
+import better.files.File as BetterFile
 import monix.execution.Scheduler
-import monix.execution.atomic.{AtomicAny, AtomicInt}
 import org.apache.commons.compress.archivers.tar.TarFile
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers.include
 import org.scalatest.matchers.should.Matchers.{equal, should, shouldNot}
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.utils.{DirectoryUtils, ESVersionSupportForAnyWordSpecLike}
-import tech.beshu.ror.tools.RorToolsAppHandler
 import tech.beshu.ror.tools.RorToolsAppHandler.Result
 import tech.beshu.ror.tools.core.utils.InOut
+import tech.beshu.ror.tools.utils.{CapturingOutputAndMockingInput, DirectoryUtils, TestEsContainerManager}
 import tech.beshu.ror.utils.containers.*
-import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
-import tech.beshu.ror.utils.containers.images.domain.Enabled
 
 import java.io.{Console as _, *}
 import java.nio.file.{Files, Path}
@@ -40,13 +34,13 @@ import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.language.postfixOps
 
-class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike with BeforeAndAfterAll {
+class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
 
   implicit val scheduler: Scheduler = Scheduler.computation(10)
 
-  private def localPath = Path.of(getClass.getResource(s"/temp_directory_for_ror_tools_app_suite").getPath)
-
-  private def esLocalPath = Path.of(getClass.getResource(s"/temp_directory_for_ror_tools_app_suite").getPath + "/es")
+  private val tempDirectory = BetterFile.newTemporaryDirectory()
+  private val localPath = tempDirectory.path
+  private val esLocalPath = (tempDirectory / "es").path
 
   // Before performing tests in this suite:
   // - the ES container is started (using security variant RorWithXpackSecurity)
@@ -60,6 +54,11 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
       esContainer.copyFileFromContainer("/tmp/elasticsearch.tar", s"$localPath/elasticsearch.tar")
     }
     super.beforeAll()
+  }
+
+  override protected def afterAll(): Unit = {
+    super.afterAll()
+    tempDirectory.clear()
   }
 
   "ROR tools app" should {
@@ -228,57 +227,5 @@ class RorToolsAppSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
       DirectoryUtils.clean(esLocalPath)
     }
   }
-
-}
-
-class TestEsContainerManager extends EsContainerCreator {
-
-  private val uniqueClusterId: AtomicInt = AtomicInt(1)
-
-  lazy val esContainer: EsContainer = createEsContainer
-
-  def start(): Task[Unit] = Task.delay(esContainer.start())
-
-  def stop(): Task[Unit] = Task.delay(esContainer.stop())
-
-  private def createEsContainer: EsContainer = {
-    val clusterName = s"ROR_${uniqueClusterId.getAndIncrement()}"
-    val nodeName = s"${clusterName}_1"
-    create(
-      nodeSettings = EsNodeSettings(
-        nodeName = nodeName,
-        clusterName = clusterName,
-        securityType = SecurityType.RorWithXpackSecurity(
-          ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-            rorConfigReloading = Enabled.Yes(1 hour),
-            rorConfigFileName = "/basic/readonlyrest.yml",
-          ),
-          performInstallation = false,
-        ),
-        containerSpecification = ContainerSpecification.empty,
-        esVersion = EsVersion.DeclaredInProject
-      ),
-      allNodeNames = NonEmptyList.of(nodeName),
-      nodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-      startedClusterDependencies = StartedClusterDependencies(List.empty)
-    )
-  }
-}
-
-class CapturingOutputAndMockingInput(mockedInput: Option[String] = None) extends InOut {
-
-  val outputBuffer: AtomicAny[String] = AtomicAny[String]("")
-
-  override def print(str: String): Unit = outputBuffer.getAndTransform(old => old + str)
-
-  override def println(str: String): Unit = outputBuffer.getAndTransform(old => old + str + "\n")
-
-  override def printErr(str: String): Unit = print(str)
-
-  override def printlnErr(str: String): Unit = println(str)
-
-  override def readLine(): String = mockedInput.getOrElse(throw new Exception("No mocked input provided"))
-
-  def getOutputBuffer: String = outputBuffer.getAndSet("")
 
 }
