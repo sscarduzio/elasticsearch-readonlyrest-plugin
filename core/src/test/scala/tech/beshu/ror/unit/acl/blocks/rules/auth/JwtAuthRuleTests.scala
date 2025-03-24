@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
@@ -394,7 +393,7 @@ class JwtAuthRuleTests
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
             ))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -428,7 +427,7 @@ class JwtAuthRuleTests
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
             ))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("*2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -462,7 +461,7 @@ class JwtAuthRuleTests
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
             ))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.And(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group1"), GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -496,7 +495,7 @@ class JwtAuthRuleTests
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
             ))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.And(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupIdLike.from("*1"), GroupIdLike.from("*2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -638,7 +637,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
             groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups.subgroups")), None))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group1"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -658,7 +657,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
             groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -678,7 +677,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
             groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.And(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -716,7 +715,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
             groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(GroupIds(
+          configuredGroups = Groups.Defined(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt),
@@ -745,8 +744,8 @@ class JwtAuthRuleTests
                          preferredGroup: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups), CaseSensitivity.Enabled)
-    val requestContext = MockRequestContext.indices.copy(
-      headers = Set(tokenHeader) ++ preferredGroup.map(_.toCurrentGroupHeader).toSet
+    val requestContext = MockRequestContext.indices.withHeaders(
+      preferredGroup.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,

@@ -219,7 +219,7 @@ class TokenAuthenticationRuleTests
                          headers: Set[Header],
                          assertionType: AssertionType): Unit = {
     val rule = new TokenAuthenticationRule(settings, CaseSensitivity.Enabled, impersonation)
-    val requestContext = MockRequestContext.metadata.copy(headers = headers)
+    val requestContext = MockRequestContext.indices.withHeaders(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext = requestContext,
       userMetadata = UserMetadata.from(requestContext),

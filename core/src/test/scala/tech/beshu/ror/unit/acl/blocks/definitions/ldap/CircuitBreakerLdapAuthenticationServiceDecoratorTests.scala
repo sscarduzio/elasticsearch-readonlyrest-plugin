@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.definitions.ldap
 
 import com.unboundid.ldap.sdk.{LDAPSearchException, ResultCode}
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.exceptions.ExecutionRejectedException

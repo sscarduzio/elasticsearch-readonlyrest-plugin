@@ -65,10 +65,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         val indexAuditSinkService = new MockedIndexAuditSinkService()
         val dataStreamAuditSinkService = new MockedDataStreamBasedAuditSinkService()
         val acl = auditedAcl(indexAuditSinkService, dataStreamAuditSinkService)
-        val request = MockRequestContext.indices.copy(headers = Set(
-          header("x-forwarded-for", "192.168.0.1"),
-          header("custom-one", "test")
-        ))
+        val request = MockRequestContext.indices.withHeaders(
+          header("x-forwarded-for", "192.168.0.1"), header("custom-one", "test")
+        )
 
         acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -109,11 +108,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         val indexAuditSinkService = new MockedIndexAuditSinkService()
         val dataStreamAuditSinkService = new MockedDataStreamBasedAuditSinkService()
         val acl = auditedAcl(indexAuditSinkService, dataStreamAuditSinkService)
-        val request = MockRequestContext.indices.copy(headers = Set(
-          header("X-Forwarded-For", "192.168.0.1"),
-          header("Custom-One", "test")
-        ))
-
+        val request = MockRequestContext.indices.withHeaders(
+          header("X-Forwarded-For", "192.168.0.1"), header("Custom-One", "test")
+        )
         acl.handleRegularRequest(request).runSyncUnsafe()
 
         def expectedJson(jsonString: String) = ujson.read(

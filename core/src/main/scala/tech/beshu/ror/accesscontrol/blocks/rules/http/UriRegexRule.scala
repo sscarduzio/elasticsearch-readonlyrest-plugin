@@ -50,7 +50,7 @@ class UriRegexRule(val settings: Settings)
                                      (patterns: NonEmptyList[Pattern]): Boolean =
     patterns
       .exists {
-        _.matcher(requestContext.uriPath.value.value).find()
+        _.matcher(requestContext.restRequest.path.value.value).find()
       }
 }
 

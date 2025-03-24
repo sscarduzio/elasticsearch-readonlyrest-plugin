@@ -68,7 +68,7 @@ final class ProxyAuthRule(val settings: Settings,
 
   private def getLoggedUser(context: RequestContext) = {
     context
-      .headers
+      .restRequest.allHeaders
       .find(_.name === settings.userHeaderName)
       .map(h => DirectlyLoggedUser(Id(h.value)))
   }

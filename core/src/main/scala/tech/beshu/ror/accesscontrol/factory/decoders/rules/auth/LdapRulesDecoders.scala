@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, L
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.LdapRulesDecodersHelper.*
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -222,7 +223,7 @@ private object LdapRulesDecodersHelper {
   private[rules] def ldapAuthorizationRuleSettings(ldapService: LdapAuthorizationService,
                                                    groupsLogic: GroupsLogic): Either[RulesLevelCreationError, LdapAuthorizationRule.Settings] =
     groupsLogic match {
-      case groupsLogic: GroupsLogic.CombinedGroupsLogic =>
+      case groupsLogic: GroupsLogic.Combined =>
         Right(LdapAuthorizationRule.Settings.CombinedGroupsLogicSettings(ldapService, groupsLogic))
       case groupsLogic: GroupsLogic.PositiveGroupsLogic =>
         Right(LdapAuthorizationRule.Settings.PositiveGroupsLogicSettings(ldapService, groupsLogic))

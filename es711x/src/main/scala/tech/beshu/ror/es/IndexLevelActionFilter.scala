@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import cats.implicits.*
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
@@ -43,6 +42,7 @@ import tech.beshu.ror.es.services.{NodeClientBasedAuditSinkService, EsIndexJsonC
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.exceptions.StartingFailureException
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
@@ -149,7 +149,7 @@ class IndexLevelActionFilter(nodeName: String,
         chain.continue(task, action, request, listener)
       case Some(channel) =>
         proceedByRorEngine(
-          EsContext(
+          new EsContext(
             channel,
             nodeName,
             task,
@@ -195,12 +195,12 @@ class IndexLevelActionFilter(nodeName: String,
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {
-    logger.warn(s"[${esContext.correlationId.show}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
+    logger.warn(s"[${esContext.correlationId.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet")
     rorNotAvailableRequestHandler.handleRorNotReadyYet(esContext)
   }
 
   private def handleRorFailedToStart(esContext: EsContext): Unit = {
-    logger.error(s"[${esContext.correlationId.show}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
+    logger.error(s"[${esContext.correlationId.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST failed to start")
     rorNotAvailableRequestHandler.handleRorFailedToStart(esContext)
   }
 

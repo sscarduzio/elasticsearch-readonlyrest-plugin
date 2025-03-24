@@ -319,11 +319,11 @@ object common extends Logging {
       )
       .decoder
 
-  implicit val groupsLogicAndDecoder: Decoder[GroupsLogic.And] =
-    groupIdsDecoder.map(GroupsLogic.And.apply)
+  implicit val groupsLogicAndDecoder: Decoder[GroupsLogic.AllOf] =
+    groupIdsDecoder.map(GroupsLogic.AllOf.apply)
 
-  implicit val groupsLogicOrDecoder: Decoder[GroupsLogic.Or] =
-    groupIdsDecoder.map(GroupsLogic.Or.apply)
+  implicit val groupsLogicOrDecoder: Decoder[GroupsLogic.AnyOf] =
+    groupIdsDecoder.map(GroupsLogic.AnyOf.apply)
 
   implicit val groupsLogicNotAllOfDecoder: Decoder[GroupsLogic.NotAllOf] =
     groupIdsDecoder.map(GroupsLogic.NotAllOf.apply)

@@ -29,6 +29,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
+import java.net.InetSocketAddress
 import java.util.{Locale, UUID}
 import scala.util.Try
 
@@ -166,6 +167,14 @@ object Address {
       parseHostname(value)
   }
 
+  def from(inetSocketAddress: InetSocketAddress): Option[Address] = {
+    for {
+      inetAddress <- Option(inetSocketAddress.getAddress)
+      hostAddress <- Option(inetAddress.getHostAddress)
+      address <- Address.from(hostAddress)
+    } yield address
+  }
+
   private def parseCidr(value: String) =
     Cidr.fromString(value).map(Address.Ip.apply)
 
@@ -202,6 +211,12 @@ final case class UriPath private(value: NonEmptyString) {
 
   def isCatIndicesPath: Boolean = value.value.startsWith("/_cat/indices")
 
+  def isSqlQueryPath: Boolean = value.value.startsWith("/_sql")
+
+  def isXpackSqlQueryPath: Boolean = value.value.startsWith("/_xpack/sql")
+  
+  def isEsqlQueryPath: Boolean = value.value.startsWith("/_query")
+  
   def isAliasesPath: Boolean =
     value.value.startsWith("/_cat/aliases") ||
       value.value.startsWith("/_alias") ||

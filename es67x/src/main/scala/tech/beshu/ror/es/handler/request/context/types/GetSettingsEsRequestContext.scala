@@ -50,7 +50,7 @@ class GetSettingsEsRequestContext(actionRequest: GetSettingsRequest,
   }
 
   override def modifyWhenIndexNotFound: ModificationResult = {
-    uriPath match {
+    restRequest.path match {
       case CatIndicesPath(_) =>
         ModificationResult.CustomResponse(emptyCatIndicesResponse)
       case _ =>

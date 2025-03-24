@@ -17,16 +17,62 @@
 package tech.beshu.ror.es
 
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
+import org.elasticsearch.http.HttpChannel
+import org.elasticsearch.rest.{AbstractRestChannel, RestChannel as EsRestChannel, RestRequest as EsRestRequest, RestResponse as EsRestResponse}
+import squants.information.{Bytes, Information}
+import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
+import tech.beshu.ror.accesscontrol.request.RestRequest
 import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RefinedUtils.nes
 
-class RorRestChannel(underlying: RestChannel)
+import java.net.InetSocketAddress
+import scala.jdk.CollectionConverters.*
+
+final class RorRestChannel(underlying: EsRestChannel)
   extends AbstractRestChannel(underlying.request(), true)
     with ResponseFieldsFiltering
     with Logging {
 
-  override def sendResponse(response: RestResponse): Unit = {
+  val restRequest: RorRestRequest = new RorRestRequest(underlying.request())
+
+  override def sendResponse(response: EsRestResponse): Unit = {
     ThreadRepo.removeRestChannel(this)
     underlying.sendResponse(filterRestResponse(response))
+  }
+}
+
+final class RorRestRequest(underlying: EsRestRequest) extends RestRequest {
+
+  override lazy val method: Method = Method.fromStringUnsafe(underlying.method().name())
+
+  override lazy val path: UriPath = UriPath
+    .from(underlying.path())
+    .getOrElse(UriPath.from(nes("/")))
+
+  override lazy val allHeaders: Set[Header] = Header.fromRawHeaders(
+    underlying
+      .getHeaders.asScala
+      .view.mapValues(_.asScala.toList)
+      .toMap
+  )
+
+  override lazy val localAddress: Address =
+    createAddressFrom(_.getLocalAddress)
+      .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
+
+  override lazy val remoteAddress: Option[Address] = createAddressFrom(_.getRemoteAddress)
+
+  override lazy val content: String = Option(underlying.content()).map(_.utf8ToString()).getOrElse("")
+
+  override lazy val contentLength: Information = Bytes(underlying.contentLength())
+
+  private def createAddressFrom(extractInetSocketAddress: HttpChannel => InetSocketAddress) = {
+    for {
+      channel <- Option(underlying.getHttpChannel)
+      inetSocketAddress <- Option(extractInetSocketAddress(channel))
+      address <- Address.from(inetSocketAddress)
+    } yield address
   }
 }

@@ -63,7 +63,7 @@ class LdapAuthRuleTests
             ),
             authorizationSettings = ldapAuthorizationRuleSettings(
               ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(group("g1")))),
-              groupsLogic = GroupsLogic.Or(GroupIds(
+              groupsLogic = GroupsLogic.AnyOf(GroupIds(
                 UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
               )),
             ),
@@ -83,7 +83,7 @@ class LdapAuthRuleTests
             ),
             authorizationSettings = ldapAuthorizationRuleSettings(
               ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(group("g1"), group("g2")))),
-              groupsLogic = GroupsLogic.Or(GroupIds(
+              groupsLogic = GroupsLogic.AnyOf(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("*1"), GroupId("g2"))
               )),
             ),
@@ -105,7 +105,7 @@ class LdapAuthRuleTests
             ),
             authorizationSettings = ldapAuthorizationRuleSettings(
               ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(group("g1"), group("g2")))),
-              groupsLogic = GroupsLogic.And(GroupIds(
+              groupsLogic = GroupsLogic.AllOf(GroupIds(
                 UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
               )),
             ),
@@ -125,7 +125,7 @@ class LdapAuthRuleTests
             ),
             authorizationSettings = ldapAuthorizationRuleSettings(
               ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(group("g1"), group("g2")))),
-              groupsLogic = GroupsLogic.And(GroupIds(
+              groupsLogic = GroupsLogic.AllOf(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("*1"), GroupId("g2"))
               )),
             ),
@@ -212,7 +212,7 @@ class LdapAuthRuleTests
               ),
               authorizationSettings = ldapAuthorizationRuleSettings(
                 mockLdapAuthorizationService(LdapService.Name("ldap1")),
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
               ),
@@ -246,7 +246,7 @@ class LdapAuthRuleTests
           authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
           authorizationSettings = ldapAuthorizationRuleSettings(
             ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-            groupsLogic = GroupsLogic.Or(GroupIds(
+            groupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
           ),
@@ -260,7 +260,7 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = ldapAuthorizationRuleSettings(
             ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-            groupsLogic = GroupsLogic.Or(GroupIds(
+            groupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
           ),
@@ -274,7 +274,7 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = ldapAuthorizationRuleSettings(
             ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.empty)),
-            groupsLogic = GroupsLogic.Or(GroupIds(
+            groupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
           ),
@@ -288,7 +288,7 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = ldapAuthorizationRuleSettings(
             ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(group("g1")))),
-            groupsLogic = GroupsLogic.And(GroupIds(
+            groupsLogic = GroupsLogic.AllOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
           ),
@@ -372,7 +372,7 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = ldapAuthorizationRuleSettings(
             ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-            groupsLogic = GroupsLogic.Or(GroupIds(
+            groupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
           ),
@@ -387,7 +387,7 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = ldapAuthorizationRuleSettings(
             ldap = mockLdapAuthorizationService(User.Id("user1"), Task.raiseError(TestException("authorization failure"))),
-            groupsLogic = GroupsLogic.Or(GroupIds(
+            groupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
           ),
@@ -402,7 +402,7 @@ class LdapAuthRuleTests
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = ldapAuthorizationRuleSettings(
                 ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
               ),
@@ -426,7 +426,7 @@ class LdapAuthRuleTests
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = ldapAuthorizationRuleSettings(
                 ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
               ),
@@ -450,7 +450,7 @@ class LdapAuthRuleTests
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = ldapAuthorizationRuleSettings(
                 ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
               ),
@@ -474,7 +474,7 @@ class LdapAuthRuleTests
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = ldapAuthorizationRuleSettings(
                 ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
               ),
@@ -498,7 +498,7 @@ class LdapAuthRuleTests
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = ldapAuthorizationRuleSettings(
                 ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
               ),
@@ -524,7 +524,7 @@ class LdapAuthRuleTests
               ),
               authorizationSettings = ldapAuthorizationRuleSettings(
                 ldap = mock[LdapAuthorizationService.WithoutGroupsFiltering],
-                groupsLogic = GroupsLogic.Or(GroupIds(
+                groupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 ))
               ),
@@ -596,7 +596,7 @@ class LdapAuthRuleTests
       authentication = new LdapAuthenticationRule(authenticationSettings, CaseSensitivity.Enabled, impersonation),
       authorization = new LdapAuthorizationRule(authorizationSettings, CaseSensitivity.Enabled, impersonation)
     )
-    val requestContext = MockRequestContext.indices.copy(headers = headers)
+    val requestContext = MockRequestContext.indices.withHeaders(headers)
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
       userMetadata = UserMetadata.from(requestContext),

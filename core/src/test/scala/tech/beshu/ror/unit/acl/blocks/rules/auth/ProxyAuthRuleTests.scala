@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -180,7 +179,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
                          headers: Set[Header],
                          assertionType: AssertionType): Unit = {
     val rule = new ProxyAuthRule(settings, CaseSensitivity.Enabled, impersonation)
-    val requestContext = MockRequestContext.metadata.copy(headers = headers)
+    val requestContext = MockRequestContext.indices.withHeaders(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,
       UserMetadata.from(requestContext),

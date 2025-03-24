@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.mocks
 
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -27,8 +26,8 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
+import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.mocks.MockRequestContext.roAction
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
@@ -84,16 +83,10 @@ object MockRequestContext {
 final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
+                                                override val restRequest: MockRestRequest = MockRestRequest(path = UriPath.from("_search")),
                                                 override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                 override val `type`: Type = Type("default-type"),
                                                 override val action: Action = roAction,
-                                                override val headers: Set[Header] = Set.empty,
-                                                override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                                override val localAddress: Address = Address.from("localhost").get,
-                                                override val method: Method = Method.GET,
-                                                override val uriPath: UriPath = UriPath.from("_search"),
-                                                override val contentLength: Information = Bytes(0),
-                                                override val content: String = "",
                                                 override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                                 override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                                 override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
@@ -110,21 +103,23 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices
   )
+
+  def withHeaders(header: Header, headers: Header*): MockGeneralIndexRequestContext = {
+    withHeaders(header :: headers.toList)
+  }
+
+  def withHeaders(headers: Iterable[Header]): MockGeneralIndexRequestContext = {
+    this.copy(restRequest = this.restRequest.copy(allHeaders = headers.toCovariantSet))
+  }
 }
 
 final case class MockFilterableMultiRequestContext(override val timestamp: Instant,
                                                    override val taskId: Long = 0L,
                                                    override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
+                                                   override val restRequest: MockRestRequest = MockRestRequest(path = UriPath.from("_msearch")),
                                                    override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                    override val `type`: Type = Type("default-type"),
                                                    override val action: Action = roAction,
-                                                   override val headers: Set[Header] = Set.empty,
-                                                   override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                                   override val localAddress: Address = Address.from("localhost").get,
-                                                   override val method: Method = Method.GET,
-                                                   override val uriPath: UriPath = UriPath.currentUserMetadataPath,
-                                                   override val contentLength: Information = Bytes(0),
-                                                   override val content: String = "",
                                                    override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                                    override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                                    override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
@@ -149,16 +144,10 @@ final case class MockFilterableMultiRequestContext(override val timestamp: Insta
 final case class MockGeneralNonIndexRequestContext(override val timestamp: Instant,
                                                    override val taskId: Long = 0L,
                                                    override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
+                                                   override val restRequest: MockRestRequest = MockRestRequest(path = UriPath.from("_cat/nodes")),
                                                    override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                    override val `type`: Type = Type("default-type"),
                                                    override val action: Action = roAction,
-                                                   override val headers: Set[Header] = Set.empty,
-                                                   override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                                   override val localAddress: Address = Address.from("localhost").get,
-                                                   override val method: Method = Method.GET,
-                                                   override val uriPath: UriPath = UriPath.currentUserMetadataPath,
-                                                   override val contentLength: Information = Bytes(0),
-                                                   override val content: String = "",
                                                    override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                                    override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                                    override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
@@ -179,16 +168,10 @@ final case class MockGeneralNonIndexRequestContext(override val timestamp: Insta
 final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val taskId: Long = 0L,
                                           override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
+                                          override val restRequest: MockRestRequest = MockRestRequest(path = UriPath.from("_search")),
                                           override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                           override val `type`: Type = Type("default-type"),
                                           override val action: Action = roAction,
-                                          override val headers: Set[Header] = Set.empty,
-                                          override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                          override val localAddress: Address = Address.from("localhost").get,
-                                          override val method: Method = Method.GET,
-                                          override val uriPath: UriPath = UriPath.from("/_search"),
-                                          override val contentLength: Information = Bytes(0),
-                                          override val content: String = "",
                                           override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                           override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                           override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
@@ -205,21 +188,24 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
   override def initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, indices, allAllowedIndices, None
   )
+
+  def withHeaders(header: Header, headers: Header*): MockSearchRequestContext = {
+    withHeaders(header :: headers.toList)
+  }
+
+  def withHeaders(headers: Iterable[Header]): MockSearchRequestContext = {
+    this.copy(restRequest = this.restRequest.copy(allHeaders = headers.toCovariantSet))
+  }
+
 }
 
 final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
                                                 override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
+                                                override val restRequest: MockRestRequest = MockRestRequest(path = UriPath.from("_snapshot")),
                                                 override val `type`: Type = Type("default-type"),
                                                 override val action: Action = Action.RorAction.RorUserMetadataAction,
-                                                override val headers: Set[Header] = Set.empty,
-                                                override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                                override val localAddress: Address = Address.from("localhost").get,
-                                                override val method: Method = Method.GET,
-                                                override val uriPath: UriPath = UriPath.currentUserMetadataPath,
-                                                override val contentLength: Information = Bytes(0),
-                                                override val content: String = "",
                                                 override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                                 override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                                 override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
@@ -240,16 +226,10 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
 final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val taskId: Long = 0L,
                                              override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
+                                             override val restRequest: MockRestRequest = MockRestRequest(path = UriPath.from("_snapshot/_status")),
                                              override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                              override val `type`: Type = Type("default-type"),
                                              override val action: Action = roAction,
-                                             override val headers: Set[Header] = Set.empty,
-                                             override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                             override val localAddress: Address = Address.from("localhost").get,
-                                             override val method: Method = Method.GET,
-                                             override val uriPath: UriPath = UriPath.currentUserMetadataPath,
-                                             override val contentLength: Information = Bytes(0),
-                                             override val content: String = "",
                                              override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                              override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                              override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
@@ -270,16 +250,10 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
 final case class MockDataStreamsRequestContext(override val timestamp: Instant,
                                                override val taskId: Long = 0L,
                                                override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
+                                               override val restRequest: MockRestRequest = MockRestRequest(path = UriPath.from("_search")),
                                                override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                override val `type`: Type = Type("default-type"),
                                                override val action: Action = roAction,
-                                               override val headers: Set[Header] = Set.empty,
-                                               override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                               override val localAddress: Address = Address.from("localhost").get,
-                                               override val method: Method = Method.GET,
-                                               override val uriPath: UriPath = UriPath.currentUserMetadataPath,
-                                               override val contentLength: Information = Bytes(0),
-                                               override val content: String = "",
                                                override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                                override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                                override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
@@ -300,16 +274,10 @@ final case class MockDataStreamsRequestContext(override val timestamp: Instant,
 final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
+                                                override val restRequest: MockRestRequest = MockRestRequest(path = UriPath.currentUserMetadataPath),
                                                 override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                 override val `type`: Type = Type("default-type"),
-                                                override val action: Action = roAction,
-                                                override val headers: Set[Header] = Set.empty,
-                                                override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                                override val localAddress: Address = Address.from("localhost").get,
-                                                override val method: Method = Method.GET,
-                                                override val uriPath: UriPath = UriPath.currentUserMetadataPath,
-                                                override val contentLength: Information = Bytes(0),
-                                                override val content: String = "",
+                                                override val action: Action = Action.RorAction.RorUserMetadataAction,
                                                 override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                                 override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                                 override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
@@ -324,21 +292,24 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
   override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty
   )
+
+  def withHeaders(header: Header, headers: Header*): MockUserMetadataRequestContext = {
+    withHeaders(header :: headers.toList)
+  }
+
+  def withHeaders(headers: Iterable[Header]): MockUserMetadataRequestContext = {
+    this.copy(restRequest = this.restRequest.copy(allHeaders = headers.toCovariantSet))
+  }
+
 }
 
 final case class MockTemplateRequestContext(override val timestamp: Instant,
                                             override val taskId: Long = 0L,
                                             override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
+                                            override val restRequest: MockRestRequest = MockRestRequest(path = UriPath.from("/_index_template")),
                                             override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                             override val `type`: Type = Type("default-type"),
                                             override val action: Action = Action("default-action"),
-                                            override val headers: Set[Header] = Set.empty,
-                                            override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                            override val localAddress: Address = Address.from("localhost").get,
-                                            override val method: Method = Method.GET,
-                                            override val uriPath: UriPath = UriPath.from("/_template").get,
-                                            override val contentLength: Information = Bytes(0),
-                                            override val content: String = "",
                                             override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                             override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                             override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
@@ -359,16 +330,10 @@ final case class MockTemplateRequestContext(override val timestamp: Instant,
 abstract class MockSimpleRequestContext[BC <: BlockContext](override val timestamp: Instant = Instant.now(),
                                                             override val taskId: Long = 0L,
                                                             override val id: RequestContext.Id = RequestContext.Id.fromString("mock"),
+                                                            override val restRequest: MockRestRequest = MockRestRequest(),
                                                             override val rorKibanaSessionId: CorrelationId = CorrelationId.random,
                                                             override val `type`: Type = Type("default-type"),
                                                             override val action: Action = roAction,
-                                                            override val headers: Set[Header] = Set.empty,
-                                                            override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                                            override val localAddress: Address = Address.from("localhost").get,
-                                                            override val method: Method = Method.GET,
-                                                            override val uriPath: UriPath = UriPath.from("PATH"),
-                                                            override val contentLength: Information = Bytes(0),
-                                                            override val content: String = "",
                                                             override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                                             override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                                             override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
@@ -388,3 +353,12 @@ object MockSimpleRequestContext {
     @nowarn override val action: Action = customAction
   }
 }
+
+final case class MockRestRequest(override val method: Method = Method.GET,
+                                 override val path: UriPath = UriPath.from("_search"),
+                                 override val allHeaders: Set[Header] = Set.empty,
+                                 override val localAddress: Address = Address.from("localhost").get,
+                                 override val remoteAddress: Option[Address] = Address.from("localhost"),
+                                 override val content: String = "",
+                                 override val contentLength: Information = Bytes(0))
+  extends RestRequest

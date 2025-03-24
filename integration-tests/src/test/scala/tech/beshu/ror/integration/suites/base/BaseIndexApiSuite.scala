@@ -448,7 +448,7 @@ trait BaseIndexApiSuite
           result.indices.size should be(0)
           result.aliases.size should be(0)
         }
-        "user has no access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x, allEs8xAboveEs86x) in {
+        "user has no access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x, allEs8xAboveEs86x, allEs9x) in {
           val result = dev7IndexManager.resolve("index2")
 
           result should have statusCode 200

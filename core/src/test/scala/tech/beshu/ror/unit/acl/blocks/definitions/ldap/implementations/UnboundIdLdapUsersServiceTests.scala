@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 import cats.data.EitherT
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*

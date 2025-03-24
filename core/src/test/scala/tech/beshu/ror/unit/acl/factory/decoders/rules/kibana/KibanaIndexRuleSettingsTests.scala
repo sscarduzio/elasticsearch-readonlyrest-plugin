@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.kibana
 
-import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaIndexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}

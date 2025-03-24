@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{CombinedGroupsLogic, NegativeGroupsLogic, PositiveGroupsLogic}
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{Combined, NegativeGroupsLogic, PositiveGroupsLogic}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
 
@@ -37,7 +37,7 @@ sealed trait BlockContext {
   def responseTransformations: List[ResponseTransformation]
 
   def isCurrentGroupEligible(permittedGroupIds: GroupIds): Boolean = {
-    if (requestContext.uriPath.isCurrentUserMetadataPath) {
+    if (requestContext.restRequest.path.isCurrentUserMetadataPath) {
       true
     } else {
       userMetadata.currentGroupId match {
@@ -54,7 +54,7 @@ sealed trait BlockContext {
         true
       case logic: PositiveGroupsLogic =>
         isCurrentGroupEligible(logic.permittedGroupIds)
-      case logic: CombinedGroupsLogic =>
+      case logic: Combined =>
         isCurrentGroupEligible(logic.positiveGroupsLogic.permittedGroupIds)
     }
   }

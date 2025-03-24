@@ -164,7 +164,7 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
 
 tasks.register('localRorDockerImage', Exec) {
     // we prepare docker image for local architecture - the image is loaded to local registry
-    dependsOn('packageRorPlugin', 'prepareDockerImageFiles') 
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'

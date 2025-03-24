@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration
 
 import com.dimafeng.testcontainers.ForAllTestContainer
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -28,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 
@@ -74,7 +72,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
   "An LDAP connectivity check" should {
     "allow core to start" when {
       "server discovery is used and DNS responds with proper address" in {
-        val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("cartman:user2")))
+        val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 1
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
