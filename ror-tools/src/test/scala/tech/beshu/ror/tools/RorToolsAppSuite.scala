@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.tools
 
-import better.files.File as BetterFile
+import better.files.File
 import monix.execution.Scheduler
 import org.scalatest.matchers.must.Matchers.include
 import org.scalatest.matchers.should.Matchers.{equal, should, shouldNot}
@@ -24,9 +24,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import tech.beshu.ror.tools.RorTools.Result
 import tech.beshu.ror.tools.core.utils.InOut
-import tech.beshu.ror.tools.utils.{CapturingOutputAndMockingInput, ExampleEsWithRorContainer, FileUtils}
+import tech.beshu.ror.tools.utils.{CapturingOutputAndMockingInput, ExampleEsWithRorContainer}
+import tech.beshu.ror.utils.files.FileUtils
 
-import java.io.{Console as _, *}
 import java.nio.file.Path
 import scala.language.postfixOps
 
@@ -34,7 +34,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
 
   implicit val scheduler: Scheduler = Scheduler.computation(10)
 
-  private val tempDirectory = BetterFile.newTemporaryDirectory()
+  private val tempDirectory = File.newTemporaryDirectory()
   private val localPath = tempDirectory.path
   private val esLocalPath = (tempDirectory / "es").path
 
@@ -47,14 +47,8 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
     super.beforeAll()
   }
 
-  // Before each test:
-  // - clean temporary directory
-  // - create /es in temporary directory
-  // - untar elasticsearch.tar prepared when beforeAll is executed
   override protected def beforeEach(): Unit = {
-    BetterFile(esLocalPath).delete(swallowIOExceptions = true)
-    File(s"$esLocalPath").mkdirs
-    FileUtils.unTar(Path.of(s"$localPath/elasticsearch.tar"), Path.of(s"$esLocalPath"))
+    prepareDirectoryWithElasticsearchAndRorBinariesForTest()
     super.beforeEach()
   }
 
@@ -200,7 +194,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
 
   override protected def afterEach(): Unit = {
     super.afterEach()
-    BetterFile(esLocalPath).delete(swallowIOExceptions = true)
+    File(esLocalPath).delete(swallowIOExceptions = true)
   }
 
   override protected def afterAll(): Unit = {
@@ -219,6 +213,16 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
       esContainer.execInContainer("tar", "-cvf", "/tmp/elasticsearch.tar", "-C", "/usr/share/elasticsearch", "modules", "bin", "lib", "plugins", "tmp")
       esContainer.copyFileFromContainer("/tmp/elasticsearch.tar", s"$localPath/elasticsearch.tar")
     }
+  }
+
+  // This method handles preparing fresh ES directory for test:
+  // - clean temporary directory
+  // - create /es in temporary directory
+  // - untar elasticsearch.tar prepared when beforeAll is executed
+  private def prepareDirectoryWithElasticsearchAndRorBinariesForTest(): Unit = {
+    File(esLocalPath).delete(swallowIOExceptions = true)
+    File(s"$esLocalPath").createDirectory()
+    FileUtils.unTar(Path.of(s"$localPath/elasticsearch.tar"), Path.of(s"$esLocalPath"))
   }
 
 }

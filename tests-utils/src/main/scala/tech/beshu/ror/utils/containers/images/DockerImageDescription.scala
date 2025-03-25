@@ -40,6 +40,11 @@ final case class DockerImageDescription(baseImage: String,
     else run(orElseCommand)
   }
 
+  def when(condition: Boolean, f: DockerImageDescription => DockerImageDescription): DockerImageDescription = {
+    if (condition) f(this)
+    else this
+  }
+
   def user(name: String): DockerImageDescription = {
     this.copy(runCommands = this.runCommands :+ Command.ChangeUser(name))
   }
@@ -70,11 +75,11 @@ object DockerImageDescription {
   final case class CopyFile(destination: Path, file: File)
   final case class Env(name: String, value: String)
 
-  def create(image: String): DockerImageDescription = DockerImageDescription(
+  def create(image: String, customEntrypoint: Option[Path] = None): DockerImageDescription = DockerImageDescription(
     baseImage = image,
     runCommands = Seq.empty,
     copyFiles = Set.empty,
     envs = Set.empty,
-    entrypoint = None
+    entrypoint = customEntrypoint
   )
 }

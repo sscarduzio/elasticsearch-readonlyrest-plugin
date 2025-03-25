@@ -28,8 +28,6 @@ import scala.concurrent.duration.FiniteDuration
 object ReadonlyRestPlugin {
   final case class Config(rorConfig: File,
                           rorPlugin: File,
-                          rorProperties: File,
-                          rorSecurityPolicy: File,
                           attributes: Attributes)
   object Config {
     final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
@@ -66,10 +64,8 @@ class ReadonlyRestPlugin(esVersion: String,
   extends Elasticsearch.Plugin {
 
   override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
-    val withoutPatching = image
+    image
       .copyFile(os.root / "tmp" / config.rorPlugin.name, config.rorPlugin)
-      .copyFile(esDir / "tmp" / config.rorProperties.name, config.rorProperties)
-      .copyFile(esDir / "tmp" / config.rorSecurityPolicy.name, config.rorSecurityPolicy)
       .copyFile(configDir / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
       .copyFile(configDir / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
       .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
@@ -78,12 +74,7 @@ class ReadonlyRestPlugin(esVersion: String,
       .updateFipsDependencies()
       .copyFile(configDir / "readonlyrest.yml", config.rorConfig)
       .installRorPlugin()
-
-    if (performPatching) {
-      withoutPatching.patchES()
-    } else {
-      withoutPatching
-    }
+      .when(performPatching, _.patchES())
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {

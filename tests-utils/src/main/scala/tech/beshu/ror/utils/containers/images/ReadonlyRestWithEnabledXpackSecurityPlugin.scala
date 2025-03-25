@@ -26,8 +26,6 @@ import scala.concurrent.duration.FiniteDuration
 object ReadonlyRestWithEnabledXpackSecurityPlugin {
   final case class Config(rorConfig: File,
                           rorPlugin: File,
-                          rorProperties: File,
-                          rorSecurityPolicy: File,
                           attributes: Attributes)
   object Config {
     final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
@@ -93,8 +91,6 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
     ReadonlyRestPlugin.Config(
       rorConfig = config.rorConfig,
       rorPlugin = config.rorPlugin,
-      rorProperties = config.rorProperties,
-      rorSecurityPolicy = config.rorSecurityPolicy,
       attributes = ReadonlyRestPlugin.Config.Attributes(
         config.attributes.rorConfigReloading,
         config.attributes.rorCustomSettingsIndex,

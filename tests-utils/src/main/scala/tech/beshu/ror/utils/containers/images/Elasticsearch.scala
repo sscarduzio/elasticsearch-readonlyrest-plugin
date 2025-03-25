@@ -41,7 +41,7 @@ object Elasticsearch {
     def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder
   }
 
-  private [images] def fromResourceBy(name: String): File = {
+  private[images] def fromResourceBy(name: String): File = {
     scala.util.Try(ContainerUtils.getResourceFile(s"/$name"))
       .map(_.toScala)
       .get
@@ -53,28 +53,32 @@ object Elasticsearch {
 }
 class Elasticsearch(esVersion: String,
                     config: Config,
-                    plugins: Seq[Plugin])
+                    plugins: Seq[Plugin],
+                    customEntrypoint: Option[Path])
   extends LazyLogging {
 
   def this(esVersion: String, config: Config) = {
-    this(esVersion, config, Seq.empty)
+    this(esVersion, config, Seq.empty, None)
+  }
+
+  def when[T](opt: Option[T], f: (Elasticsearch, T) => Elasticsearch): Elasticsearch = {
+    opt match {
+      case Some(t) => f(this, t)
+      case None => this
+    }
   }
 
   def install(plugin: Plugin): Elasticsearch = {
-    new Elasticsearch(esVersion, config, plugins :+ plugin)
+    new Elasticsearch(esVersion, config, plugins :+ plugin, customEntrypoint)
   }
 
-  def toDockerImageDescription: DockerImageDescription = toDockerImageDescription(None)
+  def setEntrypoint(entrypoint: Path): Elasticsearch = {
+    new Elasticsearch(esVersion, config, plugins, Some(entrypoint))
+  }
 
-  def toDockerImageDescription(customEntrypoint: Option[Path]): DockerImageDescription = {
-    val image = s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion"
-    val base = customEntrypoint match {
-      case Some(customEntrypoint) =>
-        DockerImageDescription.create(image).setEntrypoint(customEntrypoint)
-      case None =>
-        DockerImageDescription.create(image)
-    }
-    base
+  def toDockerImageDescription: DockerImageDescription = {
+    DockerImageDescription
+      .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
       .copyFile(
         destination = configDir / "elasticsearch.yml",
         file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)

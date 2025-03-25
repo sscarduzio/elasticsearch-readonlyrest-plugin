@@ -62,7 +62,6 @@ test {
     if (enabled) {
         def module = project.properties['esModule']
         systemProperty "esModule", module
-        dependsOn(":$module:packageRorPlugin")
         suite 'tech.beshu.ror.tools.*'
     }
     outputs.upToDateWhen { false }

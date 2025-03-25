@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.gradle
 
 import better.files.*
 import org.gradle.tooling.GradleConnector
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject.PluginFiles
 
 import java.io.File as JFile
 import java.nio.file.Paths
@@ -47,11 +46,6 @@ object RorPluginGradleProject {
       .map(_.name)
       .filter(_.matches("^es\\d{2,3}x$"))
       .toList
-
-  final case class PluginFiles(plugin: JFile,
-                               rorProperties: JFile,
-                               rorSecurityPolicy: JFile)
-
 }
 
 class RorPluginGradleProject(val moduleName: String) {
@@ -65,25 +59,19 @@ class RorPluginGradleProject(val moduleName: String) {
       .create(RorPluginGradleProject.getRootProject)
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
-  def assemble: Option[PluginFiles] = {
+  def assemble: Option[JFile] = {
     runTask(moduleName + ":packageRorPlugin")
-    getPluginFiles
-  }
-
-  def getPluginFiles: Option[PluginFiles] = {
-    val plugin = new JFile(project, "build/distributions/" + pluginVersion + ".zip")
-    val rorProperties = new JFile(project, "build/tmp/" + pluginVersion + "/plugin-descriptor.properties")
-    val rorSecurityPolicy = new JFile(project, "build/tmp/" + pluginVersion + "/plugin-security.policy")
-    if (!plugin.exists || !rorProperties.exists() || !rorSecurityPolicy.exists()) None
-    else Some(PluginFiles(plugin, rorProperties, rorSecurityPolicy))
+    val plugin = new JFile(project, "build/distributions/" + pluginName)
+    if (!plugin.exists) None
+    else Some(plugin)
   }
 
   def getModuleESVersion: String = esProjectProperties.getProperty("latestSupportedEsVersion")
 
   private def esProject(esProjectName: String) = new JFile(RorPluginGradleProject.getRootProject, esProjectName)
 
-  private def pluginVersion =
-    s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion"
+  private def pluginName =
+    s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion.zip"
 
   private def runTask(task: String): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)

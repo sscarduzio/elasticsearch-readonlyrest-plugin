@@ -29,9 +29,8 @@ import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject.PluginFiles
 
-import java.io.Console as _
+import java.io.{File, Console as _}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -82,7 +81,7 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
                              attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
                              startedClusterDependencies: StartedClusterDependencies) = {
     val project = RorPluginGradleProject.fromSystemProperty
-    val pluginFiles: PluginFiles = project.getPluginFiles.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
+    val pluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
     val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
@@ -90,7 +89,7 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
       startedDependencies = startedClusterDependencies,
     )
 
-    EsContainerWithRorAndXpackSecurity.create(
+    EsContainerWithRorAndXpackSecurity.createWithPatchingDisabled(
       esVersion = project.getModuleESVersion,
       esConfig = Elasticsearch.Config(
         clusterName = nodeSettings.clusterName,
@@ -100,16 +99,13 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
         envs = nodeSettings.containerSpecification.environmentVariables
       ),
       securityConfig = ReadonlyRestWithEnabledXpackSecurityPlugin.Config(
-        rorPlugin = pluginFiles.plugin.toScala,
-        rorProperties = pluginFiles.rorProperties.toScala,
-        rorSecurityPolicy = pluginFiles.rorSecurityPolicy.toScala,
+        rorPlugin = pluginFile.toScala,
         rorConfig = adjustedRorConfig,
         attributes = attributes,
       ),
       initializer = nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
       customEntrypoint = Some(Path("""/bin/sh -c "while true; do sleep 30; done"""")),
-      performPatching = false,
       awaitingReadyStrategy = AwaitingReadyStrategy.ImmediatelyTreatAsReady,
     )
   }

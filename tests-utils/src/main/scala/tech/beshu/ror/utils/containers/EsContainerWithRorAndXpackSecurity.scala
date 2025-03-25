@@ -45,10 +45,46 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
              esConfig: Elasticsearch.Config,
              securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies,
-             customEntrypoint: Option[Path],
-             performPatching: Boolean,
-             awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
+             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
+    create(
+      esVersion = esVersion,
+      esConfig = esConfig,
+      securityConfig = securityConfig,
+      initializer = initializer,
+      startedClusterDependencies = startedClusterDependencies,
+      customEntrypoint = None,
+      performPatching = false,
+      awaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness
+    )
+  }
+
+  def createWithPatchingDisabled(esVersion: String,
+                                 esConfig: Elasticsearch.Config,
+                                 securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
+                                 initializer: ElasticsearchNodeDataInitializer,
+                                 startedClusterDependencies: StartedClusterDependencies,
+                                 customEntrypoint: Option[Path],
+                                 awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
+    create(
+      esVersion = esVersion,
+      esConfig = esConfig,
+      securityConfig = securityConfig,
+      initializer = initializer,
+      startedClusterDependencies = startedClusterDependencies,
+      customEntrypoint = customEntrypoint,
+      performPatching = false,
+      awaitingReadyStrategy = awaitingReadyStrategy
+    )
+  }
+
+  private def create(esVersion: String,
+                     esConfig: Elasticsearch.Config,
+                     securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
+                     initializer: ElasticsearchNodeDataInitializer,
+                     startedClusterDependencies: StartedClusterDependencies,
+                     customEntrypoint: Option[Path],
+                     performPatching: Boolean,
+                     awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
     val rorContainer = new EsContainerWithRorAndXpackSecurity(
       esConfig,
       esVersion,
@@ -70,7 +106,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
     DockerImageCreator.create(
       Elasticsearch.create(esVersion, esConfig)
         .install(new ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion, securityConfig, performPatching))
-        .toDockerImageDescription(customEntrypoint)
+        .when(customEntrypoint, _.setEntrypoint(_))
+        .toDockerImageDescription
     )
   }
 }

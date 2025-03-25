@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.utils
+package tech.beshu.ror.utils.files
 
 import org.apache.commons.compress.archivers.tar.TarFile
 
@@ -45,14 +45,23 @@ object FileUtils {
 
   def unTar(tarPath: Path, outputPath: Path): Unit = {
     val tarFile = new TarFile(tarPath.toFile)
-    for (entry <- tarFile.getEntries.asScala) {
-      val path = outputPath.resolve(entry.getName)
-      if (entry.isDirectory) {
-        Files.createDirectories(path)
-      } else {
-        Files.createDirectories(path.getParent)
-        Files.copy(tarFile.getInputStream(entry), path)
+    try {
+      for (entry <- tarFile.getEntries.asScala) {
+        val entryName = entry.getName
+        val path = outputPath.resolve(entryName).normalize()
+        if (entryName.contains("..") || !path.startsWith(outputPath)) {
+          throw new SecurityException(s"Path traversal attempt detected: $entryName")
+        }
+        if (entry.isDirectory) {
+          Files.createDirectories(path)
+        } else {
+          Files.createDirectories(path.getParent)
+          Files.copy(tarFile.getInputStream(entry), path,
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
       }
+    } finally {
+      tarFile.close()
     }
   }
 
