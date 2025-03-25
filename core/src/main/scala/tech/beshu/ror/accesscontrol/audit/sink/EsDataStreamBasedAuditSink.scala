@@ -46,6 +46,9 @@ object EsDataStreamBasedAuditSink {
     auditSinkService
       .dataStreamCreator
       .createIfNotExists(rorAuditDataStream)
-      .map((_: Unit) => new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService))
+      .flatMap {
+        case Right(()) => Task.delay(new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService))
+        case Left(errorMsg) => Task.raiseError(new IllegalStateException(errorMsg))
+      }
   }
 }

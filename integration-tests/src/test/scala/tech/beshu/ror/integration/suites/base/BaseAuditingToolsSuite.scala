@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.suites.base
 
+import cats.data.NonEmptyList
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -48,6 +49,9 @@ trait BaseAuditingToolsSuite
   protected def baseAuditDataStreamName: Option[String]
 
   private lazy val baseAuditIndexName = "audit_index"
+
+  private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
+  private lazy val dataStreamManager = new DataStreamManager(destNodeClientProvider.adminClient, esVersionUsed)
 
   private lazy val adminAuditManagers =
     (List(baseAuditIndexName) ++ baseAuditDataStreamName.toList)
@@ -344,28 +348,13 @@ trait BaseAuditingToolsSuite
 
   "ROR audit index setup" should {
     "create an index if not exist" in {
-      val initialConfig = getResourceContent("/ror_audit/disabled_auditing_tools/readonlyrest.yml")
-      val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
-      rorApiManager.updateRorInIndexConfig(initialConfig).forceOkStatus()
+      disableAudit()
 
       val newIndex = s"audit-index-${UUID.randomUUID().toString}"
       rorApiManager.updateRorInIndexConfig(rorConfigWithIndexAudit(newIndex)).forceOkStatus()
 
-      val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
-      val indexResponse = indexManager.getIndex("twitter")
-      indexResponse should have statusCode 200
-
       val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newIndex)
-
-      eventually {
-        val auditEntries = adminAuditManager.getEntries.force().jsons
-        auditEntries.size shouldBe 1
-
-        val firstEntry = auditEntries(0)
-        firstEntry("final_state").str shouldBe "ALLOWED"
-        firstEntry("user").str shouldBe "username"
-        firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
-      }
+      auditEventAssertion(adminAuditManager)
 
       assertDynamicIndexMappings(newIndex)
     }
@@ -373,15 +362,11 @@ trait BaseAuditingToolsSuite
 
   "ROR audit data stream setup" should {
     "create an audit data stream if not exist" excludeES(allEs6x, allEs7xBelowEs79x) in {
-      val initialConfig = getResourceContent("/ror_audit/disabled_auditing_tools/readonlyrest.yml")
-      val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
-      rorApiManager.updateRorInIndexConfig(initialConfig).forceOkStatus()
+      disableAudit()
 
       val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
-      val dataStreamManager = new DataStreamManager(destNodeClientProvider.adminClient, esVersionUsed)
 
-      val response = dataStreamManager.getAllDataStreams()
-      response.force().allDataStreams should not contain (newDataStream)
+      assertDataStreamNotExists(newDataStream)
 
       rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
 
@@ -389,47 +374,146 @@ trait BaseAuditingToolsSuite
         val response = dataStreamManager.getAllDataStreams()
         response.force().allDataStreams should contain(newDataStream)
       }
-
-      val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
-      val indexResponse = indexManager.getIndex("twitter")
-      indexResponse should have statusCode 200
       val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
-      eventually {
-        val auditEntries = adminAuditManager.getEntries.force().jsons
-        auditEntries.size shouldBe 1
-
-        val firstEntry = auditEntries(0)
-        firstEntry("final_state").str shouldBe "ALLOWED"
-        firstEntry("user").str shouldBe "username"
-        firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
-      }
+      auditEventAssertion(adminAuditManager)
 
       assertAuditDataStreamSettings(newDataStream)
     }
+    "create an audit data stream" when {
+      "policy already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        disableAudit()
+
+        val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
+
+        assertDataStreamNotExists(newDataStream)
+
+        val policy = ujson.read(
+          """{
+            |  "policy": {
+            |    "phases": {
+            |      "hot": {
+            |        "actions": {
+            |          "rollover" : {"max_docs": 0}
+            |        }
+            |      }
+            |    }
+            |  }
+            |}""".stripMargin
+        )
+        val indexLifecycleManager = new IndexLifecycleManager(destNodeClientProvider.adminClient, esVersionUsed)
+        indexLifecycleManager.putPolicy(id = s"$newDataStream-lifecycle-policy", policy).force()
+
+        rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+
+        eventually {
+          assertDataStreamExists(newDataStream)
+        }
+
+        val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
+        auditEventAssertion(adminAuditManager)
+      }
+      "component mapping already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        disableAudit()
+
+        val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
+
+        assertDataStreamNotExists(newDataStream)
+
+        val templateManager = new ComponentTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
+        templateManager.putTemplate(templateName = s"$newDataStream-mappings", aliases = Set.empty).force()
+
+        rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+
+        eventually {
+          assertDataStreamExists(newDataStream)
+        }
+
+        val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
+        auditEventAssertion(adminAuditManager)
+      }
+      "component settings already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        disableAudit()
+
+        val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
+        assertDataStreamNotExists(newDataStream)
+
+        val templateManager = new ComponentTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
+        templateManager.putTemplate(templateName = s"$newDataStream-settings", aliases = Set.empty).force()
+
+        rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+
+        eventually {
+          assertDataStreamExists(newDataStream)
+        }
+
+        val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
+        auditEventAssertion(adminAuditManager)
+      }
+      "index template already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        disableAudit()
+
+        val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
+        assertDataStreamNotExists(newDataStream)
+
+        val templateManager = new IndexTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
+        templateManager
+          .putTemplateAndWaitForIndexing(
+            templateName = s"$newDataStream-template",
+            indexPatterns = NonEmptyList.of(newDataStream),
+            forDataStream = true
+          )
+
+        rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+
+        eventually {
+          assertDataStreamExists(newDataStream)
+        }
+
+        val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
+        auditEventAssertion(adminAuditManager)
+      }
+    }
     "use existing data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
-      val initialConfig = getResourceContent("/ror_audit/disabled_auditing_tools/readonlyrest.yml")
-      val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
-      rorApiManager.updateRorInIndexConfig(initialConfig).forceOkStatus()
+      disableAudit()
 
       val dataStreamName = s"audit-ds-${UUID.randomUUID().toString}"
+
       createAuditDataStream(dataStreamName)
 
       rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(dataStreamName)).forceOkStatus()
 
-      val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
-      val indexResponse = indexManager.getIndex("twitter")
-      indexResponse should have statusCode 200
-
       val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, dataStreamName)
-      eventually {
-        val auditEntries = adminAuditManager.getEntries.force().jsons
-        auditEntries.size shouldBe 1
+      auditEventAssertion(adminAuditManager)
+    }
+  }
 
-        val firstEntry = auditEntries(0)
-        firstEntry("final_state").str shouldBe "ALLOWED"
-        firstEntry("user").str shouldBe "username"
-        firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
-      }
+  private def assertDataStreamNotExists(newDataStream: String): Unit = {
+    val response = dataStreamManager.getAllDataStreams()
+    response.force().allDataStreams should not contain (newDataStream)
+  }
+
+  private def assertDataStreamExists(newDataStream: String): Unit = {
+    val response = dataStreamManager.getAllDataStreams()
+    response.force().allDataStreams should contain(newDataStream)
+  }
+
+  private def disableAudit(): Unit = {
+    val initialConfig = getResourceContent("/ror_audit/disabled_auditing_tools/readonlyrest.yml")
+    rorApiManager.updateRorInIndexConfig(initialConfig).forceOKStatusOrConfigAlreadyLoaded()
+  }
+
+  private def auditEventAssertion(adminAuditManager: AuditIndexManager) = {
+    val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
+    val indexResponse = indexManager.getIndex("twitter")
+    indexResponse should have statusCode 200
+    eventually {
+      val auditEntries = adminAuditManager.getEntries.force().jsons
+      auditEntries.size shouldBe 1
+
+      val firstEntry = auditEntries(0)
+      firstEntry("final_state").str shouldBe "ALLOWED"
+      firstEntry("user").str shouldBe "username"
+      firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
     }
   }
 
@@ -472,7 +556,6 @@ trait BaseAuditingToolsSuite
       )
     ).force()
 
-    val dataStreamManager = new DataStreamManager(destNodeClientProvider.adminClient, esVersionUsed)
     dataStreamManager.createDataStream(dataStreamName).force()
   }
 
@@ -621,7 +704,6 @@ trait BaseAuditingToolsSuite
     val templateResponse = templateManager.getTemplate(indexTemplateName)
     templateResponse.templates.headOption shouldBe Some(Template(indexTemplateName, patterns = Set(dataStreamName), aliases = Set.empty))
 
-    val dataStreamManager = new DataStreamManager(destNodeClientProvider.adminClient, esVersionUsed)
     val dataStreamResponse = dataStreamManager.getDataStream(dataStreamName)
     dataStreamResponse.indexTemplateByDataStream(dataStreamName) shouldBe indexTemplateName
     dataStreamResponse.ilmPolicyByDataStream(dataStreamName) shouldBe policyName
