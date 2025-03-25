@@ -77,7 +77,7 @@ class GlobalSettingsTests extends
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
             assertion = config =>
-              config.forbiddenRequestMessage should be("forbidden")
+              config.forbiddenRequestMessage should be("Forbidden by ReadonlyREST")
           )
         }
       }
