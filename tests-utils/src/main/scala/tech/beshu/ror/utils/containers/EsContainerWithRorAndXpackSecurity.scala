@@ -53,7 +53,7 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
       initializer = initializer,
       startedClusterDependencies = startedClusterDependencies,
       customEntrypoint = None,
-      performPatching = false,
+      performPatching = true,
       awaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness
     )
   }
