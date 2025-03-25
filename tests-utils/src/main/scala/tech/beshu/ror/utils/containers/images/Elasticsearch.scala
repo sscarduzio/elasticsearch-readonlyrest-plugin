@@ -64,9 +64,17 @@ class Elasticsearch(esVersion: String,
     new Elasticsearch(esVersion, config, plugins :+ plugin)
   }
 
-  def toDockerImageDescription: DockerImageDescription = {
-    DockerImageDescription
-      .create(image = s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion")
+  def toDockerImageDescription: DockerImageDescription = toDockerImageDescription(None)
+
+  def toDockerImageDescription(customEntrypoint: Option[Path]): DockerImageDescription = {
+    val image = s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion"
+    val base = customEntrypoint match {
+      case Some(customEntrypoint) =>
+        DockerImageDescription.create(image).setEntrypoint(customEntrypoint)
+      case None =>
+        DockerImageDescription.create(image)
+    }
+    base
       .copyFile(
         destination = configDir / "elasticsearch.yml",
         file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)
@@ -76,6 +84,8 @@ class Elasticsearch(esVersion: String,
         file = log4jFileFromResources
       )
       .user("root")
+      // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
+      // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
       .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))

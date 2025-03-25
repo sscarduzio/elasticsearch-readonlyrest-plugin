@@ -64,7 +64,7 @@ object EsContainerWithRorSecurity extends StrictLogging {
                                            rorConfig: ReadonlyRestPlugin.Config) = {
     DockerImageCreator.create(
       Elasticsearch.create(esVersion, esConfig)
-        .install(new ReadonlyRestPlugin(esVersion, rorConfig, performInstallation = true))
+        .install(new ReadonlyRestPlugin(esVersion, rorConfig, performPatching = true))
         .toDockerImageDescription
     )
   }

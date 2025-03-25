@@ -20,6 +20,7 @@ import better.files.*
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
+import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
@@ -45,8 +46,8 @@ trait EsContainerCreator {
       case EsVersion.SpecificVersion(version) => RorPluginGradleProject.customModule(version)
     }
     nodeSettings.securityType match {
-      case SecurityType.RorWithXpackSecurity(attributes, performInstallation) =>
-        createEsWithRorAndXpackSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, performInstallation)
+      case SecurityType.RorWithXpackSecurity(attributes) =>
+        createEsWithRorAndXpackSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies)
       case SecurityType.RorSecurity(attributes) =>
         createEsWithRorContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies)
       case SecurityType.XPackSecurity(attributes) =>
@@ -61,9 +62,8 @@ trait EsContainerCreator {
                                                        project: RorPluginGradleProject,
                                                        nodeDataInitializer: ElasticsearchNodeDataInitializer,
                                                        attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
-                                                       startedClusterDependencies: StartedClusterDependencies,
-                                                       performInstallation: Boolean) = {
-    val pluginFiles: PluginFiles = project.getPluginFiles.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
+                                                       startedClusterDependencies: StartedClusterDependencies) = {
+    val pluginFiles: PluginFiles = project.assemble.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
     val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
@@ -85,11 +85,13 @@ trait EsContainerCreator {
         rorProperties = pluginFiles.rorProperties.toScala,
         rorSecurityPolicy = pluginFiles.rorSecurityPolicy.toScala,
         rorConfig = adjustedRorConfig,
-        attributes = attributes,
-        performInstallation = performInstallation,
+        attributes = attributes
       ),
       initializer = nodeDataInitializer,
-      startedClusterDependencies = startedClusterDependencies
+      startedClusterDependencies = startedClusterDependencies,
+      customEntrypoint = None,
+      performPatching = true,
+      awaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness,
     )
   }
 
@@ -99,7 +101,7 @@ trait EsContainerCreator {
                                        nodeDataInitializer: ElasticsearchNodeDataInitializer,
                                        attributes: ReadonlyRestPlugin.Config.Attributes,
                                        startedClusterDependencies: StartedClusterDependencies) = {
-    val pluginFiles: PluginFiles = project.getPluginFiles.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
+    val pluginFiles: PluginFiles = project.assemble.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
     val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(

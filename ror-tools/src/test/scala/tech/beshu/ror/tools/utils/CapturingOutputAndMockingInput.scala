@@ -21,7 +21,7 @@ import tech.beshu.ror.tools.core.utils.InOut
 
 class CapturingOutputAndMockingInput(mockedInput: Option[String] = None) extends InOut {
 
-  val outputBuffer: AtomicAny[String] = AtomicAny[String]("")
+  private val outputBuffer: AtomicAny[String] = AtomicAny[String]("")
 
   override def print(str: String): Unit = outputBuffer.getAndTransform(old => old + str)
 

@@ -28,8 +28,7 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
                           rorPlugin: File,
                           rorProperties: File,
                           rorSecurityPolicy: File,
-                          attributes: Attributes,
-                          performInstallation: Boolean)
+                          attributes: Attributes)
   object Config {
     final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
                                 rorCustomSettingsIndex: Option[String],
@@ -61,10 +60,11 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
 }
 
 class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
-                                                 config: Config)
+                                                 config: Config,
+                                                 performPatching: Boolean)
   extends Elasticsearch.Plugin {
 
-  private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig(), config.performInstallation)
+  private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig(), performPatching)
   private val xpackSecurityPlugin = new XpackSecurityPlugin(esVersion, createXpackSecurityConfig())
 
   override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {

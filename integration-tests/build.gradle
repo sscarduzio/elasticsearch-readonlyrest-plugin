@@ -23,7 +23,6 @@ configurations {
 }
 
 tasks.withType(ScalaCompile).configureEach {
-    dependsOn(":ror-tools:shadowJar")
     // Map plugin jars to -Xplugin parameter
     List<String> parameters =
             configurations.scalaCompilerPlugin.files.collect {
@@ -65,8 +64,6 @@ test {
         def module = project.properties['esModule']
         systemProperty "esModule", module
 
-        dependsOn(":$module:packageRorPlugin")
-        dependsOn(":es67x:packageRorPlugin") // For RemoteReindexSuite
         tags {
             exclude 'tech.beshu.tags.ExcludeESModule.' + module
         }

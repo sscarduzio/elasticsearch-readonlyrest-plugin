@@ -16,29 +16,13 @@
  */
 package tech.beshu.ror.tools.utils
 
-import java.io.IOException
-import java.nio.file.attribute.BasicFileAttributes
+import org.apache.commons.compress.archivers.tar.TarFile
+
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
 
-object DirectoryUtils {
-
-  def clean(dir: Path): Unit = {
-    if (dir.toFile.exists()) {
-      Files.walkFileTree(dir, new java.nio.file.SimpleFileVisitor[java.nio.file.Path]() {
-        override def visitFile(file: java.nio.file.Path, attrs: BasicFileAttributes): java.nio.file.FileVisitResult = {
-          Files.delete(file)
-          java.nio.file.FileVisitResult.CONTINUE
-        }
-
-        override def postVisitDirectory(dir: java.nio.file.Path, exc: IOException): java.nio.file.FileVisitResult = {
-          Files.delete(dir)
-          java.nio.file.FileVisitResult.CONTINUE
-        }
-      })
-    }
-  }
+object FileUtils {
 
   def calculateHash(dir: Path): String = {
     val digest = MessageDigest.getInstance("SHA-256")
@@ -57,6 +41,19 @@ object DirectoryUtils {
     }
 
     finalDigest.digest.map("%02x".format(_)).mkString
+  }
+
+  def unTar(tarPath: Path, outputPath: Path): Unit = {
+    val tarFile = new TarFile(tarPath.toFile)
+    for (entry <- tarFile.getEntries.asScala) {
+      val path = outputPath.resolve(entry.getName)
+      if (entry.isDirectory) {
+        Files.createDirectories(path)
+      } else {
+        Files.createDirectories(path.getParent)
+        Files.copy(tarFile.getInputStream(entry), path)
+      }
+    }
   }
 
 }

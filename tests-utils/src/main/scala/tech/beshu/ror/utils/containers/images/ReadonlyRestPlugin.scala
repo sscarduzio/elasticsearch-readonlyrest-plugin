@@ -62,11 +62,11 @@ object ReadonlyRestPlugin {
 }
 class ReadonlyRestPlugin(esVersion: String,
                          config: Config,
-                         performInstallation: Boolean)
+                         performPatching: Boolean)
   extends Elasticsearch.Plugin {
 
   override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
-    val withoutInstallation = image
+    val withoutPatching = image
       .copyFile(os.root / "tmp" / config.rorPlugin.name, config.rorPlugin)
       .copyFile(esDir / "tmp" / config.rorProperties.name, config.rorProperties)
       .copyFile(esDir / "tmp" / config.rorSecurityPolicy.name, config.rorSecurityPolicy)
@@ -76,13 +76,13 @@ class ReadonlyRestPlugin(esVersion: String,
       .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
       .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .updateFipsDependencies()
+      .copyFile(configDir / "readonlyrest.yml", config.rorConfig)
+      .installRorPlugin()
 
-    if (performInstallation) {
-      withoutInstallation
-        .copyFile(configDir / "readonlyrest.yml", config.rorConfig)
-        .installRorPlugin()
+    if (performPatching) {
+      withoutPatching.patchES()
     } else {
-      withoutInstallation
+      withoutPatching
     }
   }
 
@@ -107,7 +107,7 @@ class ReadonlyRestPlugin(esVersion: String,
   private def rorReloadingInterval() = {
     val intervalSeconds = config.attributes.rorConfigReloading match {
       case Enabled.No => 0
-      case Enabled.Yes(interval) => interval.toSeconds.toInt
+      case Enabled.Yes(interval: FiniteDuration) => interval.toSeconds.toInt
     }
     s"-Dcom.readonlyrest.settings.refresh.interval=$intervalSeconds"
   }
@@ -116,6 +116,10 @@ class ReadonlyRestPlugin(esVersion: String,
     def installRorPlugin(): DockerImageDescription = {
       image
         .run(s"${esDir.toString()}/bin/elasticsearch-plugin install --batch file:///tmp/${config.rorPlugin.name}")
+    }
+
+    def patchES(): DockerImageDescription = {
+      image
         .user("root")
         .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
           command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING yes"

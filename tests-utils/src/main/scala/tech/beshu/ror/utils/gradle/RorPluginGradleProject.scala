@@ -17,10 +17,12 @@
 package tech.beshu.ror.utils.gradle
 
 import better.files.*
+import org.gradle.tooling.GradleConnector
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject.PluginFiles
 
 import java.io.File as JFile
 import java.nio.file.Paths
+import scala.util.Try
 
 object RorPluginGradleProject {
   def fromSystemProperty: RorPluginGradleProject =
@@ -63,6 +65,11 @@ class RorPluginGradleProject(val moduleName: String) {
       .create(RorPluginGradleProject.getRootProject)
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
+  def assemble: Option[PluginFiles] = {
+    runTask(moduleName + ":packageRorPlugin")
+    getPluginFiles
+  }
+
   def getPluginFiles: Option[PluginFiles] = {
     val plugin = new JFile(project, "build/distributions/" + pluginVersion + ".zip")
     val rorProperties = new JFile(project, "build/tmp/" + pluginVersion + "/plugin-descriptor.properties")
@@ -78,5 +85,12 @@ class RorPluginGradleProject(val moduleName: String) {
   private def pluginVersion =
     s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion"
 
+  private def runTask(task: String): Unit = {
+    val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)
+    val connect = Try(connector.connect())
+    val result = connect.map(_.newBuild().forTasks(task).run())
+    connect.map(_.close())
+    result.fold(throw _, _ => ())
+  }
 }
 

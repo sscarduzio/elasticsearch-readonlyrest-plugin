@@ -18,23 +18,19 @@ package tech.beshu.ror.tools
 
 import better.files.File as BetterFile
 import monix.execution.Scheduler
-import org.apache.commons.compress.archivers.tar.TarFile
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers.include
 import org.scalatest.matchers.should.Matchers.{equal, should, shouldNot}
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.tools.RorToolsAppHandler.Result
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
+import tech.beshu.ror.tools.RorTools.Result
 import tech.beshu.ror.tools.core.utils.InOut
-import tech.beshu.ror.tools.utils.{CapturingOutputAndMockingInput, DirectoryUtils, TestEsContainerManager}
-import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.tools.utils.{CapturingOutputAndMockingInput, ExampleEsWithRorContainer, FileUtils}
 
 import java.io.{Console as _, *}
-import java.nio.file.{Files, Path}
-import scala.concurrent.duration.*
-import scala.jdk.CollectionConverters.CollectionHasAsScala
+import java.nio.file.Path
 import scala.language.postfixOps
 
-class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
+class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAndAfterEach {
 
   implicit val scheduler: Scheduler = Scheduler.computation(10)
 
@@ -42,29 +38,30 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
   private val localPath = tempDirectory.path
   private val esLocalPath = (tempDirectory / "es").path
 
-  // Before performing tests in this suite:
-  // - the ES container is started (using security variant RorWithXpackSecurity)
-  // - but the ROR plugin is not installed on container creation/start
-  // - the `/usr/share/elasticsearch` is compressed and downloaded from the container
-  // - the tar file is stored in the /temp_directory_for_ror_tools_app_suite directory in resources
-  // - on each test this file is uncompressed and the fresh copy of the ES directory is used
+  private val esContainer = new ExampleEsWithRorContainer
+
+  private object RorToolsTestApp extends RorTools
+
   override protected def beforeAll(): Unit = {
-    withTestEsContainer { esContainer =>
-      esContainer.execInContainer("tar", "-cvf", "/tmp/elasticsearch.tar", "-C", "/usr/share/elasticsearch", "modules", "bin", "lib", "plugins", "tmp")
-      esContainer.copyFileFromContainer("/tmp/elasticsearch.tar", s"$localPath/elasticsearch.tar")
-    }
+    prepareElasticsearchAndRorBinaries()
     super.beforeAll()
   }
 
-  override protected def afterAll(): Unit = {
-    super.afterAll()
-    tempDirectory.clear()
+  // Before each test:
+  // - clean temporary directory
+  // - create /es in temporary directory
+  // - untar elasticsearch.tar prepared when beforeAll is executed
+  override protected def beforeEach(): Unit = {
+    BetterFile(esLocalPath).delete(swallowIOExceptions = true)
+    File(s"$esLocalPath").mkdirs
+    FileUtils.unTar(Path.of(s"$localPath/elasticsearch.tar"), Path.of(s"$esLocalPath"))
+    super.beforeEach()
   }
 
   "ROR tools app" should {
-    "Patching is successful for ES installation that was not patched (with consent given in arg)" in withFreshEsDirectory { () =>
+    "Patching is successful for ES installation that was not patched (with consent given in arg)" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsAppHandler.handle(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
       }
       result should equal(Result.Success)
       output should include(
@@ -75,9 +72,9 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
           .stripMargin
       )
     }
-    "Patching is successful for ES installation that was not patched (with consent given in interactive mode)" in withFreshEsDirectory { () =>
+    "Patching is successful for ES installation that was not patched (with consent given in interactive mode)" in {
       val (result, output) = captureResultAndOutputWithInteraction(
-        RorToolsAppHandler.handle(Array("patch", "--es-path", esLocalPath.toString))(_),
+        RorToolsTestApp.run(Array("patch", "--es-path", esLocalPath.toString))(_),
         response = "yes"
       )
       result should equal(Result.Success)
@@ -90,23 +87,23 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
           |""".stripMargin
       )
     }
-    "Patching does not start when user declines to accept implications of patching (in arg)" in withFreshEsDirectory { () =>
+    "Patching does not start when user declines to accept implications of patching (in arg)" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsAppHandler.handle(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "no"))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "no"))(_)
       }
-      result should equal(Result.Failure(1))
+      result should equal(Result.Failure)
       output should equal(
         """You have to confirm, that You understand the implications of ES patching in order to perform it.
           |You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
           |""".stripMargin
       )
     }
-    "Patching does not start when user declines to accept implications of patching (in interactive mode)" in withFreshEsDirectory { () =>
+    "Patching does not start when user declines to accept implications of patching (in interactive mode)" in {
       val (result, output) = captureResultAndOutputWithInteraction(
-        RorToolsAppHandler.handle(Array("patch"))(_),
+        RorToolsTestApp.run(Array("patch"))(_),
         response = "no"
       )
-      result should equal(Result.Failure(1))
+      result should equal(Result.Failure)
       output should equal(
         """Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
           |Do you understand the implications of ES patching? (yes/no): You have to confirm, that You understand the implications of ES patching in order to perform it.
@@ -114,21 +111,38 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
           |""".stripMargin
       )
     }
-    "Patching not started because of not existing directory" in withFreshEsDirectory { () =>
+    "Patching not started because of not existing directory" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsAppHandler.handle(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", "/wrong_directory"))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", "/wrong_directory"))(_)
       }
       result should equal(Result.CommandNotParsed)
       output should include(
         """Error: Path [/wrong_directory] does not exist
-          |Try --help for more information.""".stripMargin
+          |ROR tools 1.0.0
+          |Usage: java -jar ror-tools.jar [patch|unpatch|verify] [options]
+          |
+          |Command: patch [options]
+          |patch is a command that modifies ES installation for ROR purposes
+          |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
+          |
+          |  --i_understand_and_accept_es_patching <yes/no>
+          |                           Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. 
+          |Command: unpatch [options]
+          |unpatch is a command that reverts modifications done by patching
+          |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
+          |
+          |Command: verify [options]
+          |verify is a command that verifies if ES installation is patched
+          |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
+          |
+          |  -h, --help               prints this usage text""".stripMargin
       )
     }
-    "Successfully patch, verify and unpatch" in withFreshEsDirectory { () =>
+    "Successfully patch, verify and unpatch" in {
       // Patch
-      val hashBeforePatching = DirectoryUtils.calculateHash(esLocalPath)
+      val hashBeforePatching = FileUtils.calculateHash(esLocalPath)
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsAppHandler.handle(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
@@ -138,11 +152,11 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
           |Elasticsearch is patched! ReadonlyREST is ready to use"""
           .stripMargin
       )
-      val hashAfterPatching = DirectoryUtils.calculateHash(esLocalPath)
+      val hashAfterPatching = FileUtils.calculateHash(esLocalPath)
 
       // Verify
       val (verifyResult, verifyOutput) = captureResultAndOutput {
-        RorToolsAppHandler.handle(Array("verify", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
       }
 
       verifyResult should equal(Result.Success)
@@ -153,9 +167,9 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
       )
 
       // Unpatch
-      val hashBeforeUnpatching = DirectoryUtils.calculateHash(esLocalPath)
+      val hashBeforeUnpatching = FileUtils.calculateHash(esLocalPath)
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
-        RorToolsAppHandler.handle(Array("unpatch", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
       }
       unpatchResult should equal(Result.Success)
       unpatchOutput should include(
@@ -164,7 +178,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
           |Elasticsearch is unpatched! ReadonlyREST can be removed now"""
           .stripMargin
       )
-      val hashAfterUnpatching = DirectoryUtils.calculateHash(esLocalPath)
+      val hashAfterUnpatching = FileUtils.calculateHash(esLocalPath)
 
       hashBeforePatching should equal(hashAfterUnpatching)
       hashAfterPatching should equal(hashBeforeUnpatching)
@@ -184,47 +198,26 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll {
     (result, inOut.getOutputBuffer)
   }
 
-  private def withTestEsContainer(withStartedEs: EsContainer => Unit): Unit = {
-    val manager = new TestEsContainerManager
-    try {
-      manager.start()
-        .map(_ => withStartedEs(manager.esContainer))
-        .runSyncUnsafe(5 minutes)
-    } finally {
-      manager.stop().runSyncUnsafe()
-    }
+  override protected def afterEach(): Unit = {
+    super.afterEach()
+    BetterFile(esLocalPath).delete(swallowIOExceptions = true)
   }
 
-  private def unTar(tarPath: Path, outputPath: Path): Unit = {
-    val tarFile = new TarFile(tarPath.toFile)
-    for (entry <- tarFile.getEntries.asScala) {
-      val path = outputPath.resolve(entry.getName)
-      if (entry.isDirectory) {
-        Files.createDirectories(path)
-      } else {
-        Files.createDirectories(path.getParent)
-        Files.copy(tarFile.getInputStream(entry), path)
-      }
-    }
+  override protected def afterAll(): Unit = {
+    super.afterAll()
+    tempDirectory.clear()
   }
 
-  private def withFreshEsDirectory(perform: () => Unit): Unit = {
-    try {
-      DirectoryUtils.clean(esLocalPath)
-      File(s"$esLocalPath").mkdirs
-      unTar(Path.of(s"$localPath/elasticsearch.tar"), Path.of(s"$esLocalPath"))
-      File(s"$esLocalPath/plugins/readonlyrest/").mkdirs
-      Files.copy(
-        File(s"$esLocalPath/tmp/plugin-descriptor.properties").toPath,
-        File(s"$esLocalPath/plugins/readonlyrest/plugin-descriptor.properties").toPath,
-      )
-      Files.copy(
-        File(s"$esLocalPath/tmp/plugin-security.policy").toPath,
-        File(s"$esLocalPath/plugins/readonlyrest/plugin-security.policy").toPath,
-      )
-      perform()
-    } finally {
-      DirectoryUtils.clean(esLocalPath)
+  // This method handles downloading necessary files from ES container:
+  // - the ES container is started (using security variant RorWithXpackSecurity)
+  // - but the ROR plugin is not installed on container creation/start
+  // - the `/usr/share/elasticsearch` is compressed and downloaded from the container
+  // - the tar file is stored in the temporary directory
+  // - on each test this file is uncompressed and the fresh copy of the ES directory is used
+  private def prepareElasticsearchAndRorBinaries(): Unit = {
+    esContainer.withTestEsContainer { esContainer =>
+      esContainer.execInContainer("tar", "-cvf", "/tmp/elasticsearch.tar", "-C", "/usr/share/elasticsearch", "modules", "bin", "lib", "plugins", "tmp")
+      esContainer.copyFileFromContainer("/tmp/elasticsearch.tar", s"$localPath/elasticsearch.tar")
     }
   }
 
