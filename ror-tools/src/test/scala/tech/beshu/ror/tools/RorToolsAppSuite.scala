@@ -120,7 +120,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
           |
           |  --i_understand_and_accept_es_patching <yes/no>
-          |                           Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. 
+          |                           Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
           |Command: unpatch [options]
           |unpatch is a command that reverts modifications done by patching
           |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
