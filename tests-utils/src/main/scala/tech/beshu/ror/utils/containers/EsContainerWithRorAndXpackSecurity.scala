@@ -110,4 +110,5 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
         .toDockerImageDescription
     )
   }
+  
 }
