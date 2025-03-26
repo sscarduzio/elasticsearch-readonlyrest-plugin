@@ -20,6 +20,7 @@ import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
 import org.testcontainers.containers.ContainerLaunchException
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
+import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{EsStartupChecker, Version}
 
@@ -28,7 +29,8 @@ import scala.util.Try
 class ElasticsearchNodeWaitingStrategy(esVersion: String,
                                        containerName: String,
                                        restClient: Coeval[RestClient],
-                                       initializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer)
+                                       initializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+                                       strategy: AwaitingReadyStrategy)
   extends AbstractWaitStrategy
     with StrictLogging {
 
@@ -40,7 +42,12 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
       } else {
         EsStartupChecker.accessibleEsChecker(containerName, client)
       }
-    val started = checker.waitForStart()
+    val started = strategy match {
+      case AwaitingReadyStrategy.WaitForEsReadiness =>
+        checker.waitForStart()
+      case AwaitingReadyStrategy.ImmediatelyTreatAsReady =>
+        true
+    }
     if (!started) {
       throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]")
     }
@@ -49,5 +56,14 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
         ex => throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]", ex),
         identity
       )
+  }
+}
+
+object ElasticsearchNodeWaitingStrategy {
+  sealed trait AwaitingReadyStrategy
+
+  object AwaitingReadyStrategy {
+     case object WaitForEsReadiness extends AwaitingReadyStrategy
+     case object ImmediatelyTreatAsReady extends AwaitingReadyStrategy
   }
 }

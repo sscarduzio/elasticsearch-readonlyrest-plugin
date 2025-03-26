@@ -19,8 +19,7 @@ package tech.beshu.ror.utils.containers.images
 import better.files.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch.{configDir, esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{InternodeSsl, RestSsl}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.misc.Version
 
@@ -60,20 +59,22 @@ object ReadonlyRestPlugin {
   }
 }
 class ReadonlyRestPlugin(esVersion: String,
-                         config: Config)
+                         config: Config,
+                         performPatching: Boolean)
   extends Elasticsearch.Plugin {
 
   override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
     image
       .copyFile(os.root / "tmp" / config.rorPlugin.name, config.rorPlugin)
-      .copyFile(configDir / "readonlyrest.yml", config.rorConfig)
       .copyFile(configDir / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
       .copyFile(configDir / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
       .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
       .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
       .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .updateFipsDependencies()
+      .copyFile(configDir / "readonlyrest.yml", config.rorConfig)
       .installRorPlugin()
+      .when(performPatching, _.patchES())
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
@@ -97,7 +98,7 @@ class ReadonlyRestPlugin(esVersion: String,
   private def rorReloadingInterval() = {
     val intervalSeconds = config.attributes.rorConfigReloading match {
       case Enabled.No => 0
-      case Enabled.Yes(interval) => interval.toSeconds.toInt
+      case Enabled.Yes(interval: FiniteDuration) => interval.toSeconds.toInt
     }
     s"-Dcom.readonlyrest.settings.refresh.interval=$intervalSeconds"
   }
@@ -106,12 +107,16 @@ class ReadonlyRestPlugin(esVersion: String,
     def installRorPlugin(): DockerImageDescription = {
       image
         .run(s"${esDir.toString()}/bin/elasticsearch-plugin install --batch file:///tmp/${config.rorPlugin.name}")
+    }
+
+    def patchES(): DockerImageDescription = {
+      image
         .user("root")
         .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
-          command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch"
+          command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING yes"
         )
         .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
-          command = s"$$JAVA_HOME/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch"
+          command = s"$$JAVA_HOME/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING yes"
         )
         .user("elasticsearch")
     }

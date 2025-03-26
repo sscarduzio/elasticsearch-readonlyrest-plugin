@@ -18,37 +18,38 @@ package tech.beshu.ror.tools.core.patches.internal
 
 import tech.beshu.ror.tools.core.patches.base.EsPatch
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
+import tech.beshu.ror.tools.core.utils.InOut
 
 import scala.util.{Failure, Success, Try}
 
-private[patches] class EsPatchLoggingDecorator(underlying: EsPatch)
+private[patches] class EsPatchLoggingDecorator(underlying: EsPatch)(implicit inOut: InOut)
   extends EsPatch {
 
   override def isPatched: IsPatched = {
-    println("Checking if Elasticsearch is patched ...")
+    inOut.println("Checking if Elasticsearch is patched ...")
     underlying.isPatched
   }
 
   override def backup(): Unit = {
-    println("Creating backup ...")
+    inOut.println("Creating backup ...")
     underlying.backup()
   }
 
   override def restore(): Unit = {
-    println("Restoring ...")
+    inOut.println("Restoring ...")
     Try(underlying.restore()) match {
       case Success(()) =>
-        println("Elasticsearch is unpatched! ReadonlyREST can be removed now")
+        inOut.println("Elasticsearch is unpatched! ReadonlyREST can be removed now")
       case Failure(exception) =>
         throw exception
     }
   }
 
   override def execute(): Unit = {
-    println("Patching ...")
+    inOut.println("Patching ...")
     Try(underlying.execute()) match {
       case Success(()) =>
-        println("Elasticsearch is patched! ReadonlyREST is ready to use")
+        inOut.println("Elasticsearch is patched! ReadonlyREST is ready to use")
       case Failure(exception) =>
         throw exception
     }

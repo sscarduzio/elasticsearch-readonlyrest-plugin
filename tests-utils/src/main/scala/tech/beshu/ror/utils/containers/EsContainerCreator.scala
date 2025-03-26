@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils.containers
 
-import better.files.*
+import better.files.FileExtensions
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
@@ -86,7 +86,7 @@ trait EsContainerCreator {
         attributes = attributes
       ),
       initializer = nodeDataInitializer,
-      startedClusterDependencies = startedClusterDependencies
+      startedClusterDependencies = startedClusterDependencies,
     )
   }
 

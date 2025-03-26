@@ -41,7 +41,7 @@ object Elasticsearch {
     def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder
   }
 
-  private [images] def fromResourceBy(name: String): File = {
+  private[images] def fromResourceBy(name: String): File = {
     scala.util.Try(ContainerUtils.getResourceFile(s"/$name"))
       .map(_.toScala)
       .get
@@ -53,20 +53,32 @@ object Elasticsearch {
 }
 class Elasticsearch(esVersion: String,
                     config: Config,
-                    plugins: Seq[Plugin])
+                    plugins: Seq[Plugin],
+                    customEntrypoint: Option[Path])
   extends LazyLogging {
 
   def this(esVersion: String, config: Config) = {
-    this(esVersion, config, Seq.empty)
+    this(esVersion, config, Seq.empty, None)
+  }
+
+  def when[T](opt: Option[T], f: (Elasticsearch, T) => Elasticsearch): Elasticsearch = {
+    opt match {
+      case Some(t) => f(this, t)
+      case None => this
+    }
   }
 
   def install(plugin: Plugin): Elasticsearch = {
-    new Elasticsearch(esVersion, config, plugins :+ plugin)
+    new Elasticsearch(esVersion, config, plugins :+ plugin, customEntrypoint)
+  }
+
+  def setEntrypoint(entrypoint: Path): Elasticsearch = {
+    new Elasticsearch(esVersion, config, plugins, Some(entrypoint))
   }
 
   def toDockerImageDescription: DockerImageDescription = {
     DockerImageDescription
-      .create(image = s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion")
+      .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
       .copyFile(
         destination = configDir / "elasticsearch.yml",
         file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)
@@ -76,6 +88,9 @@ class Elasticsearch(esVersion: String,
         file = log4jFileFromResources
       )
       .user("root")
+      // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
+      // Red Hat Universal Base Image 9 Minimal, which does not contain it.
+      .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
       .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()

@@ -18,6 +18,8 @@ package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
+import os.Path
+import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -44,25 +46,67 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
              securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies): EsContainer = {
+    create(
+      esVersion = esVersion,
+      esConfig = esConfig,
+      securityConfig = securityConfig,
+      initializer = initializer,
+      startedClusterDependencies = startedClusterDependencies,
+      customEntrypoint = None,
+      performPatching = true,
+      awaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness
+    )
+  }
+
+  def createWithPatchingDisabled(esVersion: String,
+                                 esConfig: Elasticsearch.Config,
+                                 securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
+                                 initializer: ElasticsearchNodeDataInitializer,
+                                 startedClusterDependencies: StartedClusterDependencies,
+                                 customEntrypoint: Option[Path],
+                                 awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
+    create(
+      esVersion = esVersion,
+      esConfig = esConfig,
+      securityConfig = securityConfig,
+      initializer = initializer,
+      startedClusterDependencies = startedClusterDependencies,
+      customEntrypoint = customEntrypoint,
+      performPatching = false,
+      awaitingReadyStrategy = awaitingReadyStrategy
+    )
+  }
+
+  private def create(esVersion: String,
+                     esConfig: Elasticsearch.Config,
+                     securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
+                     initializer: ElasticsearchNodeDataInitializer,
+                     startedClusterDependencies: StartedClusterDependencies,
+                     customEntrypoint: Option[Path],
+                     performPatching: Boolean,
+                     awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
     val rorContainer = new EsContainerWithRorAndXpackSecurity(
       esConfig,
       esVersion,
       startedClusterDependencies,
-      esImageWithRorAndXpackFromDockerfile(esVersion, esConfig, securityConfig),
+      esImageWithRorAndXpackFromDockerfile(esVersion, esConfig, securityConfig, customEntrypoint, performPatching),
       securityConfig.attributes.restSsl match {
         case Enabled.Yes(_) => true
         case Enabled.No => false
       }
     )
-    EsContainer.init(rorContainer, initializer, logger)
+    EsContainer.init(rorContainer, initializer, logger, awaitingReadyStrategy)
   }
 
   private def esImageWithRorAndXpackFromDockerfile(esVersion: String,
                                                    esConfig: Elasticsearch.Config,
-                                                   securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config) = {
+                                                   securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
+                                                   customEntrypoint: Option[Path],
+                                                   performPatching: Boolean) = {
     DockerImageCreator.create(
       Elasticsearch.create(esVersion, esConfig)
-        .install(new ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion, securityConfig))
+        .install(new ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion, securityConfig, performPatching))
+        .when(customEntrypoint, _.setEntrypoint(_))
         .toDockerImageDescription
     )
   }

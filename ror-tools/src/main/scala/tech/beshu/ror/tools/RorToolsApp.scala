@@ -16,50 +16,141 @@
  */
 package tech.beshu.ror.tools
 
-import scopt.OParser
+import os.Path
+import scopt.*
+import tech.beshu.ror.tools.RorTools.*
 import tech.beshu.ror.tools.core.actions.*
 import tech.beshu.ror.tools.core.patches.base.EsPatch
-import tech.beshu.ror.tools.core.utils.{EsDirectory, RorToolsException}
+import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
+import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsException}
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
-object RorToolsApp {
+object RorToolsApp extends RorTools {
 
   // todo:
   // 1. option: return success when already patched/unpatched
   // 2. restore backup when fails to patch
   def main(args: Array[String]): Unit = {
-    OParser
-      .parse(parser, args, Config(Command.Verify(None)))
-      .foreach { config =>
-        Try {
-          config.command match {
-            case Command.Patch(customEsPath) =>
-              val esDirectory = esDirectoryFrom(customEsPath)
-              new PatchAction(EsPatch.create(esDirectory)).execute()
-            case Command.Unpatch(customEsPath) =>
-              val esDirectory = esDirectoryFrom(customEsPath)
-              new UnpatchAction(EsPatch.create(esDirectory)).execute()
-            case Command.Verify(customEsPath) =>
-              val esDirectory = esDirectoryFrom(customEsPath)
-              new VerifyAction(EsPatch.create(esDirectory)).execute()
-          }
-        } recover {
-          case ex: RorToolsException =>
-            println(s"ERROR: ${ex.printStackTrace()}")
-            sys.exit(1)
-          case ex: Throwable =>
-            println(s"UNEXPECTED ERROR: ${ex.printStackTrace()}")
-            sys.exit(1)
-        }
-      }
+    run(args)(ConsoleInOut) match {
+      case Result.Success =>
+        ()
+      case Result.Failure =>
+        // The details of the failure should have been
+        // already printed by the RorTools
+        sys.exit(1)
+      case Result.CommandNotParsed =>
+        // The details of why the command was not parsed should have been
+        // already printed by the scopt library parser
+        sys.exit(1)
+    }
   }
+
+}
+
+trait RorTools {
+
+  def run(args: Array[String])(implicit inOut: InOut): Result = {
+    OParser.runParser(
+      parser,
+      args.map(arg => if (arg.startsWith("--")) arg.toLowerCase else arg),
+      Arguments(Command.Verify(None), PatchingConsent.AnswerNotGiven),
+      parserSetup,
+    ) match {
+      case (result, effects) =>
+        OParser.runEffects(effects, effectSetup)
+        result match {
+          case None =>
+            Result.CommandNotParsed
+          case Some(parsedArguments) =>
+            handleParsedArguments(parsedArguments)
+        }
+    }
+  }
+
+  private def handleParsedArguments(parsedArguments: Arguments)
+                                   (implicit inOut: InOut) = {
+    Try {
+      parsedArguments.command match {
+        case command: Command.Patch =>
+          new PatchCommandHandler().handle(command, parsedArguments)
+        case command: Command.Unpatch =>
+          new UnpatchCommandHandler().handle(command)
+        case command: Command.Verify =>
+          new VerifyCommandHandler().handle(command)
+      }
+    } match {
+      case Failure(ex: RorToolsException) =>
+        inOut.println(s"ERROR: ${ex.getMessage()}\n${ex.printStackTrace()}")
+        Result.Failure
+      case Failure(ex: Throwable) =>
+        inOut.println(s"UNEXPECTED ERROR: ${ex.getMessage()}\n${ex.printStackTrace()}")
+        Result.Failure
+      case Success(result) =>
+        result
+    }
+  }
+
+  private class PatchCommandHandler(implicit inOut: InOut) {
+
+    def handle(command: Command.Patch,
+               arguments: Arguments): Result = {
+      arguments.userUnderstandsImplicationsOfESPatching match {
+        case PatchingConsent.Accepted =>
+          performPatching(command.customEsPath)
+        case PatchingConsent.Rejected =>
+          abortPatchingBecauseUserDidNotAcceptConsequences()
+        case PatchingConsent.AnswerNotGiven =>
+          askUserAboutPatchingConsent() match {
+            case PatchingConsent.Accepted => performPatching(command.customEsPath)
+            case _ => abortPatchingBecauseUserDidNotAcceptConsequences()
+          }
+      }
+    }
+
+    private def performPatching(customESPath: Option[Path]): Result = {
+      val esDirectory = esDirectoryFrom(customESPath)
+      new PatchAction(EsPatch.create(esDirectory)).execute()
+      Result.Success
+    }
+
+    private def abortPatchingBecauseUserDidNotAcceptConsequences(): Result = {
+      inOut.println("You have to confirm, that You understand the implications of ES patching in order to perform it.\nYou can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.")
+      Result.Failure
+    }
+
+    private def askUserAboutPatchingConsent(): PatchingConsent = {
+      inOut.println("Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.")
+      inOut.print("Do you understand the implications of ES patching? (yes/no): ")
+      inOut.readLine().toLowerCase match
+        case "yes" => PatchingConsent.Accepted
+        case _ => PatchingConsent.Rejected
+    }
+
+  }
+
+  private class UnpatchCommandHandler(implicit inOut: InOut) {
+    def handle(command: Command.Unpatch): Result = {
+      val esDirectory = esDirectoryFrom(command.customEsPath)
+      new UnpatchAction(EsPatch.create(esDirectory)).execute()
+      Result.Success
+    }
+  }
+
+  private class VerifyCommandHandler(implicit inOut: InOut) {
+    def handle(command: Command.Verify): Result = {
+      val esDirectory = esDirectoryFrom(command.customEsPath)
+      new VerifyAction(EsPatch.create(esDirectory)).execute()
+      Result.Success
+    }
+  }
+
 
   private def esDirectoryFrom(esPath: Option[os.Path]) = {
     esPath.map(EsDirectory.from).getOrElse(EsDirectory.default)
   }
 
-  private val builder = OParser.builder[Config]
+  private val builder = OParser.builder[Arguments]
 
   import builder.*
 
@@ -68,6 +159,20 @@ object RorToolsApp {
     programName("java -jar ror-tools.jar"),
     patchCommand,
     note(""),
+    opt[String]("i_understand_and_accept_es_patching")
+      .valueName("<yes/no>")
+      .validate {
+        case "yes" => success
+        case "no" => success
+        case other => failure(s"ERROR: Invalid value [$other]. Only values 'yes' and 'no' can be provided as an answer.")
+      }
+      .action { (answer, config) =>
+        answer.toLowerCase match {
+          case "yes" => config.copy(userUnderstandsImplicationsOfESPatching = PatchingConsent.Accepted)
+          case "no" => config.copy(userUnderstandsImplicationsOfESPatching = PatchingConsent.Rejected)
+        }
+      }
+      .text("Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch."),
     unpatchCommand,
     note(""),
     verifyCommand,
@@ -112,7 +217,21 @@ object RorToolsApp {
           .left.map(_ => s"Path [$path] does not exist")
       }
 
-  private final case class Config(command: Command)
+  private def parserSetup: OParserSetup = new DefaultOParserSetup {
+    override def showUsageOnError: Option[Boolean] = Some(true)
+  }
+
+  private def effectSetup(implicit inOut: InOut): OEffectSetup = new DefaultOEffectSetup {
+    override def displayToOut(msg: String): Unit = inOut.println(msg)
+
+    override def displayToErr(msg: String): Unit = inOut.printlnErr(msg)
+  }
+
+}
+
+object RorTools {
+  private final case class Arguments(command: Command,
+                                     userUnderstandsImplicationsOfESPatching: PatchingConsent)
 
   private sealed trait Command
   private object Command {
@@ -121,4 +240,17 @@ object RorToolsApp {
     final case class Verify(customEsPath: Option[os.Path]) extends Command
   }
 
+  private sealed trait PatchingConsent
+  private object PatchingConsent {
+    case object Accepted extends PatchingConsent
+    case object Rejected extends PatchingConsent
+    case object AnswerNotGiven extends PatchingConsent
+  }
+
+  sealed trait Result
+  object Result {
+    case object CommandNotParsed extends Result
+    case object Success extends Result
+    case object Failure extends Result
+  }
 }
