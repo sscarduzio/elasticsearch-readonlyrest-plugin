@@ -127,6 +127,7 @@ dependencies {
     constraints {
         api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.119.Final'
         api group: 'io.netty',              name: 'netty-handler-proxy',                version: '4.1.119.Final'
+        api group: 'io.netty',              name: 'netty-resolver-dns',                 version: '4.1.119.Final'
         api group: 'io.netty',              name: 'netty-transport-native-unix-common', version: '4.1.119.Final'
         api group: 'io.netty',              name: 'netty-transport-native-epoll',       version: '4.1.119.Final'
         api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.119.Final'
