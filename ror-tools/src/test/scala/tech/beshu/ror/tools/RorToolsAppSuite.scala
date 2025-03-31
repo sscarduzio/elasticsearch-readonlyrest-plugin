@@ -36,7 +36,8 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
 
   private val tempDirectory = File.newTemporaryDirectory()
   private val localPath = tempDirectory.path
-  private val esLocalPath = (tempDirectory / "es").path
+  private val esDirectory = tempDirectory / "es"
+  private val esLocalPath = esDirectory.path
 
   private val esContainer = new ExampleEsWithRorContainer
 
@@ -132,6 +133,41 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           |  -h, --help               prints this usage text""".stripMargin
       )
     }
+    "Patching not started because there is a patch_backup/patched_by file indicating ES is patched" in {
+      val backupDirectory = esDirectory / "plugins" / "readonlyrest" / "patch_backup"
+      File(backupDirectory.path).createDirectory()
+      val artificialPatchedByFile = File((backupDirectory / "patched_by").path).createFile()
+      artificialPatchedByFile.write("0.0.1")
+
+      val (result, output) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+      }
+      result should equal(Result.Failure)
+      output should include(
+        """Checking if Elasticsearch is patched ...
+          |ERROR: Elasticsearch was patched using ROR 0.0.1 patcher. It should be unpatched and patched again with current ROR patcher. ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch
+          |""".stripMargin
+      )
+    }
+    "Patching not started because there is a patch_backup/patched_by file indicating ES is patched" in {
+      val backupDirectory = esDirectory / "plugins" / "readonlyrest" / "patch_backup"
+      File(backupDirectory.path).createDirectory()
+      val artificialPatchedByFile = File((backupDirectory / "patched_by").path).createFile()
+      artificialPatchedByFile.write("0.0.1")
+
+      val (result, output) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+      }
+      println(result)
+      println(output)
+
+      result should equal(Result.Failure)
+      output should include(
+        """Checking if Elasticsearch is patched ...
+          |ERROR: Elasticsearch was patched using ROR 0.0.1 patcher. It should be unpatched and patched again with current ROR patcher. ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch
+          |""".stripMargin
+      )
+    }
     "Successfully patch, verify and unpatch" in {
       // Patch
       val hashBeforePatching = FileUtils.calculateHash(esLocalPath)
@@ -168,7 +204,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
       unpatchResult should equal(Result.Success)
       unpatchOutput should include(
         """Checking if Elasticsearch is patched ...
-          |Restoring ...
+          |Elasticsearch is currently patched, restoring ...
           |Elasticsearch is unpatched! ReadonlyREST can be removed now"""
           .stripMargin
       )
@@ -194,12 +230,13 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
 
   override protected def afterEach(): Unit = {
     super.afterEach()
-    File(esLocalPath).delete(swallowIOExceptions = true)
+    println(esLocalPath.toString)
+    //File(esLocalPath).delete(swallowIOExceptions = true)
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    tempDirectory.clear()
+    //tempDirectory.clear()
   }
 
   // This method handles downloading necessary files from ES container:

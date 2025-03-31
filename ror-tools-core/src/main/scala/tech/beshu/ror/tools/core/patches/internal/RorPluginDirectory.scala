@@ -38,7 +38,7 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
   }
 
   def clearBackupFolder(): Unit = {
-    os.remove.all(target = backupFolderPath)
+    println("AAA CLEAR "+os.remove.all(target = backupFolderPath))
   }
 
   def backup(file: Path): Unit = {
@@ -68,8 +68,8 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
   }
 
   def updatePatchedByRorVersion(): Unit = {
-    os.remove(patchedByFilePath, checkExists = false)
-    os.write(patchedByFilePath, readCurrentRorVersion())
+    println("AAA REM "+os.remove(patchedByFilePath, checkExists = false))
+    println("AAA ADD "+os.write(patchedByFilePath, readCurrentRorVersion()))
   }
 
   def readCurrentRorVersion(): String = {

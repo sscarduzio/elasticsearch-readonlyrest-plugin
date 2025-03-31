@@ -21,11 +21,19 @@ import just.semver.SemVer
 sealed trait RorToolsException {
   this: Throwable =>
 }
+
 object RorToolsException {
 
-  object EsNotPatchedException extends IllegalStateException("Elasticsearch is NOT patched yet") with RorToolsException
+  private val patchingDocumentationUrl = "https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch"
 
-  object EsAlreadyPatchedException extends IllegalStateException("Elasticsearch is already patched") with RorToolsException
+  final case class EsPatchedWithDifferentVersionException(expectedRorVersion: String, patchedByRorVersion: String)
+    extends IllegalStateException(s"Elasticsearch was patched using ROR $patchedByRorVersion patcher. It should be unpatched and patched again with current ROR patcher. ReadonlyREST cannot be started. For patching instructions see our docs: $patchingDocumentationUrl") with RorToolsException
+
+  object EsNotPatchedException
+    extends IllegalStateException(s"Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: $patchingDocumentationUrl") with RorToolsException
+
+  final case class EsAlreadyPatchedException(rorVersion: String)
+    extends IllegalStateException(s"Elasticsearch is already patched with current version $rorVersion") with RorToolsException
 
   final class EsPatchingNotRequired(esVersion: SemVer)
     extends IllegalStateException(s"Elasticsearch ${esVersion.render} doesn't require patching")

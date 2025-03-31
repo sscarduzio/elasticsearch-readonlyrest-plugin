@@ -18,8 +18,6 @@ package tech.beshu.ror.tools.core.patches.base
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No.Cause
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.FilePatchCreator
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, MultiFilePatch, RorPluginDirectory}
 
@@ -34,34 +32,28 @@ private[patches] abstract class SimpleEsPatch(rorPluginDirectory: RorPluginDirec
     filePatchCreators.map(_.create(rorPluginDirectory, esVersion)): _*
   )
 
-   override def isPatched: IsPatched = {
-    if(rorPluginDirectory.doesBackupFolderExist) {
-      checkWithPatchedByFile(rorPluginDirectory)
+  override def patchIsApplied(currentRorVersion: String): IsPatched = {
+    if (rorPluginDirectory.doesBackupFolderExist) {
+      IsPatched.WithCurrentVersion(currentRorVersion)
     } else {
-      No(Cause.NotPatchedAtAll)
+      IsPatched.No
     }
   }
 
-  override def backup(): Unit = {
-    copyJarsToBackupFolder() match {
-      case Success(_) =>
-        rorPluginDirectory.updatePatchedByRorVersion()
-      case Failure(ex) =>
-        rorPluginDirectory.clearBackupFolder()
-        throw ex
-    }
+  override def performBackup(): Unit = {
+    copyJarsToBackupFolder()
   }
 
-  override def restore(): Unit = {
+  override def performRestore(): Unit = {
     filePatches.restore()
     rorPluginDirectory.clearBackupFolder()
   }
 
-  override def execute(): Unit = {
+  override def performPatching(): Unit = {
     filePatches.patch()
   }
 
-  private def copyJarsToBackupFolder() = Try {
+  private def copyJarsToBackupFolder(): Unit = {
     rorPluginDirectory.createBackupFolder()
     filePatches.backup()
   }

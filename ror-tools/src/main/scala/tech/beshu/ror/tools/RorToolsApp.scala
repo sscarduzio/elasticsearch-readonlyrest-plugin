@@ -19,8 +19,7 @@ package tech.beshu.ror.tools
 import os.Path
 import scopt.*
 import tech.beshu.ror.tools.RorTools.*
-import tech.beshu.ror.tools.core.actions.*
-import tech.beshu.ror.tools.core.patches.base.EsPatch
+import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsException}
 
@@ -110,7 +109,7 @@ trait RorTools {
 
     private def performPatching(customESPath: Option[Path]): Result = {
       val esDirectory = esDirectoryFrom(customESPath)
-      new PatchAction(EsPatch.create(esDirectory)).execute()
+      EsPatchExecutor.create(esDirectory).patch()
       Result.Success
     }
 
@@ -132,7 +131,7 @@ trait RorTools {
   private class UnpatchCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Unpatch): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
-      new UnpatchAction(EsPatch.create(esDirectory)).execute()
+      EsPatchExecutor.create(esDirectory).restore()
       Result.Success
     }
   }
@@ -140,7 +139,7 @@ trait RorTools {
   private class VerifyCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Verify): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
-      new VerifyAction(EsPatch.create(esDirectory)).execute()
+      EsPatchExecutor.create(esDirectory).verify()
       Result.Success
     }
   }
@@ -234,23 +233,32 @@ object RorTools {
                                      userUnderstandsImplicationsOfESPatching: PatchingConsent)
 
   private sealed trait Command
+
   private object Command {
     final case class Patch(customEsPath: Option[os.Path]) extends Command
+
     final case class Unpatch(customEsPath: Option[os.Path]) extends Command
+
     final case class Verify(customEsPath: Option[os.Path]) extends Command
   }
 
   private sealed trait PatchingConsent
+
   private object PatchingConsent {
     case object Accepted extends PatchingConsent
+
     case object Rejected extends PatchingConsent
+
     case object AnswerNotGiven extends PatchingConsent
   }
 
   sealed trait Result
+
   object Result {
     case object CommandNotParsed extends Result
+
     case object Success extends Result
+
     case object Failure extends Result
   }
 }

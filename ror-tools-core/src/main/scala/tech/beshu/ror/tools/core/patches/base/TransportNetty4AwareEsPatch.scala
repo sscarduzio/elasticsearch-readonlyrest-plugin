@@ -18,49 +18,43 @@ package tech.beshu.ror.tools.core.patches.base
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No.Cause
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.FilePatchCreator
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, MultiFilePatch, RorPluginDirectory}
 
 import scala.util.Try
 
-private [patches] abstract class TransportNetty4AwareEsPatch(rorPluginDirectory: RorPluginDirectory,
-                                                             esVersion: SemVer,
-                                                             filePatchCreators: FilePatchCreator[_ <: FilePatch]*)
+private[patches] abstract class TransportNetty4AwareEsPatch(rorPluginDirectory: RorPluginDirectory,
+                                                            esVersion: SemVer,
+                                                            filePatchCreators: FilePatchCreator[_ <: FilePatch]*)
   extends EsPatch {
 
   private val filePatches: MultiFilePatch = new MultiFilePatch(
     filePatchCreators.map(_.create(rorPluginDirectory, esVersion)): _*
   )
 
-  override def isPatched: IsPatched = {
+  override def patchIsApplied(currentRorVersion: String): IsPatched = {
     val backupExists = rorPluginDirectory.doesBackupFolderExist
     val transportNetty4FoundInRorDir = rorPluginDirectory.isTransportNetty4PresentInRorPluginPath
     if (backupExists && transportNetty4FoundInRorDir) {
-      checkWithPatchedByFile(rorPluginDirectory)
+      IsPatched.WithCurrentVersion(currentRorVersion)
     } else if (!backupExists && !transportNetty4FoundInRorDir) {
-      No(Cause.NotPatchedAtAll)
+      IsPatched.No
     } else {
       val possiblyCorruptedEsFiles = filePatches.files.filterNot(rorPluginDirectory.isRorPluginPath).map(_.toIO)
       throw new IllegalStateException(
         s"""
-          |ES Corrupted! Something went wrong during patching/unpatching and the current state of ES installation is corrupted.
-          |To recover from this state, please uninstall ReadonlyREST plugin and copy the corrupted files from ES binaries (https://www.elastic.co/downloads/elasticsearch):
-          |${possiblyCorruptedEsFiles.map(_.toString).map(f => s"- $f").mkString("\n")}
-          |""".stripMargin)
+           |ES Corrupted! Something went wrong during patching/unpatching and the current state of ES installation is corrupted.
+           |To recover from this state, please uninstall ReadonlyREST plugin and copy the corrupted files from ES binaries (https://www.elastic.co/downloads/elasticsearch):
+           |${possiblyCorruptedEsFiles.map(_.toString).map(f => s"- $f").mkString("\n")}
+           |""".stripMargin)
     }
   }
 
-  override def backup(): Unit = {
+  override def performBackup(): Unit = {
     copyJarsToBackupFolder()
-      .recoverWith { case ex =>
-        rorPluginDirectory.clearBackupFolder()
-        throw ex
-      }
   }
 
-  override def restore(): Unit = {
+  override def performRestore(): Unit = {
     rorPluginDirectory.findTransportNetty4Jar.foreach {
       os.remove
     }
@@ -68,7 +62,7 @@ private [patches] abstract class TransportNetty4AwareEsPatch(rorPluginDirectory:
     rorPluginDirectory.clearBackupFolder()
   }
 
-  override def execute(): Unit = {
+  override def performPatching(): Unit = {
     rorPluginDirectory.esDirectory.findTransportNetty4Jar match {
       case Some(transportNetty4Jar) =>
         rorPluginDirectory.copyToPluginPath(transportNetty4Jar)

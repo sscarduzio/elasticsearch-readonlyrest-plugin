@@ -24,11 +24,12 @@ import tech.beshu.ror.tools.core.utils.RorToolsException.EsPatchingNotRequired
 private[patches] class EsNotRequirePatch(esVersion: SemVer)
   extends EsPatch {
 
-  override def isPatched: IsPatched = throw new EsPatchingNotRequired(esVersion)
+  override def performPatching(): Unit = throw new EsPatchingNotRequired(esVersion)
 
-  override def backup(): Unit = throw new EsPatchingNotRequired(esVersion)
+  override def performBackup(): Unit = throw new EsPatchingNotRequired(esVersion)
 
-  override def restore(): Unit = throw new EsPatchingNotRequired(esVersion)
+  override def performRestore(): Unit = throw new EsPatchingNotRequired(esVersion)
 
-  override def execute(): Unit = throw new EsPatchingNotRequired(esVersion)
+  override def patchIsApplied(currentRorVersion: String): IsPatched = throw new EsPatchingNotRequired(esVersion)
+
 }
