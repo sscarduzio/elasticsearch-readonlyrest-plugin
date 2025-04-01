@@ -18,7 +18,7 @@ package tech.beshu.ror.tools
 
 import better.files.File
 import monix.execution.Scheduler
-import org.scalatest.matchers.must.Matchers.include
+import org.scalatest.matchers.must.Matchers.{be, include}
 import org.scalatest.matchers.should.Matchers.{equal, should, shouldNot}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
@@ -38,6 +38,8 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
   private val localPath = tempDirectory.path
   private val esDirectory = tempDirectory / "es"
   private val esLocalPath = esDirectory.path
+  private val backupDirectory = esDirectory / "plugins" / "readonlyrest" / "patch_backup"
+  private val patchedByFile = File((backupDirectory / "patched_by").path)
 
   private val esContainer = new ExampleEsWithRorContainer
 
@@ -54,7 +56,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
   }
 
   "ROR tools app" should {
-    "Patching is successful for ES installation that was not patched (with consent given in arg)" in {
+    "Patching successful for ES installation that was not patched (with consent given in arg)" in {
       val (result, output) = captureResultAndOutput {
         RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
       }
@@ -67,10 +69,10 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           .stripMargin
       )
     }
-    "Patching is successful for ES installation that was not patched (with consent given in interactive mode)" in {
+    "Patching successful for ES installation that was not patched (with consent given in interactive mode)" in {
       val (result, output) = captureResultAndOutputWithInteraction(
         RorToolsTestApp.run(Array("patch", "--es-path", esLocalPath.toString))(_),
-        response = "yes"
+        response = Some("yes")
       )
       result should equal(Result.Success)
       output should include(
@@ -82,7 +84,29 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           |""".stripMargin
       )
     }
-    "Patching does not start when user declines to accept implications of patching (in arg)" in {
+    "Patching successful first time, on second try not started because already patched" in {
+      val (result, output) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+      }
+      result should equal(Result.Success)
+      output should include(
+        """Checking if Elasticsearch is patched ...
+          |Creating backup ...
+          |Patching ...
+          |Elasticsearch is patched! ReadonlyREST is ready to use"""
+          .stripMargin
+      )
+      val (secondResult, secondOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+      }
+      secondResult should equal(Result.Failure)
+      secondOutput should include(
+        """Checking if Elasticsearch is patched ...
+          |ERROR: Elasticsearch is already patched with current version"""
+          .stripMargin
+      )
+    }
+    "Patching not started when user declines to accept implications of patching (in arg)" in {
       val (result, output) = captureResultAndOutput {
         RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "no"))(_)
       }
@@ -93,10 +117,10 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           |""".stripMargin
       )
     }
-    "Patching does not start when user declines to accept implications of patching (in interactive mode)" in {
+    "Patching not started when user declines to accept implications of patching (in interactive mode)" in {
       val (result, output) = captureResultAndOutputWithInteraction(
         RorToolsTestApp.run(Array("patch"))(_),
-        response = "no"
+        response = Some("no")
       )
       result should equal(Result.Failure)
       output should equal(
@@ -104,6 +128,36 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           |Do you understand the implications of ES patching? (yes/no): You have to confirm, that You understand the implications of ES patching in order to perform it.
           |You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
           |""".stripMargin
+      )
+    }
+    "Patching not started when --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING arg is not provided and console input is not possible" in {
+      val (result, output) = captureResultAndOutputWithInteraction(
+        RorToolsTestApp.run(Array("patch"))(_),
+        response = None
+      )
+      result should equal(Result.Failure)
+      output should equal(
+        """|Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
+           |Do you understand the implications of ES patching? (yes/no):""".stripMargin + " " +
+          """|
+             |It seems that the answer was not given or the ror-tools are executed in the environment that does not support console input.
+             |Consider using silent mode and provide the answer using the parameter --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING, read more in our documentation https://docs.readonlyrest.com/elasticsearch#id-5.-patch-elasticsearch.
+             |""".stripMargin
+      )
+    }
+    "Patching not started when --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING value is empty" in {
+      val (result, output) = captureResultAndOutputWithInteraction(
+        RorToolsTestApp.run(Array("patch"))(_),
+        response = Some("")
+      )
+      result should equal(Result.Failure)
+      output should equal(
+        """|Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
+           |Do you understand the implications of ES patching? (yes/no):""".stripMargin + " " +
+          """|
+             |It seems that the answer was not given or the ror-tools are executed in the environment that does not support console input.
+             |Consider using silent mode and provide the answer using the parameter --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING, read more in our documentation https://docs.readonlyrest.com/elasticsearch#id-5.-patch-elasticsearch.
+             |""".stripMargin
       )
     }
     "Patching not started because of not existing directory" in {
@@ -133,11 +187,10 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           |  -h, --help               prints this usage text""".stripMargin
       )
     }
-    "Patching not started because there is a patch_backup/patched_by file indicating ES is patched" in {
-      val backupDirectory = esDirectory / "plugins" / "readonlyrest" / "patch_backup"
+    "Patching not started because there is a patched_by file indicating that the ES is already patched" in {
       File(backupDirectory.path).createDirectory()
-      val artificialPatchedByFile = File((backupDirectory / "patched_by").path).createFile()
-      artificialPatchedByFile.write("0.0.1")
+      patchedByFile.createFile()
+      patchedByFile.write("0.0.1")
 
       val (result, output) = captureResultAndOutput {
         RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
@@ -149,22 +202,111 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           |""".stripMargin
       )
     }
-    "Patching not started because there is a patch_backup/patched_by file indicating ES is patched" in {
-      val backupDirectory = esDirectory / "plugins" / "readonlyrest" / "patch_backup"
+    "Unpatching started even when patched_by file is missing" in {
+      val (patchResult, patchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+      }
+      patchResult should equal(Result.Success)
+      patchOutput should include(
+        """Checking if Elasticsearch is patched ...
+          |Creating backup ...
+          |Patching ...
+          |Elasticsearch is patched! ReadonlyREST is ready to use"""
+          .stripMargin
+      )
+
+      patchedByFile.exists() should be(true)
+      patchedByFile.delete()
+      patchedByFile.exists() should be(false)
+
+      val (unpatchResult, unpatchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
+      }
+      unpatchResult should equal(Result.Success)
+      unpatchOutput should include(
+        """Checking if Elasticsearch is patched ...
+          |Elasticsearch is currently patched, restoring ...
+          |Elasticsearch is unpatched! ReadonlyREST can be removed now"""
+          .stripMargin
+      )
+    }
+    "Unpatching not started because ES is already patched by different version" in {
       File(backupDirectory.path).createDirectory()
-      val artificialPatchedByFile = File((backupDirectory / "patched_by").path).createFile()
-      artificialPatchedByFile.write("0.0.1")
+      patchedByFile.createFile()
+      patchedByFile.write("0.0.1")
 
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
       }
-      println(result)
-      println(output)
-
       result should equal(Result.Failure)
       output should include(
         """Checking if Elasticsearch is patched ...
           |ERROR: Elasticsearch was patched using ROR 0.0.1 patcher. It should be unpatched and patched again with current ROR patcher. ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch
+          |""".stripMargin
+      )
+    }
+    "Verify correctly recognizes that patch is not applied" in {
+      patchedByFile.exists() should be(false)
+      val (verifyResult, verifyOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+      }
+      verifyResult should equal(Result.Success)
+      verifyOutput should include(
+        """Checking if Elasticsearch is patched ...
+          |Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch"""
+          .stripMargin
+      )
+    }
+    "Verify detects patch when patched_by file is present" in {
+      // Patch
+      val (patchResult, patchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+      }
+      patchResult should equal(Result.Success)
+      patchOutput should include(
+        """Checking if Elasticsearch is patched ...
+          |Creating backup ...
+          |Patching ...
+          |Elasticsearch is patched! ReadonlyREST is ready to use"""
+          .stripMargin
+      )
+
+      patchedByFile.exists() should be(true)
+
+      val (verifyResult, verifyOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+      }
+      verifyResult should equal(Result.Success)
+      verifyOutput should include(
+        """Checking if Elasticsearch is patched ...
+          |Elasticsearch is patched! ReadonlyREST can be used"""
+          .stripMargin
+      )
+    }
+    "Verify does not detect patch when file is missing" in {
+      val (patchResult, patchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+      }
+      patchResult should equal(Result.Success)
+      patchOutput should include(
+        """Checking if Elasticsearch is patched ...
+          |Creating backup ...
+          |Patching ...
+          |Elasticsearch is patched! ReadonlyREST is ready to use"""
+          .stripMargin
+      )
+
+      patchedByFile.exists() should be(true)
+      patchedByFile.delete()
+      patchedByFile.exists() should be(false)
+
+      val (verifyResultWithoutFile, verifyOutputWithoutFile) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+      }
+      verifyResultWithoutFile should equal(Result.Success)
+      verifyOutputWithoutFile should include(
+        """Checking if Elasticsearch is patched ...
+          |Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch
           |""".stripMargin
       )
     }
@@ -195,6 +337,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           |Elasticsearch is patched! ReadonlyREST can be used"""
           .stripMargin
       )
+      patchedByFile.exists() should be(true)
 
       // Unpatch
       val hashBeforeUnpatching = FileUtils.calculateHash(esLocalPath)
@@ -222,21 +365,20 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
     (result, inOut.getOutputBuffer)
   }
 
-  private def captureResultAndOutputWithInteraction(block: InOut => Result, response: String): (Result, String) = {
-    val inOut = new CapturingOutputAndMockingInput(Some(response))
+  private def captureResultAndOutputWithInteraction(block: InOut => Result, response: Option[String]): (Result, String) = {
+    val inOut = new CapturingOutputAndMockingInput(response)
     val result = block(inOut)
     (result, inOut.getOutputBuffer)
   }
 
   override protected def afterEach(): Unit = {
     super.afterEach()
-    println(esLocalPath.toString)
-    //File(esLocalPath).delete(swallowIOExceptions = true)
+    File(esLocalPath).delete(swallowIOExceptions = true)
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    //tempDirectory.clear()
+    tempDirectory.clear()
   }
 
   // This method handles downloading necessary files from ES container:

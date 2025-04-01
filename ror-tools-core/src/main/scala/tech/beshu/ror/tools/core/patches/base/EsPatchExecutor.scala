@@ -58,7 +58,7 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
   }
 
   def restore(): Unit = {
-    checkWithPatchedByFile() match {
+    checkWithPatchedByFile(ignoreMissingPatchedByFile = true) match {
       case IsPatched.WithCurrentVersion(_) =>
         inOut.println("Elasticsearch is currently patched, restoring ...")
         Try(esPatch.performRestore()) match {
@@ -95,23 +95,21 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
         throw EsNotPatchedException
   }
 
-  private def checkWithPatchedByFile(): IsPatched = {
+  private def checkWithPatchedByFile(ignoreMissingPatchedByFile: Boolean = false): IsPatched = {
     inOut.println("Checking if Elasticsearch is patched ...")
     val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
-    println("AAA "+currentRorVersion)
     val resultOfCheckingPatchedByFile =
       rorPluginDirectory.readPatchedByRorVersion() match {
         case None =>
-          IsPatched.No
+          if (ignoreMissingPatchedByFile) IsPatched.WithCurrentVersion(currentRorVersion)
+          else IsPatched.No
         case Some(patchedByRorVersion) if patchedByRorVersion == currentRorVersion =>
           IsPatched.WithCurrentVersion(currentRorVersion)
         case Some(patchedByRorVersion) =>
           IsPatched.WithDifferentVersion(currentRorVersion, patchedByRorVersion)
       }
-    println("AAA " + resultOfCheckingPatchedByFile)
     resultOfCheckingPatchedByFile match {
       case IsPatched.WithCurrentVersion(currentRorVersion) =>
-        println("BBB " + esPatch.patchIsApplied(currentRorVersion))
         esPatch.patchIsApplied(currentRorVersion)
       case withDifferentVersion: IsPatched.WithDifferentVersion =>
         withDifferentVersion

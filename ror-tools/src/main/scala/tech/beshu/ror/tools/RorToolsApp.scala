@@ -102,7 +102,8 @@ trait RorTools {
         case PatchingConsent.AnswerNotGiven =>
           askUserAboutPatchingConsent() match {
             case PatchingConsent.Accepted => performPatching(command.customEsPath)
-            case _ => abortPatchingBecauseUserDidNotAcceptConsequences()
+            case PatchingConsent.Rejected => abortPatchingBecauseUserDidNotAcceptConsequences()
+            case PatchingConsent.AnswerNotGiven => Result.Failure
           }
       }
     }
@@ -121,9 +122,17 @@ trait RorTools {
     private def askUserAboutPatchingConsent(): PatchingConsent = {
       inOut.println("Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.")
       inOut.print("Do you understand the implications of ES patching? (yes/no): ")
-      inOut.readLine().toLowerCase match
-        case "yes" => PatchingConsent.Accepted
-        case _ => PatchingConsent.Rejected
+      inOut.readLine() match {
+        case Some("") | None =>
+          inOut.println("\nIt seems that the answer was not given or the ror-tools are executed in the environment that does not support console input.")
+          inOut.println("Consider using silent mode and provide the answer using the parameter --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING, read more in our documentation https://docs.readonlyrest.com/elasticsearch#id-5.-patch-elasticsearch.")
+          PatchingConsent.AnswerNotGiven
+        case Some(line) =>
+          line.toLowerCase match {
+            case "yes" => PatchingConsent.Accepted
+            case _ => PatchingConsent.Rejected
+          }
+      }
     }
 
   }
