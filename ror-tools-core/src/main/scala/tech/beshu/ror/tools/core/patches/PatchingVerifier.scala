@@ -21,7 +21,7 @@ import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
-import tech.beshu.ror.tools.core.utils.RorToolsException.{EsNotPatchedException, EsPatchedWithDifferentVersionException}
+import tech.beshu.ror.tools.core.utils.RorToolsError.{EsNotPatchedError, EsPatchedWithDifferentVersionError}
 
 import scala.util.Try
 
@@ -34,9 +34,9 @@ object PatchingVerifier {
         case IsPatched.WithCurrentVersion(_) =>
           Right(())
         case IsPatched.WithDifferentVersion(expectedRorVersion, patchedByRorVersion) =>
-          Left(EsNotPatched(EsPatchedWithDifferentVersionException(expectedRorVersion, patchedByRorVersion).getMessage))
+          Left(EsNotPatched(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion).message))
         case IsPatched.No =>
-          Left(EsNotPatched(EsNotPatchedException.getMessage))
+          Left(EsNotPatched(EsNotPatchedError.message))
     } yield result
   }
 

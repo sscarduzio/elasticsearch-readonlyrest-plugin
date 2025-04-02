@@ -18,8 +18,8 @@ package tech.beshu.ror.tools.core.patches.base
 
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
-import tech.beshu.ror.tools.core.utils.RorToolsException.{EsAlreadyPatchedException, EsNotPatchedException, EsPatchedWithDifferentVersionException}
-import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut}
+import tech.beshu.ror.tools.core.utils.RorToolsError.*
+import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsError}
 
 import scala.util.{Failure, Success, Try}
 
@@ -27,18 +27,18 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
                             esPatch: EsPatch)
                            (implicit inOut: InOut) {
 
-  def patch(): Unit = {
+  def patch(): Either[RorToolsError, Unit] = {
     checkWithPatchedByFile() match {
       case IsPatched.WithCurrentVersion(rorVersion) =>
-        throw EsAlreadyPatchedException(rorVersion)
+        Left(EsAlreadyPatchedError(rorVersion))
       case IsPatched.WithDifferentVersion(expectedRorVersion, patchedByRorVersion) =>
-        throw EsPatchedWithDifferentVersionException(expectedRorVersion, patchedByRorVersion)
+        Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
       case IsPatched.No =>
         backup()
         inOut.println("Patching ...")
         Try(esPatch.performPatching()) match {
           case Success(()) =>
-            inOut.println("Elasticsearch is patched! ReadonlyREST is ready to use")
+            Right(inOut.println("Elasticsearch is patched! ReadonlyREST is ready to use"))
           case Failure(exception) =>
             throw exception
         }
@@ -46,31 +46,20 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
 
   }
 
-  def backup(): Unit = {
-    inOut.println("Creating backup ...")
-    Try(esPatch.performBackup()) match {
-      case Success(_) =>
-        rorPluginDirectory.updatePatchedByRorVersion()
-      case Failure(ex) =>
-        rorPluginDirectory.clearBackupFolder()
-        throw ex
-    }
-  }
-
-  def restore(): Unit = {
+  def restore(): Either[RorToolsError, Unit] = {
     checkWithPatchedByFile(ignoreMissingPatchedByFile = true) match {
       case IsPatched.WithCurrentVersion(_) =>
         inOut.println("Elasticsearch is currently patched, restoring ...")
         Try(esPatch.performRestore()) match {
           case Success(()) =>
-            inOut.println("Elasticsearch is unpatched! ReadonlyREST can be removed now")
+            Right(inOut.println("Elasticsearch is unpatched! ReadonlyREST can be removed now"))
           case Failure(exception) =>
             throw exception
         }
       case IsPatched.WithDifferentVersion(expectedRorVersion, patchedByRorVersion) =>
-        throw EsPatchedWithDifferentVersionException(expectedRorVersion, patchedByRorVersion)
+        Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
       case IsPatched.No =>
-        throw EsNotPatchedException
+        Left(EsNotPatchedError)
     }
   }
 
@@ -79,20 +68,23 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
       case IsPatched.WithCurrentVersion(_) =>
         inOut.println("Elasticsearch is patched! ReadonlyREST can be used")
       case IsPatched.WithDifferentVersion(expectedRorVersion, patchedByRorVersion) =>
-        inOut.println(EsPatchedWithDifferentVersionException(expectedRorVersion, patchedByRorVersion).getMessage)
+        inOut.println(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion).message)
       case IsPatched.No =>
-        inOut.println(EsNotPatchedException.getMessage)
+        inOut.println(EsNotPatchedError.message)
     }
   }
 
-  def isPatched: IsPatched = {
-    checkWithPatchedByFile() match
-      case IsPatched.WithCurrentVersion(rorVersion) =>
-        esPatch.patchIsApplied(rorVersion)
-      case IsPatched.WithDifferentVersion(expectedRorVersion, patchedByRorVersion) =>
-        throw EsPatchedWithDifferentVersionException(expectedRorVersion, patchedByRorVersion)
-      case IsPatched.No =>
-        throw EsNotPatchedException
+  def isPatched: IsPatched = checkWithPatchedByFile()
+
+  private def backup(): Unit = {
+    inOut.println("Creating backup ...")
+    Try(esPatch.performBackup()) match {
+      case Success(_) =>
+        rorPluginDirectory.updatePatchedByRorVersion()
+      case Failure(ex) =>
+        rorPluginDirectory.clearBackupFolder()
+        throw ex
+    }
   }
 
   private def checkWithPatchedByFile(ignoreMissingPatchedByFile: Boolean = false): IsPatched = {

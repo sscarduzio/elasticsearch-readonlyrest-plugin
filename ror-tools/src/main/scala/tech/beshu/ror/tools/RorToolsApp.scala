@@ -21,7 +21,7 @@ import scopt.*
 import tech.beshu.ror.tools.RorTools.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
-import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsException}
+import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsError, RorToolsException}
 
 import scala.util.{Failure, Success, Try}
 
@@ -110,8 +110,7 @@ trait RorTools {
 
     private def performPatching(customESPath: Option[Path]): Result = {
       val esDirectory = esDirectoryFrom(customESPath)
-      EsPatchExecutor.create(esDirectory).patch()
-      Result.Success
+      handleResult(EsPatchExecutor.create(esDirectory).patch())
     }
 
     private def abortPatchingBecauseUserDidNotAcceptConsequences(): Result = {
@@ -140,8 +139,7 @@ trait RorTools {
   private class UnpatchCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Unpatch): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
-      EsPatchExecutor.create(esDirectory).restore()
-      Result.Success
+      handleResult(EsPatchExecutor.create(esDirectory).restore())
     }
   }
 
@@ -153,6 +151,16 @@ trait RorTools {
     }
   }
 
+  private def handleResult(result: Either[RorToolsError, Unit])
+                          (implicit inOut: InOut): Result = {
+    result match {
+      case Left(error) =>
+        inOut.printlnErr("ERROR: " + error.message)
+        Result.Failure
+      case Right(()) =>
+        Result.Success
+    }
+  }
 
   private def esDirectoryFrom(esPath: Option[os.Path]) = {
     esPath.map(EsDirectory.from).getOrElse(EsDirectory.default)
