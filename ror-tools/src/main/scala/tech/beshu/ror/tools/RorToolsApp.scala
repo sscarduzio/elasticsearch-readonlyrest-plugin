@@ -250,32 +250,23 @@ object RorTools {
                                      userUnderstandsImplicationsOfESPatching: PatchingConsent)
 
   private sealed trait Command
-
   private object Command {
     final case class Patch(customEsPath: Option[os.Path]) extends Command
-
     final case class Unpatch(customEsPath: Option[os.Path]) extends Command
-
     final case class Verify(customEsPath: Option[os.Path]) extends Command
   }
 
   private sealed trait PatchingConsent
-
   private object PatchingConsent {
     case object Accepted extends PatchingConsent
-
     case object Rejected extends PatchingConsent
-
     case object AnswerNotGiven extends PatchingConsent
   }
 
   sealed trait Result
-
   object Result {
     case object CommandNotParsed extends Result
-
     case object Success extends Result
-
     case object Failure extends Result
   }
 }
