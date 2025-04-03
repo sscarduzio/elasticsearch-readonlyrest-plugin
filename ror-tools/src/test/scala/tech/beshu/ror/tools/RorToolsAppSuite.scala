@@ -69,6 +69,19 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           .stripMargin
       )
     }
+    "Patching successful for ES installation that was not patched (with consent given in arg in format with =)" in {
+      val (result, output) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes", "--es-path", esLocalPath.toString))(_)
+      }
+      result should equal(Result.Success)
+      output should include(
+        """Checking if Elasticsearch is patched ...
+          |Creating backup ...
+          |Patching ...
+          |Elasticsearch is patched! ReadonlyREST is ready to use"""
+          .stripMargin
+      )
+    }
     "Patching successful for ES installation that was not patched (with consent given in interactive mode)" in {
       val (result, output) = captureResultAndOutputWithInteraction(
         RorToolsTestApp.run(Array("patch", "--es-path", esLocalPath.toString))(_),
