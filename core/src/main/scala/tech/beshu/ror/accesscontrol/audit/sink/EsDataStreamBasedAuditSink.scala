@@ -16,9 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.audit.sink
 
+import cats.data.NonEmptyList
+import tech.beshu.ror.implicits.*
 import monix.eval.Task
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.domain.RorAuditDataStream
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.DataStreamBasedAuditSinkService
 
@@ -40,15 +42,28 @@ private[audit] final class EsDataStreamBasedAuditSink private(serializer: AuditL
 }
 
 object EsDataStreamBasedAuditSink {
+
+  final case class CreationError private(message: String)
+  object CreationError {
+    def apply(errors: NonEmptyList[AuditDataStreamCreator.ErrorMessage], auditCluster: AuditCluster): CreationError = {
+      val clusterType = auditCluster match {
+        case AuditCluster.LocalAuditCluster => "local cluster"
+        case AuditCluster.RemoteAuditCluster(uris) => s"remote cluster ${uris.toList.show}"
+      }
+      new CreationError(s"Unable to configure audit output using a data stream in $clusterType. Details: [${errors.toList.map(_.message).show}]")
+    }
+  }
+
   def create(serializer: AuditLogSerializer,
              rorAuditDataStream: RorAuditDataStream,
-             auditSinkService: DataStreamBasedAuditSinkService): Task[EsDataStreamBasedAuditSink] = {
+             auditSinkService: DataStreamBasedAuditSinkService,
+             auditCluster: AuditCluster): Task[Either[CreationError, EsDataStreamBasedAuditSink]] = {
     auditSinkService
       .dataStreamCreator
       .createIfNotExists(rorAuditDataStream)
       .flatMap {
-        case Right(()) => Task.delay(new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService))
-        case Left(errorMsg) => Task.raiseError(new IllegalStateException(errorMsg))
+        case Right(()) => Task.delay(Right(new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService)))
+        case Left(errorMessages) => Task.delay(Left(CreationError(errorMessages, auditCluster)))
       }
   }
 }

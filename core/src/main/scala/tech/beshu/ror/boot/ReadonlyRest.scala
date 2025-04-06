@@ -26,7 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
@@ -197,26 +199,23 @@ class ReadonlyRest(coreFactory: CoreFactory,
     val httpClientsFactory = new AsyncHttpClientsFactory
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
-    coreFactory
-      .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
-      .flatMap { result =>
-        result
-          .map { core =>
-            createEngine(httpClientsFactory, ldapConnectionPoolProvider, core)
-              .tapEval { engine =>
-                Task(inspectFlsEngine(engine))
-              }
-          }
-          .leftMap(handleLoadingCoreErrors)
-          .sequence
+    EitherT(
+      coreFactory
+        .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
+    )
+      .flatMap(core => EitherT(createEngine(httpClientsFactory, ldapConnectionPoolProvider, core)))
+      .semiflatTap { engine =>
+        Task(inspectFlsEngine(engine))
       }
+      .leftMap(handleLoadingCoreErrors)
+      .value
   }
 
   private def createEngine(httpClientsFactory: AsyncHttpClientsFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                           core: Core): Task[Engine] = {
+                           core: Core): Task[Either[NonEmptyList[CoreCreationError], Engine]] = {
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
-    createAuditingTool(core)
+    EitherT(createAuditingTool(core))
       .map { auditingTool =>
         val decoratedCore = Core(
           accessControl = new AccessControlListLoggingDecorator(
@@ -231,15 +230,15 @@ class ReadonlyRest(coreFactory: CoreFactory,
           ldapConnectionPoolProvider,
           auditingTool
         )
-      }
+      }.value
   }
 
   private def createAuditingTool(core: Core)
-                                (implicit loggingContext: LoggingContext): Task[Option[AuditingTool]] = {
+                                (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
     core.rorConfig.auditingSettings
       .map(settings => AuditingTool.create(settings, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
       .sequence
-      .map(_.flatten)
+      .map(_.map(_.toValidated).sequence.map(_.flatten).toEither.leftMap(_.map(e => CoreCreationError.AuditingSettingsCreationError(Message(e.message)))))
   }
 
   private def inspectFlsEngine(engine: Engine): Unit = {

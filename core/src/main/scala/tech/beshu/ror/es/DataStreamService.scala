@@ -35,29 +35,29 @@ trait DataStreamService {
   final def fullySetupDataStream(settings: DataStreamSettings): Task[DataStreamSetupResult] = {
     for {
       _ <- createIfAbsent(
-        checkIndexLifecyclePolicyExists(settings.lifecyclePolicy.id),
-        createIndexLifecyclePolicy(settings.lifecyclePolicy),
-        DataStreamSetupResult.Failure(s"Unable to determine if the index lifecycle policy with ID '${settings.lifecyclePolicy.id.show}' has been created")
+        checkIfResourceExists = checkIndexLifecyclePolicyExists(settings.lifecyclePolicy.id),
+        createResource = createIndexLifecyclePolicy(settings.lifecyclePolicy),
+        onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if the index lifecycle policy with ID '${settings.lifecyclePolicy.id.show}' has been created")
       )
       _ <- createIfAbsent(
-        checkComponentTemplateExists(settings.mappings.templateName),
-        createComponentTemplateForMappings(settings.mappings),
-        DataStreamSetupResult.Failure(s"Unable to determine if component template with ID '${settings.mappings.templateName.show}' has been created")
+        checkIfResourceExists = checkComponentTemplateExists(settings.mappings.templateName),
+        createResource = createComponentTemplateForMappings(settings.mappings),
+        onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if component template with ID '${settings.mappings.templateName.show}' has been created")
       )
       _ <- createIfAbsent(
-        checkComponentTemplateExists(settings.componentSettings.templateName),
-        createComponentTemplateForIndex(settings.componentSettings),
-        DataStreamSetupResult.Failure(s"Unable to determine if component template with ID '${settings.componentSettings.templateName.show}' has been created")
+        checkIfResourceExists = checkComponentTemplateExists(settings.componentSettings.templateName),
+        createResource = createComponentTemplateForIndex(settings.componentSettings),
+        onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if component template with ID '${settings.componentSettings.templateName.show}' has been created")
       )
       _ <- createIfAbsent(
-        checkIndexTemplateExists(settings.templateSettings.templateName),
-        createIndexTemplate(settings.templateSettings),
-        DataStreamSetupResult.Failure(s"Unable to determine if index template with ID '${settings.templateSettings.templateName.show}' has been created")
+        checkIfResourceExists = checkIndexTemplateExists(settings.templateSettings.templateName),
+        createResource = createIndexTemplate(settings.templateSettings),
+        onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if index template with ID '${settings.templateSettings.templateName.show}' has been created")
       )
       _ <- createIfAbsent(
-        checkDataStreamExists(settings.dataStreamName),
-        createDataStream(settings.dataStreamName),
-        DataStreamSetupResult.Failure(s"Unable to determine if data stream with ID '${settings.dataStreamName.show}' has been created")
+        checkIfResourceExists = checkDataStreamExists(settings.dataStreamName),
+        createResource = createDataStream(settings.dataStreamName),
+        onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if data stream with ID '${settings.dataStreamName.show}' has been created")
       )
     } yield DataStreamSetupResult.Success
   }.merge
@@ -66,17 +66,17 @@ trait DataStreamService {
 
   protected def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult]
 
-  protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean] = Task.pure(false)
+  protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean] = ??? // default implementation to be removed after porting changes to all modules
 
   protected def createIndexLifecyclePolicy(policy: LifecyclePolicy): Task[CreationResult]
 
-  protected def checkComponentTemplateExists(templateName: TemplateName): Task[Boolean] = Task.pure(false)
+  protected def checkComponentTemplateExists(templateName: TemplateName): Task[Boolean] = ??? // default implementation to be removed after porting changes to all modules
 
   protected def createComponentTemplateForMappings(settings: ComponentTemplateMappings): Task[CreationResult]
 
   protected def createComponentTemplateForIndex(settings: ComponentTemplateSettings): Task[CreationResult]
 
-  protected def checkIndexTemplateExists(templateName: TemplateName): Task[Boolean] = Task.pure(false)
+  protected def checkIndexTemplateExists(templateName: TemplateName): Task[Boolean] = ??? // default implementation to be removed after porting changes to all modules
 
   protected def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult]
 

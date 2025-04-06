@@ -16,10 +16,13 @@
  */
 package tech.beshu.ror.accesscontrol.audit.sink
 
-import cats.data.NonEmptyList
+import cats.data.Validated.Valid
+import cats.data.{NonEmptyList, Validated}
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator.ErrorMessage
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, RorAuditDataStream, TemplateName}
 import tech.beshu.ror.es.DataStreamService
 import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
@@ -31,39 +34,43 @@ import java.util.concurrent.TimeUnit
 
 final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) extends Logging {
 
-  def createIfNotExists(dataStreamName: RorAuditDataStream): Task[Either[String, Unit]] = {
+  def createIfNotExists(dataStreamName: RorAuditDataStream): Task[Either[NonEmptyList[ErrorMessage], Unit]] = {
     services
       .toList
       .map(createIfNotExists(_, dataStreamName))
       .sequence
-      .map(_.sequence.map((_: List[Unit]) => ()))
+      .map(_.map(_.leftMap(NonEmptyList.one)).combineAll.toEither)
   }
 
-  private def createIfNotExists(service: DataStreamService, dataStreamName: RorAuditDataStream): Task[Either[String, Unit]] = {
+  private def createIfNotExists(service: DataStreamService, dataStreamName: RorAuditDataStream): Task[Validated[ErrorMessage, Unit]] = {
     service
       .checkDataStreamExists(dataStreamName.dataStream)
       .flatMap {
         case true =>
           Task.delay(logger.info(s"Data stream ${dataStreamName.dataStream.show} already exists"))
-            .as(Right(()))
+            .as(Valid(()))
         case false =>
           val settings = defaultSettingsFor(dataStreamName.dataStream)
           setupDataStream(service, settings)
       }
   }
 
-  private def setupDataStream(service: DataStreamService, settings: DataStreamSettings): Task[Either[String, Unit]] = {
+  private def setupDataStream(service: DataStreamService, settings: DataStreamSettings): Task[Validated[ErrorMessage, Unit]] = {
     for {
       _ <- Task.delay(logger.info(s"Trying to setup ROR audit data stream ${settings.dataStreamName.show} with default settings.."))
-      result <- service.fullySetupDataStream(settings)
+      result <- service.fullySetupDataStream(settings).attempt
       finalResult <- result match {
-        case DataStreamSetupResult.Success =>
+        case Right(DataStreamSetupResult.Success) =>
           Task.delay(logger.info(s"ROR audit data stream ${settings.dataStreamName.show} created."))
-            .as(Right(()))
-        case DataStreamSetupResult.Failure(reason) =>
+            .as(Valid(()))
+        case Right(DataStreamSetupResult.Failure(reason)) =>
           val message = s"Failed to setup ROR audit data stream ${settings.dataStreamName.show}. Reason: ${reason.show}"
           Task.delay(logger.error(message))
-            .as(Left(message))
+            .as(ErrorMessage(message).invalid)
+        case Left(ex) =>
+          val message = s"An unexpected error occurred while setting up the ROR audit data stream ${settings.dataStreamName.show}. Details: ${ex.getMessage}"
+          Task.delay(logger.error(message, ex))
+            .as(ErrorMessage(message).invalid)
       }
     } yield finalResult
   }
@@ -124,4 +131,8 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) ex
 
   private def metadata(description: String) = Map("description" -> description)
 
+}
+
+object AuditDataStreamCreator {
+  final case class ErrorMessage(message: String)
 }

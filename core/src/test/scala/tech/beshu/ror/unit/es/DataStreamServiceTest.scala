@@ -24,6 +24,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
+import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator.ErrorMessage
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, RorAuditDataStream, TemplateName}
 import tech.beshu.ror.es.DataStreamService
 import tech.beshu.ror.es.DataStreamService.CreationResult.*
@@ -37,7 +38,6 @@ class DataStreamServiceTest
     with MockFactory {
 
   private val auditDs = RorAuditDataStream.default
-
   private val expectedLifecyclePolicyName = NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-lifecycle-policy")
   private val expectedMappingsTemplateName = TemplateName(NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-mappings"))
   private val expectedSettingsTemplateName = TemplateName(NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-settings"))
@@ -45,192 +45,475 @@ class DataStreamServiceTest
 
   private type MockFun = MockableDataStreamService => Unit
 
+  private val doesExist = true
+  private val doesNotExist = false
+  private val checkedOnce = 1
+
   "A ReadonlyREST data stream service" when {
     "fully setup data stream called" should {
       "not attempt to create data stream when one exists" in {
-        tryToCreateDataStream(DataStreamsMocks.alreadyExists)
+        val service: DataStreamService = createMockedDataStreamService(
+          List(
+            _.mockCheckDataStreamExists(doesExist, checkedOnce)
+          )
+        )
+        val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+        val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+        result shouldBe Right(())
       }
       "attempt to create data stream with success" when {
         "all resources available immediately" in {
-          testSuccessfulDataStreamSetup(List(
-            IlmMocks.alreadyExists,
-            ComponentMappingsMocks.alreadyExists,
-            ComponentSettingsMocks.alreadyExists,
-            IndexTemplateMocks.alreadyExists,
-            DataStreamsMocks.createDataStreamImmediately
-          ).flatten)
+          val service: DataStreamService = createMockedDataStreamService(
+            List(
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
+              _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
+              _.mockCheckIndexTemplateExists(doesExist, checkedOnce),
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCreateDataStream(Acknowledged),
+            )
+          )
+
+          val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+          val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+          result shouldBe Right(())
         }
-        "lifecycle policy " in {
-          def testScenario(indexLifecycleManagementMocks: List[MockFun]) = {
-            indexLifecycleManagementMocks ++
-              ComponentMappingsMocks.createComponentMappingsImmediately ++
-              ComponentSettingsMocks.createComponentSettingsImmediately ++
-              IndexTemplateMocks.createIndexTemplateImmediately ++
-              DataStreamsMocks.createDataStreamImmediately
+        "lifecycle policy test" in {
+          def createDataStreamService(indexLifecycleManagementMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
+            List[MockFun](_.mockCheckDataStreamExists(doesNotExist, checkedOnce)) ++
+              indexLifecycleManagementMocks ++
+              List[MockFun](
+                _.mockCheckMappingsTemplateExists(doesNotExist, checkedOnce),
+                _.mockCreateMappingsTemplate(Acknowledged),
+                _.mockCheckSettingsTemplateExists(doesNotExist, checkedOnce),
+                _.mockCreateSettingsTemplate(Acknowledged),
+                _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
+                _.mockCreateIndexTemplate(Acknowledged),
+                _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                _.mockCreateDataStream(Acknowledged),
+              )
+          )
+
+          val createLifecyclePolicyImmediately: List[MockFun] = List(
+            _.mockCheckLifecyclePolicyExists(doesNotExist, checkedOnce),
+            _.mockCreateLifecyclePolicy(Acknowledged),
+          )
+
+          val createLifecyclePolicyWithQuery: List[MockFun] = {
+            List[MockFun](
+              _.mockCheckLifecyclePolicyExists(doesNotExist, checkedOnce),
+              _.mockCreateLifecyclePolicy(NotAcknowledged),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+            )
+          }
+
+          def createLifecyclePolicyWithRetries(times: Int): List[MockFun] = {
+            List[MockFun](
+              _.mockCheckLifecyclePolicyExists(doesNotExist, checkedOnce),
+              _.mockCreateLifecyclePolicy(NotAcknowledged),
+              _.mockCheckLifecyclePolicyExists(doesNotExist, times),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+            )
           }
 
           val testCases: List[List[MockFun]] = List(
-            IlmMocks.createLifecyclePolicyImmediately,
-            IlmMocks.createLifecyclePolicyWithQuery,
-            IlmMocks.createLifecyclePolicyWithRetries(1),
-            IlmMocks.createLifecyclePolicyWithRetries(2),
-            IlmMocks.createLifecyclePolicyWithRetries(3),
-            IlmMocks.createLifecyclePolicyWithRetries(4),
-            IlmMocks.createLifecyclePolicyWithRetries(5),
+            createLifecyclePolicyImmediately,
+            createLifecyclePolicyWithQuery,
+            createLifecyclePolicyWithRetries(times = 1),
+            createLifecyclePolicyWithRetries(times = 2),
+            createLifecyclePolicyWithRetries(times = 3),
+            createLifecyclePolicyWithRetries(times = 4),
+            createLifecyclePolicyWithRetries(times = 5),
           )
 
-          runTests(testCases) {
-            input => testSuccessfulDataStreamSetup(testScenario(input))
+          forEachTest(testCases) { indexLifecycleManagementMocks =>
+            val service = createDataStreamService(indexLifecycleManagementMocks)
+            val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+            val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+            result shouldBe Right(())
           }
         }
         "component mappings tests" in {
-          def testScenario(componentMappingsMocks: List[MockFun]): List[MockFun] = {
-            IlmMocks.alreadyExists ++
+          def createDataStreamService(componentMappingsMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce)
+            ) ++
               componentMappingsMocks ++
-              ComponentSettingsMocks.createComponentSettingsImmediately ++
-              IndexTemplateMocks.createIndexTemplateImmediately ++
-              DataStreamsMocks.createDataStreamImmediately
+              List[MockFun](
+                _.mockCheckSettingsTemplateExists(doesNotExist, checkedOnce),
+                _.mockCreateSettingsTemplate(Acknowledged),
+                _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
+                _.mockCreateIndexTemplate(Acknowledged),
+                _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                _.mockCreateDataStream(Acknowledged),
+              )
+          )
+
+          val createComponentMappingsImmediately: List[MockFun] = List(
+            _.mockCheckMappingsTemplateExists(doesNotExist, checkedOnce),
+            _.mockCreateMappingsTemplate(Acknowledged)
+          )
+
+          val createComponentMappingsWithQuery: List[MockFun] = {
+            List[MockFun](
+              _.mockCheckMappingsTemplateExists(doesNotExist, checkedOnce),
+              _.mockCreateMappingsTemplate(NotAcknowledged),
+              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce)
+            )
+          }
+
+          def createComponentMappingsWithRetries(times: Int): List[MockFun] = {
+            List[MockFun](
+              _.mockCheckMappingsTemplateExists(doesNotExist, checkedOnce),
+              _.mockCreateMappingsTemplate(NotAcknowledged),
+              _.mockCheckMappingsTemplateExists(doesNotExist, times),
+              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce)
+            )
           }
 
           val testCases: List[List[MockFun]] = List(
-            ComponentMappingsMocks.createComponentMappingsImmediately,
-            ComponentMappingsMocks.createComponentMappingsWithQuery,
-            ComponentMappingsMocks.createComponentMappingsWithRetries(1),
-            ComponentMappingsMocks.createComponentMappingsWithRetries(2),
-            ComponentMappingsMocks.createComponentMappingsWithRetries(3),
-            ComponentMappingsMocks.createComponentMappingsWithRetries(4),
-            ComponentMappingsMocks.createComponentMappingsWithRetries(5),
+            createComponentMappingsImmediately,
+            createComponentMappingsWithQuery,
+            createComponentMappingsWithRetries(checkedOnce),
+            createComponentMappingsWithRetries(times = 2),
+            createComponentMappingsWithRetries(times = 3),
+            createComponentMappingsWithRetries(times = 4),
+            createComponentMappingsWithRetries(times = 5),
           )
 
-          runTests(testCases) {
-            input => testSuccessfulDataStreamSetup(testScenario(input))
+          forEachTest(testCases) { componentMappingsMocks =>
+            val service = createDataStreamService(componentMappingsMocks)
+            val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+            val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+            result shouldBe Right(())
           }
         }
         "component settings test" in {
-          def testScenario(componentSettingsMocks: List[MockFun]): List[MockFun] = {
-            IlmMocks.alreadyExists ++
-              ComponentMappingsMocks.alreadyExists ++
+          def createDataStreamService(componentSettingsMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce)
+            ) ++
               componentSettingsMocks ++
-              IndexTemplateMocks.createIndexTemplateImmediately ++
-              DataStreamsMocks.createDataStreamImmediately
+              List[MockFun](
+                _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
+                _.mockCreateIndexTemplate(Acknowledged),
+                _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                _.mockCreateDataStream(Acknowledged),
+              )
+          )
+
+          val alreadyExists: List[MockFun] = List(
+            _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
+          )
+
+          val createComponentSettingsImmediately: List[MockFun] = List(
+            _.mockCheckSettingsTemplateExists(doesNotExist, checkedOnce),
+            _.mockCreateSettingsTemplate(Acknowledged),
+          )
+
+          val createComponentSettingsWithQuery: List[MockFun] = {
+            List[MockFun](
+              _.mockCheckSettingsTemplateExists(doesNotExist, checkedOnce),
+              _.mockCreateSettingsTemplate(NotAcknowledged),
+              _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
+            )
+          }
+
+          def createComponentSettingsWithRetries(times: Int): List[MockFun] = {
+            List[MockFun](
+              _.mockCheckSettingsTemplateExists(doesNotExist, checkedOnce),
+              _.mockCreateSettingsTemplate(NotAcknowledged),
+              _.mockCheckSettingsTemplateExists(doesNotExist, times),
+              _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
+            )
           }
 
           val testCases: List[List[MockFun]] = List(
-            ComponentSettingsMocks.alreadyExists,
-            ComponentSettingsMocks.createComponentSettingsImmediately,
-            ComponentSettingsMocks.createComponentSettingsWithQuery,
-            ComponentSettingsMocks.createComponentSettingsWithRetries(1),
-            ComponentSettingsMocks.createComponentSettingsWithRetries(2),
-            ComponentSettingsMocks.createComponentSettingsWithRetries(3),
-            ComponentSettingsMocks.createComponentSettingsWithRetries(4),
-            ComponentSettingsMocks.createComponentSettingsWithRetries(5),
+            alreadyExists,
+            createComponentSettingsImmediately,
+            createComponentSettingsWithQuery,
+            createComponentSettingsWithRetries(1),
+            createComponentSettingsWithRetries(2),
+            createComponentSettingsWithRetries(3),
+            createComponentSettingsWithRetries(4),
+            createComponentSettingsWithRetries(5),
           )
 
-          runTests(testCases) {
-            input => testSuccessfulDataStreamSetup(testScenario(input))
+          forEachTest(testCases) { componentMappingsMocks =>
+            val service = createDataStreamService(componentMappingsMocks)
+            val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+            val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+            result shouldBe Right(())
           }
         }
         "index template test" in {
-          def testScenario(indexTemplateMocks: List[MockFun]): List[MockFun] = {
-            IlmMocks.alreadyExists ++
-              ComponentMappingsMocks.alreadyExists ++
-              ComponentSettingsMocks.alreadyExists ++
+          def createDataStreamService(indexTemplateMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
+              _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
+            ) ++
               indexTemplateMocks ++
-              DataStreamsMocks.createDataStreamImmediately
+              List[MockFun](
+                _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                _.mockCreateDataStream(Acknowledged),
+              )
+          )
+
+          val createIndexTemplateImmediately: List[MockFun] = List(
+            _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
+            _.mockCreateIndexTemplate(Acknowledged),
+          )
+
+          val createIndexTemplateWithQuery: List[MockFun] = {
+            List[MockFun](
+              _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
+              _.mockCreateIndexTemplate(NotAcknowledged),
+              _.mockCheckIndexTemplateExists(doesExist, checkedOnce),
+            )
+          }
+
+          def createIndexTemplateWithRetries(times: Int): List[MockFun] = {
+            List[MockFun](
+              _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
+              _.mockCreateIndexTemplate(NotAcknowledged),
+              _.mockCheckIndexTemplateExists(doesNotExist, times),
+              _.mockCheckIndexTemplateExists(doesExist, checkedOnce),
+            )
           }
 
           val testCases: List[List[MockFun]] = List(
-            IndexTemplateMocks.createIndexTemplateImmediately,
-            IndexTemplateMocks.createIndexTemplateWithQuery,
-            IndexTemplateMocks.createIndexTemplateWithRetries(1),
-            IndexTemplateMocks.createIndexTemplateWithRetries(2),
-            IndexTemplateMocks.createIndexTemplateWithRetries(3),
-            IndexTemplateMocks.createIndexTemplateWithRetries(4),
-            IndexTemplateMocks.createIndexTemplateWithRetries(5),
+            createIndexTemplateImmediately,
+            createIndexTemplateWithQuery,
+            createIndexTemplateWithRetries(1),
+            createIndexTemplateWithRetries(2),
+            createIndexTemplateWithRetries(3),
+            createIndexTemplateWithRetries(4),
+            createIndexTemplateWithRetries(5),
           )
 
-          runTests(testCases) { input =>
-            testSuccessfulDataStreamSetup(testScenario(input))
+          forEachTest(testCases) { componentMappingsMocks =>
+            val service = createDataStreamService(componentMappingsMocks)
+            val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+            val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+            result shouldBe Right(())
           }
         }
         "data stream test" in {
-          def testScenario(dataStreamMocks: List[MockFun]): List[MockFun] = {
-            IlmMocks.alreadyExists ++
-              ComponentMappingsMocks.alreadyExists ++
-              ComponentSettingsMocks.alreadyExists ++
-              IndexTemplateMocks.alreadyExists ++
+          def createDataStreamService(dataStreamMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
+              _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
+              _.mockCheckIndexTemplateExists(doesExist, checkedOnce),
+            ) ++
               dataStreamMocks
+          )
+
+          val createDataStreamImmediately: List[MockFun] = List(
+            _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+            _.mockCreateDataStream(Acknowledged),
+          )
+
+          val createDataStreamWithQuery: List[MockFun] = {
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCreateDataStream(NotAcknowledged),
+              _.mockCheckDataStreamExists(doesExist, checkedOnce)
+            )
+          }
+
+          def createDataStreamWithRetries(times: Int): List[MockFun] = {
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCreateDataStream(NotAcknowledged),
+              _.mockCheckDataStreamExists(doesNotExist, times),
+              _.mockCheckDataStreamExists(doesExist, checkedOnce)
+            )
           }
 
           val testCases: List[List[MockFun]] = List(
-            DataStreamsMocks.createDataStreamImmediately,
-            DataStreamsMocks.createDataStreamWithQuery,
-            DataStreamsMocks.createDataStreamWithRetries(1),
-            DataStreamsMocks.createDataStreamWithRetries(2),
-            DataStreamsMocks.createDataStreamWithRetries(3),
-            DataStreamsMocks.createDataStreamWithRetries(4),
-            DataStreamsMocks.createDataStreamWithRetries(5),
+            createDataStreamImmediately,
+            createDataStreamWithQuery,
+            createDataStreamWithRetries(1),
+            createDataStreamWithRetries(2),
+            createDataStreamWithRetries(3),
+            createDataStreamWithRetries(4),
+            createDataStreamWithRetries(5),
           )
 
-          runTests(testCases) { input =>
-            testSuccessfulDataStreamSetup(testScenario(input))
+          forEachTest(testCases) { componentMappingsMocks =>
+            val service = createDataStreamService(componentMappingsMocks)
+            val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+            val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+            result shouldBe Right(())
           }
         }
       }
       "attempt to create data stream and fail" when {
         "lifecycle policy creation fails" in {
-          val testScenarios = List(
-            IlmMocks.createLifecyclePolicyWithRetries(6, successful = false)
+          def createDataStreamService(indexLifecycleManagementMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
+            List[MockFun](_.mockCheckDataStreamExists(doesNotExist, checkedOnce)) ++
+              indexLifecycleManagementMocks
           )
 
-          runTests(testScenarios) { input =>
-            testFailingDataStreamSetup(input, "Unable to determine if the index lifecycle policy with ID 'readonlyrest_audit-lifecycle-policy' has been created")
+          val failAfterExhaustedRetries = List[MockFun](
+            _.mockCheckLifecyclePolicyExists(doesNotExist, checkedOnce),
+            _.mockCreateLifecyclePolicy(NotAcknowledged),
+            _.mockCheckLifecyclePolicyExists(doesNotExist, times = 6),
+          )
+
+          val testCases: List[List[MockFun]] = List(
+            failAfterExhaustedRetries
+          )
+
+          forEachTest(testCases) { indexLifecycleManagementMocks =>
+            val service = createDataStreamService(indexLifecycleManagementMocks)
+            val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+            val expectedFailureReason = s"Unable to determine if the index lifecycle policy with ID '${expectedLifecyclePolicyName.value}' has been created"
+
+            val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+            result shouldBe Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")))
           }
         }
         "component mappings creation fails" in {
-          val testScenarios = List(
-            IlmMocks.alreadyExists ++
-              ComponentMappingsMocks.createComponentMappingsWithRetries(6, successful = false)
+          def createDataStreamService(componentMappingsMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce)
+            ) ++
+              componentMappingsMocks
           )
 
-          runTests(testScenarios) { input =>
-            testFailingDataStreamSetup(input, "Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created")
+          val failAfterExhaustedRetries =
+            List[MockFun](
+              _.mockCheckMappingsTemplateExists(doesNotExist, checkedOnce),
+              _.mockCreateMappingsTemplate(NotAcknowledged),
+              _.mockCheckMappingsTemplateExists(doesNotExist, times = 6),
+            )
+
+          val testCases: List[List[MockFun]] = List(
+            failAfterExhaustedRetries
+          )
+
+          forEachTest(testCases) { indexLifecycleManagementMocks =>
+            val service = createDataStreamService(indexLifecycleManagementMocks)
+            val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+            val expectedFailureReason = s"Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created"
+
+            val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+            result shouldBe Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")))
           }
         }
         "component settings creation fails" in {
-          val testScenarios = List(
-            IlmMocks.alreadyExists ++
-              ComponentMappingsMocks.alreadyExists ++
-              ComponentSettingsMocks.createComponentSettingsWithRetries(6, successful = false)
+          def createDataStreamService(componentSettingsMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
+            ) ++
+              componentSettingsMocks
           )
 
-          runTests(testScenarios) { input =>
-            testFailingDataStreamSetup(input, "Unable to determine if component template with ID 'readonlyrest_audit-settings' has been created")
+          val failAfterExhaustedRetries =
+            List[MockFun](
+              _.mockCheckSettingsTemplateExists(doesNotExist, checkedOnce),
+              _.mockCreateSettingsTemplate(NotAcknowledged),
+              _.mockCheckSettingsTemplateExists(doesNotExist, times = 6),
+            )
+
+          val testCases: List[List[MockFun]] = List(
+            failAfterExhaustedRetries
+          )
+
+          forEachTest(testCases) { componentSettingsMocks =>
+            val service = createDataStreamService(componentSettingsMocks)
+            val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+            val expectedFailureReason = "Unable to determine if component template with ID 'readonlyrest_audit-settings' has been created"
+
+            val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+            result shouldBe Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")))
           }
         }
         "index template creation fails" in {
-          val testScenarios = List(
-            IlmMocks.alreadyExists ++
-              ComponentMappingsMocks.alreadyExists ++
-              ComponentSettingsMocks.alreadyExists ++
-              IndexTemplateMocks.createIndexTemplateWithRetries(6, successful = false)
+          def createDataStreamService(indexTemplateMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
+              _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
+            ) ++
+              indexTemplateMocks
           )
 
-          runTests(testScenarios) { input =>
-            testFailingDataStreamSetup(input, "Unable to determine if index template with ID 'readonlyrest_audit-template' has been created")
+          val failAfterExhaustedRetries =
+            List[MockFun](
+              _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
+              _.mockCreateIndexTemplate(NotAcknowledged),
+              _.mockCheckIndexTemplateExists(doesNotExist, times = 6),
+            )
+
+          val testCases: List[List[MockFun]] = List(
+            failAfterExhaustedRetries
+          )
+
+          forEachTest(testCases) { indexTemplateMocks =>
+            val service = createDataStreamService(indexTemplateMocks)
+            val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+            val expectedFailureReason = "Unable to determine if index template with ID 'readonlyrest_audit-template' has been created"
+
+            val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+            result shouldBe Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")))
           }
         }
         "data stream creation fails" in {
-          val testScenarios = List(
-            IlmMocks.alreadyExists ++
-              ComponentMappingsMocks.alreadyExists ++
-              ComponentSettingsMocks.alreadyExists ++
-              IndexTemplateMocks.alreadyExists ++
-              DataStreamsMocks.createDataStreamWithRetries(6, successful = false)
+          def createDataStreamService(dataStreamMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
+              _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
+              _.mockCheckIndexTemplateExists(doesExist, checkedOnce)
+            ) ++
+              dataStreamMocks
           )
 
-          runTests(testScenarios) { input =>
-            testFailingDataStreamSetup(input, "Unable to determine if data stream with ID 'readonlyrest_audit' has been created")
+          val failAfterExhaustedRetries =
+            List[MockFun](
+              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+              _.mockCreateDataStream(NotAcknowledged),
+              _.mockCheckDataStreamExists(doesNotExist, times = 6),
+            )
+
+          val testCases: List[List[MockFun]] = List(
+            failAfterExhaustedRetries
+          )
+
+          forEachTest(testCases) { indexTemplateMocks =>
+            val service = createDataStreamService(indexTemplateMocks)
+            val auditDataStreamCreator = AuditDataStreamCreator.create(service)
+
+            val expectedFailureReason = "Unable to determine if data stream with ID 'readonlyrest_audit' has been created"
+
+            val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+            result shouldBe Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")))
           }
         }
       }
@@ -238,7 +521,7 @@ class DataStreamServiceTest
     }
   }
 
-  private def runTests[A](testInputs: List[A])(test: A => Unit): Unit = {
+  private def forEachTest[A](testInputs: List[A])(test: A => Unit): Unit = {
     testInputs.zipWithIndex.foreach { case (testInput, idx) =>
       withClue(s"Failed test for input with idx $idx") {
         test(testInput)
@@ -246,21 +529,7 @@ class DataStreamServiceTest
     }
   }
 
-  private def testSuccessfulDataStreamSetup(mocksSequence: List[MockFun]): Unit = {
-    val result = tryToCreateDataStream(
-      (DataStreamsMocks.doesNotExist ++ mocksSequence)
-    )
-    result shouldBe Right(())
-  }
-
-  private def testFailingDataStreamSetup(mocksSequence: List[MockFun], expectedFailureReason: String): Unit = {
-    val result = tryToCreateDataStream(
-      (DataStreamsMocks.doesNotExist ++ mocksSequence)
-    )
-    result shouldBe Left(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")
-  }
-
-  private def tryToCreateDataStream(mocksSequence: List[MockFun]): Either[String, Unit] = {
+  private def createMockedDataStreamService(mocksSequence: List[MockFun]): DataStreamService = {
     val service: MockableDataStreamService = mock[MockableDataStreamService]
 
     inSequence {
@@ -269,146 +538,15 @@ class DataStreamServiceTest
       }
     }
 
-    val auditDataStreamCreator = AuditDataStreamCreator(NonEmptyList.of(service))
-    auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
+    service
   }
 
-  private object IlmMocks {
-    def alreadyExists: List[MockFun] = {
-      List(_.mockCheckLifecyclePolicyExists(true, 1))
-    }
-
-    def createLifecyclePolicyImmediately: List[MockFun] = List(
-      _.mockCheckLifecyclePolicyExists(false, 1),
-      _.mockCreateLifecyclePolicy(Acknowledged),
-    )
-
-    def createLifecyclePolicyWithQuery: List[MockFun] = {
-      List[MockFun](
-        _.mockCheckLifecyclePolicyExists(false, 1),
-        _.mockCreateLifecyclePolicy(NotAcknowledged),
-      ) ++ alreadyExists
-    }
-
-    def createLifecyclePolicyWithRetries(times: Int, successful: Boolean = true): List[MockFun] = {
-      List[MockFun](
-        _.mockCheckLifecyclePolicyExists(false, 1),
-        _.mockCreateLifecyclePolicy(NotAcknowledged),
-        _.mockCheckLifecyclePolicyExists(false, times),
-      ) ++ alreadyExists.filter(_ => successful)
-    }
-  }
-
-  private object ComponentMappingsMocks {
-    def alreadyExists: List[MockFun] = {
-      List(_.mockCheckMappingsTemplateExists(true, 1))
-    }
-
-    def createComponentMappingsImmediately: List[MockFun] = List(
-      _.mockCheckMappingsTemplateExists(false, 1),
-      _.mockCreateMappingsTemplate(Acknowledged)
-    )
-
-    def createComponentMappingsWithQuery: List[MockFun] = {
-      List[MockFun](
-        _.mockCheckMappingsTemplateExists(false, 1),
-        _.mockCreateMappingsTemplate(NotAcknowledged),
-      ) ++ alreadyExists
-    }
-
-    def createComponentMappingsWithRetries(times: Int, successful: Boolean = true): List[MockFun] = {
-      List[MockFun](
-        _.mockCheckMappingsTemplateExists(false, 1),
-        _.mockCreateMappingsTemplate(NotAcknowledged),
-        _.mockCheckMappingsTemplateExists(false, times),
-      ) ++ alreadyExists.filter(_ => successful)
-    }
-  }
-
-  private object ComponentSettingsMocks {
-    def alreadyExists: List[MockFun] = {
-      List(_.mockCheckSettingsTemplateExists(true, 1))
-    }
-
-    def createComponentSettingsImmediately: List[MockFun] = List(
-      _.mockCheckSettingsTemplateExists(false, 1),
-      _.mockCreateSettingsTemplate(Acknowledged),
-    )
-
-    def createComponentSettingsWithQuery: List[MockFun] = {
-      List[MockFun](
-        _.mockCheckSettingsTemplateExists(false, 1),
-        _.mockCreateSettingsTemplate(NotAcknowledged),
-      ) ++ alreadyExists
-    }
-
-    def createComponentSettingsWithRetries(times: Int, successful: Boolean = true): List[MockFun] = {
-      List[MockFun](
-        _.mockCheckSettingsTemplateExists(false, 1),
-        _.mockCreateSettingsTemplate(NotAcknowledged),
-        _.mockCheckSettingsTemplateExists(false, times),
-      ) ++ alreadyExists.filter(_ => successful)
-    }
-  }
-
-  private object IndexTemplateMocks {
-    def alreadyExists: List[MockFun] = {
-      List(_.mockCheckIndexTemplateExists(true, 1))
-    }
-
-    def createIndexTemplateImmediately: List[MockFun] = List(
-      _.mockCheckIndexTemplateExists(false, 1),
-      _.mockCreateIndexTemplate(Acknowledged),
-    )
-
-    def createIndexTemplateWithQuery: List[MockFun] = {
-      List[MockFun](
-        _.mockCheckIndexTemplateExists(false, 1),
-        _.mockCreateIndexTemplate(NotAcknowledged),
-      ) ++ alreadyExists
-    }
-
-    def createIndexTemplateWithRetries(times: Int, successful: Boolean = true): List[MockFun] = {
-      List[MockFun](
-        _.mockCheckIndexTemplateExists(false, 1),
-        _.mockCreateIndexTemplate(NotAcknowledged),
-        _.mockCheckIndexTemplateExists(false, times),
-      ) ++ alreadyExists.filter(_ => successful)
-    }
-  }
-
-  private object DataStreamsMocks {
-    def doesNotExist: List[MockFun] = {
-      List[MockFun](_.mockCheckDataStreamExists(false, 1))
-    }
-
-    def alreadyExists: List[MockFun] = {
-      List(_.mockCheckDataStreamExists(true, 1))
-    }
-
-    def createDataStreamImmediately: List[MockFun] = List(
-      _.mockCheckDataStreamExists(false, 1),
-      _.mockCreateDataStream(Acknowledged),
-    )
-
-    def createDataStreamWithQuery: List[MockFun] = {
-      List[MockFun](
-        _.mockCheckDataStreamExists(false, 1),
-        _.mockCreateDataStream(NotAcknowledged),
-      ) ++ alreadyExists
-    }
-
-    def createDataStreamWithRetries(times: Int, successful: Boolean = true): List[MockFun] = {
-      List[MockFun](
-        _.mockCheckDataStreamExists(false, 1),
-        _.mockCreateDataStream(NotAcknowledged),
-        _.mockCheckDataStreamExists(false, times),
-      ) ++ alreadyExists.filter(_ => successful)
-    }
+  extension (c: AuditDataStreamCreator.type) {
+    def create(service: DataStreamService): AuditDataStreamCreator = AuditDataStreamCreator(NonEmptyList.of(service))
   }
 
   extension (service: MockableDataStreamService) {
-    def mockCheckLifecyclePolicyExists(result: Boolean, times: Int = 1): Unit = {
+    def mockCheckLifecyclePolicyExists(result: Boolean, times: Int): Unit = {
       (service.ilmPolicyExists _)
         .expects(expectedLifecyclePolicyName)
         .returns(result)
@@ -426,7 +564,7 @@ class DataStreamServiceTest
         .once()
     }
 
-    def mockCheckMappingsTemplateExists(result: Boolean, times: Int = 1): Unit = {
+    def mockCheckMappingsTemplateExists(result: Boolean, times: Int): Unit = {
       (service.componentTemplateExists _)
         .expects(expectedMappingsTemplateName)
         .returns(result)
@@ -445,7 +583,7 @@ class DataStreamServiceTest
     }
 
 
-    def mockCheckSettingsTemplateExists(result: Boolean, times: Int = 1): Unit = {
+    def mockCheckSettingsTemplateExists(result: Boolean, times: Int): Unit = {
       (service.componentTemplateExists _)
         .expects(expectedSettingsTemplateName)
         .returns(result)
@@ -464,7 +602,7 @@ class DataStreamServiceTest
     }
 
 
-    def mockCheckIndexTemplateExists(result: Boolean, times: Int = 1): Unit = {
+    def mockCheckIndexTemplateExists(result: Boolean, times: Int): Unit = {
       (service.indexTemplateExists _)
         .expects(expectedIndexTemplateName)
         .returns(result)
@@ -482,7 +620,7 @@ class DataStreamServiceTest
         .once()
     }
 
-    def mockCheckDataStreamExists(result: Boolean, times: Int = 1): Unit = {
+    def mockCheckDataStreamExists(result: Boolean, times: Int): Unit = {
       (service.dataStreamExists _)
         .expects(auditDs.dataStream)
         .returns(result)

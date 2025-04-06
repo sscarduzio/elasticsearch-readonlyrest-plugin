@@ -28,22 +28,24 @@ import org.elasticsearch.cluster.metadata.ComposableIndexTemplate.DataStreamTemp
 import org.elasticsearch.cluster.metadata.{ComponentTemplate, ComposableIndexTemplate, Template}
 import org.elasticsearch.common.compress.CompressedXContent
 import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.core.TimeValue
 import org.elasticsearch.index.IndexNotFoundException
+import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.DataStreamService
 import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.DataStreamSettingsOps.*
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
-import tech.beshu.ror.utils.ReflecUtils
 
-import java.lang.reflect.Modifier
-import java.time.Instant
 import scala.jdk.CollectionConverters.*
 
 final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)
   extends DataStreamService
     with Logging {
+
+  private val masterNodeTimeout: TimeValue = TimeValue(30000)
+  private val ackTimeout: TimeValue = TimeValue(30000)
 
   override def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean] = execute {
     val request = new GetDataStreamAction.Request(List(dataStreamName.value.value).toArray)
@@ -66,20 +68,15 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
   override protected def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
     val enhancedActionType = client.findActionUnsafe[AcknowledgedResponse]("cluster:admin/ilm/put")
     val parser = jsonParserFactory.create(policy.toJson)
-    val lifecyclePolicyClass = enhancedActionType.loadClass("org.elasticsearch.xpack.core.ilm.LifecyclePolicy")
     val lifecyclePolicy =
-      ReflecUtils
-        .getMethodOf(lifecyclePolicyClass, Modifier.PUBLIC, "parse", 2)
-        .invoke(null, parser, policy.id.value)
+      onClass("org.elasticsearch.xpack.core.ilm.LifecyclePolicy", enhancedActionType.classLoader)
+        .call("parse", parser, policy.id.value)
+        .get[Object]()
 
-    val lifecycleRequestClass =
-      enhancedActionType.loadClass("org.elasticsearch.xpack.core.ilm.action.PutLifecycleRequest")
-
-    val actionRequest: ActionRequest =
-      lifecycleRequestClass
-        .getConstructor(lifecyclePolicy.getClass)
-        .newInstance(lifecyclePolicy)
-        .asInstanceOf[ActionRequest]
+    val actionRequest =
+      onClass("org.elasticsearch.xpack.core.ilm.action.PutLifecycleRequest", enhancedActionType.classLoader)
+        .create(masterNodeTimeout, ackTimeout, lifecyclePolicy)
+        .get[ActionRequest]
 
     client.executeAck(enhancedActionType.action, actionRequest).map(_.isAcknowledged).map(CreationResult.apply)
   }
@@ -134,7 +131,7 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
 
   private def execute[A](value: => Task[A]) = Task(value).flatten
 
-  final class EnhancedActionType[T <: ActionResponse](val action: ActionType[T], classLoader: ClassLoader) {
+  final class EnhancedActionType[T <: ActionResponse](val action: ActionType[T], val classLoader: ClassLoader) {
     def loadClass(name: String): Class[_] = classLoader.loadClass(name)
   }
 
@@ -149,13 +146,16 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
 
     def executeT[REQUEST <: ActionRequest, RESPONSE <: ActionResponse](action: ActionType[RESPONSE],
                                                                        request: REQUEST): Task[RESPONSE] = {
-      Task {
-        val t0 = Instant.now
-        logger.debug(s"Action ${action.name()} request: ${request.toString}")
-        val response = nodeClient.execute(action, request).actionGet()
-        logger.debug(s"Action ${action.name()} response: ${response.toString}, taken ${Instant.now().minusMillis(t0.toEpochMilli).toEpochMilli}ms")
-        response
-      }
+      for {
+        _ <- Task.delay {
+          logger.debug(s"Action ${action.name()} request: ${request.toString}")
+        }
+        durationWithResponse <- Task.delay(nodeClient.execute(action, request).actionGet()).timed
+        (duration, response) = durationWithResponse
+        _ <- Task.delay {
+          logger.debug(s"Action ${action.name()} response: ${response.toString}, taken ${duration.toMillis}ms")
+        }
+      } yield response
     }
 
     def executeAck[REQUEST <: ActionRequest, RESPONSE <: AcknowledgedResponse](action: ActionType[RESPONSE],
@@ -165,9 +165,8 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     }
 
     private def supportedActions: Map[ActionType[ActionResponse], TransportAction[ActionRequest, ActionResponse]] = {
-      val actions = ReflecUtils.getField(nodeClient, nodeClient.getClass, "actions")
-      actions
-        .asInstanceOf[java.util.Map[ActionType[ActionResponse], TransportAction[ActionRequest, ActionResponse]]]
+      on(nodeClient)
+        .get[java.util.Map[ActionType[ActionResponse], TransportAction[ActionRequest, ActionResponse]]]("actions")
         .asScala
         .toMap
     }
