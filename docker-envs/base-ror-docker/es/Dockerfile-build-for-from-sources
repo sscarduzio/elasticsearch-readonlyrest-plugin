@@ -16,6 +16,7 @@ FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
 COPY --from=build /ror/builds/ror.zip /tmp/ror.zip
 
 ARG ES_VERSION
+ARG ROR_VERSION
 ARG ES_CLOUD_PROXY_ADDRESS
 ARG ES_CLOUD_SERVER_NAME
 
