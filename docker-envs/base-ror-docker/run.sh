@@ -23,7 +23,6 @@ Your choice: " choice
       ;;
     3 )
       docker buildx build --no-cache --progress=plain -t ror-builder -f ../../../docker-based-builder/ror-builder/Dockerfile-ror-builder ../../../
-      export ROR_ES_VERSION=$(grep -oP '^pluginVersion=\K.*' ../../../gradle.properties)
       export ES_DOCKERFILE="Dockerfile-build-for-from-sources"
       ;;
     * )
@@ -57,7 +56,6 @@ read_es_ror_file_path () {
   read -p "Enter ES ROR file path (it has to be placed in `dirname "$0"`): " path
   if [ -f "$path" ]; then
     export ES_ROR_FILE=$path
-    export ROR_ES_VERSION=$(unzip -p "$path" plugin-descriptor.properties | grep -oP '^version=\K.*')
   else
     echo "Cannot find file $path"
     exit 4

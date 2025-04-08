@@ -13,6 +13,8 @@ fi
 
 echo "Installing ES ROR from file..."
 /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/ror.zip
+ROR_VERSION=$(unzip -p /tmp/ror.zip plugin-descriptor.properties | grep -oP '^version=\K.*')
+
 if verlte "6.5.0" "$ES_VERSION"; then
   echo "Patching ES ROR $ROR_VERSION..."
   if verlte "1.64.0" "$ROR_VERSION"; then
