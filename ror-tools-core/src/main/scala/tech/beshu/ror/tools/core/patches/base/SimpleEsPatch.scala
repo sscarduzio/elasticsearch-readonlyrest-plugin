@@ -17,11 +17,8 @@
 package tech.beshu.ror.tools.core.patches.base
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.FilePatchCreator
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, MultiFilePatch, RorPluginDirectory}
-
-import scala.util.{Failure, Success, Try}
 
 private[patches] abstract class SimpleEsPatch(rorPluginDirectory: RorPluginDirectory,
                                               esVersion: SemVer,
@@ -32,12 +29,8 @@ private[patches] abstract class SimpleEsPatch(rorPluginDirectory: RorPluginDirec
     filePatchCreators.map(_.create(rorPluginDirectory, esVersion)): _*
   )
 
-  override def patchIsApplied(currentRorVersion: String): IsPatched = {
-    if (rorPluginDirectory.doesBackupFolderExist) {
-      IsPatched.WithCurrentVersion(currentRorVersion)
-    } else {
-      IsPatched.No
-    }
+  override def isPatchApplied: Boolean = {
+    rorPluginDirectory.doesBackupFolderExist
   }
 
   override def performBackup(): Unit = {

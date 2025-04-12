@@ -17,14 +17,13 @@
 package tech.beshu.ror.tools.core.patches.base
 
 import tech.beshu.ror.tools.core.patches.*
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.tools.core.patches.internal.{EsNotRequirePatch, RorPluginDirectory}
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.*
 
 trait EsPatch {
 
-  def patchIsApplied(currentRorVersion: String): IsPatched
+  def isPatchApplied: Boolean
 
   def performPatching(): Unit
 
@@ -35,13 +34,6 @@ trait EsPatch {
 }
 
 object EsPatch {
-
-  sealed trait IsPatched
-  object IsPatched {
-    final case class WithCurrentVersion(rorVersion: String) extends IsPatched
-    final case class WithDifferentVersion(expectedRorVersion: String, patchedByRorVersion: String) extends IsPatched
-    case object No extends IsPatched
-  }
 
   def create(esDirectory: EsDirectory): EsPatch = {
     val rorPluginDirectory = new RorPluginDirectory(esDirectory)

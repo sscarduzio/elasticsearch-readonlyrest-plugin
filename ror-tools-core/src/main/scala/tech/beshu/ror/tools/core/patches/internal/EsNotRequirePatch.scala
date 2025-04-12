@@ -18,7 +18,6 @@ package tech.beshu.ror.tools.core.patches.internal
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.EsPatch
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.tools.core.utils.RorToolsException.EsPatchingNotRequired
 
 private[patches] class EsNotRequirePatch(esVersion: SemVer)
@@ -30,6 +29,6 @@ private[patches] class EsNotRequirePatch(esVersion: SemVer)
 
   override def performRestore(): Unit = throw new EsPatchingNotRequired(esVersion)
 
-  override def patchIsApplied(currentRorVersion: String): IsPatched = throw new EsPatchingNotRequired(esVersion)
+  override def isPatchApplied: Boolean = throw new EsPatchingNotRequired(esVersion)
 
 }

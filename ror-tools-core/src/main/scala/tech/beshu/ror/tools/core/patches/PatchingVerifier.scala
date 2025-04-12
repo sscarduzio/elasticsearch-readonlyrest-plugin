@@ -17,8 +17,8 @@
 package tech.beshu.ror.tools.core.patches
 
 import tech.beshu.ror.tools.core.patches.PatchingVerifier.Error.{CannotVerifyIfPatched, EsNotPatched}
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
+import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 import tech.beshu.ror.tools.core.utils.RorToolsError.{EsNotPatchedError, EsPatchedWithDifferentVersionError}
@@ -31,11 +31,11 @@ object PatchingVerifier {
     for {
       esPatchExecutor <- createEsPatchExecutor(esHome)
       result <- esPatchExecutor.isPatched match
-        case IsPatched.WithCurrentVersion(_) =>
+        case EsPatchStatus.PatchedWithCurrentRorVersion(_) =>
           Right(())
-        case IsPatched.WithDifferentVersion(expectedRorVersion, patchedByRorVersion) =>
+        case EsPatchStatus.PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
           Left(EsNotPatched(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion).message))
-        case IsPatched.No =>
+        case EsPatchStatus.NotPatched =>
           Left(EsNotPatched(EsNotPatchedError.message))
     } yield result
   }

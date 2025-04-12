@@ -17,7 +17,6 @@
 package tech.beshu.ror.tools.core.patches.base
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.FilePatchCreator
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, MultiFilePatch, RorPluginDirectory}
 
@@ -32,13 +31,13 @@ private[patches] abstract class TransportNetty4AwareEsPatch(rorPluginDirectory: 
     filePatchCreators.map(_.create(rorPluginDirectory, esVersion)): _*
   )
 
-  override def patchIsApplied(currentRorVersion: String): IsPatched = {
+  override def isPatchApplied: Boolean = {
     val backupExists = rorPluginDirectory.doesBackupFolderExist
     val transportNetty4FoundInRorDir = rorPluginDirectory.isTransportNetty4PresentInRorPluginPath
     if (backupExists && transportNetty4FoundInRorDir) {
-      IsPatched.WithCurrentVersion(currentRorVersion)
+      true
     } else if (!backupExists && !transportNetty4FoundInRorDir) {
-      IsPatched.No
+      false
     } else {
       val possiblyCorruptedEsFiles = filePatches.files.filterNot(rorPluginDirectory.isRorPluginPath).map(_.toIO)
       throw new IllegalStateException(
