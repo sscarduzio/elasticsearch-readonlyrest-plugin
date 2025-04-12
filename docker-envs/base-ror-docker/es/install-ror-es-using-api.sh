@@ -18,12 +18,28 @@ fi
 
 echo "Installing ES ROR $ROR_VERSION..."
 /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch "https://api.beshu.tech/download/es?esVersion=$ES_VERSION&pluginVersion=$ROR_VERSION&email=ror-sandbox%40readonlyrest.com"
-if verlte "6.5.0" "$ES_VERSION"; then
-  echo "Patching ES ROR $ROR_VERSION..."
-  if verlte "1.64.0" "$ROR_VERSION"; then
-    /usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes
-  else
-    /usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch
-  fi
+
+if [[ -z "$ROR_VERSION" ]]; then
+  echo "No $ROR_VERSION variable is set"
+  exit 2
 fi
+
+# Set Java path based on ES version
+if verlte "7.0.0" "$ES_VERSION"; then
+  JAVA_BIN_PATH="/usr/share/elasticsearch/jdk/bin/java"
+elif verlte "6.7.0" "$ES_VERSION"; then
+  JAVA_BIN_PATH="$JAVA_HOME/bin/java"
+else
+  echo "Unsupported ES version: $ES_VERSION"
+  exit 1
+fi
+
+# Set OPTIONS based on ROR version
+if verlte "1.64.0" "$ROR_VERSION"; then
+  OPTIONS="--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes"
+else
+  OPTIONS=""
+fi
+
+$JAVA_BIN_PATH -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch $OPTIONS
 echo "DONE!"
