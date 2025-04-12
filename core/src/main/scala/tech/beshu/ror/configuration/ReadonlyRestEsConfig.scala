@@ -23,18 +23,23 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 final case class ReadonlyRestEsConfig(bootConfig: RorBootConfiguration,
                                       sslConfig: RorSsl,
-                                      fipsConfig: FipsConfiguration)
+                                      fipsConfig: FipsConfiguration,
+                                      esNodeConfig: EsNodeConfig)
+
+final case class EsNodeConfig(clusterName: String,
+                              nodeName: String)
 
 object ReadonlyRestEsConfig {
 
-  def load(esEnv: EsEnv)
+  def load(esEnv: EsEnv,
+           esNodeConfig: EsNodeConfig)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, ReadonlyRestEsConfig]] = {
     value {
       for {
         bootConfig <- EitherT(RorBootConfiguration.load(esEnv))
         sslConfig <- EitherT(RorSsl.load(esEnv))
         fipsConfig <- EitherT(FipsConfiguration.load(esEnv))
-      } yield ReadonlyRestEsConfig(bootConfig, sslConfig, fipsConfig)
+      } yield ReadonlyRestEsConfig(bootConfig, sslConfig, fipsConfig, esNodeConfig)
     }
   }
 }
