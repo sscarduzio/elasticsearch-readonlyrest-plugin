@@ -1,0 +1,9 @@
+ALL-UNNAMED:
+  - files:
+      - relative_path: ../
+        relative_to: config
+        mode: read
+  - manage_threads
+  - inbound_network
+  - outbound_network
+  - create_class_loader

@@ -25,12 +25,15 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.
 
 import scala.language.postfixOps
 
-private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
+private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       OpenModule,
-      ModifyBootstrapPolicyUtilClass,
+      new SecurityManagerShouldAllowReadingEsConfigFile(esVersion),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+    ),
+    new EntitlementJarPatchCreator(
+      ModifyEntitlementRuntimePolicyUtilsClass,
     ),
     new RorSecurityPolicyPatchCreator(
       AddCreateClassLoaderPermission
