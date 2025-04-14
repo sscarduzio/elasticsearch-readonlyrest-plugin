@@ -16,8 +16,12 @@
  */
 package tech.beshu.ror.utils
 
+import java.security.{AccessController, PrivilegedAction}
+
 object AccessControllerHelper {
   def doPrivileged[T](action: => T): T = {
-    action
+    AccessController.doPrivileged(new PrivilegedAction[T] {
+      override def run(): T = action
+    })
   }
 }

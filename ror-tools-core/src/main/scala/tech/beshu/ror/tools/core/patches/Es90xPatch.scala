@@ -21,7 +21,6 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddCreateClassLoaderPermission
 
 import scala.language.postfixOps
 
@@ -29,14 +28,10 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       OpenModule,
-      new SecurityManagerShouldAllowReadingEsConfigFile(esVersion),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new EntitlementJarPatchCreator(
       ModifyEntitlementRuntimePolicyUtilsClass,
-    ),
-    new RorSecurityPolicyPatchCreator(
-      AddCreateClassLoaderPermission
     ),
     new XPackCoreJarPatchCreator(
       OpenModule,
