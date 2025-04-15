@@ -24,14 +24,14 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 
 import scala.language.postfixOps
 
-private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
+private[patches] class Es900rc1Patch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       OpenModule,
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new EntitlementJarPatchCreator(
-      ModifyEntitlementRuntimePolicyParserClass,
+      new ModifyEntitlementRuntimePolicyUtilsClass(esVersion),
     ),
     new XPackCoreJarPatchCreator(
       OpenModule,
