@@ -56,6 +56,10 @@ if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es90x" ]]; then
   run_integration_tests "es90x"
 fi
 
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es818x" ]]; then
+  run_integration_tests "es818x"
+fi
+
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es816x" ]]; then
   run_integration_tests "es816x"
 fi
