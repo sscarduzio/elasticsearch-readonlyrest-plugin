@@ -146,8 +146,7 @@ trait RorTools {
   private class VerifyCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Verify): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
-      EsPatchExecutor.create(esDirectory).verify()
-      Result.Success
+      handleResult(EsPatchExecutor.create(esDirectory).verify())
     }
   }
 

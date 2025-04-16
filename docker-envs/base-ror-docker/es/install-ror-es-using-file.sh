@@ -15,9 +15,9 @@ echo "Installing ES ROR from file..."
 /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/ror.zip
 ROR_VERSION=$(unzip -p /tmp/ror.zip plugin-descriptor.properties | grep -oP '^version=\K.*')
 
-if [[ -z "$ROR_VERSION" ]]; then
-  echo "No $ROR_VERSION variable is set"
-  exit 2
+if [[ ! -v ROR_VERSION || -z "$ROR_VERSION" ]]; then
+  echo "No ROR_VERSION variable is set"
+  exit 3
 fi
 
 # Set Java path based on ES version
@@ -27,7 +27,7 @@ elif verlte "6.7.0" "$ES_VERSION"; then
   JAVA_BIN_PATH="$JAVA_HOME/bin/java"
 else
   echo "Unsupported ES version: $ES_VERSION"
-  exit 1
+  exit 4
 fi
 
 # Set OPTIONS based on ROR version

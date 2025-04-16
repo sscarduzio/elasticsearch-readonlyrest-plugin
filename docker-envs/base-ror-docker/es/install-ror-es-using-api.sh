@@ -11,18 +11,13 @@ if [[ -z "$ES_VERSION" ]]; then
   exit 1
 fi
 
-if [[ -z "$ROR_VERSION" ]]; then
-  echo "No $ROR_VERSION variable is set"
-  exit 2
+if [[ ! -v ROR_VERSION || -z "$ROR_VERSION" ]]; then
+  echo "No ROR_VERSION variable is set"
+  exit 3
 fi
 
 echo "Installing ES ROR $ROR_VERSION..."
 /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch "https://api.beshu.tech/download/es?esVersion=$ES_VERSION&pluginVersion=$ROR_VERSION&email=ror-sandbox%40readonlyrest.com"
-
-if [[ -z "$ROR_VERSION" ]]; then
-  echo "No $ROR_VERSION variable is set"
-  exit 2
-fi
 
 # Set Java path based on ES version
 if verlte "7.0.0" "$ES_VERSION"; then
@@ -31,7 +26,7 @@ elif verlte "6.7.0" "$ES_VERSION"; then
   JAVA_BIN_PATH="$JAVA_HOME/bin/java"
 else
   echo "Unsupported ES version: $ES_VERSION"
-  exit 1
+  exit 4
 fi
 
 # Set OPTIONS based on ROR version

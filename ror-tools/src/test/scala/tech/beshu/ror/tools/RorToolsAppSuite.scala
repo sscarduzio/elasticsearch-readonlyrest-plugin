@@ -238,7 +238,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
       unpatchResult should equal(Result.Success)
       unpatchOutput should include(
         """Checking if Elasticsearch is patched ...
-          |Elasticsearch is currently patched, restoring ...
+          |Elasticsearch is most likely patched, but there is no valid patch metadata present, trying to restore ...
           |Elasticsearch is unpatched! ReadonlyREST can be removed now"""
           .stripMargin
       )
@@ -263,10 +263,10 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
       val (verifyResult, verifyOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
       }
-      verifyResult should equal(Result.Success)
+      verifyResult should equal(Result.Failure)
       verifyOutput should include(
         """Checking if Elasticsearch is patched ...
-          |Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch"""
+          |ERROR: Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch"""
           .stripMargin
       )
     }
@@ -319,7 +319,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
       verifyResultWithoutFile should equal(Result.Success)
       verifyOutputWithoutFile should include(
         """Checking if Elasticsearch is patched ...
-          |Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch
+          |Elasticsearch is most likely patched, but there is no valid patch metadata present
           |""".stripMargin
       )
     }
