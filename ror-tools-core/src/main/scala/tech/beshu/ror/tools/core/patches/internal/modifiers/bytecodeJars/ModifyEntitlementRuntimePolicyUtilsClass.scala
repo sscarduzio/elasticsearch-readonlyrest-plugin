@@ -16,12 +16,15 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
+import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
+import tech.beshu.ror.tools.core.utils.EsUtil.*
 
 import java.io.{File, InputStream}
 
-private [patches] object ModifyEntitlementRuntimePolicyUtilsClass extends BytecodeJarModifier {
+private[patches] class ModifyEntitlementRuntimePolicyUtilsClass(esVersion: SemVer)
+  extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -47,8 +50,8 @@ private [patches] object ModifyEntitlementRuntimePolicyUtilsClass extends Byteco
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
       name match {
-        case "parsePolicyIfExists" =>
-          new TreatRorPluginAsInternalPlugin(
+        case "parsePolicyIfExists" if esVersion == es900rc1 =>
+          new TreatRorPluginAsInternalPluginForEs900rc1(
             super.visitMethod(access, name, descriptor, signature, exceptions)
           )
         case _ =>
@@ -57,8 +60,7 @@ private [patches] object ModifyEntitlementRuntimePolicyUtilsClass extends Byteco
     }
   }
 
-
-  private class TreatRorPluginAsInternalPlugin(underlying: MethodVisitor)
+  private class TreatRorPluginAsInternalPluginForEs900rc1(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
