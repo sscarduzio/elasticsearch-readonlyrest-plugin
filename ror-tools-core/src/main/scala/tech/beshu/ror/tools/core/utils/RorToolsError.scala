@@ -31,4 +31,10 @@ object RorToolsError {
   final case class EsAlreadyPatchedError(rorVersion: String)
     extends RorToolsError(s"Elasticsearch is already patched with current version $rorVersion")
 
+  object PatchedByOtherRorVersionWithoutValidMetadataError
+    extends RorToolsError(s"Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present.")
+
+  final case class IllegalFileModificationsDetectedInPatchedFilesError(files: List[os.Path])
+    extends RorToolsError(s"Elasticsearch was patched, but files ${files.map(_.toString).mkString(",")} were modified after patching")
+
 }

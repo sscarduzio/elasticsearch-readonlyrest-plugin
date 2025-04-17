@@ -19,9 +19,17 @@ package tech.beshu.ror.tools.core.utils
 import java.io.File
 import java.nio.file.attribute.{DosFileAttributeView, PosixFilePermission}
 import java.nio.file.{Files, Path}
+import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
 
 object FileUtils {
+
+  def calculateFileHash(dir: Path): String = {
+    val digest = MessageDigest.getInstance("SHA-256")
+    digest.update(dir.toString.getBytes) // Include file path in hash
+    digest.update(Files.readAllBytes(dir)) // Include file contents in hash
+    digest.digest.map("%02x".format(_)).mkString
+  }
 
   def modifyFileWithMaintainingOriginalPermissionsAndOwner(jar: File)(modifyJar: File => Unit): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)

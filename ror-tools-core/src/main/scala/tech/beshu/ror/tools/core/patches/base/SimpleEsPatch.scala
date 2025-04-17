@@ -17,6 +17,7 @@
 package tech.beshu.ror.tools.core.patches.base
 
 import just.semver.SemVer
+import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.FilePatchCreator
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, MultiFilePatch, RorPluginDirectory}
 
@@ -42,7 +43,7 @@ private[patches] abstract class SimpleEsPatch(rorPluginDirectory: RorPluginDirec
     rorPluginDirectory.clearBackupFolder()
   }
 
-  override def performPatching(): Unit = {
+  override def performPatching(): List[FilePatchMetadata] = {
     filePatches.patch()
   }
 

@@ -20,7 +20,7 @@ import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus.*
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.utils.RorToolsError.*
-import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsError}
+import tech.beshu.ror.tools.core.utils.{EsDirectory, FileUtils, InOut, RorToolsError}
 
 import scala.util.{Failure, Success, Try}
 
@@ -34,6 +34,8 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
         Left(EsAlreadyPatchedError(rorVersion))
       case PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
         Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
+      case IllegalFileModificationsDetectedInPatchedFiles(invalidFiles) =>
+        Left(IllegalFileModificationsDetectedInPatchedFilesError(invalidFiles))
       case NotPatched =>
         doPatch()
     }
@@ -45,15 +47,16 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
       case PatchedWithCurrentRorVersion(_) =>
         inOut.println("Elasticsearch is currently patched, restoring ...")
         doRestore()
-      // We have to handle this case explicitly, because older versions of patcher did not save the patched_by file
-      // (when TransportNetty4AwareEsPatch was used, mostly for ES 8.x) and we need to be able to unpatch them too.
-      case DetectedPatchWithoutValidMetadata() =>
-        inOut.println("Elasticsearch is most likely patched, but there is no valid patch metadata present, trying to restore ...")
-        doRestore()
       case PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
         Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
       case NotPatched =>
         Left(EsNotPatchedError)
+      case IllegalFileModificationsDetectedInPatchedFiles(files) =>
+        Left(IllegalFileModificationsDetectedInPatchedFilesError(files))
+      // We have to handle this case explicitly, because older versions of patcher did not save the patched_by file
+      // (when TransportNetty4AwareEsPatch was used, mostly for ES 8.x) and we need to be able to unpatch them too.
+      case PatchedByOtherRorVersionWithoutValidMetadata() =>
+        Left(PatchedByOtherRorVersionWithoutValidMetadataError)
     }
   }
 
@@ -64,7 +67,7 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
         Right(())
       // We have to handle this case explicitly, because older versions of patcher did not save the patched_by file
       // (when TransportNetty4AwareEsPatch was used, mostly for ES 8.x) and we need to be able to recognize that case too.
-      case DetectedPatchWithoutValidMetadata() =>
+      case PatchedByOtherRorVersionWithoutValidMetadata() =>
         inOut.println("Elasticsearch is most likely patched, but there is no valid patch metadata present")
         Right(())
       case PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
@@ -79,9 +82,15 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
   private def doPatch(): Either[RorToolsError, Unit] = {
     backup()
     inOut.println("Patching ...")
-    esPatch.performPatching()
-    inOut.println("Elasticsearch is patched! ReadonlyREST is ready to use")
-    Right(())
+    Try(esPatch.performPatching()) match {
+      case Success(filePatchMetadataList) =>
+        rorPluginDirectory.updatePatchMetadataFile(filePatchMetadataList)
+        inOut.println("Elasticsearch is patched! ReadonlyREST is ready to use")
+        Right(())
+      case Failure(ex) =>
+        rorPluginDirectory.clearBackupFolder()
+        throw ex
+    }
   }
 
   private def doRestore() = {
@@ -107,17 +116,32 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
   private def checkWithPatchedByFileAndEsPatch(): EsPatchStatus = {
     inOut.println("Checking if Elasticsearch is patched ...")
     val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
-    rorPluginDirectory.readPatchedByRorVersion() match {
-      case None =>
-        if (esPatch.isPatchApplied) DetectedPatchWithoutValidMetadata()
+    (rorPluginDirectory.readPatchedByRorVersion(), validatePatchedFiles()) match {
+      case (None, _) =>
+        if (esPatch.isPatchApplied) PatchedByOtherRorVersionWithoutValidMetadata()
         else NotPatched
-      case Some(patchedByRorVersion) if patchedByRorVersion == currentRorVersion =>
+      case (Some(patchedByRorVersion), Some(Left(invalidFiles))) if patchedByRorVersion == currentRorVersion =>
+        IllegalFileModificationsDetectedInPatchedFiles(invalidFiles)
+      case (Some(patchedByRorVersion), Some(Right(()))) if patchedByRorVersion == currentRorVersion =>
         if (esPatch.isPatchApplied) PatchedWithCurrentRorVersion(currentRorVersion)
         else NotPatched
-      case Some(patchedByRorVersion) =>
+      case (Some(patchedByRorVersion), _) =>
         PatchedWithOtherRorVersion(currentRorVersion, patchedByRorVersion)
     }
   }
+
+  private def validatePatchedFiles(): Option[Either[List[os.Path], Unit]] = {
+    rorPluginDirectory
+      .readPatchMetadataFile()
+      .map(_.map { filePatchMetadata =>
+        val currentHash = FileUtils.calculateFileHash(filePatchMetadata.path.wrapped)
+        if (filePatchMetadata.hash == currentHash) Right(()) else Left(filePatchMetadata.path)
+      }.partitionMap(identity) match {
+        case (paths, _) if paths.nonEmpty => Left(paths)
+        case (_, _ :: _) => Right(())
+      })
+  }
+
 }
 
 object EsPatchExecutor {
@@ -129,7 +153,9 @@ object EsPatchExecutor {
 
     final case class PatchedWithOtherRorVersion(currentRorVersion: String, patchedByRorVersion: String) extends EsPatchStatus
 
-    final case class DetectedPatchWithoutValidMetadata() extends EsPatchStatus
+    final case class PatchedByOtherRorVersionWithoutValidMetadata() extends EsPatchStatus
+
+    final case class IllegalFileModificationsDetectedInPatchedFiles(files: List[os.Path]) extends EsPatchStatus
 
     case object NotPatched extends EsPatchStatus
   }

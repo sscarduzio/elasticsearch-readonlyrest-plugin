@@ -17,14 +17,16 @@
 package tech.beshu.ror.tools.core.patches.internal
 
 import os.Path
+import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
 
-private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
+private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   private val rorPath: Path = readonlyrestPluginPath(esDirectory.path)
   private val backupFolderPath: Path = rorPath / "patch_backup"
   private val patchedByFilePath: Path = backupFolderPath / "patched_by"
+  private val patchMetadataFilePath: Path = backupFolderPath / "patch_metadata"
   private val pluginPropertiesFilePath = rorPath / "plugin-descriptor.properties"
 
   val securityPolicyPath: Path = rorPath / "plugin-security.policy"
@@ -70,6 +72,21 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
   def updatePatchedByRorVersion(): Unit = {
     os.remove(patchedByFilePath, checkExists = false)
     os.write(patchedByFilePath, readCurrentRorVersion())
+  }
+
+  def readPatchMetadataFile(): Option[List[FilePatchMetadata]] = {
+    Option.when(os.exists(patchMetadataFilePath)) {
+      (os.read(patchMetadataFilePath): String)
+        .split("\n")
+        .map(_.split("=", 2)) // split only on the first '='
+        .collect { case Array(path, hash) => FilePatchMetadata(Path(path), hash) }
+        .toList
+    }
+  }
+
+  def updatePatchMetadataFile(items: List[FilePatchMetadata]): Unit = {
+    os.remove(patchMetadataFilePath, checkExists = false)
+    os.write(patchMetadataFilePath, items.map(item => s"${item.path.toString}=${item.hash}").mkString("\n"))
   }
 
   def readCurrentRorVersion(): String = {

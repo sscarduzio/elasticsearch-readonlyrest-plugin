@@ -17,6 +17,7 @@
 package tech.beshu.ror.tools.core.patches.base
 
 import just.semver.SemVer
+import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.FilePatchCreator
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, MultiFilePatch, RorPluginDirectory}
 
@@ -61,7 +62,7 @@ private[patches] abstract class TransportNetty4AwareEsPatch(rorPluginDirectory: 
     rorPluginDirectory.clearBackupFolder()
   }
 
-  override def performPatching(): Unit = {
+  override def performPatching(): List[FilePatchMetadata] = {
     rorPluginDirectory.esDirectory.findTransportNetty4Jar match {
       case Some(transportNetty4Jar) =>
         rorPluginDirectory.copyToPluginPath(transportNetty4Jar)

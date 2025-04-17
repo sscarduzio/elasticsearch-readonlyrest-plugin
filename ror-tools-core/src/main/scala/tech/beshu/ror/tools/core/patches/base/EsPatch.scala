@@ -17,6 +17,7 @@
 package tech.beshu.ror.tools.core.patches.base
 
 import tech.beshu.ror.tools.core.patches.*
+import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.{EsNotRequirePatch, RorPluginDirectory}
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.*
@@ -25,7 +26,7 @@ trait EsPatch {
 
   def isPatchApplied: Boolean
 
-  def performPatching(): Unit
+  def performPatching(): List[FilePatchMetadata]
 
   def performBackup(): Unit
 

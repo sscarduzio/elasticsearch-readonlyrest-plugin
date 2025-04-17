@@ -40,6 +40,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
   private val esLocalPath = esDirectory.path
   private val backupDirectory = esDirectory / "plugins" / "readonlyrest" / "patch_backup"
   private val patchedByFile = File((backupDirectory / "patched_by").path)
+  private val patchMetadataFile = File((backupDirectory / "patch_metadata").path)
 
   private val esContainer = new ExampleEsWithRorContainer
 
@@ -215,7 +216,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           |""".stripMargin
       )
     }
-    "Unpatching started even when patched_by file is missing" in {
+    "Unpatching is not started when patched_by file is missing" in {
       val (patchResult, patchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
       }
@@ -235,11 +236,10 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
       }
-      unpatchResult should equal(Result.Success)
+      unpatchResult should equal(Result.Failure)
       unpatchOutput should include(
         """Checking if Elasticsearch is patched ...
-          |Elasticsearch is most likely patched, but there is no valid patch metadata present, trying to restore ...
-          |Elasticsearch is unpatched! ReadonlyREST can be removed now"""
+          |ERROR: Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present."""
           .stripMargin
       )
     }
@@ -369,6 +369,50 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
       hashBeforePatching should equal(hashAfterUnpatching)
       hashAfterPatching should equal(hashBeforeUnpatching)
       hashBeforePatching shouldNot equal(hashAfterPatching)
+    }
+    "Successfully patch, verify and unable to unpatch when one of the patched files was modified" in {
+      // Patch
+      val (patchResult, patchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+      }
+      patchResult should equal(Result.Success)
+      patchOutput should include(
+        """Checking if Elasticsearch is patched ...
+          |Creating backup ...
+          |Patching ...
+          |Elasticsearch is patched! ReadonlyREST is ready to use"""
+          .stripMargin
+      )
+
+      // Verify
+      val (verifyResult, verifyOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+      }
+
+      verifyResult should equal(Result.Success)
+      verifyOutput should include(
+        """Checking if Elasticsearch is patched ...
+          |Elasticsearch is patched! ReadonlyREST can be used"""
+          .stripMargin
+      )
+      patchedByFile.exists() should be(true)
+
+      // Modify expected hash - simulate one of the files being modified
+      val content = patchMetadataFile.contentAsString
+      patchMetadataFile.overwrite(content.stripSuffix("\n") + "abc")
+
+      // Attempt to unpatch
+      val (unpatchResult, unpatchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
+      }
+      unpatchResult should equal(Result.Failure)
+      // The assertion cannot check specific filenames, because they are ES-version specific
+      unpatchOutput should include(
+        """Checking if Elasticsearch is patched ...
+          |ERROR: Elasticsearch was patched, but files"""
+          .stripMargin
+      );
+      unpatchOutput should include("were modified after patching")
     }
   }
 
