@@ -57,7 +57,6 @@ import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.reindex.ReindexRequest
-import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task as EsTask
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
@@ -69,14 +68,13 @@ import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.*
-import tech.beshu.ror.es.handler.request.RestRequestOps.*
 import tech.beshu.ror.es.handler.request.context.types.*
 import tech.beshu.ror.es.handler.request.context.types.datastreams.*
 import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
+import tech.beshu.ror.es.{RorClusterService, RorRestChannel}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -268,25 +266,30 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 }
 
 object AclAwareRequestFilter {
-  final case class EsContext(channel: RestChannel with ResponseFieldsFiltering,
-                             nodeName: String,
-                             task: EsTask,
-                             action: Action,
-                             actionRequest: ActionRequest,
-                             listener: ActionListener[ActionResponse],
-                             chain: EsChain,
-                             threadContextResponseHeaders: Set[(String, String)]) {
+
+  final class EsContext(val channel: RorRestChannel,
+                        val nodeName: String,
+                        val task: EsTask,
+                        val action: Action,
+                        val actionRequest: ActionRequest,
+                        val listener: ActionListener[ActionResponse],
+                        val chain: EsChain,
+                        val threadContextResponseHeaders: Set[(String, String)]) {
 
     val timestamp: Instant = Instant.now()
 
-    lazy val allHeaders: Set[Header] = channel.request().allHeaders()
-
     lazy val correlationId: CorrelationId =
-      allHeaders
+      channel.restRequest
+        .allHeaders
         .find(_.name === Header.Name.correlationId)
         .map(_.value)
         .map(CorrelationId.apply)
         .getOrElse(CorrelationId.random)
+
+    private lazy val isImpersonationHeader =
+      channel.restRequest
+        .allHeaders
+        .exists { case Header(name, _) => name === Header.Name.impersonateAs }
 
     def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
       val impersonationHeaderPresent = isImpersonationHeader
@@ -295,13 +298,6 @@ object AclAwareRequestFilter {
         case None if impersonationHeaderPresent => Left(Error.ImpersonatorsEngineNotConfigured)
         case Some(_) | None => Right(engines.mainEngine)
       }
-    }
-
-    private def isImpersonationHeader = {
-      channel
-        .request()
-        .allHeaders()
-        .exists { case Header(name, _) => name === Header.Name.impersonateAs }
     }
   }
 

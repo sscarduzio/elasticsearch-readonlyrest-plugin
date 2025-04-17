@@ -172,7 +172,7 @@ object EsqlRequestHelper {
     }
 
     private def indexStringFrom(tableIdentifier: Any) = {
-      on(tableIdentifier).call("index").get[String]()
+      on(tableIdentifier).call("indexPattern").get[String]()
     }
 
   }
