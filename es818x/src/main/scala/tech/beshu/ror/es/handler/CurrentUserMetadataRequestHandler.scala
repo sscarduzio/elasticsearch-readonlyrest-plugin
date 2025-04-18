@@ -78,12 +78,15 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   private def onForbidden(requestContext: RequestContext, causes: NonEmptySet[ForbiddenCause]): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(ForbiddenResponse.create(
-      ForbiddenResponseContext.from(causes.toNonEmptyList, engine.core.accessControl.staticContext)
+      ForbiddenResponseContext.from(
+        causes.toNonEmptyList.map(ForbiddenResponseContext.Cause.fromMismatchedCause),
+        engine.core.accessControl.staticContext
+      )
     ))
   }
 
   private def onPassThrough(requestContext: RequestContext): Unit = {
-    logger.warn(s"[${requestContext.id.toRequestId.show}] Cannot handle the ${esContext.channel.restRequest.path} request because ReadonlyREST plugin was disabled in settings")
+    logger.warn(s"[${requestContext.id.toRequestId.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST plugin was disabled in settings")
     esContext.listener.onFailure(createRorNotEnabledResponse())
   }
 

@@ -22,6 +22,7 @@ import org.elasticsearch.rest.{AbstractRestChannel, RestChannel as EsRestChannel
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
+import tech.beshu.ror.accesscontrol.request.RestRequest
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
@@ -42,32 +43,32 @@ final class RorRestChannel(underlying: EsRestChannel)
   }
 }
 
-final class RorRestRequest(underlying: EsRestRequest) {
+final class RorRestRequest(underlying: EsRestRequest) extends RestRequest {
 
-  lazy val method: Method = Method.fromStringUnsafe(underlying.method().name())
+  override lazy val method: Method = Method.fromStringUnsafe(underlying.method().name())
 
-  lazy val path: UriPath = UriPath
+  override lazy val path: UriPath = UriPath
     .from(underlying.path())
     .getOrElse(UriPath.from(nes("/")))
 
-  lazy val allHeaders: Set[Header] = Header.fromRawHeaders(
+  override lazy val allHeaders: Set[Header] = Header.fromRawHeaders(
     underlying
       .getHeaders.asScala
       .view.mapValues(_.asScala.toList)
       .toMap
   )
 
-  lazy val localAddress: Address =
+  override lazy val localAddress: Address =
     createAddressFrom(_.getLocalAddress)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
 
-  lazy val remoteAddress: Option[Address] = createAddressFrom(_.getRemoteAddress)
+  override lazy val remoteAddress: Option[Address] = createAddressFrom(_.getRemoteAddress)
 
-  val content: String =
+  override val content: String =
     if (underlying.isFullContent) Option(underlying.content()).map(_.utf8ToString()).getOrElse("")
     else ""
 
-  val contentLength: Information =
+  override val contentLength: Information =
     if (underlying.isFullContent) Bytes(underlying.contentLength())
     else Bytes(0)
 
