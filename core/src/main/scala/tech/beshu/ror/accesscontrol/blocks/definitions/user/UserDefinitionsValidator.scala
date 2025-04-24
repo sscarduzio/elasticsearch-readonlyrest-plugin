@@ -18,19 +18,23 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.user
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.user.UserDefinitionsValidator.ValidationError
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-object UserDefinitionsValidator {
-
-  sealed trait ValidationError
-
-  object ValidationError {
-    final case class DuplicatedUsernameForLocalUser(userId: User.Id) extends ValidationError
-  }
+class UserDefinitionsValidator(globalSettings: GlobalSettings) {
 
   def validate(definitions: Definitions[UserDef]): Either[NonEmptyList[ValidationError], Unit] = {
+    if(globalSettings.usersDefinitionDuplicateUsernamesValidationEnabled) {
+      validateNonDuplicatedUsernames(definitions)
+    } else {
+      Right(())
+    }
+  }
+
+  private def validateNonDuplicatedUsernames(definitions: Definitions[UserDef]): Either[NonEmptyList[ValidationError], Unit] = {
     val localUsersPerUserDefinition: List[UniqueNonEmptyList[User.Id]] =
       definitions
         .items
@@ -52,6 +56,15 @@ object UserDefinitionsValidator {
         .toList
 
     NonEmptyList.fromList(validationErrors).toLeft(())
+  }
+
+}
+object UserDefinitionsValidator {
+
+  sealed trait ValidationError
+
+  object ValidationError {
+    final case class DuplicatedUsernameForLocalUser(userId: User.Id) extends ValidationError
   }
 
 }

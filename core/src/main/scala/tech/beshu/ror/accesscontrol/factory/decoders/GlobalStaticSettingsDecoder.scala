@@ -28,6 +28,16 @@ import tech.beshu.ror.implicits.*
 object GlobalStaticSettingsDecoder {
 
   def instance(rorConfigurationIndex: RorConfigurationIndex): Decoder[GlobalSettings] = {
+    implicit val globalSettingsDecoder: Decoder[GlobalSettings] = decodeGlobalSettings(rorConfigurationIndex)
+    Decoder
+      .instance { c =>
+        val globalSettings = c.downField("global_settings")
+        if (globalSettings.succeeded) globalSettings.as[GlobalSettings]
+        else globalSettingsDecoder.tryDecode(c)
+      }
+  }
+
+  private def decodeGlobalSettings(rorConfigurationIndex: RorConfigurationIndex): Decoder[GlobalSettings] = {
     Decoder
       .instance { c =>
         for {
@@ -35,12 +45,14 @@ object GlobalStaticSettingsDecoder {
           forbiddenMessage <- c.downField("response_if_req_forbidden").as[Option[String]]
           flsEngine <- c.downField("fls_engine").as[GlobalSettings.FlsEngine](flsEngineDecoder)
           caseMapping <- c.downField("username_case_sensitivity").as[CaseSensitivity]
+          duplicateUsernamesValidationEnabled <- c.downField("users_section_duplicate_usernames_detection").as[Option[Boolean]]
         } yield new GlobalSettings(
           showBasicAuthPrompt = basicAuthPrompt.getOrElse(false),
           forbiddenRequestMessage = forbiddenMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
           flsEngine = flsEngine,
           configurationIndex = rorConfigurationIndex,
-          userIdCaseSensitivity = caseMapping
+          userIdCaseSensitivity = caseMapping,
+          usersDefinitionDuplicateUsernamesValidationEnabled = duplicateUsernamesValidationEnabled.getOrElse(true)
         )
       }
   }

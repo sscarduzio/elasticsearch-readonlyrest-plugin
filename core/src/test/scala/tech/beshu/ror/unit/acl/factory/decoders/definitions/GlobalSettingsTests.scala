@@ -29,7 +29,174 @@ import tech.beshu.ror.accesscontrol.utils.{SyncDecoder, SyncDecoderCreator}
 class GlobalSettingsTests extends
   BaseDecoderTest(GlobalSettingsTests.decoder) {
 
-  "A global settings should be able to be loaded from config" when {
+  "A global settings should be able to be loaded from config (in the 'readonlyrest.global_settings' section level)" when {
+    "'prompt_for_basic_auth'" should {
+      "be decoded with success" when {
+        "enabled" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   prompt_for_basic_auth: true
+               """.stripMargin,
+            assertion = config =>
+              config.showBasicAuthPrompt should be(true)
+          )
+        }
+        "disabled" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   prompt_for_basic_auth: false
+               """.stripMargin,
+            assertion = config =>
+              config.showBasicAuthPrompt should be(false)
+          )
+        }
+        "not defined" in {
+          assertDecodingSuccess(
+            yaml = noCustomSettingsYaml,
+            assertion = config =>
+              config.showBasicAuthPrompt should be(false)
+          )
+        }
+      }
+    }
+    "'response_if_req_forbidden'" should {
+      "be decoded with success" when {
+        "custom message" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   response_if_req_forbidden: custom_forbidden_response
+               """.stripMargin,
+            assertion = config =>
+              config.forbiddenRequestMessage should be("custom_forbidden_response")
+          )
+        }
+        "not defined" in {
+          assertDecodingSuccess(
+            yaml = noCustomSettingsYaml,
+            assertion = config =>
+              config.forbiddenRequestMessage should be("Forbidden by ReadonlyREST")
+          )
+        }
+      }
+    }
+    "'fls_engine'" should {
+      "be decoded with success" when {
+        "lucene" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   fls_engine: lucene
+               """.stripMargin,
+            assertion = config =>
+              config.flsEngine should be(FlsEngine.Lucene)
+          )
+        }
+        "es_with_lucene" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   fls_engine: es_with_lucene
+               """.stripMargin,
+            assertion = config =>
+              config.flsEngine should be(FlsEngine.ESWithLucene)
+          )
+        }
+        "es" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   fls_engine: es
+               """.stripMargin,
+            assertion = config =>
+              config.flsEngine should be(FlsEngine.ES)
+          )
+        }
+        "not defined" in {
+          assertDecodingSuccess(
+            yaml = noCustomSettingsYaml,
+            assertion = config =>
+              config.flsEngine should be(FlsEngine.ESWithLucene)
+          )
+        }
+      }
+      "be decoded with failure" when {
+        "unknown engine type" in {
+          assertDecodingFailure(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   fls_engine: custom
+               """.stripMargin,
+            assertion =
+              error =>
+                error should be(GeneralReadonlyrestSettingsError(Message(
+                  "Unknown fls engine: 'custom'. Supported: 'es_with_lucene'(default), 'es'.")
+                ))
+          )
+        }
+      }
+    }
+    "'username_case_sensitivity'" should {
+      "be decoded with success" when {
+        "case sensitive" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   username_case_sensitivity: case_sensitive
+               """.stripMargin,
+            assertion = config =>
+              config.userIdCaseSensitivity should be(CaseSensitivity.Enabled)
+          )
+        }
+        "case insensitive" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   username_case_sensitivity: case_insensitive
+               """.stripMargin,
+            assertion = config =>
+              config.userIdCaseSensitivity should be(CaseSensitivity.Disabled)
+          )
+        }
+        "no defined" in {
+          assertDecodingSuccess(
+            yaml = noCustomSettingsYaml,
+            assertion = config =>
+              config.userIdCaseSensitivity should be(CaseSensitivity.Enabled)
+          )
+        }
+      }
+      "be decoded with failure" when {
+        "unknown type" in {
+          assertDecodingFailure(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   username_case_sensitivity: custom
+               """.stripMargin,
+            assertion =
+              error =>
+                error should be(GeneralReadonlyrestSettingsError(Message(
+                  "Unknown username case mapping: 'custom'. Supported: 'case_insensitive', 'case_sensitive'(default).")
+                ))
+          )
+        }
+      }
+    }
+  }
+
+  "A global settings should be able to be loaded from config (in the 'readonlyrest' section level)" when {
     "'prompt_for_basic_auth'" should {
       "be decoded with success" when {
         "enabled" in {
