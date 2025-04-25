@@ -21,7 +21,7 @@ import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
-import tech.beshu.ror.tools.core.utils.RorToolsError.{EsNotPatchedError, EsPatchedWithDifferentVersionError}
+import tech.beshu.ror.tools.core.utils.RorToolsError.*
 
 import scala.util.Try
 
@@ -35,6 +35,10 @@ object PatchingVerifier {
           Right(())
         case EsPatchStatus.PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
           Left(EsNotPatched(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion).message))
+        case EsPatchStatus.PatchedByOtherRorVersionWithoutValidMetadata() =>
+          Left(EsNotPatched(PatchedByOtherRorVersionWithoutValidMetadataError.message))
+        case EsPatchStatus.IllegalFileModificationsDetectedInPatchedFiles(invalidFiles) =>
+          Left(EsNotPatched(IllegalFileModificationsDetectedInPatchedFilesError(invalidFiles).message))
         case EsPatchStatus.NotPatched =>
           Left(EsNotPatched(EsNotPatchedError.message))
     } yield result
