@@ -212,7 +212,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
       result should equal(Result.Failure)
       output should include(
         """Checking if Elasticsearch is patched ...
-          |ERROR: Elasticsearch was patched using ROR 0.0.1 patcher. It should be unpatched and patched again with current ROR patcher. ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch
+          |ERROR: Elasticsearch was patched using ROR 0.0.1 patcher. It should be unpatched using ROR 0.0.1 and patched again with current ROR patcher. ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch
           |""".stripMargin
       )
     }
@@ -254,7 +254,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
       result should equal(Result.Failure)
       output should include(
         """Checking if Elasticsearch is patched ...
-          |ERROR: Elasticsearch was patched using ROR 0.0.1 patcher. It should be unpatched and patched again with current ROR patcher. ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch
+          |ERROR: Elasticsearch was patched using ROR 0.0.1 patcher. It should be unpatched using ROR 0.0.1 and patched again with current ROR patcher. ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch
           |""".stripMargin
       )
     }
@@ -296,7 +296,7 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
           .stripMargin
       )
     }
-    "Verify does not detect patch when file is missing" in {
+    "The patch is not detected when patched_by file is missing and `verify` command is executed" in {
       val (patchResult, patchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
       }
@@ -316,10 +316,10 @@ class RorToolsAppSuite extends AnyWordSpec with BeforeAndAfterAll with BeforeAnd
       val (verifyResultWithoutFile, verifyOutputWithoutFile) = captureResultAndOutput {
         RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
       }
-      verifyResultWithoutFile should equal(Result.Success)
+      verifyResultWithoutFile should equal(Result.Failure)
       verifyOutputWithoutFile should include(
         """Checking if Elasticsearch is patched ...
-          |Elasticsearch is most likely patched, but there is no valid patch metadata present
+          |ERROR: Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present. In case of problems please try to unpatch using the ROR version that had been used for patching.
           |""".stripMargin
       )
     }

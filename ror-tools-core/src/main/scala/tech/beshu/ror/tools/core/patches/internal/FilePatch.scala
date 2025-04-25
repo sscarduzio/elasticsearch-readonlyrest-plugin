@@ -23,7 +23,7 @@ import tech.beshu.ror.tools.core.utils.FileUtils
 
 import scala.language.postfixOps
 
-private[patches] abstract class FilePatch(val fileToPatchPath: Path) {
+private[patches] abstract class FilePatch {
   def backup(): Unit
   def patch(): List[FilePatchMetadata]
   def restore(): Unit
@@ -39,9 +39,9 @@ object FilePatch {
 }
 
 private[patches] abstract class FileModifiersBasedPatch(val rorPluginDirectory: RorPluginDirectory,
-                                                        override val fileToPatchPath: Path,
+                                                        val fileToPatchPath: Path,
                                                         patchingSteps: Iterable[FileModifier])
-  extends FilePatch(fileToPatchPath) {
+  extends FilePatch {
 
   override def backup(): Unit = {
     rorPluginDirectory.backup(fileToPatchPath)
@@ -73,12 +73,10 @@ private[patches] class MultiFilePatch(filePatches: FilePatch*) {
     filePatches.foreach(_.restore())
   }
 
-  def files: Seq[Path] = filePatches.map(_.fileToPatchPath)
-
 }
 
-private [patches] class OptionalFilePatchDecorator[FP <: FilePatch](underlying: FP)
-  extends FilePatch(underlying.fileToPatchPath) {
+private [patches] class OptionalFilePatchDecorator[FP <: FilePatch](underlying: FP, fileToPatchPath: Path)
+  extends FilePatch {
 
   private val chosenFilePatch = {
     if(os.exists(fileToPatchPath)) underlying
@@ -90,7 +88,7 @@ private [patches] class OptionalFilePatchDecorator[FP <: FilePatch](underlying: 
   override def restore(): Unit = chosenFilePatch.restore()
 }
 
-private [patches] object NoOpFilePatch extends FilePatch(os.root){
+private [patches] object NoOpFilePatch extends FilePatch{
   override def backup(): Unit = ()
   override def patch(): List[FilePatchMetadata] = List.empty
   override def restore(): Unit = ()

@@ -24,8 +24,6 @@ import tech.beshu.ror.tools.core.utils.EsUtil.*
 
 trait EsPatch {
 
-  def isPatchApplied: Boolean
-
   def performPatching(): List[FilePatchMetadata]
 
   def performBackup(): Unit

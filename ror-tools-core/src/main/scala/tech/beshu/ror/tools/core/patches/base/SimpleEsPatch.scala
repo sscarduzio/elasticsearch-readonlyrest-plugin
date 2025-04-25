@@ -30,10 +30,6 @@ private[patches] abstract class SimpleEsPatch(rorPluginDirectory: RorPluginDirec
     filePatchCreators.map(_.create(rorPluginDirectory, esVersion)): _*
   )
 
-  override def isPatchApplied: Boolean = {
-    rorPluginDirectory.doesBackupFolderExist
-  }
-
   override def performBackup(): Unit = {
     copyJarsToBackupFolder()
   }

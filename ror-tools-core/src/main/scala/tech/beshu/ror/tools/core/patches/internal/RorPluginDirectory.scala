@@ -18,8 +18,11 @@ package tech.beshu.ror.tools.core.patches.internal
 
 import os.Path
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
+import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.filePatchPrefix
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
+
+import java.net.{URLDecoder, URLEncoder}
 
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
@@ -74,19 +77,26 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     os.write(patchedByFilePath, readCurrentRorVersion())
   }
 
+
   def readPatchMetadataFile(): Option[List[FilePatchMetadata]] = {
     Option.when(os.exists(patchMetadataFilePath)) {
       (os.read(patchMetadataFilePath): String)
-        .split("\n")
+        .split("\n") // process lines separately
+        .filter(_.startsWith(filePatchPrefix)) // only lines that contain information about file patches
+        .map(_.replaceFirst(filePatchPrefix, "")) // remove the line prefix marking the file patch
         .map(_.split("=", 2)) // split only on the first '='
-        .collect { case Array(path, hash) => FilePatchMetadata(Path(path), hash) }
+        .collect { case Array(path, hash) => FilePatchMetadata(Path(URLDecoder.decode(path, "UTF-8")), hash) }
         .toList
     }
   }
 
   def updatePatchMetadataFile(items: List[FilePatchMetadata]): Unit = {
+    lazy val fileContent = items.map { item =>
+      val encodedFilePath = URLEncoder.encode(item.path.toString, "UTF-8")
+      s"$filePatchPrefix$encodedFilePath=${item.hash}"
+    }.mkString("\n")
     os.remove(patchMetadataFilePath, checkExists = false)
-    os.write(patchMetadataFilePath, items.map(item => s"${item.path.toString}=${item.hash}").mkString("\n"))
+    os.write(patchMetadataFilePath, fileContent)
   }
 
   def readCurrentRorVersion(): String = {
@@ -101,5 +111,8 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
       .getOrElse(throw new IllegalStateException(s"Cannot read ROR version from ${pluginPropertiesFilePath}"))
   }
 
-  def isRorPluginPath(path: Path): Boolean = path.startsWith(rorPath)
+}
+
+object RorPluginDirectory {
+  private val filePatchPrefix = "filePatch:"
 }

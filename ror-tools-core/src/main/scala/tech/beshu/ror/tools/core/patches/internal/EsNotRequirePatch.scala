@@ -30,6 +30,4 @@ private[patches] class EsNotRequirePatch(esVersion: SemVer)
 
   override def performRestore(): Unit = throw new EsPatchingNotRequired(esVersion)
 
-  override def isPatchApplied: Boolean = throw new EsPatchingNotRequired(esVersion)
-
 }

@@ -34,6 +34,8 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
         Left(EsAlreadyPatchedError(rorVersion))
       case PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
         Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
+      case PatchedByOtherRorVersionWithoutValidMetadata() =>
+        Left(PatchedByOtherRorVersionWithoutValidMetadataError)
       case IllegalFileModificationsDetectedInPatchedFiles(invalidFiles) =>
         Left(IllegalFileModificationsDetectedInPatchedFilesError(invalidFiles))
       case NotPatched =>
@@ -68,10 +70,11 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
       // We have to handle this case explicitly, because older versions of patcher did not save the patched_by file
       // (when TransportNetty4AwareEsPatch was used, mostly for ES 8.x) and we need to be able to recognize that case too.
       case PatchedByOtherRorVersionWithoutValidMetadata() =>
-        inOut.println("Elasticsearch is most likely patched, but there is no valid patch metadata present")
-        Right(())
+        Left(PatchedByOtherRorVersionWithoutValidMetadataError)
       case PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
         Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
+      case IllegalFileModificationsDetectedInPatchedFiles(invalidFiles) =>
+        Left(IllegalFileModificationsDetectedInPatchedFilesError(invalidFiles))
       case NotPatched =>
         Left(EsNotPatchedError)
     }
@@ -118,13 +121,12 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
     val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
     (rorPluginDirectory.readPatchedByRorVersion(), validatePatchedFiles()) match {
       case (None, _) =>
-        if (esPatch.isPatchApplied) PatchedByOtherRorVersionWithoutValidMetadata()
+        if (rorPluginDirectory.doesBackupFolderExist) PatchedByOtherRorVersionWithoutValidMetadata()
         else NotPatched
       case (Some(patchedByRorVersion), Some(Left(invalidFiles))) if patchedByRorVersion == currentRorVersion =>
         IllegalFileModificationsDetectedInPatchedFiles(invalidFiles)
       case (Some(patchedByRorVersion), Some(Right(()))) if patchedByRorVersion == currentRorVersion =>
-        if (esPatch.isPatchApplied) PatchedWithCurrentRorVersion(currentRorVersion)
-        else NotPatched
+        PatchedWithCurrentRorVersion(currentRorVersion)
       case (Some(patchedByRorVersion), _) =>
         PatchedWithOtherRorVersion(currentRorVersion, patchedByRorVersion)
     }
@@ -138,7 +140,7 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
         if (filePatchMetadata.hash == currentHash) Right(()) else Left(filePatchMetadata.path)
       }.partitionMap(identity) match {
         case (paths, _) if paths.nonEmpty => Left(paths)
-        case (_, _ :: _) => Right(())
+        case _ => Right(())
       })
   }
 

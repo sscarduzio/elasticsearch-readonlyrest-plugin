@@ -34,9 +34,8 @@ private[patches] class OptionalXPackCoreJarPatchCreator(patchingSteps: FileModif
 
   override def create(rorPluginDirectory: RorPluginDirectory,
                       esVersion: SemVer): OptionalFilePatchDecorator[XPackCoreJarPatch] = {
-    new OptionalFilePatchDecorator(
-      new XPackCoreJarPatch(rorPluginDirectory, esVersion, patchingSteps)
-    )
+    val patch = new XPackCoreJarPatch(rorPluginDirectory, esVersion, patchingSteps)
+    new OptionalFilePatchDecorator(patch, patch.fileToPatchPath)
   }
 }
 

@@ -18,7 +18,7 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
-import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, FilePatch, OptionalFilePatchDecorator, RorPluginDirectory}
+import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, OptionalFilePatchDecorator, RorPluginDirectory}
 
 private[patches] class XPackSecurityJarPatchCreator(patchingSteps: FileModifier*)
   extends FilePatchCreator[XPackSecurityJarPatch] {
@@ -33,9 +33,8 @@ private[patches] class OptionalXPackSecurityJarPatchCreator(patchingSteps: FileM
 
   override def create(rorPluginDirectory: RorPluginDirectory,
                       esVersion: SemVer): OptionalFilePatchDecorator[XPackSecurityJarPatch] = {
-    new OptionalFilePatchDecorator(
-      new XPackSecurityJarPatch(rorPluginDirectory, esVersion, patchingSteps)
-    )
+    val patch = new XPackSecurityJarPatch(rorPluginDirectory, esVersion, patchingSteps)
+    new OptionalFilePatchDecorator(patch, patch.fileToPatchPath)
   }
 }
 

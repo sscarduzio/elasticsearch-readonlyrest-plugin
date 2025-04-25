@@ -24,10 +24,10 @@ import scala.jdk.CollectionConverters.*
 
 object FileUtils {
 
-  def calculateFileHash(dir: Path): String = {
+  def calculateFileHash(filePath: Path): String = {
     val digest = MessageDigest.getInstance("SHA-256")
-    digest.update(dir.toString.getBytes) // Include file path in hash
-    digest.update(Files.readAllBytes(dir)) // Include file contents in hash
+    digest.update(filePath.toString.getBytes) // Include file path in hash
+    digest.update(Files.readAllBytes(filePath)) // Include file contents in hash
     digest.digest.map("%02x".format(_)).mkString
   }
 
