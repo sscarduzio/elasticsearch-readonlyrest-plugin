@@ -353,6 +353,69 @@ class GlobalSettingsTests extends
     }
   }
 
+  "The deprecated and the new syntax of global settings cannot be mixed" when {
+    "it's 'prompt_for_basic_auth'" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             | global_settings:
+             |   prompt_for_basic_auth: true
+             | prompt_for_basic_auth: true
+               """.stripMargin,
+        assertion =
+          error =>
+            error should be(GeneralReadonlyrestSettingsError(Message(
+              "Detected duplicated settings (usage of current and deprecated syntax). You cannot use '.global_settings.prompt_for_basic_auth' together with '.prompt_for_basic_auth'. Pick one syntax."
+            )))
+      )
+    }
+    "it's 'response_if_req_forbidden'" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             | response_if_req_forbidden: "forbidden"
+             | global_settings:
+             |   response_if_req_forbidden: "forbidden"
+                """.stripMargin,
+        assertion =
+          error =>
+            error should be(GeneralReadonlyrestSettingsError(Message(
+              "Detected duplicated settings (usage of current and deprecated syntax). You cannot use '.global_settings.response_if_req_forbidden' together with '.response_if_req_forbidden'. Pick one syntax."
+            )))
+      )
+    }
+    "it's 'fls_engine'" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             | fls_engine: "es"
+             | global_settings:
+             |   fls_engine: "es"
+                      """.stripMargin,
+        assertion =
+          error =>
+            error should be(GeneralReadonlyrestSettingsError(Message(
+              "Detected duplicated settings (usage of current and deprecated syntax). You cannot use '.global_settings.fls_engine' together with '.fls_engine'. Pick one syntax."
+            )))
+      )
+    }
+    "it's 'username_case_sensitivity'" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             | username_case_sensitivity: "case_insensitive"
+             | global_settings:
+             |   username_case_sensitivity: "case_insensitive"
+                            """.stripMargin,
+        assertion =
+          error =>
+            error should be(GeneralReadonlyrestSettingsError(Message(
+              "Detected duplicated settings (usage of current and deprecated syntax). You cannot use '.global_settings.username_case_sensitivity' together with '.username_case_sensitivity'. Pick one syntax."
+            )))
+      )
+    }
+  }
+
   private lazy val noCustomSettingsYaml =
     s"""
        | rules:

@@ -23,81 +23,62 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
-import tech.beshu.ror.implicits.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.optionalDecoder
 
 object GlobalStaticSettingsDecoder {
 
+  private val globalSettingsSectionName = "global_settings"
+
   def instance(rorConfigurationIndex: RorConfigurationIndex): Decoder[GlobalSettings] = {
-    implicit val globalSettingsDecoder: Decoder[GlobalSettings] = decodeGlobalSettings(rorConfigurationIndex)
-    Decoder
-      .instance { c =>
-        val globalSettings = c.downField("global_settings")
-        if (globalSettings.succeeded) globalSettings.as[GlobalSettings]
-        else globalSettingsDecoder.tryDecode(c)
-      }
+    for {
+      showBasicAuthPrompt <- decoderFor[Boolean]("prompt_for_basic_auth")
+      forbiddenRequestMessage <- decoderFor[String]("response_if_req_forbidden")
+      flsEngine <- decoderFor[FlsEngine]("fls_engine")
+      userIdCaseSensitivity <- decoderFor[CaseSensitivity]("username_case_sensitivity")
+      usersDefinitionDuplicateUsernamesValidationEnabled <- decoderFor[Boolean]("users_section_duplicate_usernames_detection")
+    } yield GlobalSettings(
+      showBasicAuthPrompt.getOrElse(false),
+      forbiddenRequestMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
+      flsEngine.getOrElse(GlobalSettings.FlsEngine.ESWithLucene),
+      rorConfigurationIndex,
+      userIdCaseSensitivity.getOrElse(CaseSensitivity.Enabled),
+      usersDefinitionDuplicateUsernamesValidationEnabled.getOrElse(true)
+    )
   }
 
-  private def decodeGlobalSettings(rorConfigurationIndex: RorConfigurationIndex): Decoder[GlobalSettings] = {
-    Decoder
-      .instance { c =>
-        for {
-          basicAuthPrompt <- c.downField("prompt_for_basic_auth").as[Option[Boolean]]
-          forbiddenMessage <- c.downField("response_if_req_forbidden").as[Option[String]]
-          flsEngine <- c.downField("fls_engine").as[GlobalSettings.FlsEngine](flsEngineDecoder)
-          caseMapping <- c.downField("username_case_sensitivity").as[CaseSensitivity]
-          duplicateUsernamesValidationEnabled <- c.downField("users_section_duplicate_usernames_detection").as[Option[Boolean]]
-        } yield new GlobalSettings(
-          showBasicAuthPrompt = basicAuthPrompt.getOrElse(false),
-          forbiddenRequestMessage = forbiddenMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
-          flsEngine = flsEngine,
-          configurationIndex = rorConfigurationIndex,
-          userIdCaseSensitivity = caseMapping,
-          usersDefinitionDuplicateUsernamesValidationEnabled = duplicateUsernamesValidationEnabled.getOrElse(true)
-        )
-      }
-  }
-
-  private def flsEngineDecoder: Decoder[GlobalSettings.FlsEngine] = {
-    Decoder.decodeOption[String]
+  private implicit val flsEngineDecoder: Decoder[FlsEngine] = {
+    Decoder.decodeString
       .toSyncDecoder
-      .emapE[GlobalSettings.FlsEngine] { flsEngineStr =>
-        createFlsEngineForPlugin(flsEngineStr)
-      }
-      .decoder
-  }
-
-  implicit private val usernameCaseMappingDecoder: Decoder[CaseSensitivity] = {
-    Decoder.decodeOption[String]
-      .toSyncDecoder
-      .emapE[CaseSensitivity] {
-        case Some("case_insensitive") => Right(CaseSensitivity.Disabled)
-        case Some("case_sensitive") | None => Right(CaseSensitivity.Enabled)
-        case Some(other) => Left(CoreCreationError.GeneralReadonlyrestSettingsError(Message(
-          s"Unknown username case mapping: '${other.show}'. Supported: 'case_insensitive', 'case_sensitive'(default)."
+      .emapE[FlsEngine] {
+        case "lucene" => Right(GlobalSettings.FlsEngine.Lucene)
+        case "es_with_lucene" => Right(GlobalSettings.FlsEngine.ESWithLucene)
+        case "es" => Right(GlobalSettings.FlsEngine.ES)
+        case unknown => Left(CoreCreationError.GeneralReadonlyrestSettingsError(Message(
+          // we don't officially say the `lucene` is supported, that's why it is omitted in the error message
+          s"Unknown fls engine: '$unknown'. Supported: 'es_with_lucene'(default), 'es'."
         )))
       }
       .decoder
   }
 
-  private def createFlsEngineForPlugin(flsEngineFromConfig: Option[String]) = flsEngineFromConfig match {
-    case None =>
-      Right(GlobalSettings.FlsEngine.ESWithLucene)
-    case Some(definedFlsEngine) =>
-      flsEngineFromString(definedFlsEngine)
-        .left
-        .map { case () =>
-          CoreCreationError.GeneralReadonlyrestSettingsError(Message(
-            // we don't officially say the `lucene` is supported, that's why it is omitted in the error message
-            s"Unknown fls engine: '${definedFlsEngine.show}'. Supported: 'es_with_lucene'(default), 'es'."
-          ))
-        }
+  implicit private val usernameCaseMappingDecoder: Decoder[CaseSensitivity] = {
+    Decoder.decodeString
+      .toSyncDecoder
+      .emapE[CaseSensitivity] {
+        case "case_insensitive" => Right(CaseSensitivity.Disabled)
+        case "case_sensitive" => Right(CaseSensitivity.Enabled)
+        case unknown => Left(CoreCreationError.GeneralReadonlyrestSettingsError(Message(
+          s"Unknown username case mapping: '$unknown'. Supported: 'case_insensitive', 'case_sensitive'(default)."
+        )))
+      }
+      .decoder
   }
 
-  private def flsEngineFromString(str: String): Either[Unit, FlsEngine] = str match {
-    case "lucene" => Right(GlobalSettings.FlsEngine.Lucene)
-    case "es_with_lucene" => Right(GlobalSettings.FlsEngine.ESWithLucene)
-    case "es" => Right(GlobalSettings.FlsEngine.ES)
-    case unknown => Left(())
+  private def decoderFor[T: Decoder](globalSettingKey: String): Decoder[Option[T]] = {
+    optionalDecoder[T](
+      fieldsPath = globalSettingsSectionName :: globalSettingKey :: Nil,
+      deprecatedFieldsPath = globalSettingKey :: Nil
+    )
   }
 
 }
