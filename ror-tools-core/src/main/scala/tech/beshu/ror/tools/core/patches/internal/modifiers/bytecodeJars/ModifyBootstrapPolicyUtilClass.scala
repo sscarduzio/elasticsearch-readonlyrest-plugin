@@ -21,7 +21,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 
-private [patches] object ModifyPolicyUtilClass extends BytecodeJarModifier {
+private [patches] object ModifyBootstrapPolicyUtilClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(

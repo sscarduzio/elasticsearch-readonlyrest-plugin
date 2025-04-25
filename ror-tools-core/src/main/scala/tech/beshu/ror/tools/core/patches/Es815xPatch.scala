@@ -29,7 +29,7 @@ private[patches] class Es815xPatch(rorPluginDirectory: RorPluginDirectory, esVer
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       OpenModule,
-      ModifyPolicyUtilClass,
+      ModifyBootstrapPolicyUtilClass,
       new SecurityManagerShouldAllowReadingEsConfigFile(esVersion),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
