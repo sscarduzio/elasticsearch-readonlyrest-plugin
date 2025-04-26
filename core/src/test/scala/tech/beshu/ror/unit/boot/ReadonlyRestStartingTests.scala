@@ -1362,7 +1362,8 @@ class ReadonlyRestStartingTests
       factory,
       indexJsonContentService,
       _ => mock[AuditSinkService],
-      EsEnv(getResourcePath(configPath), getResourcePath(configPath))
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath)),
+      testEsNodeConfig,
     )
   }
 

@@ -29,7 +29,7 @@ import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.header
+import tech.beshu.ror.utils.TestsUtils.{header, testEsNodeConfig}
 
 import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration.*
@@ -133,7 +133,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   }
 
   private def auditedAcl(auditSinkService: AuditSinkService) = {
-    implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
+    implicit val loggingContext: LoggingContext = LoggingContext(Set.empty, testEsNodeConfig)
     val settings = AuditingTool.Settings(
       NonEmptyList.of(
         AuditSink.Enabled(Config.EsIndexBasedSink(

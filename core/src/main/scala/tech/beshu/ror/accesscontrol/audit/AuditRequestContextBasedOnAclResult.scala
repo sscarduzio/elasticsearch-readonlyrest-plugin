@@ -30,7 +30,7 @@ import tech.beshu.ror.audit.{AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
 
 import java.time.Instant
-import scala.collection.immutable.{Set => ScalaSet}
+import scala.collection.immutable.Set as ScalaSet
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
                                                                             userMetadata: Option[UserMetadata],
@@ -40,6 +40,8 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
                                                                             override val involvesIndices: Boolean)
   extends AuditRequestContext {
 
+  override val nodeName: String = loggingContext.esNodeConfig.nodeName
+  override val clusterName: String = loggingContext.esNodeConfig.clusterName
   implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
 
   private val loggedUser: Option[domain.LoggedUser] = userMetadata

@@ -50,7 +50,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{EsNodeConfig, RawRorConfig}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
@@ -67,7 +67,7 @@ import scala.util.{Failure, Success}
 
 object TestsUtils {
 
-  implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
+  implicit val loggingContext: LoggingContext = LoggingContext(Set.empty, testEsNodeConfig)
   val rorYamlParser = new RorYamlParser(Megabytes(3))
 
   def basicAuthHeader(value: String): Header =
@@ -397,6 +397,8 @@ object TestsUtils {
   def getResourceContent(resource: String): String = {
     File(getResourcePath(resource)).contentAsString
   }
+
+  def testEsNodeConfig: EsNodeConfig = EsNodeConfig(clusterName = "testEsCluster", nodeName = "testEsNode")
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 

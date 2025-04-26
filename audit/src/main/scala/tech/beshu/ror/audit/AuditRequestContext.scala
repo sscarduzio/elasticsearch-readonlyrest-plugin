@@ -45,4 +45,6 @@ trait AuditRequestContext {
   def attemptedUserName: Option[String]
   def rawAuthHeader: Option[String]
   def generalAuditEvents: JSONObject
+  def nodeName: String
+  def clusterName: String
 }

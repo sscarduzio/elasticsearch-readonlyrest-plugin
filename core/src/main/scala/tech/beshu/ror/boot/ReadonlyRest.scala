@@ -45,7 +45,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
                    val indexConfigManager: IndexConfigManager,
                    val indexTestConfigManager: IndexTestConfigManager,
                    val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
-                   val esEnv: EsEnv)
+                   val esEnv: EsEnv,
+                   val esNodeConfig: EsNodeConfig)
                   (implicit environmentConfig: EnvironmentConfig,
                    scheduler: Scheduler) extends Logging {
 
@@ -213,7 +214,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createEngine(httpClientsFactory: AsyncHttpClientsFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                            core: Core) = {
-    implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
+    implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders, esNodeConfig)
     val auditingTool = createAuditingTool(core)
 
     val decoratedCore = Core(
@@ -296,23 +297,25 @@ object ReadonlyRest {
 
   def create(indexContentService: IndexJsonContentService,
              auditSinkCreator: AuditSinkCreator,
-             env: EsEnv)
+             env: EsEnv,
+             esNodeConfig: EsNodeConfig)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
-    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory()
-    create(coreFactory, indexContentService, auditSinkCreator, env)
+    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(esNodeConfig)
+    create(coreFactory, indexContentService, auditSinkCreator, env, esNodeConfig)
   }
 
   def create(coreFactory: CoreFactory,
              indexContentService: IndexJsonContentService,
              auditSinkCreator: AuditSinkCreator,
-             env: EsEnv)
+             env: EsEnv,
+             esNodeConfig: EsNodeConfig)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
     val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
     val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
-    new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env)
+    new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env, esNodeConfig)
   }
 }
