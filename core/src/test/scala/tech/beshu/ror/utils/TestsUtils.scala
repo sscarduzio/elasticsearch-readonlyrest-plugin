@@ -172,13 +172,13 @@ object TestsUtils {
                           impersonatorCredentials: Credentials,
                           impersonatedUsersIdPatterns: NonEmptyList[NonEmptyString]): ImpersonatorDef = {
     ImpersonatorDef(
-      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userId(userIdPattern)))),
+      userIdPatterns(userIdPattern.toString),
       new AuthKeyRule(
         BasicAuthenticationRule.Settings(impersonatorCredentials),
         CaseSensitivity.Enabled,
         Impersonation.Disabled
       ),
-      ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.fromNonEmptyList(impersonatedUsersIdPatterns.map(User.Id.apply).map(UserIdPattern.apply))))
+      ImpersonatedUsers(userIdPatterns(impersonatedUsersIdPatterns.head.toString, impersonatedUsersIdPatterns.map(_.toString).tail: _*))
     )
   }
 
@@ -343,7 +343,7 @@ object TestsUtils {
     }
   }
 
-  implicit class CurrentGroupToHeader(group: GroupId) extends AnyVal {
+  implicit class CurrentGroupToHeader(private val group: GroupId) extends AnyVal {
     def toCurrentGroupHeader: Header = currentGroupHeader(group.value.value)
   }
 
@@ -370,7 +370,7 @@ object TestsUtils {
     case Failure(ex) => throw new IllegalArgumentException(s"Cannot parse $value to Url: ${ex.getMessage}")
   }
 
-  implicit class NonEmptyListOps[T](value: T) extends AnyVal {
+  implicit class NonEmptyListOps[T](private val value: T) extends AnyVal {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)
   }
 
@@ -398,7 +398,7 @@ object TestsUtils {
     File(getResourcePath(resource)).contentAsString
   }
 
-  implicit class ValueOrIllegalState[ERROR, SUCCESS](eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
+  implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 
     def valueOrThrowIllegalState()(implicit scheduler: Scheduler): SUCCESS = {
       eitherT.value.runSyncUnsafe() match {
@@ -409,4 +409,12 @@ object TestsUtils {
   }
   
   implicit def unsafeNes(str: String): NonEmptyString = NonEmptyString.unsafeFrom(str)
+
+  def userIdPatterns(id: String, ids: String*): UserIdPatterns = {
+    UserIdPatterns(
+      UniqueNonEmptyList.unsafeFrom(
+        (id :: ids.toList).map(str => UserIdPattern(User.Id(NonEmptyString.unsafeFrom(str))))
+      )
+    )
+  }
 }

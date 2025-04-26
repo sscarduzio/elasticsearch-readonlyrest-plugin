@@ -26,8 +26,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.GlobalStaticSettingsDecoder
 import tech.beshu.ror.accesscontrol.utils.{SyncDecoder, SyncDecoderCreator}
 
-class GlobalSettingsTests extends
-  BaseDecoderTest(GlobalSettingsTests.decoder) {
+class GlobalSettingsTests
+  extends BaseDecoderTest(GlobalSettingsTests.decoder) {
 
   "A global settings should be able to be loaded from config (in the 'readonlyrest.global_settings' section level)" when {
     "'prompt_for_basic_auth'" should {
@@ -194,6 +194,39 @@ class GlobalSettingsTests extends
         }
       }
     }
+    "'users_section_duplicate_usernames_detection'" should {
+      "be decoded with success" when {
+        "enabled" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   users_section_duplicate_usernames_detection: true
+                     """.stripMargin,
+            assertion = config =>
+              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
+          )
+        }
+        "disabled" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | global_settings:
+                 |   users_section_duplicate_usernames_detection: false
+                     """.stripMargin,
+            assertion = config =>
+              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(false)
+          )
+        }
+        "no defined" in {
+          assertDecodingSuccess(
+            yaml = noCustomSettingsYaml,
+            assertion = config =>
+              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
+          )
+        }
+      }
+    }
   }
 
   "A global settings should be able to be loaded from config (in the 'readonlyrest' section level)" when {
@@ -351,6 +384,37 @@ class GlobalSettingsTests extends
         }
       }
     }
+    "'users_section_duplicate_usernames_detection'" should {
+      "be decoded with success" when {
+        "enabled" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | users_section_duplicate_usernames_detection: true
+                   """.stripMargin,
+            assertion = config =>
+              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
+          )
+        }
+        "disabled" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 | users_section_duplicate_usernames_detection: false
+                   """.stripMargin,
+            assertion = config =>
+              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(false)
+          )
+        }
+        "not defined" in {
+          assertDecodingSuccess(
+            yaml = noCustomSettingsYaml,
+            assertion = config =>
+              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
+          )
+        }
+      }
+    }
   }
 
   "The deprecated and the new syntax of global settings cannot be mixed" when {
@@ -411,6 +475,21 @@ class GlobalSettingsTests extends
           error =>
             error should be(GeneralReadonlyrestSettingsError(Message(
               "Detected duplicated settings (usage of current and deprecated syntax). You cannot use '.global_settings.username_case_sensitivity' together with '.username_case_sensitivity'. Pick one syntax."
+            )))
+      )
+    }
+    "it's 'users_section_duplicate_usernames_detection'" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             | users_section_duplicate_usernames_detection: true
+             | global_settings:
+             |   users_section_duplicate_usernames_detection: true
+                                """.stripMargin,
+        assertion =
+          error =>
+            error should be(GeneralReadonlyrestSettingsError(Message(
+              "Detected duplicated settings (usage of current and deprecated syntax). You cannot use '.global_settings.users_section_duplicate_usernames_detection' together with '.users_section_duplicate_usernames_detection'. Pick one syntax."
             )))
       )
     }

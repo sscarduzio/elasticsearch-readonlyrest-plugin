@@ -45,7 +45,6 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.syntax.*
@@ -161,14 +160,6 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       case None =>
         result should be(Rejected())
     }
-  }
-
-  def userIdPatterns(id: String, ids: String*): UserIdPatterns = {
-    UserIdPatterns(
-      UniqueNonEmptyList.unsafeFrom(
-        (id :: ids.toList).map(str => UserIdPattern(User.Id(NonEmptyString.unsafeFrom(str))))
-      )
-    )
   }
 
   def groups(g1: String, gs: String*): UniqueNonEmptyList[Group] = {
