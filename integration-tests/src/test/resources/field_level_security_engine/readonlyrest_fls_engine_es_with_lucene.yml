@@ -1,6 +1,7 @@
 readonlyrest:
 
-  fls_engine: "es_with_lucene"
+  global_settings:
+    fls_engine: "es_with_lucene"
 
   access_control_rules:
 

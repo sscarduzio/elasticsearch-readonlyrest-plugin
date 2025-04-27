@@ -237,6 +237,37 @@ object CirceOps {
       Decoder.failed(DecodingFailureOps.fromError(error))
     }
 
+    def optionalDecoder[T: Decoder](fieldsPath: List[String],
+                                    deprecatedFieldsPath: List[String]): Decoder[Option[T]] = {
+      def downFields(cursor: HCursor, fieldsPath: List[String]): ACursor = {
+        fieldsPath match {
+          case head :: rest => rest.foldLeft(cursor.downField(head))(_.downField(_))
+          case Nil => cursor
+        }
+      }
+
+      Decoder.instance { c =>
+        val fieldsCursor = downFields(c, fieldsPath)
+        val alternativeFieldsCursor = downFields(c, deprecatedFieldsPath)
+        (fieldsCursor.succeeded, alternativeFieldsCursor.succeeded) match {
+          case (true, true) =>
+            DecoderHelpers
+              .failed[T](
+                CoreCreationError.GeneralReadonlyrestSettingsError(Message(
+                  s"Detected duplicated settings (usage of current and deprecated syntax). You cannot use '${fieldsCursor.pathString}' together with '${alternativeFieldsCursor.pathString}'. Pick one syntax."
+                ))
+              )
+              .tryDecode(c).map(Option(_))
+          case (true, false) =>
+            Decoder[T].tryDecode(fieldsCursor).map(Option(_))
+          case (false, true) =>
+            Decoder[T].tryDecode(alternativeFieldsCursor).map(Option(_))
+          case (false, false) =>
+            Right(Option.empty[T])
+        }
+      }
+    }
+
     sealed trait FieldListResult[+T]
     object FieldListResult {
       case object NoField extends FieldListResult[Nothing]

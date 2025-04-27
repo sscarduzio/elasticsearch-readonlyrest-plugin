@@ -1,6 +1,7 @@
 readonlyrest:
 
-  fls_engine: "es"
+  global_settings:
+    fls_engine: "es"
 
   access_control_rules:
 
