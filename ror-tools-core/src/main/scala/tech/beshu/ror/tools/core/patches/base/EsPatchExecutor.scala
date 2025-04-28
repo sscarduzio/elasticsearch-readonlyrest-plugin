@@ -57,8 +57,6 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
         doRestore()
       case PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>
         Left(PatchPerformedOnOtherEsVersionError(currentEsVersion, patchPerformedOnEsVersion))
-      case PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>
-        Left(PatchPerformedOnOtherEsVersionError(currentEsVersion, patchPerformedOnEsVersion))
       case PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
         Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
       case NotPatched =>
@@ -81,6 +79,8 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
       // (when TransportNetty4AwareEsPatch was used, mostly for ES 8.x) and we need to be able to recognize that case too.
       case CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
         Left(CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles))
+      case PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>
+        Left(PatchPerformedOnOtherEsVersionError(currentEsVersion, patchPerformedOnEsVersion))
       case PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
         Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
       case IllegalFileModificationsDetectedInPatchedFiles(invalidFiles) =>
