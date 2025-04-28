@@ -513,8 +513,8 @@ class RorToolsAppSuite
       unpatchResult should equal(Result.Failure)
       // The assertion cannot check specific filenames, because they are ES-version specific
       unpatchOutput should include(
-        """Checking if Elasticsearch is patched ...
-          |ERROR: The patch was performed on Elasticsearch version 1.2.3, but currently installed version is 9.0.0. It should be unpatched using ROR for the ES version used for patching and patched again. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch""".stripMargin
+        s"""Checking if Elasticsearch is patched ...
+           |ERROR: The patch was performed on Elasticsearch version 1.2.3, but currently installed version is $esVersionUsed. It should be unpatched using ROR for the ES version used for patching and patched again. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch""".stripMargin
       )
     }
   }

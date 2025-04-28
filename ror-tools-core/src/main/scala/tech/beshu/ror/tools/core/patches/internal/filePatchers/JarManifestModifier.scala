@@ -34,34 +34,39 @@ object JarManifestModifier {
     val zipFile = new ZipFile(jarFile.toJava)
     val zipInput = new ZipInputStream(jarFile.newInputStream)
     val jarOutput = new JarOutputStream(tempJarFile.newOutputStream.buffered)
-    zipFile
-      .entries()
-      .asIterator()
-      .asScala
-      .foreach { entry =>
-        val name = entry.getName
-        if (name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
-          // Modify manifest file by adding new property and copy the result to the temp jar
-          val originalManifestContent = zipFile.getInputStream(entry).asString()
-          val customPropertyLine = s"$patchedByRorVersionPropertyName: $rorVersion\n"
-          val newManifestContent = originalManifestContent.replaceAll("(\\r\\n)+$", "") + "\n" + customPropertyLine
-          val newEntry = new JarEntry(name)
-          jarOutput.putNextEntry(newEntry)
-          jarOutput.write(newManifestContent.getBytes("UTF-8"))
-          jarOutput.closeEntry()
-        } else {
-          // Copy file other than manifest without changes to the temp jar
-          val newEntry = new JarEntry(name)
-          jarOutput.putNextEntry(newEntry)
-          zipInput.transferTo(jarOutput)
-          jarOutput.closeEntry()
+    try {
+      zipFile
+        .entries()
+        .asIterator()
+        .asScala
+        .foreach { entry =>
+          val name = entry.getName
+          if (name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
+            // Modify manifest file by adding new property and copy the result to the temp jar
+            val originalManifestContent = zipFile.getInputStream(entry).asString()
+            val customPropertyLine = s"$patchedByRorVersionPropertyName: $rorVersion\n"
+            val newManifestContent = originalManifestContent.replaceAll("(\\r\\n)+$", "") + "\n" + customPropertyLine
+            val newEntry = new JarEntry(name)
+            jarOutput.putNextEntry(newEntry)
+            jarOutput.write(newManifestContent.getBytes("UTF-8"))
+            jarOutput.closeEntry()
+          } else {
+            // Copy file other than manifest without changes to the temp jar
+            val newEntry = new JarEntry(name)
+            jarOutput.putNextEntry(newEntry)
+            val in = zipFile.getInputStream(entry)
+            in.transferTo(jarOutput)
+            in.close()
+            jarOutput.closeEntry()
+          }
         }
-      }
-    zipInput.close()
-    jarOutput.close()
-    val copyOptions: File.CopyOptions = File.CopyOptions(overwrite = true)
-    // Replace original jar with the newly created modified jar
-    tempJarFile.moveTo(jarFile)(copyOptions)
+      val copyOptions: File.CopyOptions = File.CopyOptions(overwrite = true)
+      // Replace original jar with the newly created modified jar
+      tempJarFile.moveTo(jarFile)(copyOptions)
+    } finally {
+      zipInput.close()
+      jarOutput.close()
+    }
   }
 
   def findPatchedFiles(esDirectory: EsDirectory): List[PatchedJarFile] = {
