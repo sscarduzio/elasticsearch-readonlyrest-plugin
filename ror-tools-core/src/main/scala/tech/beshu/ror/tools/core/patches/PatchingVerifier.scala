@@ -19,6 +19,7 @@ package tech.beshu.ror.tools.core.patches
 import tech.beshu.ror.tools.core.patches.PatchingVerifier.Error.{CannotVerifyIfPatched, EsNotPatched}
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus
+import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus.PatchPerformedOnOtherEsVersion
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 import tech.beshu.ror.tools.core.utils.RorToolsError.*
@@ -33,10 +34,12 @@ object PatchingVerifier {
       result <- esPatchExecutor.isPatched match
         case EsPatchStatus.PatchedWithCurrentRorVersion(_) =>
           Right(())
+        case PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>
+          Left(EsNotPatched(PatchPerformedOnOtherEsVersionError(currentEsVersion, patchPerformedOnEsVersion).message))
         case EsPatchStatus.PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
           Left(EsNotPatched(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion).message))
-        case EsPatchStatus.PatchedByOtherRorVersionWithoutValidMetadata() =>
-          Left(EsNotPatched(PatchedByOtherRorVersionWithoutValidMetadataError.message))
+        case EsPatchStatus.CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
+          Left(EsNotPatched(CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles).message))
         case EsPatchStatus.IllegalFileModificationsDetectedInPatchedFiles(invalidFiles) =>
           Left(EsNotPatched(IllegalFileModificationsDetectedInPatchedFilesError(invalidFiles).message))
         case EsPatchStatus.NotPatched =>

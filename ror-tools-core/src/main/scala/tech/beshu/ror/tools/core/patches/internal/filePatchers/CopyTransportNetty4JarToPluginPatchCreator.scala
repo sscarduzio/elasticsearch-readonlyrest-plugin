@@ -18,7 +18,7 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
-import tech.beshu.ror.tools.core.patches.internal.{FilePatch, RorPluginDirectory}
+import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, FilePatch, RorPluginDirectory}
 
 private[patches] object CopyTransportNetty4JarToPluginPatchCreator
   extends FilePatchCreator[CopyTransportNetty4JarToPluginPatch] {
@@ -38,8 +38,11 @@ private[patches] class CopyTransportNetty4JarToPluginPatch(rorPluginDirectory: R
       case Some(transportNetty4Jar) =>
         rorPluginDirectory.copyToPluginPath(transportNetty4Jar)
         rorPluginDirectory.findTransportNetty4Jar match {
-          case Some(copiedJarFile) => List(FilePatchMetadata.forPath(copiedJarFile))
-          case None => throw new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to transport netty4 jar not copied to ROR directory")
+          case Some(copiedJarFile) =>
+            FileModifiersBasedPatch.addPatchedByRorVersionPropertyToJarManifest(rorPluginDirectory, copiedJarFile)
+            List(FilePatchMetadata.forPath(copiedJarFile))
+          case None =>
+            throw new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to transport netty4 jar not copied to ROR directory")
         }
       case None =>
         throw new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")

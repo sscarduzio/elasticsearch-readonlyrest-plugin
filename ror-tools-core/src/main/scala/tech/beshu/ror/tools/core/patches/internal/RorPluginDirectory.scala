@@ -16,19 +16,18 @@
  */
 package tech.beshu.ror.tools.core.patches.internal
 
+import just.semver.SemVer
 import os.Path
+import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
-import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.filePatchPrefix
+import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
 import tech.beshu.ror.tools.core.utils.EsDirectory
-import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
-
-import java.net.{URLDecoder, URLEncoder}
+import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readEsVersion, readonlyrestPluginPath}
 
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   private val rorPath: Path = readonlyrestPluginPath(esDirectory.path)
   private val backupFolderPath: Path = rorPath / "patch_backup"
-  private val patchedByFilePath: Path = backupFolderPath / "patched_by"
   private val patchMetadataFilePath: Path = backupFolderPath / "patch_metadata"
   private val pluginPropertiesFilePath = rorPath / "plugin-descriptor.properties"
 
@@ -58,43 +57,31 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     os.copy(from = file, to = rorPath / file.last)
   }
 
-  def isTransportNetty4PresentInRorPluginPath: Boolean = {
-    findTransportNetty4JarIn(rorPath).isDefined
-  }
-
   def findTransportNetty4Jar: Option[Path] = {
     findTransportNetty4JarIn(rorPath)
   }
 
   def readPatchedByRorVersion(): Option[String] = {
-    Option.when(os.exists(patchedByFilePath)) {
-      os.read(patchedByFilePath)
-    }
+    readEsPatchMetadata().map(_.rorVersion)
   }
 
-  def updatePatchedByRorVersion(): Unit = {
-    os.remove(patchedByFilePath, checkExists = false)
-    os.write(patchedByFilePath, readCurrentRorVersion())
+  def readEsPatchMetadata(): Option[EsPatchMetadata] = {
+    if (os.exists(patchMetadataFilePath)) {
+      EsPatchMetadataCodec.decode(readFile(patchMetadataFilePath)) match {
+        case Right(metadata) => Some(metadata)
+        case Left(error) => throw new IllegalStateException(s"Cannot decode ROR patch metadata file: $error")
+      }
+    } else None
   }
 
-
-  def readPatchMetadataFile(): Option[List[FilePatchMetadata]] = {
-    Option.when(os.exists(patchMetadataFilePath)) {
-      (os.read(patchMetadataFilePath): String)
-        .split("\n") // process lines separately
-        .filter(_.startsWith(filePatchPrefix)) // only lines that contain information about file patches
-        .map(_.replaceFirst(filePatchPrefix, "")) // remove the line prefix marking the file patch
-        .map(_.split("=", 2)) // split only on the first '='
-        .collect { case Array(path, hash) => FilePatchMetadata(Path(URLDecoder.decode(path, "UTF-8")), hash) }
-        .toList
-    }
-  }
-
-  def updatePatchMetadataFile(items: List[FilePatchMetadata]): Unit = {
-    lazy val fileContent = items.map { item =>
-      val encodedFilePath = URLEncoder.encode(item.path.toString, "UTF-8")
-      s"$filePatchPrefix$encodedFilePath=${item.hash}"
-    }.mkString("\n")
+  def updateEsPatchMetadata(items: List[FilePatchMetadata]): Unit = {
+    lazy val fileContent = EsPatchMetadataCodec.encode(
+      EsPatchMetadata(
+        rorVersion = readCurrentRorVersion(),
+        esVersion = readEsVersion(esDirectory),
+        patchedFilesMetadata = items,
+      )
+    )
     os.remove(patchMetadataFilePath, checkExists = false)
     os.write(patchMetadataFilePath, fileContent)
   }
@@ -111,8 +98,12 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
       .getOrElse(throw new IllegalStateException(s"Cannot read ROR version from ${pluginPropertiesFilePath}"))
   }
 
+  private def readFile(path: Path): String = os.read(path)
+
 }
 
 object RorPluginDirectory {
-  private val filePatchPrefix = "filePatch:"
+  final case class EsPatchMetadata(rorVersion: String,
+                                   esVersion: SemVer,
+                                   patchedFilesMetadata: List[FilePatchMetadata])
 }

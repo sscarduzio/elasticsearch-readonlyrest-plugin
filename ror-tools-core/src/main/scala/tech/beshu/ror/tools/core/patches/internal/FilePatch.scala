@@ -16,8 +16,11 @@
  */
 package tech.beshu.ror.tools.core.patches.internal
 
+import better.files.File
 import os.Path
+import tech.beshu.ror.tools.core.patches.internal.FileModifiersBasedPatch.addPatchedByRorVersionPropertyToJarManifest
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
+import tech.beshu.ror.tools.core.patches.internal.filePatchers.JarManifestModifier
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
 import tech.beshu.ror.tools.core.utils.FileUtils
 
@@ -51,11 +54,25 @@ private[patches] abstract class FileModifiersBasedPatch(val rorPluginDirectory: 
     patchingSteps.foreach { step =>
       step(fileToPatchPath toIO)
     }
+    addPatchedByRorVersionPropertyToJarManifest(rorPluginDirectory, fileToPatchPath)
     List(FilePatchMetadata.forPath(fileToPatchPath))
   }
 
   override def restore(): Unit = {
     rorPluginDirectory.restore(fileToPatchPath)
+  }
+}
+
+object FileModifiersBasedPatch {
+  def addPatchedByRorVersionPropertyToJarManifest(rorPluginDirectory: RorPluginDirectory,
+                                                  fileToPatchPath: Path): Unit = {
+    // We add additional property to the MANIFEST file of the jar
+    if (fileToPatchPath.toString.endsWith(".jar")) {
+      JarManifestModifier.addPatchedByRorVersionProperty(
+        File(fileToPatchPath.wrapped),
+        rorPluginDirectory.readCurrentRorVersion()
+      )
+    }
   }
 }
 
