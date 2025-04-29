@@ -63,8 +63,6 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
         Left(EsNotPatchedError)
       case IllegalFileModificationsDetectedInPatchedFiles(files) =>
         Left(IllegalFileModificationsDetectedInPatchedFilesError(files))
-      // We have to handle this case explicitly, because older versions of patcher did not save the patched_by file
-      // (when TransportNetty4AwareEsPatch was used, mostly for ES 8.x) and we need to be able to unpatch them too.
       case CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
         Left(CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles))
     }
@@ -75,8 +73,6 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
       case PatchedWithCurrentRorVersion(_) =>
         inOut.println("Elasticsearch is patched! ReadonlyREST can be used")
         Right(())
-      // We have to handle this case explicitly, because older versions of patcher did not save the patched_by file
-      // (when TransportNetty4AwareEsPatch was used, mostly for ES 8.x) and we need to be able to recognize that case too.
       case CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
         Left(CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles))
       case PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>

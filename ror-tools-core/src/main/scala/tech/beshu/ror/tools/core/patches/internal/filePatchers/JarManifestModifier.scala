@@ -24,6 +24,7 @@ import java.util.jar.{JarEntry, JarOutputStream}
 import java.util.zip.{ZipFile, ZipInputStream}
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.util.matching.Regex
+import scala.util.{Failure, Success, Try}
 
 object JarManifestModifier {
 
@@ -72,21 +73,27 @@ object JarManifestModifier {
   def findPatchedFiles(esDirectory: EsDirectory): List[PatchedJarFile] = {
     val directory = File(esDirectory.modulesPath.wrapped)
     directory.walk().filter(_.name.endsWith(".jar")).toList.flatMap { jarFile =>
-      val zipFile = new ZipFile(jarFile.toJava)
-      val zipInput = new ZipInputStream(jarFile.newInputStream)
-      val patchedFiles =
-        zipFile
-          .entries()
-          .asIterator()
-          .asScala
-          .find(_.getName.equalsIgnoreCase("META-INF/MANIFEST.MF"))
-          .flatMap { manifestFile =>
-            val manifestContentLines = zipFile.getInputStream(manifestFile).asString().linesIterator.toList.map(_.strip)
-            val pattern: Regex = s"""$patchedByRorVersionPropertyName: (.*)""".r
-            manifestContentLines.collectFirst { case pattern(rorVersion) => PatchedJarFile(jarFile.name, rorVersion) }
-          }
-      zipInput.close()
-      patchedFiles
+      Try(new ZipFile(jarFile.toJava)) match {
+        case Success(zipFile) =>
+          val zipInput = new ZipInputStream(jarFile.newInputStream)
+          val patchedFiles =
+            zipFile
+              .entries()
+              .asIterator()
+              .asScala
+              .find(_.getName.equalsIgnoreCase("META-INF/MANIFEST.MF"))
+              .flatMap { manifestFile =>
+                val manifestContentLines = zipFile.getInputStream(manifestFile).asString().linesIterator.toList.map(_.strip)
+                val pattern: Regex = s"""$patchedByRorVersionPropertyName: (.*)""".r
+                manifestContentLines.collectFirst { case pattern(rorVersion) => PatchedJarFile(jarFile.name, rorVersion) }
+              }
+          zipInput.close()
+          patchedFiles
+        case Failure(exception) =>
+          Console.err.println(jarFile)
+          Console.err.println(exception)
+          None
+      }
     }
   }
 
