@@ -31,37 +31,30 @@ object JarManifestModifier {
   def addPatchedByRorVersionProperty(file: File, rorVersion: String): Unit = {
     val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
     val jarFile = new JarFile(file.toJava)
-    val jarOutput = new JarOutputStream(tempJarFile.newOutputStream.buffered)
+
+    val manifest = jarFile.getManifest
+    manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
+    val jarOutput = new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)
+
     try {
-      jarFile
-        .entries()
-        .asIterator()
-        .asScala
-        .foreach { entry =>
-          val name = entry.getName
-          if (name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
-            // Modify manifest file by adding new property and copy the result to the temp jar
-            val manifest = jarFile.getManifest
-            manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
-            val newEntry = new JarEntry(name)
-            jarOutput.putNextEntry(newEntry)
-            manifest.write(jarOutput)
-            jarOutput.closeEntry()
-          } else {
-            // Copy file other than manifest without changes to the temp jar
-            val newEntry = new JarEntry(name)
-            jarOutput.putNextEntry(newEntry)
-            val in = jarFile.getInputStream(entry)
-            in.transferTo(jarOutput)
-            in.close()
-            jarOutput.closeEntry()
-          }
+      jarFile.entries().asIterator().asScala.foreach { entry =>
+        val name = entry.getName
+        // Skip manifest — it's already written
+        if (!name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
+          val newEntry = new JarEntry(name)
+          jarOutput.putNextEntry(newEntry)
+          val in = jarFile.getInputStream(entry)
+          in.transferTo(jarOutput)
+          in.close()
+          jarOutput.closeEntry()
         }
+      }
+
       val copyOptions: File.CopyOptions = File.CopyOptions(overwrite = true)
-      // Replace original jar with the newly created modified jar
       tempJarFile.moveTo(file)(copyOptions)
     } finally {
       jarOutput.close()
+      jarFile.close()
     }
   }
 
