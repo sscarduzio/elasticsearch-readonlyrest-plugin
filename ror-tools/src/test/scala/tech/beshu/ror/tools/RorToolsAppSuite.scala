@@ -374,9 +374,9 @@ class RorToolsAppSuite
         s"""Checking if Elasticsearch is patched ...
            |ERROR: Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present. In case of problems please try to unpatch using the ROR version that had been used for patching.
            | - backup catalog is present, but there is no metadata file
-           | - file x-pack-security-9.0.0.jar was patched by ROR ${metadata.rorVersion}
            | - file x-pack-core-9.0.0.jar was patched by ROR ${metadata.rorVersion}
            | - file x-pack-ilm-9.0.0.jar was patched by ROR ${metadata.rorVersion}
+           | - file x-pack-security-9.0.0.jar was patched by ROR ${metadata.rorVersion}
            |""".stripMargin
       )
     }

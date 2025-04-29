@@ -40,7 +40,7 @@ object RorToolsError {
     extends RorToolsError(
       s"""Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present. In case of problems please try to unpatch using the ROR version that had been used for patching.
          |${if (backupFolderIsPresent) " - backup catalog is present, but there is no metadata file" else " - there is no backup catalog"}
-         |${patchedJarFiles.map(f => s" - file ${f.name} was patched by ROR ${f.patchedByRorVersion}").mkString("\n")}""".stripMargin)
+         |${patchedJarFiles.sortBy(_.name).map(f => s" - file ${f.name} was patched by ROR ${f.patchedByRorVersion}").mkString("\n")}""".stripMargin)
 
   final case class IllegalFileModificationsDetectedInPatchedFilesError(files: List[os.Path])
     extends RorToolsError(s"Elasticsearch was patched, but files ${files.map(_.toString).mkString(",")} were modified after patching")

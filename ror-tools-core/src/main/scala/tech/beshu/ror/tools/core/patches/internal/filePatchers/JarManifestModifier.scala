@@ -22,56 +22,41 @@ import tech.beshu.ror.tools.core.utils.EsDirectory
 import java.util.UUID
 import java.util.jar.{JarFile, JarOutputStream}
 import scala.jdk.CollectionConverters.IteratorHasAsScala
-import scala.util.{Failure, Success, Try}
+import scala.util.Using
 
 object JarManifestModifier {
 
   private val patchedByRorVersionPropertyName = "Patched-By-Ror-Version"
 
   def addPatchedByRorVersionProperty(file: File, rorVersion: String): Unit = {
-    val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
-    val jarFile = new JarFile(file.toJava)
-
-    val manifest = jarFile.getManifest
-    manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
-    val jarOutput = new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)
-
-    try {
-      jarFile.entries().asIterator().asScala.foreach { entry =>
-        val name = entry.getName
-        // Skip manifest — it's already written
-        if (!name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
-          jarOutput.putNextEntry(entry)
-          val in = jarFile.getInputStream(entry)
-          in.transferTo(jarOutput)
-          in.close()
-          jarOutput.closeEntry()
+    Using(new JarFile(file.toJava)) { jarFile =>
+      val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
+      val manifest = jarFile.getManifest
+      manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
+      Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
+        jarFile.entries().asIterator().asScala.foreach { entry =>
+          val name = entry.getName
+          // Skip manifest — it's already written in the JarOutputStream
+          if (!name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
+            jarOutput.putNextEntry(entry)
+            val in = jarFile.getInputStream(entry)
+            in.transferTo(jarOutput)
+            in.close()
+            jarOutput.closeEntry()
+          }
         }
-      }
-
-      val copyOptions: File.CopyOptions = File.CopyOptions(overwrite = true)
-      jarOutput.close()
-      tempJarFile.moveTo(file)(copyOptions)
-    } finally {
-      jarFile.close()
-    }
+      }.getOrElse(throw new IllegalStateException(s"Could not copy content of jar file ${file.name}"))
+      tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
+    }.getOrElse(throw new IllegalStateException(s"Could not add ROR version to jar file ${file.name}"))
   }
 
   def findPatchedFiles(esDirectory: EsDirectory): List[PatchedJarFile] = {
     val directory = File(esDirectory.modulesPath.wrapped)
     directory.walk().filter(_.name.endsWith(".jar")).toList.flatMap { file =>
-      Try(new JarFile(file.toJava)) match {
-        case Success(jarFile) =>
-          try {
-            val rorVersion = Option(jarFile.getManifest.getMainAttributes.getValue(patchedByRorVersionPropertyName))
-            rorVersion.map(PatchedJarFile(file.name, _))
-          } finally {
-            jarFile.close()
-          }
-        case Failure(exception) =>
-          Console.err.println(s"Could not read jar file ${file.name}, $exception")
-          None
-      }
+      Using(new JarFile(file.toJava)) { jarFile =>
+        val rorVersion = Option(jarFile.getManifest.getMainAttributes.getValue(patchedByRorVersionPropertyName))
+        rorVersion.map(PatchedJarFile(file.name, _))
+      }.toOption.flatten
     }
   }
 
