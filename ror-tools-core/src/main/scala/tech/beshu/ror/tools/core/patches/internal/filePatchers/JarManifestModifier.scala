@@ -20,7 +20,7 @@ import better.files.*
 import tech.beshu.ror.tools.core.utils.EsDirectory
 
 import java.util.UUID
-import java.util.jar.{JarEntry, JarFile, JarOutputStream}
+import java.util.jar.{JarFile, JarOutputStream}
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.util.{Failure, Success, Try}
 
@@ -41,8 +41,7 @@ object JarManifestModifier {
         val name = entry.getName
         // Skip manifest — it's already written
         if (!name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
-          val newEntry = new JarEntry(name)
-          jarOutput.putNextEntry(newEntry)
+          jarOutput.putNextEntry(entry)
           val in = jarFile.getInputStream(entry)
           in.transferTo(jarOutput)
           in.close()
