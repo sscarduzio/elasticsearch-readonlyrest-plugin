@@ -50,9 +50,9 @@ object JarManifestModifier {
       }
 
       val copyOptions: File.CopyOptions = File.CopyOptions(overwrite = true)
+      jarOutput.close()
       tempJarFile.moveTo(file)(copyOptions)
     } finally {
-      jarOutput.close()
       jarFile.close()
     }
   }
