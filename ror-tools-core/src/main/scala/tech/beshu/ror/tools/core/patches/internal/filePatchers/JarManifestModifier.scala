@@ -26,29 +26,41 @@ import scala.util.{Failure, Success, Try}
 
 object JarManifestModifier {
 
-  val patchedByRorVersionPropertyName = "Patched-By-Ror-Version"
+  private val patchedByRorVersionPropertyName = "Patched-By-Ror-Version"
 
   def addPatchedByRorVersionProperty(jarFile: File, rorVersion: String): Unit = {
     val originalJar = new JarFile(jarFile.toJava)
-    val manifest = new Manifest(originalJar.getManifest)
-    manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
-    val tempJarFile = Files.createTempFile("updated-", ".jar").toFile
-    val jos = new JarOutputStream(new FileOutputStream(tempJarFile), manifest)
-    val entries = originalJar.entries()
-    while (entries.hasMoreElements) {
-      val entry = entries.nextElement()
-      if (!entry.getName.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
-        val newEntry = new java.util.zip.ZipEntry(entry.getName)
-        jos.putNextEntry(newEntry)
-        val is = originalJar.getInputStream(entry)
-        is.transferTo(jos)
-        is.close()
-        jos.closeEntry()
+
+    try {
+      // Modify manifest
+      val manifest = new Manifest(originalJar.getManifest)
+      manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
+
+      // Create temp jar
+      val tempJarFile = Files.createTempFile("updated-", ".jar").toFile
+
+      // Copy modified manifest to temp jar
+      val jos = new JarOutputStream(new FileOutputStream(tempJarFile), manifest)
+
+      // Copy all other files to temp jar
+      val entries = originalJar.entries()
+      while (entries.hasMoreElements) {
+        val entry = entries.nextElement()
+        if (!entry.getName.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
+          val newEntry = new java.util.zip.ZipEntry(entry.getName)
+          jos.putNextEntry(newEntry)
+          val is = originalJar.getInputStream(entry)
+          is.transferTo(jos)
+          is.close()
+          jos.closeEntry()
+        }
       }
+
+      jos.close()
+      Files.move(tempJarFile.toPath, jarFile.toJava.toPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    } finally {
+      originalJar.close()
     }
-    jos.close()
-    originalJar.close()
-    Files.move(tempJarFile.toPath, jarFile.toJava.toPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
   }
 
   def findPatchedFiles(esDirectory: EsDirectory): List[PatchedJarFile] = {
@@ -59,8 +71,7 @@ object JarManifestModifier {
           val rorVersion = Option(jarFile.getManifest.getMainAttributes.getValue(patchedByRorVersionPropertyName))
           rorVersion.map(PatchedJarFile(file.name, _))
         case Failure(exception) =>
-          Console.err.println(file)
-          Console.err.println(exception)
+          Console.err.println(s"Could not read jar file ${file.name}, $exception")
           None
       }
     }

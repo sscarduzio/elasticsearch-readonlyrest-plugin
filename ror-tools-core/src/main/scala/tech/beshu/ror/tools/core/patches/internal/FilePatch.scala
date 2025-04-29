@@ -66,7 +66,6 @@ private[patches] abstract class FileModifiersBasedPatch(val rorPluginDirectory: 
 object FileModifiersBasedPatch {
   def addPatchedByRorVersionPropertyToJarManifest(rorPluginDirectory: RorPluginDirectory,
                                                   fileToPatchPath: Path): Unit = {
-    // We add additional property to the MANIFEST file of the jar
     if (fileToPatchPath.toString.endsWith(".jar")) {
       JarManifestModifier.addPatchedByRorVersionProperty(
         File(fileToPatchPath.wrapped),
