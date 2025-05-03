@@ -38,7 +38,7 @@ dependencyCheck {
        Critical 9.0-10.0
      */
     failBuildOnCVSS = 3
-    suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
+    suppressionFiles = ["${project.rootDir}/suppressions_cve.xml"]
 }
 
 configurations {
