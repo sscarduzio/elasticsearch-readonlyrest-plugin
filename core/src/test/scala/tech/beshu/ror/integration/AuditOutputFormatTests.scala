@@ -133,19 +133,21 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   }
 
   private def auditedAcl(auditSinkService: AuditSinkService) = {
-    implicit val loggingContext: LoggingContext = LoggingContext(Set.empty, testEsNodeConfig)
+    implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
     val settings = AuditingTool.Settings(
       NonEmptyList.of(
         AuditSink.Enabled(Config.EsIndexBasedSink(
           new DefaultAuditLogSerializer,
           RorAuditIndexTemplate.default,
-          AuditCluster.LocalAuditCluster
+          AuditCluster.LocalAuditCluster,
+          enableReportingEsNodeDetails = false,
         ))
       )
     )
     val auditingTool = AuditingTool.create(
       settings = settings,
-      auditSinkServiceCreator = _ => auditSinkService
+      auditSinkServiceCreator = _ => auditSinkService,
+      esNodeConfig = testEsNodeConfig,
     ).get
     new AccessControlListLoggingDecorator(acl, Some(auditingTool))
   }

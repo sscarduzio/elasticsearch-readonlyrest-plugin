@@ -135,10 +135,12 @@ object AuditingSettingsDecoder extends Logging {
         auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
         customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
         remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
+        enableReportingEsNodeDetails <- c.downField("enableReportingEsNodeDetails").as[Option[Boolean]]
       } yield EsIndexBasedSink(
         customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
         auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
-        remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster)
+        remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
+        enableReportingEsNodeDetails.getOrElse(EsIndexBasedSink.default.enableReportingEsNodeDetails)
       )
     }
 
@@ -230,13 +232,15 @@ object AuditingSettingsDecoder extends Logging {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)("index_template", fallbackKey = "audit_index_template")
           customAuditSerializer <- decodeOptionalSetting[AuditLogSerializer](c)("serializer", fallbackKey = "audit_serializer")
           remoteAuditCluster <- decodeOptionalSetting[AuditCluster.RemoteAuditCluster](c)("cluster", fallbackKey = "audit_cluster")
+          enableReportingEsNodeDetails <- c.downField("enableReportingEsNodeDetails").as[Option[Boolean]]
         } yield AuditingTool.Settings(
           auditSinks = NonEmptyList.one(
             AuditSink.Enabled(
               EsIndexBasedSink(
                 logSerializer = customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
                 rorAuditIndexTemplate = auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
-                auditCluster = remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster)
+                auditCluster = remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
+                enableReportingEsNodeDetails = enableReportingEsNodeDetails.getOrElse(EsIndexBasedSink.default.enableReportingEsNodeDetails),
               )
             )
           )

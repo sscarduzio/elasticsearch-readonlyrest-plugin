@@ -67,7 +67,7 @@ import scala.util.{Failure, Success}
 
 object TestsUtils {
 
-  implicit val loggingContext: LoggingContext = LoggingContext(Set.empty, testEsNodeConfig)
+  implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
   val rorYamlParser = new RorYamlParser(Megabytes(3))
 
   def basicAuthHeader(value: String): Header =

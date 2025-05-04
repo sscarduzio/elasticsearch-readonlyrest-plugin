@@ -214,7 +214,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createEngine(httpClientsFactory: AsyncHttpClientsFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                            core: Core) = {
-    implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders, esNodeConfig)
+    implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
     val auditingTool = createAuditingTool(core)
 
     val decoratedCore = Core(
@@ -236,7 +236,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Option[AuditingTool] = {
     core.rorConfig.auditingSettings
-      .flatMap(settings => AuditingTool.create(settings, auditSinkCreator)(environmentConfig.clock, loggingContext))
+      .flatMap(settings => AuditingTool.create(settings, esNodeConfig, auditSinkCreator)(environmentConfig.clock, loggingContext))
   }
 
   private def inspectFlsEngine(engine: Engine): Unit = {
@@ -301,7 +301,7 @@ object ReadonlyRest {
              esNodeConfig: EsNodeConfig)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
-    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(esNodeConfig)
+    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory()
     create(coreFactory, indexContentService, auditSinkCreator, env, esNodeConfig)
   }
 

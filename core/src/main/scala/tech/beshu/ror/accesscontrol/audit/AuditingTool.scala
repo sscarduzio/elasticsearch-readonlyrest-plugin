@@ -23,6 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.{Disabled, Enabled}
+import tech.beshu.ror.accesscontrol.audit.EsIndexBasedAuditSink.EsNodeDetailsReporting
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
@@ -31,6 +32,7 @@ import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
+import tech.beshu.ror.configuration.EsNodeConfig
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.implicits.*
 
@@ -152,12 +154,14 @@ object AuditingTool extends Logging {
       object Config {
         final case class EsIndexBasedSink(logSerializer: AuditLogSerializer,
                                           rorAuditIndexTemplate: RorAuditIndexTemplate,
-                                          auditCluster: AuditCluster) extends Config
+                                          auditCluster: AuditCluster,
+                                          enableReportingEsNodeDetails: Boolean) extends Config
         object EsIndexBasedSink {
           val default: EsIndexBasedSink = EsIndexBasedSink(
             logSerializer = new DefaultAuditLogSerializer,
             rorAuditIndexTemplate = RorAuditIndexTemplate.default,
-            auditCluster = AuditCluster.LocalAuditCluster
+            auditCluster = AuditCluster.LocalAuditCluster,
+            enableReportingEsNodeDetails = false,
           )
         }
 
@@ -174,10 +178,11 @@ object AuditingTool extends Logging {
   }
 
   def create(settings: Settings,
+             esNodeConfig: EsNodeConfig,
              auditSinkServiceCreator: AuditCluster => AuditSinkService)
             (implicit clock: Clock,
              loggingContext: LoggingContext): Option[AuditingTool] = {
-    createAuditSinks(settings, auditSinkServiceCreator) match {
+    createAuditSinks(settings, esNodeConfig, auditSinkServiceCreator) match {
       case Some(auditSinks) =>
         implicit val auditSinkShow: Show[BaseAuditSink] = Show.show {
           case _: EsIndexBasedAuditSink => "index"
@@ -192,14 +197,18 @@ object AuditingTool extends Logging {
   }
 
   private def createAuditSinks(settings: Settings,
+                               esNodeConfig: EsNodeConfig,
                                auditSinkServiceCreator: AuditCluster => AuditSinkService)
                               (implicit clock: Clock): Option[NonEmptyList[BaseAuditSink]] = {
     settings
       .auditSinks
       .toList
       .flatMap {
-        case Enabled(AuditSink.Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, auditCluster)) =>
-          EsIndexBasedAuditSink(logSerializer, rorAuditIndexTemplate, auditSinkServiceCreator(auditCluster)).some
+        case Enabled(AuditSink.Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, auditCluster, enableReportingEsNodeDetails)) =>
+          val esNodeDetailsReporting =
+            if (enableReportingEsNodeDetails) EsNodeDetailsReporting.Enabled(esNodeConfig)
+            else EsNodeDetailsReporting.Disabled
+          EsIndexBasedAuditSink(logSerializer, rorAuditIndexTemplate, auditSinkServiceCreator(auditCluster), esNodeDetailsReporting).some
         case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName)) =>
           new LogBasedAuditSink(serializer, loggerName).some
         case Disabled =>

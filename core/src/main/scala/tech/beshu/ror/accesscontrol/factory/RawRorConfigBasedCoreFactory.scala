@@ -49,7 +49,7 @@ import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
-import tech.beshu.ror.configuration.{EnvironmentConfig, EsNodeConfig, RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -66,7 +66,7 @@ trait CoreFactory {
                      mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
 }
 
-class RawRorConfigBasedCoreFactory(esNodeConfig: EsNodeConfig)
+class RawRorConfigBasedCoreFactory()
                                   (implicit environmentConfig: EnvironmentConfig)
   extends CoreFactory with Logging {
 
@@ -340,7 +340,7 @@ class RawRorConfigBasedCoreFactory(esNodeConfig: EsNodeConfig)
         ))
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocksNel <- {
-          implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders, esNodeConfig)
+          implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
           implicit val blockAsyncDecoder: AsyncDecoder[BlockDecodingResult] = AsyncDecoderCreator.from {
             blockDecoder(
               DefinitionsPack(
