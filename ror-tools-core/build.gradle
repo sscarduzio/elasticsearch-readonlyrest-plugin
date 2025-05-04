@@ -38,7 +38,7 @@ dependencyCheck {
      */
     failBuildOnCVSS = 3
     scanConfigurations = ['runtimeClasspath']
-    suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
+    suppressionFiles = ["${project.rootDir}/suppressions_cve.xml"]
 }
 
 test {

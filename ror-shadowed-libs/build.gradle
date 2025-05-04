@@ -16,8 +16,8 @@
  */
 
 plugins {
-    id "com.github.johnrengelman.shadow" version "8.1.1"
-    id "org.owasp.dependencycheck"       version "8.4.3"
+    id "com.gradleup.shadow"        version "8.3.6"
+    id "org.owasp.dependencycheck"  version "8.4.3"
     id "java"
     id "maven-publish"
 }
@@ -38,7 +38,7 @@ dependencyCheck {
        Critical 9.0-10.0
      */
     failBuildOnCVSS = 3
-    suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
+    suppressionFiles = ["${project.rootDir}/suppressions_cve.xml"]
 }
 
 configurations {
@@ -53,9 +53,9 @@ java {
 }
 
 dependencies {
-    shadowCompile group: 'com.fasterxml.jackson.dataformat',      name: 'jackson-dataformat-yaml',                version: '2.13.5'
-    shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.13.5'
-    shadowCompile group: 'org.yaml',                              name: 'snakeyaml',                              version: '2.2'
+    shadowCompile group: 'com.fasterxml.jackson.dataformat',      name: 'jackson-dataformat-yaml',                version: '2.19.0'
+    shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.19.0'
+    shadowCompile group: 'org.yaml',                              name: 'snakeyaml',                              version: '2.4'
     shadowCompile(group: 'com.jayway.jsonpath',                   name: 'json-path',                              version: '2.9.0') {
         exclude group: 'net.minidev'
     }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.1.xsd">
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
     <suppress>
         <notes><![CDATA[
    file name: circe-refined_2.13-0.14.4.jar
@@ -123,5 +123,72 @@
    ]]></notes>
         <sha1>b98c202808e209a8d691981f9b956d3cf37a4351</sha1>
         <cve>CVE-2023-35116</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: elasticsearch-rest-client-7.10.2.jar - provided dependency, rest-client is used to send only predefined requests (audit)
+   ]]></notes>
+        <sha1>d0c857275bcec532079cdabb7913e2611c123e70</sha1>
+        <cve>CVE-2021-22145</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: elasticsearch-rest-client-X.Y.Z.jar - The CVEs affect the org.elasticserarch:elasticsearch package, which is not a dependency of elasticsearch-rest-client
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.elasticsearch\.client/elasticsearch-rest-client@.*$</packageUrl>
+        <cve>CVE-2019-7614</cve>
+        <cve>CVE-2019-7619</cve>
+        <cve>CVE-2020-7009</cve>
+        <cve>CVE-2020-7014</cve>
+        <cve>CVE-2020-7019</cve>
+        <cve>CVE-2020-7020</cve>
+        <cve>CVE-2020-7021</cve>
+        <cve>CVE-2021-22132</cve>
+        <cve>CVE-2021-22134</cve>
+        <cve>CVE-2021-22144</cve>
+        <cve>CVE-2021-22147</cve>
+        <cve>CVE-2021-37937</cve>
+        <cve>CVE-2022-23712</cve>
+        <cve>CVE-2023-31417</cve>
+        <cve>CVE-2023-31418</cve>
+        <cve>CVE-2023-31419</cve>
+        <cve>CVE-2023-46673</cve>
+        <cve>CVE-2023-46674</cve>
+        <cve>CVE-2023-49921</cve>
+        <cve>CVE-2024-23444</cve>
+        <cve>CVE-2024-23449</cve>
+        <cve>CVE-2024-23450</cve>
+        <cve>CVE-2024-23451</cve>
+        <cve>CVE-2024-37280</cve>
+        <cve>CVE-2024-43709</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: transport-netty4-client-X.Y.Z.jar - The CVEs affect the org.elasticserarch:elasticsearch package, which is not a dependency of transport-netty4-client
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.elasticsearch\.plugin/transport-netty4-client@.*$</packageUrl>
+        <cve>CVE-2019-7614</cve>
+        <cve>CVE-2019-7619</cve>
+        <cve>CVE-2020-7009</cve>
+        <cve>CVE-2020-7014</cve>
+        <cve>CVE-2020-7019</cve>
+        <cve>CVE-2020-7020</cve>
+        <cve>CVE-2020-7021</cve>
+        <cve>CVE-2021-22132</cve>
+        <cve>CVE-2021-22134</cve>
+        <cve>CVE-2021-22144</cve>
+        <cve>CVE-2021-22145</cve>
+        <cve>CVE-2021-22147</cve>
+        <cve>CVE-2021-37937</cve>
+        <cve>CVE-2023-31417</cve>
+        <cve>CVE-2023-31418</cve>
+        <cve>CVE-2023-31419</cve>
+        <cve>CVE-2023-46673</cve>
+        <cve>CVE-2023-46674</cve>
+        <cve>CVE-2023-49921</cve>
+        <cve>CVE-2024-23444</cve>
+        <cve>CVE-2024-23450</cve>
+        <cve>CVE-2024-23451</cve>
+        <cve>CVE-2024-43709</cve>
     </suppress>
 </suppressions>
