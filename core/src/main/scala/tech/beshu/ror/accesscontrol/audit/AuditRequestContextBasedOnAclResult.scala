@@ -30,7 +30,7 @@ import tech.beshu.ror.audit.{AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
 
 import java.time.Instant
-import scala.collection.immutable.Set as ScalaSet
+import scala.collection.immutable.{Set => ScalaSet}
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
                                                                             userMetadata: Option[UserMetadata],
