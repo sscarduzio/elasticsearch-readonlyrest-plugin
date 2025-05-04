@@ -5,6 +5,7 @@ readonlyrest:
     outputs:
       - type: index
         index_template: "'audit_index'"
+        enable_reporting_es_node_details: true
 
   access_control_rules:
 

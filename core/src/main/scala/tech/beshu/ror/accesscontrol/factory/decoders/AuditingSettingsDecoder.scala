@@ -135,7 +135,7 @@ object AuditingSettingsDecoder extends Logging {
         auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
         customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
         remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
-        enableReportingEsNodeDetails <- c.downField("enableReportingEsNodeDetails").as[Option[Boolean]]
+        enableReportingEsNodeDetails <- c.downField("enable_reporting_es_node_details").as[Option[Boolean]]
       } yield EsIndexBasedSink(
         customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
         auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
@@ -232,7 +232,7 @@ object AuditingSettingsDecoder extends Logging {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)("index_template", fallbackKey = "audit_index_template")
           customAuditSerializer <- decodeOptionalSetting[AuditLogSerializer](c)("serializer", fallbackKey = "audit_serializer")
           remoteAuditCluster <- decodeOptionalSetting[AuditCluster.RemoteAuditCluster](c)("cluster", fallbackKey = "audit_cluster")
-          enableReportingEsNodeDetails <- c.downField("enableReportingEsNodeDetails").as[Option[Boolean]]
+          enableReportingEsNodeDetails <- c.downField("enable_reporting_es_node_details").as[Option[Boolean]]
         } yield AuditingTool.Settings(
           auditSinks = NonEmptyList.one(
             AuditSink.Enabled(
