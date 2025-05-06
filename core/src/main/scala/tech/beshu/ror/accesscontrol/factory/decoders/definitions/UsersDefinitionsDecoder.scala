@@ -89,7 +89,9 @@ object UsersDefinitionsDecoder {
           } yield UserDef(usernamePatterns, mode)
         }
         .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
-    DefinitionsBaseDecoder.instance[Id, UserDef]("users").emapE(validate)
+    DefinitionsBaseDecoder
+      .instance[Id, UserDef]("users")
+      .emapE(validate(globalSettings, _))
   }
 
   private implicit val userIdPatternsDecoder: Decoder[UserIdPatterns] =
@@ -230,8 +232,10 @@ object UsersDefinitionsDecoder {
 
   private def decodingFailure(msg: Message) = DecodingFailureOps.fromError(DefinitionsLevelCreationError(msg))
 
-  private def validate(definitions: Definitions[UserDef]): Either[CoreCreationError, Definitions[UserDef]] = {
-    UserDefinitionsValidator.validate(definitions)
+  private def validate(globalSettings: GlobalSettings,
+                       definitions: Definitions[UserDef]): Either[CoreCreationError, Definitions[UserDef]] = {
+    new UserDefinitionsValidator(globalSettings)
+      .validate(definitions)
       .leftMap { validationErrors =>
         val cause = validationErrors.map(toErrorMessage).toList.mkString(",")
         DefinitionsLevelCreationError(Message(s"The `users` definition is malformed: $cause"))
