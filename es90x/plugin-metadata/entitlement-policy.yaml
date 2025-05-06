@@ -1,6 +1,6 @@
 ALL-UNNAMED:
   - files:
-      - relative_path: .
+      - relative_path: ../
         relative_to: config
         mode: read
   - manage_threads

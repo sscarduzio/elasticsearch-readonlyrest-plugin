@@ -31,6 +31,7 @@ private[patches] class Es818xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new EntitlementJarPatchCreator(
+      new ModifyEntitlementInitializationClass(esVersion),
       ModifyEntitlementRuntimePolicyParserClass,
     ),
     new XPackCoreJarPatchCreator(
