@@ -34,17 +34,7 @@ object JarManifestModifier {
       val manifest = jarFile.getManifest
       manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
       Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
-        jarFile.entries().asIterator().asScala.foreach { entry =>
-          val name = entry.getName
-          // Skip manifest — it's already written in the JarOutputStream
-          if (!name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
-            jarOutput.putNextEntry(entry)
-            val in = jarFile.getInputStream(entry)
-            in.transferTo(jarOutput)
-            in.close()
-            jarOutput.closeEntry()
-          }
-        }
+        copyJarContentExceptManifestFile(jarFile, jarOutput)
       }.getOrElse(throw new IllegalStateException(s"Could not copy content of jar file ${file.name}"))
       tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
     }.getOrElse(throw new IllegalStateException(s"Could not add ROR version to jar file ${file.name}"))
@@ -61,5 +51,18 @@ object JarManifestModifier {
   }
 
   final case class PatchedJarFile(name: String, patchedByRorVersion: String)
+
+  private def copyJarContentExceptManifestFile(originalJarFile: JarFile, jarOutput: JarOutputStream): Unit = {
+    originalJarFile.entries().asIterator().asScala.foreach { entry =>
+      val name = entry.getName
+      if (!name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
+        jarOutput.putNextEntry(entry)
+        val in = originalJarFile.getInputStream(entry)
+        in.transferTo(jarOutput)
+        in.close()
+        jarOutput.closeEntry()
+      }
+    }
+  }
 
 }

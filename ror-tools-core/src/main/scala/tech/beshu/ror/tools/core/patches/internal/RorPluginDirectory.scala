@@ -22,7 +22,7 @@ import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
 import tech.beshu.ror.tools.core.utils.EsDirectory
-import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readEsVersion, readonlyrestPluginPath}
+import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
 
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
@@ -61,15 +61,12 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     findTransportNetty4JarIn(rorPath)
   }
 
-  def readPatchedByRorVersion(): Option[String] = {
-    readEsPatchMetadata().map(_.rorVersion)
-  }
-
   def readEsPatchMetadata(): Option[EsPatchMetadata] = {
     if (os.exists(patchMetadataFilePath)) {
-      EsPatchMetadataCodec.decode(readFile(patchMetadataFilePath)) match {
+      val metadataContent = os.read(patchMetadataFilePath)
+      EsPatchMetadataCodec.decode(metadataContent) match {
         case Right(metadata) => Some(metadata)
-        case Left(error) => throw new IllegalStateException(s"Cannot decode ROR patch metadata file: $error")
+        case Left(error) => throw new IllegalStateException(s"Cannot decode ROR patch metadata file: $error. File content: [$metadataContent]")
       }
     } else None
   }
@@ -78,7 +75,7 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     lazy val fileContent = EsPatchMetadataCodec.encode(
       EsPatchMetadata(
         rorVersion = readCurrentRorVersion(),
-        esVersion = readEsVersion(esDirectory),
+        esVersion = esDirectory.readEsVersion(),
         patchedFilesMetadata = items,
       )
     )
@@ -97,8 +94,6 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
       .headOption
       .getOrElse(throw new IllegalStateException(s"Cannot read ROR version from ${pluginPropertiesFilePath}"))
   }
-
-  private def readFile(path: Path): String = os.read(path)
 
 }
 

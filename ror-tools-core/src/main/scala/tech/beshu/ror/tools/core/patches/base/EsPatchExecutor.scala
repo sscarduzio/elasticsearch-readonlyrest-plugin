@@ -16,13 +16,14 @@
  */
 package tech.beshu.ror.tools.core.patches.base
 
+import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus.*
+import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.PatchProblem.*
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.JarManifestModifier
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.JarManifestModifier.PatchedJarFile
-import tech.beshu.ror.tools.core.utils.EsUtil.readEsVersion
 import tech.beshu.ror.tools.core.utils.RorToolsError.*
 import tech.beshu.ror.tools.core.utils.{EsDirectory, FileUtils, InOut, RorToolsError}
 
@@ -34,55 +35,36 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
 
   def patch(): Either[RorToolsError, Unit] = {
     checkWithPatchedByFileAndEsPatch() match {
-      case PatchedWithCurrentRorVersion(rorVersion) =>
-        Left(EsAlreadyPatchedError(rorVersion))
-      case PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>
-        Left(PatchPerformedOnOtherEsVersionError(currentEsVersion, patchPerformedOnEsVersion))
-      case PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
-        Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
-      case CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
-        Left(CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles))
-      case IllegalFileModificationsDetectedInPatchedFiles(invalidFiles) =>
-        Left(IllegalFileModificationsDetectedInPatchedFilesError(invalidFiles))
       case NotPatched =>
         doPatch()
+      case PatchedWithCurrentRorVersion(rorVersion) =>
+        Left(EsAlreadyPatchedError(rorVersion))
+      case PatchProblemDetected(patchProblem) =>
+        Left(patchProblem.rorToolsError)
     }
 
   }
 
   def restore(): Either[RorToolsError, Unit] = {
     checkWithPatchedByFileAndEsPatch() match {
-      case PatchedWithCurrentRorVersion(_) =>
-        inOut.println("Elasticsearch is currently patched, restoring ...")
-        doRestore()
-      case PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>
-        Left(PatchPerformedOnOtherEsVersionError(currentEsVersion, patchPerformedOnEsVersion))
-      case PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
-        Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
       case NotPatched =>
         Left(EsNotPatchedError)
-      case IllegalFileModificationsDetectedInPatchedFiles(files) =>
-        Left(IllegalFileModificationsDetectedInPatchedFilesError(files))
-      case CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
-        Left(CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles))
+      case PatchedWithCurrentRorVersion(_) =>
+        doRestore()
+      case PatchProblemDetected(patchProblem) =>
+        Left(patchProblem.rorToolsError)
     }
   }
 
   def verify(): Either[RorToolsError, Unit] = {
     checkWithPatchedByFileAndEsPatch() match {
+      case NotPatched =>
+        Left(EsNotPatchedError)
       case PatchedWithCurrentRorVersion(_) =>
         inOut.println("Elasticsearch is patched! ReadonlyREST can be used")
         Right(())
-      case CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
-        Left(CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles))
-      case PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>
-        Left(PatchPerformedOnOtherEsVersionError(currentEsVersion, patchPerformedOnEsVersion))
-      case PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
-        Left(EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion))
-      case IllegalFileModificationsDetectedInPatchedFiles(invalidFiles) =>
-        Left(IllegalFileModificationsDetectedInPatchedFilesError(invalidFiles))
-      case NotPatched =>
-        Left(EsNotPatchedError)
+      case PatchProblemDetected(patchProblem) =>
+        Left(patchProblem.rorToolsError)
     }
   }
 
@@ -103,6 +85,7 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
   }
 
   private def doRestore() = {
+    inOut.println("Elasticsearch is currently patched, restoring ...")
     Try(esPatch.performRestore()) match {
       case Success(()) =>
         Right(inOut.println("Elasticsearch is unpatched! ReadonlyREST can be removed now"))
@@ -125,37 +108,46 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
   private def checkWithPatchedByFileAndEsPatch(): EsPatchStatus = {
     inOut.println("Checking if Elasticsearch is patched ...")
     val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
-    val currentEsVersion = readEsVersion(rorPluginDirectory.esDirectory)
+    val currentEsVersion = rorPluginDirectory.esDirectory.readEsVersion()
     rorPluginDirectory.readEsPatchMetadata() match {
-      case Some(metadata) if metadata.rorVersion == currentRorVersion && metadata.esVersion.major == currentEsVersion.major =>
+      case Some(metadata) if metadata.rorVersion == currentRorVersion && equalsIgnoringPatch(metadata.esVersion, currentEsVersion) =>
         validatePatchedFiles(metadata.patchedFilesMetadata) match {
           case Right(()) =>
             PatchedWithCurrentRorVersion(currentRorVersion)
           case Left(invalidFiles) =>
-            IllegalFileModificationsDetectedInPatchedFiles(invalidFiles)
+            PatchProblemDetected(CorruptedPatchWithIllegalFileModificationsDetected(invalidFiles))
         }
-      case Some(metadata) if metadata.rorVersion == currentRorVersion && !(metadata.esVersion.major == currentEsVersion.major) =>
-        PatchPerformedOnOtherEsVersion(currentEsVersion.render, metadata.esVersion.render)
+      case Some(metadata) if metadata.rorVersion == currentRorVersion && !equalsIgnoringPatch(metadata.esVersion, currentEsVersion) =>
+        PatchProblemDetected(PatchPerformedOnOtherEsVersion(currentEsVersion.render, metadata.esVersion.render))
       case Some(metadata) =>
-        PatchedWithOtherRorVersion(currentRorVersion, metadata.rorVersion)
+        PatchProblemDetected(PatchedWithOtherRorVersion(currentRorVersion, metadata.rorVersion))
       case None =>
-        // It is the situation, when the metadata file does not exist.
-        // In that case we perform additional checks, in order to detect corrupted patch:
-        // - we check whether the backup folder exists
-        // - we search for any patched jar files
-        val backupFolderExists = rorPluginDirectory.doesBackupFolderExist
-        val patchedJarFiles = searchForPatchedJarFiles() match {
-          case Left(files) => Some(files)
-          case Right(()) => None
-        }
-        if (backupFolderExists || patchedJarFiles.nonEmpty) {
-          CorruptedPatchWithoutValidMetadata(
-            backupFolderIsPresent = backupFolderExists,
-            patchedJarFiles = patchedJarFiles.getOrElse(List.empty)
-          )
-        }
-        else NotPatched
+        checkSuspectedCorruptedPatchState()
     }
+  }
+
+  private def equalsIgnoringPatch(first: SemVer, second: SemVer) =
+    first.major == second.major && first.minor == second.minor
+
+  private def checkSuspectedCorruptedPatchState(): EsPatchStatus = {
+    // It is the situation, when the metadata file does not exist.
+    // In that case we perform additional checks, in order to detect corrupted patch:
+    // - we check whether the backup folder exists
+    // - we search for any patched jar files
+    val backupFolderExists = rorPluginDirectory.doesBackupFolderExist
+    val patchedJarFiles = searchForPatchedJarFiles() match {
+      case Left(files) => Some(files)
+      case Right(()) => None
+    }
+    if (backupFolderExists || patchedJarFiles.nonEmpty) {
+      PatchProblemDetected(
+        CorruptedPatchWithoutValidMetadata(
+          backupFolderIsPresent = backupFolderExists,
+          patchedJarFiles = patchedJarFiles.getOrElse(List.empty)
+        )
+      )
+    }
+    else NotPatched
   }
 
   private def validatePatchedFiles(patchedFilesMetadata: List[FilePatchMetadata]): Either[List[os.Path], Unit] = {
@@ -182,17 +174,36 @@ object EsPatchExecutor {
   sealed trait EsPatchStatus
 
   object EsPatchStatus {
+    case object NotPatched extends EsPatchStatus
+
     final case class PatchedWithCurrentRorVersion(currentRorVersion: String) extends EsPatchStatus
 
-    final case class PatchPerformedOnOtherEsVersion(currentEsVersion: String, patchPerformedOnEsVersion: String) extends EsPatchStatus
+    final case class PatchProblemDetected(patchProblem: PatchProblem) extends EsPatchStatus
+  }
 
-    final case class PatchedWithOtherRorVersion(currentRorVersion: String, patchedByRorVersion: String) extends EsPatchStatus
+  sealed trait PatchProblem
 
-    final case class CorruptedPatchWithoutValidMetadata(backupFolderIsPresent: Boolean, patchedJarFiles: List[PatchedJarFile]) extends EsPatchStatus
+  object PatchProblem {
+    final case class PatchPerformedOnOtherEsVersion(currentEsVersion: String, patchPerformedOnEsVersion: String) extends PatchProblem
 
-    final case class IllegalFileModificationsDetectedInPatchedFiles(files: List[os.Path]) extends EsPatchStatus
+    final case class PatchedWithOtherRorVersion(currentRorVersion: String, patchedByRorVersion: String) extends PatchProblem
 
-    case object NotPatched extends EsPatchStatus
+    final case class CorruptedPatchWithoutValidMetadata(backupFolderIsPresent: Boolean, patchedJarFiles: List[PatchedJarFile]) extends PatchProblem
+
+    final case class CorruptedPatchWithIllegalFileModificationsDetected(files: List[os.Path]) extends PatchProblem
+  }
+
+  implicit class PatchProblemOps(patchProblem: PatchProblem) {
+    def rorToolsError: RorToolsError = patchProblem match {
+      case PatchProblem.PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>
+        PatchPerformedOnOtherEsVersionError(currentEsVersion, patchPerformedOnEsVersion)
+      case PatchProblem.PatchedWithOtherRorVersion(expectedRorVersion, patchedByRorVersion) =>
+        EsPatchedWithDifferentVersionError(expectedRorVersion, patchedByRorVersion)
+      case PatchProblem.CorruptedPatchWithIllegalFileModificationsDetected(files) =>
+        CorruptedPatchWithIllegalFileModificationsDetectedError(files)
+      case PatchProblem.CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
+        CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles)
+    }
   }
 
   def create(esDirectory: EsDirectory)

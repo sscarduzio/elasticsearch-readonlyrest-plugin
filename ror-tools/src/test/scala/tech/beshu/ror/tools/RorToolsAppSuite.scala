@@ -26,6 +26,7 @@ import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.tools.RorTools.Result
 import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
+import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
 import tech.beshu.ror.tools.core.utils.InOut
 import tech.beshu.ror.tools.utils.{CapturingOutputAndMockingInput, ExampleEsWithRorContainer}
@@ -209,15 +210,10 @@ class RorToolsAppSuite
       )
     }
     "Patching not started because there is a metadata file indicating that the ES is already patched" in {
-      File(backupDirectory.path).createDirectory()
-      patchMetadataFile.createFile()
-      patchMetadataFile.write(
-        EsPatchMetadataCodec.encode(
-          EsPatchMetadata(
-            "0.0.1",
-            SemVer.unsafeParse(esVersionUsed),
-            List.empty)
-        )
+      givenPatchMetadata(
+        rorVersionUsedForPatching = "0.0.1",
+        esVersionThatWasPatched = esVersionUsed,
+        patchedFilesMetadata = List.empty,
       )
 
       val (result, output) = captureResultAndOutput {
@@ -258,15 +254,10 @@ class RorToolsAppSuite
       )
     }
     "Unpatching not started because ES is already patched by different version" in {
-      File(backupDirectory.path).createDirectory()
-      patchMetadataFile.createFile()
-      patchMetadataFile.write(
-        EsPatchMetadataCodec.encode(
-          EsPatchMetadata(
-            "0.0.1",
-            SemVer.unsafeParse(esVersionUsed),
-            List.empty)
-        )
+      givenPatchMetadata(
+        rorVersionUsedForPatching = "0.0.1",
+        esVersionThatWasPatched = esVersionUsed,
+        patchedFilesMetadata = List.empty,
       )
 
       val (result, output) = captureResultAndOutput {
@@ -318,7 +309,7 @@ class RorToolsAppSuite
       )
     }
 
-    "The patch is not detected when metadata file is missing and `verify` command is executed" excludeES(allEs6x, allEs7xBelowEs74x) in {
+    "The patch is not detected when metadata file is missing and `verify` command is executed" in {
       val (patchResult, patchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
       }
@@ -341,7 +332,7 @@ class RorToolsAppSuite
       verifyResultWithoutFile should equal(Result.Failure)
       verifyOutputWithoutFile should include(
         s"""Checking if Elasticsearch is patched ...
-           |ERROR: Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present. In case of problems please try to unpatch using the ROR version that had been used for patching.
+           |ERROR: Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present. In case of problems please try to unpatch using the ROR version that had been used for patching or reinstall ES.
            | - backup catalog is present, but there is no metadata file
            |""".stripMargin
       )
@@ -372,7 +363,7 @@ class RorToolsAppSuite
       verifyResultWithoutFile should equal(Result.Failure)
       verifyOutputWithoutFile should include(
         s"""Checking if Elasticsearch is patched ...
-           |ERROR: Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present. In case of problems please try to unpatch using the ROR version that had been used for patching.
+           |ERROR: Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present. In case of problems please try to unpatch using the ROR version that had been used for patching or reinstall ES.
            | - backup catalog is present, but there is no metadata file
            | - file x-pack-core-9.0.0.jar was patched by ROR ${metadata.rorVersion}
            | - file x-pack-ilm-9.0.0.jar was patched by ROR ${metadata.rorVersion}
@@ -455,11 +446,11 @@ class RorToolsAppSuite
       patchMetadataFile.exists() should be(true)
 
       // Modify expected hash - simulate one of the files being modified
-      val metadata = EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString).toOption.get
-      val lastHash = metadata.patchedFilesMetadata.last
-      val modifiedList = metadata.patchedFilesMetadata.init :+ (lastHash.copy(hash = lastHash.hash + "abc"))
-      val modifiedMetadata = metadata.copy(patchedFilesMetadata = modifiedList)
-      patchMetadataFile.overwrite(EsPatchMetadataCodec.encode(modifiedMetadata))
+      modifyMetadataFile {metadata =>
+        val lastHash = metadata.patchedFilesMetadata.last
+        val modifiedList = metadata.patchedFilesMetadata.init :+ lastHash.copy(hash = lastHash.hash + "abc")
+        metadata.copy(patchedFilesMetadata = modifiedList)
+      }
 
       // Attempt to unpatch
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
@@ -502,9 +493,9 @@ class RorToolsAppSuite
       patchMetadataFile.exists() should be(true)
 
       // Modify ES version in metadata - simulate, that the patch was performed on some other ES version
-      val metadata = EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString).toOption.get
-      val modifiedMetadata = metadata.copy(esVersion = SemVer.unsafeParse("1.2.3"))
-      patchMetadataFile.overwrite(EsPatchMetadataCodec.encode(modifiedMetadata))
+      modifyMetadataFile(
+        _.copy(esVersion = SemVer.unsafeParse("1.2.3"))
+      )
 
       // Attempt to unpatch
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
@@ -514,10 +505,38 @@ class RorToolsAppSuite
       // The assertion cannot check specific filenames, because they are ES-version specific
       unpatchOutput should include(
         s"""Checking if Elasticsearch is patched ...
-           |ERROR: The patch was performed on Elasticsearch version 1.2.3, but currently installed version is $esVersionUsed. It should be unpatched using ROR for the ES version used for patching and patched again. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch""".stripMargin
+           |ERROR: The patch was performed on Elasticsearch version 1.2.3, but currently installed ES version is 9.0.0.
+           |As a result, the Elasticsearch is in a corrupted state. Please consider reinstalling it.
+           |To avoid this issue in the future, please follow those steps when upgrading ES:
+           | 1. Unpatch the older ES version using ror-tools
+           | 2. Upgrade to the newer ES version
+           | 3. Patch ES after the upgrade using ror-tools
+           |For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch""".stripMargin
       )
     }
   }
+
+  private def givenPatchMetadata(rorVersionUsedForPatching: String,
+                                 esVersionThatWasPatched: String,
+                                 patchedFilesMetadata: List[FilePatchMetadata]): Unit = {
+    File(backupDirectory.path).createDirectory()
+    patchMetadataFile.createFile()
+    patchMetadataFile.write(
+      EsPatchMetadataCodec.encode(
+        EsPatchMetadata(
+          rorVersion = rorVersionUsedForPatching,
+          esVersion = SemVer.unsafeParse(esVersionThatWasPatched),
+          patchedFilesMetadata = patchedFilesMetadata
+        )
+      )
+    )
+  }
+
+  private def modifyMetadataFile(f: EsPatchMetadata => EsPatchMetadata): Unit = {
+    val metadata = EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString).toOption.get
+    patchMetadataFile.overwrite(EsPatchMetadataCodec.encode(f(metadata)))
+  }
+
 
   private def captureResultAndOutput(block: InOut => Result): (Result, String) = {
     val inOut = new CapturingOutputAndMockingInput()
