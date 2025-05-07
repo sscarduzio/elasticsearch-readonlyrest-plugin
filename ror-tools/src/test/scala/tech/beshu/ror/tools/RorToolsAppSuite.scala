@@ -513,7 +513,7 @@ class RorToolsAppSuite
       // The assertion cannot check specific filenames, because they are ES-version specific
       unpatchOutput should include(
         s"""Checking if Elasticsearch is patched ...
-           |ERROR: The patch was performed on Elasticsearch version 1.2.3, but currently installed ES version is 9.0.0.
+           |ERROR: The patch was performed on Elasticsearch version 1.2.3, but currently installed ES version is $esVersionUsed.
            |As a result, the Elasticsearch is in a corrupted state. ES must be reinstalled.
            |To avoid this issue in the future, please follow those steps when upgrading ES:
            | 1. Unpatch the older ES version using ror-tools
