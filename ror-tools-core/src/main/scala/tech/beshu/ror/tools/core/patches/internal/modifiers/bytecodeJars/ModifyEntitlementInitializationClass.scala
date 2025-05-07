@@ -23,6 +23,12 @@ import tech.beshu.ror.tools.core.utils.EsUtil.{es8181, es901, es900rc1, es900bet
 
 import java.io.{File, InputStream}
 
+/**
+ * Modifies the EntitlementInitialization class to bypass forbidden file path validation
+ * specifically for the ReadonlyREST plugin. This is necessary because ReadonlyREST
+ * requires access to certain paths that would otherwise be blocked by Elasticsearch's
+ * security entitlements system in versions 8.18.1+ and 9.0.1+.
+ */
 private[patches] class ModifyEntitlementInitializationClass(esVersion: SemVer)
   extends BytecodeJarModifier {
 
@@ -50,22 +56,29 @@ private[patches] class ModifyEntitlementInitializationClass(esVersion: SemVer)
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
       name match {
-        case "validateReadFilesEntitlements" if esVersion >= es901 =>
-          new DontValidateForbiddenPathsInCaseOfRorPlugin(
-            super.visitMethod(access, name, descriptor, signature, exceptions)
-          )
-        case "validateReadFilesEntitlements" if Set(es900beta1, es900rc1).contains(esVersion) =>
-          super.visitMethod(access, name, descriptor, signature, exceptions)
-        case "validateReadFilesEntitlements" if esVersion >= es8181 =>
-          new DontValidateForbiddenPathsInCaseOfRorPlugin(
-            super.visitMethod(access, name, descriptor, signature, exceptions)
-          )
+        case "validateReadFilesEntitlements" =>
+          esVersion match
+            case v if v >= es901 =>
+              new DontValidateForbiddenPathsInCaseOfRorPlugin(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
+            case v if Set(es900beta1, es900rc1).contains(esVersion) =>
+              super.visitMethod(access, name, descriptor, signature, exceptions)
+            case v if v >= es8181 =>
+              new DontValidateForbiddenPathsInCaseOfRorPlugin(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
   }
 
+  /**
+   * Modifies the bytecode of the validateReadFilesEntitlements method to add a check at the beginning.
+   * If componentName equals "readonlyrest", it returns immediately, bypassing the validation logic.
+   * Otherwise, it proceeds with the original validation logic.
+   */
   private class DontValidateForbiddenPathsInCaseOfRorPlugin(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
