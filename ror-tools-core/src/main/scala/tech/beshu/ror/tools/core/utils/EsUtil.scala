@@ -24,8 +24,11 @@ object EsUtil {
   private val elasticsearchJar = """^elasticsearch-(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)\.jar$""".r
   private val transportNetty4JarNameRegex = """^transport-netty4-(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)\.jar$""".r
 
+  val es901: SemVer = SemVer.unsafeParse("9.0.1")
   val es900: SemVer = SemVer.unsafeParse("9.0.0")
   val es900rc1: SemVer = SemVer.unsafeParse("9.0.0-rc1")
+  val es900beta1: SemVer = SemVer.unsafeParse("9.0.0-beta1")
+  val es8181: SemVer = SemVer.unsafeParse("8.18.1")
   val es8180: SemVer = SemVer.unsafeParse("8.18.0")
   val es8150: SemVer = SemVer.unsafeParse("8.15.0")
   val es8140: SemVer = SemVer.unsafeParse("8.14.0")

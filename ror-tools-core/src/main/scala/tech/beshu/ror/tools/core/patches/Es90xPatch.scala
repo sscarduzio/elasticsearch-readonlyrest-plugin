@@ -31,6 +31,7 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new EntitlementJarPatchCreator(
+      new ModifyEntitlementInitializationClass(esVersion),
       ModifyEntitlementRuntimePolicyParserClass,
     ),
     new XPackCoreJarPatchCreator(

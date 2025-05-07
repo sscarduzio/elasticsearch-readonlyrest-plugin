@@ -31,7 +31,7 @@ private[patches] class Es900rc1Patch(rorPluginDirectory: RorPluginDirectory, esV
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new EntitlementJarPatchCreator(
-      new ModifyEntitlementRuntimePolicyUtilsClass(esVersion),
+      new ModifyEntitlementRuntimePolicyUtilsClass(esVersion)
     ),
     new XPackCoreJarPatchCreator(
       OpenModule,
