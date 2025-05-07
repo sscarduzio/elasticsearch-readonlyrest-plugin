@@ -110,14 +110,14 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
     val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
     val currentEsVersion = rorPluginDirectory.esDirectory.readEsVersion()
     rorPluginDirectory.readEsPatchMetadata() match {
-      case Some(metadata) if metadata.rorVersion == currentRorVersion && equalsIgnoringPatch(metadata.esVersion, currentEsVersion) =>
+      case Some(metadata) if metadata.rorVersion == currentRorVersion && patchVersionIsCompatible(metadata.esVersion, currentEsVersion) =>
         validatePatchedFiles(metadata.patchedFilesMetadata) match {
           case Right(()) =>
             PatchedWithCurrentRorVersion(currentRorVersion)
           case Left(invalidFiles) =>
             PatchProblemDetected(CorruptedPatchWithIllegalFileModificationsDetected(invalidFiles))
         }
-      case Some(metadata) if metadata.rorVersion == currentRorVersion && !equalsIgnoringPatch(metadata.esVersion, currentEsVersion) =>
+      case Some(metadata) if metadata.rorVersion == currentRorVersion && !patchVersionIsCompatible(metadata.esVersion, currentEsVersion) =>
         PatchProblemDetected(PatchPerformedOnOtherEsVersion(currentEsVersion.render, metadata.esVersion.render))
       case Some(metadata) =>
         PatchProblemDetected(PatchedWithOtherRorVersion(currentRorVersion, metadata.rorVersion))
@@ -126,8 +126,17 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
     }
   }
 
-  private def equalsIgnoringPatch(first: SemVer, second: SemVer) =
-    first.major == second.major && first.minor == second.minor
+  private def patchVersionIsCompatible(first: SemVer, second: SemVer) = {
+    lazy val majorAndMinorVersionsAreEqual = first.major == second.major && first.minor == second.minor
+    lazy val patchVersionsAreEqual = first.patch == second.patch
+    // For ES 6.x, 7.x and 8.x we can assume, that the patch applied by ror-tools wil continue to work for all .patch versions of given major.minor ES version
+    first.major.major match {
+      case 6 => majorAndMinorVersionsAreEqual
+      case 7 => majorAndMinorVersionsAreEqual
+      case 8 => majorAndMinorVersionsAreEqual
+      case _ => majorAndMinorVersionsAreEqual && patchVersionsAreEqual
+    }
+  }
 
   private def checkSuspectedCorruptedPatchState(): EsPatchStatus = {
     // It is the situation, when the metadata file does not exist.
@@ -193,7 +202,7 @@ object EsPatchExecutor {
     final case class CorruptedPatchWithIllegalFileModificationsDetected(files: List[os.Path]) extends PatchProblem
   }
 
-  implicit class PatchProblemOps(patchProblem: PatchProblem) {
+  implicit class PatchProblemOps(val patchProblem: PatchProblem) extends AnyVal {
     def rorToolsError: RorToolsError = patchProblem match {
       case PatchProblem.PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>
         PatchPerformedOnOtherEsVersionError(currentEsVersion, patchPerformedOnEsVersion)

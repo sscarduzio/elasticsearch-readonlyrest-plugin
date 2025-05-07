@@ -249,7 +249,9 @@ class RorToolsAppSuite
       unpatchResult should equal(Result.Failure)
       unpatchOutput should include(
         """Checking if Elasticsearch is patched ...
-          |ERROR: Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present."""
+          |ERROR: Elasticsearch is either patched by an older version of ROR or corrupted.
+          | - if ES has been patched using some older ROR version, then try unpatching using that older ROR version
+          | - otherwise the ES installation is corrupted and ES must be reinstalled"""
           .stripMargin
       )
     }
@@ -332,7 +334,10 @@ class RorToolsAppSuite
       verifyResultWithoutFile should equal(Result.Failure)
       verifyOutputWithoutFile should include(
         s"""Checking if Elasticsearch is patched ...
-           |ERROR: Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present. In case of problems please try to unpatch using the ROR version that had been used for patching or reinstall ES.
+           |ERROR: Elasticsearch is either patched by an older version of ROR or corrupted.
+           | - if ES has been patched using some older ROR version, then try unpatching using that older ROR version
+           | - otherwise the ES installation is corrupted and ES must be reinstalled
+           |Problems:
            | - backup catalog is present, but there is no metadata file
            |""".stripMargin
       )
@@ -363,7 +368,10 @@ class RorToolsAppSuite
       verifyResultWithoutFile should equal(Result.Failure)
       verifyOutputWithoutFile should include(
         s"""Checking if Elasticsearch is patched ...
-           |ERROR: Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present. In case of problems please try to unpatch using the ROR version that had been used for patching or reinstall ES.
+           |ERROR: Elasticsearch is either patched by an older version of ROR or corrupted.
+           | - if ES has been patched using some older ROR version, then try unpatching using that older ROR version
+           | - otherwise the ES installation is corrupted and ES must be reinstalled
+           |Problems:
            | - backup catalog is present, but there is no metadata file
            | - file x-pack-core-9.0.0.jar was patched by ROR ${metadata.rorVersion}
            | - file x-pack-ilm-9.0.0.jar was patched by ROR ${metadata.rorVersion}
@@ -506,7 +514,7 @@ class RorToolsAppSuite
       unpatchOutput should include(
         s"""Checking if Elasticsearch is patched ...
            |ERROR: The patch was performed on Elasticsearch version 1.2.3, but currently installed ES version is 9.0.0.
-           |As a result, the Elasticsearch is in a corrupted state. Please consider reinstalling it.
+           |As a result, the Elasticsearch is in a corrupted state. ES must be reinstalled.
            |To avoid this issue in the future, please follow those steps when upgrading ES:
            | 1. Unpatch the older ES version using ror-tools
            | 2. Upgrade to the newer ES version

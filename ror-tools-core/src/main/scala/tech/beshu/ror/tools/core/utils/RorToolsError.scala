@@ -30,7 +30,7 @@ object RorToolsError {
   final case class PatchPerformedOnOtherEsVersionError(currentEsVersion: String, patchPerformedOnEsVersion: String)
     extends RorToolsError(
       s"""The patch was performed on Elasticsearch version $patchPerformedOnEsVersion, but currently installed ES version is $currentEsVersion.
-         |As a result, the Elasticsearch is in a corrupted state. Please consider reinstalling it.
+         |As a result, the Elasticsearch is in a corrupted state. ES must be reinstalled.
          |To avoid this issue in the future, please follow those steps when upgrading ES:
          | 1. Unpatch the older ES version using ror-tools
          | 2. Upgrade to the newer ES version
@@ -46,7 +46,10 @@ object RorToolsError {
 
   final case class CorruptedPatchWithoutValidMetadataError(backupFolderIsPresent: Boolean, patchedJarFiles: List[PatchedJarFile])
     extends RorToolsError(
-      s"""Elasticsearch is likely patched by an older version of ROR, but there is no valid patch metadata present. In case of problems please try to unpatch using the ROR version that had been used for patching or reinstall ES.
+      s"""Elasticsearch is either patched by an older version of ROR or corrupted.
+         | - if ES has been patched using some older ROR version, then try unpatching using that older ROR version
+         | - otherwise the ES installation is corrupted and ES must be reinstalled
+         |Problems:
          |${if (backupFolderIsPresent) " - backup catalog is present, but there is no metadata file" else " - there is no backup catalog"}
          |${patchedJarFiles.sortBy(_.name).map(f => s" - file ${f.name} was patched by ROR ${f.patchedByRorVersion}").mkString("\n")}""".stripMargin)
 
