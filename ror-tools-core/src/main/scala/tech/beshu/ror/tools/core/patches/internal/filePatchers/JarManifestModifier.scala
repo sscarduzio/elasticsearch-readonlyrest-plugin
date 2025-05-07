@@ -30,7 +30,7 @@ object JarManifestModifier {
 
   def addPatchedByRorVersionProperty(file: File, rorVersion: String): Unit = {
     Using(new JarFile(file.toJava)) { jarFile =>
-      val tempJarFile = File.newTemporaryFile()
+      val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
       val manifest = jarFile.getManifest
       manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
       Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
