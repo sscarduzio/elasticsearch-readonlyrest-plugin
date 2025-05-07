@@ -30,6 +30,7 @@ object JarManifestModifier {
 
   def addPatchedByRorVersionProperty(file: File, rorVersion: String): Unit = {
     Using(new JarFile(file.toJava)) { jarFile =>
+      // Using the better-files temporary files causes problems, probably because of permission issues when copying the file at the end of this method.
       val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
       val manifest = jarFile.getManifest
       manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
