@@ -19,10 +19,9 @@ package tech.beshu.ror.tools
 import os.Path
 import scopt.*
 import tech.beshu.ror.tools.RorTools.*
-import tech.beshu.ror.tools.core.actions.*
-import tech.beshu.ror.tools.core.patches.base.EsPatch
+import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
-import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsException}
+import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsError, RorToolsException}
 
 import scala.util.{Failure, Success, Try}
 
@@ -103,15 +102,15 @@ trait RorTools {
         case PatchingConsent.AnswerNotGiven =>
           askUserAboutPatchingConsent() match {
             case PatchingConsent.Accepted => performPatching(command.customEsPath)
-            case _ => abortPatchingBecauseUserDidNotAcceptConsequences()
+            case PatchingConsent.Rejected => abortPatchingBecauseUserDidNotAcceptConsequences()
+            case PatchingConsent.AnswerNotGiven => Result.Failure
           }
       }
     }
 
     private def performPatching(customESPath: Option[Path]): Result = {
       val esDirectory = esDirectoryFrom(customESPath)
-      new PatchAction(EsPatch.create(esDirectory)).execute()
-      Result.Success
+      handleResult(EsPatchExecutor.create(esDirectory).patch())
     }
 
     private def abortPatchingBecauseUserDidNotAcceptConsequences(): Result = {
@@ -122,9 +121,17 @@ trait RorTools {
     private def askUserAboutPatchingConsent(): PatchingConsent = {
       inOut.println("Elasticsearch needs to be patched to work with ReadonlyREST. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.")
       inOut.print("Do you understand the implications of ES patching? (yes/no): ")
-      inOut.readLine().toLowerCase match
-        case "yes" => PatchingConsent.Accepted
-        case _ => PatchingConsent.Rejected
+      inOut.readLine() match {
+        case Some("") | None =>
+          inOut.println("\nIt seems that the answer was not given or the ror-tools are executed in the environment that does not support console input.")
+          inOut.println("Consider using silent mode and provide the answer using the parameter --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING, read more in our documentation https://docs.readonlyrest.com/elasticsearch#id-5.-patch-elasticsearch.")
+          PatchingConsent.AnswerNotGiven
+        case Some(line) =>
+          line.toLowerCase match {
+            case "yes" => PatchingConsent.Accepted
+            case _ => PatchingConsent.Rejected
+          }
+      }
     }
 
   }
@@ -132,19 +139,27 @@ trait RorTools {
   private class UnpatchCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Unpatch): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
-      new UnpatchAction(EsPatch.create(esDirectory)).execute()
-      Result.Success
+      handleResult(EsPatchExecutor.create(esDirectory).restore())
     }
   }
 
   private class VerifyCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Verify): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
-      new VerifyAction(EsPatch.create(esDirectory)).execute()
-      Result.Success
+      handleResult(EsPatchExecutor.create(esDirectory).verify())
     }
   }
 
+  private def handleResult(result: Either[RorToolsError, Unit])
+                          (implicit inOut: InOut): Result = {
+    result match {
+      case Left(error) =>
+        inOut.printlnErr("ERROR: " + error.message)
+        Result.Failure
+      case Right(()) =>
+        Result.Success
+    }
+  }
 
   private def esDirectoryFrom(esPath: Option[os.Path]) = {
     esPath.map(EsDirectory.from).getOrElse(EsDirectory.default)

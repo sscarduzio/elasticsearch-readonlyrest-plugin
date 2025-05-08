@@ -31,7 +31,7 @@ class CapturingOutputAndMockingInput(mockedInput: Option[String] = None) extends
 
   override def printlnErr(str: String): Unit = println(str)
 
-  override def readLine(): String = mockedInput.getOrElse(throw new Exception("No mocked input provided"))
+  override def readLine(): Option[String] = mockedInput
 
   def getOutputBuffer: String = outputBuffer.getAndSet("")
 

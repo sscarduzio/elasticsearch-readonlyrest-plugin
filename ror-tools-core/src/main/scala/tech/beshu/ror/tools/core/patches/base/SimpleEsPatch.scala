@@ -17,13 +17,9 @@
 package tech.beshu.ror.tools.core.patches.base
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No.Cause
+import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.FilePatchCreator
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, MultiFilePatch, RorPluginDirectory}
-
-import scala.util.{Failure, Success, Try}
 
 private[patches] abstract class SimpleEsPatch(rorPluginDirectory: RorPluginDirectory,
                                               esVersion: SemVer,
@@ -34,34 +30,20 @@ private[patches] abstract class SimpleEsPatch(rorPluginDirectory: RorPluginDirec
     filePatchCreators.map(_.create(rorPluginDirectory, esVersion)): _*
   )
 
-   override def isPatched: IsPatched = {
-    if(rorPluginDirectory.doesBackupFolderExist) {
-      checkWithPatchedByFile(rorPluginDirectory)
-    } else {
-      No(Cause.NotPatchedAtAll)
-    }
+  override def performBackup(): Unit = {
+    copyJarsToBackupFolder()
   }
 
-  override def backup(): Unit = {
-    copyJarsToBackupFolder() match {
-      case Success(_) =>
-        rorPluginDirectory.updatePatchedByRorVersion()
-      case Failure(ex) =>
-        rorPluginDirectory.clearBackupFolder()
-        throw ex
-    }
-  }
-
-  override def restore(): Unit = {
+  override def performRestore(): Unit = {
     filePatches.restore()
     rorPluginDirectory.clearBackupFolder()
   }
 
-  override def execute(): Unit = {
+  override def performPatching(): List[FilePatchMetadata] = {
     filePatches.patch()
   }
 
-  private def copyJarsToBackupFolder() = Try {
+  private def copyJarsToBackupFolder(): Unit = {
     rorPluginDirectory.createBackupFolder()
     filePatches.backup()
   }
