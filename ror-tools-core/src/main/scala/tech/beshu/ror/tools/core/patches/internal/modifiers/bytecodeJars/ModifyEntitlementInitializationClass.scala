@@ -68,6 +68,8 @@ private[patches] class ModifyEntitlementInitializationClass(esVersion: SemVer)
               new DontValidateForbiddenPathsInCaseOfRorPlugin(
                 super.visitMethod(access, name, descriptor, signature, exceptions)
               )
+            case v =>
+              super.visitMethod(access, name, descriptor, signature, exceptions)
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
