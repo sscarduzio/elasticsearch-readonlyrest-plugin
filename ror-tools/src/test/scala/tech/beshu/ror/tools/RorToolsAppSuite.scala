@@ -373,9 +373,9 @@ class RorToolsAppSuite
            | - otherwise the ES installation is corrupted and ES must be reinstalled
            |Problems:
            | - backup catalog is present, but there is no metadata file
-           | - file x-pack-core-9.0.0.jar was patched by ROR ${metadata.rorVersion}
-           | - file x-pack-ilm-9.0.0.jar was patched by ROR ${metadata.rorVersion}
-           | - file x-pack-security-9.0.0.jar was patched by ROR ${metadata.rorVersion}
+           | - file x-pack-core-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
+           | - file x-pack-ilm-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
+           | - file x-pack-security-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
            |""".stripMargin
       )
     }
