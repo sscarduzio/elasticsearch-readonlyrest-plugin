@@ -521,6 +521,7 @@ class RorToolsAppSuite
            | 3. Patch ES after the upgrade using ror-tools
            |For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch""".stripMargin
       )
+      throw new Exception("Fast-fail Azure job")
     }
   }
 
