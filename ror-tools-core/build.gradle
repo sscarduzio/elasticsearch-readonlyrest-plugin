@@ -82,9 +82,7 @@ compileScala {
 }
 
 tasks.withType(ScalaCompile).configureEach {
-    scalaCompileOptions.additionalParameters = [
-            "-Xmax-inlines", "128"
-    ]
+    scalaCompileOptions.additionalParameters = ["-Xmax-inlines", "128", "-feature", "-Xfatal-warnings"]
 }
 
 shadowJar {
