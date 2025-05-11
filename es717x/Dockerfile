@@ -1,7 +1,26 @@
 ARG ES_VERSION
 ARG ROR_VERSION
 
+FROM alpine:3.21.0 AS builder
+
+ENV GOSU_VERSION=1.17
+RUN set -eux; \
+	apk add --no-cache --virtual .gosu-deps \
+		ca-certificates \
+		dpkg \
+		gnupg \
+	; \
+	dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
+	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch"; \
+	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc"; \
+    # verify the signature
+	export GNUPGHOME="$(mktemp -d)"; \
+	gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \
+	gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
+	gpgconf --kill all;
+
 FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
+COPY --from=builder /usr/local/bin/gosu /usr/local/bin/gosu
 
 ARG ES_VERSION
 ARG ROR_VERSION
@@ -11,10 +30,9 @@ ENV ADMIN_USER_PASS=admin
 
 USER root
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gosu && \
-    rm -rf /var/lib/apt/lists/* && \
-    gosu nobody true
+RUN chmod +x /usr/local/bin/gosu \
+    && gosu --version \
+    && gosu nobody true
 
 USER elasticsearch
 

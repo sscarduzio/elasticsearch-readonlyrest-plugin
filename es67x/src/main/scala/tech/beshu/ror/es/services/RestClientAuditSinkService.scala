@@ -18,81 +18,89 @@ package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
 import io.lemonlabs.uri.Uri
-import monix.execution.Scheduler
 import org.apache.http.HttpHost
 import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials}
 import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
-import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
-import org.elasticsearch.common.xcontent.XContentType
+import org.elasticsearch.client.{Request, Response, ResponseListener, RestClient}
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
-import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse.*
 
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import scala.collection.parallel.CollectionConverters.*
 
-class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
-                                             (implicit scheduler: Scheduler)
+class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
   extends AuditSinkService
     with Logging {
 
   override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
     clients.toList.par.foreach { client =>
-      val request = new IndexRequest(indexName).id(documentId).source(jsonRecord, XContentType.JSON)
-      val options = RequestOptions.DEFAULT
-      val indexAsyncCall: ActionListener[IndexResponse] => Unit = client.indexAsync(request, options, _)
-
-      indexAsyncCall
-        .execute(identity)
-        .runAsync {
-          case Right(resp) if resp.status().getStatus / 100 == 2 =>
-          case Right(resp) =>
-            logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${resp.status().getStatus}")
-          case Left(ex) =>
-            logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
-        }
+      client
+        .performRequestAsync(
+          createRequest(indexName, documentId, jsonRecord),
+          createResponseListener(indexName, documentId)
+        )
     }
   }
 
   override def close(): Unit = {
     clients.toList.par.foreach(_.close())
   }
-}
 
-object HighLevelClientAuditSinkService {
+  private val indexType = "ror_audit_evt"
 
-  def create(remoteCluster: AuditCluster.RemoteAuditCluster)
-            (implicit scheduler: Scheduler): HighLevelClientAuditSinkService = {
-    val highLevelClients = remoteCluster.uris.map(createEsHighLevelClient)
-    new HighLevelClientAuditSinkService(highLevelClients)
+  private def createRequest(indexName: String, documentId: String, jsonBody: String) = {
+    val request = new Request("PUT", s"/$indexName/$indexType/$documentId")
+    request.setJsonEntity(jsonBody)
+    request
   }
 
-  private def createEsHighLevelClient(uri: Uri) = {
+  private def createResponseListener(indexName: String,
+                                     documentId: String) =
+    new ResponseListener() {
+      override def onSuccess(response: Response): Unit = {
+        response.getStatusLine.getStatusCode / 100 match {
+          case 2 => // 2xx
+          case _ =>
+            logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}")
+        }
+      }
+
+      override def onFailure(ex: Exception): Unit = {
+        logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
+      }
+    }
+}
+
+object RestClientAuditSinkService {
+
+  def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditSinkService = {
+    val clients = remoteCluster.uris.map(createRestClient)
+    new RestClientAuditSinkService(clients)
+  }
+
+  private def createRestClient(uri: Uri) = {
     val host = new HttpHost(
       uri.toUrl.hostOption.map(_.value).getOrElse("localhost"),
       uri.toUrl.port.getOrElse(9200),
       uri.schemeOption.getOrElse("http")
     )
-    val credentials = uri.toUrl.user.map { user =>
+    val credentials: Option[Credentials] = uri.toUrl.user.map { user =>
       new UsernamePasswordCredentials(user, uri.toUrl.password.getOrElse(""))
     }
 
-    new RestHighLevelClient(
-      RestClient
-        .builder(host)
-        .setHttpClientConfigCallback(
-          (httpClientBuilder: HttpAsyncClientBuilder) => {
-            val configurations = configureCredentials(credentials) andThen configureSsl()
-            configurations apply httpClientBuilder
-          }
-        )
-    )
+    RestClient
+      .builder(host)
+      .setHttpClientConfigCallback(
+        (httpClientBuilder: HttpAsyncClientBuilder) => {
+          val configurations = configureCredentials(credentials) andThen configureSsl()
+          configurations apply httpClientBuilder
+        }
+      )
+      .build()
   }
 
   private def configureCredentials(credentials: Option[Credentials]): HttpAsyncClientBuilder => HttpAsyncClientBuilder = (httpClientBuilder: HttpAsyncClientBuilder) => {

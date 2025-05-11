@@ -673,6 +673,56 @@ class GroupsRuleSettingsTests
           }
         )
       }
+      "username is used in two definitions (when the duplication check is disabled)" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |  global_settings:
+               |    users_section_duplicate_usernames_detection: false
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    $simpleSyntaxName: ["group1"]
+               |
+               |  users:
+               |  - username: "cartman"
+               |    groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |
+               |  - username: "cartman"
+               |    groups: ["group2", "group3"]
+               |    auth_key: "cartman:pass"
+               |
+               |""".stripMargin,
+          assertion = rule => {
+            val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
+              UniqueNonEmptyList.of(
+                AlreadyResolved(GroupId("group1").nel)
+              )
+            rule.settings.permittedGroupsLogic.asInstanceOf[RuntimeResolvableGroupsLogic.Simple[GroupsLogic]].groupIds should be(groups)
+            rule.settings.usersDefinitions.length should be(2)
+            val sortedUserDefinitions = rule.settings.usersDefinitions
+            inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(r, localGroups)) =>
+              patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
+              localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
+              r shouldBe an[AuthKeyRule]
+              r.asInstanceOf[AuthKeyRule].settings should be {
+                BasicAuthenticationRule.Settings(Credentials(userId("cartman"), PlainTextSecret("pass")))
+              }
+            }
+            inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(r, localGroups)) =>
+              patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(userId("cartman")))))
+              localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group3")))
+              r shouldBe an[AuthKeyRule]
+              r.asInstanceOf[AuthKeyRule].settings should be {
+                BasicAuthenticationRule.Settings(Credentials(userId("cartman"), PlainTextSecret("pass")))
+              }
+            }
+          }
+        )
+      }
     }
     "not be able to be loaded from config" when {
       "groups section is defined, but without any group" in {
@@ -784,7 +834,7 @@ class GroupsRuleSettingsTests
           }
         )
       }
-      "username is used in two definitions" in {
+      "username is used in two definitions (when the duplication check is implicitly enabled)" in {
         val basicAuthenticationRules = List("auth_key", "auth_key_sha1", "auth_key_sha256", "auth_key_sha512", "auth_key_pbkdf2", "auth_key_unix")
 
         val testCases = for {
@@ -797,6 +847,45 @@ class GroupsRuleSettingsTests
             yaml =
               s"""
                  |readonlyrest:
+                 |
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    $simpleSyntaxName: ["group*"]
+                 |
+                 |  users:
+                 |  - username: cartman
+                 |    groups: ["group1", "group3"]
+                 |    $authRule1: "cartman:pass"
+                 |
+                 |  - username: cartman
+                 |    groups: ["group2", "group4"]
+                 |    $authRule2: "cartman:pass"
+                 |
+                 |""".stripMargin,
+            assertion = errors => {
+              errors shouldEqual NonEmptyList.of(DefinitionsLevelCreationError(Message(
+                "The `users` definition is malformed: Username 'cartman' is duplicated - full usernames can be used only in one definition."
+              )))
+            }
+          )
+        }
+      }
+      "username is used in two definitions (when the duplication check is explicitly enabled)" in {
+        val basicAuthenticationRules = List("auth_key", "auth_key_sha1", "auth_key_sha256", "auth_key_sha512", "auth_key_pbkdf2", "auth_key_unix")
+
+        val testCases = for {
+          rule1 <- basicAuthenticationRules
+          rule2 <- basicAuthenticationRules
+        } yield (rule1, rule2)
+
+        testCases.foreach { case (authRule1, authRule2) =>
+          assertDecodingFailure(
+            yaml =
+              s"""
+                 |readonlyrest:
+                 |  global_settings:
+                 |    users_section_duplicate_usernames_detection: true
                  |
                  |  access_control_rules:
                  |

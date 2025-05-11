@@ -1,16 +1,12 @@
 readonlyrest:
 
-  # (De)activate plugin
   enable: true
 
-  # HTTP response body in case of forbidden request.
-  # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
-  response_if_req_forbidden: <h1>Forbidden</h1>
+  global_settings:
+    response_if_req_forbidden: <h1>Forbidden</h1>
 
-  # Default policy is to forbid everything, so let's define a whitelist
   access_control_rules:
 
-  # ES container initializer need this rule to configure ES instance after startup
   - name: "CONTAINER ADMIN"
     type: allow
     auth_key: admin:container

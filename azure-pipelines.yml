@@ -32,6 +32,8 @@ parameters:
     default: ' '
 
 pool:
+  # we cannot simply bump it to 22.04, because there is a problem (probably) with s3-uploader.sh. Before the next bump
+  # attempt, make sure that upload-files-to-s3.sh works.
   vmImage: 'ubuntu-20.04'
 
 stages:
@@ -91,7 +93,7 @@ stages:
             UNIT:
               ROR_TASK: core_tests
       - job:
-        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        condition: and(succeeded(), or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true)))
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -121,7 +123,7 @@ stages:
             IT_es90x:
               ROR_TASK: integration_es90x
       - job:
-        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        condition: and(succeeded(), or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true)))
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -183,7 +185,7 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        condition: and(succeeded(), ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -213,7 +215,7 @@ stages:
             IT_es90x:
               ROR_TASK: integration_es90x
       - job:
-        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        condition: and(succeeded(), ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -247,7 +249,7 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        condition: and(succeeded(), or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true)))
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -300,7 +302,7 @@ stages:
             IT_es67x:
               ROR_TASK: integration_es67x
       - job:
-        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        condition: and(succeeded(), ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         timeoutInMinutes: 120
         steps:
           - checkout: self

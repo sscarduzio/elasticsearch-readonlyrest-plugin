@@ -39,7 +39,7 @@ dependencies {
     implementation  project(path: ':ror-tools', configuration: 'shadow')
     implementation  project(path: ':ror-tools-core')
     implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: moduleEsVersion
-    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: moduleEsVersion
+    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: moduleEsVersion
     implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
     implementation  group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.1'
     compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'

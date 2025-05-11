@@ -27,7 +27,7 @@ trait InOut {
 
   def printlnErr(str: String): Unit
 
-  def readLine(): String
+  def readLine(): Option[String]
 }
 
 object InOut {
@@ -40,6 +40,6 @@ object InOut {
 
     override def printlnErr(str: String): Unit = Console.err.println(str)
 
-    override def readLine(): String = StdIn.readLine()
+    override def readLine(): Option[String] = Option(StdIn.readLine())
   }
 }

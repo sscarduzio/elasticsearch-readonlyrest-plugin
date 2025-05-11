@@ -131,8 +131,8 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             yaml =
               """
                 |readonlyrest:
-                |
-                |  fls_engine: "lucene"
+                |  global_settings:
+                |    fls_engine: "lucene"
                 |
                 |  access_control_rules:
                 |
@@ -153,7 +153,8 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               """
                 |readonlyrest:
                 |
-                |  fls_engine: "es"
+                |  global_settings:
+                |    fls_engine: "es"
                 |
                 |  access_control_rules:
                 |
@@ -277,7 +278,8 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             """
               |readonlyrest:
               |
-              |  fls_engine: "something"
+              |  global_settings:
+              |    fls_engine: "something"
               |
               |  access_control_rules:
               |
