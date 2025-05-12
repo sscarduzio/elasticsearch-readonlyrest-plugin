@@ -58,6 +58,7 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
   def verify(): Either[RorToolsError, Boolean] = {
     checkWithPatchedByFileAndEsPatch() match {
       case NotPatched =>
+        inOut.println(EsNotPatchedError.message)
         Right(false)
       case PatchedWithCurrentRorVersion(_) =>
         inOut.println("Elasticsearch is patched! ReadonlyREST can be used")

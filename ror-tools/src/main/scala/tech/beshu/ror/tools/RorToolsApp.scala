@@ -152,7 +152,7 @@ trait RorTools {
       val esDirectory = esDirectoryFrom(command.customEsPath)
       EsPatchExecutor.create(esDirectory).verify() match {
         case Right(true) => Result.Success
-        case Right(false) => failureWith(EsNotPatchedError.message)
+        case Right(false) => Result.Failure
         case Left(error) => failureCausedByRorToolsError(error)
       }
     }
@@ -165,12 +165,6 @@ trait RorTools {
   private def failureCausedByRorToolsError(error: RorToolsError)
                                           (implicit inOut: InOut) = {
     inOut.printlnErr(s"ERROR: ${error.message}")
-    Result.Failure
-  }
-
-  private def failureWith(message: String)
-                         (implicit inOut: InOut) = {
-    inOut.println(message)
     Result.Failure
   }
 
