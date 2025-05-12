@@ -21,6 +21,7 @@ import scopt.*
 import tech.beshu.ror.tools.RorTools.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
+import tech.beshu.ror.tools.core.utils.RorToolsError.EsNotPatchedError
 import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsError, RorToolsException}
 
 import scala.util.{Failure, Success, Try}
@@ -107,7 +108,10 @@ trait RorTools {
 
     private def performPatching(customESPath: Option[Path]): Result = {
       val esDirectory = esDirectoryFrom(customESPath)
-      handleResult(EsPatchExecutor.create(esDirectory).patch())
+      EsPatchExecutor.create(esDirectory).patch() match {
+        case Right(()) => Result.Success
+        case Left(error) => failureCausedByRorToolsError(error)
+      }
     }
 
     private def abortPatchingBecauseUserDidNotAcceptConsequences(): Result = {
@@ -136,31 +140,38 @@ trait RorTools {
   private class UnpatchCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Unpatch): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
-      handleResult(EsPatchExecutor.create(esDirectory).restore())
+      EsPatchExecutor.create(esDirectory).restore() match {
+        case Right(()) => Result.Success
+        case Left(error) => failureCausedByRorToolsError(error)
+      }
     }
   }
 
   private class VerifyCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Verify): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
-      handleResult(EsPatchExecutor.create(esDirectory).verify(), errorMessagePrefix = "")
-    }
-  }
-
-  private def handleResult(result: Either[RorToolsError, Unit],
-                           errorMessagePrefix: String = "ERROR: ")
-                          (implicit inOut: InOut): Result = {
-    result match {
-      case Left(error) =>
-        inOut.printlnErr(s"$errorMessagePrefix${error.message}")
-        Result.Failure
-      case Right(()) =>
-        Result.Success
+      EsPatchExecutor.create(esDirectory).verify() match {
+        case Right(true) => Result.Success
+        case Right(false) => failureWith(EsNotPatchedError.message)
+        case Left(error) => failureCausedByRorToolsError(error)
+      }
     }
   }
 
   private def esDirectoryFrom(esPath: Option[os.Path]) = {
     esPath.map(EsDirectory.from).getOrElse(EsDirectory.default)
+  }
+
+  private def failureCausedByRorToolsError(error: RorToolsError)
+                                          (implicit inOut: InOut) = {
+    inOut.printlnErr(s"ERROR: ${error.message}")
+    Result.Failure
+  }
+
+  private def failureWith(message: String)
+                         (implicit inOut: InOut) = {
+    inOut.println(message)
+    Result.Failure
   }
 
   private val builder = OParser.builder[Arguments]
