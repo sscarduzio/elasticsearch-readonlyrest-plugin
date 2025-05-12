@@ -27,9 +27,6 @@ import scala.util.{Failure, Success, Try}
 
 object RorToolsApp extends RorTools {
 
-  // todo:
-  // 1. option: return success when already patched/unpatched
-  // 2. restore backup when fails to patch
   def main(args: Array[String]): Unit = {
     run(args)(ConsoleInOut) match {
       case Result.Success =>
@@ -80,10 +77,10 @@ trait RorTools {
       }
     } match {
       case Failure(ex: RorToolsException) =>
-        inOut.println(s"ERROR: ${ex.getMessage()}\n${ex.printStackTrace()}")
+        inOut.println(s"ERROR: ${ex.getMessage}\n${ex.printStackTrace()}")
         Result.Failure
       case Failure(ex: Throwable) =>
-        inOut.println(s"UNEXPECTED ERROR: ${ex.getMessage()}\n${ex.printStackTrace()}")
+        inOut.println(s"UNEXPECTED ERROR: ${ex.getMessage}\n${ex.printStackTrace()}")
         Result.Failure
       case Success(result) =>
         result
@@ -146,15 +143,16 @@ trait RorTools {
   private class VerifyCommandHandler(implicit inOut: InOut) {
     def handle(command: Command.Verify): Result = {
       val esDirectory = esDirectoryFrom(command.customEsPath)
-      handleResult(EsPatchExecutor.create(esDirectory).verify())
+      handleResult(EsPatchExecutor.create(esDirectory).verify(), errorMessagePrefix = "")
     }
   }
 
-  private def handleResult(result: Either[RorToolsError, Unit])
+  private def handleResult(result: Either[RorToolsError, Unit],
+                           errorMessagePrefix: String = "ERROR: ")
                           (implicit inOut: InOut): Result = {
     result match {
       case Left(error) =>
-        inOut.printlnErr("ERROR: " + error.message)
+        inOut.printlnErr(s"$errorMessagePrefix${error.message}")
         Result.Failure
       case Right(()) =>
         Result.Success
