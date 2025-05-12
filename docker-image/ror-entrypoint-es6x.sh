@@ -2,7 +2,7 @@
 
 INVOKE_ROR_TOOLS="$JAVA_HOME/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar"
 
-if $INVOKE_ROR_TOOLS verify | grep -q "Elasticsearch is NOT patched"; then
+if ! $INVOKE_ROR_TOOLS verify; then
 
   if [ -n "$I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" ]; then
       CONFIRMATION="$I_UNDERSTAND_AND_ACCEPT_ES_PATCHING"
