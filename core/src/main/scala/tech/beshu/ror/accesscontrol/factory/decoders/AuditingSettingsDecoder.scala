@@ -140,7 +140,7 @@ object AuditingSettingsDecoder extends Logging {
         customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
         auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
         remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
-        enableReportingEsNodeDetails.getOrElse(EsIndexBasedSink.default.enableReportingEsNodeDetails)
+        enableReportingEsNodeDetails.map(EsIndexBasedSink.Options(_)).getOrElse(EsIndexBasedSink.Options.default),
       )
     }
 
@@ -240,7 +240,7 @@ object AuditingSettingsDecoder extends Logging {
                 logSerializer = customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
                 rorAuditIndexTemplate = auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
                 auditCluster = remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
-                enableReportingEsNodeDetails = enableReportingEsNodeDetails.getOrElse(EsIndexBasedSink.default.enableReportingEsNodeDetails),
+                options = enableReportingEsNodeDetails.map(EsIndexBasedSink.Options(_)).getOrElse(EsIndexBasedSink.Options.default),
               )
             )
           )

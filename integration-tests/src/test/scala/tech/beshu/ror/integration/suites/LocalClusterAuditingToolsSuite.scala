@@ -21,6 +21,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.containers.providers.ClientProvider
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer
 
 class LocalClusterAuditingToolsSuite
@@ -33,4 +34,9 @@ class LocalClusterAuditingToolsSuite
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
   override lazy val destNodeClientProvider: ClientProvider = this
+
+  override def assertForEveryAuditEntry(entry: JSON): Unit = {
+    entry("es_node_name").str shouldBe "ROR_SINGLE_1"
+    entry("es_cluster_name").str shouldBe "ROR_SINGLE"
+  }
 }

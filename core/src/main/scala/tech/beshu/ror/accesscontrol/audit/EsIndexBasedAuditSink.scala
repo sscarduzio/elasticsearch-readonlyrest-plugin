@@ -18,34 +18,23 @@ package tech.beshu.ror.accesscontrol.audit
 
 import monix.eval.Task
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.audit.EsIndexBasedAuditSink.EsNodeDetailsReporting
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-import tech.beshu.ror.configuration.EsNodeConfig
 import tech.beshu.ror.es.AuditSinkService
 
 import java.time.{Clock, Instant}
 
 private[audit] class EsIndexBasedAuditSink private(serializer: AuditLogSerializer,
                                                    rorAuditIndexTemplate: RorAuditIndexTemplate,
-                                                   auditSinkService: AuditSinkService,
-                                                   esNodeDetailsReporting: EsNodeDetailsReporting)
+                                                   auditSinkService: AuditSinkService)
                                                   (implicit clock: Clock)
   extends BaseAuditSink(serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Task[Unit] = Task {
-    val enrichedEvent = esNodeDetailsReporting match {
-      case EsNodeDetailsReporting.Disabled =>
-        serializedEvent
-      case EsNodeDetailsReporting.Enabled(esNodeConfig) =>
-        serializedEvent
-          .put("es_cluster_name", esNodeConfig.clusterName)
-          .put("es_node_name", esNodeConfig.nodeName)
-    }
     auditSinkService.submit(
       rorAuditIndexTemplate.indexName(Instant.now(clock)).name.value,
       event.requestContext.id,
-      enrichedEvent.toString
+      serializedEvent.toString
     )
   }
 
@@ -54,19 +43,9 @@ private[audit] class EsIndexBasedAuditSink private(serializer: AuditLogSerialize
 
 object EsIndexBasedAuditSink {
 
-  sealed trait EsNodeDetailsReporting
-
-  object EsNodeDetailsReporting {
-    case object Disabled extends EsNodeDetailsReporting
-
-    final case class Enabled(esNodeConfig: EsNodeConfig) extends EsNodeDetailsReporting
-  }
-
   def apply(serializer: AuditLogSerializer,
             indexTemplate: RorAuditIndexTemplate,
-            auditSinkService: AuditSinkService,
-            esNodeDetailsReporting: EsNodeDetailsReporting)
-           (implicit clock: Clock): EsIndexBasedAuditSink = {
-    new EsIndexBasedAuditSink(serializer, indexTemplate, auditSinkService, esNodeDetailsReporting)
+            auditSinkService: AuditSinkService)(implicit clock: Clock): EsIndexBasedAuditSink = {
+    new EsIndexBasedAuditSink(serializer, indexTemplate, auditSinkService)
   }
 }

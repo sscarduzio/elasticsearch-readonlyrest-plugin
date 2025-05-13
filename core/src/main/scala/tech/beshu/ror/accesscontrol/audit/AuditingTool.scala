@@ -23,7 +23,6 @@ import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.{Disabled, Enabled}
-import tech.beshu.ror.accesscontrol.audit.EsIndexBasedAuditSink.EsNodeDetailsReporting
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
@@ -155,14 +154,22 @@ object AuditingTool extends Logging {
         final case class EsIndexBasedSink(logSerializer: AuditLogSerializer,
                                           rorAuditIndexTemplate: RorAuditIndexTemplate,
                                           auditCluster: AuditCluster,
-                                          enableReportingEsNodeDetails: Boolean) extends Config
+                                          options: EsIndexBasedSink.Options) extends Config
         object EsIndexBasedSink {
           val default: EsIndexBasedSink = EsIndexBasedSink(
             logSerializer = new DefaultAuditLogSerializer,
             rorAuditIndexTemplate = RorAuditIndexTemplate.default,
             auditCluster = AuditCluster.LocalAuditCluster,
-            enableReportingEsNodeDetails = false,
+            options = Options.default,
           )
+
+          final case class Options(enableReportingEsNodeDetails: Boolean)
+          object Options {
+            val default: Options = Options(
+              enableReportingEsNodeDetails = false,
+            )
+          }
+
         }
 
         final case class LogBasedSink(logSerializer: AuditLogSerializer,
@@ -204,11 +211,11 @@ object AuditingTool extends Logging {
       .auditSinks
       .toList
       .flatMap {
-        case Enabled(AuditSink.Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, auditCluster, enableReportingEsNodeDetails)) =>
-          val esNodeDetailsReporting =
-            if (enableReportingEsNodeDetails) EsNodeDetailsReporting.Enabled(esNodeConfig)
-            else EsNodeDetailsReporting.Disabled
-          EsIndexBasedAuditSink(logSerializer, rorAuditIndexTemplate, auditSinkServiceCreator(auditCluster), esNodeDetailsReporting).some
+        case Enabled(AuditSink.Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, auditCluster, options)) =>
+          val serializer =
+            if (options.enableReportingEsNodeDetails) new AuditLogSerializerEnrichedWithEsNodeDetails(logSerializer, esNodeConfig)
+            else logSerializer
+          EsIndexBasedAuditSink(serializer, rorAuditIndexTemplate, auditSinkServiceCreator(auditCluster)).some
         case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName)) =>
           new LogBasedAuditSink(serializer, loggerName).some
         case Disabled =>
