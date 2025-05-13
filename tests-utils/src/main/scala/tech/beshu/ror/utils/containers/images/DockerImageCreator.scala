@@ -84,7 +84,7 @@ object DockerImageCreator extends StrictLogging {
     def setEntrypointFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
       imageDescription
         .entrypoint
-        .foldLeft(builder) { case (b, entrypoint) => b.entryPoint(entrypoint.toIO.getAbsolutePath) }
+        .foldLeft(builder) { case (b, entrypoint) => b.entryPoint(entrypoint) }
     }
 
   }

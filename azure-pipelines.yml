@@ -47,7 +47,7 @@ stages:
         condition: and(succeeded(), ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         timeoutInMinutes: 120
         pool:
-          vmImage: 'windows-latest'
+          vmImage: 'windows-2022'
         steps:
           - checkout: self
             fetchDepth: 1

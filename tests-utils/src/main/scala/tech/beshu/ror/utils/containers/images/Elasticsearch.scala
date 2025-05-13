@@ -54,7 +54,7 @@ object Elasticsearch {
 class Elasticsearch(esVersion: String,
                     config: Config,
                     plugins: Seq[Plugin],
-                    customEntrypoint: Option[Path])
+                    customEntrypoint: Option[String])
   extends LazyLogging {
 
   def this(esVersion: String, config: Config) = {
@@ -72,7 +72,7 @@ class Elasticsearch(esVersion: String,
     new Elasticsearch(esVersion, config, plugins :+ plugin, customEntrypoint)
   }
 
-  def setEntrypoint(entrypoint: Path): Elasticsearch = {
+  def setEntrypoint(entrypoint: String): Elasticsearch = {
     new Elasticsearch(esVersion, config, plugins, Some(entrypoint))
   }
 

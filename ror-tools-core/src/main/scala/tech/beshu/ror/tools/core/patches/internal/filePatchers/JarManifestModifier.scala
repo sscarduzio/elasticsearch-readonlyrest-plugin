@@ -36,9 +36,9 @@ object JarManifestModifier {
       manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
       Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
         copyJarContentExceptManifestFile(jarFile, jarOutput)
-      }.getOrElse(throw new IllegalStateException(s"Could not copy content of jar file ${file.name}"))
+      }.failed.map(IllegalStateException(s"Could not copy content of jar file ${file.name}", _)).get
       tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
-    }.getOrElse(throw new IllegalStateException(s"Could not add ROR version to jar file ${file.name}"))
+    }.failed.map(IllegalStateException(s"Could not add ROR version to jar file ${file.name}", _)).get
   }
 
   def findPatchedFiles(esDirectory: EsDirectory): List[PatchedJarFile] = {
