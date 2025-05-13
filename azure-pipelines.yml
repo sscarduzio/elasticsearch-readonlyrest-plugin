@@ -54,10 +54,16 @@ stages:
             clean: false
             persistCredentials: true
           - task: JavaToolInstaller@0
+            displayName: Switch to Java 21
             inputs:
               versionSpec: '21'
               jdkArchitectureOption: 'x64'
               jdkSourceOption: 'PreInstalled'
+          - task: DockerInstaller@0
+            displayName: Install Docker
+            inputs:
+              dockerVersion: 17.09.0-ce
+              releaseType: stable
           - powershell: |
                     Write-Host ">>> $env:ES_MODULE => Running testcontainers.."
                     .\gradlew ror-tools:test "-PesModule=$env:ES_MODULE"
