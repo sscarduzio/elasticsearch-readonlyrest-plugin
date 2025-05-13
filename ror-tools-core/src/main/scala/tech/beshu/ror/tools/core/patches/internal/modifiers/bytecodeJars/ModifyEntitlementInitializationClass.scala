@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es8181, es901, es900rc1, es900beta1}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es8181, es901}
 
 import java.io.{File, InputStream}
 
@@ -62,8 +62,6 @@ private[patches] class ModifyEntitlementInitializationClass(esVersion: SemVer)
               new DontValidateForbiddenPathsInCaseOfRorPlugin(
                 super.visitMethod(access, name, descriptor, signature, exceptions)
               )
-            case v if Set(es900beta1, es900rc1).contains(esVersion) =>
-              super.visitMethod(access, name, descriptor, signature, exceptions)
             case v if v >= es8181 =>
               new DontValidateForbiddenPathsInCaseOfRorPlugin(
                 super.visitMethod(access, name, descriptor, signature, exceptions)
