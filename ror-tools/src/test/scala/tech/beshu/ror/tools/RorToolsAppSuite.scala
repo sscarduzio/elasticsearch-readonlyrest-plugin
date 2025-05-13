@@ -510,7 +510,7 @@ class RorToolsAppSuite
         RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
       }
       unpatchResult should equal(Result.Failure)
-      
+
       // The assertion cannot check specific filenames, because they are ES-version specific
       unpatchOutput should include(
         s"""Checking if Elasticsearch is patched ...

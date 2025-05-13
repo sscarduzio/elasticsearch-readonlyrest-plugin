@@ -62,9 +62,6 @@ stages:
                       }
                       exit 1
                     }
-                  displayName: 'Run Gradle tests with hs_err logging'
-                  env:
-                    ES_MODULE: your-module-name-here  # set this or define it elsewhere
           - script: |
               ci/run-pipeline.sh
           - task: PublishTestResults@2
