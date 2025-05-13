@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.tools.core.patches.base
 
-import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.PatchProblem.*
@@ -56,13 +55,14 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
     }
   }
 
-  def verify(): Either[RorToolsError, Unit] = {
+  def verify(): Either[RorToolsError, Boolean] = {
     checkWithPatchedByFileAndEsPatch() match {
       case NotPatched =>
-        Left(EsNotPatchedError)
+        inOut.println(EsNotPatchedError.message)
+        Right(false)
       case PatchedWithCurrentRorVersion(_) =>
         inOut.println("Elasticsearch is patched! ReadonlyREST can be used")
-        Right(())
+        Right(true)
       case PatchProblemDetected(patchProblem) =>
         Left(patchProblem.rorToolsError)
     }
