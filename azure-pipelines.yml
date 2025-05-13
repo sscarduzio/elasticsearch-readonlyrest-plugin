@@ -36,10 +36,6 @@ pool:
   # attempt, make sure that upload-files-to-s3.sh works.
   vmImage: 'ubuntu-20.04'
 
-variables:
-  JAVA_VERSION: '22.0.1'
-  JAVA_DIR: 'C:\Java22'
-
 stages:
 
   - stage: TEST
@@ -57,24 +53,11 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          - powershell: |
-              $jdkVersion = "$(JAVA_VERSION)"
-              $installPath = "$(JAVA_DIR)"
-              $zipUrl = "https://cdn.azul.com/zulu/bin/zulu$($jdkVersion)-jdk$($jdkVersion)-win_x64.zip"
-
-              Write-Host "Downloading JDK from $zipUrl..."
-              Invoke-WebRequest -Uri $zipUrl -OutFile jdk.zip
-
-              Write-Host "Extracting JDK..."
-              Expand-Archive jdk.zip -DestinationPath $installPath
-
-              $jdkHome = Get-ChildItem -Directory $installPath | Select-Object -First 1
-              $env:JAVA_HOME = $jdkHome.FullName
-              $env:Path = "$($env:JAVA_HOME)\bin;$env:Path"
-
-              Write-Host "JAVA_HOME: $env:JAVA_HOME"
-              java -version
-            displayName: 'Install Java 22 manually'
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '22'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
           - powershell: |
                     Write-Host ">>> $env:ES_MODULE => Running testcontainers.."
                     .\gradlew ror-tools:test "-PesModule=$env:ES_MODULE"
