@@ -62,8 +62,6 @@ stages:
                       }
                       exit 1
                     }
-          - script: |
-              ci/run-pipeline.sh
           - task: PublishTestResults@2
             condition: failed()
             inputs:
