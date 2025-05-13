@@ -36,9 +36,15 @@ object JarManifestModifier {
       manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
       Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
         copyJarContentExceptManifestFile(jarFile, jarOutput)
-      }.getOrElse(throw new IllegalStateException(s"Could not copy content of jar file ${file.name}"))
+      }.fold(
+        ex => throw IllegalStateException(s"Could not copy content of jar file ${file.name} because of [${ex.getMessage}]", ex),
+        (_: Unit) => ()
+      )
       tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
-    }.getOrElse(throw new IllegalStateException(s"Could not add ROR version to jar file ${file.name}"))
+    }.fold(
+      ex => throw IllegalStateException(s"Could not add ROR version to jar file ${file.name} because of [${ex.getMessage}]", ex),
+      (_: File) => ()
+    )
   }
 
   def findPatchedFiles(esDirectory: EsDirectory): List[PatchedJarFile] = {
@@ -58,7 +64,10 @@ object JarManifestModifier {
       val name = entry.getName
       if (!name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
         jarOutput.putNextEntry(entry)
-        Using(originalJarFile.getInputStream(entry))(_.transferTo(jarOutput))
+        Using(originalJarFile.getInputStream(entry))(_.transferTo(jarOutput)).fold(
+          ex => throw IllegalStateException(s"Could not copy content of ${entry.getName} because of [${ex.getMessage}]", ex),
+          (_: Long) => ()
+        )
         jarOutput.closeEntry()
       }
     }
