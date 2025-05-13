@@ -53,6 +53,11 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: UseJava@1
+            inputs:
+              versionSpec: '22'
+              distribution: 'temurin'
+              jdkArchitecture: 'x64'
           - powershell: |
                     Write-Host ">>> $env:ES_MODULE => Running testcontainers.."
                     .\gradlew ror-tools:test "-PesModule=$env:ES_MODULE"
