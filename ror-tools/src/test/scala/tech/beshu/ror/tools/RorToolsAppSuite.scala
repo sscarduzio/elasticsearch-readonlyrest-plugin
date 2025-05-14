@@ -280,7 +280,7 @@ class RorToolsAppSuite
       verifyResult should equal(Result.Failure)
       verifyOutput should include(
         """Checking if Elasticsearch is patched ...
-          |ERROR: Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch"""
+          |Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch"""
           .stripMargin
       )
     }

@@ -29,16 +29,22 @@ object JarManifestModifier {
   private val patchedByRorVersionPropertyName = "Patched-By-Ror-Version"
 
   def addPatchedByRorVersionProperty(file: File, rorVersion: String): Unit = {
+    val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
     Using(new JarFile(file.toJava)) { jarFile =>
       // Using the better-files temporary files causes problems, probably because of permission issues when copying the file at the end of this method.
-      val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
       val manifest = jarFile.getManifest
       manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
       Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
         copyJarContentExceptManifestFile(jarFile, jarOutput)
-      }.failed.map(IllegalStateException(s"Could not copy content of jar file ${file.name}", _)).get
-      tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
-    }.failed.map(IllegalStateException(s"Could not add ROR version to jar file ${file.name}", _)).get
+      }.fold(
+        ex => throw IllegalStateException(s"Could not copy content of jar file ${file.name} because of [${ex.getMessage}]", ex),
+        (_: Unit) => ()
+      )
+    }.fold(
+      ex => throw IllegalStateException(s"Could not add ROR version to jar file ${file.name} because of [${ex.getMessage}]", ex),
+      (_: Unit) => ()
+    )
+    tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
   }
 
   def findPatchedFiles(esDirectory: EsDirectory): List[PatchedJarFile] = {
@@ -58,7 +64,10 @@ object JarManifestModifier {
       val name = entry.getName
       if (!name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
         jarOutput.putNextEntry(entry)
-        Using(originalJarFile.getInputStream(entry))(_.transferTo(jarOutput))
+        Using(originalJarFile.getInputStream(entry))(_.transferTo(jarOutput)).fold(
+          ex => throw IllegalStateException(s"Could not copy content of ${entry.getName} because of [${ex.getMessage}]", ex),
+          (_: Long) => ()
+        )
         jarOutput.closeEntry()
       }
     }
