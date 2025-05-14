@@ -40,10 +40,12 @@ import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.DataStreamSettingsOps.*
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
+import tech.beshu.ror.utils.TaskOps.Measure
 
+import java.time.Clock
 import scala.jdk.CollectionConverters.*
 
-final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)
+final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)(using Clock)
   extends DataStreamService
     with Logging {
 
@@ -201,22 +203,22 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     def executeT[REQUEST <: ActionRequest, RESPONSE <: ActionResponse](action: ActionType[RESPONSE],
                                                                        request: REQUEST): Task[RESPONSE] = {
       for {
+        response <- Task.measure(
+          task = Task.delay(nodeClient.execute(action, request).actionGet()),
+          logTimeMeasurement = duration => Task.delay {
+            logger.debug(s"Action ${action.name()} request: ${request.toString}, taken ${duration.toMillis}ms")
+          }
+        )
         _ <- Task.delay {
-          logger.debug(s"Action ${action.name()} request: ${request.toString}")
-        }
-        durationWithResponse <- Task.delay(nodeClient.execute(action, request).actionGet()).timed
-        (duration, response) = durationWithResponse
-        _ <- Task.delay {
-          logger.debug(s"Action ${action.name()} response: ${response.toString}, taken ${duration.toMillis}ms")
+          logger.debug(s"Action ${action.name()} response: ${response.toString}")
         }
       } yield response
     }
 
-
     def executeAck[REQUEST <: ActionRequest, RESPONSE <: AcknowledgedResponse](action: ActionType[RESPONSE],
                                                                                request: REQUEST): Task[RESPONSE] = {
       executeT(action, request)
-        .tapEval(response => Task.delay(s"Action ${action.name()} acknowledged: ${response.isAcknowledged}"))
+        .tapEval(response => Task.delay(logger.debug(s"Action ${action.name()} acknowledged: ${response.isAcknowledged}")))
     }
 
     private def supportedActions: Map[ActionType[ActionResponse], TransportAction[ActionRequest, ActionResponse]] = {

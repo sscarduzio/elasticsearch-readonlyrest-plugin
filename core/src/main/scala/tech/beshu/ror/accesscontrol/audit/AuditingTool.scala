@@ -265,7 +265,14 @@ object AuditingTool extends Logging {
   private def createDataStreamSink(config: AuditSink.Config.EsDataStreamBasedSink,
                                    serviceCreator: DataStreamAndIndexBasedAuditSinkServiceCreator): Task[Validated[CreationError, SupportedAuditSink]] =
     Task.delay(serviceCreator.dataStream(config.auditCluster))
-      .flatMap(EsDataStreamBasedAuditSink.create(config.logSerializer, config.rorAuditDataStream, _, config.auditCluster).map(_.leftMap(x => CreationError(x.message)).toValidated))
+      .flatMap { auditSinkService =>
+        EsDataStreamBasedAuditSink.create(
+          config.logSerializer,
+          config.rorAuditDataStream,
+          auditSinkService,
+          config.auditCluster
+        ).map(_.leftMap(error => CreationError(error.message)).toValidated)
+      }
 
   private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink
 

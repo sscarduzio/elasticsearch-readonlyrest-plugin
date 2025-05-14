@@ -16,13 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.audit.sink
 
-import cats.data.NonEmptyList
-import tech.beshu.ror.implicits.*
+import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.DataStreamBasedAuditSinkService
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.ScalaOps
+import tech.beshu.ror.utils.ScalaOps.value
 
 private[audit] final class EsDataStreamBasedAuditSink private(serializer: AuditLogSerializer,
                                                               rorAuditDataStream: RorAuditDataStream,
@@ -57,13 +59,11 @@ object EsDataStreamBasedAuditSink {
   def create(serializer: AuditLogSerializer,
              rorAuditDataStream: RorAuditDataStream,
              auditSinkService: DataStreamBasedAuditSinkService,
-             auditCluster: AuditCluster): Task[Either[CreationError, EsDataStreamBasedAuditSink]] = {
-    auditSinkService
-      .dataStreamCreator
-      .createIfNotExists(rorAuditDataStream)
-      .flatMap {
-        case Right(()) => Task.delay(Right(new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService)))
-        case Left(errorMessages) => Task.delay(Left(CreationError(errorMessages, auditCluster)))
-      }
+             auditCluster: AuditCluster): Task[Either[CreationError, EsDataStreamBasedAuditSink]] = value {
+    for {
+      _ <- EitherT(auditSinkService.dataStreamCreator.createIfNotExists(rorAuditDataStream))
+        .leftMap(errorMessages => CreationError(errorMessages, auditCluster))
+      auditSink <- EitherT.right(Task.delay(new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService)))
+    } yield auditSink
   }
 }

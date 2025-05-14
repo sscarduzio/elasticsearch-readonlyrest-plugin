@@ -203,7 +203,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
       coreFactory
         .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
     )
-      .flatMap(core => EitherT(createEngine(httpClientsFactory, ldapConnectionPoolProvider, core)))
+      .flatMap(core => createEngine(httpClientsFactory, ldapConnectionPoolProvider, core))
       .semiflatTap { engine =>
         Task(inspectFlsEngine(engine))
       }
@@ -213,7 +213,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def createEngine(httpClientsFactory: AsyncHttpClientsFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                           core: Core): Task[Either[NonEmptyList[CoreCreationError], Engine]] = {
+                           core: Core): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
     EitherT(createAuditingTool(core))
       .map { auditingTool =>
@@ -230,7 +230,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
           ldapConnectionPoolProvider,
           auditingTool
         )
-      }.value
+      }
   }
 
   private def createAuditingTool(core: Core)

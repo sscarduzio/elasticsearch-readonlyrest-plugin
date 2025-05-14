@@ -111,6 +111,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         val request = MockRequestContext.indices.withHeaders(
           header("X-Forwarded-For", "192.168.0.1"), header("Custom-One", "test")
         )
+
         acl.handleRegularRequest(request).runSyncUnsafe()
 
         def expectedJson(jsonString: String) = ujson.read(
