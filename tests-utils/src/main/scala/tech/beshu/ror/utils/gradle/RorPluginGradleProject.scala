@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.utils.gradle
 
-import java.io.{File => JFile}
-import java.nio.file.Paths
-
 import better.files.*
 import org.gradle.tooling.GradleConnector
 
+import java.io.File as JFile
+import java.nio.file.Paths
 import scala.util.Try
 
 object RorPluginGradleProject {
@@ -31,7 +30,7 @@ object RorPluginGradleProject {
       .getOrElse(throw new IllegalStateException("No 'esModule' system property set"))
 
   def customModule(moduleName: String): RorPluginGradleProject =
-      new RorPluginGradleProject(moduleName)
+    new RorPluginGradleProject(moduleName)
 
   def getRootProject: JFile = {
     Option(System.getProperty("project.dir"))

@@ -23,7 +23,7 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.{ActionListener, DocWriteRequest}
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.common.BackoffPolicy
-import org.elasticsearch.common.unit.ByteSizeValue
+import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue}
 import org.elasticsearch.core.TimeValue
 import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
@@ -43,7 +43,7 @@ final class NodeClientBasedAuditSinkService(client: NodeClient, jsonParserFactor
     BulkProcessor
       .builder(BulkRequestHandler, new AuditSinkBulkProcessorListener, "ror-audit-bulk-processor")
       .setBulkActions(AUDIT_SINK_MAX_ITEMS)
-      .setBulkSize(ByteSizeValue.ofKb(AUDIT_SINK_MAX_KB))
+      .setBulkSize(ByteSizeValue.of(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB))
       .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS))
       .setConcurrentRequests(1)
       .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))

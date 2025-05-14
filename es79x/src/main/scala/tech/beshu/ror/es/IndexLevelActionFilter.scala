@@ -38,7 +38,7 @@ import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
-import tech.beshu.ror.es.services.{NodeClientBasedAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
+import tech.beshu.ror.es.services.{EsIndexJsonContentService, EsServerBasedRorClusterService, NodeClientBasedAuditSinkService, RestClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.exceptions.StartingFailureException
@@ -103,7 +103,7 @@ class IndexLevelActionFilter(nodeName: String,
         case AuditCluster.LocalAuditCluster =>
           new NodeClientBasedAuditSinkService(client, threadPool, new XContentJsonParserFactory(xContentRegistry))
         case remote: AuditCluster.RemoteAuditCluster =>
-          HighLevelClientAuditSinkService.create(remote)
+          RestClientAuditSinkService.create(remote)
       }
     }
   }

@@ -38,7 +38,7 @@ dependencyCheck {
      */
     failBuildOnCVSS = 3
     scanConfigurations = ['runtimeClasspath']
-    suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
+    suppressionFiles = ["${project.rootDir}/suppressions_cve.xml"]
 }
 
 test {
@@ -50,10 +50,14 @@ test {
 }
 
 dependencies {
-    api group: 'org.ow2.asm',                   name: 'asm',                              version: '9.7'
-    api group: 'org.ow2.asm',                   name: 'asm-util',                         version: '9.7'
+    api group: 'org.ow2.asm',                   name: 'asm',                              version: '9.8'
+    api group: 'org.ow2.asm',                   name: 'asm-util',                         version: '9.8'
     api group: 'io.kevinlee',                   name: 'just-semver_3',                    version: '0.5.0'
     api group: 'com.lihaoyi',                   name: 'os-lib_3',                         version: '0.11.3'
+    api group: 'com.github.pathikrit',          name: 'better-files_3',                   version: '3.9.2'
+    api group: 'io.circe',                      name: 'circe-core_3',                     version: '0.14.6'
+    api group: 'io.circe',                      name: 'circe-generic_3',                  version: '0.14.6'
+    api group: 'io.circe',                      name: 'circe-parser_3',                   version: '0.14.6'
 }
 
 java {
@@ -75,6 +79,10 @@ compileScala {
             "-Wunused:privates",
             "-Wunused:nowarn",
     )
+}
+
+tasks.withType(ScalaCompile).configureEach {
+    scalaCompileOptions.additionalParameters = ["-Xmax-inlines", "128", "-feature", "-Xfatal-warnings"]
 }
 
 shadowJar {

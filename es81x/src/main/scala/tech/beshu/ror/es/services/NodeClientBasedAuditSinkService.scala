@@ -33,8 +33,8 @@ import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkSe
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 
 final class NodeClientBasedAuditSinkService(client: NodeClient,
-                               threadPool: ThreadPool,
-                               jsonParserFactory: XContentJsonParserFactory)
+                                            threadPool: ThreadPool,
+                                            jsonParserFactory: XContentJsonParserFactory)
   extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
     with Logging {

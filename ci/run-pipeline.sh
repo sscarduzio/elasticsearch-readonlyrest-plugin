@@ -49,11 +49,16 @@ run_integration_tests() {
   ES_MODULE=$1
 
   echo ">>> $ES_MODULE => Running testcontainers.."
+  ./gradlew ror-tools:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
   ./gradlew integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es90x" ]]; then
   run_integration_tests "es90x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es818x" ]]; then
+  run_integration_tests "es818x"
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es816x" ]]; then

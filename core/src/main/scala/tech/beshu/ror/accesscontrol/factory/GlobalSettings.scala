@@ -22,7 +22,8 @@ final case class GlobalSettings(showBasicAuthPrompt: Boolean,
                                 forbiddenRequestMessage: String,
                                 flsEngine: GlobalSettings.FlsEngine,
                                 configurationIndex: RorConfigurationIndex,
-                                userIdCaseSensitivity: CaseSensitivity)
+                                userIdCaseSensitivity: CaseSensitivity,
+                                usersDefinitionDuplicateUsernamesValidationEnabled: Boolean)
 
 object GlobalSettings {
 

@@ -23,6 +23,7 @@ import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
+import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
 import tech.beshu.ror.utils.containers.images.Elasticsearch
@@ -65,7 +66,8 @@ object EsContainer {
 
   def init(esContainer: EsContainer,
            initializer: ElasticsearchNodeDataInitializer,
-           logger: Logger): EsContainer = {
+           logger: Logger,
+           awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness): EsContainer = {
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
     val esClient = Coeval(esContainer.adminClient)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
@@ -73,7 +75,7 @@ object EsContainer {
     esContainer.container.addExposedPort(9300)
     esContainer.container.addExposedPort(8000)
     esContainer.container.setWaitStrategy(
-      new ElasticsearchNodeWaitingStrategy(esContainer.esVersion, esContainer.esConfig.nodeName, esClient, initializer)
+      new ElasticsearchNodeWaitingStrategy(esContainer.esVersion, esContainer.esConfig.nodeName, esClient, initializer, awaitingReadyStrategy)
         .withStartupTimeout(5 minutes)
     )
     esContainer.container.setNetwork(Network.SHARED)

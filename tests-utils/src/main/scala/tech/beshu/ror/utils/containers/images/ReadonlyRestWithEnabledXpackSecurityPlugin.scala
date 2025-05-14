@@ -58,10 +58,11 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
 }
 
 class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
-                                                 config: Config)
+                                                 config: Config,
+                                                 performPatching: Boolean)
   extends Elasticsearch.Plugin {
 
-  private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig())
+  private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig(), performPatching)
   private val xpackSecurityPlugin = new XpackSecurityPlugin(esVersion, createXpackSecurityConfig())
 
   override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
