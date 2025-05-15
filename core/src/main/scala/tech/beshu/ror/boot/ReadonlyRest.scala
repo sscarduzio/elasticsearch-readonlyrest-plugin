@@ -238,7 +238,13 @@ class ReadonlyRest(coreFactory: CoreFactory,
     core.rorConfig.auditingSettings
       .map(settings => AuditingTool.create(settings, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
       .sequence
-      .map(_.map(_.toValidated).sequence.map(_.flatten).toEither.leftMap(_.map(e => CoreCreationError.AuditingSettingsCreationError(Message(e.message)))))
+      .map {
+        _.sequence
+          .map(_.flatten)
+          .leftMap {
+            _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))
+          }
+      }
   }
 
   private def inspectFlsEngine(engine: Engine): Unit = {
