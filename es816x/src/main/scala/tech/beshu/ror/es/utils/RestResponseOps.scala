@@ -29,8 +29,11 @@ object RestResponseOps {
     def statusCode: Int = response.getStatusLine.getStatusCode
 
     def entityJson: Value = {
-      val jsonStr = EntityUtils.toString(response.getEntity)
-      ujson.read(jsonStr)
+      ujson.read(entityStr)
+    }
+
+    def entityStr: String = {
+      EntityUtils.toString(response.getEntity)
     }
 
     def errorType: Option[String] = Try(entityJson("error")("type").str).toOption

@@ -16,11 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.audit.sink
 
+import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.domain.RorAuditDataStream
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.DataStreamBasedAuditSinkService
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.ScalaOps
+import tech.beshu.ror.utils.ScalaOps.value
 
 private[audit] final class EsDataStreamBasedAuditSink private(serializer: AuditLogSerializer,
                                                               rorAuditDataStream: RorAuditDataStream,
@@ -40,12 +44,26 @@ private[audit] final class EsDataStreamBasedAuditSink private(serializer: AuditL
 }
 
 object EsDataStreamBasedAuditSink {
+
+  final case class CreationError private(message: String)
+  object CreationError {
+    def apply(errors: NonEmptyList[AuditDataStreamCreator.ErrorMessage], auditCluster: AuditCluster): CreationError = {
+      val clusterType = auditCluster match {
+        case AuditCluster.LocalAuditCluster => "local cluster"
+        case AuditCluster.RemoteAuditCluster(uris) => s"remote cluster ${uris.toList.show}"
+      }
+      new CreationError(s"Unable to configure audit output using a data stream in $clusterType. Details: [${errors.toList.map(_.message).show}]")
+    }
+  }
+
   def create(serializer: AuditLogSerializer,
              rorAuditDataStream: RorAuditDataStream,
-             auditSinkService: DataStreamBasedAuditSinkService): Task[EsDataStreamBasedAuditSink] = {
-    auditSinkService
-      .dataStreamCreator
-      .createIfNotExists(rorAuditDataStream)
-      .map((_: Unit) => new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService))
+             auditSinkService: DataStreamBasedAuditSinkService,
+             auditCluster: AuditCluster): Task[Either[CreationError, EsDataStreamBasedAuditSink]] = value {
+    for {
+      _ <- EitherT(auditSinkService.dataStreamCreator.createIfNotExists(rorAuditDataStream))
+        .leftMap(errorMessages => CreationError(errorMessages, auditCluster))
+      auditSink <- EitherT.right(Task.delay(new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService)))
+    } yield auditSink
   }
 }
