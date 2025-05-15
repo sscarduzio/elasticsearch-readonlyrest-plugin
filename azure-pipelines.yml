@@ -59,11 +59,15 @@ stages:
               versionSpec: '21'
               jdkArchitectureOption: 'x64'
               jdkSourceOption: 'PreInstalled'
-          - task: DockerInstaller@0
-            displayName: Install Docker
-            inputs:
-              dockerVersion: 28.1.1
-              releaseType: stable
+          - powershell: |
+              Install-WindowsFeature -Name containers -IncludeAllSubFeature -IncludeManagementTools
+              Install-WindowsFeature -Name Hyper-V -IncludeAllSubFeature -IncludeManagementTools -Restart:$false
+              Set-ExecutionPolicy Bypass -Scope Process -Force
+              Install-Module -Name DockerMsftProvider -Repository PSGallery -Force
+              Install-Package -Name docker -ProviderName DockerMsftProvider -Force
+              Start-Service docker
+              docker version
+            displayName: 'Install Docker on Windows Server'
           - powershell: |
                     docker ps
                     Write-Host ">>> $env:ES_MODULE => Running testcontainers.."
