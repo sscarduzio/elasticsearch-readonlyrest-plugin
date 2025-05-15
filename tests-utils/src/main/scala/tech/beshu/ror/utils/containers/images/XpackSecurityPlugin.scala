@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.containers.images
 
 import tech.beshu.ror.utils.containers.images.Elasticsearch.{configDir, esDir, fromResourceBy}
+import tech.beshu.ror.utils.containers.images.PathUtils.linuxPath
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.misc.Version
@@ -116,10 +117,10 @@ class XpackSecurityPlugin(esVersion: String,
         )
     }
 
-    private def createKeystoreCommand = s"${esDir.toString()}/bin/elasticsearch-keystore create"
+    private def createKeystoreCommand = s"${linuxPath(esDir)}/bin/elasticsearch-keystore create"
 
     private def addToKeystoreCommand(key: String, value: String) = {
-      s"printf '$value\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add $key"
+      s"printf '$value\\n' | ${linuxPath(esDir)}/bin/elasticsearch-keystore add $key"
     }
   }
 }

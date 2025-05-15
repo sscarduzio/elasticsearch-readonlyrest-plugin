@@ -22,6 +22,7 @@ import com.typesafe.scalalogging.LazyLogging
 import os.Path
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.images.Elasticsearch.*
+import tech.beshu.ror.utils.containers.images.PathUtils.linuxPath
 import tech.beshu.ror.utils.misc.Version
 
 object Elasticsearch {
@@ -91,7 +92,7 @@ class Elasticsearch(esVersion: String,
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
-      .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
+      .run(s"chown -R elasticsearch:elasticsearch ${linuxPath(configDir.toString())}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
       .user("elasticsearch")

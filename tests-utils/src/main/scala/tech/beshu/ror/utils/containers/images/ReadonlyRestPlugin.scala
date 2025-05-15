@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.containers.images
 
 import better.files.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch.{configDir, esDir, fromResourceBy}
+import tech.beshu.ror.utils.containers.images.PathUtils.linuxPath
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
@@ -106,17 +107,17 @@ class ReadonlyRestPlugin(esVersion: String,
   private implicit class InstallRorPlugin(val image: DockerImageDescription) {
     def installRorPlugin(): DockerImageDescription = {
       image
-        .run(s"${esDir.toString()}/bin/elasticsearch-plugin install --batch file:///tmp/${config.rorPlugin.name}")
+        .run(s"${linuxPath(esDir)}/bin/elasticsearch-plugin install --batch file:///tmp/${config.rorPlugin.name}")
     }
 
     def patchES(): DockerImageDescription = {
       image
         .user("root")
         .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
-          command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes"
+          command = s"${linuxPath(esDir)}/jdk/bin/java -jar ${linuxPath(esDir)}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes"
         )
         .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
-          command = s"$$JAVA_HOME/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes"
+          command = s"$$JAVA_HOME/bin/java -jar ${linuxPath(esDir)}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes"
         )
         .user("elasticsearch")
     }
@@ -131,7 +132,7 @@ class ReadonlyRestPlugin(esVersion: String,
           .copyFile(configDir / "ror-truststore.bcfks", fromResourceBy(name = "ror-truststore.bcfks"))
           .copyFile(configDir / "elastic-certificates.bcfks", fromResourceBy(name = "elastic-certificates.bcfks"))
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 10, 0),
-            s"cat ${configDir.toString()}/additional-permissions.policy >> ${esDir.toString()}/jdk/conf/security/java.policy"
+            s"cat ${linuxPath(configDir)}/additional-permissions.policy >> ${linuxPath(esDir)}/jdk/conf/security/java.policy"
           )
       }
       else {

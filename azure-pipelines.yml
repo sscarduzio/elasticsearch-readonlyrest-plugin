@@ -62,7 +62,7 @@ stages:
           - task: DockerInstaller@0
             displayName: Install Docker
             inputs:
-              dockerVersion: 17.09.0-ce
+              dockerVersion: 28.1.1
               releaseType: stable
           - powershell: |
                     docker ps

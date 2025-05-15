@@ -21,6 +21,7 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 import tech.beshu.ror.utils.containers.images.DockerImageDescription.Command
 import tech.beshu.ror.utils.containers.images.DockerImageDescription.Command.{ChangeUser, Run}
+import tech.beshu.ror.utils.containers.images.PathUtils.linuxPath
 
 object DockerImageCreator extends StrictLogging {
 
@@ -43,7 +44,7 @@ object DockerImageCreator extends StrictLogging {
       .copyFiles
       .foldLeft(to) {
         case (dockerfile, copyFile) =>
-          dockerfile.withFileFromFile(copyFile.destination.toIO.getAbsolutePath, copyFile.file.toJava)
+          dockerfile.withFileFromFile(linuxPath(copyFile.destination.toIO.getAbsolutePath), copyFile.file.toJava)
       }
   }
 
@@ -71,7 +72,7 @@ object DockerImageCreator extends StrictLogging {
       imageDescription
         .copyFiles
         .foldLeft(builder) { case (b, file) =>
-          b.copy(file.destination.toString(), file.destination.toString())
+          b.copy(linuxPath(file.destination.toString()), linuxPath(file.destination.toString()))
         }
     }
 
