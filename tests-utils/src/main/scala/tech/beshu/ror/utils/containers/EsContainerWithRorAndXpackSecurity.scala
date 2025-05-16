@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
-import os.Path
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
@@ -63,7 +62,7 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
                                  securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
                                  initializer: ElasticsearchNodeDataInitializer,
                                  startedClusterDependencies: StartedClusterDependencies,
-                                 customEntrypoint: Option[Path],
+                                 customEntrypoint: Option[String],
                                  awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
     create(
       esVersion = esVersion,
@@ -82,7 +81,7 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
                      securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
                      initializer: ElasticsearchNodeDataInitializer,
                      startedClusterDependencies: StartedClusterDependencies,
-                     customEntrypoint: Option[Path],
+                     customEntrypoint: Option[String],
                      performPatching: Boolean,
                      awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
     val rorContainer = new EsContainerWithRorAndXpackSecurity(
@@ -101,7 +100,7 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
   private def esImageWithRorAndXpackFromDockerfile(esVersion: String,
                                                    esConfig: Elasticsearch.Config,
                                                    securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
-                                                   customEntrypoint: Option[Path],
+                                                   customEntrypoint: Option[String],
                                                    performPatching: Boolean) = {
     DockerImageCreator.create(
       Elasticsearch.create(esVersion, esConfig)
