@@ -16,22 +16,21 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import better.files.File
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import tech.beshu.ror.integration.suites.base.support.{BaseSingleNodeEsClusterTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import tech.beshu.ror.utils.misc.Resources.getResourcePath
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import java.util.UUID
 
-class BaseAuditingToolsSuite
+trait BaseAuditingToolsSuite
   extends AnyWordSpec
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
@@ -42,9 +41,15 @@ class BaseAuditingToolsSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport {
 
-  override implicit val rorConfigFileName: String = "/enabled_auditing_tools/readonlyrest.yml"
+  protected def destNodeClientProvider: ClientProvider
 
-  private lazy val adminAuditIndexManager = new AuditIndexManager(adminClient, esVersionUsed, "audit_index")
+  protected def assertForEveryAuditEntry(entry: JSON): Unit
+
+  private lazy val adminAuditIndexManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, "audit_index")
+
+  lazy val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
+  lazy val adminRorApiManager = new RorApiManager(adminClient, esVersionUsed)
+
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -54,21 +59,9 @@ class BaseAuditingToolsSuite
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
-  lazy val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
-  lazy val adminRorApiManager = new RorApiManager(adminClient, esVersionUsed)
-
-  private lazy val simpleSyntaxTestParams = Table[String, String, JSON => Unit](
-    ("name",                           "config",                                           "assertionForEveryAuditEntry"),
-    ("LocalClusterAuditingToolsSuite", config("/enabled_auditing_tools/readonlyrest.yml"), _ => ()),
-  )
-
-  private def config(path: String) = File(getResourcePath(path)).contentAsString
-
-  forAll(simpleSyntaxTestParams) { (name, config, assertForEveryAuditEntry) =>
-  s"$name - Regular ES request" should {
+  "Regular ES request" should {
     "be audited" when {
       "rule 1 is matched with logged user" in {
-        adminRorApiManager.updateRorTestConfig(config)
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response should have statusCode 200
@@ -85,7 +78,6 @@ class BaseAuditingToolsSuite
         }
       }
       "no rule is matched with username from auth header" in {
-        adminRorApiManager.updateRorTestConfig(config)
         val indexManager = new IndexManager(
           basicAuthClient("username", "wrong"), esVersionUsed
         )
@@ -103,7 +95,6 @@ class BaseAuditingToolsSuite
         }
       }
       "no rule is matched with raw auth header as user" in {
-        adminRorApiManager.updateRorTestConfig(config)
         val indexManager = new IndexManager(tokenAuthClient("user_token"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response should have statusCode 403
@@ -121,7 +112,6 @@ class BaseAuditingToolsSuite
       }
       "rule 1 is matched" when {
         "two requests were sent and correlationId is the same for both of them" in {
-          adminRorApiManager.updateRorTestConfig(config)
           val correlationId = UUID.randomUUID().toString
           val indexManager = new IndexManager(
             basicAuthClient("username", "dev"),
@@ -146,7 +136,6 @@ class BaseAuditingToolsSuite
           }
         }
         "two requests were sent and the first one is user metadata request" in {
-          adminRorApiManager.updateRorTestConfig(config)
           val userMetadataResponse = rorApiManager.fetchMetadata()
 
           userMetadataResponse should have statusCode 200
@@ -172,7 +161,6 @@ class BaseAuditingToolsSuite
           }
         }
         "two metadata requests were sent, one with correlationId" in {
-          adminRorApiManager.updateRorTestConfig(config)
           def fetchMetadata(correlationId: Option[String]) = {
             rorApiManager.fetchMetadata(correlationId = correlationId)
           }
@@ -200,7 +188,6 @@ class BaseAuditingToolsSuite
     }
     "not be audited" when {
       "rule 2 is matched" in {
-        adminRorApiManager.updateRorTestConfig(config)
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
         val response = indexManager.getIndex("facebook")
         response should have statusCode 200
@@ -217,7 +204,6 @@ class BaseAuditingToolsSuite
     "be audited" when {
       "rule 3 is matched" when {
         "no JSON kay attribute from request body payload is defined in audit serializer" in {
-          adminRorApiManager.updateRorTestConfig(config)
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }""")).force()
 
           response should have statusCode 204
@@ -230,7 +216,6 @@ class BaseAuditingToolsSuite
           }
         }
         "user JSON key attribute from request doesn't override the defined in audit serializer" in {
-          adminRorApiManager.updateRorTestConfig(config)
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "user": "unknown" }"""))
 
           response should have statusCode 204
@@ -243,7 +228,6 @@ class BaseAuditingToolsSuite
           }
         }
         "new JSON key attribute from request body as a JSON value" in {
-          adminRorApiManager.updateRorTestConfig(config)
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": { "field1": 1, "fields2": "f2" } }"""))
 
           response should have statusCode 204
@@ -259,7 +243,6 @@ class BaseAuditingToolsSuite
     }
     "not be audited" when {
       "admin rule is matched" in {
-        adminRorApiManager.updateRorTestConfig(config)
         val response = adminRorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
         response should have statusCode 204
 
@@ -269,7 +252,6 @@ class BaseAuditingToolsSuite
         }
       }
       "request JSON is malformed" in {
-        adminRorApiManager.updateRorTestConfig(config)
         val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
         response should have statusCode 400
         response.responseJson should be(ujson.read(
@@ -295,7 +277,6 @@ class BaseAuditingToolsSuite
         }
       }
       "request JSON is too large (>5KB)" in {
-        adminRorApiManager.updateRorTestConfig(config)
         val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${LazyList.continually("!").take(5000).mkString}" }"""))
         response should have statusCode 413
         response.responseJson should be(ujson.read(
@@ -321,6 +302,5 @@ class BaseAuditingToolsSuite
         }
       }
     }
-  }
   }
 }
