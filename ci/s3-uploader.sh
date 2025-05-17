@@ -105,11 +105,11 @@ POLICY
     )
 
     # AWS4-HMAC-SHA256 signature
-    s=`printf "$expdate_s"   | openssl sha256 -hmac "AWS4$aws_sk"           -hex | sed 's/(stdin)= //'`
-    s=`printf "$region"      | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | sed 's/(stdin)= //'`
-    s=`printf "$service"     | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | sed 's/(stdin)= //'`
-    s=`printf "aws4_request" | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | sed 's/(stdin)= //'`
-    s=`printf "$p"           | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | sed 's/(stdin)= //'`
+    s=`printf "$expdate_s"   | openssl sha256 -hmac "AWS4$aws_sk"           -hex | awk '{print $NF}'`
+    s=`printf "$region"      | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
+    s=`printf "$service"     | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
+    s=`printf "aws4_request" | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
+    s=`printf "$p"           | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
 
     key_and_sig_args="-F X-Amz-Credential=$aws_ak/$expdate_s/$region/$service/aws4_request -F X-Amz-Algorithm=AWS4-HMAC-SHA256 -F X-Amz-Signature=$s -F X-Amz-Date=${date}"
 fi

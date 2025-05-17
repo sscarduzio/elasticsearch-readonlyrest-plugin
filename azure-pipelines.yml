@@ -32,9 +32,7 @@ parameters:
     default: ' '
 
 pool:
-  # we cannot simply bump it to 22.04, because there is a problem (probably) with s3-uploader.sh. Before the next bump
-  # attempt, make sure that upload-files-to-s3.sh works.
-  vmImage: 'ubuntu-20.04'
+  vmImage: 'ubuntu-24.04'
 
 stages:
 

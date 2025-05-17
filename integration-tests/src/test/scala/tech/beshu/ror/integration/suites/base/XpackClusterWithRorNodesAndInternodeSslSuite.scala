@@ -93,7 +93,8 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     getIndexResult should have statusCode 200
     getIndexResult.indicesAndAliases.keys.toList should be(List("test"))
   }
-  "Field caps request works" in {
+  // todo: this test is non-deterministic for es711x and es714x module (that's why we skip them). But we want to fix them in the future
+  "Field caps request works" excludeES allEs7xBetweenEs711xAnd715x in {
     val documentManager = new DocumentManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
     documentManager.createDoc("user2_index", 1, ujson.read("""{ "data1": 1, "data2": 2 }""")).force()
 

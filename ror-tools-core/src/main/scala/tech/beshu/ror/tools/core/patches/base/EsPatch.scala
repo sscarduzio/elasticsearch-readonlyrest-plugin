@@ -38,7 +38,6 @@ object EsPatch {
     val rorPluginDirectory = new RorPluginDirectory(esDirectory)
     esDirectory.readEsVersion() match {
       case esVersion if esVersion >= es900 => new Es90xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion == es900rc1 => new Es900rc1Patch(rorPluginDirectory, esVersion)
       case esVersion if esVersion >= es8180 => new Es90xPatch(rorPluginDirectory, esVersion)
       case esVersion if esVersion >= es8150 => new Es815xPatch(rorPluginDirectory, esVersion)
       case esVersion if esVersion >= es8140 => new Es814xPatch(rorPluginDirectory, esVersion)
