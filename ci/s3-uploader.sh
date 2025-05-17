@@ -104,7 +104,7 @@ if [ "$aws_ak" != "" ] && [ "$aws_sk" != "" ]; then
 POLICY
     )
 
-#    # AWS4-HMAC-SHA256 signature
+    # AWS4-HMAC-SHA256 signature
     s=`printf "$expdate_s"   | openssl sha256 -hmac "AWS4$aws_sk"           -hex | awk '{print $NF}'`
     s=`printf "$region"      | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
     s=`printf "$service"     | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
