@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.EsIndexBasedSink
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
@@ -191,7 +192,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       serializer,
       RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
       AuditCluster.LocalAuditCluster,
-      enableReportingEsNodeDetails = false,
+      EsIndexBasedSink.Options(enableReportingEsNodeDetails = false),
     ))
   ))
 
