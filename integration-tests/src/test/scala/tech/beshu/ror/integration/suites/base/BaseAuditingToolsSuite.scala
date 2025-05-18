@@ -104,7 +104,6 @@ trait BaseAuditingToolsSuite
           auditEntries.size shouldBe 1
 
           val firstEntry = auditEntries(0)
-          println(firstEntry)
           firstEntry("final_state").str shouldBe "FORBIDDEN"
           firstEntry("user").str shouldBe "user_token"
           assertForEveryAuditEntry(firstEntry)

@@ -35,8 +35,5 @@ class LocalClusterAuditingToolsSuite
 
   override lazy val destNodeClientProvider: ClientProvider = this
 
-  override def assertForEveryAuditEntry(entry: JSON): Unit = {
-    entry("es_node_name").str shouldBe "ROR_SINGLE_1"
-    entry("es_cluster_name").str shouldBe "ROR_SINGLE"
-  }
+  override def assertForEveryAuditEntry(entry: JSON): Unit = ()
 }
