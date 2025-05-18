@@ -26,15 +26,20 @@ trigger:
       - '*/*/*.md'
 
 parameters:
+  - name: actionToPerform
+    type: string
+    displayName: '(Manual) action to perform'
+    default: 'publish_docker_image_pre_builds'
+    values:
+      - 'publish_docker_image_pre_builds'
+      - 'run_all_tests'
   - name: preBuildVersionsForPublishingToDockerHub
     type: string
     displayName: 'Space or comma-separated list of ES version numbers (e.g., "7.17.20 8.15.0")'
     default: ' '
 
 pool:
-  # we cannot simply bump it to 22.04, because there is a problem (probably) with s3-uploader.sh. Before the next bump
-  # attempt, make sure that upload-files-to-s3.sh works.
-  vmImage: 'ubuntu-20.04'
+  vmImage: 'ubuntu-24.04'
 
 stages:
 
@@ -60,7 +65,14 @@ stages:
   - stage: TEST
     displayName: 'Run all tests'
     dependsOn: [ ]
-    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
+    condition:
+      and(
+        succeeded(),
+        or(
+          ne(variables['Build.Reason'], 'Manual'),
+          and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
+        )
+      )
     jobs:
       - job:
         timeoutInMinutes: 20
@@ -93,7 +105,16 @@ stages:
             UNIT:
               ROR_TASK: core_tests
       - job:
-        condition: and(succeeded(), or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+        condition:
+          and(
+            succeeded(),
+            or(
+              eq(variables.isEpic, true),
+              eq(variables.isDevelop, true),
+              eq(variables.isMaster, true),
+              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
+            )
+          )
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -123,7 +144,16 @@ stages:
             IT_es90x:
               ROR_TASK: integration_es90x
       - job:
-        condition: and(succeeded(), or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+        condition:
+          and(
+            succeeded(),
+            or(
+              eq(variables.isEpic, true),
+              eq(variables.isDevelop, true),
+              eq(variables.isMaster, true),
+              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
+            )
+          )
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -185,7 +215,14 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: and(succeeded(), ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        condition:
+          and(
+            succeeded(),
+            ne(variables.isEpic, true),
+            ne(variables.isDevelop, true),
+            ne(variables.isMaster, true),
+            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests')))
+          )
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -215,7 +252,14 @@ stages:
             IT_es90x:
               ROR_TASK: integration_es90x
       - job:
-        condition: and(succeeded(), ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        condition:
+          and(
+            succeeded(),
+            ne(variables.isEpic, true),
+            ne(variables.isDevelop, true),
+            ne(variables.isMaster, true),
+            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests')))
+          )
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -249,7 +293,16 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: and(succeeded(), or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+        condition:
+          and(
+            succeeded(),
+            or(
+              eq(variables.isEpic, true),
+              eq(variables.isDevelop, true),
+              eq(variables.isMaster, true),
+              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
+            )
+          )
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -302,7 +355,14 @@ stages:
             IT_es67x:
               ROR_TASK: integration_es67x
       - job:
-        condition: and(succeeded(), ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        condition:
+          and(
+            succeeded(),
+            ne(variables.isEpic, true),
+            ne(variables.isDevelop, true),
+            ne(variables.isMaster, true),
+            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests')))
+          )
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -607,7 +667,12 @@ stages:
   - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
     displayName: 'Publish docker images for specified pre-builds'
     dependsOn: [ ]
-    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
+    condition:
+      and(
+        succeeded(),
+        eq(variables['Build.Reason'], 'Manual'),
+        eq('${{ parameters.actionToPerform }}', 'publish_docker_image_pre_builds')
+      )
     jobs:
       - job: PUBLISH
         displayName: 'Publishing'
