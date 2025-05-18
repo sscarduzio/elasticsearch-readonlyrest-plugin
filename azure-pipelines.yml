@@ -4,7 +4,7 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
-  runIntegrationTests: ${{ parameters.runIntegrationTests }}
+  forceRunAllTests: ${{ parameters.forceRunAllTests }}
 
 trigger:
   batch: false
@@ -31,8 +31,8 @@ parameters:
     type: string
     displayName: 'Space or comma-separated list of ES version numbers (e.g., "7.17.20 8.15.0")'
     default: ' '
-  - name: runIntegrationTests
-    displayName: 'Run Integration Tests'
+  - name: forceRunAllTests
+    displayName: 'Force run all tests'
     type: boolean
     default: false
     values:
@@ -610,16 +610,17 @@ stages:
               VAR_GPG_KEY_ID: $(GPG_KEY_ID)
             condition: eq(404, variables.mvn_status)
 
-  - stage: INTEGRATION_TEST
-    displayName: 'Run integration tests'
+  - stage: FORCED_RUN_OF_ALL_TESTS
+    displayName: 'Manual run of all tests'
     dependsOn: [ ]
     condition:
       and(
         eq(variables['Build.Reason'], 'Manual'),
-        eq(variables.runIntegrationTests, true)
+        eq(variables.forceRunAllTests, true)
       )
     jobs:
       - job:
+        condition: succeeded()
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -646,6 +647,38 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es90x:
+              ROR_TASK: integration_es90x
+      - job:
+        condition: succeeded()
+        container: openjdk:22-slim
+        timeoutInMinutes: 120
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es818x:
+              ROR_TASK: integration_es818x
             IT_es816x:
               ROR_TASK: integration_es816x
             IT_es815x:
@@ -679,6 +712,8 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
+        condition: succeeded()
+        container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -704,32 +739,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es717x:
-              ROR_TASK: integration_es717x
-            IT_es716x:
-              ROR_TASK: integration_es716x
-            IT_es714x:
-              ROR_TASK: integration_es714x
-            IT_es711x:
-              ROR_TASK: integration_es711x
-            IT_es710x:
-              ROR_TASK: integration_es710x
-            IT_es79x:
-              ROR_TASK: integration_es79x
-            IT_es78x:
-              ROR_TASK: integration_es78x
-            IT_es77x:
-              ROR_TASK: integration_es77x
-            IT_es74x:
-              ROR_TASK: integration_es74x
-            IT_es73x:
-              ROR_TASK: integration_es73x
-            IT_es72x:
-              ROR_TASK: integration_es72x
-            IT_es70x:
-              ROR_TASK: integration_es70x
-            IT_es67x:
-              ROR_TASK: integration_es67x
+            IT_es90x:
+              ROR_TASK: integration_es90x
 
   - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
     displayName: 'Publish docker images for specified pre-builds'
