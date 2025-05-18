@@ -20,14 +20,23 @@ import org.apache.http.util.EntityUtils
 import org.elasticsearch.client.{Request, Response}
 import ujson.Value
 
+import scala.util.Try
+
 object RestResponseOps {
   extension (response: Response) {
+    def isSuccess: Boolean = statusCode / 100 == 2
+
     def statusCode: Int = response.getStatusLine.getStatusCode
 
     def entityJson: Value = {
-      val jsonStr = EntityUtils.toString(response.getEntity)
-      ujson.read(jsonStr)
+      ujson.read(entityStr)
     }
+
+    def entityStr: String = {
+      EntityUtils.toString(response.getEntity)
+    }
+
+    def errorType: Option[String] = Try(entityJson("error")("type").str).toOption
   }
 
   extension (request: Request) {

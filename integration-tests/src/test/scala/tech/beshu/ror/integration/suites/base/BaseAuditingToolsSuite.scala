@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import cats.data.NonEmptyList
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -25,11 +24,11 @@ import tech.beshu.ror.integration.suites.base.support.SingleClientSupport
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.containers.providers.ClientProvider
+import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ComponentTemplateManager, DataStreamManager, IndexLifecycleManager, IndexManager, IndexTemplateManager, RorApiManager}
-import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 import java.util.UUID
 
@@ -401,7 +400,7 @@ trait BaseAuditingToolsSuite
             |}""".stripMargin
         )
         val indexLifecycleManager = new IndexLifecycleManager(destNodeClientProvider.adminClient, esVersionUsed)
-        indexLifecycleManager.putPolicy(id = s"$newDataStream-lifecycle-policy", policy).force()
+        indexLifecycleManager.putPolicyAndWaitForIndexing(id = s"$newDataStream-lifecycle-policy", policy)
 
         rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
 
@@ -419,8 +418,24 @@ trait BaseAuditingToolsSuite
 
         assertDataStreamNotExists(newDataStream)
 
+        val template = ujson.read(
+          s"""
+             |{
+             |  "template": {
+             |    "mappings": {
+             |      "properties": {
+             |        "@timestamp": {
+             |          "type": "date",
+             |          "format":"date_optional_time||epoch_millis"
+             |        }
+             |      }
+             |    }
+             |  }
+             |}
+             |""".stripMargin
+        )
         val templateManager = new ComponentTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
-        templateManager.putTemplate(templateName = s"$newDataStream-mappings", aliases = Set.empty).force()
+        templateManager.putTemplateAndWaitForIndexing(templateName = s"$newDataStream-mappings", body = template)
 
         rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
 
@@ -437,8 +452,18 @@ trait BaseAuditingToolsSuite
         val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
         assertDataStreamNotExists(newDataStream)
 
+        val template = ujson.read(
+          s"""
+             |{
+             |  "template": {
+             |    "settings" : {
+             |      "number_of_shards" : 1
+             |    }
+             |  }
+             |}""".stripMargin
+        )
         val templateManager = new ComponentTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
-        templateManager.putTemplate(templateName = s"$newDataStream-settings", aliases = Set.empty).force()
+        templateManager.putTemplateAndWaitForIndexing(templateName = s"$newDataStream-settings", body = template)
 
         rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
 
@@ -459,8 +484,14 @@ trait BaseAuditingToolsSuite
         templateManager
           .putTemplateAndWaitForIndexing(
             templateName = s"$newDataStream-template",
-            indexPatterns = NonEmptyList.of(newDataStream),
-            forDataStream = true
+            template = ujson.read(
+              s"""
+                 |{
+                 |  "index_patterns": ["$newDataStream"],
+                 |  "data_stream": {}
+                 |}
+                 |""".stripMargin
+            )
           )
 
         rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()

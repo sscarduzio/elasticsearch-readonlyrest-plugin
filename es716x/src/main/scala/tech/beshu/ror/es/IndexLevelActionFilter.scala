@@ -101,7 +101,11 @@ class IndexLevelActionFilter(nodeName: String,
     private def createService(cluster: AuditCluster): IndexBasedAuditSinkService & DataStreamBasedAuditSinkService = {
       cluster match {
         case AuditCluster.LocalAuditCluster =>
-          new NodeClientBasedAuditSinkService(client, threadPool, new XContentJsonParserFactory(xContentRegistry))
+          new NodeClientBasedAuditSinkService(
+            client,
+            threadPool,
+            new XContentJsonParserFactory(xContentRegistry)
+          )(using environmentConfig.clock)
         case remote: AuditCluster.RemoteAuditCluster =>
           RestClientAuditSinkService.create(remote)
       }

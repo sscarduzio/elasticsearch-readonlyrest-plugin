@@ -192,7 +192,7 @@ object AuditingTool extends Logging {
     }
   }
 
-  final case class CreationError(message: String)
+  final case class CreationError(message: String) extends AnyVal
 
   def create(settings: Settings,
              auditSinkServiceCreator: AuditSinkServiceCreator)

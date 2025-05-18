@@ -100,14 +100,14 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     val lifecyclePolicy =
       onClass("org.elasticsearch.xpack.core.ilm.LifecyclePolicy", enhancedActionType.classLoader)
         .call("parse", parser, policy.id.value)
-        .get[Object]()
+        .get[Object]
 
-    val actionRequest =
+    val request =
       onClass("org.elasticsearch.xpack.core.ilm.action.PutLifecycleRequest", enhancedActionType.classLoader)
         .create(masterNodeTimeout, ackTimeout, lifecyclePolicy)
         .get[ActionRequest]
 
-    client.executeAck(enhancedActionType.action, actionRequest).map(_.isAcknowledged).map(CreationResult.apply)
+    client.executeAck(enhancedActionType.action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
   override protected def checkComponentTemplateExists(templateName: TemplateName): Task[Boolean] = execute {
@@ -187,9 +187,8 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
 
   private def execute[A](value: => Task[A]) = Task(value).flatten
 
-  final class EnhancedActionType[T <: ActionResponse](val action: ActionType[T], val classLoader: ClassLoader) {
-    def loadClass(name: String): Class[_] = classLoader.loadClass(name)
-  }
+  private[EsDataStreamService] final class EnhancedActionType[T <: ActionResponse](val action: ActionType[T],
+                                                                                   val classLoader: ClassLoader)
 
   extension (nodeClient: NodeClient) {
     def findActionUnsafe[T <: ActionResponse](actionName: String): EnhancedActionType[T] = {

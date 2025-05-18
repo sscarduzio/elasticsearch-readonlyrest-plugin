@@ -134,5 +134,5 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) ex
 }
 
 object AuditDataStreamCreator {
-  final case class ErrorMessage(message: String)
+  final case class ErrorMessage(message: String) extends AnyVal
 }

@@ -31,7 +31,12 @@ import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
-final class NodeClientBasedAuditSinkService(client: NodeClient, threadPool: ThreadPool, jsonParserFactory: XContentJsonParserFactory)
+import java.time.Clock
+
+final class NodeClientBasedAuditSinkService(client: NodeClient,
+                                            threadPool: ThreadPool,
+                                            jsonParserFactory: XContentJsonParserFactory)
+                                           (using Clock)
   extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
     with Logging {

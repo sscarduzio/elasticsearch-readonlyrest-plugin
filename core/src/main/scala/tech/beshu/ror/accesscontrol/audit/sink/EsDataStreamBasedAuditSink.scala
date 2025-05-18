@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.DataStreamBasedAuditSinkService
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.ScalaOps
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[audit] final class EsDataStreamBasedAuditSink private(serializer: AuditLogSerializer,
@@ -45,7 +44,7 @@ private[audit] final class EsDataStreamBasedAuditSink private(serializer: AuditL
 
 object EsDataStreamBasedAuditSink {
 
-  final case class CreationError private(message: String)
+  final case class CreationError private(message: String) extends AnyVal
   object CreationError {
     def apply(errors: NonEmptyList[AuditDataStreamCreator.ErrorMessage], auditCluster: AuditCluster): CreationError = {
       val clusterType = auditCluster match {

@@ -226,8 +226,11 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
   }
 
   private def failureResponse(message: String, response: Response) = {
-    Task.raiseError(DataStreamServiceResponseException(s"$message - unexpected response - code: ${response.statusCode}, body: ${response.entityStr}", None))
+    Task.raiseError(DataStreamServiceResponseException(
+      s"$message - unexpected response - code: ${response.statusCode}, body: ${response.entityStr}"
+    ))
   }
 
-  case class DataStreamServiceResponseException(message: String, exception: Option[Throwable]) extends Exception(message, exception.orNull)
+  private final case class DataStreamServiceResponseException(message: String) extends Exception(message)
+
 }

@@ -29,12 +29,15 @@ import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName}
 import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
+
+import java.time.Clock
 
 final class NodeClientBasedAuditSinkService(client: NodeClient,
                                             threadPool: ThreadPool,
                                             jsonParserFactory: XContentJsonParserFactory)
+                                           (using Clock)
   extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
     with Logging {
