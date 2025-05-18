@@ -24,7 +24,7 @@ final case class DockerImageDescription(baseImage: String,
                                         runCommands: Seq[Command],
                                         copyFiles: Set[CopyFile],
                                         envs: Set[Env],
-                                        entrypoint: Option[Path]) {
+                                        entrypoint: Option[String]) {
 
   def run(command: String): DockerImageDescription = {
     this.copy(runCommands = this.runCommands :+ Command.Run(command))
@@ -61,7 +61,7 @@ final case class DockerImageDescription(baseImage: String,
     this.copy(envs = this.envs ++ envs.map { case (k, v) => Env(k, v) })
   }
 
-  def setEntrypoint(entrypoint: Path): DockerImageDescription = {
+  def setEntrypoint(entrypoint: String): DockerImageDescription = {
     this.copy(entrypoint = Some(entrypoint))
   }
 }
@@ -75,7 +75,7 @@ object DockerImageDescription {
   final case class CopyFile(destination: Path, file: File)
   final case class Env(name: String, value: String)
 
-  def create(image: String, customEntrypoint: Option[Path] = None): DockerImageDescription = DockerImageDescription(
+  def create(image: String, customEntrypoint: Option[String] = None): DockerImageDescription = DockerImageDescription(
     baseImage = image,
     runCommands = Seq.empty,
     copyFiles = Set.empty,

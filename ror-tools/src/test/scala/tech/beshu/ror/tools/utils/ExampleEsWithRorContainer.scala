@@ -105,7 +105,7 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
       ),
       initializer = nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
-      customEntrypoint = Some(Path("""/bin/sh -c "while true; do sleep 30; done"""")),
+      customEntrypoint = Some("""/bin/sh -c "while true; do sleep 30; done""""),
       awaitingReadyStrategy = AwaitingReadyStrategy.ImmediatelyTreatAsReady,
     )
   }
