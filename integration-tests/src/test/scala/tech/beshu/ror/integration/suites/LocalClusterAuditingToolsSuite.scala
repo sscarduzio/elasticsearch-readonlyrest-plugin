@@ -35,5 +35,9 @@ class LocalClusterAuditingToolsSuite
 
   override lazy val destNodeClientProvider: ClientProvider = this
 
-  override def assertForEveryAuditEntry(entry: JSON): Unit = ()
+  // Adding the ES cluster fields is disabled in the /enabled_auditing_tools/readonlyrest.yml config file (`enable_reporting_es_node_details: false`)
+  override def assertForEveryAuditEntry(entry: JSON): Unit = {
+    entry.obj.get("es_node_name") shouldBe None
+    entry.obj.get("es_cluster_name") shouldBe None
+  }
 }

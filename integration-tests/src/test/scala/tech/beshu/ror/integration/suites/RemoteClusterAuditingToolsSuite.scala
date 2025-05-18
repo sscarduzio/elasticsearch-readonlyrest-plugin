@@ -50,6 +50,7 @@ class RemoteClusterAuditingToolsSuite
 
   override lazy val destNodeClientProvider: ClientProvider = auditEsContainer
 
+  // Adding the ES cluster fields is enabled in the /cluster_auditing_tools/readonlyrest.yml config file (`enable_reporting_es_node_details: true`)
   override def assertForEveryAuditEntry(entry: JSON): Unit = {
     entry("es_node_name").str shouldBe "ROR_SINGLE_1"
     entry("es_cluster_name").str shouldBe "ROR_SINGLE"
