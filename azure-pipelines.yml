@@ -4,7 +4,6 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
-  forceRunAllTests: ${{ parameters.forceRunAllTests }}
 
 trigger:
   batch: false
@@ -27,17 +26,17 @@ trigger:
       - '*/*/*.md'
 
 parameters:
+  - name: actionToPerform
+    type: string
+    displayName: '(Manual) action to perform'
+    default: 'publish_docker_image_pre_builds'
+    values:
+      - 'publish_docker_image_pre_builds'
+      - 'run_all_tests'
   - name: preBuildVersionsForPublishingToDockerHub
     type: string
     displayName: 'Space or comma-separated list of ES version numbers (e.g., "7.17.20 8.15.0")'
     default: ' '
-  - name: forceRunAllTests
-    displayName: 'Force run all tests'
-    type: boolean
-    default: false
-    values:
-      - false
-      - true
 
 pool:
   vmImage: 'ubuntu-24.04'
@@ -615,12 +614,42 @@ stages:
     dependsOn: [ ]
     condition:
       and(
+        succeeded(),
         eq(variables['Build.Reason'], 'Manual'),
-        eq(variables.forceRunAllTests, true)
+        eq('${{ parameters.actionToPerform }}', 'run_all_tests')
       )
     jobs:
       - job:
-        condition: succeeded()
+        timeoutInMinutes: 20
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            LICENSE:
+              ROR_TASK: license
+            UNIT:
+              ROR_TASK: core_tests
+      - job:
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -650,7 +679,6 @@ stages:
             IT_es90x:
               ROR_TASK: integration_es90x
       - job:
-        condition: succeeded()
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -712,7 +740,6 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: succeeded()
         container: openjdk:22-slim
         timeoutInMinutes: 120
         steps:
@@ -741,11 +768,68 @@ stages:
           matrix:
             IT_es90x:
               ROR_TASK: integration_es90x
+      - job:
+        timeoutInMinutes: 120
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es717x:
+              ROR_TASK: integration_es717x
+            IT_es716x:
+              ROR_TASK: integration_es716x
+            IT_es714x:
+              ROR_TASK: integration_es714x
+            IT_es711x:
+              ROR_TASK: integration_es711x
+            IT_es710x:
+              ROR_TASK: integration_es710x
+            IT_es79x:
+              ROR_TASK: integration_es79x
+            IT_es78x:
+              ROR_TASK: integration_es78x
+            IT_es77x:
+              ROR_TASK: integration_es77x
+            IT_es74x:
+              ROR_TASK: integration_es74x
+            IT_es73x:
+              ROR_TASK: integration_es73x
+            IT_es72x:
+              ROR_TASK: integration_es72x
+            IT_es70x:
+              ROR_TASK: integration_es70x
+            IT_es67x:
+              ROR_TASK: integration_es67x
 
   - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
     displayName: 'Publish docker images for specified pre-builds'
     dependsOn: [ ]
-    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
+    condition:
+      and(
+        succeeded(),
+        eq(variables['Build.Reason'], 'Manual'),
+        eq('${{ parameters.actionToPerform }}', 'publish_docker_image_pre_builds')
+      )
     jobs:
       - job: PUBLISH
         displayName: 'Publishing'
