@@ -60,9 +60,23 @@ object EsDataStreamBasedAuditSink {
              auditSinkService: DataStreamBasedAuditSinkService,
              auditCluster: AuditCluster): Task[Either[CreationError, EsDataStreamBasedAuditSink]] = value {
     for {
-      _ <- EitherT(auditSinkService.dataStreamCreator.createIfNotExists(rorAuditDataStream))
-        .leftMap(errorMessages => CreationError(errorMessages, auditCluster))
-      auditSink <- EitherT.right(Task.delay(new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService)))
+      _ <- createRorAuditDataStreamIfNotExists(rorAuditDataStream, auditSinkService, auditCluster)
+      auditSink <- createAuditSink(serializer, rorAuditDataStream, auditSinkService)
     } yield auditSink
+  }
+
+  private def createRorAuditDataStreamIfNotExists(rorAuditDataStream: RorAuditDataStream,
+                                                  auditSinkService: DataStreamBasedAuditSinkService,
+                                                  auditCluster: AuditCluster) = {
+    EitherT(auditSinkService.dataStreamCreator.createIfNotExists(rorAuditDataStream))
+      .leftMap(errorMessages => CreationError(errorMessages, auditCluster))
+  }
+
+  private def createAuditSink(serializer: AuditLogSerializer,
+                              rorAuditDataStream: RorAuditDataStream,
+                              auditSinkService: DataStreamBasedAuditSinkService) = {
+    EitherT.right[CreationError](Task.delay(
+      new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService)
+    ))
   }
 }
