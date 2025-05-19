@@ -23,6 +23,7 @@ import tech.beshu.ror.utils.containers.SecurityType.NoSecurityCluster
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.dependencies.*
 import tech.beshu.ror.utils.containers.providers.ClientProvider
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer
 
 class RemoteClusterAuditingToolsSuite
@@ -48,4 +49,10 @@ class RemoteClusterAuditingToolsSuite
   override def clusterDependencies: List[DependencyDef] = List(es("AUDIT_1", auditEsContainer))
 
   override lazy val destNodeClientProvider: ClientProvider = auditEsContainer
+
+  // Adding the ES cluster fields is enabled in the /cluster_auditing_tools/readonlyrest.yml config file (`enable_reporting_es_node_details: true`)
+  override def assertForEveryAuditEntry(entry: JSON): Unit = {
+    entry("es_node_name").str shouldBe "ROR_SINGLE_1"
+    entry("es_cluster_name").str shouldBe "ROR_SINGLE"
+  }
 }

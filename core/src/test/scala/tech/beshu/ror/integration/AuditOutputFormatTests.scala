@@ -22,6 +22,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.EsIndexBasedSink
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
@@ -29,7 +30,7 @@ import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.header
+import tech.beshu.ror.utils.TestsUtils.{header, testEsNodeConfig}
 
 import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration.*
@@ -139,13 +140,15 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         AuditSink.Enabled(Config.EsIndexBasedSink(
           new DefaultAuditLogSerializer,
           RorAuditIndexTemplate.default,
-          AuditCluster.LocalAuditCluster
+          AuditCluster.LocalAuditCluster,
+          EsIndexBasedSink.Options(enableReportingEsNodeDetails = false),
         ))
       )
     )
     val auditingTool = AuditingTool.create(
       settings = settings,
-      auditSinkServiceCreator = _ => auditSinkService
+      auditSinkServiceCreator = _ => auditSinkService,
+      esNodeConfig = testEsNodeConfig,
     ).get
     new AccessControlListLoggingDecorator(acl, Some(auditingTool))
   }

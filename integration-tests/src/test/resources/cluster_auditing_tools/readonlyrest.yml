@@ -6,6 +6,7 @@ readonlyrest:
       - type: index
         index_template: "'audit_index'"
         cluster: ["http://{AUDIT_1_HOST}:{AUDIT_1_PORT}"]
+        enable_reporting_es_node_details: true
 
   access_control_rules:
 

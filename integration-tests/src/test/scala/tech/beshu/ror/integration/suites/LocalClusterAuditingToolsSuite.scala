@@ -21,6 +21,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.containers.providers.ClientProvider
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer
 
 class LocalClusterAuditingToolsSuite
@@ -33,4 +34,10 @@ class LocalClusterAuditingToolsSuite
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
   override lazy val destNodeClientProvider: ClientProvider = this
+
+  // Adding the ES cluster fields is disabled in the /enabled_auditing_tools/readonlyrest.yml config file (`enable_reporting_es_node_details: false`)
+  override def assertForEveryAuditEntry(entry: JSON): Unit = {
+    entry.obj.get("es_node_name") shouldBe None
+    entry.obj.get("es_cluster_name") shouldBe None
+  }
 }
