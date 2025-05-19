@@ -17,10 +17,10 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import net.jodah.failsafe.{Failsafe, RetryPolicy}
-import org.apache.http.{HttpRequest, HttpResponse}
 import org.apache.http.client.methods.HttpUriRequest
-import org.testcontainers.shaded.org.yaml.snakeyaml.{LoaderOptions, Yaml}
+import org.apache.http.{HttpRequest, HttpResponse}
 import org.testcontainers.shaded.org.yaml.snakeyaml.constructor.SafeConstructor
+import org.testcontainers.shaded.org.yaml.snakeyaml.{LoaderOptions, Yaml}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, SimpleHeader}
 import tech.beshu.ror.utils.httpclient.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -86,7 +86,7 @@ abstract class BaseManager(client: RestClient,
 
     def force(): this.type = {
       if (!isSuccess) throw new IllegalStateException(
-        s"Expected success but got HTTP $responseCode, body: ${Try(stringBodyFrom(response)).getOrElse("")}"
+        s"Expected success but got HTTP $responseCode, body: $body"
       )
       this
     }

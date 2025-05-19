@@ -16,9 +16,10 @@
  */
 package tech.beshu.ror.es.services
 
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.elasticsearch.client.{Request, Response, ResponseException, RestClient}
-import tech.beshu.ror.accesscontrol.domain.DataStreamName
+import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
 import tech.beshu.ror.es.DataStreamService
 import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
@@ -30,20 +31,40 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
   override def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean] = execute {
     val name = dataStreamName.value.value
     val request = new Request("GET", s"/_data_stream/$name")
-    perform(request)
-      .flatMap {
-        case response if response.isSuccess =>
+
+    handleRequestWithRecovery(request)(
+      onSuccessResponse = { response =>
+        Task.delay {
           val dataStreams = response.entityJson("data_streams").arr.map(_("name").str)
-          Task.pure(dataStreams.contains(name))
-        case response =>
-          failure(s"Cannot get data stream [$name] - response code: ${response.statusCode}")
-      }
-      .onErrorRecoverWith {
+          dataStreams.contains(name)
+        }
+      },
+      onFailureResponse = { response =>
+        failureResponse(s"Cannot get data stream [$name]", response)
+      },
+      onError = {
         case ex: ResponseException if ex.getResponse.errorType.contains("index_not_found_exception") =>
           Task.pure(false)
-        case ex: Throwable =>
-          Task.raiseError(ex)
       }
+    )
+  }
+
+  override protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean] = execute {
+    val policy = policyId.value
+    val request = new Request("GET", s"/_ilm/policy/$policy")
+
+    handleRequestWithRecovery(request)(
+      onSuccessResponse = { response =>
+        Task.delay {
+          val policies = response.entityJson.obj.keySet
+          policies.contains(policy)
+        }
+      },
+      onFailureResponse = { response =>
+        failureResponse(s"Cannot get ILM policy [$policy]", response)
+      },
+      onError = resourceNotFoundRecovery
+    )
   }
 
   override protected def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
@@ -51,13 +72,34 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
     val request = new Request("PUT", s"/_ilm/policy/$policyName")
     val requestBody = ujson.Obj("policy" -> policy.toJson)
     request.setJsonBody(requestBody)
-    perform(request)
-      .flatMap {
-        case response if response.isSuccess =>
-          resultFrom(response)
-        case response =>
-          failure(s"Cannot create ILM policy [$policyName] - unexpected response code: ${response.statusCode}")
+
+    handleRequest(request)(
+      onSuccessResponse = { response =>
+        creationResultFrom(response)
+      },
+      onFailureResponse = { response =>
+        failureResponse(s"Cannot create ILM policy [$policyName]", response)
       }
+    )
+  }
+
+  override protected def checkComponentTemplateExists(templateName: TemplateName): Task[Boolean] = execute {
+    val templateId = templateName.value.value
+    val request = new Request("GET", s"/_component_template/$templateId")
+
+    handleRequestWithRecovery(request)(
+      onSuccessResponse = { response =>
+        Task.delay {
+          val componentTemplates = response.entityJson("component_templates").arr.map(_("name").str)
+          componentTemplates.contains(templateId)
+        }
+      },
+      onFailureResponse = { response =>
+        failureResponse(s"Cannot get component template [$templateId]", response)
+
+      },
+      onError = resourceNotFoundRecovery
+    )
   }
 
   override protected def createComponentTemplateForMappings(settings: ComponentTemplateMappings): Task[CreationResult] = execute {
@@ -68,13 +110,13 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       "_meta" -> settings.metadata
     )
     request.setJsonBody(requestBody)
-    perform(request)
-      .flatMap {
-        case response if response.isSuccess =>
-          resultFrom(response)
-        case response =>
-          failure(s"Cannot create component template [$templateId] - response code: ${response.statusCode}")
-      }
+
+    handleRequest(request)(
+      onSuccessResponse = response =>
+        creationResultFrom(response),
+      onFailureResponse = response =>
+        failureResponse(s"Cannot create component template [$templateId]", response),
+    )
   }
 
   override protected def createComponentTemplateForIndex(settings: ComponentTemplateSettings): Task[CreationResult] = execute {
@@ -85,13 +127,30 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       "_meta" -> settings.metadata
     )
     request.setJsonBody(requestBody)
-    perform(request)
-      .flatMap {
-        case response if response.isSuccess =>
-          resultFrom(response)
-        case response =>
-          failure(s"Cannot create component template [$templateId] - response code: ${response.statusCode}")
-      }
+
+    handleRequest(request)(
+      onSuccessResponse = response =>
+        creationResultFrom(response),
+      onFailureResponse = response =>
+        failureResponse(s"Cannot create component template [$templateId]", response),
+    )
+  }
+
+  override protected def checkIndexTemplateExists(templateName: TemplateName): Task[Boolean] = execute {
+    val templateId = templateName.value.value
+    val request = new Request("GET", s"/_index_template/$templateId")
+
+    handleRequestWithRecovery(request)(
+      onSuccessResponse = { response =>
+        Task.delay {
+          val indexTemplates = response.entityJson("index_templates").arr.map(_("name").str)
+          indexTemplates.contains(templateId)
+        }
+      },
+      onFailureResponse = { response => failureResponse(s"Cannot get index template [$templateId]", response)
+      },
+      onError = resourceNotFoundRecovery
+    )
   }
 
   override protected def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult] = execute {
@@ -105,39 +164,73 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
       "_meta" -> settings.metadata
     )
     request.setJsonBody(requestBody)
-    perform(request)
-      .flatMap {
-        case response if response.isSuccess =>
-          resultFrom(response)
-        case response =>
-          failure(s"Cannot create index template [$templateId] - response code: ${response.statusCode}")
-      }
+
+    handleRequest(request)(
+      onSuccessResponse = response =>
+        creationResultFrom(response),
+      onFailureResponse = response =>
+        failureResponse(s"Cannot create index template [$templateId]", response),
+    )
   }
 
   override protected def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult] = execute {
     val name = dataStreamName.value.value
     val request = new Request("PUT", s"/_data_stream/$name")
-    perform(request)
-      .flatMap {
-        case response if response.isSuccess =>
-          resultFrom(response)
-        case response =>
-          failure(s"Cannot create data stream [$name] - response code: ${response.statusCode}")
-      }
+    handleRequest(request)(
+      onSuccessResponse = response =>
+        creationResultFrom(response),
+      onFailureResponse = response =>
+        failureResponse(s"Cannot create data stream [$name]", response),
+    )
   }
 
 
   private def execute[A](value: => Task[A]) = Task(value).flatten
 
-  private def perform(request: Request) = {
+  private def handleRequest[A](request: Request)(
+    onSuccessResponse: Response => Task[A],
+    onFailureResponse: Response => Task[A],
+  ) =
+    handleRequestWithRecovery(request)(
+      onSuccessResponse = onSuccessResponse,
+      onFailureResponse = onFailureResponse,
+      onError = {
+        case ex: Throwable => Task.raiseError(ex)
+      }
+    )
+
+  private def handleRequestWithRecovery[A](request: Request)(
+    onSuccessResponse: Response => Task[A],
+    onFailureResponse: Response => Task[A],
+    onError: PartialFunction[Throwable, Task[A]]
+  ): Task[A] = {
     Task(client.performRequest(request))
+      .flatMap {
+        case response if response.isSuccess =>
+          onSuccessResponse(response)
+        case response =>
+          onFailureResponse(response)
+      }
+      .onErrorRecoverWith {
+        onError
+      }
   }
 
-  private def resultFrom(response: Response) = {
-    Task.pure(CreationResult(response.entityJson("acknowledged").bool))
+  private def resourceNotFoundRecovery: PartialFunction[Throwable, Task[Boolean]] = {
+    case ex: ResponseException if ex.getResponse.errorType.contains("resource_not_found_exception") =>
+      Task.pure(false)
   }
 
-  private def failure(message: String) = {
-    Task.raiseError(new IllegalStateException(message))
+  private def creationResultFrom(response: Response) = {
+    Task.delay(CreationResult(response.entityJson("acknowledged").bool))
   }
+
+  private def failureResponse(message: String, response: Response) = {
+    Task.raiseError(DataStreamServiceResponseException(
+      s"$message - unexpected response - code: ${response.statusCode}, body: ${response.entityStr}"
+    ))
+  }
+
+  private final case class DataStreamServiceResponseException(message: String) extends Exception(message)
+
 }

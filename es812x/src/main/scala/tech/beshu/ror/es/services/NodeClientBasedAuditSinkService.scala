@@ -18,9 +18,9 @@ package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.{ActionListener, DocWriteRequest}
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
+import org.elasticsearch.action.{ActionListener, DocWriteRequest}
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue}
 import org.elasticsearch.core.TimeValue
@@ -28,12 +28,15 @@ import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName}
 import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
+import java.time.Clock
 import java.util.function.BiConsumer
 
-final class NodeClientBasedAuditSinkService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)
+final class NodeClientBasedAuditSinkService(client: NodeClient,
+                                            jsonParserFactory: XContentJsonParserFactory)
+                                           (using Clock)
   extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
     with Logging {

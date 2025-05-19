@@ -16,41 +16,141 @@
  */
 package tech.beshu.ror.es
 
-import cats.data.NonEmptyList
+import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.numeric.PosInt
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
+import tech.beshu.ror.es.DataStreamService.CreationResult.*
 import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
-import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings, DataStreamSetupResult}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.ScalaOps.retryBackoffEither
+
+import scala.concurrent.duration.*
 
 trait DataStreamService {
 
-  final def fullySetupDataStream(settings: DataStreamSettings): Task[Unit] = {
-    for {
-      _ <- createIndexLifecyclePolicy(settings.lifecyclePolicy)
-      _ <- createComponentTemplateForMappings(settings.mappings)
-      _ <- createComponentTemplateForIndex(settings.componentSettings)
-      _ <- createIndexTemplate(settings.templateSettings)
-      _ <- createDataStream(settings.dataStreamName)
-    } yield ()
-  }
-
   def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean]
+
+  final def fullySetupDataStream(settings: DataStreamSettings): Task[DataStreamSetupResult] = {
+    for {
+      _ <- setupLifecyclePolicy(settings)
+      _ <- setupComponentTemplateMappings(settings)
+      _ <- setupComponentTemplateSettings(settings)
+      _ <- setupIndexTemplate(settings)
+      _ <- setupDataStream(settings)
+    } yield DataStreamSetupResult.Success
+  }.merge
 
   protected def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult]
 
+  protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean]
+
   protected def createIndexLifecyclePolicy(policy: LifecyclePolicy): Task[CreationResult]
+
+  protected def checkComponentTemplateExists(templateName: TemplateName): Task[Boolean]
 
   protected def createComponentTemplateForMappings(settings: ComponentTemplateMappings): Task[CreationResult]
 
   protected def createComponentTemplateForIndex(settings: ComponentTemplateSettings): Task[CreationResult]
 
+  protected def checkIndexTemplateExists(templateName: TemplateName): Task[Boolean]
+
   protected def createIndexTemplate(settings: IndexTemplateSettings): Task[CreationResult]
+
+  private def setupLifecyclePolicy(settings: DataStreamSettings) = {
+    createIfAbsent(
+      checkIfResourceExists = checkIndexLifecyclePolicyExists(settings.lifecyclePolicy.id),
+      createResource = createIndexLifecyclePolicy(settings.lifecyclePolicy),
+      onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if the index lifecycle policy with ID '${settings.lifecyclePolicy.id.show}' has been created")
+    )
+  }
+
+  private def setupComponentTemplateMappings(settings: DataStreamSettings) = {
+    createIfAbsent(
+      checkIfResourceExists = checkComponentTemplateExists(settings.mappings.templateName),
+      createResource = createComponentTemplateForMappings(settings.mappings),
+      onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if component template with ID '${settings.mappings.templateName.show}' has been created")
+    )
+  }
+
+  private def setupComponentTemplateSettings(settings: DataStreamSettings) = {
+    createIfAbsent(
+      checkIfResourceExists = checkComponentTemplateExists(settings.componentSettings.templateName),
+      createResource = createComponentTemplateForIndex(settings.componentSettings),
+      onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if component template with ID '${settings.componentSettings.templateName.show}' has been created")
+    )
+  }
+
+  private def setupIndexTemplate(settings: DataStreamSettings) = {
+    createIfAbsent(
+      checkIfResourceExists = checkIndexTemplateExists(settings.templateSettings.templateName),
+      createResource = createIndexTemplate(settings.templateSettings),
+      onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if index template with ID '${settings.templateSettings.templateName.show}' has been created")
+    )
+  }
+
+  private def setupDataStream(settings: DataStreamSettings) = {
+    createIfAbsent(
+      checkIfResourceExists = checkDataStreamExists(settings.dataStreamName),
+      createResource = createDataStream(settings.dataStreamName),
+      onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if data stream with ID '${settings.dataStreamName.show}' has been created")
+    )
+  }
+
+  private def createIfAbsent(checkIfResourceExists: Task[Boolean],
+                             createResource: Task[CreationResult],
+                             onNotAcknowledged: => DataStreamSetupResult.Failure): EitherT[Task, DataStreamSetupResult.Failure, Unit] = EitherT {
+    checkIfResourceExists
+      .flatMap {
+        case true =>
+          Task.pure(Acknowledged)
+        case false =>
+          createResourceWithConfirmation(checkIfResourceExists, createResource)
+      }
+      .map {
+        case CreationResult.Acknowledged => Right(())
+        case CreationResult.NotAcknowledged => Left(onNotAcknowledged)
+      }
+  }
+
+  private def createResourceWithConfirmation(checkIfResourceExists: Task[Boolean],
+                                             createResource: Task[CreationResult]): Task[CreationResult] = {
+    createResource
+      .flatMap {
+        case Acknowledged =>
+          Task.pure(Acknowledged)
+        case NotAcknowledged =>
+          withRetries(
+            checkIfResourceExists.map(exists => Either.cond(exists, Acknowledged, NotAcknowledged))
+          ).map(_.merge)
+      }
+  }
+
+  private def withRetries[E, A](source: => Task[Either[E, A]]) =
+    retryBackoffEither(
+      source = source,
+      maxRetries = retryConfig.maxRetries,
+      firstDelay = retryConfig.initialDelay,
+      backOffScaler = retryConfig.backoffScaler
+    )
+
+  protected val retryConfig: RetryConfig = RetryConfig(initialDelay = 500.milliseconds, backoffScaler = 2, maxRetries = 5)
+
+  protected case class RetryConfig(initialDelay: FiniteDuration, backoffScaler: Int, maxRetries: Int)
 }
 
 object DataStreamService {
+
+  sealed trait DataStreamSetupResult
+
+  object DataStreamSetupResult {
+    case object Success extends DataStreamSetupResult
+
+    final case class Failure(reason: String) extends DataStreamSetupResult
+  }
 
   final case class DataStreamSettings(dataStreamName: DataStreamName.Full,
                                       lifecyclePolicy: LifecyclePolicy,
