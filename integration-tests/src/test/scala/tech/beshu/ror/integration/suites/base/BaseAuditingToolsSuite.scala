@@ -20,7 +20,6 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import tech.beshu.ror.integration.suites.base.support.{BaseSingleNodeEsClusterTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.providers.ClientProvider
@@ -37,7 +36,6 @@ trait BaseAuditingToolsSuite
     with BeforeAndAfterEach
     with CustomScalaTestMatchers
     with Eventually
-    with ScalaCheckPropertyChecks
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport {
 
@@ -49,7 +47,6 @@ trait BaseAuditingToolsSuite
 
   lazy val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
   lazy val adminRorApiManager = new RorApiManager(adminClient, esVersionUsed)
-
 
   override def beforeEach(): Unit = {
     super.beforeEach()
