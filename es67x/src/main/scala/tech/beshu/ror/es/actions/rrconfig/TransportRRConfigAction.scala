@@ -33,6 +33,7 @@ import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfig
 import tech.beshu.ror.configuration.loader.*
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.es.services.EsIndexJsonContentService
+import tech.beshu.ror.es.utils.EsEnvProvider
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.annotation.unused
@@ -106,7 +107,7 @@ class TransportRRConfigAction(setting: Settings,
 
   private def loadConfig() = doPrivileged {
     RawRorConfigLoadingAction
-      .load(EsEnv(env.configFile(), env.modulesFile()), indexContentProvider)
+      .load(EsEnvProvider.create(env), indexContentProvider)
       .map(_.map(_.map(_.raw)))
   }
 

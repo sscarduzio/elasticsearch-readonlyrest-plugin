@@ -20,12 +20,15 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
@@ -34,14 +37,14 @@ import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.TestConfigLoading.*
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.*
-import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
+import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
 
 class ReadonlyRest(coreFactory: CoreFactory,
-                   auditSinkCreator: AuditSinkCreator,
+                   auditSinkServiceCreator: AuditSinkServiceCreator,
                    val indexConfigManager: IndexConfigManager,
                    val indexTestConfigManager: IndexTestConfigManager,
                    val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
@@ -196,46 +199,52 @@ class ReadonlyRest(coreFactory: CoreFactory,
     val httpClientsFactory = new AsyncHttpClientsFactory
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
-    coreFactory
-      .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
-      .map { result =>
-        result
-          .map { core =>
-            val engine = createEngine(httpClientsFactory, ldapConnectionPoolProvider, core)
-            inspectFlsEngine(engine)
-            engine
-          }
-          .left
-          .map(handleLoadingCoreErrors)
+    EitherT(
+      coreFactory
+        .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
+    )
+      .flatMap(core => createEngine(httpClientsFactory, ldapConnectionPoolProvider, core))
+      .semiflatTap { engine =>
+        Task(inspectFlsEngine(engine))
       }
+      .leftMap(handleLoadingCoreErrors)
+      .value
   }
 
   private def createEngine(httpClientsFactory: AsyncHttpClientsFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                           core: Core) = {
+                           core: Core): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
-    val auditingTool = createAuditingTool(core)
-
-    val decoratedCore = Core(
-      accessControl = new AccessControlListLoggingDecorator(
-        underlying = core.accessControl,
-        auditingTool = auditingTool
-      ),
-      rorConfig = core.rorConfig
-    )
-
-    new Engine(
-      core = decoratedCore,
-      httpClientsFactory = httpClientsFactory,
-      ldapConnectionPoolProvider,
-      auditingTool
-    )
+    EitherT(createAuditingTool(core))
+      .map { auditingTool =>
+        val decoratedCore = Core(
+          accessControl = new AccessControlListLoggingDecorator(
+            underlying = core.accessControl,
+            auditingTool = auditingTool
+          ),
+          rorConfig = core.rorConfig
+        )
+        new Engine(
+          core = decoratedCore,
+          httpClientsFactory = httpClientsFactory,
+          ldapConnectionPoolProvider,
+          auditingTool
+        )
+      }
   }
 
   private def createAuditingTool(core: Core)
-                                (implicit loggingContext: LoggingContext): Option[AuditingTool] = {
+                                (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
     core.rorConfig.auditingSettings
-      .flatMap(settings => AuditingTool.create(settings, auditSinkCreator)(environmentConfig.clock, loggingContext))
+      .map(settings => AuditingTool.create(settings, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
+      .sequence
+      .map {
+        _.sequence
+          .map(_.flatten)
+          .leftMap {
+            _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))
+          }
+      }
   }
 
   private def inspectFlsEngine(engine: Engine): Unit = {
@@ -263,7 +272,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
 }
 
 object ReadonlyRest {
-  type AuditSinkCreator = AuditCluster => AuditSinkService
 
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
@@ -271,13 +279,17 @@ object ReadonlyRest {
                               config: RawRorConfig)
 
   sealed trait TestEngine
+
   object TestEngine {
     object NotConfigured extends TestEngine
+
     final case class Configured(engine: Engine,
                                 config: RawRorConfig,
                                 expiration: Expiration) extends TestEngine
+
     final case class Invalidated(config: RawRorConfig,
                                  expiration: Expiration) extends TestEngine
+
     final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
   }
 
@@ -295,17 +307,17 @@ object ReadonlyRest {
   }
 
   def create(indexContentService: IndexJsonContentService,
-             auditSinkCreator: AuditSinkCreator,
+             auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
-    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory()
-    create(coreFactory, indexContentService, auditSinkCreator, env)
+    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(env.esVersion)
+    create(coreFactory, indexContentService, auditSinkServiceCreator, env)
   }
 
   def create(coreFactory: CoreFactory,
              indexContentService: IndexJsonContentService,
-             auditSinkCreator: AuditSinkCreator,
+             auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
@@ -313,6 +325,6 @@ object ReadonlyRest {
     val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
-    new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env)
+    new ReadonlyRest(coreFactory, auditSinkServiceCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env)
   }
 }
