@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.audit.enrichers.AuditLogSerializerEnrichedWithEsNodeDetails
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.configuration.EsNodeConfig
@@ -166,7 +167,7 @@ object AuditingTool extends Logging {
           final case class Options(enableReportingEsNodeDetails: Boolean)
           object Options {
             val default: Options = Options(
-              enableReportingEsNodeDetails = false,
+              enableReportingEsNodeDetails = true,
             )
           }
 
@@ -213,7 +214,7 @@ object AuditingTool extends Logging {
       .flatMap {
         case Enabled(AuditSink.Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, auditCluster, options)) =>
           val serializer =
-            if (options.enableReportingEsNodeDetails) new AuditLogSerializerEnrichedWithEsNodeDetails(logSerializer, esNodeConfig)
+            if (options.enableReportingEsNodeDetails) new AuditLogSerializerEnrichedWithEsNodeDetails(logSerializer, esNodeConfig.clusterName, esNodeConfig.nodeName)
             else logSerializer
           EsIndexBasedAuditSink(serializer, rorAuditIndexTemplate, auditSinkServiceCreator(auditCluster)).some
         case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName)) =>

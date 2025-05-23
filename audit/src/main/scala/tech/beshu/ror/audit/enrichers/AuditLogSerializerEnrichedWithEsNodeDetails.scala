@@ -14,17 +14,18 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.audit
+package tech.beshu.ror.audit.enrichers
 
 import tech.beshu.ror.audit.AuditLogSerializer
-import tech.beshu.ror.configuration.EsNodeConfig
 
 class AuditLogSerializerEnrichedWithEsNodeDetails(underlying: AuditLogSerializer,
-                                                  esNodeConfig: EsNodeConfig)
+                                                  clusterName: String,
+                                                  nodeName: String)
   extends AuditLogSerializerEnrichedWithStaticFields(
     underlying,
     Map(
-      "es_cluster_name" -> esNodeConfig.clusterName,
-      "es_node_name" -> esNodeConfig.nodeName,
+      "es_cluster_name" -> clusterName,
+      "es_node_name" -> nodeName,
     )
   )
+
