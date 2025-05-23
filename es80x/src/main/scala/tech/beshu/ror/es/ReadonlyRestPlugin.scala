@@ -69,7 +69,7 @@ import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, Transpo
 import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier, RemoteClusterServiceSupplier}
+import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsEnvProvider, EsPatchVerifier, RemoteClusterServiceSupplier}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
 
@@ -109,7 +109,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     nodeName = Node.NODE_NAME_SETTING.get(s),
   )
   private val rorEsConfig = ReadonlyRestEsConfig
-    .load(EsEnv(environment.configFile(), environment.modulesFile()), esNodeConfig)
+    .load(EsEnvProvider.create(environment), esNodeConfig)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener
@@ -136,6 +136,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         clusterService,
         client.asInstanceOf[NodeClient],
         threadPool,
+        xContentRegistry,
         environment,
         new RemoteClusterServiceSupplier(repositoriesServiceSupplier),
         () => Some(repositoriesServiceSupplier.get()),

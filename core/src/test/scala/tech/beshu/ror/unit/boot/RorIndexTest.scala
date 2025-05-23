@@ -26,12 +26,14 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
-import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
+import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
@@ -39,7 +41,6 @@ import tech.beshu.ror.utils.TestsUtils.*
 import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.syntax.*
 
 class RorIndexTest extends AnyWordSpec
   with Inside with OptionValues with EitherValues
@@ -215,27 +216,20 @@ class RorIndexTest extends AnyWordSpec
 
   private def readonlyRestBoot(factory: CoreFactory,
                                indexJsonContentService: IndexJsonContentService,
-                               configPath: String,
-                               refreshInterval: Option[FiniteDuration] = None) = {
-    def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
-      refreshInterval
-        .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
-        .toMap
-
+                               configPath: String) = {
     implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
       propertiesProvider = TestsPropertiesProvider.usingMap(
-        mapWithIntervalFrom(refreshInterval) ++
-          Map(
-            "com.readonlyrest.settings.loading.delay" -> "0"
-          )
+        Map(
+          "com.readonlyrest.settings.loading.delay" -> "1"
+        )
       )
     )
 
     ReadonlyRest.create(
       factory,
       indexJsonContentService,
-      _ => mock[AuditSinkService],
-      EsEnv(getResourcePath(configPath), getResourcePath(configPath)),
+      mock[AuditSinkServiceCreator],
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests),
       testEsNodeConfig,
     )
   }

@@ -16,13 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import cats.data.NonEmptyList
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.js.JsCompiler
 
 import java.util.regex
@@ -40,23 +37,12 @@ object CaseSensitivity {
   def disabled: Disabled.type = Disabled
 }
 
-final case class RorAuditLoggerName(value: NonEmptyString)
-object RorAuditLoggerName {
-  val default: RorAuditLoggerName = RorAuditLoggerName(nes("readonlyrest_audit"))
-}
-
 sealed trait AccessRequirement[T] {
   def value: T
 }
 object AccessRequirement {
   final case class MustBePresent[T](override val value: T) extends AccessRequirement[T]
   final case class MustBeAbsent[T](override val value: T) extends AccessRequirement[T]
-}
-
-sealed trait AuditCluster
-object AuditCluster {
-  case object LocalAuditCluster extends AuditCluster
-  final case class RemoteAuditCluster(uris: NonEmptyList[Uri]) extends AuditCluster
 }
 
 final case class JavaRegex private(value: String) {

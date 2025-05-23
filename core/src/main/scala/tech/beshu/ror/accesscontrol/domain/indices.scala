@@ -26,17 +26,14 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
-import tech.beshu.ror.constants
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId}
 import scala.concurrent.ExecutionContext.global
 import scala.language.postfixOps
 import scala.util.matching.Regex
-import scala.util.{Failure, Random, Success, Try}
+import scala.util.Random
 
 sealed trait IndexName
 object IndexName {
@@ -527,44 +524,4 @@ object IndexAttribute {
 
 final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal {
   def toLocal: ClusterIndexName.Local = ClusterIndexName.Local(index)
-}
-
-final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
-                                          rawPattern: String) {
-
-  def indexName(instant: Instant): IndexName.Full = {
-    IndexName.Full(NonEmptyString.unsafeFrom(nameFormatter.format(instant)))
-  }
-
-  def conforms(index: IndexName): Boolean = {
-    index match {
-      case IndexName.Full(name) =>
-        Try(nameFormatter.parse(name.value)).isSuccess
-      case IndexName.Pattern(_) =>
-        IndexName
-          .fromString(rawPattern)
-          .exists { i =>
-            PatternsMatcher
-              .create(Set(index))
-              .`match`(i)
-          }
-    }
-  }
-}
-object RorAuditIndexTemplate {
-  val default: RorAuditIndexTemplate = from(constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).toOption.get
-
-  def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = from(pattern)
-
-  def from(pattern: String): Either[CreationError, RorAuditIndexTemplate] = {
-    Try(DateTimeFormatter.ofPattern(pattern).withZone(ZoneId.of("UTC"))) match {
-      case Success(formatter) => Right(new RorAuditIndexTemplate(formatter, pattern.replaceAll("'", "")))
-      case Failure(ex) => Left(CreationError.ParsingError(ex.getMessage))
-    }
-  }
-
-  sealed trait CreationError
-  object CreationError {
-    final case class ParsingError(msg: String) extends CreationError
-  }
 }

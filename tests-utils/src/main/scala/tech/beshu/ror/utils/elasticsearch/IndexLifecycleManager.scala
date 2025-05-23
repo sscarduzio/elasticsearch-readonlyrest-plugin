@@ -22,6 +22,7 @@ import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 
 class IndexLifecycleManager(client: RestClient, esVersion: String)
   extends BaseManager(client, esVersion, esNativeApi = true) {
@@ -32,6 +33,13 @@ class IndexLifecycleManager(client: RestClient, esVersion: String)
 
   def putPolicy(id: String, policy: JSON): SimpleResponse = {
     call(createPutPolicyRequest(id, policy), new SimpleResponse(_))
+  }
+
+  def putPolicyAndWaitForIndexing(id: String, policy: JSON): Unit = {
+    putPolicy(id, policy).force()
+    waitForCondition(s"Putting index lifecycle policy $id") {
+      getPolicy(id).responseCode == 200
+    }
   }
 
   def deletePolicy(id: String): SimpleResponse = {

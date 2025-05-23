@@ -38,21 +38,28 @@ abstract class BaseTemplateManager(client: RestClient,
   def getTemplates: TemplatesResponse =
     call(createGetTemplatesRequest, new TemplatesResponse(_, parseTemplates))
 
+  def putTemplate(templateName: String, template: JSON): SimpleResponse =
+    call(createIndexTemplateRequest(templateName, template), new SimpleResponse(_))
+
   def putTemplate(templateName: String,
                   indexPatterns: NonEmptyList[String],
                   aliases: Set[String] = Set.empty,
                   priority: Int = 0): SimpleResponse =
-    call(createIndexTemplateRequest(templateName, putTemplateBodyJson(indexPatterns, aliases, priority)), new SimpleResponse(_))
+    putTemplate(templateName, putTemplateBodyJson(indexPatterns, aliases, priority))
 
   def putTemplateAndWaitForIndexing(templateName: String,
-                                    indexPatterns: NonEmptyList[String],
-                                    aliases: Set[String] = Set.empty,
-                                    priority: Int = 0): Unit = {
-    putTemplate(templateName, indexPatterns, aliases, priority).force()
+                                    template: JSON): Unit = {
+    putTemplate(templateName, template).force()
     waitForCondition(s"Putting index template $templateName") {
       getTemplate(templateName).responseCode == 200
     }
   }
+
+  def putTemplateAndWaitForIndexing(templateName: String,
+                                    indexPatterns: NonEmptyList[String],
+                                    aliases: Set[String] = Set.empty,
+                                    priority: Int = 0): Unit =
+    putTemplateAndWaitForIndexing(templateName, putTemplateBodyJson(indexPatterns, aliases, priority))
 
   def deleteTemplate(name: String): SimpleResponse =
     call(createDeleteTemplateRequest(name), new SimpleResponse(_))
@@ -136,7 +143,9 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
     request
   }
 
-  override protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String], aliases: Set[String], priority: Int): JSON = {
+  override protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String],
+                                             aliases: Set[String],
+                                             priority: Int): JSON = {
     val allIndexPattern = indexPatterns.toList
     val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
     if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
@@ -359,16 +368,25 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
     call(createGetComponentTemplatesRequest(templateName), new ComponentTemplatesResponse(_))
   }
 
+  def putTemplate(templateName: String, body: JSON): SimpleResponse = {
+    call(createPutComponentTemplateRequest(templateName, body), new SimpleResponse(_))
+  }
+
   def putTemplate(templateName: String, aliases: Set[String]): SimpleResponse = {
-    call(createPutComponentTemplateRequest(templateName, aliases), new SimpleResponse(_))
+    call(createPutComponentTemplateRequest(templateName, putComponentTemplateBodyJson(aliases)), new SimpleResponse(_))
+  }
+
+  def putTemplateAndWaitForIndexing(templateName: String,
+                                    body: JSON): Unit = {
+    putTemplate(templateName, body).force()
+    waitForCondition(s"Putting index template $templateName") {
+      getTemplate(templateName).responseCode == 200
+    }
   }
 
   def putTemplateAndWaitForIndexing(templateName: String,
                                     aliases: Set[String] = Set.empty): Unit = {
-    putTemplate(templateName, aliases).force()
-    waitForCondition(s"Putting index template $templateName") {
-      getTemplate(templateName).responseCode == 200
-    }
+    putTemplateAndWaitForIndexing(templateName, putComponentTemplateBodyJson(aliases))
   }
 
   def deleteTemplate(templateName: String): SimpleResponse = {
@@ -383,10 +401,10 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
     new HttpGet(client.from(s"/_component_template/$templateName"))
   }
 
-  private def createPutComponentTemplateRequest(templateName: String, aliases: Set[String]) = {
+  private def createPutComponentTemplateRequest(templateName: String, body: JSON) = {
     val request = new HttpPut(client.from(s"/_component_template/$templateName"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(putComponentTemplateBodyJson(aliases))))
+    request.setEntity(new StringEntity(ujson.write(body)))
     request
   }
 

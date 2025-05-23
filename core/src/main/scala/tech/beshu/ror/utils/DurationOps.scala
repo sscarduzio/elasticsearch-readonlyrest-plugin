@@ -19,6 +19,7 @@ package tech.beshu.ror.utils
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 
+import java.util.concurrent.TimeUnit as JTimeUnit
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 object DurationOps {
@@ -35,6 +36,20 @@ object DurationOps {
 
     def toRefinedPositiveUnsafe: PositiveFiniteDuration =
       toRefinedPositive.fold(err => throw new IllegalArgumentException(err), identity)
+
+    def inShortFormat: String = {
+      val d = duration.toCoarsest
+      val unit = d.unit match {
+        case JTimeUnit.DAYS => "d"
+        case JTimeUnit.HOURS => "h"
+        case JTimeUnit.MINUTES => "m"
+        case JTimeUnit.SECONDS => "s"
+        case JTimeUnit.MILLISECONDS => "ms"
+        case JTimeUnit.MICROSECONDS => "μs"
+        case JTimeUnit.NANOSECONDS => "ns"
+      }
+      s"${d.length}$unit"
+    }
   }
 
 }
