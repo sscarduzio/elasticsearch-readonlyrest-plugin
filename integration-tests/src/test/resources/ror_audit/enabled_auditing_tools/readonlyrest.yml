@@ -5,8 +5,10 @@ readonlyrest:
     outputs:
       - type: index
         index_template: "'audit_index'"
+        enable_reporting_es_node_details: false
       - type: data_stream
         data_stream: "audit_data_stream"
+        enable_reporting_es_node_details: false
 
   access_control_rules:
 

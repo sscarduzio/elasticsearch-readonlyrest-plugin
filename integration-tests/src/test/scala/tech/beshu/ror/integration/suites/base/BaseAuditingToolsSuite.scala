@@ -20,11 +20,12 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseSingleNodeEsClusterTest, SingleClientSupport}
-import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.integration.suites.base.support.SingleClientSupport
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.containers.providers.ClientProvider
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.*
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
@@ -38,9 +39,8 @@ trait BaseAuditingToolsSuite
     with SingleClientSupport
     with BeforeAndAfterEach
     with CustomScalaTestMatchers
-    with Eventually
-    with BaseSingleNodeEsClusterTest
-    with SingletonPluginTestSupport {
+    with Eventually {
+  this: EsClusterProvider =>
 
   protected def destNodeClientProvider: ClientProvider
 
@@ -153,14 +153,15 @@ trait BaseAuditingToolsSuite
               auditEntries.size shouldBe 2
 
               auditEntries(0)("correlation_id").str shouldBe correlationId
-              assertForEveryAuditEntry(auditEntries(0))
               auditEntries(1)("correlation_id").str shouldBe correlationId
+              assertForEveryAuditEntry(auditEntries(0))
               assertForEveryAuditEntry(auditEntries(1))
             }
           }
         }
         "two requests were sent and the first one is user metadata request" in {
-          val userMetadataResponse = rorApiManager.fetchMetadata()
+          val userMetadataManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
+          val userMetadataResponse = userMetadataManager.fetchMetadata()
 
           userMetadataResponse should have statusCode 200
           val correlationId = userMetadataResponse.responseJson("x-ror-correlation-id").str
@@ -180,15 +181,19 @@ trait BaseAuditingToolsSuite
               auditEntries.size shouldBe 2
 
               auditEntries(0)("correlation_id").str shouldBe correlationId
-              assertForEveryAuditEntry(auditEntries(0))
               auditEntries(1)("correlation_id").str shouldBe correlationId
+              assertForEveryAuditEntry(auditEntries(0))
               assertForEveryAuditEntry(auditEntries(1))
             }
           }
         }
         "two metadata requests were sent, one with correlationId" in {
           def fetchMetadata(correlationId: Option[String]) = {
-            rorApiManager.fetchMetadata(correlationId = correlationId)
+            val userMetadataManager = new RorApiManager(
+              client = basicAuthClient("username", "dev"),
+              esVersion = esVersionUsed
+            )
+            userMetadataManager.fetchMetadata(correlationId = correlationId)
           }
 
           val correlationId = UUID.randomUUID().toString
@@ -208,7 +213,8 @@ trait BaseAuditingToolsSuite
               auditEntries.size shouldBe 2
 
               auditEntries.map(_("correlation_id").str).toSet shouldBe Set(loggingId1, loggingId2)
-              auditEntries.map(assertForEveryAuditEntry)
+              assertForEveryAuditEntry(auditEntries(0))
+              assertForEveryAuditEntry(auditEntries(1))
             }
           }
         }
@@ -233,6 +239,8 @@ trait BaseAuditingToolsSuite
     "be audited" when {
       "rule 3 is matched" when {
         "no JSON key attribute from request body payload is defined in audit serializer" in {
+          val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
+
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }""")).force()
 
           response should have statusCode 204
@@ -247,6 +255,8 @@ trait BaseAuditingToolsSuite
           }
         }
         "user JSON key attribute from request doesn't override the defined in audit serializer" in {
+          val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
+
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "user": "unknown" }"""))
 
           response should have statusCode 204
@@ -261,6 +271,8 @@ trait BaseAuditingToolsSuite
           }
         }
         "new JSON key attribute from request body as a JSON value" in {
+          val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
+
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event_obj": { "field1": 1, "fields2": "f2" } }"""))
 
           response should have statusCode 204
@@ -290,6 +302,8 @@ trait BaseAuditingToolsSuite
         }
       }
       "request JSON is malformed" in {
+        val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
+
         val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
         response should have statusCode 400
         response.responseJson should be(ujson.read(
@@ -316,6 +330,8 @@ trait BaseAuditingToolsSuite
         }
       }
       "request JSON is too large (>5KB)" in {
+        val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
+
         val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${LazyList.continually("!").take(5000).mkString}" }"""))
         response should have statusCode 413
         response.responseJson should be(ujson.read(
@@ -544,6 +560,7 @@ trait BaseAuditingToolsSuite
       firstEntry("final_state").str shouldBe "ALLOWED"
       firstEntry("user").str shouldBe "username"
       firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
+      assertForEveryAuditEntry(firstEntry)
     }
   }
 
