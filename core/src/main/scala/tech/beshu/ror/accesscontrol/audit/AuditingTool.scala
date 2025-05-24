@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.enrichers.AuditLogSerializerEnrichedWithEsNodeDetails
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
+import tech.beshu.ror.configuration.EsNodeConfig
 import tech.beshu.ror.implicits.*
 
 import java.time.Clock
@@ -160,6 +161,7 @@ object AuditingTool extends Logging {
                                           rorAuditIndexTemplate: RorAuditIndexTemplate,
                                           auditCluster: AuditCluster,
                                           options: EsIndexBasedSink.Options) extends Config
+
         object EsIndexBasedSink {
           val default: EsIndexBasedSink = EsIndexBasedSink(
             logSerializer = new DefaultAuditLogSerializer,
@@ -169,6 +171,7 @@ object AuditingTool extends Logging {
           )
 
           final case class Options(enableReportingEsNodeDetails: Boolean)
+
           object Options {
             val default: Options = Options(
               enableReportingEsNodeDetails = true,
@@ -179,14 +182,24 @@ object AuditingTool extends Logging {
 
         final case class EsDataStreamBasedSink(logSerializer: AuditLogSerializer,
                                                rorAuditDataStream: RorAuditDataStream,
-                                               auditCluster: AuditCluster) extends Config
+                                               auditCluster: AuditCluster,
+                                               options: EsDataStreamBasedSink.Options) extends Config
 
         object EsDataStreamBasedSink {
           val default: EsDataStreamBasedSink = EsDataStreamBasedSink(
             logSerializer = new DefaultAuditLogSerializer,
             rorAuditDataStream = RorAuditDataStream.default,
-            auditCluster = AuditCluster.LocalAuditCluster
+            auditCluster = AuditCluster.LocalAuditCluster,
+            options = Options.default,
           )
+
+          final case class Options(enableReportingEsNodeDetails: Boolean)
+
+          object Options {
+            val default: Options = Options(
+              enableReportingEsNodeDetails = true,
+            )
+          }
         }
 
         final case class LogBasedSink(logSerializer: AuditLogSerializer,
@@ -238,11 +251,11 @@ object AuditingTool extends Logging {
             case creator: DataStreamAndIndexBasedAuditSinkServiceCreator => creator
             case creator: IndexBasedAuditSinkServiceCreator => creator
           }
-          createIndexSink(config, serviceCreator).map(_.some.valid)
+          createIndexSink(config, serviceCreator, esNodeConfig).map(_.some.valid)
         case Enabled(config: AuditSink.Config.EsDataStreamBasedSink) =>
           auditSinkServiceCreator match {
             case creator: DataStreamAndIndexBasedAuditSinkServiceCreator =>
-              createDataStreamSink(config, creator).map(_.map(_.some))
+              createDataStreamSink(config, creator, esNodeConfig).map(_.map(_.some))
             case _: IndexBasedAuditSinkServiceCreator =>
               // todo improvement - make this state impossible
               Task.raiseError(new IllegalStateException("Data stream audit sink is not supported in this version"))
@@ -269,27 +282,42 @@ object AuditingTool extends Logging {
   }
 
   private def createIndexSink(config: AuditSink.Config.EsIndexBasedSink,
-                              serviceCreator: IndexBasedAuditSinkServiceCreator)(using Clock): Task[SupportedAuditSink] = Task.delay {
+                              serviceCreator: IndexBasedAuditSinkServiceCreator,
+                              esNodeConfig: EsNodeConfig)(using Clock): Task[SupportedAuditSink] = Task.delay {
     val service = serviceCreator.index(config.auditCluster)
-    val serializer =
-      if (options.enableReportingEsNodeDetails) new AuditLogSerializerEnrichedWithEsNodeDetails(logSerializer, esNodeConfig.clusterName, esNodeConfig.nodeName)
-      else config.serializer
-    EsIndexBasedAuditSink(serializer, config.rorAuditIndexTemplate, service)
+    EsIndexBasedAuditSink(
+      serializer = decorateSerializer(config.logSerializer, config.options.enableReportingEsNodeDetails, esNodeConfig),
+      indexTemplate = config.rorAuditIndexTemplate,
+      auditSinkService = service
+    )
   }
 
   private def createDataStreamSink(config: AuditSink.Config.EsDataStreamBasedSink,
-                                   serviceCreator: DataStreamAndIndexBasedAuditSinkServiceCreator): Task[Validated[CreationError, SupportedAuditSink]] =
+                                   serviceCreator: DataStreamAndIndexBasedAuditSinkServiceCreator,
+                                   esNodeConfig: EsNodeConfig): Task[Validated[CreationError, SupportedAuditSink]] =
     Task.delay(serviceCreator.dataStream(config.auditCluster))
       .flatMap { auditSinkService =>
         EsDataStreamBasedAuditSink.create(
-          config.logSerializer,
+          decorateSerializer(config.logSerializer, config.options.enableReportingEsNodeDetails, esNodeConfig),
           config.rorAuditDataStream,
           auditSinkService,
           config.auditCluster
         ).map(_.leftMap(error => CreationError(error.message)).toValidated)
       }
 
-  private def createSerializer()
+  private def decorateSerializer(logSerializer: AuditLogSerializer,
+                                 enableReportingEsNodeDetails: Boolean,
+                                 esNodeConfig: EsNodeConfig) = {
+    if (enableReportingEsNodeDetails) {
+      new AuditLogSerializerEnrichedWithEsNodeDetails(
+        underlying = logSerializer,
+        clusterName = esNodeConfig.clusterName,
+        nodeName = esNodeConfig.nodeName
+      )
+    } else {
+      logSerializer
+    }
+  }
 
   private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink
 

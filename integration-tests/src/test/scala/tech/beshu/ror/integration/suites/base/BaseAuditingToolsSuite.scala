@@ -62,10 +62,6 @@ trait BaseAuditingToolsSuite
       }
       .toMap
 
-  lazy val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
-  lazy val adminRorApiManager = new RorApiManager(adminClient, esVersionUsed)
-
-
   override def beforeEach(): Unit = {
     super.beforeEach()
     adminAuditManagers.values.foreach(_.truncate())
@@ -282,7 +278,9 @@ trait BaseAuditingToolsSuite
     }
     "not be audited" when {
       "admin rule is matched" in {
-        val response = adminRorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
+        val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
+
+        val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
         response should have statusCode 204
 
         forEachAuditManager { adminAuditManager =>

@@ -25,6 +25,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink}
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -33,7 +34,7 @@ import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes}
+import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, testEsNodeConfig}
 
 import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration.*
@@ -158,17 +159,20 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         AuditSink.Enabled(Config.EsIndexBasedSink(
           new DefaultAuditLogSerializer,
           RorAuditIndexTemplate.default,
-          AuditCluster.LocalAuditCluster
+          AuditCluster.LocalAuditCluster,
+          EsIndexBasedSink.Options(enableReportingEsNodeDetails = false),
         )),
         AuditSink.Enabled(Config.EsDataStreamBasedSink(
           new DefaultAuditLogSerializer,
           RorAuditDataStream.default,
-          AuditCluster.LocalAuditCluster
+          AuditCluster.LocalAuditCluster,
+          EsDataStreamBasedSink.Options(enableReportingEsNodeDetails = false),
         ))
       )
     )
     val auditingTool = AuditingTool.create(
       settings = settings,
+      esNodeConfig = testEsNodeConfig,
       auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
         override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamBasedAuditSinkService
 

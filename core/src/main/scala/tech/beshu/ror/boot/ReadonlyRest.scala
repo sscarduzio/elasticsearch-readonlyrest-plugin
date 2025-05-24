@@ -237,7 +237,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
     core.rorConfig.auditingSettings
-      .map(settings => AuditingTool.create(settings, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
+      .map(settings => AuditingTool.create(settings, esNodeConfig, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
       .sequence
       .map {
         _.sequence

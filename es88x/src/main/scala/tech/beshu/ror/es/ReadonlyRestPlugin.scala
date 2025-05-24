@@ -39,6 +39,7 @@ import org.elasticsearch.http.{HttpPreRequest, HttpServerTransport}
 import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.IgnoredFieldMapper
 import org.elasticsearch.indices.breaker.CircuitBreakerService
+import org.elasticsearch.node.Node
 import org.elasticsearch.plugins.*
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.repositories.RepositoriesService

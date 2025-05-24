@@ -145,10 +145,12 @@ object AuditingSettingsDecoder extends Logging {
         rorAuditDataStream <- c.downField("data_stream").as[Option[RorAuditDataStream]]
         customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
         remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
+        enableReportingEsNodeDetails <- c.downField("enable_reporting_es_node_details").as[Option[Boolean]]
       } yield EsDataStreamBasedSink(
         customAuditSerializer.getOrElse(EsDataStreamBasedSink.default.logSerializer),
         rorAuditDataStream.getOrElse(EsDataStreamBasedSink.default.rorAuditDataStream),
-        remoteAuditCluster.getOrElse(EsDataStreamBasedSink.default.auditCluster)
+        remoteAuditCluster.getOrElse(EsDataStreamBasedSink.default.auditCluster),
+        enableReportingEsNodeDetails.map(EsDataStreamBasedSink.Options(_)).getOrElse(EsDataStreamBasedSink.Options.default),
       )
     }
 
