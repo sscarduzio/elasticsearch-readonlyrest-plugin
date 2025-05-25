@@ -14,18 +14,6 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.utils
+package tech.beshu.ror.es
 
-import org.elasticsearch.Version
-import org.elasticsearch.env.Environment
-import tech.beshu.ror.es.{EsEnv, EsVersion}
-
-object EsEnvProvider {
-  def create(environment: Environment): EsEnv = {
-    EsEnv(
-      configPath = environment.configFile(),
-      modulesPath = environment.modulesFile(),
-      esVersion = EsVersion(major = Version.CURRENT.major, minor = Version.CURRENT.minor, revision = Version.CURRENT.revision),
-    )
-  }
-}
+case class EsNodeSettings(nodeName: String, clusterName: String)

@@ -34,7 +34,7 @@ import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, testEsNodeConfig}
+import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, testEsNodeSettings}
 
 import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration.*
@@ -172,7 +172,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     )
     val auditingTool = AuditingTool.create(
       settings = settings,
-      esNodeConfig = testEsNodeConfig,
+      esNodeSettings = testEsNodeSettings,
       auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
         override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamBasedAuditSinkService
 

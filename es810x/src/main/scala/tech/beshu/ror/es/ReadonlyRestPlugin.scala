@@ -23,7 +23,6 @@ import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.internal.Client
 import org.elasticsearch.client.internal.node.NodeClient
-import org.elasticsearch.cluster.ClusterName
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.cluster.routing.allocation.AllocationService
@@ -40,7 +39,6 @@ import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.IgnoredFieldMapper
 import org.elasticsearch.indices.IndicesService
 import org.elasticsearch.indices.breaker.CircuitBreakerService
-import org.elasticsearch.node.Node
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins.*
 import org.elasticsearch.repositories.RepositoriesService
@@ -54,7 +52,7 @@ import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
-import tech.beshu.ror.configuration.{EnvironmentConfig, EsNodeConfig, ReadonlyRestEsConfig}
+import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
@@ -109,12 +107,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
-  private val esNodeConfig = EsNodeConfig(
-    clusterName = ClusterName.CLUSTER_NAME_SETTING.get(s).value(),
-    nodeName = Node.NODE_NAME_SETTING.get(s),
-  )
+
   private val rorEsConfig = ReadonlyRestEsConfig
-    .load(EsEnvProvider.create(environment), esNodeConfig)
+    .load(EsEnvProvider.create(environment))
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener
@@ -140,7 +135,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 indicesService: IndicesService): util.Collection[AnyRef] = {
     doPrivileged {
       ilaf = new IndexLevelActionFilter(
-        client.settings().get("node.name"),
+        EsNodeSettings(client.settings().get("node.name"), client.settings().get("cluster.name")),
         clusterService,
         client.asInstanceOf[NodeClient],
         threadPool,

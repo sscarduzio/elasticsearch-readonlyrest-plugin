@@ -48,7 +48,7 @@ import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import java.util.function.Supplier
 
-class IndexLevelActionFilter(nodeName: String,
+class IndexLevelActionFilter(esNodeSettings: EsNodeSettings,
                              clusterService: ClusterService,
                              client: NodeClient,
                              threadPool: ThreadPool,
@@ -65,11 +65,13 @@ class IndexLevelActionFilter(nodeName: String,
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
     new RorNotAvailableRequestHandler(rorEsConfig.bootConfig)
 
+  private val nodeName = esNodeSettings.nodeName
+
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
     auditSinkServiceCreator,
     EsEnvProvider.create(env),
-    rorEsConfig.esNodeConfig,
+    esNodeSettings,
   )
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =

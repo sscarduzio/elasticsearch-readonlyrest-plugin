@@ -230,7 +230,7 @@ class RorIndexTest extends AnyWordSpec
       indexJsonContentService,
       mock[AuditSinkServiceCreator],
       EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests),
-      testEsNodeConfig,
+      testEsNodeSettings,
     )
   }
 

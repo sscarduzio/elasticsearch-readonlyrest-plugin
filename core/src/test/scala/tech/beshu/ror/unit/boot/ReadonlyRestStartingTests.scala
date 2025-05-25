@@ -1424,7 +1424,7 @@ class ReadonlyRestStartingTests
       indexJsonContentService,
       auditSinkServiceCreator,
       EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests),
-      testEsNodeConfig,
+      testEsNodeSettings,
     )
   }
 
