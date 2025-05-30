@@ -117,7 +117,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       val client = services.client()
       val repositoriesServiceSupplier = services.repositoriesServiceSupplier()
       ilaf = new IndexLevelActionFilter(
-        EsNodeSettings(client.settings().get("node.name"), client.settings().get("cluster.name")),
         services.clusterService(),
         client.asInstanceOf[NodeClient],
         services.threadPool(),

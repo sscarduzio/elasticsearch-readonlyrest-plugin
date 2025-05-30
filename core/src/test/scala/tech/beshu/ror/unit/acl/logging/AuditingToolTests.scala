@@ -26,10 +26,9 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
@@ -42,7 +41,7 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
@@ -186,7 +185,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       "log sink is used" should {
         "saved audit log to file defined in log4j config" in {
           val auditingTool = AuditingTool.create(
-            settings = Settings(
+            settings = AuditSettings(
               NonEmptyList.of(
                 AuditSink.Enabled(Config.LogBasedSink(
                   new DefaultAuditLogSerializer,
@@ -218,7 +217,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     "no enabled outputs in settings" should {
       "be disabled" in {
         val creationResult = AuditingTool.create(
-          settings = Settings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled)),
+          settings = AuditSettings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled)),
           esNodeSettings = testEsNodeSettings,
           auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
             override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = mock[DataStreamBasedAuditSinkService]
@@ -231,18 +230,16 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
   }
 
-  private def auditSettings(serializer: AuditLogSerializer) = Settings(NonEmptyList.of(
+  private def auditSettings(serializer: AuditLogSerializer) = AuditSettings(NonEmptyList.of(
     AuditSink.Enabled(Config.EsIndexBasedSink(
       serializer,
       RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
-      AuditCluster.LocalAuditCluster,
-      EsIndexBasedSink.Options(enableReportingEsNodeDetails = false),
+      AuditCluster.LocalAuditCluster
     )),
     AuditSink.Enabled(Config.EsDataStreamBasedSink(
       serializer,
       RorAuditDataStream.from("test_ds").toOption.get,
-      AuditCluster.LocalAuditCluster,
-      EsDataStreamBasedSink.Options(enableReportingEsNodeDetails = false),
+      AuditCluster.LocalAuditCluster
     ))
   ))
 
@@ -266,7 +263,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   private implicit val fixedClock: Clock = Clock.fixed(someday.toInstant, someday.getZone)
 
   private lazy val throwingAuditLogSerializer = new AuditLogSerializer {
-    override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
+    override def onResponse(responseContext: AuditResponseContext,
+                            environmentContext: AuditEnvironmentContext): Option[JSONObject] = {
       throw new IllegalArgumentException("sth went wrong")
     }
   }

@@ -32,7 +32,7 @@ import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
@@ -1324,7 +1324,7 @@ class ReadonlyRestStartingTests
           mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorConfig(RorConfig.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader, Some(AuditingTool.Settings(
+          RorConfig(RorConfig.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader, Some(AuditingTool.AuditSettings(
             NonEmptyList.of(
               AuditSink.Enabled(dataStreamSinkConfig1),
               AuditSink.Enabled(dataStreamSinkConfig2))
@@ -1423,8 +1423,7 @@ class ReadonlyRestStartingTests
       factory,
       indexJsonContentService,
       auditSinkServiceCreator,
-      EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests),
-      testEsNodeSettings,
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests, testEsNodeSettings),
     )
   }
 

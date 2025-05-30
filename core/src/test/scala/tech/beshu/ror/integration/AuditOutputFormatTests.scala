@@ -23,9 +23,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -154,19 +153,17 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private def auditedAcl(indexBasedAuditSinkService: IndexBasedAuditSinkService,
                          dataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-    val settings = AuditingTool.Settings(
+    val settings = AuditingTool.AuditSettings(
       NonEmptyList.of(
         AuditSink.Enabled(Config.EsIndexBasedSink(
           new DefaultAuditLogSerializer,
           RorAuditIndexTemplate.default,
-          AuditCluster.LocalAuditCluster,
-          EsIndexBasedSink.Options(enableReportingEsNodeDetails = false),
+          AuditCluster.LocalAuditCluster
         )),
         AuditSink.Enabled(Config.EsDataStreamBasedSink(
           new DefaultAuditLogSerializer,
           RorAuditDataStream.default,
-          AuditCluster.LocalAuditCluster,
-          EsDataStreamBasedSink.Options(enableReportingEsNodeDetails = false),
+          AuditCluster.LocalAuditCluster
         ))
       )
     )

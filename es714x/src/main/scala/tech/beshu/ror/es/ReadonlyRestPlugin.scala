@@ -126,7 +126,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 repositoriesServiceSupplier: Supplier[RepositoriesService]): util.Collection[AnyRef] = {
     doPrivileged {
       ilaf = new IndexLevelActionFilter(
-        EsNodeSettings(client.settings().get("node.name"), client.settings().get("cluster.name")),
         clusterService,
         client.asInstanceOf[NodeClient],
         threadPool,

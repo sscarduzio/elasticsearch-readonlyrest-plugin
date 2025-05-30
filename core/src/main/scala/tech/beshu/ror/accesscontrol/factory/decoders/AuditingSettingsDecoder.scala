@@ -21,9 +21,9 @@ import io.circe.{Decoder, HCursor}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -42,14 +42,14 @@ import scala.util.{Failure, Success, Try}
 
 object AuditingSettingsDecoder extends Logging {
 
-  def instance(esVersion: EsVersion): Decoder[Option[AuditingTool.Settings]] = {
+  def instance(esVersion: EsVersion): Decoder[Option[AuditingTool.AuditSettings]] = {
     for {
       auditSettings <- auditSettingsDecoder(esVersion)
       deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance
     } yield auditSettings.orElse(deprecatedAuditSettings)
   }
 
-  private def auditSettingsDecoder(esVersion: EsVersion): Decoder[Option[AuditingTool.Settings]] = Decoder.instance { c =>
+  private def auditSettingsDecoder(esVersion: EsVersion): Decoder[Option[AuditingTool.AuditSettings]] = Decoder.instance { c =>
     for {
       isAuditEnabled <- YamlKeyDecoder[Boolean](
         segments = NonEmptyList.of("audit", "enabled"),
@@ -84,10 +84,10 @@ object AuditingSettingsDecoder extends Logging {
         case Some(outputs) =>
           NonEmptyList
             .fromList(outputs.distinct)
-            .map(AuditingTool.Settings.apply)
+            .map(AuditingTool.AuditSettings.apply)
             .toRight(AuditingSettingsCreationError(Message(s"The audit 'outputs' array cannot be empty")))
         case None =>
-          AuditingTool.Settings(
+          AuditingTool.AuditSettings(
             NonEmptyList.of(AuditSink.Enabled(EsIndexBasedSink.default))
           ).asRight
       }
@@ -131,12 +131,10 @@ object AuditingSettingsDecoder extends Logging {
         auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
         customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
         remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
-        enableReportingEsNodeDetails <- c.downField("enable_reporting_es_node_details").as[Option[Boolean]]
       } yield EsIndexBasedSink(
         customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
         auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
         remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
-        enableReportingEsNodeDetails.map(EsIndexBasedSink.Options(_)).getOrElse(EsIndexBasedSink.Options.default),
       )
     }
 
@@ -145,12 +143,10 @@ object AuditingSettingsDecoder extends Logging {
         rorAuditDataStream <- c.downField("data_stream").as[Option[RorAuditDataStream]]
         customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
         remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
-        enableReportingEsNodeDetails <- c.downField("enable_reporting_es_node_details").as[Option[Boolean]]
       } yield EsDataStreamBasedSink(
         customAuditSerializer.getOrElse(EsDataStreamBasedSink.default.logSerializer),
         rorAuditDataStream.getOrElse(EsDataStreamBasedSink.default.rorAuditDataStream),
         remoteAuditCluster.getOrElse(EsDataStreamBasedSink.default.auditCluster),
-        enableReportingEsNodeDetails.map(EsDataStreamBasedSink.Options(_)).getOrElse(EsDataStreamBasedSink.Options.default),
       )
     }
 
@@ -289,21 +285,20 @@ object AuditingSettingsDecoder extends Logging {
   }
 
   private object DeprecatedAuditSettingsDecoder {
-    lazy val instance: Decoder[Option[AuditingTool.Settings]] = Decoder.instance { c =>
+    lazy val instance: Decoder[Option[AuditingTool.AuditSettings]] = Decoder.instance { c =>
       whenEnabled(c) {
         for {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)("index_template", fallbackKey = "audit_index_template")
           customAuditSerializer <- decodeOptionalSetting[AuditLogSerializer](c)("serializer", fallbackKey = "audit_serializer")
           remoteAuditCluster <- decodeOptionalSetting[AuditCluster.RemoteAuditCluster](c)("cluster", fallbackKey = "audit_cluster")
           enableReportingEsNodeDetails <- c.downField("enable_reporting_es_node_details").as[Option[Boolean]]
-        } yield AuditingTool.Settings(
+        } yield AuditingTool.AuditSettings(
           auditSinks = NonEmptyList.one(
             AuditSink.Enabled(
               EsIndexBasedSink(
                 logSerializer = customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
                 rorAuditIndexTemplate = auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
                 auditCluster = remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
-                options = enableReportingEsNodeDetails.map(EsIndexBasedSink.Options(_)).getOrElse(EsIndexBasedSink.Options.default),
               )
             )
           )
@@ -311,7 +306,7 @@ object AuditingSettingsDecoder extends Logging {
       }
     }
 
-    private def whenEnabled(cursor: HCursor)(decoding: => Decoder.Result[AuditingTool.Settings]) = {
+    private def whenEnabled(cursor: HCursor)(decoding: => Decoder.Result[AuditingTool.AuditSettings]) = {
       for {
         isEnabled <- decodeOptionalSetting[Boolean](cursor)("collector", fallbackKey = "audit_collector")
         result <- if (isEnabled.getOrElse(false)) decoding.map(Some.apply) else Right(None)

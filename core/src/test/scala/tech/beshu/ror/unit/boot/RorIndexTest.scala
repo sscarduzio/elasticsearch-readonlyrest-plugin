@@ -229,8 +229,7 @@ class RorIndexTest extends AnyWordSpec
       factory,
       indexJsonContentService,
       mock[AuditSinkServiceCreator],
-      EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests),
-      testEsNodeSettings,
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests, testEsNodeSettings),
     )
   }
 

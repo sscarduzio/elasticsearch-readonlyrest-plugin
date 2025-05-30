@@ -5,7 +5,7 @@ readonlyrest:
     outputs:
       - type: index
         index_template: "'audit_index'"
-        enable_reporting_es_node_details: false
+        serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
 
   access_control_rules:
 

@@ -120,7 +120,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         override def get(): RepositoriesService = services.repositoriesService()
       }
       ilaf = new IndexLevelActionFilter(
-        EsNodeSettings(client.settings().get("node.name"), client.settings().get("cluster.name")),
         services.clusterService(),
         client,
         services.threadPool(),

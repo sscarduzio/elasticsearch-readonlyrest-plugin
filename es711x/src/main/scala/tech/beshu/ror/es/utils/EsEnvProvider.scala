@@ -18,14 +18,19 @@ package tech.beshu.ror.es.utils
 
 import org.elasticsearch.Version
 import org.elasticsearch.env.Environment
-import tech.beshu.ror.es.{EsEnv, EsVersion}
+import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 
 object EsEnvProvider {
   def create(environment: Environment): EsEnv = {
+    val settings = environment.settings()
     EsEnv(
       configPath = environment.configFile(),
       modulesPath = environment.modulesFile(),
-      esVersion = EsVersion(major = Version.CURRENT.major, minor = Version.CURRENT.minor, revision = Version.CURRENT.revision)
+      esVersion = EsVersion(major = Version.CURRENT.major, minor = Version.CURRENT.minor, revision = Version.CURRENT.revision),
+      esNodeSettings = EsNodeSettings(
+        nodeName = settings.get("node.name"),
+        clusterName = settings.get("cluster.name")
+      ),
     )
   }
 }

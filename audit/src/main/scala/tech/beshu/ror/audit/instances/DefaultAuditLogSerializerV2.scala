@@ -14,18 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.audit.enrichers
+package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext}
 
-private[audit] class AuditLogSerializerEnrichedWithStaticFields(underlying: AuditLogSerializer,
-                                                                additionalFields: Map[String, String])
-  extends AuditLogSerializer {
+class DefaultAuditLogSerializerV2 extends DefaultAuditLogSerializerV1 {
 
-  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
-    underlying.onResponse(responseContext)
+  override def onResponse(responseContext: AuditResponseContext,
+                          environmentContext: AuditEnvironmentContext): Option[JSONObject] = {
+    lazy val additionalFields = Map(
+      "es_node_name" -> environmentContext.esNodeName,
+      "es_cluster_name" -> environmentContext.esClusterName
+    )
+    super.onResponse(responseContext, environmentContext)
       .map(additionalFields.foldLeft(_) { case (soFar, (key, value)) => soFar.put(key, value) })
   }
-
 }

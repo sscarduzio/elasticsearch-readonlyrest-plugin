@@ -37,7 +37,7 @@ import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.TestConfigLoading.*
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.*
-import tech.beshu.ror.es.{EsEnv, EsNodeSettings, IndexJsonContentService}
+import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -48,8 +48,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                    val indexConfigManager: IndexConfigManager,
                    val indexTestConfigManager: IndexTestConfigManager,
                    val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
-                   val esEnv: EsEnv,
-                   val esNodeSettings: EsNodeSettings)
+                   val esEnv: EsEnv)
                   (implicit environmentConfig: EnvironmentConfig,
                    scheduler: Scheduler) extends Logging {
 
@@ -237,7 +236,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
     core.rorConfig.auditingSettings
-      .map(settings => AuditingTool.create(settings, esNodeSettings, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
+      .map(settings => AuditingTool.create(settings, esEnv.esNodeSettings, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
       .sequence
       .map {
         _.sequence
@@ -309,25 +308,23 @@ object ReadonlyRest {
 
   def create(indexContentService: IndexJsonContentService,
              auditSinkServiceCreator: AuditSinkServiceCreator,
-             env: EsEnv,
-             esNodeSettings: EsNodeSettings)
+             env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(env.esVersion)
-    create(coreFactory, indexContentService, auditSinkServiceCreator, env, esNodeSettings)
+    create(coreFactory, indexContentService, auditSinkServiceCreator, env)
   }
 
   def create(coreFactory: CoreFactory,
              indexContentService: IndexJsonContentService,
              auditSinkServiceCreator: AuditSinkServiceCreator,
-             env: EsEnv,
-             esNodeSettings: EsNodeSettings)
+             env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
     val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
     val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
-    new ReadonlyRest(coreFactory, auditSinkServiceCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env, esNodeSettings)
+    new ReadonlyRest(coreFactory, auditSinkServiceCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env)
   }
 }
