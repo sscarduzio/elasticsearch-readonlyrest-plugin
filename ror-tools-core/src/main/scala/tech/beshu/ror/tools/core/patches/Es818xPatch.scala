@@ -32,6 +32,7 @@ private[patches] class Es818xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new EntitlementJarPatchCreator(
       new ModifyEntitlementInitializationClass(esVersion),
+      new ModifyFilesEntitlementsValidationClass(esVersion),
       ModifyEntitlementRuntimePolicyParserClass,
     ),
     new XPackCoreJarPatchCreator(
