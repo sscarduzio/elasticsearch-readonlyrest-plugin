@@ -20,7 +20,9 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.NoOpFileModifier
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.utils.EsUtil.es8182
 
 import scala.language.postfixOps
 
@@ -32,7 +34,10 @@ private[patches] class Es818xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new EntitlementJarPatchCreator(
       new ModifyEntitlementInitializationClass(esVersion),
-      new ModifyFilesEntitlementsValidationClass(esVersion),
+      esVersion match {
+        case v if v >= es8182 => new ModifyFilesEntitlementsValidationClass(esVersion)
+        case _ => NoOpFileModifier
+      },
       ModifyEntitlementRuntimePolicyParserClass,
     ),
     new XPackCoreJarPatchCreator(
