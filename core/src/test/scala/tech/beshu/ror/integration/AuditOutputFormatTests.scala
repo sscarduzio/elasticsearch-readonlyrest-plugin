@@ -92,7 +92,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "action":"indices:admin/get",
              |  "block":"default",
              |  "id":"mock",
-             |  "content_len":0
+             |  "content_len":0,
+             |  "es_cluster_name": "testEsCluster",
+             |  "es_node_name": "testEsNode"
              |}""".stripMargin
         )
 
@@ -135,7 +137,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "action":"indices:admin/get",
              |  "block":"default",
              |  "id":"mock",
-             |  "content_len":0
+             |  "content_len":0,
+             |  "es_cluster_name": "testEsCluster",
+             |  "es_node_name": "testEsNode"
              |}""".stripMargin
         )
 
