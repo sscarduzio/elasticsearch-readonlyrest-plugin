@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
-import tech.beshu.ror.configuration.RorProperties.LoadingDelay
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
@@ -32,11 +31,13 @@ import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.*
 import tech.beshu.ror.configuration.{ConfigLoading, EnvironmentConfig, EsConfig}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+
+import scala.concurrent.duration.Duration
 
 object ConfigLoadingInterpreter extends Logging {
 
-  def create(indexConfigManager: IndexConfigManager,
-             inIndexLoadingDelay: LoadingDelay)
+  def create(indexConfigManager: IndexConfigManager)
             (implicit environmentConfig: EnvironmentConfig): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
     override def apply[A](fa: LoadConfigAction[A]): Task[A] = fa match {
       case ConfigLoading.LoadConfigAction.LoadEsConfig(env) =>
@@ -73,7 +74,7 @@ object ConfigLoadingInterpreter extends Logging {
             error
           }
           .value
-      case ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(configIndex) =>
+      case ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(configIndex, inIndexLoadingDelay) =>
         logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${configIndex.index.show}) ...")
         loadFromIndex(indexConfigManager, configIndex, inIndexLoadingDelay)
           .map { rawRorConfig =>
@@ -101,8 +102,12 @@ object ConfigLoadingInterpreter extends Logging {
 
   private def loadFromIndex[A](indexConfigManager: IndexConfigManager,
                                index: RorConfigurationIndex,
-                               inIndexLoadingDelay: LoadingDelay) = {
-    EitherT(indexConfigManager.load(index).delayExecution(inIndexLoadingDelay.duration.value))
+                               loadingDelay: Option[PositiveFiniteDuration]) = {
+    EitherT {
+      indexConfigManager
+        .load(index)
+        .delayExecution(loadingDelay.map(_.value).getOrElse(Duration.Zero))
+    }
   }
 
   private def convertFileError(error: ConfigLoaderError[FileConfigError]): LoadedRorConfig.Error = {

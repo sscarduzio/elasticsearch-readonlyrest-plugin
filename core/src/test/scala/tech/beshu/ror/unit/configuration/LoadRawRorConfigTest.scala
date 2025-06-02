@@ -40,7 +40,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(esEnv.configPath), Right(ForcedFileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = true, esEnv, rorConfigurationIndex, indexLoadingAttempts = 0)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = true, esEnv, rorConfigurationIndex, loadingAttemptsCount = 0)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, ForcedFileConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -50,7 +50,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Right(IndexConfig(rorConfigurationIndex, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, indexLoadingAttempts = 1)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, loadingAttemptsCount = 1)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -61,7 +61,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Right(IndexConfig(rorConfigurationIndex, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, indexLoadingAttempts = 5)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, loadingAttemptsCount = 5)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -76,7 +76,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(esEnv.configPath), Right(FileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, indexLoadingAttempts = 5)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, loadingAttemptsCount = 5)
       val result = program.foldMap(compiler)
       result.toOption.get shouldBe FileConfig(rawRorConfig)
     }
@@ -85,7 +85,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Left(LoadedRorConfig.IndexUnknownStructure)),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, indexLoadingAttempts = 5)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, loadingAttemptsCount = 5)
       val result = program.foldMap(compiler)
       result shouldBe a[Left[LoadedRorConfig.IndexUnknownStructure.type, _]]
     }
@@ -94,7 +94,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(rorConfigurationIndex), Left(LoadedRorConfig.IndexParsingError("error"))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, indexLoadingAttempts = 5)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, esEnv, rorConfigurationIndex, loadingAttemptsCount = 5)
       val result = program.foldMap(compiler)
       result shouldBe a[Left[LoadedRorConfig.IndexParsingError, _]]
       result.left.value.asInstanceOf[LoadedRorConfig.IndexParsingError].message shouldBe "error"

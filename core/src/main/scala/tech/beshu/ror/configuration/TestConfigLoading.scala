@@ -19,6 +19,7 @@ package tech.beshu.ror.configuration
 import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.loader.LoadedTestRorConfig
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 object TestConfigLoading {
   type IndexErrorOr[A] = LoadedTestRorConfig.LoadingIndexError Either A
@@ -26,11 +27,12 @@ object TestConfigLoading {
 
   sealed trait LoadTestConfigAction[A]
   object LoadTestConfigAction {
-    final case class LoadRorConfigFromIndex(index: RorConfigurationIndex)
+    final case class LoadRorConfigFromIndex(index: RorConfigurationIndex, loadingDelay: Option[PositiveFiniteDuration])
       extends LoadTestConfigAction[IndexErrorOr[LoadedTestRorConfig.IndexConfig[TestRorConfig]]]
   }
 
-  def loadRorConfigFromIndex(index: RorConfigurationIndex): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig.IndexConfig[TestRorConfig]]] =
-    Free.liftF(LoadTestConfigAction.LoadRorConfigFromIndex(index))
+  def loadRorConfigFromIndex(index: RorConfigurationIndex,
+                             loadingDelay: Option[PositiveFiniteDuration]): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig.IndexConfig[TestRorConfig]]] =
+    Free.liftF(LoadTestConfigAction.LoadRorConfigFromIndex(index, loadingDelay))
 
 }

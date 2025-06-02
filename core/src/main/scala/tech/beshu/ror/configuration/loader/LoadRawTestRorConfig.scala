@@ -18,47 +18,60 @@ package tech.beshu.ror.configuration.loader
 
 import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.configuration.TestConfigLoading.*
 import tech.beshu.ror.configuration.TestRorConfig
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 object LoadRawTestRorConfig {
 
   def load(configurationIndex: RorConfigurationIndex,
+           loadingDelay: LoadingDelay,
+           indexLoadingAttemptsCount: LoadingAttemptsCount,
+           indexLoadingAttemptsInterval: LoadingAttemptsInterval,
            fallbackConfig: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
-    LoadRawTestRorConfig.load(
-      configIndex = configurationIndex,
-      indexLoadingAttempts = 5,
+    attemptLoadingConfigFromIndex(
+      index = configurationIndex,
+      currentDelay = None,
+      delay = loadingDelay,
+      attemptsCount = indexLoadingAttemptsCount,
+      attemptsInterval = indexLoadingAttemptsInterval,
       fallback = fallbackConfig
     )
   }
 
-  def load(configIndex: RorConfigurationIndex,
-           indexLoadingAttempts: Int,
-           fallback: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
-    attemptLoadingConfigFromIndex(configIndex, indexLoadingAttempts, fallback)
-  }
-
-  def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
-                                    attempts: Int,
-                                    fallback: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
-    if (attempts <= 0) {
-      Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](
-        Right(LoadedTestRorConfig.FallbackConfig[TestRorConfig](fallback))
-      )
-    } else {
-      for {
-        result <- loadRorConfigFromIndex(index)
-        rawRorConfig <- result match {
-          case Left(LoadedTestRorConfig.IndexNotExist) =>
-            Free.defer(attemptLoadingConfigFromIndex(index, attempts - 1, fallback))
-          case Left(error@LoadedTestRorConfig.IndexUnknownStructure) =>
-            Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Left(error))
-          case Left(error@LoadedTestRorConfig.IndexParsingError(_)) =>
-            Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Left(error))
-          case Right(value) =>
-            Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Right(value))
-        }
-      } yield rawRorConfig
+  private def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
+                                            currentDelay: Option[PositiveFiniteDuration],
+                                            delay: LoadingDelay,
+                                            attemptsCount: LoadingAttemptsCount,
+                                            attemptsInterval: LoadingAttemptsInterval,
+                                            fallback: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
+    attemptsCount.value.value match {
+      case 0 =>
+        Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](
+          Right(LoadedTestRorConfig.FallbackConfig[TestRorConfig](fallback))
+        )
+      case attemptsCount =>
+        for {
+          result <- loadRorConfigFromIndex(index, loadingDelay = currentDelay)
+          rawRorConfig <- result match {
+            case Left(LoadedTestRorConfig.IndexNotExist) =>
+              Free.defer(attemptLoadingConfigFromIndex(
+                index = index,
+                currentDelay = Some(delay.duration),
+                delay = delay,
+                attemptsCount = LoadingAttemptsCount.unsafeFrom(attemptsCount - 1),
+                attemptsInterval = attemptsInterval,
+                fallback = fallback
+              ))
+            case Left(error@LoadedTestRorConfig.IndexUnknownStructure) =>
+              Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Left(error))
+            case Left(error@LoadedTestRorConfig.IndexParsingError(_)) =>
+              Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Left(error))
+            case Right(value) =>
+              Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Right(value))
+          }
+        } yield rawRorConfig
     }
   }
 }

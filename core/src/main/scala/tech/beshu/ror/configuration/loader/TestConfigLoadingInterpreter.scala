@@ -21,7 +21,6 @@ import cats.~>
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.RorProperties.LoadingDelay
 import tech.beshu.ror.configuration.TestConfigLoading.LoadTestConfigAction
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
@@ -29,15 +28,17 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{Parsi
 import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.*
 import tech.beshu.ror.configuration.{TestConfigLoading, TestRorConfig}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+
+import scala.concurrent.duration.Duration
 
 object TestConfigLoadingInterpreter extends Logging {
 
-  def create(indexConfigManager: IndexTestConfigManager,
-             inIndexLoadingDelay: LoadingDelay): LoadTestConfigAction ~> Task = new (LoadTestConfigAction ~> Task) {
+  def create(indexConfigManager: IndexTestConfigManager): LoadTestConfigAction ~> Task = new (LoadTestConfigAction ~> Task) {
     override def apply[A](fa: LoadTestConfigAction[A]): Task[A] = fa match {
-      case TestConfigLoading.LoadTestConfigAction.LoadRorConfigFromIndex(configIndex) =>
+      case TestConfigLoading.LoadTestConfigAction.LoadRorConfigFromIndex(configIndex, loadingDelay) =>
         logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${configIndex.index.show}) ...")
-        loadFromIndex(indexConfigManager, configIndex, inIndexLoadingDelay)
+        loadFromIndex(indexConfigManager, configIndex, loadingDelay)
           .map { testConfig =>
             testConfig match {
               case TestRorConfig.Present(rawConfig, _, _) =>
@@ -68,8 +69,12 @@ object TestConfigLoadingInterpreter extends Logging {
 
   private def loadFromIndex(indexConfigManager: IndexTestConfigManager,
                             index: RorConfigurationIndex,
-                            inIndexLoadingDelay: LoadingDelay) = {
-    EitherT(indexConfigManager.load(index).delayExecution(inIndexLoadingDelay.duration.value))
+                            loadingDelay: Option[PositiveFiniteDuration]) = {
+    EitherT {
+      indexConfigManager
+        .load(index)
+        .delayExecution(loadingDelay.map(_.value).getOrElse(Duration.Zero))
+    }
   }
 
   private def convertIndexError(error: ConfigLoaderError[IndexConfigError]): LoadedTestRorConfig.LoadingIndexError =
