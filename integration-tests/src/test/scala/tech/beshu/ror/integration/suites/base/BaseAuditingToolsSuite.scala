@@ -25,6 +25,7 @@ import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.elasticsearch.*
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
@@ -42,6 +43,8 @@ trait BaseAuditingToolsSuite
   this: EsClusterProvider =>
 
   protected def destNodeClientProvider: ClientProvider
+
+  protected def assertForEveryAuditEntry(entry: JSON): Unit
 
   protected def baseRorConfig: String
 
@@ -89,6 +92,7 @@ trait BaseAuditingToolsSuite
             firstEntry("final_state").str shouldBe "ALLOWED"
             firstEntry("user").str shouldBe "username"
             firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
+            assertForEveryAuditEntry(firstEntry)
           }
         }
       }
@@ -107,6 +111,7 @@ trait BaseAuditingToolsSuite
             val firstEntry = auditEntries(0)
             firstEntry("final_state").str shouldBe "FORBIDDEN"
             firstEntry("user").str shouldBe "username"
+            assertForEveryAuditEntry(firstEntry)
           }
         }
       }
@@ -123,6 +128,7 @@ trait BaseAuditingToolsSuite
             val firstEntry = auditEntries(0)
             firstEntry("final_state").str shouldBe "FORBIDDEN"
             firstEntry("user").str shouldBe "user_token"
+            assertForEveryAuditEntry(firstEntry)
           }
         }
       }
@@ -148,6 +154,8 @@ trait BaseAuditingToolsSuite
 
               auditEntries(0)("correlation_id").str shouldBe correlationId
               auditEntries(1)("correlation_id").str shouldBe correlationId
+              assertForEveryAuditEntry(auditEntries(0))
+              assertForEveryAuditEntry(auditEntries(1))
             }
           }
         }
@@ -174,6 +182,8 @@ trait BaseAuditingToolsSuite
 
               auditEntries(0)("correlation_id").str shouldBe correlationId
               auditEntries(1)("correlation_id").str shouldBe correlationId
+              assertForEveryAuditEntry(auditEntries(0))
+              assertForEveryAuditEntry(auditEntries(1))
             }
           }
         }
@@ -203,6 +213,8 @@ trait BaseAuditingToolsSuite
               auditEntries.size shouldBe 2
 
               auditEntries.map(_("correlation_id").str).toSet shouldBe Set(loggingId1, loggingId2)
+              assertForEveryAuditEntry(auditEntries(0))
+              assertForEveryAuditEntry(auditEntries(1))
             }
           }
         }
@@ -238,6 +250,7 @@ trait BaseAuditingToolsSuite
               val auditEntries = adminAuditManager.getEntries.jsons
               auditEntries.size should be(1)
               auditEntries(0)("event").str should be("logout")
+              assertForEveryAuditEntry(auditEntries(0))
             }
           }
         }
@@ -253,6 +266,7 @@ trait BaseAuditingToolsSuite
               val auditEntries = adminAuditManager.getEntries.jsons
               auditEntries.size should be(1)
               auditEntries(0)("user").str should be("username")
+              assertForEveryAuditEntry(auditEntries(0))
             }
           }
         }
@@ -268,6 +282,7 @@ trait BaseAuditingToolsSuite
               val auditEntries = adminAuditManager.getEntries.jsons
               auditEntries.size should be(1)
               auditEntries(0)("event_obj") should be(ujson.read("""{ "field1": 1, "fields2": "f2" }"""))
+              assertForEveryAuditEntry(auditEntries(0))
             }
           }
         }
@@ -545,6 +560,7 @@ trait BaseAuditingToolsSuite
       firstEntry("final_state").str shouldBe "ALLOWED"
       firstEntry("user").str shouldBe "username"
       firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
+      assertForEveryAuditEntry(firstEntry)
     }
   }
 

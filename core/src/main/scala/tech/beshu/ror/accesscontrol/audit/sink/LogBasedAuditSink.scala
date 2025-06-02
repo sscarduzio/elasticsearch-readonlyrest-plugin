@@ -20,10 +20,11 @@ import monix.eval.Task
 import org.apache.logging.log4j.{LogManager, Logger}
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.domain.RorAuditLoggerName
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditResponseContext}
 
 private[audit] final class LogBasedAuditSink(serializer: AuditLogSerializer,
-                                             loggerName: RorAuditLoggerName) extends BaseAuditSink(serializer) {
+                                             environmentContext: AuditEnvironmentContext,
+                                             loggerName: RorAuditLoggerName) extends BaseAuditSink(serializer, environmentContext) {
 
   private val logger: Logger = LogManager.getLogger(loggerName.value.value)
 

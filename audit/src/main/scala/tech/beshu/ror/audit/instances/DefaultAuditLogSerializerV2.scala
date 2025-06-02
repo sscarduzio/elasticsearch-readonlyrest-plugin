@@ -14,25 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.audit.instances
 
-import better.files.File
+import org.json.JSONObject
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext}
 
-import java.nio.file.Path
-import scala.util.Try
+class DefaultAuditLogSerializerV2 extends DefaultAuditLogSerializerV1 {
 
-final case class EsEnv(configPath: Path, modulesPath: Path, esVersion: EsVersion, esNodeSettings: EsNodeSettings) {
-
-  def isOssDistribution: Boolean = {
-    Try {
-      !modulesPath.resolve("x-pack-security").toFile.exists()
-    } getOrElse {
-      false
-    }
+  override def onResponse(responseContext: AuditResponseContext,
+                          environmentContext: AuditEnvironmentContext): Option[JSONObject] = {
+    lazy val additionalFields = Map(
+      "es_node_name" -> environmentContext.esNodeName,
+      "es_cluster_name" -> environmentContext.esClusterName
+    )
+    super.onResponse(responseContext, environmentContext)
+      .map(additionalFields.foldLeft(_) { case (soFar, (key, value)) => soFar.put(key, value) })
   }
-
-  def elasticsearchConfig: File = {
-    File(s"${configPath.toAbsolutePath}/elasticsearch.yml")
-  }
-
 }

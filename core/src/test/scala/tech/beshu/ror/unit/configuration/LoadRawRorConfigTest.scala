@@ -27,7 +27,7 @@ import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFi
 import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig}
 import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
 import tech.beshu.ror.es.EsEnv
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, unsafeNes}
+import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, testEsNodeSettings, unsafeNes}
 
 import java.nio.file.Paths
 import scala.language.existentials
@@ -103,7 +103,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
 }
 object LoadRawRorConfigTest {
 
-  private val esEnv = EsEnv(Paths.get("unused_file_path"), Paths.get("unused_file_path"), defaultEsVersionForTests)
+  private val esEnv = EsEnv(Paths.get("unused_file_path"), Paths.get("unused_file_path"), defaultEsVersionForTests, testEsNodeSettings)
   private val rawRorConfig = RawRorConfig(Json.False, "forced file config")
   private val rorConfigurationIndex = RorConfigurationIndex(IndexName.Full("rorConfigurationIndex"))
 

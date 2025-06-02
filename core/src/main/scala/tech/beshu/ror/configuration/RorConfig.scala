@@ -28,7 +28,7 @@ import scala.annotation.unused
 final case class RorConfig(services: RorConfig.Services,
                            localUsers: LocalUsers,
                            impersonationWarningsReader: ImpersonationWarningsReader,
-                           auditingSettings: Option[AuditingTool.Settings])
+                           auditingSettings: Option[AuditingTool.AuditSettings])
 
 object RorConfig {
   def disabled: RorConfig = RorConfig(RorConfig.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader, None)
