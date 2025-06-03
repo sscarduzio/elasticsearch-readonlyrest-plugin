@@ -21,6 +21,7 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.utils.EsUtil.es902
 
 import scala.language.postfixOps
 
@@ -31,7 +32,10 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new EntitlementJarPatchCreator(
-      new ModifyEntitlementInitializationClass(esVersion),
+      esVersion match {
+        case v if v >= es902 => new ModifyFilesEntitlementsValidationClass(esVersion)
+        case _ => new ModifyEntitlementInitializationClass(esVersion)
+      },
       ModifyEntitlementRuntimePolicyParserClass,
     ),
     new XPackCoreJarPatchCreator(
