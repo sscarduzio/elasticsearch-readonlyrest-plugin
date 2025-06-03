@@ -70,15 +70,19 @@ class ReadonlyRest(coreFactory: CoreFactory,
     val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
     val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(environmentConfig.propertiesProvider)
     val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(environmentConfig.propertiesProvider)
-    if(esConfig.rorIndex.)
-    val action = LoadRawRorConfig.load(
-      env = esEnv,
-      esConfig = esConfig,
-      configurationIndex = esConfig.rorIndex.index,
-      loadingDelay = loadingDelay,
-      loadingAttemptsCount = loadingAttemptsCount,
-      loadingAttemptsInterval = loadingAttemptsInterval
-    )
+
+    val action =
+      if (esConfig.rorEsLevelSettings.forceLoadRorFromFile) {
+        LoadRawRorConfig.loadFromFile(esEnv.configPath)
+      } else {
+        LoadRawRorConfig.loadFromIndexWithFileFallback(
+          configurationIndex = esConfig.rorIndex.index,
+          loadingDelay = loadingDelay,
+          loadingAttemptsCount = loadingAttemptsCount,
+          loadingAttemptsInterval = loadingAttemptsInterval,
+          fallbackConfigFilePath = esEnv.configPath
+        )
+      }
     runStartingFailureProgram(action)
   }
 
@@ -86,7 +90,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
     val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(environmentConfig.propertiesProvider)
     val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(environmentConfig.propertiesProvider)
-    val action = LoadRawTestRorConfig.load(
+    val action = LoadRawTestRorConfig.loadFromIndexWithFallback(
       configurationIndex = esConfig.rorIndex.index,
       loadingDelay = loadingDelay,
       indexLoadingAttemptsCount = loadingAttemptsCount,

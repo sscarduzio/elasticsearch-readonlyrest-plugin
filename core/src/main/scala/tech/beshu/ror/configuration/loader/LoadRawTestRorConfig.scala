@@ -25,11 +25,11 @@ import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 object LoadRawTestRorConfig {
 
-  def load(configurationIndex: RorConfigurationIndex,
-           loadingDelay: LoadingDelay,
-           indexLoadingAttemptsCount: LoadingAttemptsCount,
-           indexLoadingAttemptsInterval: LoadingAttemptsInterval,
-           fallbackConfig: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
+  def loadFromIndexWithFallback(configurationIndex: RorConfigurationIndex,
+                                loadingDelay: LoadingDelay,
+                                indexLoadingAttemptsCount: LoadingAttemptsCount,
+                                indexLoadingAttemptsInterval: LoadingAttemptsInterval,
+                                fallbackConfig: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
     attemptLoadingConfigFromIndex(
       index = configurationIndex,
       currentDelay = None,

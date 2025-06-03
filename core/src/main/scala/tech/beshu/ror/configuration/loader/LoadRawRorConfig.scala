@@ -22,42 +22,36 @@ import tech.beshu.ror.configuration.ConfigLoading.*
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.FileConfig
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+
+import java.nio.file.Path
 
 object LoadRawRorConfig {
 
   type LoadResult = ErrorOr[LoadedRorConfig[RawRorConfig]]
 
-  def load(env: EsEnv,
-           forceLoadRorFromFile: Boolean,
-           configurationIndex: RorConfigurationIndex,
-           loadingDelay: LoadingDelay,
-           loadingAttemptsCount: LoadingAttemptsCount,
-           loadingAttemptsInterval: LoadingAttemptsInterval): LoadRorConfig[LoadResult] = {
+  def loadFromIndexWithFileFallback(configurationIndex: RorConfigurationIndex,
+                                    loadingDelay: LoadingDelay,
+                                    loadingAttemptsCount: LoadingAttemptsCount,
+                                    loadingAttemptsInterval: LoadingAttemptsInterval,
+                                    fallbackConfigFilePath: Path): LoadRorConfig[LoadResult] = {
+    attemptLoadingConfigFromIndex(
+      index = configurationIndex,
+      currentDelay = None,
+      delay = loadingDelay,
+      attemptsCount = loadingAttemptsCount,
+      attemptsInterval = loadingAttemptsInterval,
+      fallback = loadRorConfigFromFile(fallbackConfigFilePath)
+    )
+  }
+
+  def loadFromFile(configFilePath: Path): LoadRorConfig[LoadResult] = {
     for {
-      loadedFileOrIndex <- if (forceLoadRorFromFile) {
-        forceLoadRorConfigFromFile(env.configPath)
-      } else {
-        attemptLoadingConfigFromIndex(
-          index = configurationIndex,
-          currentDelay = None,
-          delay = loadingDelay,
-          attemptsCount = loadingAttemptsCount,
-          attemptsInterval = loadingAttemptsInterval,
-          fallback = loadRorConfigFromFile(env.configPath)
-        )
-      }
+      loadedFileOrIndex <- forceLoadRorConfigFromFile(configFilePath)
     } yield loadedFileOrIndex
   }
 
-  def loadFromFile(env: EsEnv): LoadRorConfig[LoadResult] = {
-    for {
-      loadedFileOrIndex <- forceLoadRorConfigFromFile(env.configPath)
-    } yield loadedFileOrIndex
-  }
-
-  def loadOnce(configurationIndex: RorConfigurationIndex): LoadRorConfig[LoadResult] = {
+  def loadFromIndex(configurationIndex: RorConfigurationIndex): LoadRorConfig[LoadResult] = {
     for {
       result <- loadRorConfigFromIndex(configurationIndex, loadingDelay = None)
       rawRorConfig <- result match {

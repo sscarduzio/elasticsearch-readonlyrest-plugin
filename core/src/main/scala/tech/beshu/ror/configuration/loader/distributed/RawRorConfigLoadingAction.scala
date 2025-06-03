@@ -25,12 +25,12 @@ import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 
 object RawRorConfigLoadingAction {
 
-  def load(env: EsEnv, indexJsonContentService: IndexJsonContentService)
-          (implicit environmentConfig: EnvironmentConfig): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
+  def loadFromIndex(env: EsEnv, indexJsonContentService: IndexJsonContentService)
+                   (implicit environmentConfig: EnvironmentConfig): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
     val compiler = ConfigLoadingInterpreter.create(new IndexConfigManager(indexJsonContentService))
     (for {
       esConfig <- EitherT(ConfigLoading.loadEsConfig(env))
-      loadedConfig <- EitherT(LoadRawRorConfig.loadOnce(esConfig.rorIndex.index))
+      loadedConfig <- EitherT(LoadRawRorConfig.loadFromIndex(esConfig.rorIndex.index))
     } yield loadedConfig).value.foldMap(compiler)
   }
 
