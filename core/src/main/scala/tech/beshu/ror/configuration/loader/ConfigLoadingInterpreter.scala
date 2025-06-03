@@ -31,9 +31,7 @@ import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.*
 import tech.beshu.ror.configuration.{ConfigLoading, EnvironmentConfig, EsConfig}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
-
-import scala.concurrent.duration.Duration
+import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
 object ConfigLoadingInterpreter extends Logging {
 
@@ -102,11 +100,11 @@ object ConfigLoadingInterpreter extends Logging {
 
   private def loadFromIndex[A](indexConfigManager: IndexConfigManager,
                                index: RorConfigurationIndex,
-                               loadingDelay: Option[PositiveFiniteDuration]) = {
+                               loadingDelay: NonNegativeFiniteDuration) = {
     EitherT {
       indexConfigManager
         .load(index)
-        .delayExecution(loadingDelay.map(_.value).getOrElse(Duration.Zero))
+        .delayExecution(loadingDelay.value)
     }
   }
 

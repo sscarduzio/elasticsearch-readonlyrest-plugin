@@ -90,6 +90,7 @@ class ReadonlyRestPlugin(esVersion: String,
     builder
       .add(unboundidDebug(false))
       .add(rorReloadingInterval())
+      .add(addLoadingSettings(): _*)
   }
 
   private def unboundidDebug(enabled: Boolean) =
@@ -101,6 +102,14 @@ class ReadonlyRestPlugin(esVersion: String,
       case Enabled.Yes(interval: FiniteDuration) => interval.toSeconds.toInt
     }
     s"-Dcom.readonlyrest.settings.refresh.interval=$intervalSeconds"
+  }
+
+  private def addLoadingSettings() = {
+    Seq(
+      s"-Dcom.readonlyrest.settings.loading.delay=0 sec",
+      s"-Dcom.readonlyrest.settings.loading.attempts.count=1",
+      s"-Dcom.readonlyrest.settings.loading.attempts.interval=0 sec"
+    )
   }
 
   private implicit class InstallRorPlugin(val image: DockerImageDescription) {

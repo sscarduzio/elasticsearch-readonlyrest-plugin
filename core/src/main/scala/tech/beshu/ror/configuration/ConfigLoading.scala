@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.es.EsEnv
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
 import java.nio.file.Path
 
@@ -38,12 +38,12 @@ object ConfigLoading {
       extends LoadConfigAction[ErrorOr[ForcedFileConfig[RawRorConfig]]]
     final case class LoadRorConfigFromFile(path: Path)
       extends LoadConfigAction[ErrorOr[FileConfig[RawRorConfig]]]
-    final case class LoadRorConfigFromIndex(index: RorConfigurationIndex, loadingDelay: Option[PositiveFiniteDuration])
+    final case class LoadRorConfigFromIndex(index: RorConfigurationIndex, loadingDelay: NonNegativeFiniteDuration)
       extends LoadConfigAction[IndexErrorOr[IndexConfig[RawRorConfig]]]
   }
 
   def loadRorConfigFromIndex(index: RorConfigurationIndex,
-                             loadingDelay: Option[PositiveFiniteDuration]): LoadRorConfig[IndexErrorOr[IndexConfig[RawRorConfig]]] =
+                             loadingDelay: NonNegativeFiniteDuration): LoadRorConfig[IndexErrorOr[IndexConfig[RawRorConfig]]] =
     Free.liftF(LoadConfigAction.LoadRorConfigFromIndex(index, loadingDelay))
 
   def loadRorConfigFromFile(path: Path): LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]] =

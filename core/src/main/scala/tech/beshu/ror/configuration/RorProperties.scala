@@ -37,9 +37,9 @@ object RorProperties extends Logging {
 
   object defaults {
     val refreshInterval: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
-    val loadingDelay: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
+    val loadingDelay: NonNegativeFiniteDuration = (5 second).toRefinedNonNegativeUnsafe
     val loadingAttemptsCount: Int Refined NonNegative = Refined.unsafeApply(5)
-    val loadingAttemptsInterval: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
+    val loadingAttemptsInterval: NonNegativeFiniteDuration = (5 second).toRefinedNonNegativeUnsafe
     val rorSettingsMaxSize: Information = Megabytes(3)
   }
 
@@ -82,7 +82,7 @@ object RorProperties extends Logging {
     getProperty(
       keys.startupIndexLoadingDelay,
       str => toLoadingDelay(str),
-      LoadingDelay(defaults.refreshInterval)
+      LoadingDelay(defaults.loadingDelay)
     )
 
   def rorSettingsMaxSize(implicit propertiesProvider: PropertiesProvider): Information =
@@ -124,12 +124,12 @@ object RorProperties extends Logging {
     case None => RefreshInterval.Disabled
   }
 
-  private def toLoadingAttemptsInterval(value: String): Try[LoadingAttemptsInterval] = toPositiveFiniteDuration(value).map {
+  private def toLoadingAttemptsInterval(value: String): Try[LoadingAttemptsInterval] = toNonNegativeFiniteDuration(value).map {
     case Some(value) => LoadingAttemptsInterval(value)
     case None => LoadingAttemptsInterval(defaults.loadingAttemptsInterval)
   }
 
-  private def toLoadingDelay(value: String): Try[LoadingDelay] = toPositiveFiniteDuration(value).map {
+  private def toLoadingDelay(value: String): Try[LoadingDelay] = toNonNegativeFiniteDuration(value).map {
     case Some(value) => LoadingDelay(value)
     case None => LoadingDelay(defaults.loadingDelay)
   }
@@ -138,6 +138,9 @@ object RorProperties extends Logging {
 
   private def toPositiveFiniteDuration(value: String): Try[Option[PositiveFiniteDuration]] =
     toPositiveInt(value).map(_.map(_.toLong.seconds.toRefinedPositiveUnsafe))
+
+  private def toNonNegativeFiniteDuration(value: String): Try[Option[NonNegativeFiniteDuration]] =
+    toPositiveInt(value).map(_.map(_.toLong.seconds.toRefinedNonNegativeUnsafe))
 
   private def toPositiveInt(value: String): Try[Option[Int]] = Try {
     Try(Integer.valueOf(value)) match {
@@ -154,9 +157,11 @@ object RorProperties extends Logging {
     }
   }
 
-  final case class LoadingDelay(duration: PositiveFiniteDuration) extends AnyVal
+  final case class LoadingDelay(value: NonNegativeFiniteDuration) extends AnyVal
   object LoadingDelay {
-    implicit val show: Show[LoadingDelay] = Show[FiniteDuration].contramap(_.duration.value)
+    def unsafeFrom(value: FiniteDuration): LoadingDelay = LoadingDelay(value.toRefinedNonNegativeUnsafe)
+
+    implicit val show: Show[LoadingDelay] = Show[FiniteDuration].contramap(_.value.value)
   }
 
   sealed trait RefreshInterval
@@ -180,8 +185,10 @@ object RorProperties extends Logging {
     implicit val show: Show[LoadingAttemptsCount] = Show[Int].contramap(_.value.value)
   }
 
-  final case class LoadingAttemptsInterval(value: PositiveFiniteDuration) extends AnyVal
+  final case class LoadingAttemptsInterval(value: NonNegativeFiniteDuration) extends AnyVal
   object LoadingAttemptsInterval {
+    def unsafeFrom(value: FiniteDuration): LoadingAttemptsInterval = LoadingAttemptsInterval(value.toRefinedNonNegativeUnsafe)
+
     implicit val show: Show[LoadingAttemptsInterval] = Show[FiniteDuration].contramap(_.value.value)
   }
 }

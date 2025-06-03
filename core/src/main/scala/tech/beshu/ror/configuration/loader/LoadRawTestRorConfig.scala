@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.configuration.TestConfigLoading.*
 import tech.beshu.ror.configuration.TestRorConfig
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
 object LoadRawTestRorConfig {
 
@@ -32,8 +32,7 @@ object LoadRawTestRorConfig {
                                 fallbackConfig: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
     attemptLoadingConfigFromIndex(
       index = configurationIndex,
-      currentDelay = None,
-      delay = loadingDelay,
+      currentDelay = loadingDelay.value,
       attemptsCount = indexLoadingAttemptsCount,
       attemptsInterval = indexLoadingAttemptsInterval,
       fallback = fallbackConfig
@@ -41,8 +40,7 @@ object LoadRawTestRorConfig {
   }
 
   private def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
-                                            currentDelay: Option[PositiveFiniteDuration],
-                                            delay: LoadingDelay,
+                                            currentDelay: NonNegativeFiniteDuration,
                                             attemptsCount: LoadingAttemptsCount,
                                             attemptsInterval: LoadingAttemptsInterval,
                                             fallback: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
@@ -58,8 +56,7 @@ object LoadRawTestRorConfig {
             case Left(LoadedTestRorConfig.IndexNotExist) =>
               Free.defer(attemptLoadingConfigFromIndex(
                 index = index,
-                currentDelay = Some(delay.duration),
-                delay = delay,
+                currentDelay = attemptsInterval.value,
                 attemptsCount = LoadingAttemptsCount.unsafeFrom(attemptsCount - 1),
                 attemptsInterval = attemptsInterval,
                 fallback = fallback

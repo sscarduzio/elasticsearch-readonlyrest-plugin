@@ -28,9 +28,7 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{Parsi
 import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.*
 import tech.beshu.ror.configuration.{TestConfigLoading, TestRorConfig}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
-
-import scala.concurrent.duration.Duration
+import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
 object TestConfigLoadingInterpreter extends Logging {
 
@@ -69,11 +67,11 @@ object TestConfigLoadingInterpreter extends Logging {
 
   private def loadFromIndex(indexConfigManager: IndexTestConfigManager,
                             index: RorConfigurationIndex,
-                            loadingDelay: Option[PositiveFiniteDuration]) = {
+                            loadingDelay: NonNegativeFiniteDuration) = {
     EitherT {
       indexConfigManager
         .load(index)
-        .delayExecution(loadingDelay.map(_.value).getOrElse(Duration.Zero))
+        .delayExecution(loadingDelay.value)
     }
   }
 
