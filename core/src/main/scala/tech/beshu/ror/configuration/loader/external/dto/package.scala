@@ -30,5 +30,6 @@ package object dto {
       s"""ROR ${typeOfConfiguration.show} cannot be used when XPack Security is enabled"""
     case LoadedRorConfig.IndexParsingError(message) => s"""index parsing error: ${message.show}"""
     case LoadedRorConfig.IndexUnknownStructure => "index unknown structure"
+    case LoadedRorConfig.IndexNotExist => "index not exist"
   }
 }

@@ -63,6 +63,7 @@ object LoadedConfigErrorDto {
       CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO.create(o)
     case o: LoadedRorConfig.IndexParsingError => IndexParsingErrorDTO.create(o)
     case _: LoadedRorConfig.IndexUnknownStructure.type => IndexUnknownStructureDTO
+    case _: LoadedRorConfig.IndexNotExist.type => IndexUnknownStructureDTO
   }
 
   def fromDto(o: LoadedConfigErrorDto): LoadedRorConfig.Error = o match {

@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig}
-import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
+import tech.beshu.ror.configuration.{ConfigLoading, EsConfig, RawRorConfig}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, unsafeNes}
 
@@ -40,6 +40,10 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         (ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(esEnv.configPath), Right(ForcedFileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
+      LoadRawRorConfig.load(
+        esEnv,
+        EsConfig()
+      )
       val program = LoadRawRorConfig.load(isLoadingFromFileForced = true, esEnv, rorConfigurationIndex, loadingAttemptsCount = 0)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, ForcedFileConfig[RawRorConfig]]]

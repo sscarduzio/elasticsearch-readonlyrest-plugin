@@ -70,6 +70,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
     val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(environmentConfig.propertiesProvider)
     val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(environmentConfig.propertiesProvider)
+    if(esConfig.rorIndex.)
     val action = LoadRawRorConfig.load(
       env = esEnv,
       esConfig = esConfig,

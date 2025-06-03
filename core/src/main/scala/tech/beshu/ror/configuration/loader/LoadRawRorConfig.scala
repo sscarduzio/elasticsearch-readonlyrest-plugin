@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.ConfigLoading.*
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.FileConfig
-import tech.beshu.ror.configuration.{EsConfig, RawRorConfig}
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -30,13 +30,13 @@ object LoadRawRorConfig {
   type LoadResult = ErrorOr[LoadedRorConfig[RawRorConfig]]
 
   def load(env: EsEnv,
-           esConfig: EsConfig,
+           forceLoadRorFromFile: Boolean,
            configurationIndex: RorConfigurationIndex,
            loadingDelay: LoadingDelay,
            loadingAttemptsCount: LoadingAttemptsCount,
            loadingAttemptsInterval: LoadingAttemptsInterval): LoadRorConfig[LoadResult] = {
     for {
-      loadedFileOrIndex <- if (esConfig.rorEsLevelSettings.forceLoadRorFromFile) {
+      loadedFileOrIndex <- if (forceLoadRorFromFile) {
         forceLoadRorConfigFromFile(env.configPath)
       } else {
         attemptLoadingConfigFromIndex(
@@ -48,6 +48,12 @@ object LoadRawRorConfig {
           fallback = loadRorConfigFromFile(env.configPath)
         )
       }
+    } yield loadedFileOrIndex
+  }
+
+  def loadFromFile(env: EsEnv): LoadRorConfig[LoadResult] = {
+    for {
+      loadedFileOrIndex <- forceLoadRorConfigFromFile(env.configPath)
     } yield loadedFileOrIndex
   }
 
