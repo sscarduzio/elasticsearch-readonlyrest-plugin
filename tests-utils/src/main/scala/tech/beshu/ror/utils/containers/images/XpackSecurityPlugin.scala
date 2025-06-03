@@ -93,6 +93,8 @@ class XpackSecurityPlugin(esVersion: String,
 
     def configureKeystore(): DockerImageDescription = {
       image
+        .user("root")
+        .run("rm /etc/elasticsearch/elasticsearch.keystore")
         .run(createKeystoreCommand)
         .runWhen(
           config.attributes.internodeSslEnabled,
@@ -114,12 +116,13 @@ class XpackSecurityPlugin(esVersion: String,
           Version.greaterOrEqualThan(esVersion, 6, 6, 0),
           addToKeystoreCommand(key = "bootstrap.password", value = "elastic")
         )
+        .run("chown -R elasticsearch:elasticsearch /etc/elasticsearch && chmod -R go-rwx /etc/elasticsearch")
     }
 
     private def createKeystoreCommand = s"${esDir.toString()}/bin/elasticsearch-keystore create"
 
     private def addToKeystoreCommand(key: String, value: String) = {
-      s"printf '$value\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add $key"
+      s"printf '$value\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add --force $key"
     }
   }
 }
