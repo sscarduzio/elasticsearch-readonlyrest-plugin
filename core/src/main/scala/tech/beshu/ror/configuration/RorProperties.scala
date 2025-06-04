@@ -29,6 +29,7 @@ import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
@@ -124,35 +125,34 @@ object RorProperties extends Logging {
     case None => RefreshInterval.Disabled
   }
 
-  private def toLoadingAttemptsInterval(value: String): Try[LoadingAttemptsInterval] = toNonNegativeFiniteDuration(value).map {
-    case Some(value) => LoadingAttemptsInterval(value)
-    case None => LoadingAttemptsInterval(defaults.loadingAttemptsInterval)
-  }
+  private def toLoadingAttemptsInterval(value: String): Try[LoadingAttemptsInterval] =
+    toNonNegativeFiniteDuration(value).map(LoadingAttemptsInterval.apply)
 
-  private def toLoadingDelay(value: String): Try[LoadingDelay] = toNonNegativeFiniteDuration(value).map {
-    case Some(value) => LoadingDelay(value)
-    case None => LoadingDelay(defaults.loadingDelay)
-  }
+  private def toLoadingDelay(value: String): Try[LoadingDelay] = toNonNegativeFiniteDuration(value).map(LoadingDelay.apply)
 
   private def toLoadingAttempts(value: String): Try[LoadingAttemptsCount] = toNonNegativeInt(value).map(LoadingAttemptsCount.apply)
 
-  private def toPositiveFiniteDuration(value: String): Try[Option[PositiveFiniteDuration]] =
-    toPositiveInt(value).map(_.map(_.toLong.seconds.toRefinedPositiveUnsafe))
+  private def toPositiveFiniteDuration(value: String): Try[Option[PositiveFiniteDuration]] = Try {
+    durationFrom(value) match {
+      case d if d == Duration.Zero => None
+      case d => Some(d.toRefinedPositiveUnsafe)
+    }
+  }
 
-  private def toNonNegativeFiniteDuration(value: String): Try[Option[NonNegativeFiniteDuration]] =
-    toPositiveInt(value).map(_.map(_.toLong.seconds.toRefinedNonNegativeUnsafe))
+  private def toNonNegativeFiniteDuration(value: String): Try[NonNegativeFiniteDuration] = Try {
+    durationFrom(value).toRefinedNonNegativeUnsafe
+  }
 
-  private def toPositiveInt(value: String): Try[Option[Int]] = Try {
-    Try(Integer.valueOf(value)) match {
-      case Success(int) if int == 0 => None
-      case Success(int) if int > 0 => Some(int)
-      case Success(_) | Failure(_) => throw new IllegalArgumentException(s"Cannot convert '${value.show}' to positive integer")
+  private def durationFrom(value: String) = {
+    Try(value.toLong) match {
+      case Success(seconds) => FiniteDuration(seconds, TimeUnit.SECONDS)
+      case Failure(_) => Duration(value)
     }
   }
 
   private def toNonNegativeInt(value: String): Try[Int Refined NonNegative] = Try {
     Try(Integer.valueOf(value)) match {
-      case Success(int) if int > 0 => Refined.unsafeApply(int)
+      case Success(int) if int >= 0 => Refined.unsafeApply(int)
       case Success(_) | Failure(_) => throw new IllegalArgumentException(s"Cannot convert '${value.show}' to non-negative integer")
     }
   }

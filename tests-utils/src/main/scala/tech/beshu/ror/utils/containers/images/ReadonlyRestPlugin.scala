@@ -97,18 +97,18 @@ class ReadonlyRestPlugin(esVersion: String,
     s"-Dcom.unboundid.ldap.sdk.debug.enabled=${if (enabled) true else false}"
 
   private def rorReloadingInterval() = {
-    val intervalSeconds = config.attributes.rorConfigReloading match {
-      case Enabled.No => 0
-      case Enabled.Yes(interval: FiniteDuration) => interval.toSeconds.toInt
+    val interval = config.attributes.rorConfigReloading match {
+      case Enabled.No => "0sec"
+      case Enabled.Yes(interval: FiniteDuration) => s"${interval.toMillis.toInt}ms"
     }
-    s"-Dcom.readonlyrest.settings.refresh.interval=$intervalSeconds"
+    s"-Dcom.readonlyrest.settings.refresh.interval=$interval"
   }
 
   private def addLoadingSettings() = {
     Seq(
-      s"-Dcom.readonlyrest.settings.loading.delay=0 sec",
+      s"-Dcom.readonlyrest.settings.loading.delay=0sec",
       s"-Dcom.readonlyrest.settings.loading.attempts.count=1",
-      s"-Dcom.readonlyrest.settings.loading.attempts.interval=0 sec"
+      s"-Dcom.readonlyrest.settings.loading.attempts.interval=0sec"
     )
   }
 
