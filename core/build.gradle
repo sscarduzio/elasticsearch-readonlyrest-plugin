@@ -71,8 +71,6 @@ dependencies {
     api project(path: ':audit', configuration: 'default')
     api project(path: ':ror-shadowed-libs', configuration: 'shadow')
 
-    implementation  project(path: ':ror-tools-core')
-
     api group: 'org.asynchttpclient',           name: 'async-http-client',                   version: '3.0.1'
     api group: 'com.github.pathikrit',          name: 'better-files_3',                      version: '3.9.2'
     api group: 'io.circe',                      name: 'circe-core_3',                        version: '0.14.6'

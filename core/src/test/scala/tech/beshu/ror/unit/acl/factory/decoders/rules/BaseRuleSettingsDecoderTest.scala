@@ -32,7 +32,6 @@ import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorCon
 import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers.*
-import tech.beshu.ror.tools.core.utils.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils.*
 
 import scala.reflect.ClassTag

@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
-import tech.beshu.ror.tools.core.utils.EnvVarsProvider.EnvVarName
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 
 import scala.util.matching.Regex
 

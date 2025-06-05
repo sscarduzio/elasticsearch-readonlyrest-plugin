@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver.*
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.tools.core.utils.EnvVarsProvider
+import tech.beshu.ror.providers.EnvVarsProvider
 
 class JsonConfigStaticVariableResolver(envProvider: EnvVarsProvider,
                                        transformationCompiler: TransformationCompiler) {

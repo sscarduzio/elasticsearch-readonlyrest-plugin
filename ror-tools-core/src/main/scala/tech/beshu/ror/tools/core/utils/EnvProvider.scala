@@ -14,16 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.variables.startup
+package tech.beshu.ror.tools.core.utils
 
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariable.ResolvingError
-import tech.beshu.ror.providers.EnvVarsProvider
-
-private [startup] trait StartupResolvableVariable[RESULT] {
-
-  def resolve(provider: EnvVarsProvider): Either[ResolvingError, RESULT]
+trait EnvProvider {
+  def getSysEnv: Map[String, String]
 }
 
-object StartupResolvableVariable {
-  final case class ResolvingError(msg: String) extends AnyVal
+object DefaultEnvProvider extends EnvProvider {
+  val getSysEnv: Map[String, String] = sys.env
 }
