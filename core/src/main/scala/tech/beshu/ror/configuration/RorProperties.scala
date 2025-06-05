@@ -18,6 +18,8 @@ package tech.beshu.ror.configuration
 
 import better.files.File
 import cats.Show
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.NonNegative
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Information, Megabytes}
@@ -27,6 +29,7 @@ import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
@@ -35,34 +38,52 @@ object RorProperties extends Logging {
 
   object defaults {
     val refreshInterval: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
-    val loadingDelay: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
+    val loadingDelay: NonNegativeFiniteDuration = (5 second).toRefinedNonNegativeUnsafe
+    val loadingAttemptsCount: Int Refined NonNegative = Refined.unsafeApply(5)
+    val loadingAttemptsInterval: NonNegativeFiniteDuration = (5 second).toRefinedNonNegativeUnsafe
     val rorSettingsMaxSize: Information = Megabytes(3)
   }
 
   object keys {
-    val rorConfig: NonEmptyString = nes("com.readonlyrest.settings.file.path")
-    val refreshInterval: NonEmptyString = nes("com.readonlyrest.settings.refresh.interval")
-    val loadingDelay: NonEmptyString = nes("com.readonlyrest.settings.loading.delay")
+    val rorSettingsFilePath: NonEmptyString = nes("com.readonlyrest.settings.file.path")
+    val rorSettingsRefreshInterval: NonEmptyString = nes("com.readonlyrest.settings.refresh.interval")
+    val startupIndexLoadingDelay: NonEmptyString = nes("com.readonlyrest.settings.loading.delay")
+    val startupIndexLoadingAttemptsInterval: NonEmptyString = nes("com.readonlyrest.settings.loading.attempts.interval")
+    val startupIndexLoadingAttemptsCount: NonEmptyString = nes("com.readonlyrest.settings.loading.attempts.count")
     val rorSettingsMaxSize: NonEmptyString = nes("com.readonlyrest.settings.maxSize")
   }
 
-  def rorConfigCustomFile(implicit propertiesProvider: PropertiesProvider): Option[File] =
+  def rorSettingsCustomFile(implicit propertiesProvider: PropertiesProvider): Option[File] =
     propertiesProvider
-      .getProperty(PropName(keys.rorConfig))
+      .getProperty(PropName(keys.rorSettingsFilePath))
       .map(File(_))
 
-  def rorIndexSettingReloadInterval(implicit propertiesProvider: PropertiesProvider): RefreshInterval =
+  def rorIndexSettingsReloadInterval(implicit propertiesProvider: PropertiesProvider): RefreshInterval =
     getProperty(
-      keys.refreshInterval,
+      keys.rorSettingsRefreshInterval,
       str => toRefreshInterval(str),
       RefreshInterval.Enabled(defaults.refreshInterval)
     )
 
-  def rorIndexSettingLoadingDelay(implicit propertiesProvider: PropertiesProvider): LoadingDelay =
+  def atStartupRorIndexSettingsLoadingAttemptsInterval(implicit propertiesProvider: PropertiesProvider): LoadingAttemptsInterval =
     getProperty(
-      keys.loadingDelay,
+      keys.startupIndexLoadingAttemptsInterval,
+      str => toLoadingAttemptsInterval(str),
+      LoadingAttemptsInterval(defaults.loadingAttemptsInterval)
+    )
+
+  def atStartupRorIndexSettingsLoadingAttemptsCount(implicit propertiesProvider: PropertiesProvider): LoadingAttemptsCount =
+    getProperty(
+      keys.startupIndexLoadingAttemptsCount,
+      str => toLoadingAttempts(str),
+      LoadingAttemptsCount(defaults.loadingAttemptsCount)
+    )
+
+  def atStartupRorIndexSettingLoadingDelay(implicit propertiesProvider: PropertiesProvider): LoadingDelay =
+    getProperty(
+      keys.startupIndexLoadingDelay,
       str => toLoadingDelay(str),
-      LoadingDelay(defaults.refreshInterval)
+      LoadingDelay(defaults.loadingDelay)
     )
 
   def rorSettingsMaxSize(implicit propertiesProvider: PropertiesProvider): Information =
@@ -104,30 +125,46 @@ object RorProperties extends Logging {
     case None => RefreshInterval.Disabled
   }
 
-  private def toLoadingDelay(value: String): Try[LoadingDelay] = toPositiveFiniteDuration(value).map {
-    case Some(value) => LoadingDelay(value)
-    case None => LoadingDelay(defaults.loadingDelay)
-  }
+  private def toLoadingAttemptsInterval(value: String): Try[LoadingAttemptsInterval] =
+    toNonNegativeFiniteDuration(value).map(LoadingAttemptsInterval.apply)
 
-  private def toPositiveFiniteDuration(value: String): Try[Option[PositiveFiniteDuration]] =
-    toPositiveInt(value).map(_.map(_.toLong.seconds.toRefinedPositiveUnsafe))
+  private def toLoadingDelay(value: String): Try[LoadingDelay] = toNonNegativeFiniteDuration(value).map(LoadingDelay.apply)
 
-  private def toPositiveInt(value: String): Try[Option[Int]] = Try {
-    Try(Integer.valueOf(value)) match {
-      case Success(interval) if interval == 0 => None
-      case Success(interval) if interval > 0 => Some(interval)
-      case Success(_) | Failure(_) => throw new IllegalArgumentException(s"Cannot convert '${value.show}' to positive integer")
+  private def toLoadingAttempts(value: String): Try[LoadingAttemptsCount] = toNonNegativeInt(value).map(LoadingAttemptsCount.apply)
+
+  private def toPositiveFiniteDuration(value: String): Try[Option[PositiveFiniteDuration]] = Try {
+    durationFrom(value) match {
+      case d if d == Duration.Zero => None
+      case d => Some(d.toRefinedPositiveUnsafe)
     }
   }
 
-  final case class LoadingDelay(duration: PositiveFiniteDuration)
+  private def toNonNegativeFiniteDuration(value: String): Try[NonNegativeFiniteDuration] = Try {
+    durationFrom(value).toRefinedNonNegativeUnsafe
+  }
 
+  private def durationFrom(value: String) = {
+    Try(value.toLong) match {
+      case Success(seconds) => FiniteDuration(seconds, TimeUnit.SECONDS)
+      case Failure(_) => Duration(value)
+    }
+  }
+
+  private def toNonNegativeInt(value: String): Try[Int Refined NonNegative] = Try {
+    Try(Integer.valueOf(value)) match {
+      case Success(int) if int >= 0 => Refined.unsafeApply(int)
+      case Success(_) | Failure(_) => throw new IllegalArgumentException(s"Cannot convert '${value.show}' to non-negative integer")
+    }
+  }
+
+  final case class LoadingDelay(value: NonNegativeFiniteDuration) extends AnyVal
   object LoadingDelay {
-    implicit val showLoadingDelay: Show[LoadingDelay] = Show[FiniteDuration].contramap(_.duration.value)
+    def unsafeFrom(value: FiniteDuration): LoadingDelay = LoadingDelay(value.toRefinedNonNegativeUnsafe)
+
+    implicit val show: Show[LoadingDelay] = Show[FiniteDuration].contramap(_.value.value)
   }
 
   sealed trait RefreshInterval
-
   object RefreshInterval {
     case object Disabled extends RefreshInterval
 
@@ -137,5 +174,21 @@ object RorProperties extends Logging {
       case Disabled => "0 sec"
       case Enabled(interval) => interval.value.toString()
     }
+  }
+
+  final case class LoadingAttemptsCount(value: Int Refined NonNegative) extends AnyVal
+  object LoadingAttemptsCount {
+    def unsafeFrom(value: Int): LoadingAttemptsCount = LoadingAttemptsCount(Refined.unsafeApply(value))
+
+    val zero: LoadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(0)
+
+    implicit val show: Show[LoadingAttemptsCount] = Show[Int].contramap(_.value.value)
+  }
+
+  final case class LoadingAttemptsInterval(value: NonNegativeFiniteDuration) extends AnyVal
+  object LoadingAttemptsInterval {
+    def unsafeFrom(value: FiniteDuration): LoadingAttemptsInterval = LoadingAttemptsInterval(value.toRefinedNonNegativeUnsafe)
+
+    implicit val show: Show[LoadingAttemptsInterval] = Show[FiniteDuration].contramap(_.value.value)
   }
 }

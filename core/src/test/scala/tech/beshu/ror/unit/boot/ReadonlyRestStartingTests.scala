@@ -79,7 +79,7 @@ class ReadonlyRestStartingTests
           val mockedIndexJsonContentManager = mock[IndexJsonContentService]
           (mockedIndexJsonContentManager.sourceOf _)
             .expects(fullIndexName(".readonlyrest"), "1")
-            .repeated(5)
+            .repeated(1)
             .returns(Task.now(Left(CannotReachContentSource)))
 
           mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
@@ -278,7 +278,7 @@ class ReadonlyRestStartingTests
           val mockedIndexJsonContentManager = mock[IndexJsonContentService]
           (mockedIndexJsonContentManager.sourceOf _)
             .expects(fullIndexName(".readonlyrest"), "1")
-            .repeated(5)
+            .repeated(1)
             .returns(Task.now(Left(ContentNotFound)))
 
           val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexJsonContentManager, "/boot_tests/index_config_not_exists_malformed_file_config/")
@@ -293,7 +293,7 @@ class ReadonlyRestStartingTests
           val mockedIndexJsonContentManager = mock[IndexJsonContentService]
           (mockedIndexJsonContentManager.sourceOf _)
             .expects(fullIndexName(".readonlyrest"), "1")
-            .repeated(5)
+            .repeated(1)
             .returns(Task.now(Left(ContentNotFound)))
           mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
 
@@ -502,7 +502,7 @@ class ReadonlyRestStartingTests
 
             (mockedIndexJsonContentManager.sourceOf _)
               .expects(fullIndexName(".readonlyrest"), "2")
-              .repeated(5)
+              .repeated(1)
               .returns(Task.now(Left(CannotReachContentSource)))
 
             val coreFactory = mock[CoreFactory]
@@ -1414,7 +1414,8 @@ class ReadonlyRestStartingTests
         mapWithIntervalFrom(refreshInterval) ++
           mapWithMaxYamlSize(maxYamlSize) ++
           Map(
-            "com.readonlyrest.settings.loading.delay" -> "1"
+            "com.readonlyrest.settings.loading.delay" -> "1",
+            "com.readonlyrest.settings.loading.attempts.count" -> "1"
           )
       )
     )

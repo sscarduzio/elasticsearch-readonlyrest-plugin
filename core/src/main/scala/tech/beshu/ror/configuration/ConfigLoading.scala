@@ -21,6 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
 import java.nio.file.Path
 
@@ -31,14 +32,19 @@ object ConfigLoading {
 
   sealed trait LoadConfigAction[A]
   object LoadConfigAction {
-    final case class LoadEsConfig(env: EsEnv) extends LoadConfigAction[ErrorOr[EsConfig]]
-    final case class ForceLoadRorConfigFromFile(path: Path) extends LoadConfigAction[ErrorOr[ForcedFileConfig[RawRorConfig]]]
-    final case class LoadRorConfigFromFile(path: Path) extends LoadConfigAction[ErrorOr[FileConfig[RawRorConfig]]]
-    final case class LoadRorConfigFromIndex(index: RorConfigurationIndex) extends LoadConfigAction[IndexErrorOr[IndexConfig[RawRorConfig]]]
+    final case class LoadEsConfig(env: EsEnv)
+      extends LoadConfigAction[ErrorOr[EsConfig]]
+    final case class ForceLoadRorConfigFromFile(path: Path)
+      extends LoadConfigAction[ErrorOr[ForcedFileConfig[RawRorConfig]]]
+    final case class LoadRorConfigFromFile(path: Path)
+      extends LoadConfigAction[ErrorOr[FileConfig[RawRorConfig]]]
+    final case class LoadRorConfigFromIndex(index: RorConfigurationIndex, loadingDelay: NonNegativeFiniteDuration)
+      extends LoadConfigAction[IndexErrorOr[IndexConfig[RawRorConfig]]]
   }
 
-  def loadRorConfigFromIndex(index: RorConfigurationIndex): LoadRorConfig[IndexErrorOr[IndexConfig[RawRorConfig]]] =
-    Free.liftF(LoadConfigAction.LoadRorConfigFromIndex(index))
+  def loadRorConfigFromIndex(index: RorConfigurationIndex,
+                             loadingDelay: NonNegativeFiniteDuration): LoadRorConfig[IndexErrorOr[IndexConfig[RawRorConfig]]] =
+    Free.liftF(LoadConfigAction.LoadRorConfigFromIndex(index, loadingDelay))
 
   def loadRorConfigFromFile(path: Path): LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]] =
     Free.liftF(LoadConfigAction.LoadRorConfigFromFile(path))

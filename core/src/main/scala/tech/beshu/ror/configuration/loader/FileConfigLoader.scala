@@ -36,7 +36,7 @@ class FileConfigLoader(esConfigPath: Path)
   private implicit val propertiesProvider: PropertiesProvider = environmentConfig.propertiesProvider
   
   def rawConfigFile: File = {
-    RorProperties.rorConfigCustomFile match {
+    RorProperties.rorSettingsCustomFile match {
       case Some(customRorFile) => customRorFile
       case None => File(s"${esConfigPath.toAbsolutePath}/readonlyrest.yml")
     }

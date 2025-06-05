@@ -67,23 +67,42 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def loadRorConfig(esConfig: EsConfig) = {
-    val action = LoadRawRorConfig.load(esEnv, esConfig, esConfig.rorIndex.index)
+    val action =
+      if (esConfig.rorEsLevelSettings.forceLoadRorFromFile) {
+        LoadRawRorConfig.loadFromFile(esEnv.configPath)
+      } else {
+        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
+        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(environmentConfig.propertiesProvider)
+        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(environmentConfig.propertiesProvider)
+        LoadRawRorConfig
+          .loadFromIndexWithFileFallback(
+            configurationIndex = esConfig.rorIndex.index,
+            loadingDelay = loadingDelay,
+            loadingAttemptsCount = loadingAttemptsCount,
+            loadingAttemptsInterval = loadingAttemptsInterval,
+            fallbackConfigFilePath = esEnv.configPath
+          )
+      }
     runStartingFailureProgram(action)
   }
 
   private def loadRorTestConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedTestRorConfig[TestRorConfig]] = {
-    val action = LoadRawTestRorConfig.load(
-      configurationIndex = esConfig.rorIndex.index,
-      fallbackConfig = notSetTestRorConfig
-    )
+    val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
+    val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(environmentConfig.propertiesProvider)
+    val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(environmentConfig.propertiesProvider)
+    val action = LoadRawTestRorConfig
+      .loadFromIndexWithFallback(
+        configurationIndex = esConfig.rorIndex.index,
+        loadingDelay = loadingDelay,
+        indexLoadingAttemptsCount = loadingAttemptsCount,
+        indexLoadingAttemptsInterval = loadingAttemptsInterval,
+        fallbackConfig = notSetTestRorConfig
+      )
     EitherT.right(runTestProgram(action))
   }
 
   private def runStartingFailureProgram[A](action: LoadRorConfig[ErrorOr[A]]) = {
-    val compiler = ConfigLoadingInterpreter.create(
-      indexConfigManager,
-      RorProperties.rorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
-    )
+    val compiler = ConfigLoadingInterpreter.create(indexConfigManager)
     EitherT(action.foldMap(compiler))
       .leftMap(toStartingFailure)
   }
@@ -104,14 +123,13 @@ class ReadonlyRest(coreFactory: CoreFactory,
         StartingFailure(message)
       case LoadedRorConfig.IndexUnknownStructure =>
         StartingFailure(s"Settings index is malformed")
+      case LoadedRorConfig.IndexNotExist =>
+        StartingFailure(s"Settings index doesn't exist")
     }
   }
 
   private def runTestProgram(action: LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]]): Task[LoadedTestRorConfig[TestRorConfig]] = {
-    val compiler = TestConfigLoadingInterpreter.create(
-      indexTestConfigManager,
-      RorProperties.rorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
-    )
+    val compiler = TestConfigLoadingInterpreter.create(indexTestConfigManager)
     EitherT(action.foldMap(compiler))
       .leftMap {
         case LoadedTestRorConfig.IndexParsingError(message) =>

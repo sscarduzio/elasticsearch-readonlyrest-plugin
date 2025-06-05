@@ -19,57 +19,83 @@ package tech.beshu.ror.configuration.loader
 import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.ConfigLoading.*
+import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.FileConfig
-import tech.beshu.ror.configuration.{EsConfig, RawRorConfig}
-import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, RefinedDurationOps}
+
+import java.nio.file.Path
+import scala.concurrent.duration.DurationInt
+import scala.language.postfixOps
 
 object LoadRawRorConfig {
 
   type LoadResult = ErrorOr[LoadedRorConfig[RawRorConfig]]
 
-  def load(env: EsEnv,
-           esConfig: EsConfig,
-           configurationIndex: RorConfigurationIndex): LoadRorConfig[LoadResult] = {
-    LoadRawRorConfig.load(
-      isLoadingFromFileForced = esConfig.rorEsLevelSettings.forceLoadRorFromFile,
-      env = env,
-      configIndex = configurationIndex,
-      indexLoadingAttempts = 5,
+  def loadFromIndexWithFileFallback(configurationIndex: RorConfigurationIndex,
+                                    loadingDelay: LoadingDelay,
+                                    loadingAttemptsCount: LoadingAttemptsCount,
+                                    loadingAttemptsInterval: LoadingAttemptsInterval,
+                                    fallbackConfigFilePath: Path): LoadRorConfig[LoadResult] = {
+    attemptLoadingConfigFromIndex(
+      index = configurationIndex,
+      currentDelay = loadingDelay.value,
+      attemptsCount = loadingAttemptsCount,
+      attemptsInterval = loadingAttemptsInterval,
+      fallback = loadRorConfigFromFile(fallbackConfigFilePath)
     )
   }
 
-  def load(isLoadingFromFileForced: Boolean,
-           env: EsEnv,
-           configIndex: RorConfigurationIndex,
-           indexLoadingAttempts: Int): LoadRorConfig[LoadResult] = {
+  def loadFromFile(configFilePath: Path): LoadRorConfig[LoadResult] = {
     for {
-      loadedFileOrIndex <- if (isLoadingFromFileForced) {
-        forceLoadRorConfigFromFile(env.configPath)
-      } else {
-        attemptLoadingConfigFromIndex(configIndex, indexLoadingAttempts, loadRorConfigFromFile(env.configPath))
-      }
-    } yield loadedFileOrIndex
+      loadedConfig <- forceLoadRorConfigFromFile(configFilePath)
+    } yield loadedConfig
   }
 
-  def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
-                                    attempts: Int,
-                                    fallback: LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]]): LoadRorConfig[LoadResult] = {
-    if (attempts <= 0) {
-      fallback.map(identity)
-    } else {
-      for {
-        result <- loadRorConfigFromIndex(index)
-        rawRorConfig <- result match {
-          case Left(LoadedRorConfig.IndexNotExist) =>
-            Free.defer(attemptLoadingConfigFromIndex(index, attempts - 1, fallback))
-          case Left(LoadedRorConfig.IndexUnknownStructure) =>
-            Free.pure[LoadConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
-          case Left(error@LoadedRorConfig.IndexParsingError(_)) =>
-            Free.pure[LoadConfigAction, LoadResult](Left(error))
-          case Right(value) =>
-            Free.pure[LoadConfigAction, LoadResult](Right(value))
-        }
-      } yield rawRorConfig
+  def loadFromIndex(configurationIndex: RorConfigurationIndex): LoadRorConfig[LoadResult] = {
+    for {
+      result <- loadRorConfigFromIndex(configurationIndex, loadingDelay = (0 seconds).toRefinedNonNegativeUnsafe)
+      rawRorConfig <- result match {
+        case Left(LoadedRorConfig.IndexNotExist) =>
+          Free.pure[LoadConfigAction, LoadResult](Left(LoadedRorConfig.IndexNotExist))
+        case Left(LoadedRorConfig.IndexUnknownStructure) =>
+          Free.pure[LoadConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
+        case Left(error@LoadedRorConfig.IndexParsingError(_)) =>
+          Free.pure[LoadConfigAction, LoadResult](Left(error))
+        case Right(value) =>
+          Free.pure[LoadConfigAction, LoadResult](Right(value))
+      }
+    } yield rawRorConfig
+  }
+
+  private def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
+                                            currentDelay: NonNegativeFiniteDuration,
+                                            attemptsCount: LoadingAttemptsCount,
+                                            attemptsInterval: LoadingAttemptsInterval,
+                                            fallback: LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]]): LoadRorConfig[LoadResult] = {
+    attemptsCount.value.value match {
+      case 0 =>
+        fallback.map(identity)
+      case attemptsCount =>
+        for {
+          result <- loadRorConfigFromIndex(index, loadingDelay = currentDelay)
+          rawRorConfig <- result match {
+            case Left(LoadedRorConfig.IndexNotExist) =>
+              Free.defer(attemptLoadingConfigFromIndex(
+                index = index,
+                currentDelay = attemptsInterval.value,
+                attemptsCount = LoadingAttemptsCount.unsafeFrom(attemptsCount - 1),
+                attemptsInterval = attemptsInterval,
+                fallback = fallback
+              ))
+            case Left(LoadedRorConfig.IndexUnknownStructure) =>
+              Free.pure[LoadConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
+            case Left(error@LoadedRorConfig.IndexParsingError(_)) =>
+              Free.pure[LoadConfigAction, LoadResult](Left(error))
+            case Right(value) =>
+              Free.pure[LoadConfigAction, LoadResult](Right(value))
+          }
+        } yield rawRorConfig
     }
   }
 }

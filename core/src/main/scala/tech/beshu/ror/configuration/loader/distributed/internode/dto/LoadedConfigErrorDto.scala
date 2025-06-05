@@ -42,6 +42,8 @@ object LoadedConfigErrorDto {
         derivedEncoderWithType[IndexParsingErrorDTO]("FileParsingErrorDTO")(dto)
       case IndexUnknownStructureDTO =>
         derivedEncoderWithType[IndexUnknownStructureDTO.type]("IndexUnknownStructureDTO")(IndexUnknownStructureDTO)
+      case IndexNotExistDTO =>
+        derivedEncoderWithType[IndexNotExistDTO.type]("IndexNotExistDTO")(IndexNotExistDTO)
     },
     decoders = Map(
       "FileParsingErrorDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, FileParsingErrorDTO],
@@ -51,6 +53,7 @@ object LoadedConfigErrorDto {
       "CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO],
       "FileParsingErrorDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, FileParsingErrorDTO],
       "IndexUnknownStructureDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, IndexUnknownStructureDTO.type],
+      "IndexNotExistDTO" -> derivedDecoderOfSubtype[LoadedConfigErrorDto, IndexNotExistDTO.type],
     )
   )
 
@@ -63,6 +66,7 @@ object LoadedConfigErrorDto {
       CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO.create(o)
     case o: LoadedRorConfig.IndexParsingError => IndexParsingErrorDTO.create(o)
     case _: LoadedRorConfig.IndexUnknownStructure.type => IndexUnknownStructureDTO
+    case _: LoadedRorConfig.IndexNotExist.type => IndexNotExistDTO
   }
 
   def fromDto(o: LoadedConfigErrorDto): LoadedRorConfig.Error = o match {
@@ -74,6 +78,7 @@ object LoadedConfigErrorDto {
       CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO.fromDto(o)
     case o: IndexParsingErrorDTO => IndexParsingErrorDTO.fromDto(o)
     case _: IndexUnknownStructureDTO.type => LoadedRorConfig.IndexUnknownStructure
+    case _: IndexNotExistDTO.type  => LoadedRorConfig.IndexNotExist
   }
 
   final case class FileParsingErrorDTO(message: String) extends LoadedConfigErrorDto
@@ -172,8 +177,16 @@ object LoadedConfigErrorDto {
 
   case object IndexUnknownStructureDTO extends LoadedConfigErrorDto {
     implicit lazy val codecIndexUnknownStructureDto: Codec[IndexUnknownStructureDTO.type] = {
-      val enc: Encoder[IndexUnknownStructureDTO.type] = Encoder.encodeString.contramap(_ => "index_not_exist")
+      val enc = Encoder.encodeString.contramap[IndexUnknownStructureDTO.type](_ => "unknown_structure")
       val dec = Decoder.decodeString.map(_ => IndexUnknownStructureDTO)
+      Codec.from(dec, enc)
+    }
+  }
+
+  case object IndexNotExistDTO extends LoadedConfigErrorDto {
+    implicit lazy val codecIndexNotFoundDto: Codec[IndexNotExistDTO.type] = {
+      val enc = Encoder.encodeString.contramap[IndexNotExistDTO.type](_ => "index_not_exist")
+      val dec = Decoder.decodeString.map(_ => IndexNotExistDTO)
       Codec.from(dec, enc)
     }
   }
