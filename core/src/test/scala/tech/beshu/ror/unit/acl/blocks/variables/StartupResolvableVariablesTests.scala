@@ -26,8 +26,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.{StartupResolvableVariableCreator, StartupSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
-import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.tools.core.utils.EnvVarsProvider
+import tech.beshu.ror.tools.core.utils.EnvVarsProvider.EnvVarName
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {

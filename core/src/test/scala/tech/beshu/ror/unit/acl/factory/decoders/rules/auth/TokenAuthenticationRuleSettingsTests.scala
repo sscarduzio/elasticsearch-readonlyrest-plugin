@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Se
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
-import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.tools.core.utils.EnvVarsProvider
+import tech.beshu.ror.tools.core.utils.EnvVarsProvider.EnvVarName
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.{headerNameFrom, tokenFrom, unsafeNes}
 

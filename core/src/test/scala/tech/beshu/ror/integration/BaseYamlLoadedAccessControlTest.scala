@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBas
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers.*
+import tech.beshu.ror.tools.core.utils.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, defaultEsVersionForTests, unsafeNes}
 

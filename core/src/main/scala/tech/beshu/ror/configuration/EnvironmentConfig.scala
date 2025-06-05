@@ -19,6 +19,7 @@ package tech.beshu.ror.configuration
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.providers.*
+import tech.beshu.ror.tools.core.utils.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.yaml.RorYamlParser
 

@@ -16,19 +16,21 @@
  */
 package tech.beshu.ror.tools
 
+import eu.timepit.refined.types.string.NonEmptyString
 import os.Path
 import scopt.*
 import tech.beshu.ror.tools.RorTools.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
-import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 import tech.beshu.ror.tools.core.utils.*
+import tech.beshu.ror.tools.core.utils.EnvVarsProvider.EnvVarName
+import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 
 import scala.util.{Failure, Success, Try}
 
 object RorToolsApp extends RorTools {
 
   def main(args: Array[String]): Unit = {
-    run(args)(ConsoleInOut, DefaultEnvProvider) match {
+    run(args, sys.env)(ConsoleInOut) match {
       case Result.Success =>
         ()
       case Result.Failure =>
@@ -46,8 +48,9 @@ object RorToolsApp extends RorTools {
 
 trait RorTools {
 
-  def run(args: Array[String])(implicit inOut: InOut, envProvider: EnvProvider): Result = {
-    val allArgs = args ++ readArgsFromEnvVariables()
+  def run(args: Array[String], envVars: Map[String, String])(implicit inOut: InOut): Result = {
+    val envVarsProvider = new CaseInsensitiveEnvVarsProvider(envVars)
+    val allArgs = args ++ readArgsFromEnvVariables(envVarsProvider)
     OParser.runParser(
       parser,
       allArgs.map(arg => if (arg.startsWith("--")) arg.toLowerCase else arg),
@@ -65,12 +68,12 @@ trait RorTools {
     }
   }
 
-  private def readArgsFromEnvVariables()(implicit envProvider: EnvProvider): Array[String] = {
+  private def readArgsFromEnvVariables(envVarsProvider: EnvVarsProvider): Array[String] = {
     val allowedEnvVariableNames = List(
       consentFlagName,
     )
-    envProvider.getSysEnv.toList
-      .filter(env => allowedEnvVariableNames.contains(env._1.toLowerCase))
+    allowedEnvVariableNames
+      .flatMap(name => envVarsProvider.getEnv(EnvVarName(consentFlagName)).map((name, _)))
       .flatMap { case (name, value) => Array(s"--$name", value) }
       .toArray
   }
@@ -182,14 +185,14 @@ trait RorTools {
 
   import builder.*
 
-  private val consentFlagName = "i_understand_and_accept_es_patching"
+  private val consentFlagName = NonEmptyString.unsafeFrom("i_understand_and_accept_es_patching")
 
   private lazy val parser = OParser.sequence(
     head("ROR tools", "1.0.0"),
     programName("java -jar ror-tools.jar"),
     patchCommand,
     note(""),
-    opt[String](consentFlagName)
+    opt[String](consentFlagName.value)
       .valueName("<yes/no>")
       .validate {
         case "yes" => success

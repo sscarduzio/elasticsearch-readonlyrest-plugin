@@ -14,10 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.providers
+package tech.beshu.ror.tools.core.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.tools.core.utils.EnvVarsProvider.EnvVarName
 
 import scala.util.Try
 
@@ -25,12 +25,16 @@ trait EnvVarsProvider {
   def getEnv(name: EnvVarName): Option[String]
 }
 
-object EnvVarProvider {
-
+object EnvVarsProvider {
   final case class EnvVarName(value: NonEmptyString)
 }
 
 object OsEnvVarsProvider extends EnvVarsProvider {
   override def getEnv(name: EnvVarName): Option[String] =
     Try(Option(System.getenv(name.value.value))).toOption.flatten
+}
+
+class CaseInsensitiveEnvVarsProvider(envVars: Map[String, String]) extends EnvVarsProvider {
+  override def getEnv(name: EnvVarName): Option[String] =
+    envVars.find(env => env._1.toLowerCase == name.value.value.toLowerCase).map(_._2)
 }

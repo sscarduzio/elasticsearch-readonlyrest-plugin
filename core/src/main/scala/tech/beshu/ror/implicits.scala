@@ -59,8 +59,8 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.tools.core.utils.EnvVarsProvider.EnvVarName
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.set.CovariantSet
