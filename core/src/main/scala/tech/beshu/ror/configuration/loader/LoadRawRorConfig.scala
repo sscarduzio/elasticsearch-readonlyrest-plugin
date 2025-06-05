@@ -48,8 +48,8 @@ object LoadRawRorConfig {
 
   def loadFromFile(configFilePath: Path): LoadRorConfig[LoadResult] = {
     for {
-      loadedFileOrIndex <- forceLoadRorConfigFromFile(configFilePath)
-    } yield loadedFileOrIndex
+      loadedConfig <- forceLoadRorConfigFromFile(configFilePath)
+    } yield loadedConfig
   }
 
   def loadFromIndex(configurationIndex: RorConfigurationIndex): LoadRorConfig[LoadResult] = {
