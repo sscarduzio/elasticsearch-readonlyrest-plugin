@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.tools.core.utils
 
-trait EnvProvider {
+trait RawEnvVariablesProvider {
   def getSysEnv: Map[String, String]
 }
 
-object DefaultEnvProvider extends EnvProvider {
+object OsRawEnvVariablesProvider extends RawEnvVariablesProvider {
   val getSysEnv: Map[String, String] = sys.env
 }

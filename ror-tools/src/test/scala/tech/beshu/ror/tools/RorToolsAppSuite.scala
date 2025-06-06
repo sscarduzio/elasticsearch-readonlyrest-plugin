@@ -28,7 +28,7 @@ import tech.beshu.ror.tools.RorTools.Result
 import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
-import tech.beshu.ror.tools.core.utils.{DefaultEnvProvider, EnvProvider, InOut}
+import tech.beshu.ror.tools.core.utils.{OsRawEnvVariablesProvider, RawEnvVariablesProvider, InOut}
 import tech.beshu.ror.tools.utils.{CapturingOutputAndMockingInput, ExampleEsWithRorContainer}
 import tech.beshu.ror.utils.files.FileUtils
 
@@ -572,18 +572,18 @@ class RorToolsAppSuite
   }
 
 
-  private def captureResultAndOutput(block: (InOut, EnvProvider) => Result, mockedEnvs: Map[String, String] = Map.empty): (Result, String) = {
+  private def captureResultAndOutput(block: (InOut, RawEnvVariablesProvider) => Result, mockedEnvs: Map[String, String] = Map.empty): (Result, String) = {
     val inOut = new CapturingOutputAndMockingInput()
-    val envProvider = new EnvProvider {
-      override def getSysEnv: Map[String, String] = mockedEnvs
+    val envProvider = new RawEnvVariablesProvider {
+      override val getSysEnv: Map[String, String] = mockedEnvs
     }
     val result = block(inOut, envProvider)
     (result, inOut.getOutputBuffer)
   }
 
-  private def captureResultAndOutputWithInteraction(block: (InOut, EnvProvider) => Result, response: Option[String]): (Result, String) = {
+  private def captureResultAndOutputWithInteraction(block: (InOut, RawEnvVariablesProvider) => Result, response: Option[String]): (Result, String) = {
     val inOut = new CapturingOutputAndMockingInput(response)
-    val result = block(inOut, DefaultEnvProvider)
+    val result = block(inOut, OsRawEnvVariablesProvider)
     (result, inOut.getOutputBuffer)
   }
 
