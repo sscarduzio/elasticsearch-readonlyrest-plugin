@@ -31,12 +31,16 @@ object FileUtils {
     digest.digest.map("%02x".format(_)).mkString
   }
 
-  def modifyFileWithMaintainingOriginalPermissionsAndOwner(jar: File)(modifyJar: File => Unit): Unit = {
-    val originalFileOwner = Files.getOwner(jar.toPath)
-    val originalFilePermissions = getOriginalPermissions(jar.toPath)
-    modifyJar(jar)
-    Files.setOwner(jar.toPath, originalFileOwner)
-    setOriginalPermissions(jar.toPath, originalFilePermissions)
+  def modifyFileWithMaintainingOriginalPermissionsAndOwner(file: File)(modifyFile: File => Unit): Unit = {
+    modifyFileWithMaintainingOriginalPermissionsAndOwner[File](file, identity) { f => modifyFile(f); f }
+  }
+
+  def modifyFileWithMaintainingOriginalPermissionsAndOwner[FILE](file: FILE, toJavaFile: FILE => File)(modifyJar: FILE => FILE): Unit = {
+    val originalFileOwner = Files.getOwner(toJavaFile(file).toPath)
+    val originalFilePermissions = getOriginalPermissions(toJavaFile(file).toPath)
+    val resultFile = modifyJar(file)
+    Files.setOwner(toJavaFile(resultFile).toPath, originalFileOwner)
+    setOriginalPermissions(toJavaFile(resultFile).toPath, originalFilePermissions)
   }
 
   private def getOriginalPermissions(jarPath: Path): Any = {

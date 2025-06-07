@@ -23,6 +23,7 @@ import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
+import tech.beshu.ror.tools.core.utils.FileUtils.modifyFileWithMaintainingOriginalPermissionsAndOwner
 
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
@@ -46,11 +47,19 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
   }
 
   def backup(file: Path): Unit = {
-    os.copy(from = file, to = backupFolderPath / file.last, replaceExisting = true)
+    modifyFileWithMaintainingOriginalPermissionsAndOwner[Path](file, _.toIO) { originalFile =>
+      val backedUpFile = backupFolderPath / originalFile.last
+      os.copy(from = originalFile, to = backedUpFile, replaceExisting = true, copyAttributes = true)
+      backedUpFile
+    }
   }
 
   def restore(file: Path): Unit = {
-    os.copy(from = backupFolderPath / file.last, to = file, replaceExisting = true)
+    val backedUpFile = backupFolderPath / file.last
+    modifyFileWithMaintainingOriginalPermissionsAndOwner[Path](backedUpFile, _.toIO) { backedUpFile =>
+      os.copy(from = backedUpFile, to = file, replaceExisting = true, copyAttributes = true)
+      file
+    }
   }
 
   def copyToPluginPath(file: Path): Unit = {
