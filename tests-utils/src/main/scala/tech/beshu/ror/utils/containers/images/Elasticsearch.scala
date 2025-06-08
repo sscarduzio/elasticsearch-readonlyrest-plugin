@@ -45,7 +45,7 @@ object Elasticsearch {
 
   def configDir(config: Config): Path =
     config.esInstallationType match {
-      case EsInstallationType.EsDockerImage => os.root / "etc" / "elasticsearch" / "config"
+      case EsInstallationType.EsDockerImage => os.root / "usr" / "share" / "elasticsearch" / "config"
       case EsInstallationType.UbuntuDockerImageWithEsFromApt => os.root / "etc" / "elasticsearch"
     }
 
