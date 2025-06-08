@@ -99,14 +99,15 @@ class Elasticsearch(esVersion: String,
         DockerImageDescription
           .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
       case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        val esMajorVersion: String = esVersion.split("\\.")(0) + ".x"
         DockerImageDescription
-          .create(s"ubuntu:24.04", customEntrypoint)
+          .create("ubuntu:24.04", customEntrypoint)
           .user("root")
           .run("apt update")
           .run("apt install -y ca-certificates gnupg2 curl apt-transport-https")
           .run("curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -")
-          .run("echo \"deb https://artifacts.elastic.co/packages/9.x/apt stable main\" > /etc/apt/sources.list.d/elastic-9.x.list")
-          .run("apt update && apt install -y --no-install-recommends -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" elasticsearch=9.0.0")
+          .run(s"""echo "deb https://artifacts.elastic.co/packages/$esMajorVersion/apt stable main" > /etc/apt/sources.list.d/elastic-$esMajorVersion.list""")
+          .run(s"""apt update && apt install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion""")
           .run("apt clean && rm -rf /var/lib/apt/lists/*")
           .user("elasticsearch")
           .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
