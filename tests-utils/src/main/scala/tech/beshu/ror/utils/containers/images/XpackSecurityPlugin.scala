@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils.containers.images
 
-import tech.beshu.ror.utils.containers.images.Elasticsearch.{configDir, esDir, fromResourceBy}
+import tech.beshu.ror.utils.containers.images.Elasticsearch.{EsInstallationType, configDir, esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.misc.Version
@@ -39,12 +39,12 @@ class XpackSecurityPlugin(esVersion: String,
                           config: Config)
   extends Elasticsearch.Plugin {
 
-  override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
+  override def updateEsImage(image: DockerImageDescription, esConfig: Elasticsearch.Config): DockerImageDescription = {
     image
-      .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
-      .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
-      .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
-      .configureKeystore()
+      .copyFile(configDir(esConfig) / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
+      .copyFile(configDir(esConfig) / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
+      .copyFile(configDir(esConfig) / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
+      .configureKeystore(esConfig)
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
@@ -91,10 +91,19 @@ class XpackSecurityPlugin(esVersion: String,
 
   private implicit class ConfigureKeystore(val image: DockerImageDescription) {
 
-    def configureKeystore(): DockerImageDescription = {
-      image
-        .user("root")
-        .run("rm /etc/elasticsearch/elasticsearch.keystore")
+    def configureKeystore(esConfig: Elasticsearch.Config): DockerImageDescription = {
+      esConfig.esInstallationType match {
+        case EsInstallationType.EsDockerImage =>
+          doConfigureKeystore(image)
+        case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+          doConfigureKeystore(
+            image.user("root").run("rm /etc/elasticsearch/elasticsearch.keystore")
+          ).run("chown -R elasticsearch:elasticsearch /etc/elasticsearch")
+      }
+    }
+
+    private def doConfigureKeystore(baseImage: DockerImageDescription): DockerImageDescription = {
+      baseImage
         .run(createKeystoreCommand)
         .runWhen(
           config.attributes.internodeSslEnabled,
@@ -116,7 +125,6 @@ class XpackSecurityPlugin(esVersion: String,
           Version.greaterOrEqualThan(esVersion, 6, 6, 0),
           addToKeystoreCommand(key = "bootstrap.password", value = "elastic")
         )
-        .run("chown -R elasticsearch:elasticsearch /etc/elasticsearch && chmod -R go-rwx /etc/elasticsearch")
     }
 
     private def createKeystoreCommand = s"${esDir.toString()}/bin/elasticsearch-keystore create"

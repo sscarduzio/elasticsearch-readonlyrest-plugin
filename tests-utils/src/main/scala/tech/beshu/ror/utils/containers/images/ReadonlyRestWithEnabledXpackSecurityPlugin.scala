@@ -65,10 +65,10 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
   private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig(), performPatching)
   private val xpackSecurityPlugin = new XpackSecurityPlugin(esVersion, createXpackSecurityConfig())
 
-  override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
+  override def updateEsImage(image: DockerImageDescription, esConfig: Elasticsearch.Config): DockerImageDescription = {
     (readonlyRestPlugin :: xpackSecurityPlugin :: Nil)
       .foldLeft(image) { case (currentImage, plugin) =>
-        plugin.updateEsImage(currentImage)
+        plugin.updateEsImage(currentImage, esConfig)
       }
   }
 

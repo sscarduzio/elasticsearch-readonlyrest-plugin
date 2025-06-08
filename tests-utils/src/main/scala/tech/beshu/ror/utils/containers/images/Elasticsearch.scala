@@ -42,10 +42,15 @@ object Elasticsearch {
   }
 
   lazy val esDir: Path = os.root / "usr" / "share" / "elasticsearch"
-  lazy val configDir: Path = os.root / "etc" / "elasticsearch" / "config"
+
+  def configDir(config: Config): Path =
+    config.esInstallationType match {
+      case EsInstallationType.EsDockerImage => os.root / "etc" / "elasticsearch" / "config"
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt => os.root / "etc" / "elasticsearch"
+    }
 
   trait Plugin {
-    def updateEsImage(image: DockerImageDescription): DockerImageDescription
+    def updateEsImage(image: DockerImageDescription, config: Config): DockerImageDescription
 
     def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder
 
@@ -89,59 +94,47 @@ class Elasticsearch(esVersion: String,
   }
 
   def toDockerImageDescription: DockerImageDescription = {
-//    val baseImage1 = config.esInstallationType match {
-//      case EsInstallationType.EsDockerImage =>
-//        DockerImageDescription
-//          .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
-//      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
-//        DockerImageDescription
-//          .create(s"ubuntu:24.04", customEntrypoint)
-//          .addEnv("DEBIAN_FRONTEND", "noninteractive")
-//          .run("apt update")
-//          .run("apt install -y ca-certificates gnupg2 curl apt-transport-https")
-//          .run("curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -")
-//          .run("echo \"deb https://artifacts.elasCMDtic.co/packages/9.x/apt stable main\" > /etc/apt/sources.list.d/elastic-9.x.list")
-//          .run("apt update && apt install -y elasticsearch=9.0.0")
-//          .run("apt clean && rm -rf /var/lib/apt/lists/*")
-//          .user("elasticsearch")
-//          .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
-//    }
-
-    val baseImage =
-      DockerImageDescription
-        .create(s"ubuntu:24.04", customEntrypoint)
-        .user("root")
-        .run("apt update")
-        .run("apt install -y ca-certificates gnupg2 curl apt-transport-https")
-        .run("curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -")
-        .run("echo \"deb https://artifacts.elastic.co/packages/9.x/apt stable main\" > /etc/apt/sources.list.d/elastic-9.x.list")
-        .run("apt update && apt install -y elasticsearch=9.0.0")
-        .run("apt clean && rm -rf /var/lib/apt/lists/*")
-        .user("elasticsearch")
-        .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
+    val baseImage = config.esInstallationType match {
+      case EsInstallationType.EsDockerImage =>
+        DockerImageDescription
+          .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        DockerImageDescription
+          .create(s"ubuntu:24.04", customEntrypoint)
+          .user("root")
+          .run("apt update")
+          .run("apt install -y ca-certificates gnupg2 curl apt-transport-https")
+          .run("curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -")
+          .run("echo \"deb https://artifacts.elastic.co/packages/9.x/apt stable main\" > /etc/apt/sources.list.d/elastic-9.x.list")
+          .run("apt update && apt install -y --no-install-recommends -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" elasticsearch=9.0.0")
+          .run("apt clean && rm -rf /var/lib/apt/lists/*")
+          .user("elasticsearch")
+          .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
+    }
 
     val missingTar = config.esInstallationType match {
       case EsInstallationType.EsDockerImage =>
-        false//Version.greaterOrEqualThan(esVersion, 9, 0, 0)
+        Version.greaterOrEqualThan(esVersion, 9, 0, 0)
       case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
         false
     }
 
     baseImage
       .copyFile(
-        destination = configDir / "elasticsearch.yml",
+        destination = configDir(config) / "elasticsearch.yml",
         file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)
       )
       .copyFile(
-        destination = configDir / "log4j2.properties",
+        destination = configDir(config) / "log4j2.properties",
         file = log4jFileFromResources
       )
       .user("root")
-      .run("chown -R elasticsearch:elasticsearch /etc/elasticsearch && chmod -R go-rwx /etc/elasticsearch")
+      //.run("chown -R elasticsearch:elasticsearch /etc/elasticsearch && chmod -R go-rwx /etc/elasticsearch")
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(missingTar, "microdnf install -y tar")
-      .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
+      //.run(s"chown -R elasticsearch:elasticsearch ${esDir.toString()}")
+      .run(s"chown -R elasticsearch:elasticsearch ${configDir(config).toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
       .user("root")
@@ -151,7 +144,7 @@ class Elasticsearch(esVersion: String,
     def installPlugins(): DockerImageDescription = {
       plugins
         .foldLeft(image) {
-          case (currentImage, plugin) => plugin.updateEsImage(currentImage)
+          case (currentImage, plugin) => plugin.updateEsImage(currentImage, config)
         }
     }
   }
