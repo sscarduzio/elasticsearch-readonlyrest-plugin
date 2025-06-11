@@ -23,7 +23,8 @@ import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attribu
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.misc.Version
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.language.postfixOps
 
 object ReadonlyRestPlugin {
   final case class Config(rorConfig: File,
@@ -31,6 +32,7 @@ object ReadonlyRestPlugin {
                           attributes: Attributes)
   object Config {
     final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
+                                rorInIndexConfigLoadingDelay: FiniteDuration,
                                 rorCustomSettingsIndex: Option[String],
                                 restSsl: Enabled[RestSsl],
                                 internodeSsl: Enabled[InternodeSsl],
@@ -38,6 +40,7 @@ object ReadonlyRestPlugin {
     object Attributes {
       val default: Attributes = Attributes(
         rorConfigReloading = Enabled.No,
+        rorInIndexConfigLoadingDelay = 0 seconds,
         rorCustomSettingsIndex = None,
         restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.EsFile)),
         internodeSsl = Enabled.No,
@@ -106,7 +109,7 @@ class ReadonlyRestPlugin(esVersion: String,
 
   private def addLoadingSettings() = {
     Seq(
-      s"-Dcom.readonlyrest.settings.loading.delay=0sec",
+      s"-Dcom.readonlyrest.settings.loading.delay=${config.attributes.rorInIndexConfigLoadingDelay.toMillis}ms",
       s"-Dcom.readonlyrest.settings.loading.attempts.count=1",
       s"-Dcom.readonlyrest.settings.loading.attempts.interval=0sec"
     )
