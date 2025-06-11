@@ -28,7 +28,7 @@ import tech.beshu.ror.tools.RorTools.Result
 import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
-import tech.beshu.ror.tools.core.utils.InOut
+import tech.beshu.ror.tools.core.utils.{OsRawEnvVariablesProvider, RawEnvVariablesProvider, InOut}
 import tech.beshu.ror.tools.utils.{CapturingOutputAndMockingInput, ExampleEsWithRorContainer}
 import tech.beshu.ror.utils.files.FileUtils
 
@@ -67,7 +67,7 @@ class RorToolsAppSuite
   "ROR tools app" should {
     "Patching successful for ES installation that was not patched (with consent given in arg)" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       result should equal(Result.Success)
       output should include(
@@ -80,8 +80,22 @@ class RorToolsAppSuite
     }
     "Patching successful for ES installation that was not patched (with consent given in arg in format with =)" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes", "--es-path", esLocalPath.toString))(_, _)
       }
+      result should equal(Result.Success)
+      output should include(
+        """Checking if Elasticsearch is patched ...
+          |Creating backup ...
+          |Patching ...
+          |Elasticsearch is patched! ReadonlyREST is ready to use"""
+          .stripMargin
+      )
+    }
+    "Patching successful for ES installation that was not patched (with consent given in env variable)" in {
+      val (result, output) = captureResultAndOutput(
+        RorToolsTestApp.run(Array("patch", "--es-path", esLocalPath.toString))(_, _),
+        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes")
+      )
       result should equal(Result.Success)
       output should include(
         """Checking if Elasticsearch is patched ...
@@ -93,7 +107,7 @@ class RorToolsAppSuite
     }
     "Patching successful for ES installation that was not patched (with consent given in interactive mode)" in {
       val (result, output) = captureResultAndOutputWithInteraction(
-        RorToolsTestApp.run(Array("patch", "--es-path", esLocalPath.toString))(_),
+        RorToolsTestApp.run(Array("patch", "--es-path", esLocalPath.toString))(_, _),
         response = Some("yes")
       )
       result should equal(Result.Success)
@@ -108,7 +122,7 @@ class RorToolsAppSuite
     }
     "Patching successful first time, on second try not started because already patched" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       result should equal(Result.Success)
       output should include(
@@ -119,7 +133,7 @@ class RorToolsAppSuite
           .stripMargin
       )
       val (secondResult, secondOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       secondResult should equal(Result.Failure)
       secondOutput should include(
@@ -130,8 +144,20 @@ class RorToolsAppSuite
     }
     "Patching not started when user declines to accept implications of patching (in arg)" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "no"))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "no"))(_, _)
       }
+      result should equal(Result.Failure)
+      output should equal(
+        """You have to confirm, that You understand the implications of ES patching in order to perform it.
+          |You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
+          |""".stripMargin
+      )
+    }
+    "Patching not started when user declines to accept implications of patching (in env variable)" in {
+      val (result, output) = captureResultAndOutput(
+        RorToolsTestApp.run(Array("patch"))(_, _),
+        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "no")
+      )
       result should equal(Result.Failure)
       output should equal(
         """You have to confirm, that You understand the implications of ES patching in order to perform it.
@@ -141,7 +167,7 @@ class RorToolsAppSuite
     }
     "Patching not started when user declines to accept implications of patching (in interactive mode)" in {
       val (result, output) = captureResultAndOutputWithInteraction(
-        RorToolsTestApp.run(Array("patch"))(_),
+        RorToolsTestApp.run(Array("patch"))(_, _),
         response = Some("no")
       )
       result should equal(Result.Failure)
@@ -154,7 +180,7 @@ class RorToolsAppSuite
     }
     "Patching not started when --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING arg is not provided and console input is not possible" in {
       val (result, output) = captureResultAndOutputWithInteraction(
-        RorToolsTestApp.run(Array("patch"))(_),
+        RorToolsTestApp.run(Array("patch"))(_, _),
         response = None
       )
       result should equal(Result.Failure)
@@ -169,7 +195,7 @@ class RorToolsAppSuite
     }
     "Patching not started when --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING value is empty" in {
       val (result, output) = captureResultAndOutputWithInteraction(
-        RorToolsTestApp.run(Array("patch"))(_),
+        RorToolsTestApp.run(Array("patch"))(_, _),
         response = Some("")
       )
       result should equal(Result.Failure)
@@ -184,7 +210,7 @@ class RorToolsAppSuite
     }
     "Patching not started because of not existing directory" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", "/wrong_directory"))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", "/wrong_directory"))(_, _)
       }
       result should equal(Result.CommandNotParsed)
       output should include(
@@ -217,7 +243,7 @@ class RorToolsAppSuite
       )
 
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       result should equal(Result.Failure)
       output should include(
@@ -228,7 +254,7 @@ class RorToolsAppSuite
     }
     "Unpatching is not started when metadata file is missing" in {
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
@@ -244,7 +270,7 @@ class RorToolsAppSuite
       patchMetadataFile.exists() should be(false)
 
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_, _)
       }
       unpatchResult should equal(Result.Failure)
       unpatchOutput should include(
@@ -263,7 +289,7 @@ class RorToolsAppSuite
       )
 
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_, _)
       }
       result should equal(Result.Failure)
       output should include(
@@ -275,7 +301,7 @@ class RorToolsAppSuite
     "Verify correctly recognizes that patch is not applied" in {
       patchMetadataFile.exists() should be(false)
       val (verifyResult, verifyOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
       }
       verifyResult should equal(Result.Failure)
       verifyOutput should include(
@@ -287,7 +313,7 @@ class RorToolsAppSuite
     "Verify detects patch when metadata file is present" in {
       // Patch
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
@@ -301,7 +327,7 @@ class RorToolsAppSuite
       patchMetadataFile.exists() should be(true)
 
       val (verifyResult, verifyOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
       }
       verifyResult should equal(Result.Success)
       verifyOutput should include(
@@ -313,7 +339,7 @@ class RorToolsAppSuite
 
     "The patch is not detected when metadata file is missing and `verify` command is executed" in {
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
@@ -329,7 +355,7 @@ class RorToolsAppSuite
       patchMetadataFile.exists() should be(false)
 
       val (verifyResultWithoutFile, verifyOutputWithoutFile) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
       }
       verifyResultWithoutFile should equal(Result.Failure)
       verifyOutputWithoutFile should include(
@@ -345,7 +371,7 @@ class RorToolsAppSuite
 
     "The patch is not detected when metadata file is missing and `verify` command is executed (ES 9.x with detailed assertions)" excludeES(allEs6x, allEs7x, allEs8x) in {
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
@@ -363,7 +389,7 @@ class RorToolsAppSuite
       patchMetadataFile.exists() should be(false)
 
       val (verifyResultWithoutFile, verifyOutputWithoutFile) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
       }
       verifyResultWithoutFile should equal(Result.Failure)
       verifyOutputWithoutFile should include(
@@ -383,7 +409,7 @@ class RorToolsAppSuite
       // Patch
       val hashBeforePatching = FileUtils.calculateHash(esLocalPath)
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
@@ -397,7 +423,7 @@ class RorToolsAppSuite
 
       // Verify
       val (verifyResult, verifyOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
       }
 
       verifyResult should equal(Result.Success)
@@ -411,7 +437,7 @@ class RorToolsAppSuite
       // Unpatch
       val hashBeforeUnpatching = FileUtils.calculateHash(esLocalPath)
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_, _)
       }
       unpatchResult should equal(Result.Success)
       unpatchOutput should include(
@@ -429,7 +455,7 @@ class RorToolsAppSuite
     "Successfully patch, verify and unable to unpatch when one of the patched files was modified" in {
       // Patch
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
@@ -442,7 +468,7 @@ class RorToolsAppSuite
 
       // Verify
       val (verifyResult, verifyOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
       }
 
       verifyResult should equal(Result.Success)
@@ -454,7 +480,7 @@ class RorToolsAppSuite
       patchMetadataFile.exists() should be(true)
 
       // Modify expected hash - simulate one of the files being modified
-      modifyMetadataFile {metadata =>
+      modifyMetadataFile { metadata =>
         val lastHash = metadata.patchedFilesMetadata.last
         val modifiedList = metadata.patchedFilesMetadata.init :+ lastHash.copy(hash = lastHash.hash + "abc")
         metadata.copy(patchedFilesMetadata = modifiedList)
@@ -462,7 +488,7 @@ class RorToolsAppSuite
 
       // Attempt to unpatch
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_, _)
       }
       unpatchResult should equal(Result.Failure)
       // The assertion cannot check specific filenames, because they are ES-version specific
@@ -476,7 +502,7 @@ class RorToolsAppSuite
     "Successfully patch, verify and be unable to unpatch when it is simulated in test, that patch was performed on other ES version" in {
       // Patch
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
@@ -489,7 +515,7 @@ class RorToolsAppSuite
 
       // Verify
       val (verifyResult, verifyOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
       }
 
       verifyResult should equal(Result.Success)
@@ -507,7 +533,7 @@ class RorToolsAppSuite
 
       // Attempt to unpatch
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_)
+        RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_, _)
       }
       unpatchResult should equal(Result.Failure)
       // The assertion cannot check specific filenames, because they are ES-version specific
@@ -546,15 +572,18 @@ class RorToolsAppSuite
   }
 
 
-  private def captureResultAndOutput(block: InOut => Result): (Result, String) = {
+  private def captureResultAndOutput(block: (InOut, RawEnvVariablesProvider) => Result, mockedEnvs: Map[String, String] = Map.empty): (Result, String) = {
     val inOut = new CapturingOutputAndMockingInput()
-    val result = block(inOut)
+    val envProvider = new RawEnvVariablesProvider {
+      override val getSysEnv: Map[String, String] = mockedEnvs
+    }
+    val result = block(inOut, envProvider)
     (result, inOut.getOutputBuffer)
   }
 
-  private def captureResultAndOutputWithInteraction(block: InOut => Result, response: Option[String]): (Result, String) = {
+  private def captureResultAndOutputWithInteraction(block: (InOut, RawEnvVariablesProvider) => Result, response: Option[String]): (Result, String) = {
     val inOut = new CapturingOutputAndMockingInput(response)
-    val result = block(inOut)
+    val result = block(inOut, OsRawEnvVariablesProvider)
     (result, inOut.getOutputBuffer)
   }
 
