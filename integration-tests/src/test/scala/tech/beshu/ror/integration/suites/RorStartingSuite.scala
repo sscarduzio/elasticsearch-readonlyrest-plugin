@@ -181,7 +181,8 @@ private object RorStartingSuite extends EsModulePatterns {
           clusterName = clusterName,
           securityType = SecurityType.RorWithXpackSecurity(
             ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-              rorConfigFileName = rorConfigFile
+              rorConfigFileName = rorConfigFile,
+              rorInIndexConfigLoadingDelay = 5 seconds
             )
           ),
           containerSpecification = ContainerSpecification.empty.copy(

@@ -21,14 +21,14 @@ import scopt.*
 import tech.beshu.ror.tools.RorTools.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
-import tech.beshu.ror.tools.core.utils.{EsDirectory, InOut, RorToolsError, RorToolsException}
+import tech.beshu.ror.tools.core.utils.*
 
 import scala.util.{Failure, Success, Try}
 
 object RorToolsApp extends RorTools {
 
   def main(args: Array[String]): Unit = {
-    run(args)(ConsoleInOut) match {
+    run(args)(ConsoleInOut, OsRawEnvVariablesProvider) match {
       case Result.Success =>
         ()
       case Result.Failure =>
@@ -46,7 +46,9 @@ object RorToolsApp extends RorTools {
 
 trait RorTools {
 
-  def run(args: Array[String])(implicit inOut: InOut): Result = {
+  def run(args: Array[String])
+         (implicit inOut: InOut,
+          rawEnvVariablesProvider: RawEnvVariablesProvider): Result = {
     val allArgs = args ++ readArgsFromEnvVariables()
     OParser.runParser(
       parser,
@@ -65,11 +67,11 @@ trait RorTools {
     }
   }
 
-  private def readArgsFromEnvVariables(): Array[String] = {
+  private def readArgsFromEnvVariables()(implicit rawEnvVariablesProvider: RawEnvVariablesProvider): Array[String] = {
     val allowedEnvVariableNames = List(
       consentFlagName,
     )
-    sys.env.toList
+    rawEnvVariablesProvider.getSysEnv.toList
       .filter(env => allowedEnvVariableNames.contains(env._1.toLowerCase))
       .flatMap { case (name, value) => Array(s"--$name", value) }
       .toArray

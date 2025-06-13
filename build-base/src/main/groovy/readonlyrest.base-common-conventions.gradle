@@ -46,6 +46,12 @@ test {
     }
 }
 
+dependencyCheck {
+    analyzers {
+        assemblyEnabled = false // we don't need 'exe' or 'dll' files scanning
+    }
+}
+
 githook {
     hooks {
         "pre-commit" {
