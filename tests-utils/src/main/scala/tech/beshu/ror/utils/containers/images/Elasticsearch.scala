@@ -31,7 +31,7 @@ object Elasticsearch {
                           masterNodes: NonEmptyList[String],
                           additionalElasticsearchYamlEntries: Map[String, String],
                           envs: Map[String, String],
-                          esInstallationType: EsInstallationType = EsInstallationType.UbuntuDockerImageWithEsFromApt)
+                          esInstallationType: EsInstallationType)
 
   sealed trait EsInstallationType
 
@@ -130,7 +130,6 @@ class Elasticsearch(esVersion: String,
         file = log4jFileFromResources
       )
       .user("root")
-      //.run("chown -R elasticsearch:elasticsearch /etc/elasticsearch && chmod -R go-rwx /etc/elasticsearch")
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(missingTar, "microdnf install -y tar")
