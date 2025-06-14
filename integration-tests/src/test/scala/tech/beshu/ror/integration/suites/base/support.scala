@@ -38,7 +38,7 @@ object support {
 
     override lazy val container: EsClusterContainer = clusterContainer
 
-    override def afterAll(): Unit = {
+    override protected def afterAll(): Unit = {
       super.afterAll()
       pruneDockerImages()
     }
@@ -56,7 +56,7 @@ object support {
 
     override lazy val container: EsRemoteClustersContainer = remoteClusterContainer
 
-    override def afterAll(): Unit = {
+    override protected def afterAll(): Unit = {
       super.afterAll()
       pruneDockerImages()
     }
@@ -77,7 +77,7 @@ object support {
     override lazy val container: MultipleContainers =
       MultipleContainers(clusterContainers.map(containerToLazyContainer(_)).toList: _*)
 
-    override def afterAll(): Unit = {
+    override protected def afterAll(): Unit = {
       super.afterAll()
       pruneDockerImages()
     }
@@ -93,7 +93,7 @@ object support {
       with BeforeAndAfterAll {
     this: Suite with EsClusterProvider with ESVersionSupport =>
 
-    override def afterAll(): Unit = {
+    override protected def afterAll(): Unit = {
       super.afterAll()
       pruneDockerImages()
     }
