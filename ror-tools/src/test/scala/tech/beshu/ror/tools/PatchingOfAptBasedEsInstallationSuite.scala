@@ -62,7 +62,7 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
       }
     }
     "installed on Ubuntu using apt" should {
-      "ES < 9.x successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES(allEs6x, allEs7x, allEs8x) in {
+      "ES < 9.x successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES(allEs9x) in {
         val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
           testRorStartup(usingManager = esContainer)
         }
