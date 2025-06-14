@@ -17,12 +17,14 @@
 package tech.beshu.ror.tools
 
 import cats.data.NonEmptyList
+import com.github.dockerjava.api.DockerClient
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicInt
 import org.scalatest.matchers.must.Matchers.include
 import org.scalatest.matchers.should.Matchers.{should, shouldNot}
 import org.scalatest.wordspec.AnyWordSpec
+import org.testcontainers.DockerClientFactory
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
@@ -55,12 +57,22 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
         dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
         dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
         dockerLogs should include("Loading Elasticsearch settings from file: /usr/share/elasticsearch/config/elasticsearch.yml")
-        dockerLogs shouldNot include("Cannot verify if the ES was patched.")
+        dockerLogs shouldNot include("Cannot verify if the ES was patched")
         dockerLogs should include("ReadonlyREST was loaded")
       }
     }
     "installed on Ubuntu using apt" should {
-      "successfully load ROR plugin and start, with warning about not being able to verify patch" in {
+      "ES < 9.x successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES(allEs6x, allEs7x, allEs8x) in {
+        val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
+          testRorStartup(usingManager = esContainer)
+        }
+        dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
+        dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
+        dockerLogs should include("Loading Elasticsearch settings from file: /etc/elasticsearch/elasticsearch.yml")
+        dockerLogs shouldNot include("Cannot verify if the ES was patched")
+        dockerLogs should include("ReadonlyREST was loaded")
+      }
+      "ES >= 9.x successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs7x, allEs8x) in {
         val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
           testRorStartup(usingManager = esContainer)
         }
@@ -118,13 +130,18 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
 
   final class TestEsContainerManager(rorConfigFile: String, esInstallationType: EsInstallationType) extends EsContainerCreator {
 
+    private val dockerClient: DockerClient = DockerClientFactory.instance().client()
+
     private val dockerLogsCollector = new DockerLogsToStringConsumer
 
     private val esContainer = createEsContainer
 
     def start(): Task[Unit] = Task.delay(esContainer.start())
 
-    def stop(): Task[Unit] = Task.delay(esContainer.stop())
+    def stop(): Task[Unit] = for {
+      _ <- Task.delay(esContainer.stop())
+      _ <- Task.delay(dockerClient.removeImageCmd(esContainer.imageFromDockerfile.get()).withForce(true).exec())
+    } yield ()
 
     def getLogs: String = dockerLogsCollector.getLogs
 

@@ -40,12 +40,12 @@ import scala.language.postfixOps
 abstract class EsContainer(val esVersion: String,
                            val esConfig: Elasticsearch.Config,
                            val startedClusterDependencies: StartedClusterDependencies,
-                           image: ImageFromDockerfile)
+                           val imageFromDockerfile: ImageFromDockerfile)
   extends SingleContainer[GenericContainer[_]]
     with ClientProvider
     with StrictLogging {
 
-  override implicit val container: GenericContainer[_] = new org.testcontainers.containers.GenericContainer(image)
+  override implicit val container: GenericContainer[_] = new org.testcontainers.containers.GenericContainer(imageFromDockerfile)
 
   def sslEnabled: Boolean
 
