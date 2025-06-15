@@ -4,7 +4,7 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
-  dependencyCheckDataDir: '/tmp/dependency-check-data/v1'
+  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
   dependencyCheckCacheKey: 'dependency-check-v1-$(Date:yyyyMM)'
 
 trigger:
@@ -56,40 +56,39 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
-#          - task: Cache@2
-#            displayName: 'Restore CVE DB from cache'
-#            inputs:
-#              key: '$(dependencyCheckCacheKey)'
-#              restoreKeys: |
-#                dependency-check-v1-  # prefix fallback to any prior cache entry
-#              path: $(dependencyCheckDataDir)
-#              cacheHitVar: CACHE_HIT
-#          - script: |
-#              if [ '$(CACHE_HIT)' = 'true' ]; then
-#                echo "Restored cache."
-#              else
-#                echo "No cache found"
-#              fi
-#            displayName: 'Log cache hit'
+          - task: Cache@2
+            displayName: 'Restore CVE DB from cache'
+            inputs:
+              key: '$(dependencyCheckCacheKey)'
+              restoreKeys: |
+                dependency-check-v1-  # prefix fallback to any prior cache entry
+              path: $(dependencyCheckDataDir)
+              cacheHitVar: CACHE_HIT
+          - script: |
+              if [ '$(CACHE_HIT)' = 'true' ]; then
+                echo "Restored cache."
+              else
+                echo "No cache found"
+              fi
+            displayName: 'Log cache hit'
           - script: |
               echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
               
               export DEPENDENCY_CHECK_DATA_DIR=$dependencyCheckDataDir
-              # export NVD_API_KEY=$var_nvd_api_key
               
               echo "[CVE] executing ROR_TASK=$ROR_TASK"
               ci/run-pipeline.sh
             continueOnError: true
             env:
               ROR_TASK: cve_check
-              var_nvd_api_key: $(nvd_api_key)
-#          - task: Cache@2
-#            displayName: 'Save updated CVE DB in cache'
-#            inputs:
-#              # Cache entries are immutable, a new write will only occur when a new key appears
-#              key: '$(dependencyCheckCacheKey)'
-#              path: $(dependencyCheckDataDir)
-#            condition: succeeded()
+              NVD_API_KEY: $(nvd_api_key)
+          - task: Cache@2
+            displayName: 'Save updated CVE DB in cache'
+            inputs:
+              # Cache entries are immutable, a new write will only occur when a new key appears
+              key: '$(dependencyCheckCacheKey)'
+              path: $(dependencyCheckDataDir)
+            condition: succeeded()
 
   - stage: TEST
     displayName: 'Run all tests'
