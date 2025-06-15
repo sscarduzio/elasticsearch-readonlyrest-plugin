@@ -4,7 +4,7 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
-  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
+  dependencyCheckDataDir: '/tmp/dependency-check-data/v1'
   dependencyCheckCacheKey: 'dependency-check-v1-$(Date:yyyyMM)'
 
 trigger:
@@ -74,7 +74,7 @@ stages:
           - script: |
               echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
               
-              # export DEPENDENCY_CHECK_DATA_DIR=$dependencyCheckDataDir
+              export DEPENDENCY_CHECK_DATA_DIR=$dependencyCheckDataDir
               export NVD_API_KEY=$var_nvd_api_key
               
               echo "[CVE] executing ROR_TASK=$ROR_TASK"
