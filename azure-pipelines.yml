@@ -75,7 +75,7 @@ stages:
               echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
               
               export DEPENDENCY_CHECK_DATA_DIR=$dependencyCheckDataDir
-              export NVD_API_KEY=$var_nvd_api_key
+              # export NVD_API_KEY=$var_nvd_api_key
               
               echo "[CVE] executing ROR_TASK=$ROR_TASK"
               ci/run-pipeline.sh
