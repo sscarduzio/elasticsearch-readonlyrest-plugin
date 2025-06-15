@@ -66,6 +66,12 @@ trait EsClusterProvider extends EsContainerCreator with EsModulePatterns {
   private def nodeCreator(nodeSettings: EsNodeSettings,
                           allNodeNames: NonEmptyList[String],
                           nodeDataInitializer: ElasticsearchNodeDataInitializer): StartedClusterDependencies => EsContainer = { deps =>
-    this.create(nodeSettings, allNodeNames, nodeDataInitializer, deps)
+    this.create(
+      nodeSettings = nodeSettings,
+      allNodeNames = allNodeNames,
+      nodeDataInitializer = nodeDataInitializer,
+      startedClusterDependencies = deps,
+      additionalLogConsumer = None,
+    )
   }
 }

@@ -30,14 +30,30 @@ object Elasticsearch {
                           nodeName: String,
                           masterNodes: NonEmptyList[String],
                           additionalElasticsearchYamlEntries: Map[String, String],
-                          envs: Map[String, String])
+                          envs: Map[String, String],
+                          esInstallationType: EsInstallationType)
+
+  sealed trait EsInstallationType
+
+  object EsInstallationType {
+    case object EsDockerImage extends EsInstallationType
+
+    case object UbuntuDockerImageWithEsFromApt extends EsInstallationType
+  }
 
   lazy val esDir: Path = os.root / "usr" / "share" / "elasticsearch"
-  lazy val configDir: Path = esDir / "config"
+
+  def configDir(config: Config): Path =
+    config.esInstallationType match {
+      case EsInstallationType.EsDockerImage => os.root / "usr" / "share" / "elasticsearch" / "config"
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt => os.root / "etc" / "elasticsearch"
+    }
 
   trait Plugin {
-    def updateEsImage(image: DockerImageDescription): DockerImageDescription
+    def updateEsImage(image: DockerImageDescription, config: Config): DockerImageDescription
+
     def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder
+
     def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder
   }
 
@@ -51,6 +67,7 @@ object Elasticsearch {
     new Elasticsearch(esVersion, config)
   }
 }
+
 class Elasticsearch(esVersion: String,
                     config: Config,
                     plugins: Seq[Plugin],
@@ -77,21 +94,47 @@ class Elasticsearch(esVersion: String,
   }
 
   def toDockerImageDescription: DockerImageDescription = {
-    DockerImageDescription
-      .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
+    val baseImage = config.esInstallationType match {
+      case EsInstallationType.EsDockerImage =>
+        DockerImageDescription
+          .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        val esMajorVersion: String = esVersion.split("\\.")(0) + ".x"
+        DockerImageDescription
+          .create("ubuntu:24.04", customEntrypoint)
+          .user("root")
+          .run("apt update")
+          .run("apt install -y ca-certificates gnupg2 curl apt-transport-https")
+          .run("curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -")
+          .run(s"""echo "deb https://artifacts.elastic.co/packages/$esMajorVersion/apt stable main" > /etc/apt/sources.list.d/elastic-$esMajorVersion.list""")
+          .run(s"""apt update && apt install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion""")
+          .run("apt clean && rm -rf /var/lib/apt/lists/*")
+          .user("elasticsearch")
+          .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
+    }
+
+    val missingTar = config.esInstallationType match {
+      case EsInstallationType.EsDockerImage =>
+        Version.greaterOrEqualThan(esVersion, 9, 0, 0)
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        false
+    }
+
+    baseImage
       .copyFile(
-        destination = configDir / "elasticsearch.yml",
+        destination = configDir(config) / "elasticsearch.yml",
         file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)
       )
       .copyFile(
-        destination = configDir / "log4j2.properties",
+        destination = configDir(config) / "log4j2.properties",
         file = log4jFileFromResources
       )
       .user("root")
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
-      .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
-      .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
+      .runWhen(missingTar, "microdnf install -y tar")
+      .run(s"chown -R elasticsearch:elasticsearch ${esDir.toString()}")
+      .run(s"chown -R elasticsearch:elasticsearch ${configDir(config).toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
       .user("elasticsearch")
@@ -101,7 +144,7 @@ class Elasticsearch(esVersion: String,
     def installPlugins(): DockerImageDescription = {
       plugins
         .foldLeft(image) {
-          case (currentImage, plugin) => plugin.updateEsImage(currentImage)
+          case (currentImage, plugin) => plugin.updateEsImage(currentImage, config)
         }
     }
   }
@@ -216,6 +259,7 @@ final case class EsConfigBuilder(entries: Seq[String]) {
     else add(orElseEntry)
   }
 }
+
 object EsConfigBuilder {
   def empty: EsConfigBuilder = EsConfigBuilder(Seq.empty)
 }
@@ -226,6 +270,7 @@ final case class EsJavaOptsBuilder(options: Seq[String]) {
     this.copy(options = this.options ++ option.toSeq)
   }
 }
+
 object EsJavaOptsBuilder {
   def empty: EsJavaOptsBuilder = EsJavaOptsBuilder(Seq.empty)
 }

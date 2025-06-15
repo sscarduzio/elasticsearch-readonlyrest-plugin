@@ -26,6 +26,7 @@ import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
+import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
@@ -96,7 +97,8 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
         nodeName = nodeSettings.nodeName,
         masterNodes = allNodeNames,
         additionalElasticsearchYamlEntries = nodeSettings.containerSpecification.additionalElasticsearchYamlEntries,
-        envs = nodeSettings.containerSpecification.environmentVariables
+        envs = nodeSettings.containerSpecification.environmentVariables,
+        esInstallationType = EsInstallationType.EsDockerImage,
       ),
       securityConfig = ReadonlyRestWithEnabledXpackSecurityPlugin.Config(
         rorPlugin = pluginFile.toScala,
@@ -107,6 +109,7 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
       startedClusterDependencies = startedClusterDependencies,
       customEntrypoint = Some(Path("""/bin/sh -c "while true; do sleep 30; done"""")),
       awaitingReadyStrategy = AwaitingReadyStrategy.ImmediatelyTreatAsReady,
+      additionalLogConsumer = None,
     )
   }
 }

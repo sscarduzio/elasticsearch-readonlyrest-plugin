@@ -33,6 +33,8 @@ object DockerImageCreator extends StrictLogging {
           .runCommandsFrom(imageDescription)
           .addEnvsFrom(imageDescription)
           .setEntrypointFrom(imageDescription)
+          .user("elasticsearch")
+          .setCommandFrom(imageDescription)
           .build()
         logger.info("Dockerfile\n" + dockerfile)
       })
@@ -85,6 +87,12 @@ object DockerImageCreator extends StrictLogging {
       imageDescription
         .entrypoint
         .foldLeft(builder) { case (b, entrypoint) => b.entryPoint(entrypoint.toIO.getAbsolutePath) }
+    }
+
+    def setCommandFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
+      imageDescription
+        .command
+        .foldLeft(builder) { case (b, command) => b.cmd(command) }
     }
 
   }

@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.Awaiting
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
 import tech.beshu.ror.utils.containers.images.Elasticsearch
+import tech.beshu.ror.utils.containers.logs.CompositeLogConsumer
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
@@ -39,12 +40,12 @@ import scala.language.postfixOps
 abstract class EsContainer(val esVersion: String,
                            val esConfig: Elasticsearch.Config,
                            val startedClusterDependencies: StartedClusterDependencies,
-                           image: ImageFromDockerfile)
+                           val imageFromDockerfile: ImageFromDockerfile)
   extends SingleContainer[GenericContainer[_]]
     with ClientProvider
     with StrictLogging {
 
-  override implicit val container: GenericContainer[_] = new org.testcontainers.containers.GenericContainer(image)
+  override implicit val container: GenericContainer[_] = new org.testcontainers.containers.GenericContainer(imageFromDockerfile)
 
   def sslEnabled: Boolean
 
@@ -67,8 +68,13 @@ object EsContainer {
   def init(esContainer: EsContainer,
            initializer: ElasticsearchNodeDataInitializer,
            logger: Logger,
+           additionalLogConsumer: Option[Consumer[OutputFrame]],
            awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness): EsContainer = {
-    val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
+    val slf4jConsumer = new Slf4jLogConsumer(logger.underlying)
+    val logConsumer: Consumer[OutputFrame] = additionalLogConsumer match {
+      case Some(additional) => new CompositeLogConsumer(slf4jConsumer, additional)
+      case scala.None => slf4jConsumer
+    }
     val esClient = Coeval(esContainer.adminClient)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     esContainer.container.addExposedPort(9200)

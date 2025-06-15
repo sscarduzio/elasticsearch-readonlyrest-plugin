@@ -17,10 +17,13 @@
 package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
+import org.testcontainers.containers.output.OutputFrame
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.EsContainerWithXpackSecurity.xpackAdminCredentials
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, XpackSecurityPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
+
+import java.util.function.Consumer
 
 class EsContainerWithXpackSecurity private(esVersion: String,
                                            esConfig: Elasticsearch.Config,
@@ -42,7 +45,8 @@ object EsContainerWithXpackSecurity extends StrictLogging {
              esConfig: Elasticsearch.Config,
              xpackSecurityConfig: XpackSecurityPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
+             startedClusterDependencies: StartedClusterDependencies,
+             additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
 
     val rorContainer = new EsContainerWithXpackSecurity(
       esVersion,
@@ -51,7 +55,7 @@ object EsContainerWithXpackSecurity extends StrictLogging {
       esImageWithXpackFromDockerfile(esVersion, esConfig, xpackSecurityConfig),
       xpackSecurityConfig.attributes.restSslEnabled
     )
-    EsContainer.init(rorContainer, initializer, logger)
+    EsContainer.init(rorContainer, initializer, logger, additionalLogConsumer)
   }
 
   private def esImageWithXpackFromDockerfile(esVersion: String,

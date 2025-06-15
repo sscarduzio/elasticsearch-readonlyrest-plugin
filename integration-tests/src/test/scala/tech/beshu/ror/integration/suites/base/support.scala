@@ -18,7 +18,11 @@ package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
-import org.scalatest.Suite
+import com.github.dockerjava.api.DockerClient
+import com.github.dockerjava.api.model.PruneType
+import org.apache.logging.log4j.{LogManager, Logger}
+import org.scalatest.{BeforeAndAfterAll, Suite}
+import org.testcontainers.DockerClientFactory
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.providers.*
 import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClusterProvider, EsRemoteClustersContainer}
@@ -29,10 +33,16 @@ object support {
     extends RorConfigFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
-      with ForAllTestContainer {
+      with ForAllTestContainer
+      with BeforeAndAfterAll {
     this: Suite with EsClusterProvider with ESVersionSupport =>
 
     override lazy val container: EsClusterContainer = clusterContainer
+
+    override protected def afterAll(): Unit = {
+      super.afterAll()
+      pruneDockerImages()
+    }
 
     def clusterContainer: EsClusterContainer
   }
@@ -41,10 +51,16 @@ object support {
     extends RorConfigFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
-      with ForAllTestContainer {
+      with ForAllTestContainer
+      with BeforeAndAfterAll {
     this: Suite with EsClusterProvider with ESVersionSupport =>
 
     override lazy val container: EsRemoteClustersContainer = remoteClusterContainer
+
+    override protected def afterAll(): Unit = {
+      super.afterAll()
+      pruneDockerImages()
+    }
 
     def remoteClusterContainer: EsRemoteClustersContainer
   }
@@ -53,13 +69,19 @@ object support {
     extends RorConfigFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
-      with ForAllTestContainer {
+      with ForAllTestContainer
+      with BeforeAndAfterAll {
     this: Suite with EsClusterProvider with ESVersionSupport =>
 
     import com.dimafeng.testcontainers.LazyContainer.*
 
     override lazy val container: MultipleContainers =
       MultipleContainers(clusterContainers.map(containerToLazyContainer(_)).toList: _*)
+
+    override protected def afterAll(): Unit = {
+      super.afterAll()
+      pruneDockerImages()
+    }
 
     def clusterContainers: NonEmptyList[EsClusterContainer]
   }
@@ -68,12 +90,27 @@ object support {
     extends RorConfigFileNameProvider
       with SingleClientSupport
       with TestSuiteWithClosedTaskAssertion
-      with NodeInitializerProvider {
+      with NodeInitializerProvider
+      with BeforeAndAfterAll {
     this: Suite with EsClusterProvider with ESVersionSupport =>
+
+    override protected def afterAll(): Unit = {
+      super.afterAll()
+      pruneDockerImages()
+    }
 
     def clusterDependencies: List[DependencyDef] = List.empty
   }
 
   trait SingleClientSupport extends SingleClient with SingleEsTarget
+
   trait MultipleClientsSupport extends MultipleClients with MultipleEsTargets
+}
+
+private def pruneDockerImages(): Unit = {
+  val logger: Logger = LogManager.getLogger("prune-docker-images")
+  val dockerClient: DockerClient = DockerClientFactory.instance().client()
+  logger.info("Pruning docker images after test suite")
+  val reclaimedSpace = 1.0 * dockerClient.pruneCmd(PruneType.IMAGES).withDangling(false).exec().getSpaceReclaimed / 1024 / 1024
+  logger.info(s"Pruning docker images complete, reclaimed $reclaimedSpace MB")
 }
