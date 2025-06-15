@@ -40,6 +40,13 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
 
+// There is a change introduced in Elasticsearch since versions 9.0.1 and 8.18.1 (older ES versions are not affected)
+// The change: https://github.com/elastic/elasticsearch/pull/126852 ("With this PR we restrict the paths we allow access to, forbidding plugins to specify/request entitlements for reading or writing to specific protected directories.")
+// In our use case it causes problems with apt-based installations of ES and patching:
+//   - ROR cannot check (on startup) whether the ES is patched
+//   - that is because after the aforementioned change in ES, the ROR plugin cannot access the /usr/share/elasticsearch directory
+//   - we bypass this problem (ROR plugin cannot check the patch status, so it just allows to continue starting ES, with warning in logs)
+// This test suite verifies, that both official ES image and apt-based ES installation with ROR can start. Logs are also asserted to detect the warning.
 class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike {
 
   import PatchingOfAptBasedEsInstallationSuite.*

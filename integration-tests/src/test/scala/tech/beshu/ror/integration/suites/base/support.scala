@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.model.PruneType
+import org.apache.logging.log4j.{LogManager, Logger}
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.testcontainers.DockerClientFactory
 import tech.beshu.ror.integration.utils.ESVersionSupport
@@ -107,6 +108,9 @@ object support {
 }
 
 private def pruneDockerImages(): Unit = {
+  val logger: Logger = LogManager.getLogger("prune-docker-images")
   val dockerClient: DockerClient = DockerClientFactory.instance().client()
-  dockerClient.pruneCmd(PruneType.IMAGES).withDangling(false).exec()
+  logger.info("Pruning docker images after test suite")
+  val reclaimedSpace = 1.0 * dockerClient.pruneCmd(PruneType.IMAGES).withDangling(false).exec().getSpaceReclaimed / 1024 / 1024
+  logger.info(s"Pruning docker images complete, reclaimed $reclaimedSpace MB")
 }
