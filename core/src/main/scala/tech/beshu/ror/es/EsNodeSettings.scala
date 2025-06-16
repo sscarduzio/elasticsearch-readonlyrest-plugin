@@ -16,4 +16,4 @@
  */
 package tech.beshu.ror.es
 
-case class EsNodeSettings(nodeName: String, clusterName: String)
+final case class EsNodeSettings(nodeName: String, clusterName: String)

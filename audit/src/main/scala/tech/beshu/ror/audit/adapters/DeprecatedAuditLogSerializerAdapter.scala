@@ -30,8 +30,7 @@ import scala.collection.JavaConverters._
 class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestcontext.AuditLogSerializer[T])
   extends AuditLogSerializer {
 
-  override def onResponse(responseContext: AuditResponseContext,
-                          environmentContext: AuditEnvironmentContext): Option[JSONObject] = {
+  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
     val deprecatedResponseContext = responseContext match {
       case Allowed(_, verbosity, _) =>
         verbosity match {

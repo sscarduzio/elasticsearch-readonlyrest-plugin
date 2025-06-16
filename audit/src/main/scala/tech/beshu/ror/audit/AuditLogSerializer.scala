@@ -19,6 +19,5 @@ package tech.beshu.ror.audit
 import org.json.JSONObject
 
 trait AuditLogSerializer {
-  def onResponse(responseContext: AuditResponseContext,
-                 environmentContext: AuditEnvironmentContext): Option[JSONObject]
+  def onResponse(responseContext: AuditResponseContext): Option[JSONObject]
 }

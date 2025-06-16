@@ -236,7 +236,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
     core.rorConfig.auditingSettings
-      .map(settings => AuditingTool.create(settings, esEnv.esNodeSettings, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
+      .map(settings => AuditingTool.create(settings, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
       .sequence
       .map {
         _.sequence
@@ -311,7 +311,7 @@ object ReadonlyRest {
              env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
-    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(env.esVersion)
+    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(env)
     create(coreFactory, indexContentService, auditSinkServiceCreator, env)
   }
 

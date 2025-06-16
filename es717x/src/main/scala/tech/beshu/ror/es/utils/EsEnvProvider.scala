@@ -28,8 +28,8 @@ object EsEnvProvider {
       modulesPath = environment.modulesFile(),
       esVersion = EsVersion(major = Version.CURRENT.major, minor = Version.CURRENT.minor, revision = Version.CURRENT.revision),
       esNodeSettings = EsNodeSettings(
-        nodeName = settings.get("node.name"),
-        clusterName = settings.get("cluster.name")
+        nodeName = settings.get("node.name", "elasticsearch"),
+        clusterName = settings.get("cluster.name", "elasticsearch"),
       ),
     )
   }

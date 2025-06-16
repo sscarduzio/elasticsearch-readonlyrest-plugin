@@ -16,4 +16,6 @@
  */
 package tech.beshu.ror.audit.instances
 
-class DefaultAuditLogSerializer extends DefaultAuditLogSerializerV2
+import tech.beshu.ror.audit.AuditEnvironmentContext
+
+class DefaultAuditLogSerializer(environmentContext: AuditEnvironmentContext) extends DefaultAuditLogSerializerV2(environmentContext)

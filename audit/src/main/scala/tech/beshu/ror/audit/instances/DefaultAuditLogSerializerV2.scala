@@ -19,15 +19,14 @@ package tech.beshu.ror.audit.instances
 import org.json.JSONObject
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext}
 
-class DefaultAuditLogSerializerV2 extends DefaultAuditLogSerializerV1 {
+class DefaultAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) extends DefaultAuditLogSerializerV1 {
 
-  override def onResponse(responseContext: AuditResponseContext,
-                          environmentContext: AuditEnvironmentContext): Option[JSONObject] = {
+  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
     lazy val additionalFields = Map(
       "es_node_name" -> environmentContext.esNodeName,
       "es_cluster_name" -> environmentContext.esClusterName
     )
-    super.onResponse(responseContext, environmentContext)
+    super.onResponse(responseContext)
       .map(additionalFields.foldLeft(_) { case (soFar, (key, value)) => soFar.put(key, value) })
   }
 }

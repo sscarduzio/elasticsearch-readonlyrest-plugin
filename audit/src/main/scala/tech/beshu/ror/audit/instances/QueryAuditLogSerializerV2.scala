@@ -19,11 +19,11 @@ package tech.beshu.ror.audit.instances
 import org.json.JSONObject
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext}
 
-class QueryAuditLogSerializerV2 extends DefaultAuditLogSerializerV2 {
+class QueryAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) extends DefaultAuditLogSerializerV2(environmentContext) {
 
   override def onResponse(responseContext: AuditResponseContext,
-                          environmentContext: AuditEnvironmentContext): Option[JSONObject] = {
-    super.onResponse(responseContext, environmentContext)
+                          ): Option[JSONObject] = {
+    super.onResponse(responseContext)
       .map(_.put("content", responseContext.requestContext.content))
   }
 }

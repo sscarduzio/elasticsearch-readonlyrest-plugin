@@ -29,8 +29,7 @@ class DefaultAuditLogSerializerV1 extends AuditLogSerializer {
 
   private val timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneId.of("GMT"))
 
-  override def onResponse(responseContext: AuditResponseContext,
-                          environmentContext: AuditEnvironmentContext): Option[JSONObject] = responseContext match {
+  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = responseContext match {
     case Allowed(requestContext, verbosity, reason) =>
       verbosity match {
         case Verbosity.Info =>
