@@ -55,7 +55,7 @@ class RorInstance private(boot: ReadonlyRest,
   logger.info("ReadonlyREST was loaded ...")
   private val configsReloadTask = mode match {
     case Mode.WithPeriodicIndexCheck =>
-      RorProperties.rorIndexSettingReloadInterval(environmentConfig.propertiesProvider) match {
+      RorProperties.rorIndexSettingsReloadInterval(environmentConfig.propertiesProvider) match {
         case RefreshInterval.Disabled =>
           logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
           Cancelable.empty
