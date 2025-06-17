@@ -160,6 +160,7 @@ object RestoreSnapshotEsRequestContext {
     clusterService
       .snapshotIndices(repository, snapshot)
       .map(_.filterBy(indicesFrom(request)))
+      .map(_.orWildcardWhenEmpty)
   }
 
   private def indicesFrom(request: RestoreSnapshotRequest) = {
