@@ -52,7 +52,7 @@ trait BaseAuditingToolsSuite
 
   private lazy val baseAuditIndexName = "audit_index"
 
-  private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
+  protected lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
   private lazy val dataStreamManager = new DataStreamManager(destNodeClientProvider.adminClient, esVersionUsed)
 
   private lazy val adminAuditManagers =
@@ -67,7 +67,7 @@ trait BaseAuditingToolsSuite
     adminAuditManagers.values.foreach(_.truncate())
   }
 
-  private def forEachAuditManager[A](test: => AuditIndexManager => A): Unit =
+  protected def forEachAuditManager[A](test: => AuditIndexManager => A): Unit =
     adminAuditManagers.foreach { case (indexName, manager) =>
       withClue(s"Error for audit index '$indexName'") {
         test(manager)
