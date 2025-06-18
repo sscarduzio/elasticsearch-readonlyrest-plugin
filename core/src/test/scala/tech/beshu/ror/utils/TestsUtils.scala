@@ -410,8 +410,8 @@ object TestsUtils {
   )
 
   def testAuditEnvironmentContext: AuditEnvironmentContext = AuditEnvironmentContext(
-    esNodeName = testEsNodeSettings.clusterName,
-    esClusterName = testEsNodeSettings.nodeName
+    esNodeName = testEsNodeSettings.nodeName,
+    esClusterName = testEsNodeSettings.clusterName,
   )
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
