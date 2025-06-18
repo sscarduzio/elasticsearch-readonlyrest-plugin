@@ -83,30 +83,18 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: bcpkix-fips-1.0.7.jar // it's a false positive https://github.com/advisories/GHSA-72m5-fvvv-55m6
+   file name: bcpkix-fips-1.0.7.jar // it's a false positive https://github.com/advisories/GHSA-72m5-fvvv-55m6 https://github.com/advisories/GHSA-wjxj-5m7g-mg7q
    ]]></notes>
         <sha1>fe07959721cfa2156be9722ba20fdfee2b5441b0</sha1>
         <cve>CVE-2020-26939</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   file name: bcpkix-fips-1.0.7.jar // it's a false positive https://github.com/advisories/GHSA-wjxj-5m7g-mg7q
-   ]]></notes>
-        <sha1>fe07959721cfa2156be9722ba20fdfee2b5441b0</sha1>
         <cve>CVE-2023-33202</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: bctls-fips-1.0.19.jar // it's a false positive https://github.com/advisories/GHSA-72m5-fvvv-55m6
+   file name: bctls-fips-1.0.19.jar // it's a false positive https://github.com/advisories/GHSA-72m5-fvvv-55m6 https://github.com/advisories/GHSA-wjxj-5m7g-mg7q
    ]]></notes>
         <sha1>b15d650f6e2a9de08d5569e25a642b6a384dbfd2</sha1>
         <cve>CVE-2020-26939</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   file name: bctls-fips-1.0.19.jar // it's a false positive https://github.com/advisories/GHSA-wjxj-5m7g-mg7q
-   ]]></notes>
-        <sha1>b15d650f6e2a9de08d5569e25a642b6a384dbfd2</sha1>
         <cve>CVE-2023-33202</cve>
     </suppress>
 </suppressions>
