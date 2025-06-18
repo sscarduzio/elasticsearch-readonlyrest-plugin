@@ -27,7 +27,7 @@ import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, defaultEsVersionForTests, unsafeNes}
+import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, defaultEsVersionForTests, testEsNodeSettings, unsafeNes}
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
@@ -41,7 +41,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
     envVarsProvider = envVarsProvider,
     propertiesProvider = propertiesProvider
   )
-  private val factory = new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
+  private val factory = new RawRorConfigBasedCoreFactory(defaultEsVersionForTests, testEsNodeSettings)
   protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider
   protected val httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory
   protected val mockProvider: MocksProvider = NoOpMocksProvider

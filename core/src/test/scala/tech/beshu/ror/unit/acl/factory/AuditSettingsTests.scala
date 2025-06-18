@@ -45,7 +45,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory(esVersion)
+    new RawRorConfigBasedCoreFactory(esVersion, testEsNodeSettings)
   }
 
   private val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))

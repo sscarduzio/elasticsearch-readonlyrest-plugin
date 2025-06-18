@@ -51,7 +51,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResul
 import tech.beshu.ror.audit.AuditEnvironmentContext
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
-import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.es.{EsNodeSettings, EsVersion}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -68,7 +68,8 @@ trait CoreFactory {
                      mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
 }
 
-class RawRorConfigBasedCoreFactory(esEnv: EsEnv)
+class RawRorConfigBasedCoreFactory(esVersion: EsVersion,
+                                   esNodeSettings: EsNodeSettings)
                                   (implicit environmentConfig: EnvironmentConfig)
   extends CoreFactory with Logging {
 
@@ -319,10 +320,10 @@ class RawRorConfigBasedCoreFactory(esEnv: EsEnv)
           )
         )
         auditEnvironmentContext = AuditEnvironmentContext(
-          esNodeName = esEnv.esNodeSettings.nodeName,
-          esClusterName = esEnv.esNodeSettings.clusterName
+          esNodeName = esNodeSettings.nodeName,
+          esClusterName = esNodeSettings.clusterName
         )
-        auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv.esVersion)(auditEnvironmentContext))
+        auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esVersion)(auditEnvironmentContext))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))

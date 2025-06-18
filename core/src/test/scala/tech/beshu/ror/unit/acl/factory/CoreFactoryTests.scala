@@ -40,7 +40,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
 
   private val factory: CoreFactory = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
+    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests, testEsNodeSettings)
   }
 
   "A RorAclFactory" should {
