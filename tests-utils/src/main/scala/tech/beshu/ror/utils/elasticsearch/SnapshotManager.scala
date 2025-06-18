@@ -212,7 +212,7 @@ class SnapshotManager(client: RestClient, esVersion: String)
     ))
     val optionalFeatureStates = features match
       case Nil => ""
-      case f => s""""feature_states": [ ${features.mkString("\"", "\",\"", "\"")} ],"""
+      case f => s""""feature_states": [ ${f.mkString("\"", "\",\"", "\"")} ],"""
     request.setEntity(new StringEntity(
       s"""
          |{
