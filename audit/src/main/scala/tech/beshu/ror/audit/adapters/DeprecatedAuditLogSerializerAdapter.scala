@@ -19,7 +19,7 @@ package tech.beshu.ror.audit.adapters
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext.{Allowed, Verbosity}
 import tech.beshu.ror.audit.instances.SerializeUser
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditRequestContext, AuditResponseContext}
+import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.commons.ResponseContext.FinalState
 import tech.beshu.ror.commons.shims.request.RequestContextShim
 

@@ -210,16 +210,16 @@ object AuditingSettingsDecoder extends Logging {
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { fullClassName =>
-        val serializer = Try(Class.forName(fullClassName).getDeclaredConstructor()).map(constructor => constructor.newInstance())
-          .orElse {
-            Try(Class.forName(fullClassName).getConstructor(classOf[AuditEnvironmentContext]))
-              .map(constructor => constructor.newInstance(summon[AuditEnvironmentContext]))
-          }
-          .getOrElse(
-            throw new IllegalStateException(
-              s"Class ${Class.forName(fullClassName).getName} is required to have either one (AuditEnvironmentContext) parameter constructor or constructor without parameters"
+        val clazz = Class.forName(fullClassName)
+        val serializer =
+          Try(clazz.getConstructor(classOf[AuditEnvironmentContext]))
+            .map(_.newInstance(summon[AuditEnvironmentContext]))
+            .orElse(Try(clazz.getDeclaredConstructor()).map(_.newInstance()))
+            .getOrElse(
+              throw new IllegalStateException(
+                s"Class ${Class.forName(fullClassName).getName} is required to have either one (AuditEnvironmentContext) parameter constructor or constructor without parameters"
+              )
             )
-          )
 
         Try {
           serializer match {

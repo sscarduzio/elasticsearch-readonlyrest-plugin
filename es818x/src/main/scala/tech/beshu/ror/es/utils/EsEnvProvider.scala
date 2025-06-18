@@ -17,7 +17,9 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.Version
+import org.elasticsearch.cluster.ClusterName
 import org.elasticsearch.env.Environment
+import org.elasticsearch.node.Node
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 
 object EsEnvProvider {
@@ -28,8 +30,8 @@ object EsEnvProvider {
       modulesPath = environment.modulesDir(),
       esVersion = EsVersion(major = Version.CURRENT.major, minor = Version.CURRENT.minor, revision = Version.CURRENT.revision),
       esNodeSettings = EsNodeSettings(
-        nodeName = settings.get("node.name", "elasticsearch"),
-        clusterName = settings.get("cluster.name", "elasticsearch"),
+        nodeName = Node.NODE_NAME_SETTING.get(settings),
+        clusterName = ClusterName.CLUSTER_NAME_SETTING.get(settings).value(),
       ),
     )
   }
