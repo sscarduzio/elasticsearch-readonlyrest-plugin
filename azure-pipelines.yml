@@ -1,21 +1,12 @@
 variables:
-  - name: ssh_file
-    value: '~/.ssh/gh_deploy_key.priv'
-  - name: isMaster
-    value : $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
-  - name: isDevelop
-    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
-  - name: isEpic
-    value: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
-  - name: isPullRequest
-    value: $[eq(variables['Build.Reason'], 'PullRequest')]
-  - name: currentDate
-    value: $[format('{0:yyyyMM}', pipeline.startTime)]
-  - name: dependencyCheckCacheKey
-    value: 'dependency-check-v1-$(currentDate)'
-  - name: dependencyCheckDataDir
-    value: '$(Pipeline.Workspace)/dependency-check-data/v1'
-  - group: 'TEST_GROUP'
+  ssh_file: '~/.ssh/gh_deploy_key.priv'
+  isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
+  isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
+  isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
+  isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
+  currentDate: $[format('{0:yyyyMM}', pipeline.startTime)]
+  dependencyCheckCacheKey: 'dependency-check-v1-$(currentDate)'
+  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
 
 trigger:
   batch: false
@@ -84,12 +75,15 @@ stages:
             displayName: 'Log cache hit'
           - script: |
               echo "[CVE] executing ROR_TASK=$ROR_TASK"
+              
+              export DEPENDENCY_CHECK_DATA_DIR=$dependencyCheckDataDir
+              export NVD_API_KEY=$var_nvd_api_key
+              
               ci/run-pipeline.sh
             continueOnError: true
             env:
               ROR_TASK: cve_check
-              DEPENDENCY_CHECK_DATA_DIR: $(dependencyCheckDataDir)
-              NVD_API_KEY: $(nvd_api_key_v2)
+              var_nvd_api_key: $(NVD_API_KEY)
           - task: Cache@2
             displayName: 'Save updated CVE DB in cache'
             inputs:
