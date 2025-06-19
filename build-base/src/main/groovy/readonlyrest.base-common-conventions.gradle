@@ -56,6 +56,11 @@ dependencyCheck {
         }
     }
     nvd {
+        def key = System.getenv("NVD_API_KEY") ?: "default-value"
+        def visiblePart = key.take(4)
+        def maskedPart = "*".repeat(key.size() - 4)
+        def maskedKey = visiblePart + maskedPart
+        println("Masked KEY: $maskedKey")
         apiKey = System.getenv('NVD_API_KEY')
     }
 }
