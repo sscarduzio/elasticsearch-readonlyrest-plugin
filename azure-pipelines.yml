@@ -1,12 +1,21 @@
 variables:
-  ssh_file: '~/.ssh/gh_deploy_key.priv'
-  isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
-  isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
-  isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
-  isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
-  currentDate: $[format('{0:yyyyMM}', pipeline.startTime)]
-  dependencyCheckCacheKey: 'dependency-check-v1-$(currentDate)'
-  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
+  - name: ssh_file
+    value: '~/.ssh/gh_deploy_key.priv'
+  - name: isMaster
+    value : $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
+  - name: isDevelop
+    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
+  - name: isEpic
+    value: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
+  - name: isPullRequest
+    value: $[eq(variables['Build.Reason'], 'PullRequest')]
+  - name: currentDate
+    value: $[format('{0:yyyyMM}', pipeline.startTime)]
+  - name: dependencyCheckCacheKey
+    value: 'dependency-check-v1-$(currentDate)'
+  - name: dependencyCheckDataDir
+    value: '$(Pipeline.Workspace)/dependency-check-data/v1'
+  - group: 'TEST_GROUP'
 
 trigger:
   batch: false
@@ -50,8 +59,6 @@ stages:
     displayName: 'CVE check'
     dependsOn: [ ]
     condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
-    variables:
-      - group: 'TEST_GROUP'
     jobs:
       - job:
         steps:
