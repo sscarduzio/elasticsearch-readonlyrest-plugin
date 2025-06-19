@@ -62,8 +62,7 @@ stages:
             inputs:
               key: '$(dependencyCheckCacheKey)'
               # prefix fallback to any prior cache entry
-              restoreKeys: |
-                dependency-check-v1- todo
+              restoreKeys: dependency-check-v1-
               path: $(dependencyCheckDataDir)
               cacheHitVar: CACHE_HIT
           - script: |
