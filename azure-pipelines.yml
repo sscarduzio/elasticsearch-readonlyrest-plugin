@@ -4,6 +4,9 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
+  currentDate: $[format('{0:yyyyMM}', pipeline.startTime)]
+  dependencyCheckCacheKey: 'dependency-check-v1-$(currentDate)'
+  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
 
 trigger:
   batch: false
@@ -54,13 +57,39 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: Cache@2
+            displayName: 'Restore CVE DB from cache'
+            inputs:
+              key: '$(dependencyCheckCacheKey)'
+              # prefix fallback to any prior cache entry
+              restoreKeys: dependency-check-v1-
+              path: $(dependencyCheckDataDir)
+              cacheHitVar: CACHE_HIT
           - script: |
-              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+              if [ '$(CACHE_HIT)' = 'true' ]; then
+                echo "Restored cache."
+              else
+                echo "No cache found"
+              fi
+            displayName: 'Log cache hit'
+          - script: |
               echo "[CVE] executing ROR_TASK=$ROR_TASK"
+              
+              export DEPENDENCY_CHECK_DATA_DIR=$dependencyCheckDataDir
+              export NVD_API_KEY=$var_nvd_api_key
+              
               ci/run-pipeline.sh
             continueOnError: true
             env:
               ROR_TASK: cve_check
+              var_nvd_api_key: $(NVD_API_KEY)
+          - task: Cache@2
+            displayName: 'Save updated CVE DB in cache'
+            inputs:
+              # Cache entries are immutable, a new write will only occur when a new key appears
+              key: '$(dependencyCheckCacheKey)'
+              path: $(dependencyCheckDataDir)
+            condition: succeeded()
 
   - stage: TEST
     displayName: 'Run all tests'

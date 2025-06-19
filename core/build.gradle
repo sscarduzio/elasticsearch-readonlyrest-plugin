@@ -95,7 +95,7 @@ dependencies {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     }
     api group: 'io.monix',                      name: 'monix_3',                            version: '3.4.1'
-    api group: 'eu.timepit',                    name: 'refined_3',                          version: '0.11.2'
+    api group: 'eu.timepit',                    name: 'refined_3',                          version: '0.11.3'
     api group: 'org.reflections',               name: 'reflections',                        version: '0.9.11'
     api group: 'org.mozilla',                   name: 'rhino',                              version: '1.7.14'
     api group: 'com.github.ben-manes.caffeine', name: 'caffeine',                           version: '3.1.8'
