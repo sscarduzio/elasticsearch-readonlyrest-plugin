@@ -50,6 +50,8 @@ stages:
     displayName: 'CVE check'
     dependsOn: [ ]
     condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
+    variables:
+      - group: 'TEST_GROUP'
     jobs:
       - job:
         steps:
@@ -61,8 +63,9 @@ stages:
             displayName: 'Restore CVE DB from cache'
             inputs:
               key: '$(dependencyCheckCacheKey)'
+              # prefix fallback to any prior cache entry
               restoreKeys: |
-                dependency-check-v1-  # prefix fallback to any prior cache entry
+                dependency-check-v1- todo
               path: $(dependencyCheckDataDir)
               cacheHitVar: CACHE_HIT
           - script: |
