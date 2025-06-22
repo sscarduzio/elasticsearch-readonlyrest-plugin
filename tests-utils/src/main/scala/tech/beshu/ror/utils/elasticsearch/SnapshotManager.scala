@@ -80,7 +80,12 @@ class SnapshotManager(client: RestClient, esVersion: String)
   }
 
   def putSnapshot(repositoryName: String, snapshotName: String, index: String, otherIndices: String*): JsonResponse = {
-    val request = createNewSnapshotRequest(repositoryName, snapshotName, index :: otherIndices.toList)
+    val request = createNewSnapshotRequest(repositoryName, snapshotName, index :: otherIndices.toList, List.empty)
+    call(request, new JsonResponse(_, Some(request)))
+  }
+
+  def putSnapshot(repositoryName: String, snapshotName: String, indices: List[String], features: List[String]): JsonResponse = {
+    val request = createNewSnapshotRequest(repositoryName, snapshotName, indices, features)
     call(request, new JsonResponse(_, Some(request)))
   }
 
@@ -108,7 +113,12 @@ class SnapshotManager(client: RestClient, esVersion: String)
   }
 
   def restoreSnapshot(repositoryName: String, snapshotName: String, indices: String*): JsonResponse = {
-    val request = createRestoreSnapshotRequest(repositoryName, snapshotName, indices.toList)
+    val request = createRestoreSnapshotRequest(repositoryName, snapshotName, indices.toList, List.empty)
+    call(request, new JsonResponse(_, Some(request)))
+  }
+
+  def restoreSnapshot(repositoryName: String, snapshotName: String, indices: List[String], features: List[String]): JsonResponse = {
+    val request = createRestoreSnapshotRequest(repositoryName, snapshotName, indices, features)
     call(request, new JsonResponse(_, Some(request)))
   }
 
@@ -171,7 +181,8 @@ class SnapshotManager(client: RestClient, esVersion: String)
 
   private def createNewSnapshotRequest(repositoryName: String,
                                        snapshotName: String,
-                                       indices: List[String]) = {
+                                       indices: List[String],
+                                       features: List[String]) = {
     val request = new HttpPut(client.from(
       s"/_snapshot/$repositoryName/$snapshotName",
       Map("wait_for_completion" -> "true")
@@ -180,7 +191,8 @@ class SnapshotManager(client: RestClient, esVersion: String)
     request.setEntity(new StringEntity(
       s"""
          |{
-         |  "indices": "${indices.mkString(",")}"
+         |  "indices": [ ${indices.mkString("\"", "\",\"", "\"")} ],
+         |  "feature_states": [ ${features.mkString("\"", "\",\"", "\"")} ]
          |}""".stripMargin
     ))
     request
@@ -190,33 +202,29 @@ class SnapshotManager(client: RestClient, esVersion: String)
     new HttpDelete(client.from(s"/_snapshot/$repositoryName/${stringifyOrWildcard(snapshots)}"))
   }
 
-  private def createRestoreSnapshotRequest(repositoryName: String, snapshotName: String, indices: List[String]) = {
+  private def createRestoreSnapshotRequest(repositoryName: String,
+                                           snapshotName: String,
+                                           indices: List[String],
+                                           features: List[String]) = {
     val request = new HttpPost(client.from(
       s"/_snapshot/$repositoryName/$snapshotName/_restore",
       Map("wait_for_completion" -> "true")
     ))
+    val optionalFeatureStates = features match
+      case Nil => ""
+      case f => s""""feature_states": [ ${f.mkString("\"", "\",\"", "\"")} ],"""
+    request.setEntity(new StringEntity(
+      s"""
+         |{
+         |  $optionalFeatureStates
+         |  "indices": [ ${indices.mkString("\"", "\",\"", "\"")} ],
+         |  "rename_pattern": "(.+)",
+         |  "rename_replacement": "restored_$$1",
+         |  "include_global_state": false
+         |}""".stripMargin
+    ))
     request.addHeader("Content-Type", "application/json")
-    indices match {
-      case Nil =>
-        request.setEntity(new StringEntity(
-          s"""
-             |{
-             |  "rename_pattern": "(.+)",
-             |  "rename_replacement": "restored_$$1"
-             |}""".stripMargin
-        ))
-      case _ =>
-        request.setEntity(new StringEntity(
-          s"""
-             |{
-             |  "indices": "${indices.mkString(",")}",
-             |  "rename_pattern": "(.+)",
-             |  "rename_replacement": "restored_$$1"
-             |}""".stripMargin
-        ))
-    }
     request
-
   }
 
   private def stringifyOrAll(list: List[String]) = stringifyOr(list, "_all")
