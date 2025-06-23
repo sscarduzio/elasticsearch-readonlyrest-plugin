@@ -64,14 +64,6 @@ stages:
               # prefix fallback to any prior cache entry
               restoreKeys: dependency-check-v1-
               path: $(dependencyCheckDataDir)
-              cacheHitVar: CACHE_HIT
-          - script: |
-              if [ '$(CACHE_HIT)' = 'true' ]; then
-                echo "Restored cache."
-              else
-                echo "No cache found"
-              fi
-            displayName: 'Log cache hit'
           - script: |
               echo "[CVE] executing ROR_TASK=$ROR_TASK"
 
