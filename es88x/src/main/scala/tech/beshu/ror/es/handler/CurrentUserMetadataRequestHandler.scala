@@ -57,7 +57,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
       result match {
         case UserMetadataRequestResult.Allow(userMetadata, _) =>
           onAllow(request, userMetadata)
-        case UserMetadataRequestResult.Forbidden(causes) =>
+        case UserMetadataRequestResult.ForbiddenByMismatched(causes) =>
           onForbidden(request, causes)
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)

@@ -25,6 +25,7 @@ import org.scalatest.{BeforeAndAfterAll, Inside}
 import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
 import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNotAllowed
 import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.*
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -157,6 +158,12 @@ class CurrentUserMetadataAccessControlTests
       |    groups_provider_authorization:
       |      user_groups_provider: "Service3"
       |      groups: ["service3_group1"]
+      |
+      |  - name: "User 8"
+      |    type:
+      |      policy: forbid
+      |      response_message: "you are unauthorized to access this resource"
+      |    auth_key: user8:pass
       |
       |  users:
       |
@@ -370,7 +377,7 @@ class CurrentUserMetadataAccessControlTests
         "no block is matched" in {
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("userXXX:pass"))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Forbidden(causes) =>
+          inside(result.result) { case ForbiddenByMismatched(causes) =>
             causes should be (NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
           }
         }
@@ -379,7 +386,7 @@ class CurrentUserMetadataAccessControlTests
             basicAuthHeader("user4:pass"), currentGroupHeader("group7")
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Forbidden(causes) =>
+          inside(result.result) { case ForbiddenByMismatched(causes) =>
             causes should be (NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
           }
         }
@@ -388,8 +395,19 @@ class CurrentUserMetadataAccessControlTests
             basicAuthHeader("user3:pass"), currentGroupHeader("group7")
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Forbidden(causes) =>
+          inside(result.result) { case ForbiddenByMismatched(causes) =>
             causes should be (NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+          }
+        }
+        "request was matched only by the block with forbid policy" in {
+          val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user8:pass"))
+          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
+          inside(result.result) { case ForbiddenBy(blockContext, block) =>
+            block.name should be(Block.Name("User 8"))
+            block.policy should be(Block.Policy.Forbid(Some("you are unauthorized to access this resource")))
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user8")))) {
+              blockContext
+            }
           }
         }
       }
