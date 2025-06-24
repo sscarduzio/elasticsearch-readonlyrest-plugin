@@ -115,7 +115,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
 
           inside(userMetadataRequestResult) {
             case ForbiddenBy(blockContext, block) =>
-              block.name should be(Block.Name("b5"))
+              block.name should be(Block.Name("b1"))
               block.policy should be(Block.Policy.Forbid(None))
           }
         }
