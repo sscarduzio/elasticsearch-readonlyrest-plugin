@@ -22,7 +22,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
-import org.elasticsearch.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
+import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
