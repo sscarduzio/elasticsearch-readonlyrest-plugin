@@ -102,10 +102,10 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            COMPILE_CODEBASE_CHECK:
-              ROR_TASK: compile_codebase_check
             LICENSE_CHECK:
               ROR_TASK: license_check
+            COMPILE_CODEBASE_CHECK:
+              ROR_TASK: compile_codebase_check
             AUDIT_BUILD_CHECK:
               ROR_TASK: audit_build_check
 
