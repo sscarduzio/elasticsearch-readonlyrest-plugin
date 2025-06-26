@@ -30,6 +30,12 @@ if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "cve_check" ]]; then
   ./gradlew dependencyCheckAnalyze
 fi
 
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "compile_codebase" ]]; then
+  echo ">>> Running compile codebase.."
+  ./gradlew compileScala
+fi
+
+
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "audit_compile" ]]; then
   echo ">>> Running audit module cross build.."
   ./gradlew --stacktrace audit:crossBuildAssemble

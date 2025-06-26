@@ -83,6 +83,23 @@ stages:
               path: $(dependencyCheckDataDir)
             condition: succeeded()
 
+  - stage: COMPILE_CODEBASE
+    displayName: 'Compile codebase'
+    dependsOn: [ ]
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              echo "[COMPILE_CODEBASE] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              ROR_TASK: compile_codebase
+
   - stage: TEST
     displayName: 'Run all tests'
     dependsOn: [ ]
@@ -421,10 +438,12 @@ stages:
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'
     dependsOn:
+      - COMPILE_CODEBASE
       - TEST
     condition: |
       and(
         succeeded(), 
+        succeeded('COMPILE_CODEBASE'),
         succeeded('TEST'),
         eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
@@ -465,10 +484,12 @@ stages:
   - stage: DETERMINE_CI_TYPE
     displayName: 'Determine if this is release run'
     dependsOn:
+      - COMPILE_CODEBASE
       - TEST
     condition: |
       and(
         succeeded(), 
+        succeeded('COMPILE_CODEBASE'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         ne(variables['Build.Reason'], 'Manual')
@@ -488,10 +509,12 @@ stages:
     displayName: 'Upload to S3 ROR plugin pre-builds'
     dependsOn:
       - DETERMINE_CI_TYPE
+      - COMPILE_CODEBASE
       - TEST
     condition: |
       and(
         succeeded(),
+        succeeded('COMPILE_CODEBASE'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
@@ -536,10 +559,12 @@ stages:
     displayName: 'Release ROR plugins'
     dependsOn:
       - DETERMINE_CI_TYPE
+      - COMPILE_CODEBASE
       - TEST
     condition: |
       and(
         succeeded(),
+        succeeded('COMPILE_CODEBASE'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
@@ -595,10 +620,12 @@ stages:
   - stage: BUILD_MVN_ARTIFACTS
     displayName: 'Build Maven artifacts'
     dependsOn:
+      - COMPILE_CODEBASE
       - TEST
     condition: |
       and(
         succeeded(),
+        succeeded('COMPILE_CODEBASE'),
         succeeded('TEST'),
         ne(variables.isMaster, true),
         ne(variables['Build.Reason'], 'Manual')
@@ -620,10 +647,12 @@ stages:
     displayName: 'Publish Maven artifacts'
     dependsOn:
       - DETERMINE_CI_TYPE
+      - COMPILE_CODEBASE
       - TEST
     condition: |
       and(
         succeeded(),
+        succeeded('COMPILE_CODEBASE'),
         succeeded('TEST'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
