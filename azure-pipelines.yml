@@ -50,8 +50,7 @@ stages:
     dependsOn: [ ]
     condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
     jobs:
-      - job: CVE
-        displayName: 'CVE check'
+      - job: CVE_CHECK
         steps:
           - checkout: self
             fetchDepth: 1
@@ -65,7 +64,7 @@ stages:
               restoreKeys: dependency-check-v1-
               path: $(dependencyCheckDataDir)
           - script: |
-              echo "[CVE] executing ROR_TASK=$ROR_TASK"
+              echo "[OPTIONAL_CHECKS] executing ROR_TASK=$ROR_TASK"
 
               export DEPENDENCY_CHECK_DATA_DIR=$var_dependency_check_data_dir
               export NVD_API_KEY=$var_nvd_api_key
@@ -103,7 +102,7 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            COMPILE_CODEBASE:
+            COMPILE_CODEBASE_CHECK:
               ROR_TASK: compile_codebase_check
             LICENSE_CHECK:
               ROR_TASK: license_check
