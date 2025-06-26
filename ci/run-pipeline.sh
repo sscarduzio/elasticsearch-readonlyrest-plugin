@@ -22,28 +22,28 @@ export TERM=dumb
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "license" ]]; then
   echo ">>> Check all license headers are in place"
-  ./gradlew license
+  ./gradlew --no-daemon license
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "cve_check" ]]; then
   echo ">>> Running CVE checks.."
-  ./gradlew dependencyCheckAnalyze
+  ./gradlew --no-daemon dependencyCheckAnalyze
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "compile_codebase" ]]; then
   echo ">>> Running compile codebase.."
-  ./gradlew compileScala
+  ./gradlew --no-daemon classes
 fi
 
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "audit_compile" ]]; then
   echo ">>> Running audit module cross build.."
-  ./gradlew --stacktrace audit:crossBuildAssemble
+  ./gradlew --no-daemon --stacktrace audit:crossBuildAssemble
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "core_tests" ]]; then
   echo ">>> Running unit tests.."
-  ./gradlew --stacktrace core:test
+  ./gradlew --no-daemon --stacktrace core:test
 fi
 
 run_integration_tests() {
