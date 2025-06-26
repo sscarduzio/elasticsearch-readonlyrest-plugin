@@ -97,8 +97,6 @@ stages:
           - script: |
               echo "[REQUIRED_CHECKS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
-            env:
-              ROR_TASK: compile_codebase
         strategy:
           maxParallel: 99
           matrix:
