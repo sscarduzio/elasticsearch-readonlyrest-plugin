@@ -20,7 +20,7 @@ export TERM=dumb
 # Adaptation for Azure
 ([ ! -z $BUILD_BUILDNUMBER ] || [ "$TRAVIS" ]) && TRAVIS="true"
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "license" ]]; then
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "license_check" ]]; then
   echo ">>> Check all license headers are in place"
   ./gradlew --no-daemon license
 fi
@@ -30,13 +30,12 @@ if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "cve_check" ]]; then
   ./gradlew --no-daemon dependencyCheckAnalyze
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "compile_codebase" ]]; then
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "compile_codebase_check" ]]; then
   echo ">>> Running compile codebase.."
   ./gradlew --no-daemon classes
 fi
 
-
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "audit_compile" ]]; then
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "audit_build_check" ]]; then
   echo ">>> Running audit module cross build.."
   ./gradlew --no-daemon --stacktrace audit:crossBuildAssemble
 fi

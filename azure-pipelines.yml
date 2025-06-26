@@ -45,12 +45,13 @@ pool:
 
 stages:
 
-  - stage: CVE
-    displayName: 'CVE check'
+  - stage: OPTIONAL_CHECKS
+    displayName: 'Optional checks'
     dependsOn: [ ]
     condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
     jobs:
-      - job:
+      - job: CVE
+        displayName: 'CVE check'
         steps:
           - checkout: self
             fetchDepth: 1
@@ -83,22 +84,31 @@ stages:
               path: $(dependencyCheckDataDir)
             condition: succeeded()
 
-  - stage: COMPILE_CODEBASE
-    displayName: 'Compile codebase'
+  - stage: REQUIRED_CHECKS
+    displayName: 'Required checks'
     dependsOn: [ ]
     condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
     jobs:
-      - job:
+      - job: 
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
           - script: |
-              echo "[COMPILE_CODEBASE] executing ROR_TASK = $ROR_TASK"
+              echo "[REQUIRED_CHECKS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               ROR_TASK: compile_codebase
+        strategy:
+          maxParallel: 99
+          matrix:
+            COMPILE_CODEBASE:
+              ROR_TASK: compile_codebase_check
+            LICENSE_CHECK:
+              ROR_TASK: license_check
+            AUDIT_BUILD_CHECK:
+              ROR_TASK: audit_build_check
 
   - stage: TEST
     displayName: 'Run all tests'
@@ -112,8 +122,9 @@ stages:
         )
       )
     jobs:
-      - job:
-        timeoutInMinutes: 20
+      - job: UNIT
+        displayName: 'Unit tests'
+        timeoutInMinutes: 30
         steps:
           - checkout: self
             fetchDepth: 1
@@ -129,19 +140,13 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              ROR_TASK: core_tests
           - task: PublishTestResults@2
             condition: failed()
             inputs:
               testRunTitle: "$(ROR_TASK) results"
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            LICENSE:
-              ROR_TASK: license
-            UNIT:
-              ROR_TASK: core_tests
       - job:
         condition:
           and(
@@ -438,12 +443,12 @@ stages:
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'
     dependsOn:
-      - COMPILE_CODEBASE
+      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(), 
-        succeeded('COMPILE_CODEBASE'),
+        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
@@ -484,12 +489,12 @@ stages:
   - stage: DETERMINE_CI_TYPE
     displayName: 'Determine if this is release run'
     dependsOn:
-      - COMPILE_CODEBASE
+      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(), 
-        succeeded('COMPILE_CODEBASE'),
+        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         ne(variables['Build.Reason'], 'Manual')
@@ -509,12 +514,12 @@ stages:
     displayName: 'Upload to S3 ROR plugin pre-builds'
     dependsOn:
       - DETERMINE_CI_TYPE
-      - COMPILE_CODEBASE
+      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(),
-        succeeded('COMPILE_CODEBASE'),
+        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
@@ -559,12 +564,12 @@ stages:
     displayName: 'Release ROR plugins'
     dependsOn:
       - DETERMINE_CI_TYPE
-      - COMPILE_CODEBASE
+      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(),
-        succeeded('COMPILE_CODEBASE'),
+        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
@@ -617,42 +622,16 @@ stages:
             RELEASE_ES_6xx:
               ROR_TASK: release_es6xx
 
-  - stage: BUILD_MVN_ARTIFACTS
-    displayName: 'Build Maven artifacts'
-    dependsOn:
-      - COMPILE_CODEBASE
-      - TEST
-    condition: |
-      and(
-        succeeded(),
-        succeeded('COMPILE_CODEBASE'),
-        succeeded('TEST'),
-        ne(variables.isMaster, true),
-        ne(variables['Build.Reason'], 'Manual')
-      )
-    jobs:
-      - job:
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              echo "[BUILD_MVN_ARTIFACTS] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              ROR_TASK: audit_compile
-
   - stage: PUBLISH_MVN_ARTIFACTS
     displayName: 'Publish Maven artifacts'
     dependsOn:
       - DETERMINE_CI_TYPE
-      - COMPILE_CODEBASE
+      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(),
-        succeeded('COMPILE_CODEBASE'),
+        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
