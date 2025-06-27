@@ -14,15 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.audit.instances
+package tech.beshu.ror.audit.adapters
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.AuditResponseContext
+import tech.beshu.ror.audit.*
 
-class QueryAuditLogSerializerV1 extends DefaultAuditLogSerializerV1 {
+class EnvironmentAwareAuditLogSerializerAdapter(underlying: EnvironmentAwareAuditLogSerializer,
+                                                environmentContext: AuditEnvironmentContext) extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
-    super.onResponse(responseContext)
-      .map(_.put("content", responseContext.requestContext.content))
+    underlying.onResponse(responseContext, environmentContext)
   }
+
 }

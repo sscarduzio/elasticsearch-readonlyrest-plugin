@@ -18,7 +18,7 @@ package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext._
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditRequestContext, AuditResponseContext}
+import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

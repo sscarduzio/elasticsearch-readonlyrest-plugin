@@ -152,7 +152,9 @@ object AuditingTool extends Logging {
 
       case object Disabled extends AuditSink
 
-      sealed trait Config
+      sealed trait Config {
+        def logSerializer: AuditLogSerializer
+      }
 
       object Config {
         final case class EsIndexBasedSink(logSerializer: AuditLogSerializer,

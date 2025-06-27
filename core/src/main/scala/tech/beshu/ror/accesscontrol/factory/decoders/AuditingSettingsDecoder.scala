@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
-import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
+import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
@@ -225,6 +225,8 @@ object AuditingSettingsDecoder extends Logging {
           serializer match {
             case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
               Some(serializer)
+            case serializer: tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer =>
+              Some(new EnvironmentAwareAuditLogSerializerAdapter(serializer, summon[AuditEnvironmentContext]))
             case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] =>
               Some(new DeprecatedAuditLogSerializerAdapter(serializer))
             case _ => None

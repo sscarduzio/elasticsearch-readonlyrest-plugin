@@ -61,20 +61,13 @@ class LocalClusterAuditingToolsSuite
   "ES" should {
     "submit audit entries" when {
       "first request uses V1 serializer, then ROR config is reloaded and second request uses V2 serializer" in {
-        val initialConfig = getResourceContent(rorConfigFileName)
-        rorApiManager.updateRorInIndexConfig(initialConfig).forceOKStatusOrConfigAlreadyLoaded()
-        rorApiManager.reloadRorConfig().force()
-
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
-        val response = indexManager.getIndex("twitter")
-        response should have statusCode 200
 
-        val modifiedConfig = initialConfig.replace("DefaultAuditLogSerializerV1", "DefaultAuditLogSerializerV2")
-        rorApiManager.updateRorInIndexConfig(modifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
-        rorApiManager.reloadRorConfig().force()
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+        performAndAssertExampleSearchRequest(indexManager)
 
-        val response2 = indexManager.getIndex("twitter")
-        response2 should have statusCode 200
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2")
+        performAndAssertExampleSearchRequest(indexManager)
 
         forEachAuditManager { adminAuditManager =>
           eventually {
@@ -100,5 +93,18 @@ class LocalClusterAuditingToolsSuite
         }
       }
     }
+  }
+
+  private def performAndAssertExampleSearchRequest(indexManager: IndexManager) = {
+    val response = indexManager.getIndex("twitter")
+    response should have statusCode 200
+  }
+
+  private def updateRorConfigToUseSerializer(serializer: String) = {
+    val initialConfig = getResourceContent(rorConfigFileName)
+    val serializerUsedInOriginalConfigFile = "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
+    val firstModifiedConfig = initialConfig.replace(serializerUsedInOriginalConfigFile, serializer)
+    rorApiManager.updateRorInIndexConfig(firstModifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
+    rorApiManager.reloadRorConfig().force()
   }
 }

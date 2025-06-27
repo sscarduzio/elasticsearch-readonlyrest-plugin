@@ -16,5 +16,8 @@
  */
 package tech.beshu.ror.audit
 
-final case class AuditEnvironmentContext(esNodeName: String,
-                                         esClusterName: String)
+trait AuditEnvironmentContext {
+  def esNodeName: String
+
+  def esClusterName: String
+}

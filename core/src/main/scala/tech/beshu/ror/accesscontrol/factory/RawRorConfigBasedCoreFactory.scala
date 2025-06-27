@@ -319,10 +319,10 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion,
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
-        auditEnvironmentContext = AuditEnvironmentContext(
-          esNodeName = esNodeSettings.nodeName,
-          esClusterName = esNodeSettings.clusterName
-        )
+        auditEnvironmentContext = new AuditEnvironmentContext {
+          override val esNodeName = esNodeSettings.nodeName
+          override val esClusterName = esNodeSettings.clusterName
+        }
         auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esVersion)(auditEnvironmentContext))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
