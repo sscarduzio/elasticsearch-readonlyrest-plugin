@@ -96,18 +96,16 @@ class TransportRRConfigAction(actionName: String,
   override def newNodeRequest(request: RRConfigsRequest): RRConfigRequest =
     new RRConfigRequest(new NodeConfigRequest(NodeConfigRequest.defaultTimeout))
 
-   private def loadConfig() = doPrivileged {
+  override def nodeOperation(request: RRConfigRequest, task: Task): RRConfig = {
+    val nodeRequest = request.getNodeConfigRequest
+    val nodeResponse = loadConfig().runSyncUnsafe(toFiniteDuration(nodeRequest.timeout))
+    new RRConfig(clusterService.localNode(), NodeConfig(nodeResponse))
+  }
+
+  private def loadConfig() = doPrivileged {
     RawRorConfigLoadingAction
       .loadFromIndex(EsEnvProvider.create(env), indexContentProvider)
       .map(_.map(_.map(_.raw)))
-  }
-
-  override def nodeOperation(request: RRConfigRequest, task: Task): RRConfig = {
-    val nodeRequest = request.getNodeConfigRequest
-    val nodeResponse =
-      loadConfig()
-        .runSyncUnsafe(toFiniteDuration(nodeRequest.timeout))
-    new RRConfig(clusterService.localNode(), NodeConfig(nodeResponse))
   }
 
   private def toFiniteDuration(timeout: Timeout): FiniteDuration = timeout.nanos nanos

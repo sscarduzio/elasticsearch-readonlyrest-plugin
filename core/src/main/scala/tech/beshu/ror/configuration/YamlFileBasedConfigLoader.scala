@@ -21,7 +21,6 @@ import io.circe.{Decoder, DecodingFailure, Json}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.yaml
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 
 final class YamlFileBasedConfigLoader(file: File)

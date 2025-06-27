@@ -18,6 +18,8 @@ package tech.beshu.ror.configuration.loader.distributed
 
 import cats.data.EitherT
 import monix.eval.Task
+import tech.beshu.ror.configuration.ConfigLoading.LoadRorConfig
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.index.IndexConfigManager
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig}
 import tech.beshu.ror.configuration.{ConfigLoading, EnvironmentConfig, RawRorConfig}
@@ -30,7 +32,14 @@ object RawRorConfigLoadingAction {
     val compiler = ConfigLoadingInterpreter.create(new IndexConfigManager(indexJsonContentService))
     (for {
       esConfig <- EitherT(ConfigLoading.loadEsConfig(env))
-      loadedConfig <- EitherT(LoadRawRorConfig.loadFromIndex(esConfig.rorIndex.index))
+      loadedConfig <- esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
+        case LoadingRorCoreStrategy.ForceLoadingFromFile =>
+          EitherT.leftT[LoadRorConfig, LoadedRorConfig[RawRorConfig]](
+            LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled("todo"): LoadedRorConfig.Error // todo: fixme
+          )
+        case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback =>
+          EitherT(LoadRawRorConfig.loadFromIndex(esConfig.rorEsLevelSettings.rorConfigIndex))
+      }
     } yield loadedConfig).value.foldMap(compiler)
   }
 

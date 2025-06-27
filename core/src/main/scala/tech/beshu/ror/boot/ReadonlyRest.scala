@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.TestConfigLoading.*
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.*
@@ -67,38 +68,43 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def loadRorConfig(esConfig: EsConfig) = {
-    val action =
-      if (esConfig.rorEsLevelSettings.forceLoadRorFromFile) {
+    val action = esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
+      case LoadingRorCoreStrategy.ForceLoadingFromFile =>
         LoadRawRorConfig.loadFromFile(esEnv.configPath)
-      } else {
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback =>
         val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
         val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(environmentConfig.propertiesProvider)
         val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(environmentConfig.propertiesProvider)
         LoadRawRorConfig
           .loadFromIndexWithFileFallback(
-            configurationIndex = esConfig.rorIndex.index,
+            configurationIndex = esConfig.rorEsLevelSettings.rorConfigIndex,
             loadingDelay = loadingDelay,
             loadingAttemptsCount = loadingAttemptsCount,
             loadingAttemptsInterval = loadingAttemptsInterval,
             fallbackConfigFilePath = esEnv.configPath
           )
-      }
+    }
     runStartingFailureProgram(action)
   }
 
   private def loadRorTestConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedTestRorConfig[TestRorConfig]] = {
-    val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
-    val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(environmentConfig.propertiesProvider)
-    val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(environmentConfig.propertiesProvider)
-    val action = LoadRawTestRorConfig
-      .loadFromIndexWithFallback(
-        configurationIndex = esConfig.rorIndex.index,
-        loadingDelay = loadingDelay,
-        indexLoadingAttemptsCount = loadingAttemptsCount,
-        indexLoadingAttemptsInterval = loadingAttemptsInterval,
-        fallbackConfig = notSetTestRorConfig
-      )
-    EitherT.right(runTestProgram(action))
+    esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
+      case LoadingRorCoreStrategy.ForceLoadingFromFile =>
+        EitherT.right(Task.now(LoadedTestRorConfig.FallbackConfig(TestRorConfig.NotSet)))
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback =>
+        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
+        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(environmentConfig.propertiesProvider)
+        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(environmentConfig.propertiesProvider)
+        val action = LoadRawTestRorConfig
+          .loadFromIndexWithFallback(
+            configurationIndex = esConfig.rorEsLevelSettings.rorConfigIndex,
+            loadingDelay = loadingDelay,
+            indexLoadingAttemptsCount = loadingAttemptsCount,
+            indexLoadingAttemptsInterval = loadingAttemptsInterval,
+            fallbackConfig = notSetTestRorConfig
+          )
+        EitherT.right(runTestProgram(action))
+    }
   }
 
   private def runStartingFailureProgram[A](action: LoadRorConfig[ErrorOr[A]]) = {
@@ -149,9 +155,9 @@ class ReadonlyRest(coreFactory: CoreFactory,
                        loadedConfig: LoadedRorConfig[RawRorConfig],
                        loadedTestRorConfig: LoadedTestRorConfig[TestRorConfig]) = {
     for {
-      mainEngine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex.index))
+      mainEngine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorEsLevelSettings.rorConfigIndex))
       testEngine <- EitherT.right(loadTestEngine(esConfig, loadedTestRorConfig))
-      rorInstance <- createRorInstance(esConfig.rorIndex.index, mainEngine, testEngine, loadedConfig)
+      rorInstance <- createRorInstance(esConfig.rorEsLevelSettings.rorConfigIndex, mainEngine, testEngine, loadedConfig)
     } yield rorInstance
   }
 
@@ -169,7 +175,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def loadActiveTestEngine(esConfig: EsConfig, testConfig: TestRorConfig.Present) = {
     for {
       _ <- Task.delay(authServicesMocksProvider.update(testConfig.mocks))
-      testEngine <- loadRorCore(testConfig.rawConfig, esConfig.rorIndex.index)
+      testEngine <- loadRorCore(testConfig.rawConfig, esConfig.rorEsLevelSettings.rorConfigIndex)
         .map {
           case Right(loadedEngine) =>
             TestEngine.Configured(

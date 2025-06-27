@@ -18,21 +18,23 @@ package tech.beshu.ror.configuration
 
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
+import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent, RorSettingsInactiveWhenXpackSecurityIsEnabled}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy.{ForceLoadingFromFile, LoadFromIndexWithFileFallback}
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 import scala.language.implicitConversions
 
-final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
-                          ssl: RorSsl,
-                          rorIndex: RorIndexNameConfiguration,
-                          fipsConfiguration: FipsConfiguration)
+final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings)
 
 object EsConfig {
 
@@ -41,28 +43,29 @@ object EsConfig {
     val configFile = esEnv.elasticsearchConfig
     (for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
-      esSettings <- parse(configFile, esEnv.isOssDistribution)
-      ssl <- loadSslSettings(esEnv, esSettings.xpackSettings)
-      rorIndex <- loadRorIndexNameConfiguration(configFile)
-      fipsConfiguration <- loadFipsConfiguration(esEnv, esSettings.xpackSettings)
-    } yield EsConfig(esSettings.rorSettings, ssl, rorIndex, fipsConfiguration)).value
+      rorEsLevelSettings <- loadRorEsLevelSettings(esEnv)
+    } yield EsConfig(rorEsLevelSettings)).value
   }
 
-  private def parse(configFile: File, ossDistribution: Boolean)
-                   (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, EsSettings] = {
-    implicit val decoder: Decoder[EsSettings] = decoders.esSettingsDecoder(ossDistribution)
-    EitherT.fromEither[Task](
-      environmentConfig
-        .yamlParser
-        .parse(configFile)
-        .left.map(_.message)
-        .flatMap { json =>
-          decoder
-            .decodeJson(json)
-            .left.map(_.message)
-        }
-        .left.map(MalformedContent(configFile, _))
-    )
+  private def loadRorEsLevelSettings(esEnv: EsEnv)
+                                    (implicit environmentConfig: EnvironmentConfig) = {
+    for {
+      loadingRorCoreStrategyAndIndex <- loadLoadingRorCoreStrategyAndRorIndex(esEnv)
+      (loadingRorCoreStrategy, rorIndex) = loadingRorCoreStrategyAndIndex
+      xpackSettings <- loadXpackSettings(esEnv, esEnv.isOssDistribution)
+      sslSettings <- loadSslSettings(esEnv, xpackSettings)
+      fibsConfiguration <- loadFipsConfiguration(esEnv, xpackSettings)
+    } yield RorEsLevelSettings(rorIndex, loadingRorCoreStrategy, sslSettings, fibsConfiguration)
+  }
+
+  private def loadXpackSettings(esEnv: EsEnv, ossDistribution: Boolean)
+                               (implicit environmentConfig: EnvironmentConfig) = {
+    EitherT.fromEither[Task] {
+      implicit val xpackSettingsDecoder: Decoder[XpackSettings] = decoders.xpackSettingsDecoder(ossDistribution)
+      new YamlFileBasedConfigLoader(esEnv.configPath)
+        .loadConfig[XpackSettings](configName = "X-Pack settings")
+        .left.map(error => MalformedContent(esEnv.configPath, error.message))
+    }
   }
 
   private def loadSslSettings(esEnv: EsEnv, xpackSettings: XpackSettings)
@@ -70,17 +73,12 @@ object EsConfig {
     EitherT(RorSsl.load(esEnv))
       .leftMap(error => MalformedContent(esEnv.elasticsearchConfig, error.message))
       .subflatMap { rorSsl =>
-        if(rorSsl != RorSsl.noSsl && xpackSettings.securityEnabled) {
+        if (rorSsl != RorSsl.noSsl && xpackSettings.securityEnabled) {
           Left(RorSettingsInactiveWhenXpackSecurityIsEnabled(SettingsType.Ssl))
         } else {
           Right(rorSsl)
         }
       }
-  }
-
-  private def loadRorIndexNameConfiguration(configFile: File)
-                                           (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, RorIndexNameConfiguration] = {
-    EitherT(RorIndexNameConfiguration.load(configFile).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
   private def loadFipsConfiguration(esEnv: EsEnv, xpackSettings: XpackSettings)
@@ -97,10 +95,34 @@ object EsConfig {
       }
   }
 
-  final case class EsSettings(rorSettings: RorEsLevelSettings,
-                              xpackSettings: XpackSettings)
-  final case class RorEsLevelSettings(forceLoadRorFromFile: Boolean)
-  final case class XpackSettings(securityEnabled: Boolean)
+  private def loadLoadingRorCoreStrategyAndRorIndex(esEnv: EsEnv)
+                                                   (implicit environmentConfig: EnvironmentConfig) = {
+    EitherT.fromEither[Task] {
+      import decoders.{loadRorCoreStrategyDecoder, rorConfigurationIndexDecoder}
+      val loader = new YamlFileBasedConfigLoader(esEnv.configPath)
+      for {
+        strategy <- loader
+          .loadConfig[LoadingRorCoreStrategy](configName = "ROR loading core settings")
+          .left.map(error => MalformedContent(esEnv.configPath, error.message))
+        rorIndex <- loader
+          .loadConfig[RorConfigurationIndex](configName = "ROR configuration index settings")
+          .left.map(error => MalformedContent(esEnv.configPath, error.message))
+      } yield (strategy, rorIndex)
+    }
+  }
+
+  final case class RorEsLevelSettings(rorConfigIndex: RorConfigurationIndex,
+                                      loadingRorCoreStrategy: LoadingRorCoreStrategy,
+                                      ssl: RorSsl,
+                                      fipsConfiguration: FipsConfiguration)
+  object RorEsLevelSettings {
+    sealed trait LoadingRorCoreStrategy
+    object LoadingRorCoreStrategy {
+      case object ForceLoadingFromFile extends LoadingRorCoreStrategy
+      case object LoadFromIndexWithFileFallback extends LoadingRorCoreStrategy
+    }
+  }
+  private final case class XpackSettings(securityEnabled: Boolean)
 
   sealed trait LoadEsConfigError
   object LoadEsConfigError {
@@ -117,32 +139,43 @@ object EsConfig {
   }
 
   private object decoders {
-    implicit val rorEsLevelSettingsDecoder: Decoder[RorEsLevelSettings] = {
+    implicit val loadRorCoreStrategyDecoder: Decoder[LoadingRorCoreStrategy] = {
       YamlKeyDecoder[Boolean](
         segments = NonEmptyList.of("readonlyrest", "force_load_from_file"),
         default = false
-      ) map RorEsLevelSettings.apply
+      ) map {
+        case true => ForceLoadingFromFile
+        case false => LoadFromIndexWithFileFallback
+      }
     }
 
-    implicit val xpackSettingsDecoder: Decoder[XpackSettings] = {
-      val booleanDecoder = YamlKeyDecoder[Boolean](
-        segments = NonEmptyList.of("xpack", "security", "enabled"),
-        default = true
+    implicit val rorConfigurationIndexDecoder: Decoder[RorConfigurationIndex] = {
+      implicit val indexNameDecoder: Decoder[RorConfigurationIndex] =
+        Decoder[NonEmptyString]
+          .map(IndexName.Full.apply)
+          .map(RorConfigurationIndex.apply)
+      YamlKeyDecoder[RorConfigurationIndex](
+        segments = NonEmptyList.of("readonlyrest", "settings_index"),
+        default = RorConfigurationIndex.default
       )
-      val stringDecoder = YamlKeyDecoder[String](
-        segments = NonEmptyList.of("xpack", "security", "enabled"),
-        default = "true"
-      ) map { _.toBoolean }
-      (booleanDecoder or stringDecoder) map XpackSettings.apply
     }
 
-    implicit def esSettingsDecoder(isOssDistribution: Boolean): Decoder[EsSettings] = {
-      for {
-        rorEsLevelSettings <- Decoder[RorEsLevelSettings]
-        xpackSettings <-
-          if(isOssDistribution) Decoder.const(XpackSettings(securityEnabled = false))
-          else Decoder[XpackSettings]
-      } yield EsSettings(rorEsLevelSettings, xpackSettings)
+    def xpackSettingsDecoder(isOssDistribution: Boolean): Decoder[XpackSettings] = {
+      if (isOssDistribution) {
+        Decoder.const(XpackSettings(securityEnabled = false))
+      } else {
+        val booleanDecoder = YamlKeyDecoder[Boolean](
+          segments = NonEmptyList.of("xpack", "security", "enabled"),
+          default = true
+        )
+        val stringDecoder = YamlKeyDecoder[String](
+          segments = NonEmptyList.of("xpack", "security", "enabled"),
+          default = "true"
+        ) map {
+          _.toBoolean
+        }
+        (booleanDecoder or stringDecoder) map XpackSettings.apply
+      }
     }
   }
 

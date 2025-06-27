@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*

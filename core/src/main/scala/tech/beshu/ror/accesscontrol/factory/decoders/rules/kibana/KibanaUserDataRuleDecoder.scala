@@ -64,9 +64,7 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
           }
         } yield new KibanaUserDataRule(KibanaUserDataRule.Settings(
           access = access,
-          kibanaIndex = kibanaIndex.getOrElse(
-            RuntimeSingleResolvableVariable.AlreadyResolved(ClusterIndexName.Local.kibanaDefault
-            )),
+          kibanaIndex = kibanaIndex.getOrElse(RuntimeSingleResolvableVariable.AlreadyResolved(KibanaIndexName.default)),
           kibanaTemplateIndex = kibanaTemplateIndex,
           appsToHide = appsToHide.getOrElse(Set.empty),
           allowedApiPaths = allowedApiPaths.getOrElse(Set.empty),

@@ -49,7 +49,7 @@ class KibanaAccessRule(override val settings: Settings)
   }
 
   private def kibanaIndexFrom(blockContext: BlockContext): KibanaIndexName = {
-    blockContext.userMetadata.kibanaIndex.getOrElse(ClusterIndexName.Local.kibanaDefault)
+    blockContext.userMetadata.kibanaIndex.getOrElse(KibanaIndexName.default)
   }
 }
 
