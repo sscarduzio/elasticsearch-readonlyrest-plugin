@@ -286,7 +286,7 @@ object AclAwareRequestFilter {
         .map(CorrelationId.apply)
         .getOrElse(CorrelationId.random)
 
-    private lazy val isImpersonationHeader = 
+    private lazy val isImpersonationHeader =
       channel.restRequest
         .allHeaders
         .exists { case Header(name, _) => name === Header.Name.impersonateAs }
