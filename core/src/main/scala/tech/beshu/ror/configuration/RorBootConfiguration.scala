@@ -89,7 +89,7 @@ private object Decoders extends Logging {
     }
 
     YamlKeyDecoder[RorNotStartedResponse.HttpCode](
-      segments = segments,
+      path = segments,
       default = RorNotStartedResponse.HttpCode.`403`
     )
       .map(RorNotStartedResponse.apply)
@@ -107,7 +107,7 @@ private object Decoders extends Logging {
     }
 
     YamlKeyDecoder[RorFailedToStartResponse.HttpCode](
-      segments = segments,
+      path = segments,
       default = RorFailedToStartResponse.HttpCode.`403`
     )
       .map(RorFailedToStartResponse.apply)

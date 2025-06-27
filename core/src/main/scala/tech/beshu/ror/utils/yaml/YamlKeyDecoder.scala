@@ -20,15 +20,13 @@ import cats.data.NonEmptyList
 import io.circe.Decoder.Result
 import io.circe.{ACursor, Decoder, HCursor}
 
-private class YamlKeyDecoder[A: Decoder](segments: NonEmptyList[String], default: A) extends Decoder[A] {
-  override def apply(c: HCursor): Result[A] = {
+private class YamlKeyDecoder[A: Decoder](segments: NonEmptyList[String]) extends Decoder[Option[A]] {
+  override def apply(c: HCursor): Result[Option[A]] = {
     for {
       oneLine <- downOneLineField(c).as[Option[A]]
       multiLine <- downMultiLineField(c).as[Option[A]]
     } yield {
-      oneLine
-        .orElse(multiLine)
-        .getOrElse(default)
+      oneLine.orElse(multiLine)
     }
   }
 
@@ -44,7 +42,17 @@ private class YamlKeyDecoder[A: Decoder](segments: NonEmptyList[String], default
 }
 
 object YamlKeyDecoder {
-  def apply[A: Decoder](segments: NonEmptyList[String], default: A): Decoder[A] = {
-    new YamlKeyDecoder[A](segments, default)
+  def apply[A: Decoder](path: NonEmptyList[String], default: A): Decoder[A] = {
+    new YamlKeyDecoder[A](path).map(_.getOrElse(default))
+  }
+
+  def apply[A: Decoder](path: NonEmptyList[String], alternativePath: NonEmptyList[String], default: A): Decoder[A] = {
+    for {
+      decodedValue <- new YamlKeyDecoder[A](path)
+      alternativeDecodedValue <- decodedValue match {
+        case Some(value) => Decoder.const[Option[A]](Some(value))
+        case None => new YamlKeyDecoder[A](alternativePath)
+      }
+    } yield alternativeDecodedValue.getOrElse(default)
   }
 }

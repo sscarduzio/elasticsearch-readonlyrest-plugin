@@ -141,7 +141,8 @@ object EsConfig {
   private object decoders {
     implicit val loadRorCoreStrategyDecoder: Decoder[LoadingRorCoreStrategy] = {
       YamlKeyDecoder[Boolean](
-        segments = NonEmptyList.of("readonlyrest", "force_load_from_file"),
+        path = NonEmptyList.of("readonlyrest", "settings", "file", "force_load_from_file"),
+        alternativePath = NonEmptyList.of("readonlyrest", "force_load_from_file"), // for a sake of backward compatibility
         default = false
       ) map {
         case true => ForceLoadingFromFile
@@ -155,7 +156,8 @@ object EsConfig {
           .map(IndexName.Full.apply)
           .map(RorConfigurationIndex.apply)
       YamlKeyDecoder[RorConfigurationIndex](
-        segments = NonEmptyList.of("readonlyrest", "settings_index"),
+        path = NonEmptyList.of("readonlyrest", "settings", "in_index", "index_name"),
+        alternativePath = NonEmptyList.of("readonlyrest", "settings_index"), // for a sake of backward compatibility
         default = RorConfigurationIndex.default
       )
     }
@@ -165,11 +167,11 @@ object EsConfig {
         Decoder.const(XpackSettings(securityEnabled = false))
       } else {
         val booleanDecoder = YamlKeyDecoder[Boolean](
-          segments = NonEmptyList.of("xpack", "security", "enabled"),
+          path = NonEmptyList.of("xpack", "security", "enabled"),
           default = true
         )
         val stringDecoder = YamlKeyDecoder[String](
-          segments = NonEmptyList.of("xpack", "security", "enabled"),
+          path = NonEmptyList.of("xpack", "security", "enabled"),
           default = "true"
         ) map {
           _.toBoolean

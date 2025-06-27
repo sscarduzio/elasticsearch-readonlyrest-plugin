@@ -52,7 +52,7 @@ object AuditingSettingsDecoder extends Logging {
   private def auditSettingsDecoder(esVersion: EsVersion): Decoder[Option[AuditingTool.Settings]] = Decoder.instance { c =>
     for {
       isAuditEnabled <- YamlKeyDecoder[Boolean](
-        segments = NonEmptyList.of("audit", "enabled"),
+        path = NonEmptyList.of("audit", "enabled"),
         default = false
       ).apply(c)
       result <- if (isAuditEnabled) {
