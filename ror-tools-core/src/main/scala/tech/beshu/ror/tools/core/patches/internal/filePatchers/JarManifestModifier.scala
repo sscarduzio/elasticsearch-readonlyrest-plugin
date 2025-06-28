@@ -18,6 +18,7 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import better.files.*
 import tech.beshu.ror.tools.core.utils.EsDirectory
+import tech.beshu.ror.tools.core.utils.FileUtils.{getFilePermissionsAndOwner, setFilePermissionsAndOwner}
 
 import java.util.UUID
 import java.util.jar.{JarFile, JarOutputStream}
@@ -28,7 +29,9 @@ object JarManifestModifier {
 
   private val patchedByRorVersionPropertyName = "Patched-By-Ror-Version"
 
-  def addPatchedByRorVersionProperty(file: File, rorVersion: String): Unit = {
+  def addPatchedByRorVersionProperty(file: File,
+                                     rorVersion: String): Unit = {
+    val originalFilePermissionsAndOwner = file.getFilePermissionsAndOwner
     val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
     Using(new JarFile(file.toJava)) { jarFile =>
       // Using the better-files temporary files causes problems, probably because of permission issues when copying the file at the end of this method.
@@ -45,6 +48,7 @@ object JarManifestModifier {
       (_: Unit) => ()
     )
     tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
+    file.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
   }
 
   def findPatchedFiles(esDirectory: EsDirectory): List[PatchedJarFile] = {
