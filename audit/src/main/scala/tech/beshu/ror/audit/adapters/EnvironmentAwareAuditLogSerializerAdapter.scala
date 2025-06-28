@@ -17,7 +17,7 @@
 package tech.beshu.ror.audit.adapters
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.*
+import tech.beshu.ror.audit._
 
 class EnvironmentAwareAuditLogSerializerAdapter(underlying: EnvironmentAwareAuditLogSerializer,
                                                 environmentContext: AuditEnvironmentContext) extends AuditLogSerializer {
