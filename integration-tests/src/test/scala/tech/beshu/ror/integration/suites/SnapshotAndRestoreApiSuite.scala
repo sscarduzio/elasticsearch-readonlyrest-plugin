@@ -943,6 +943,19 @@ class SnapshotAndRestoreApiSuite
               "restored_index3.1"
             })
           }
+          "restoring without indices defined" in {
+            val repositoryName = RepositoryNameGenerator.next("dev6-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName = SnapshotNameGenerator.next("dev6-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName, List("-*"), List.empty).force()
+
+            val result = dev6SnapshotManager.restoreSnapshot(repositoryName, snapshotName, List("-*"), List.empty)
+            result should have statusCode 200
+
+            val allRestoredIndices = adminCatManager.indices("restored_*")
+            allRestoredIndices.results.map(_("index").str).toSet should be(Set.empty)
+          }
         }
       }
       "not be able to do so" when {

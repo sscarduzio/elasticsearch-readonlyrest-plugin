@@ -329,7 +329,7 @@ object ReadonlyRest {
              env: EsEnv)
             (implicit scheduler: Scheduler,
              environmentConfig: EnvironmentConfig): ReadonlyRest = {
-    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(env.esVersion)
+    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(env.esVersion, env.esNodeSettings)
     create(coreFactory, indexContentService, auditSinkServiceCreator, env)
   }
 

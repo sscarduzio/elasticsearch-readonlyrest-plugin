@@ -20,32 +20,34 @@ import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import monix.execution.Scheduler.Implicits.global
+import org.json.JSONObject
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{LocalAuditCluster, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditLoggerName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
+import tech.beshu.ror.audit.*
+import tech.beshu.ror.audit.adapters.{DeprecatedAuditLogSerializerAdapter, EnvironmentAwareAuditLogSerializerAdapter}
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.utils.TestsUtils.*
 
-import java.time.{ZoneId, ZonedDateTime}
+import java.time.{Instant, ZoneId, ZonedDateTime}
 import scala.reflect.ClassTag
 
 class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory(esVersion)
+    new RawRorConfigBasedCoreFactory(esVersion, testEsNodeSettings)
   }
 
   private val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
@@ -492,6 +494,36 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedIndexName = "readonlyrest_audit-2018-12-31",
               expectedAuditCluster = LocalAuditCluster
             )
+          }
+          "custom environment-aware serializer is set and correctly serializes events" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: data_stream
+                |      serializer: "tech.beshu.ror.unit.acl.factory.TestEnvironmentAwareAuditLogSerializer"
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertDataStreamAuditSinkSettingsPresent[EnvironmentAwareAuditLogSerializerAdapter](
+              config,
+              expectedDataStreamName = "readonlyrest_audit",
+              expectedAuditCluster = LocalAuditCluster
+            )
+            val createdSerializer = serializer(config)
+            val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(DummyAuditRequestContext))
+
+            serializedResponse shouldBe defined
+            serializedResponse.get.get("custom_field_for_es_node_name") shouldBe "testEsNode"
+            serializedResponse.get.get("custom_field_for_es_cluster_name") shouldBe "testEsCluster"
           }
           "deprecated custom serializer is set" in {
             val config = rorConfigFromUnsafe(
@@ -1762,6 +1794,28 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
+  private def serializer(config: RawRorConfig,
+                         esVersion: EsVersion = defaultEsVersionForTests): AuditLogSerializer = {
+    val core = factory(esVersion)
+      .createCoreFrom(
+        config,
+        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        MockHttpClientsFactory,
+        MockLdapConnectionPoolProvider,
+        NoOpMocksProvider
+      )
+      .runSyncUnsafe()
+
+    core match {
+      case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
+        val headSink = auditingSettings.auditSinks.head
+        val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
+        headSinkConfig.logSerializer
+      case _ =>
+        throw new IllegalStateException("Expected auditingSettings are not present")
+    }
+  }
+
   private def assertLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
                                                                                     expectedLoggerName: NonEmptyString) = {
     val core = factory()
@@ -1806,4 +1860,61 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
+}
+
+private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAuditLogSerializer {
+
+  def onResponse(responseContext: AuditResponseContext,
+                 environmentContext: AuditEnvironmentContext): Option[JSONObject] = Some(
+    new JSONObject()
+      .put("custom_field_for_es_node_name", environmentContext.esNodeName)
+      .put("custom_field_for_es_cluster_name", environmentContext.esClusterName)
+  )
+
+}
+
+private object DummyAuditRequestContext extends AuditRequestContext {
+  override def timestamp: Instant = Instant.now()
+
+  override def id: String = ""
+
+  override def correlationId: String = ""
+
+  override def indices: Set[String] = Set.empty
+
+  override def action: String = ""
+
+  override def headers: Map[String, String] = Map.empty
+
+  override def requestHeaders: Headers = Headers(Map.empty)
+
+  override def uriPath: String = ""
+
+  override def history: String = ""
+
+  override def content: String = ""
+
+  override def contentLength: Integer = 0
+
+  override def remoteAddress: String = ""
+
+  override def localAddress: String = ""
+
+  override def `type`: String = ""
+
+  override def taskId: Long = 0
+
+  override def httpMethod: String = ""
+
+  override def loggedInUserName: Option[String] = None
+
+  override def impersonatedByUserName: Option[String] = None
+
+  override def involvesIndices: Boolean = false
+
+  override def attemptedUserName: Option[String] = None
+
+  override def rawAuthHeader: Option[String] = None
+
+  override def generalAuditEvents: JSONObject = new JSONObject
 }

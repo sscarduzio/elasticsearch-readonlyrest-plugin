@@ -21,7 +21,7 @@ import better.files.File
 import java.nio.file.Path
 import scala.util.Try
 
-final case class EsEnv(configPath: Path, modulesPath: Path, esVersion: EsVersion) {
+final case class EsEnv(configPath: Path, modulesPath: Path, esVersion: EsVersion, esNodeSettings: EsNodeSettings) {
 
   def isOssDistribution: Boolean = {
     Try {

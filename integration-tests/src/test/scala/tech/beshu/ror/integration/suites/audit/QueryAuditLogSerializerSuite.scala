@@ -60,7 +60,7 @@ class QueryAuditLogSerializerSuite
         val firstEntry = auditEntries(0)
         firstEntry("user").str should be("user2")
         firstEntry("final_state").str shouldBe "FORBIDDEN"
-        firstEntry("block").str should include("""default""")
+        firstEntry("block").str should include("""deny all indices""")
         firstEntry("content").str shouldBe ""
       }
       "user metadata context" in {
