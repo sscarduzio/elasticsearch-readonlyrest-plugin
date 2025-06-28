@@ -55,6 +55,34 @@ run_integration_tests() {
 
   echo ">>> $ES_MODULE => Running testcontainers.."
   ./gradlew ror-tools:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
+
+  echo ">>> Checking Docker disk usage before cleanup..."
+  DOCKER_SIZE_BEFORE=$(docker system df --format "{{.Size}}" | grep 'Total space used' || true)
+
+  echo ">>> Cleaning up Docker"
+  docker container prune -f
+  docker image prune -af
+  docker volume prune -f
+  docker network prune -f
+
+  echo ">>> Checking Docker disk usage after cleanup..."
+  DOCKER_SIZE_AFTER=$(docker system df --format "{{.Size}}" | grep 'Total space used' || true)
+
+  echo ">>> Docker disk usage: before=$DOCKER_SIZE_BEFORE, after=$DOCKER_SIZE_AFTER"
+
+  echo ">>> Checking APT cache size before cleanup..."
+  APT_SIZE_BEFORE=$(du -sh /var/lib/apt/lists /var/cache/apt/archives /var/tmp 2>/dev/null | awk '{sum += $1} END {print sum}')
+
+  echo ">>> Cleaning apt package cache from Docker builds..."
+  sudo rm -rf /var/lib/apt/lists/*
+  sudo rm -rf /var/cache/apt/archives/*
+  sudo rm -rf /var/tmp/*
+
+  echo ">>> Checking APT cache size after cleanup..."
+  APT_SIZE_AFTER=$(du -sh /var/lib/apt/lists /var/cache/apt/archives /var/tmp 2>/dev/null | awk '{sum += $1} END {print sum}')
+
+  echo ">>> Estimated data removed: before=$APT_SIZE_BEFORE, after=$APT_SIZE_AFTER"
+
   ./gradlew integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
