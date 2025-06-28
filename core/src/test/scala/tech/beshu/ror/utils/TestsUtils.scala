@@ -26,7 +26,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.matchers.should.Matchers.*
 import squants.information.Megabytes
-import tech.beshu.ror.accesscontrol.audit.LoggingContext
+import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
@@ -50,8 +50,9 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
+import tech.beshu.ror.audit.AuditEnvironmentContext
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.es.EsVersion
+import tech.beshu.ror.es.{EsNodeSettings, EsVersion}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
@@ -402,6 +403,13 @@ object TestsUtils {
   def getResourceContent(resource: String): String = {
     File(getResourcePath(resource)).contentAsString
   }
+
+  def testEsNodeSettings: EsNodeSettings = EsNodeSettings(
+    clusterName = "testEsCluster",
+    nodeName = "testEsNode"
+  )
+
+  def testAuditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(testEsNodeSettings)
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 

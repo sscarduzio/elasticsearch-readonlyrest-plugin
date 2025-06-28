@@ -23,6 +23,7 @@ import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.SecurityType.NoSecurityCluster
 import tech.beshu.ror.utils.containers.dependencies.*
 import tech.beshu.ror.utils.containers.providers.ClientProvider
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer
 import tech.beshu.ror.utils.misc.Version
 
@@ -61,4 +62,10 @@ class RemoteClusterAuditingToolsSuite
   override protected def baseRorConfig: String = resolvedRorConfigFile.contentAsString
 
   override protected def baseAuditDataStreamName: Option[String] = Option.when(isDataStreamSupported)("audit_data_stream")
+
+  // Adding the ES cluster fields is enabled in the /cluster_auditing_tools/readonlyrest.yml config file (`DefaultAuditLogSerializerV2` is used)
+  override def assertForEveryAuditEntry(entry: JSON): Unit = {
+    entry("es_node_name").str shouldBe "ROR_SINGLE_1"
+    entry("es_cluster_name").str shouldBe "ROR_SINGLE"
+  }
 }
