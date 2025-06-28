@@ -16,11 +16,13 @@
  */
 package tech.beshu.ror.tools.core.utils
 
-import java.io.File
-import java.nio.file.attribute.{DosFileAttributeView, PosixFilePermission}
+import better.files.File
+
+import java.nio.file.attribute.{DosFileAttributeView, PosixFilePermission, UserPrincipal}
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
+import scala.language.implicitConversions
 
 object FileUtils {
 
@@ -31,17 +33,38 @@ object FileUtils {
     digest.digest.map("%02x".format(_)).mkString
   }
 
-  def modifyFileWithMaintainingOriginalPermissionsAndOwner(file: File)(modifyFile: File => Unit): Unit = {
-    modifyFileWithMaintainingOriginalPermissionsAndOwner[File](file, identity) { f => modifyFile(f); f }
-  }
+  extension (file: File)
+    def setFilePermissionsAndOwner(filePermissionsAndOwner: FilePermissionsAndOwner): File = {
+      filePermissionsAndOwner match {
+        case metadata: FilePermissionsAndOwnerImpl =>
+          Files.setOwner(file.path, metadata.owner)
+          setOriginalPermissions(file.path, metadata.filePermissions)
+          file
+      }
+    }
 
-  def modifyFileWithMaintainingOriginalPermissionsAndOwner[FILE](file: FILE, toJavaFile: FILE => File)(modifyJar: FILE => FILE): Unit = {
-    val originalFileOwner = Files.getOwner(toJavaFile(file).toPath)
-    val originalFilePermissions = getOriginalPermissions(toJavaFile(file).toPath)
-    val resultFile = modifyJar(file)
-    Files.setOwner(toJavaFile(resultFile).toPath, originalFileOwner)
-    setOriginalPermissions(toJavaFile(resultFile).toPath, originalFilePermissions)
-  }
+    def setFilePermissionsAndOwnerCopiedFrom(originalFile: File): File = {
+      file.setFilePermissionsAndOwner(originalFile.getFilePermissionsAndOwner)
+    }
+
+    def getFilePermissionsAndOwner: FilePermissionsAndOwner = {
+      FilePermissionsAndOwnerImpl(
+        getOriginalPermissions(file.path),
+        Files.getOwner(file.path),
+      )
+    }
+
+  given osPathToFile: Conversion[os.Path, File] with
+    def apply(path: os.Path): File = File(path.toString)
+
+  given javaFileToFile: Conversion[java.io.File, File] with
+    def apply(jFile: java.io.File): File = File(jFile.toPath)
+
+  sealed trait FilePermissionsAndOwner
+
+  // The implementation details of FilePermissionsAndOwner should not leak outside of this file
+  private final case class FilePermissionsAndOwnerImpl(filePermissions: Any,
+                                                       owner: UserPrincipal) extends FilePermissionsAndOwner
 
   private def getOriginalPermissions(jarPath: Path): Any = {
     if (isWindows) {
