@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.tools.core.patches.internal
 
+import better.files.File
 import just.semver.SemVer
 import os.Path
 import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
@@ -23,6 +24,9 @@ import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
+import tech.beshu.ror.tools.core.utils.FileUtils.*
+import tech.beshu.ror.tools.core.utils.FileUtils.osPathToFile
+import scala.language.implicitConversions
 
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
@@ -45,12 +49,16 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     os.remove.all(target = backupFolderPath)
   }
 
-  def backup(file: Path): Unit = {
-    os.copy(from = file, to = backupFolderPath / file.last, replaceExisting = true)
+  def backup(originalFile: Path): Unit = {
+    val backedUpFile = backupFolderPath / originalFile.last
+    os.copy(from = originalFile, to = backedUpFile, replaceExisting = true, copyAttributes = true)
+    backedUpFile.setFilePermissionsAndOwnerCopiedFrom(originalFile)
   }
 
   def restore(file: Path): Unit = {
-    os.copy(from = backupFolderPath / file.last, to = file, replaceExisting = true)
+    val backedUpFile = backupFolderPath / file.last
+    os.copy(from = backedUpFile, to = file, replaceExisting = true, copyAttributes = true)
+    file.setFilePermissionsAndOwnerCopiedFrom(backedUpFile)
   }
 
   def copyToPluginPath(file: Path): Unit = {
