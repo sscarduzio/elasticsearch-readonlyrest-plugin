@@ -23,7 +23,8 @@ import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attribu
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.misc.Version
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.language.postfixOps
 
 object ReadonlyRestPlugin {
   final case class Config(rorConfig: File,
@@ -31,6 +32,7 @@ object ReadonlyRestPlugin {
                           attributes: Attributes)
   object Config {
     final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
+                                rorInIndexConfigLoadingDelay: FiniteDuration,
                                 rorCustomSettingsIndex: Option[String],
                                 restSsl: Enabled[RestSsl],
                                 internodeSsl: Enabled[InternodeSsl],
@@ -38,6 +40,7 @@ object ReadonlyRestPlugin {
     object Attributes {
       val default: Attributes = Attributes(
         rorConfigReloading = Enabled.No,
+        rorInIndexConfigLoadingDelay = 0 seconds,
         rorCustomSettingsIndex = None,
         restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.EsFile)),
         internodeSsl = Enabled.No,
@@ -90,17 +93,26 @@ class ReadonlyRestPlugin(esVersion: String,
     builder
       .add(unboundidDebug(false))
       .add(rorReloadingInterval())
+      .add(addLoadingSettings(): _*)
   }
 
   private def unboundidDebug(enabled: Boolean) =
     s"-Dcom.unboundid.ldap.sdk.debug.enabled=${if (enabled) true else false}"
 
   private def rorReloadingInterval() = {
-    val intervalSeconds = config.attributes.rorConfigReloading match {
-      case Enabled.No => 0
-      case Enabled.Yes(interval: FiniteDuration) => interval.toSeconds.toInt
+    val interval = config.attributes.rorConfigReloading match {
+      case Enabled.No => "0sec"
+      case Enabled.Yes(interval: FiniteDuration) => s"${interval.toMillis.toInt}ms"
     }
-    s"-Dcom.readonlyrest.settings.refresh.interval=$intervalSeconds"
+    s"-Dcom.readonlyrest.settings.refresh.interval=$interval"
+  }
+
+  private def addLoadingSettings() = {
+    Seq(
+      s"-Dcom.readonlyrest.settings.loading.delay=${config.attributes.rorInIndexConfigLoadingDelay.toMillis}ms",
+      s"-Dcom.readonlyrest.settings.loading.attempts.count=1",
+      s"-Dcom.readonlyrest.settings.loading.attempts.interval=0sec"
+    )
   }
 
   private implicit class InstallRorPlugin(val image: DockerImageDescription) {

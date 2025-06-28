@@ -14,17 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.tools.core.utils
 
-plugins {
-    id "groovy-gradle-plugin"
+trait RawEnvVariablesProvider {
+  def getSysEnv: Map[String, String]
 }
 
-repositories {
-    gradlePluginPortal()
-}
-
-dependencies {
-    implementation "com.star-zero.gradle:githook:1.2.1"
-    implementation "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.16.1"
-    implementation "org.owasp.dependencycheck:org.owasp.dependencycheck.gradle.plugin:12.1.3"
+object OsRawEnvVariablesProvider extends RawEnvVariablesProvider {
+  val getSysEnv: Map[String, String] = sys.env
 }

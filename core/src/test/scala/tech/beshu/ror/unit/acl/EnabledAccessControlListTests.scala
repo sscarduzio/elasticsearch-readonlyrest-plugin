@@ -24,8 +24,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNotAllowed
-import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allow, Forbidden}
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allow, ForbiddenBy}
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
@@ -115,8 +114,31 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
             .result
 
           inside(userMetadataRequestResult) {
-            case Forbidden(causes) =>
-              causes.toNonEmptyList should be (NonEmptyList.one(OperationNotAllowed))
+            case ForbiddenBy(blockContext, block) =>
+              block.name should be(Block.Name("b1"))
+              block.policy should be(Block.Policy.Forbid(None))
+          }
+        }
+        "FORBID policy is matched and no other block is matched" in {
+          val acl = createAcl(NonEmptyList.of(
+            mockAllowedPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g2"), group("admins")))),
+            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g3"), group("admins")))),
+            mockAllowedPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g4"), group("admins")))),
+            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g5"), group("admins")))),
+            mockForbidPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("users")).withAvailableGroups(UniqueList.of(group("g1"), group("admins")))),
+            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g6"), group("admins")))),
+            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
+          ))
+
+          val userMetadataRequestResult = acl
+            .handleMetadataRequest(mockMetadataRequestContext("users"))
+            .runSyncUnsafe()
+            .result
+
+          inside(userMetadataRequestResult) {
+            case ForbiddenBy(blockContext, block) =>
+              block.name should be(Block.Name("b5"))
+              block.policy should be(Block.Policy.Forbid(None))
           }
         }
       }
@@ -157,6 +179,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
       NonEmptyList.of(
         new RegularRule {
           override val name: Rule.Name = Rule.Name("auth")
+
           override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
             Task.now(Rule.RuleResult.Fulfilled(blockContext.withUserMetadata(_ => userMetadata)))
           }

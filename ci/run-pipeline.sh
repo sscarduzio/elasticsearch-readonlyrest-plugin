@@ -20,24 +20,29 @@ export TERM=dumb
 # Adaptation for Azure
 ([ ! -z $BUILD_BUILDNUMBER ] || [ "$TRAVIS" ]) && TRAVIS="true"
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "license" ]]; then
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "license_check" ]]; then
   echo ">>> Check all license headers are in place"
-  ./gradlew license
+  ./gradlew --no-daemon license
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "cve_check" ]]; then
   echo ">>> Running CVE checks.."
-  ./gradlew dependencyCheckAnalyze
+  ./gradlew --no-daemon dependencyCheckAnalyze
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "audit_compile" ]]; then
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "compile_codebase_check" ]]; then
+  echo ">>> Running compile codebase.."
+  ./gradlew --no-daemon classes
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "audit_build_check" ]]; then
   echo ">>> Running audit module cross build.."
-  ./gradlew --stacktrace audit:crossBuildAssemble
+  ./gradlew --no-daemon --stacktrace audit:crossBuildAssemble
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "core_tests" ]]; then
   echo ">>> Running unit tests.."
-  ./gradlew --stacktrace core:test
+  ./gradlew --no-daemon --stacktrace core:test
 fi
 
 run_integration_tests() {

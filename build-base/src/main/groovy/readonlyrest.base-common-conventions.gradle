@@ -46,6 +46,20 @@ test {
     }
 }
 
+dependencyCheck {
+    analyzers {
+        assemblyEnabled = false // We don't need 'exe' or 'dll' files scanning
+    }
+    data {
+        if (System.getenv('DEPENDENCY_CHECK_DATA_DIR')) {  // We want to fall back to the default path for local builds
+            directory = System.getenv('DEPENDENCY_CHECK_DATA_DIR')
+        }
+    }
+    nvd {
+        apiKey = System.getenv('NVD_API_KEY')
+    }
+}
+
 githook {
     hooks {
         "pre-commit" {

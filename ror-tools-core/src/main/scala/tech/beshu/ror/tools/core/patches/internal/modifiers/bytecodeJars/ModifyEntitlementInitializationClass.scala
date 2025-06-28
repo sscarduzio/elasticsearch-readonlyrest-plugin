@@ -58,7 +58,7 @@ private[patches] class ModifyEntitlementInitializationClass(esVersion: SemVer)
       name match {
         case "validateReadFilesEntitlements" =>
           esVersion match
-            case v if v >= es901 =>
+            case v if v == es901 =>
               new DontValidateForbiddenPathsInCaseOfRorPlugin(
                 super.visitMethod(access, name, descriptor, signature, exceptions)
               )
@@ -66,7 +66,7 @@ private[patches] class ModifyEntitlementInitializationClass(esVersion: SemVer)
               new DontValidateForbiddenPathsInCaseOfRorPlugin(
                 super.visitMethod(access, name, descriptor, signature, exceptions)
               )
-            case v =>
+            case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
