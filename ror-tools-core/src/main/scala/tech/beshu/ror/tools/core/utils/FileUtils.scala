@@ -36,7 +36,7 @@ object FileUtils {
   extension (file: File)
     def setFilePermissionsAndOwner(filePermissionsAndOwner: FilePermissionsAndOwner): File = {
       filePermissionsAndOwner match {
-        case metadata: FilePermissionsAndOwnerImpl =>
+        case metadata: OriginalFilePermissionsAndOwner =>
           Files.setOwner(file.path, metadata.owner)
           setOriginalPermissions(file.path, metadata.filePermissions)
           file
@@ -48,7 +48,7 @@ object FileUtils {
     }
 
     def getFilePermissionsAndOwner: FilePermissionsAndOwner = {
-      FilePermissionsAndOwnerImpl(
+      OriginalFilePermissionsAndOwner(
         getOriginalPermissions(file.path),
         Files.getOwner(file.path),
       )
@@ -63,8 +63,8 @@ object FileUtils {
   sealed trait FilePermissionsAndOwner
 
   // The implementation details of FilePermissionsAndOwner should not leak outside of this file
-  private final case class FilePermissionsAndOwnerImpl(filePermissions: Any,
-                                                       owner: UserPrincipal) extends FilePermissionsAndOwner
+  private final case class OriginalFilePermissionsAndOwner(filePermissions: Any,
+                                                           owner: UserPrincipal) extends FilePermissionsAndOwner
 
   private def getOriginalPermissions(jarPath: Path): Any = {
     if (isWindows) {
