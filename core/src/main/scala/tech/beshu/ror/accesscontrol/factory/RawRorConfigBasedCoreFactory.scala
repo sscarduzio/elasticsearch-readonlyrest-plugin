@@ -23,7 +23,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
-import tech.beshu.ror.accesscontrol.audit.LoggingContext
+import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
@@ -48,7 +48,6 @@ import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, G
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.audit.AuditEnvironmentContext
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.{EsNodeSettings, EsVersion}
@@ -319,10 +318,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion,
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
-        auditEnvironmentContext = new AuditEnvironmentContext {
-          override val esNodeName = esNodeSettings.nodeName
-          override val esClusterName = esNodeSettings.clusterName
-        }
+        auditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(esNodeSettings)
         auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esVersion)(auditEnvironmentContext))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))

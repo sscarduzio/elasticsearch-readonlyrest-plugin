@@ -26,7 +26,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.matchers.should.Matchers.*
 import squants.information.Megabytes
-import tech.beshu.ror.accesscontrol.audit.LoggingContext
+import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
@@ -409,10 +409,7 @@ object TestsUtils {
     nodeName = "testEsNode"
   )
 
-  def testAuditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContext {
-    override val esNodeName: String = testEsNodeSettings.nodeName
-    override val esClusterName: String = testEsNodeSettings.clusterName
-  }
+  def testAuditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(testEsNodeSettings)
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 
