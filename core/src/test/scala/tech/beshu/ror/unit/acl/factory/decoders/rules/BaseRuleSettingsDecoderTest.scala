@@ -50,7 +50,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   protected def factory: RawRorConfigBasedCoreFactory = {
     implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(envVarsProvider = envVarsProvider)
-    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
+    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests, testEsNodeSettings)
   }
 
   def assertDecodingSuccess(yaml: String,

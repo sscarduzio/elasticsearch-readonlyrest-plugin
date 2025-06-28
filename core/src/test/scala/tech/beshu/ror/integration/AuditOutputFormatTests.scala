@@ -23,8 +23,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -33,7 +33,7 @@ import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes}
+import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, testAuditEnvironmentContext}
 
 import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration.*
@@ -92,7 +92,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "action":"indices:admin/get",
              |  "block":"default",
              |  "id":"mock",
-             |  "content_len":0
+             |  "content_len":0,
+             |  "es_cluster_name": "testEsCluster",
+             |  "es_node_name": "testEsNode"
              |}""".stripMargin
         )
 
@@ -135,7 +137,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "action":"indices:admin/get",
              |  "block":"default",
              |  "id":"mock",
-             |  "content_len":0
+             |  "content_len":0,
+             |  "es_cluster_name": "testEsCluster",
+             |  "es_node_name": "testEsNode"
              |}""".stripMargin
         )
 
@@ -153,15 +157,15 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private def auditedAcl(indexBasedAuditSinkService: IndexBasedAuditSinkService,
                          dataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-    val settings = AuditingTool.Settings(
+    val settings = AuditingTool.AuditSettings(
       NonEmptyList.of(
         AuditSink.Enabled(Config.EsIndexBasedSink(
-          new DefaultAuditLogSerializer,
+          new DefaultAuditLogSerializer(testAuditEnvironmentContext),
           RorAuditIndexTemplate.default,
           AuditCluster.LocalAuditCluster
         )),
         AuditSink.Enabled(Config.EsDataStreamBasedSink(
-          new DefaultAuditLogSerializer,
+          new DefaultAuditLogSerializer(testAuditEnvironmentContext),
           RorAuditDataStream.default,
           AuditCluster.LocalAuditCluster
         ))
