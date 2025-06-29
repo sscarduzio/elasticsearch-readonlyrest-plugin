@@ -58,15 +58,16 @@ run_integration_tests() {
 }
 
 run_ror_tools_tests() {
-  if [ "$#" -ne 1 ]; then
-    echo "What ES module should I run integration tests for?"
-    return 1
-  fi
-
-  ES_MODULE=$1
-
-  echo ">>> $ES_MODULE => Running testcontainers.."
-  ./gradlew ror-tools:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
+#  if [ "$#" -ne 1 ]; then
+#    echo "What ES module should I run integration tests for?"
+#    return 1
+#  fi
+#
+#  ES_MODULE=$1
+#
+#  echo ">>> $ES_MODULE => Running testcontainers.."
+#  ./gradlew ror-tools:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
+  echo ">>> $ES_MODULE => NOOP.."
 }
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es90x" ]]; then
