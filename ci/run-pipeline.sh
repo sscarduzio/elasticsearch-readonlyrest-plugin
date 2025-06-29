@@ -54,36 +54,19 @@ run_integration_tests() {
   ES_MODULE=$1
 
   echo ">>> $ES_MODULE => Running testcontainers.."
-  ./gradlew ror-tools:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
-
-  echo ">>> Checking Docker disk usage before cleanup..."
-  DOCKER_SIZE_BEFORE=$(docker system df --format "{{.Size}}" | grep 'Total space used' || true)
-
-  echo ">>> Cleaning up Docker"
-  docker container prune -f
-  docker image prune -af
-  docker volume prune -f
-  docker network prune -f
-
-  echo ">>> Checking Docker disk usage after cleanup..."
-  DOCKER_SIZE_AFTER=$(docker system df --format "{{.Size}}" | grep 'Total space used' || true)
-
-  echo ">>> Docker disk usage: before=$DOCKER_SIZE_BEFORE, after=$DOCKER_SIZE_AFTER"
-
-  echo ">>> Checking APT cache size before cleanup..."
-  APT_SIZE_BEFORE=$(du -sh /var/lib/apt/lists /var/cache/apt/archives /var/tmp 2>/dev/null | awk '{sum += $1} END {print sum}')
-
-  echo ">>> Cleaning apt package cache from Docker builds..."
-  sudo rm -rf /var/lib/apt/lists/*
-  sudo rm -rf /var/cache/apt/archives/*
-  sudo rm -rf /var/tmp/*
-
-  echo ">>> Checking APT cache size after cleanup..."
-  APT_SIZE_AFTER=$(du -sh /var/lib/apt/lists /var/cache/apt/archives /var/tmp 2>/dev/null | awk '{sum += $1} END {print sum}')
-
-  echo ">>> Estimated data removed: before=$APT_SIZE_BEFORE, after=$APT_SIZE_AFTER"
-
   ./gradlew integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
+}
+
+run_ror_tools_tests() {
+  if [ "$#" -ne 1 ]; then
+    echo "What ES module should I run integration tests for?"
+    return 1
+  fi
+
+  ES_MODULE=$1
+
+  echo ">>> $ES_MODULE => Running testcontainers.."
+  ./gradlew ror-tools:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es90x" ]]; then
@@ -208,6 +191,130 @@ fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es67x" ]]; then
   run_integration_tests "es67x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es90x" ]]; then
+  run_ror_tools_tests "es90x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es818x" ]]; then
+  run_ror_tools_tests "es818x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es816x" ]]; then
+  run_ror_tools_tests "es816x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es815x" ]]; then
+  run_ror_tools_tests "es815x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es814x" ]]; then
+  run_ror_tools_tests "es814x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es813x" ]]; then
+  run_ror_tools_tests "es813x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es812x" ]]; then
+  run_ror_tools_tests "es812x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es811x" ]]; then
+  run_ror_tools_tests "es811x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es810x" ]]; then
+  run_ror_tools_tests "es810x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es89x" ]]; then
+  run_ror_tools_tests "es89x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es88x" ]]; then
+  run_ror_tools_tests "es88x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es87x" ]]; then
+  run_ror_tools_tests "es87x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es85x" ]]; then
+  run_ror_tools_tests "es85x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es84x" ]]; then
+  run_ror_tools_tests "es84x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es83x" ]]; then
+  run_ror_tools_tests "es83x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es82x" ]]; then
+  run_ror_tools_tests "es82x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es81x" ]]; then
+  run_ror_tools_tests "es81x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es80x" ]]; then
+  run_ror_tools_tests "es80x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es717x" ]]; then
+  run_ror_tools_tests "es717x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es716x" ]]; then
+  run_ror_tools_tests "es716x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es714x" ]]; then
+  run_ror_tools_tests "es714x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es711x" ]]; then
+  run_ror_tools_tests "es711x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es710x" ]]; then
+  run_ror_tools_tests "es710x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es79x" ]]; then
+  run_ror_tools_tests "es79x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es78x" ]]; then
+  run_ror_tools_tests "es78x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es77x" ]]; then
+  run_ror_tools_tests "es77x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es74x" ]]; then
+  run_ror_tools_tests "es74x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es73x" ]]; then
+  run_ror_tools_tests "es73x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es72x" ]]; then
+  run_ror_tools_tests "es72x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es70x" ]]; then
+  run_ror_tools_tests "es70x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "ror_tools_es67x" ]]; then
+  run_ror_tools_tests "es67x"
 fi
 
 if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then
