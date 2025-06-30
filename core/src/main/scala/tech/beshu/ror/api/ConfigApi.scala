@@ -22,6 +22,7 @@ import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
 import tech.beshu.ror.api.ConfigApi.*
 import tech.beshu.ror.api.ConfigApi.ConfigRequest.Type
@@ -29,7 +30,7 @@ import tech.beshu.ror.api.ConfigApi.ConfigResponse.*
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.index.IndexConfigError.IndexConfigNotExist
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
@@ -40,7 +41,7 @@ class ConfigApi(rorInstance: RorInstance,
                 indexConfigManager: IndexConfigManager,
                 fileConfigLoader: FileConfigLoader,
                 rorConfigurationIndex: RorConfigurationIndex)
-               (implicit val EnvironmentConfig: EnvironmentConfig)
+               (implicit val systemContext: SystemContext)
   extends Logging {
 
   import ConfigApi.Utils.*

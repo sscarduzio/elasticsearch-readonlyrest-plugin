@@ -47,7 +47,7 @@ import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.RorConfig.NoOpImpersonationWarningsReader
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
@@ -1409,7 +1409,7 @@ class ReadonlyRestStartingTests
         .map(size => "com.readonlyrest.settings.maxSize" -> size)
         .toMap
 
-    implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
+    implicit val systemContext: SystemContext = new Environment(
       propertiesProvider = TestsPropertiesProvider.usingMap(
         mapWithIntervalFrom(refreshInterval) ++
           mapWithMaxYamlSize(maxYamlSize) ++

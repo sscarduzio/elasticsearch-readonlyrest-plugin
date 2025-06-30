@@ -21,6 +21,7 @@ import cats.effect.Resource
 import cats.{Eq, Show}
 import io.circe.{Json, ParsingFailure}
 import monix.eval.Task
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
 import tech.beshu.ror.implicits.*
 
@@ -31,15 +32,15 @@ final case class RawRorConfig(configJson: Json, raw: String)
 object RawRorConfig {
 
   def fromFile(file: File)
-              (implicit environmentConfig: EnvironmentConfig): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
+              (implicit systemContext: SystemContext): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
     fromString(file.contentAsString)
   }
 
   def fromString(content: String)
-                (implicit environmentConfig: EnvironmentConfig): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
+                (implicit systemContext: SystemContext): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
     val contentResource = Resource.make(Task(new StringReader(content))) { reader => Task(reader.close()) }
     contentResource.use { reader => Task {
-      handleParseResult(environmentConfig.yamlParser.parse(reader))
+      handleParseResult(systemContext.yamlParser.parse(reader))
         .map(RawRorConfig(_, content))
     }}
   }

@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.SslConfiguration.*
 import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.{FileBasedConfiguration, KeystoreBasedConfiguration}
-import tech.beshu.ror.configuration.{EnvironmentConfig, MalformedSettings, RorSsl}
+import tech.beshu.ror.configuration.{Environment, MalformedSettings, RorSsl}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath}
@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePat
 class SslConfigurationTest
   extends AnyWordSpec with Inside {
 
-  private implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
+  private implicit val systemContext: SystemContext = new Environment(
     propertiesProvider = TestsPropertiesProvider.default
   )
 

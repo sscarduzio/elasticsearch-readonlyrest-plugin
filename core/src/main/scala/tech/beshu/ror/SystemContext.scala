@@ -14,28 +14,29 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror
 
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
+import tech.beshu.ror.configuration.RorProperties
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.yaml.RorYamlParser
 
 import java.time.Clock
 
-final class EnvironmentConfig(val clock: Clock = Clock.systemUTC(),
-                              val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
-                              val propertiesProvider: PropertiesProvider = JvmPropertiesProvider,
-                              val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
-                              val uuidProvider: UuidProvider = JavaUuidProvider,
-                              val jsCompiler: JsCompiler = MozillaJsCompiler,
-                              val variablesFunctions: SupportedVariablesFunctions = SupportedVariablesFunctions.default) {
+final class SystemContext(val clock: Clock = Clock.systemUTC(),
+                          val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
+                          val propertiesProvider: PropertiesProvider = JvmPropertiesProvider,
+                          val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
+                          val uuidProvider: UuidProvider = JavaUuidProvider,
+                          val jsCompiler: JsCompiler = MozillaJsCompiler,
+                          val variablesFunctions: SupportedVariablesFunctions = SupportedVariablesFunctions.default) {
 
   val yamlParser: RorYamlParser = new RorYamlParser(RorProperties.rorSettingsMaxSize(propertiesProvider))
 }
 
-object EnvironmentConfig {
+object SystemContext {
 
-  val default: EnvironmentConfig = new EnvironmentConfig()
+  val default: SystemContext = new SystemContext()
 }

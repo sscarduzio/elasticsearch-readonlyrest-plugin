@@ -27,7 +27,7 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.configuration.EnvironmentConfig
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.configuration.loader.*
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
 import tech.beshu.ror.es.IndexJsonContentService
@@ -68,7 +68,7 @@ class TransportRRConfigAction(setting: Settings,
 
   import tech.beshu.ror.boot.RorSchedulers.Implicits.rorRestApiScheduler
 
-  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
+  private implicit val systemContext: SystemContext = SystemContext.default
 
   @Inject
   def this(setting: Settings,

@@ -49,7 +49,7 @@ import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
-import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
+import tech.beshu.ror.configuration.ReadonlyRestEsConfig
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
@@ -96,7 +96,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
   }
 
-  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
+  private implicit val systemContext: SystemContext = SystemContext.default
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds

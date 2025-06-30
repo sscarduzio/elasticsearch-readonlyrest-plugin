@@ -18,26 +18,27 @@ package tech.beshu.ror.configuration.loader.distributed
 
 import cats.data.EitherT
 import monix.eval.Task
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.configuration.ConfigLoading.LoadRorConfig
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.index.IndexConfigManager
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig}
-import tech.beshu.ror.configuration.{ConfigLoading, EnvironmentConfig, RawRorConfig}
+import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 
 object RawRorConfigLoadingAction {
 
   def loadFromIndex(env: EsEnv, indexJsonContentService: IndexJsonContentService)
-                   (implicit environmentConfig: EnvironmentConfig): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
+                   (implicit systemContext: SystemContext): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
     val compiler = ConfigLoadingInterpreter.create(new IndexConfigManager(indexJsonContentService))
     (for {
       esConfig <- EitherT(ConfigLoading.loadEsConfig(env))
       loadedConfig <- esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
-        case LoadingRorCoreStrategy.ForceLoadingFromFile =>
+        case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
           EitherT.leftT[LoadRorConfig, LoadedRorConfig[RawRorConfig]](
             LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled("todo"): LoadedRorConfig.Error // todo: fixme
           )
-        case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback =>
+        case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, _) =>
           EitherT(LoadRawRorConfig.loadFromIndex(esConfig.rorEsLevelSettings.rorConfigIndex))
       }
     } yield loadedConfig).value.foldMap(compiler)

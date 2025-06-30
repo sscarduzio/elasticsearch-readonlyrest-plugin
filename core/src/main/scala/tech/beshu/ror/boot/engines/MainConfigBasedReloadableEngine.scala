@@ -22,6 +22,7 @@ import cats.implicits.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
@@ -31,7 +32,7 @@ import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.{ConfigUpToDate, Rel
 import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
 import tech.beshu.ror.boot.engines.ConfigHash.*
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.index.SavingIndexConfigError.CannotSaveConfig
 import tech.beshu.ror.utils.ScalaOps.value
 
@@ -39,7 +40,7 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
                                                     initialEngine: (Engine, RawRorConfig),
                                                     reloadInProgress: Semaphore[Task],
                                                     rorConfigurationIndex: RorConfigurationIndex)
-                                                   (implicit environmentConfig: EnvironmentConfig,
+                                                   (implicit systemContext: SystemContext,
                                                     scheduler: Scheduler)
   extends BaseReloadableEngine(
     name = "main",

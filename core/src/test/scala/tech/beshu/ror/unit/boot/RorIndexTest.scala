@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
@@ -217,7 +217,7 @@ class RorIndexTest extends AnyWordSpec
   private def readonlyRestBoot(factory: CoreFactory,
                                indexJsonContentService: IndexJsonContentService,
                                configPath: String) = {
-    implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
+    implicit val systemContext: SystemContext = new Environment(
       propertiesProvider = TestsPropertiesProvider.usingMap(
         Map(
           "com.readonlyrest.settings.loading.delay" -> "1"

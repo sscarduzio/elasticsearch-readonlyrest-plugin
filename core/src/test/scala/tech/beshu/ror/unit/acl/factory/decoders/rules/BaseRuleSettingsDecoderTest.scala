@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.EnvironmentConfig
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -49,7 +49,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   protected def factory: RawRorConfigBasedCoreFactory = {
-    implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(envVarsProvider = envVarsProvider)
+    implicit val systemContext: SystemContext = new Environment(envVarsProvider = envVarsProvider)
     new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
   }
 

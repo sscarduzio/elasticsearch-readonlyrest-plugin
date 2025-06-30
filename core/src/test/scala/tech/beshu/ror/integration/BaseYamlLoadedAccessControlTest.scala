@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -37,7 +37,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
   protected implicit def propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default
 
-  private implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(
+  private implicit val systemContext: SystemContext = new Environment(
     envVarsProvider = envVarsProvider,
     propertiesProvider = propertiesProvider
   )

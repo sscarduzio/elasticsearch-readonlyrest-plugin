@@ -24,6 +24,7 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
 import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestConfigApi}
@@ -32,7 +33,7 @@ import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.index.{IndexConfigError, SavingIndexConfigError}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig, RorProperties}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, RorProperties}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -45,7 +46,7 @@ class RorInstance private(boot: ReadonlyRest,
                           initialTestEngine: ReadonlyRest.TestEngine,
                           testReloadInProgress: Semaphore[Task],
                           rorConfigurationIndex: RorConfigurationIndex)
-                         (implicit environmentConfig: EnvironmentConfig,
+                         (implicit systemContext: SystemContext,
                           scheduler: Scheduler)
   extends Logging {
 
@@ -55,7 +56,7 @@ class RorInstance private(boot: ReadonlyRest,
   logger.info("ReadonlyREST was loaded ...")
   private val configsReloadTask = mode match {
     case Mode.WithPeriodicIndexCheck =>
-      RorProperties.rorIndexSettingsReloadInterval(environmentConfig.propertiesProvider) match {
+      RorProperties.rorIndexSettingsReloadInterval(systemContext.propertiesProvider) match {
         case RefreshInterval.Disabled =>
           logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
           Cancelable.empty
@@ -83,7 +84,7 @@ class RorInstance private(boot: ReadonlyRest,
   private val configRestApi = new ConfigApi(
     rorInstance = this,
     boot.indexConfigManager,
-    new FileConfigLoader(boot.esEnv.configPath),
+    new FileConfigLoader(???),
     rorConfigurationIndex
   )
 
@@ -157,7 +158,7 @@ class RorInstance private(boot: ReadonlyRest,
                                           reloadTask: RequestId => Task[Seq[(ConfigType, Either[ScheduledReloadError, Unit])]]): Cancelable = {
     logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within ${interval.show}")
     scheduler.scheduleOnce(interval.value) {
-      implicit val requestId: RequestId = RequestId(environmentConfig.uuidProvider.random.toString)
+      implicit val requestId: RequestId = RequestId(systemContext.uuidProvider.random.toString)
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ReadonlyREST configs from index ...")
       reloadTask(requestId)
         .runAsync {
@@ -271,7 +272,7 @@ object RorInstance {
                                    mainEngine: ReadonlyRest.MainEngine,
                                    testEngine: ReadonlyRest.TestEngine,
                                    rorConfigurationIndex: RorConfigurationIndex)
-                                  (implicit environmentConfig: EnvironmentConfig,
+                                  (implicit systemContext: SystemContext,
                                    scheduler: Scheduler): Task[RorInstance] = {
     create(boot, Mode.WithPeriodicIndexCheck, mainEngine, testEngine, rorConfigurationIndex)
   }
@@ -280,7 +281,7 @@ object RorInstance {
                                       mainEngine: ReadonlyRest.MainEngine,
                                       testEngine: ReadonlyRest.TestEngine,
                                       rorConfigurationIndex: RorConfigurationIndex)
-                                     (implicit environmentConfig: EnvironmentConfig,
+                                     (implicit systemContext: SystemContext,
                                       scheduler: Scheduler): Task[RorInstance] = {
     create(boot, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, rorConfigurationIndex)
   }
@@ -290,7 +291,7 @@ object RorInstance {
                      engine: ReadonlyRest.MainEngine,
                      testEngine: ReadonlyRest.TestEngine,
                      rorConfigurationIndex: RorConfigurationIndex)
-                    (implicit environmentConfig: EnvironmentConfig,
+                    (implicit systemContext: SystemContext,
                      scheduler: Scheduler) = {
     for {
       isReloadInProgressSemaphore <- Semaphore[Task](1)

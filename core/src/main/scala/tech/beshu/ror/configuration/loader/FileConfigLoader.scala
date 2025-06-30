@@ -20,27 +20,20 @@ import better.files.File
 import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
+import tech.beshu.ror.SystemContext
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromFileSettings
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError.FileNotExist
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorProperties}
-import tech.beshu.ror.providers.PropertiesProvider
 
-import java.nio.file.Path
-
-class FileConfigLoader(esConfigPath: Path)
-                      (implicit environmentConfig: EnvironmentConfig)
+class FileConfigLoader(settings: LoadFromFileSettings)
+                      (implicit systemContext: SystemContext)
   extends ConfigLoader[FileConfigError] {
 
-  private implicit val propertiesProvider: PropertiesProvider = environmentConfig.propertiesProvider
-  
-  def rawConfigFile: File = {
-    RorProperties.rorSettingsCustomFile match {
-      case Some(customRorFile) => customRorFile
-      case None => File(s"${esConfigPath.toAbsolutePath}/readonlyrest.yml")
-    }
-  }
+  // todo: do we need it?
+  def rawConfigFile: File = settings.rorSettingsFile
 
   override def load(): Task[Either[ConfigLoaderError[FileConfigError], RawRorConfig]] = {
     val file = rawConfigFile

@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
+import tech.beshu.ror.configuration.ReadonlyRestEsConfig
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
@@ -59,10 +59,10 @@ class IndexLevelActionFilter(nodeName: String,
                              repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
                              esInitListener: EsInitListener,
                              rorEsConfig: ReadonlyRestEsConfig)
-                            (implicit environmentConfig: EnvironmentConfig)
+                            (implicit systemContext: SystemContext)
   extends ActionFilter with Logging {
 
-  private implicit val generator: UniqueIdentifierGenerator = environmentConfig.uniqueIdentifierGenerator
+  private implicit val generator: UniqueIdentifierGenerator = systemContext.uniqueIdentifierGenerator
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
     new RorNotAvailableRequestHandler(rorEsConfig.bootConfig)
@@ -104,7 +104,7 @@ class IndexLevelActionFilter(nodeName: String,
           new NodeClientBasedAuditSinkService(
             client,
             new XContentJsonParserFactory(xContentRegistry)
-          )(using environmentConfig.clock)
+          )(using systemContext.clock)
         case remote: AuditCluster.RemoteAuditCluster =>
           RestClientAuditSinkService.create(remote)
       }

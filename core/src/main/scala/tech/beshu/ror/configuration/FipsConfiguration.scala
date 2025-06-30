@@ -20,6 +20,7 @@ import better.files.File
 import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode.NonFips
 import tech.beshu.ror.configuration.loader.FileConfigLoader
@@ -33,7 +34,7 @@ final case class FipsConfiguration(fipsMode: FipsMode)
 object FipsConfiguration extends Logging {
 
   def load(esEnv: EsEnv)
-          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
+          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
     val esConfig = esEnv.elasticsearchConfig
     loadFipsConfigFromFile(esConfig)
       .fold(
@@ -49,8 +50,8 @@ object FipsConfiguration extends Logging {
   }
 
   private def fallbackToRorConfig(esConfigFolderPath: Path)
-                                 (implicit environmentConfig: EnvironmentConfig) = {
-    val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
+                                 (implicit systemContext: SystemContext) = {
+    val rorConfig = new FileConfigLoader(???).rawConfigFile
     logger.info(s"... trying: ${rorConfig.show}")
     if (rorConfig.exists) {
       loadFipsConfigFromFile(rorConfig)
@@ -60,7 +61,7 @@ object FipsConfiguration extends Logging {
   }
 
   private def loadFipsConfigFromFile(configFile: File)
-                                    (implicit environmentConfig: EnvironmentConfig): Either[MalformedSettings, FipsConfiguration] = {
+                                    (implicit systemContext: SystemContext): Either[MalformedSettings, FipsConfiguration] = {
     new YamlFileBasedConfigLoader(configFile).loadConfig[FipsConfiguration](configName = "ROR FIPS Settings")
   }
 

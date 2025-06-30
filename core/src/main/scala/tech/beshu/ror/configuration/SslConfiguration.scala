@@ -20,6 +20,7 @@ import better.files.*
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration}
 import tech.beshu.ror.configuration.loader.FileConfigLoader
@@ -38,7 +39,7 @@ object RorSsl extends Logging {
   val noSsl: RorSsl = RorSsl(None, None)
 
   def load(esEnv: EsEnv)
-          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorSsl]] = Task {
+          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, RorSsl]] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esEnv.configPath)
     val esConfig = esEnv.elasticsearchConfig
     loadSslConfigFromFile(esConfig)
@@ -56,8 +57,8 @@ object RorSsl extends Logging {
 
   private def fallbackToRorConfig(esConfigFolderPath: Path)
                                  (implicit rorSslDecoder: Decoder[RorSsl],
-                                  environmentConfig: EnvironmentConfig) = {
-    val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
+                                  systemContext: SystemContext) = {
+    val rorConfig = new FileConfigLoader(???).rawConfigFile
     logger.info(s"... trying: ${rorConfig.show}")
     if (rorConfig.exists) {
       loadSslConfigFromFile(rorConfig)
@@ -68,7 +69,7 @@ object RorSsl extends Logging {
 
   private def loadSslConfigFromFile(configFile: File)
                                    (implicit rorSslDecoder: Decoder[RorSsl],
-                                    environmentConfig: EnvironmentConfig) = {
+                                    systemContext: SystemContext) = {
     new YamlFileBasedConfigLoader(configFile).loadConfig[RorSsl](configName = "ROR SSL settings")
   }
 }

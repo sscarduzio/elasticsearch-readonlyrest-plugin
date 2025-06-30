@@ -23,6 +23,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
@@ -37,7 +38,7 @@ import tech.beshu.ror.configuration.index.IndexConfigError.{IndexConfigNotExist,
 import tech.beshu.ror.configuration.index.IndexTestConfigManager.Const
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, TestRorConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, TestRorConfig}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 import tech.beshu.ror.syntax.*
@@ -50,7 +51,7 @@ import scala.concurrent.duration.Duration
 import scala.util.Try
 
 final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService)
-                                  (implicit environmentConfig: EnvironmentConfig)
+                                  (implicit systemContext: SystemContext)
   extends BaseIndexConfigManager[TestRorConfig]
     with Logging {
 

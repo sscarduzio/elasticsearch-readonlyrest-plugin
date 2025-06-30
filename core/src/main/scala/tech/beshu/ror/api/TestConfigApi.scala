@@ -20,6 +20,7 @@ import cats.data.EitherT
 import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, RequestId}
 import tech.beshu.ror.api.TestConfigApi.TestConfigRequest.Type
@@ -28,7 +29,7 @@ import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 import tech.beshu.ror.utils.DurationOps.*
@@ -38,7 +39,7 @@ import scala.concurrent.duration.*
 import scala.util.Try
 
 class TestConfigApi(rorInstance: RorInstance)
-                   (implicit environmentConfig: EnvironmentConfig) {
+                   (implicit systemContext: SystemContext) {
 
   import tech.beshu.ror.api.TestConfigApi.Utils.*
   import tech.beshu.ror.api.TestConfigApi.Utils.decoders.*

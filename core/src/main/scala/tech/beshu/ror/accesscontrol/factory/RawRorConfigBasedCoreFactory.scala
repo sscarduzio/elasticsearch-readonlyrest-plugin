@@ -21,6 +21,7 @@ import cats.kernel.Monoid
 import io.circe.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
@@ -49,7 +50,7 @@ import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -68,7 +69,7 @@ trait CoreFactory {
 }
 
 class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
-                                  (implicit environmentConfig: EnvironmentConfig)
+                                  (implicit systemContext: SystemContext)
   extends CoreFactory with Logging {
 
   override def createCoreFrom(config: RawRorConfig,
@@ -101,8 +102,8 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
                                        ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                                        mocksProvider: MocksProvider) = {
     val jsonConfigResolver = new JsonConfigStaticVariableResolver(
-      environmentConfig.envVarsProvider,
-      TransformationCompiler.withoutAliases(environmentConfig.variablesFunctions),
+      systemContext.envVarsProvider,
+      TransformationCompiler.withoutAliases(systemContext.variablesFunctions),
     )
     jsonConfigResolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
@@ -310,10 +311,10 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
     AsyncDecoderCreator.instance[Core] { c =>
       val decoder = for {
         dynamicVariableTransformationAliases <-
-          AsyncDecoderCreator.from(VariableTransformationAliasesDefinitionsDecoder.create(environmentConfig.variablesFunctions))
+          AsyncDecoderCreator.from(VariableTransformationAliasesDefinitionsDecoder.create(systemContext.variablesFunctions))
         variableCreator = new RuntimeResolvableVariableCreator(
           TransformationCompiler.withAliases(
-            environmentConfig.variablesFunctions,
+            systemContext.variablesFunctions,
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
@@ -322,7 +323,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
         jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, variableCreator))
-        ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(using ldapConnectionPoolProvider, environmentConfig.clock)
+        ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(using ldapConnectionPoolProvider, systemContext.clock)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(variableCreator))
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
           globalSettings, authenticationServices, authProxies, ldapServices, mocksProvider

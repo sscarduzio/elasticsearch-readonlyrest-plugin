@@ -21,6 +21,8 @@ import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import monix.eval.Task
+import squants.information.Information
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
@@ -29,6 +31,7 @@ import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy.{ForceLoadingFromFile, LoadFromIndexWithFileFallback}
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
+import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay, RefreshInterval}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
@@ -39,7 +42,7 @@ final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings)
 object EsConfig {
 
   def from(esEnv: EsEnv)
-          (implicit environmentConfig: EnvironmentConfig): Task[Either[LoadEsConfigError, EsConfig]] = {
+          (implicit systemContext: SystemContext): Task[Either[LoadEsConfigError, EsConfig]] = {
     val configFile = esEnv.elasticsearchConfig
     (for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
@@ -48,7 +51,7 @@ object EsConfig {
   }
 
   private def loadRorEsLevelSettings(esEnv: EsEnv)
-                                    (implicit environmentConfig: EnvironmentConfig) = {
+                                    (implicit systemContext: SystemContext) = {
     for {
       loadingRorCoreStrategyAndIndex <- loadLoadingRorCoreStrategyAndRorIndex(esEnv)
       (loadingRorCoreStrategy, rorIndex) = loadingRorCoreStrategyAndIndex
@@ -59,7 +62,7 @@ object EsConfig {
   }
 
   private def loadXpackSettings(esEnv: EsEnv, ossDistribution: Boolean)
-                               (implicit environmentConfig: EnvironmentConfig) = {
+                               (implicit systemContext: SystemContext) = {
     EitherT.fromEither[Task] {
       implicit val xpackSettingsDecoder: Decoder[XpackSettings] = decoders.xpackSettingsDecoder(ossDistribution)
       new YamlFileBasedConfigLoader(esEnv.configPath)
@@ -69,7 +72,7 @@ object EsConfig {
   }
 
   private def loadSslSettings(esEnv: EsEnv, xpackSettings: XpackSettings)
-                             (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, RorSsl] = {
+                             (implicit systemContext: SystemContext): EitherT[Task, LoadEsConfigError, RorSsl] = {
     EitherT(RorSsl.load(esEnv))
       .leftMap(error => MalformedContent(esEnv.elasticsearchConfig, error.message))
       .subflatMap { rorSsl =>
@@ -82,7 +85,7 @@ object EsConfig {
   }
 
   private def loadFipsConfiguration(esEnv: EsEnv, xpackSettings: XpackSettings)
-                                   (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
+                                   (implicit systemContext: SystemContext): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
     EitherT(FipsConfiguration.load(esEnv))
       .leftMap(error => MalformedContent(esEnv.elasticsearchConfig, error.message))
       .subflatMap { fipsConfiguration =>
@@ -96,7 +99,7 @@ object EsConfig {
   }
 
   private def loadLoadingRorCoreStrategyAndRorIndex(esEnv: EsEnv)
-                                                   (implicit environmentConfig: EnvironmentConfig) = {
+                                                   (implicit systemContext: SystemContext) = {
     EitherT.fromEither[Task] {
       import decoders.{loadRorCoreStrategyDecoder, rorConfigurationIndexDecoder}
       val loader = new YamlFileBasedConfigLoader(esEnv.configPath)
@@ -118,9 +121,20 @@ object EsConfig {
   object RorEsLevelSettings {
     sealed trait LoadingRorCoreStrategy
     object LoadingRorCoreStrategy {
-      case object ForceLoadingFromFile extends LoadingRorCoreStrategy
-      case object LoadFromIndexWithFileFallback extends LoadingRorCoreStrategy
+      final case class ForceLoadingFromFile(settings: LoadFromFileSettings) extends LoadingRorCoreStrategy
+      final case class LoadFromIndexWithFileFallback(settings: LoadFromIndexSettings,
+                                                     fallbackSettings: LoadFromFileSettings)
+        extends LoadingRorCoreStrategy
     }
+
+    final case class LoadFromFileSettings(rorSettingsFile: File,
+                                          settingsMaxSize: Information)
+    final case class LoadFromIndexSettings(rorConfigIndex: RorConfigurationIndex,
+                                           refreshInterval: RefreshInterval,
+                                           loadingAttemptsInterval: LoadingAttemptsInterval,
+                                           loadingAttemptsCount: LoadingAttemptsCount,
+                                           loadingDelay: LoadingDelay,
+                                           settingsMaxSize: Information)
   }
   private final case class XpackSettings(securityEnabled: Boolean)
 
@@ -145,8 +159,8 @@ object EsConfig {
         alternativePath = NonEmptyList.of("readonlyrest", "force_load_from_file"), // for a sake of backward compatibility
         default = false
       ) map {
-        case true => ForceLoadingFromFile
-        case false => LoadFromIndexWithFileFallback
+        case true => ???
+        case false => ???
       }
     }
 

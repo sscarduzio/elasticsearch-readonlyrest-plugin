@@ -18,6 +18,7 @@ package tech.beshu.ror.configuration
 
 import cats.data.EitherT
 import monix.eval.Task
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -28,7 +29,7 @@ final case class ReadonlyRestEsConfig(bootConfig: RorBootConfiguration,
 object ReadonlyRestEsConfig {
 
   def load(esEnv: EsEnv)
-          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, ReadonlyRestEsConfig]] = {
+          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, ReadonlyRestEsConfig]] = {
     value {
       for {
         bootConfig <- EitherT(RorBootConfiguration.load(esEnv))

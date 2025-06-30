@@ -44,7 +44,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.http.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport.*
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
-import tech.beshu.ror.configuration.EnvironmentConfig
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.implicits.*
 
 object ruleDecoders {
@@ -53,10 +53,10 @@ object ruleDecoders {
                     definitions: DefinitionsPack,
                     globalSettings: GlobalSettings,
                     mocksProvider: MocksProvider)
-                   (implicit environmentConfig: EnvironmentConfig): Option[RuleDecoder[Rule]] = {
+                   (implicit systemContext: SystemContext): Option[RuleDecoder[Rule]] = {
     val variableCreator = new RuntimeResolvableVariableCreator(
       TransformationCompiler.withAliases(
-        environmentConfig.variablesFunctions,
+        systemContext.variablesFunctions,
         definitions.variableTransformationAliases.items.map(_.alias)
       )
     )
@@ -87,17 +87,17 @@ object ruleDecoders {
       case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)
       case HostsRule.Name.name => Some(new HostsRuleDecoder(variableCreator))
-      case IndicesRule.Name.name => Some(new IndicesRuleDecoders(variableCreator, environmentConfig.uniqueIdentifierGenerator))
-      case KibanaUserDataRule.Name.name => Some(new KibanaUserDataRuleDecoder(globalSettings.configurationIndex, variableCreator)(environmentConfig.jsCompiler))
+      case IndicesRule.Name.name => Some(new IndicesRuleDecoders(variableCreator, systemContext.uniqueIdentifierGenerator))
+      case KibanaUserDataRule.Name.name => Some(new KibanaUserDataRuleDecoder(globalSettings.configurationIndex, variableCreator)(systemContext.jsCompiler))
       case KibanaAccessRule.Name.name => Some(new KibanaAccessRuleDecoder(globalSettings.configurationIndex))
-      case KibanaHideAppsRule.Name.name => Some(new KibanaHideAppsRuleDecoder()(environmentConfig.jsCompiler))
+      case KibanaHideAppsRule.Name.name => Some(new KibanaHideAppsRuleDecoder()(systemContext.jsCompiler))
       case KibanaIndexRule.Name.name => Some(new KibanaIndexRuleDecoder(variableCreator))
       case KibanaTemplateIndexRule.Name.name => Some(new KibanaTemplateIndexRuleDecoder(variableCreator))
       case LocalHostsRule.Name.name => Some(new LocalHostsRuleDecoder(variableCreator))
       case MaxBodyLengthRule.Name.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.Name.name => Some(MethodsRuleDecoder)
       case RepositoriesRule.Name.name => Some(new RepositoriesRuleDecoder(variableCreator))
-      case SessionMaxIdleRule.Name.name => Some(new SessionMaxIdleRuleDecoder(globalSettings)(environmentConfig.clock, environmentConfig.uuidProvider))
+      case SessionMaxIdleRule.Name.name => Some(new SessionMaxIdleRuleDecoder(globalSettings)(systemContext.clock, systemContext.uuidProvider))
       case SnapshotsRule.Name.name => Some(new SnapshotsRuleDecoder(variableCreator))
       case UriRegexRule.Name.name => Some(new UriRegexRuleDecoder(variableCreator))
       case UsersRule.Name.name => Some(new UsersRuleDecoder(globalSettings, variableCreator))

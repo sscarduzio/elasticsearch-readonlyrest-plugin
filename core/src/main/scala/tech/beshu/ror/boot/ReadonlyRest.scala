@@ -20,6 +20,7 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -50,7 +51,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                    val indexTestConfigManager: IndexTestConfigManager,
                    val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
                    val esEnv: EsEnv)
-                  (implicit environmentConfig: EnvironmentConfig,
+                  (implicit systemContext: SystemContext,
                    scheduler: Scheduler) extends Logging {
 
   def start(): Task[Either[StartingFailure, RorInstance]] = {
@@ -69,12 +70,12 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def loadRorConfig(esConfig: EsConfig) = {
     val action = esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
-      case LoadingRorCoreStrategy.ForceLoadingFromFile =>
+      case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
         LoadRawRorConfig.loadFromFile(esEnv.configPath)
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback =>
-        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
-        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(environmentConfig.propertiesProvider)
-        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(environmentConfig.propertiesProvider)
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, _) =>
+        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
+        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
+        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
         LoadRawRorConfig
           .loadFromIndexWithFileFallback(
             configurationIndex = esConfig.rorEsLevelSettings.rorConfigIndex,
@@ -89,12 +90,12 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def loadRorTestConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedTestRorConfig[TestRorConfig]] = {
     esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
-      case LoadingRorCoreStrategy.ForceLoadingFromFile =>
+      case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
         EitherT.right(Task.now(LoadedTestRorConfig.FallbackConfig(TestRorConfig.NotSet)))
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback =>
-        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
-        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(environmentConfig.propertiesProvider)
-        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(environmentConfig.propertiesProvider)
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, _) =>
+        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
+        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
+        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
         val action = LoadRawTestRorConfig
           .loadFromIndexWithFallback(
             configurationIndex = esConfig.rorEsLevelSettings.rorConfigIndex,
@@ -165,7 +166,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     loadedTestRorConfig.value match {
       case TestRorConfig.NotSet =>
         Task.now(TestEngine.NotConfigured)
-      case config: TestRorConfig.Present if !config.isExpired(environmentConfig.clock) =>
+      case config: TestRorConfig.Present if !config.isExpired(systemContext.clock) =>
         loadActiveTestEngine(esConfig, config)
       case config: TestRorConfig.Present =>
         loadInvalidatedTestEngine(config)
@@ -260,7 +261,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
     core.rorConfig.auditingSettings
-      .map(settings => AuditingTool.create(settings, auditSinkServiceCreator)(using environmentConfig.clock, loggingContext))
+      .map(settings => AuditingTool.create(settings, auditSinkServiceCreator)(using systemContext.clock, loggingContext))
       .sequence
       .map {
         _.sequence
@@ -334,7 +335,7 @@ object ReadonlyRest {
              auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)
             (implicit scheduler: Scheduler,
-             environmentConfig: EnvironmentConfig): ReadonlyRest = {
+             systemContext: SystemContext): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(env.esVersion)
     create(coreFactory, indexContentService, auditSinkServiceCreator, env)
   }
@@ -344,7 +345,7 @@ object ReadonlyRest {
              auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)
             (implicit scheduler: Scheduler,
-             environmentConfig: EnvironmentConfig): ReadonlyRest = {
+             systemContext: SystemContext): ReadonlyRest = {
     val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
     val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)

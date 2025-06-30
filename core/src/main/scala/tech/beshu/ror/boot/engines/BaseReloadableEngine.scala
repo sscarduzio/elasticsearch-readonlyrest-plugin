@@ -23,6 +23,7 @@ import monix.eval.Task
 import monix.execution.atomic.{Atomic, AtomicAny}
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.Engine
@@ -30,7 +31,7 @@ import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.EngineState.NotStartedYet
 import tech.beshu.ror.boot.engines.ConfigHash.*
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.*
 
@@ -43,7 +44,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                                                      initialEngine: InitialEngine,
                                                      reloadInProgress: Semaphore[Task],
                                                      rorConfigurationIndex: RorConfigurationIndex)
-                                                    (implicit environmentConfig: EnvironmentConfig,
+                                                    (implicit systemContext: SystemContext,
                                                      scheduler: Scheduler)
   extends Logging {
 
@@ -53,7 +54,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     initialEngine match {
       case InitialEngine.Configured(engine, config, expirationConfig) =>
         logger.info(s"ROR ${name.show} engine (id=${config.hashString().show}) was initiated (${engine.core.accessControl.description.show}).")
-        stateFromInitial(EngineWithConfig(engine, config, expirationConfig))(RequestId(environmentConfig.uuidProvider.random.toString))
+        stateFromInitial(EngineWithConfig(engine, config, expirationConfig))(RequestId(systemContext.uuidProvider.random.toString))
       case InitialEngine.NotConfigured =>
         EngineState.NotStartedYet(recentConfig = None, recentExpirationConfig = None)
       case InitialEngine.Invalidated(config, expirationConfig) =>
@@ -88,7 +89,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   protected def invalidate(keepPreviousConfiguration: Boolean)
                           (implicit requestId: RequestId): Task[Option[InvalidationResult]] = {
     Task.delay {
-      val invalidationTimestamp = environmentConfig.clock.instant()
+      val invalidationTimestamp = systemContext.clock.instant()
       val previous = currentEngine.getAndTransform {
         case notStarted: EngineState.NotStartedYet =>
           if (keepPreviousConfiguration) {
@@ -268,7 +269,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   private def engineExpirationConfig(configExpiration: UpdatedConfigExpiration) = {
     configExpiration match {
       case UpdatedConfigExpiration.ByTtl(ttl) =>
-        EngineExpirationConfig(ttl = ttl, validTo = environmentConfig.clock.instant().plusMillis(ttl.value.toMillis))
+        EngineExpirationConfig(ttl = ttl, validTo = systemContext.clock.instant().plusMillis(ttl.value.toMillis))
       case UpdatedConfigExpiration.ToTime(validTo, configuredTtl) =>
         EngineExpirationConfig(ttl = configuredTtl, validTo = validTo)
     }
@@ -410,7 +411,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   private def isStillValid(validTo: Instant) = {
-    validTo.minusMillis(environmentConfig.clock.instant().toEpochMilli)
+    validTo.minusMillis(systemContext.clock.instant().toEpochMilli)
       .toEpochMilli.millis
       .toRefinedPositive
       .map(RemainingEngineTime.Valid.apply)

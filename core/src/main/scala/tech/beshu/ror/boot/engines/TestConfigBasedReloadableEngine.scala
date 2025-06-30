@@ -21,6 +21,7 @@ import cats.data.EitherT
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
@@ -33,7 +34,7 @@ import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpirationConfig,
 import tech.beshu.ror.boot.engines.ConfigHash.*
 import tech.beshu.ror.configuration.TestRorConfig.Present.ExpirationConfig
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, TestRorConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, TestRorConfig}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
 
@@ -41,7 +42,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
                                                             initialEngine: InitialEngine,
                                                             reloadInProgress: Semaphore[Task],
                                                             rorConfigurationIndex: RorConfigurationIndex)
-                                                           (implicit environmentConfig: EnvironmentConfig,
+                                                           (implicit systemContext: SystemContext,
                                                             scheduler: Scheduler)
   extends BaseReloadableEngine(
     "test", boot, initialEngine, reloadInProgress, rorConfigurationIndex
@@ -237,7 +238,7 @@ object TestConfigBasedReloadableEngine {
              initialEngine: ReadonlyRest.TestEngine,
              reloadInProgress: Semaphore[Task],
              rorConfigurationIndex: RorConfigurationIndex)
-            (implicit environmentConfig: EnvironmentConfig,
+            (implicit systemContext: SystemContext,
              scheduler: Scheduler): TestConfigBasedReloadableEngine = {
     val engine = initialEngine match {
       case TestEngine.NotConfigured =>
