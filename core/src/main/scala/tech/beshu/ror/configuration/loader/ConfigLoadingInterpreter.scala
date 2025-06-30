@@ -56,17 +56,19 @@ object ConfigLoadingInterpreter extends Logging {
                 }
               )
           })
-      case ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(path) =>
-        logger.info(s"Loading ReadonlyREST settings forced loading from file from: ${path.show}")
-        EitherT(new FileConfigLoader(???).load())
+      case ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(settings) =>
+        val rorSettingsFile = settings.rorSettingsFile
+        logger.info(s"Loading ReadonlyREST settings forced loading from file from: ${rorSettingsFile.show}")
+        EitherT(new FileConfigLoader(rorSettingsFile).load())
           .bimap(convertFileError, ForcedFileConfig(_))
           .leftMap { error =>
             logger.error(s"Loading ReadonlyREST from file failed: ${error.toString}")
             error
           }.value
-      case ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(path) =>
-        logger.info(s"Loading ReadonlyREST settings from file from: ${path.show}, because index not exist")
-        EitherT(new FileConfigLoader(???).load())
+      case ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(settings) =>
+        val rorSettingsFile = settings.rorSettingsFile
+        logger.info(s"Loading ReadonlyREST settings from file from: ${rorSettingsFile.show}, because index not exist")
+        EitherT(new FileConfigLoader(rorSettingsFile).load())
           .bimap(convertFileError, FileConfig(_))
           .leftMap { error =>
             logger.error(s"Loading ReadonlyREST from file failed: ${error.toString}")

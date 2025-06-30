@@ -19,6 +19,7 @@ package tech.beshu.ror.configuration
 import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromFileSettings
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -28,13 +29,14 @@ final case class ReadonlyRestEsConfig(bootConfig: RorBootConfiguration,
 
 object ReadonlyRestEsConfig {
 
-  def load(esEnv: EsEnv)
+  // todo: do we need it?
+  def load(esEnv: EsEnv, rorFileSettings: LoadFromFileSettings)
           (implicit systemContext: SystemContext): Task[Either[MalformedSettings, ReadonlyRestEsConfig]] = {
     value {
       for {
         bootConfig <- EitherT(RorBootConfiguration.load(esEnv))
-        sslConfig <- EitherT(RorSsl.load(esEnv))
-        fipsConfig <- EitherT(FipsConfiguration.load(esEnv))
+        sslConfig <- EitherT(RorSsl.load(esEnv, rorFileSettings))
+        fipsConfig <- EitherT(FipsConfiguration.load(esEnv, rorFileSettings))
       } yield ReadonlyRestEsConfig(bootConfig, sslConfig, fipsConfig)
     }
   }

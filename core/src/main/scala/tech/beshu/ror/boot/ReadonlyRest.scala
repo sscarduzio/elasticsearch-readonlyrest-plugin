@@ -70,20 +70,14 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def loadRorConfig(esConfig: EsConfig) = {
     val action = esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
-      case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
-        LoadRawRorConfig.loadFromFile(esEnv.configPath)
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, _) =>
-        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
-        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
-        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
-        LoadRawRorConfig
-          .loadFromIndexWithFileFallback(
-            configurationIndex = esConfig.rorEsLevelSettings.rorConfigIndex,
-            loadingDelay = loadingDelay,
-            loadingAttemptsCount = loadingAttemptsCount,
-            loadingAttemptsInterval = loadingAttemptsInterval,
-            fallbackConfigFilePath = esEnv.configPath
-          )
+      case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
+        LoadRawRorConfig.loadFromFile(settings)
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, fallbackSettings) =>
+        // todo: move
+//        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
+//        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
+//        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
+        LoadRawRorConfig.loadFromIndexWithFileFallback(settings, fallbackSettings)
     }
     runStartingFailureProgram(action)
   }
@@ -158,7 +152,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     for {
       mainEngine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorEsLevelSettings.rorConfigIndex))
       testEngine <- EitherT.right(loadTestEngine(esConfig, loadedTestRorConfig))
-      rorInstance <- createRorInstance(esConfig.rorEsLevelSettings.rorConfigIndex, mainEngine, testEngine, loadedConfig)
+      rorInstance <- createRorInstance(esConfig, mainEngine, testEngine, loadedConfig)
     } yield rorInstance
   }
 
@@ -203,18 +197,18 @@ class ReadonlyRest(coreFactory: CoreFactory,
     TestEngine.Expiration(config.ttl, config.validTo)
   }
 
-  private def createRorInstance(rorConfigurationIndex: RorConfigurationIndex,
+  private def createRorInstance(esConfig: EsConfig,
                                 engine: Engine,
                                 testEngine: TestEngine,
                                 loadedConfig: LoadedRorConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
       loadedConfig match {
         case LoadedRorConfig.FileConfig(config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, rorConfigurationIndex)
+          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsFile, esConfig.rorEsLevelSettings.rorConfigIndex)
         case LoadedRorConfig.ForcedFileConfig(config) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, rorConfigurationIndex)
+          RorInstance.createWithoutPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsFile, esConfig.rorEsLevelSettings.rorConfigIndex)
         case LoadedRorConfig.IndexConfig(_, config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, rorConfigurationIndex)
+          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsFile, esConfig.rorEsLevelSettings.rorConfigIndex)
       }
     }
   }

@@ -21,19 +21,17 @@ import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromFileSettings
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode.NonFips
-import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
-
-import java.nio.file.Path
 
 final case class FipsConfiguration(fipsMode: FipsMode)
 
 object FipsConfiguration extends Logging {
 
-  def load(esEnv: EsEnv)
+  def load(esEnv: EsEnv, loadRorFromFileSettings: LoadFromFileSettings)
           (implicit systemContext: SystemContext): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
     val esConfig = esEnv.elasticsearchConfig
     loadFipsConfigFromFile(esConfig)
@@ -42,27 +40,26 @@ object FipsConfiguration extends Logging {
         {
           case FipsConfiguration(FipsMode.NonFips) =>
             logger.info(s"Cannot find FIPS configuration in ${esConfig.show} ...")
-            fallbackToRorConfig(esEnv.configPath)
+            fallbackToRorConfig(loadRorFromFileSettings.rorSettingsFile)
           case ssl =>
             Right(ssl)
         }
       )
   }
 
-  private def fallbackToRorConfig(esConfigFolderPath: Path)
-                                 (implicit systemContext: SystemContext) = {
-    val rorConfig = new FileConfigLoader(???).rawConfigFile
-    logger.info(s"... trying: ${rorConfig.show}")
-    if (rorConfig.exists) {
-      loadFipsConfigFromFile(rorConfig)
-    } else {
-      Right(FipsConfiguration(FipsMode.NonFips))
-    }
-  }
-
   private def loadFipsConfigFromFile(configFile: File)
                                     (implicit systemContext: SystemContext): Either[MalformedSettings, FipsConfiguration] = {
     new YamlFileBasedConfigLoader(configFile).loadConfig[FipsConfiguration](configName = "ROR FIPS Settings")
+  }
+
+  private def fallbackToRorConfig(rorSettingsFile: File)
+                                 (implicit systemContext: SystemContext) = {
+    logger.info(s"... trying: ${rorSettingsFile.show}")
+    if (rorSettingsFile.exists) {
+      loadFipsConfigFromFile(rorSettingsFile)
+    } else {
+      Right(FipsConfiguration(FipsMode.NonFips))
+    }
   }
 
   private implicit val fipsModeDecoder: Decoder[FipsMode] = {

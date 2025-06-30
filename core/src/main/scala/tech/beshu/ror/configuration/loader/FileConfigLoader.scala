@@ -21,22 +21,18 @@ import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromFileSettings
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError.FileNotExist
 
-class FileConfigLoader(settings: LoadFromFileSettings)
+class FileConfigLoader(rorSettingsFile: File)
                       (implicit systemContext: SystemContext)
   extends ConfigLoader[FileConfigError] {
 
-  // todo: do we need it?
-  def rawConfigFile: File = settings.rorSettingsFile
-
   override def load(): Task[Either[ConfigLoaderError[FileConfigError], RawRorConfig]] = {
-    val file = rawConfigFile
+    val file = rorSettingsFile
     (for {
       _ <- checkIfFileExist(file)
       config <- loadConfigFromFile(file)

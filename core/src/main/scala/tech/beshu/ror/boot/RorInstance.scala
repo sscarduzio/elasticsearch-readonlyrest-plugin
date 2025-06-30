@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.boot
 
+import better.files.File
 import cats.Show
 import cats.effect.Resource
 import cats.implicits.toShow
@@ -45,7 +46,8 @@ class RorInstance private(boot: ReadonlyRest,
                           mainReloadInProgress: Semaphore[Task],
                           initialTestEngine: ReadonlyRest.TestEngine,
                           testReloadInProgress: Semaphore[Task],
-                          rorConfigurationIndex: RorConfigurationIndex)
+                          rorSettingsIndex: RorConfigurationIndex,
+                          rorSettingsFile: File)
                          (implicit systemContext: SystemContext,
                           scheduler: Scheduler)
   extends Logging {
@@ -72,20 +74,20 @@ class RorInstance private(boot: ReadonlyRest,
     boot,
     (initialEngine.engine, initialEngine.config),
     mainReloadInProgress,
-    rorConfigurationIndex,
+    rorSettingsIndex,
   )
   private val anTestConfigEngine = TestConfigBasedReloadableEngine.create(
     boot,
     initialTestEngine,
     testReloadInProgress,
-    rorConfigurationIndex
+    rorSettingsIndex
   )
 
   private val configRestApi = new ConfigApi(
     rorInstance = this,
     boot.indexConfigManager,
-    new FileConfigLoader(???),
-    rorConfigurationIndex
+    new FileConfigLoader(rorSettingsFile),
+    rorSettingsIndex
   )
 
   private val authMockRestApi = new AuthMockApi(
@@ -271,26 +273,29 @@ object RorInstance {
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
                                    mainEngine: ReadonlyRest.MainEngine,
                                    testEngine: ReadonlyRest.TestEngine,
-                                   rorConfigurationIndex: RorConfigurationIndex)
+                                   rorSettingsFile: File,
+                                   rorSettingsIndex: RorConfigurationIndex)
                                   (implicit systemContext: SystemContext,
                                    scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.WithPeriodicIndexCheck, mainEngine, testEngine, rorConfigurationIndex)
+    create(boot, Mode.WithPeriodicIndexCheck, mainEngine, testEngine, rorSettingsFile, rorSettingsIndex)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
                                       mainEngine: ReadonlyRest.MainEngine,
                                       testEngine: ReadonlyRest.TestEngine,
-                                      rorConfigurationIndex: RorConfigurationIndex)
+                                      rorSettingsFile: File,
+                                      rorSettingsIndex: RorConfigurationIndex)
                                      (implicit systemContext: SystemContext,
                                       scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, rorConfigurationIndex)
+    create(boot, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, rorSettingsFile, rorSettingsIndex)
   }
 
   private def create(boot: ReadonlyRest,
                      mode: RorInstance.Mode,
                      engine: ReadonlyRest.MainEngine,
                      testEngine: ReadonlyRest.TestEngine,
-                     rorConfigurationIndex: RorConfigurationIndex)
+                     rorSettingsFile: File,
+                     rorSettingsIndex: RorConfigurationIndex)
                     (implicit systemContext: SystemContext,
                      scheduler: Scheduler) = {
     for {
@@ -303,7 +308,8 @@ object RorInstance {
       mainReloadInProgress = isReloadInProgressSemaphore,
       initialTestEngine = testEngine,
       testReloadInProgress = isTestReloadInProgressSemaphore,
-      rorConfigurationIndex = rorConfigurationIndex
+      rorSettingsIndex = rorSettingsIndex,
+      rorSettingsFile = rorSettingsFile
     )
   }
 

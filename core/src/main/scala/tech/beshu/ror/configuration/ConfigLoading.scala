@@ -18,12 +18,11 @@ package tech.beshu.ror.configuration
 
 import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromFileSettings
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
-
-import java.nio.file.Path
 
 object ConfigLoading {
   type ErrorOr[A] = LoadedRorConfig.Error Either A
@@ -34,9 +33,9 @@ object ConfigLoading {
   object LoadConfigAction {
     final case class LoadEsConfig(env: EsEnv)
       extends LoadConfigAction[ErrorOr[EsConfig]]
-    final case class ForceLoadRorConfigFromFile(path: Path)
+    final case class ForceLoadRorConfigFromFile(settings: LoadFromFileSettings)
       extends LoadConfigAction[ErrorOr[ForcedFileConfig[RawRorConfig]]]
-    final case class LoadRorConfigFromFile(path: Path)
+    final case class LoadRorConfigFromFile(settings: LoadFromFileSettings)
       extends LoadConfigAction[ErrorOr[FileConfig[RawRorConfig]]]
     final case class LoadRorConfigFromIndex(index: RorConfigurationIndex, loadingDelay: NonNegativeFiniteDuration)
       extends LoadConfigAction[IndexErrorOr[IndexConfig[RawRorConfig]]]
@@ -46,13 +45,13 @@ object ConfigLoading {
                              loadingDelay: NonNegativeFiniteDuration): LoadRorConfig[IndexErrorOr[IndexConfig[RawRorConfig]]] =
     Free.liftF(LoadConfigAction.LoadRorConfigFromIndex(index, loadingDelay))
 
-  def loadRorConfigFromFile(path: Path): LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]] =
-    Free.liftF(LoadConfigAction.LoadRorConfigFromFile(path))
+  def loadRorConfigFromFile(settings: LoadFromFileSettings): LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]] =
+    Free.liftF(LoadConfigAction.LoadRorConfigFromFile(settings))
 
   def loadEsConfig(env: EsEnv): LoadRorConfig[ErrorOr[EsConfig]] =
     Free.liftF(LoadConfigAction.LoadEsConfig(env))
 
-  def forceLoadRorConfigFromFile(path: Path): LoadRorConfig[ErrorOr[ForcedFileConfig[RawRorConfig]]] =
-    Free.liftF(LoadConfigAction.ForceLoadRorConfigFromFile(path))
+  def forceLoadRorConfigFromFile(settings: LoadFromFileSettings): LoadRorConfig[ErrorOr[ForcedFileConfig[RawRorConfig]]] =
+    Free.liftF(LoadConfigAction.ForceLoadRorConfigFromFile(settings))
 
 }

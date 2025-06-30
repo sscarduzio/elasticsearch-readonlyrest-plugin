@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent, RorSettingsInactiveWhenXpackSecurityIsEnabled}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
-import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.{LoadFromFileSettings, LoadingRorCoreStrategy}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy.{ForceLoadingFromFile, LoadFromIndexWithFileFallback}
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay, RefreshInterval}
@@ -56,8 +56,12 @@ object EsConfig {
       loadingRorCoreStrategyAndIndex <- loadLoadingRorCoreStrategyAndRorIndex(esEnv)
       (loadingRorCoreStrategy, rorIndex) = loadingRorCoreStrategyAndIndex
       xpackSettings <- loadXpackSettings(esEnv, esEnv.isOssDistribution)
-      sslSettings <- loadSslSettings(esEnv, xpackSettings)
-      fibsConfiguration <- loadFipsConfiguration(esEnv, xpackSettings)
+      rorFileSettings = loadingRorCoreStrategy match {
+        case ForceLoadingFromFile(settings) => settings
+        case LoadFromIndexWithFileFallback(_, fallbackSettings) => fallbackSettings
+      }
+      sslSettings <- loadSslSettings(esEnv,  rorFileSettings, xpackSettings)
+      fibsConfiguration <- loadFipsConfiguration(esEnv, rorFileSettings, xpackSettings)
     } yield RorEsLevelSettings(rorIndex, loadingRorCoreStrategy, sslSettings, fibsConfiguration)
   }
 
@@ -71,9 +75,9 @@ object EsConfig {
     }
   }
 
-  private def loadSslSettings(esEnv: EsEnv, xpackSettings: XpackSettings)
+  private def loadSslSettings(esEnv: EsEnv, rorFileSettings: LoadFromFileSettings, xpackSettings: XpackSettings)
                              (implicit systemContext: SystemContext): EitherT[Task, LoadEsConfigError, RorSsl] = {
-    EitherT(RorSsl.load(esEnv))
+    EitherT(RorSsl.load(esEnv, rorFileSettings))
       .leftMap(error => MalformedContent(esEnv.elasticsearchConfig, error.message))
       .subflatMap { rorSsl =>
         if (rorSsl != RorSsl.noSsl && xpackSettings.securityEnabled) {
@@ -84,9 +88,9 @@ object EsConfig {
       }
   }
 
-  private def loadFipsConfiguration(esEnv: EsEnv, xpackSettings: XpackSettings)
+  private def loadFipsConfiguration(esEnv: EsEnv, rorFileSettings: LoadFromFileSettings, xpackSettings: XpackSettings)
                                    (implicit systemContext: SystemContext): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
-    EitherT(FipsConfiguration.load(esEnv))
+    EitherT(FipsConfiguration.load(esEnv, rorFileSettings))
       .leftMap(error => MalformedContent(esEnv.elasticsearchConfig, error.message))
       .subflatMap { fipsConfiguration =>
         fipsConfiguration.fipsMode match {
@@ -125,6 +129,12 @@ object EsConfig {
       final case class LoadFromIndexWithFileFallback(settings: LoadFromIndexSettings,
                                                      fallbackSettings: LoadFromFileSettings)
         extends LoadingRorCoreStrategy
+    }
+
+    implicit class RorSettingsFileFromLoadingRorCoreStrategy(val strategy: LoadingRorCoreStrategy) extends AnyVal {
+      def rorSettingsFile: File = strategy match
+        case ForceLoadingFromFile(settings) => settings.rorSettingsFile
+        case LoadFromIndexWithFileFallback(_, fallbackSettings) => fallbackSettings.rorSettingsFile
     }
 
     final case class LoadFromFileSettings(rorSettingsFile: File,

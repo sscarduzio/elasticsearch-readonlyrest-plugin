@@ -22,8 +22,8 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromFileSettings
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration}
-import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.SSLCertHelper
@@ -38,30 +38,29 @@ object RorSsl extends Logging {
 
   val noSsl: RorSsl = RorSsl(None, None)
 
-  def load(esEnv: EsEnv)
+  def load(esEnv: EsEnv, loadRorFromFileSettings: LoadFromFileSettings)
           (implicit systemContext: SystemContext): Task[Either[MalformedSettings, RorSsl]] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esEnv.configPath)
-    val esConfig = esEnv.elasticsearchConfig
-    loadSslConfigFromFile(esConfig)
+    val esConfigFile = esEnv.elasticsearchConfig
+    loadSslConfigFromFile(esConfigFile)
       .fold(
         error => Left(error),
         {
           case RorSsl(None, None) =>
-            logger.info(s"Cannot find SSL configuration in ${esConfig.show} ...")
-            fallbackToRorConfig(esEnv.configPath)
+            logger.info(s"Cannot find SSL configuration in ${esConfigFile.show} ...")
+            fallbackToRorConfig(loadRorFromFileSettings.rorSettingsFile)
           case ssl =>
             Right(ssl)
         }
       )
   }
 
-  private def fallbackToRorConfig(esConfigFolderPath: Path)
+  private def fallbackToRorConfig(rorSettingsFile: File)
                                  (implicit rorSslDecoder: Decoder[RorSsl],
                                   systemContext: SystemContext) = {
-    val rorConfig = new FileConfigLoader(???).rawConfigFile
-    logger.info(s"... trying: ${rorConfig.show}")
-    if (rorConfig.exists) {
-      loadSslConfigFromFile(rorConfig)
+    logger.info(s"... trying: ${rorSettingsFile.show}")
+    if (rorSettingsFile.exists) {
+      loadSslConfigFromFile(rorSettingsFile)
     } else {
       Right(RorSsl.noSsl)
     }

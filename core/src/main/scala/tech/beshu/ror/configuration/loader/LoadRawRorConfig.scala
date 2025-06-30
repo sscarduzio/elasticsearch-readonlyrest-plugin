@@ -19,12 +19,12 @@ package tech.beshu.ror.configuration.loader
 import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.ConfigLoading.*
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.{LoadFromFileSettings, LoadFromIndexSettings}
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.FileConfig
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, RefinedDurationOps}
 
-import java.nio.file.Path
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
 
@@ -32,23 +32,20 @@ object LoadRawRorConfig {
 
   type LoadResult = ErrorOr[LoadedRorConfig[RawRorConfig]]
 
-  def loadFromIndexWithFileFallback(configurationIndex: RorConfigurationIndex,
-                                    loadingDelay: LoadingDelay,
-                                    loadingAttemptsCount: LoadingAttemptsCount,
-                                    loadingAttemptsInterval: LoadingAttemptsInterval,
-                                    fallbackConfigFilePath: Path): LoadRorConfig[LoadResult] = {
+  def loadFromIndexWithFileFallback(indexLoadingSettings: LoadFromIndexSettings,
+                                    fallbackFileLoadingSettings: LoadFromFileSettings): LoadRorConfig[LoadResult] = {
     attemptLoadingConfigFromIndex(
-      index = configurationIndex,
-      currentDelay = loadingDelay.value,
-      attemptsCount = loadingAttemptsCount,
-      attemptsInterval = loadingAttemptsInterval,
-      fallback = loadRorConfigFromFile(fallbackConfigFilePath)
+      index = indexLoadingSettings.rorConfigIndex,
+      currentDelay = indexLoadingSettings.loadingDelay.value,
+      attemptsCount = indexLoadingSettings.loadingAttemptsCount,
+      attemptsInterval = indexLoadingSettings.loadingAttemptsInterval,
+      fallback = loadRorConfigFromFile(fallbackFileLoadingSettings)
     )
   }
 
-  def loadFromFile(configFilePath: Path): LoadRorConfig[LoadResult] = {
+  def loadFromFile(settings: LoadFromFileSettings): LoadRorConfig[LoadResult] = {
     for {
-      loadedConfig <- forceLoadRorConfigFromFile(configFilePath)
+      loadedConfig <- forceLoadRorConfigFromFile(settings)
     } yield loadedConfig
   }
 
