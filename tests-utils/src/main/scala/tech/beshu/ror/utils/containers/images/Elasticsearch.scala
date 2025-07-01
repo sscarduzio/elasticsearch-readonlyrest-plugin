@@ -137,10 +137,7 @@ class Elasticsearch(esVersion: String,
         config.esInstallationType == EsInstallationType.UbuntuDockerImageWithEsFromApt,
         s"chown -R elasticsearch:elasticsearch ${esDir.toString()}"
       )
-      .runWhen(
-        config.esInstallationType == EsInstallationType.UbuntuDockerImageWithEsFromApt,
-        s"chown -R elasticsearch:elasticsearch ${configDir(config).toString()}"
-      )
+      .run(s"chown -R elasticsearch:elasticsearch ${configDir(config).toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
       .user("elasticsearch")
