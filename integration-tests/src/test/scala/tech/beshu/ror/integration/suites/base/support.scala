@@ -29,16 +29,10 @@ object support {
     extends RorConfigFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
-      with ForAllTestContainer
-      with BeforeAndAfterAll {
+      with ForAllTestContainer {
     this: Suite with EsClusterProvider with ESVersionSupport =>
 
     override lazy val container: EsClusterContainer = clusterContainer
-
-    override protected def afterAll(): Unit = {
-      super.afterAll()
-      pruneDockerImages()
-    }
 
     def clusterContainer: EsClusterContainer
   }
@@ -47,16 +41,10 @@ object support {
     extends RorConfigFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
-      with ForAllTestContainer
-      with BeforeAndAfterAll {
+      with ForAllTestContainer {
     this: Suite with EsClusterProvider with ESVersionSupport =>
 
     override lazy val container: EsRemoteClustersContainer = remoteClusterContainer
-
-    override protected def afterAll(): Unit = {
-      super.afterAll()
-      pruneDockerImages()
-    }
 
     def remoteClusterContainer: EsRemoteClustersContainer
   }
@@ -74,11 +62,6 @@ object support {
     override lazy val container: MultipleContainers =
       MultipleContainers(clusterContainers.map(containerToLazyContainer(_)).toList: _*)
 
-    override protected def afterAll(): Unit = {
-      super.afterAll()
-      pruneDockerImages()
-    }
-
     def clusterContainers: NonEmptyList[EsClusterContainer]
   }
 
@@ -86,14 +69,8 @@ object support {
     extends RorConfigFileNameProvider
       with SingleClientSupport
       with TestSuiteWithClosedTaskAssertion
-      with NodeInitializerProvider
-      with BeforeAndAfterAll {
+      with NodeInitializerProvider {
     this: Suite with EsClusterProvider with ESVersionSupport =>
-
-    override protected def afterAll(): Unit = {
-      super.afterAll()
-      pruneDockerImages()
-    }
 
     def clusterDependencies: List[DependencyDef] = List.empty
   }
@@ -103,7 +80,7 @@ object support {
   trait MultipleClientsSupport extends MultipleClients with MultipleEsTargets
 }
 
-private def pruneDockerImages(): Unit = () //{
+//private def pruneDockerImages(): Unit = {
 //  val logger: Logger = LogManager.getLogger("prune-docker-images")
 //  val dockerClient: DockerClient = DockerClientFactory.instance().client()
 //  logger.info("Pruning docker images after test suite")

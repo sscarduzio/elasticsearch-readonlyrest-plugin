@@ -133,8 +133,14 @@ class Elasticsearch(esVersion: String,
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(missingTar, "microdnf install -y tar")
-      .run(s"chown -R elasticsearch:elasticsearch ${esDir.toString()}")
-      .run(s"chown -R elasticsearch:elasticsearch ${configDir(config).toString()}")
+      .runWhen(
+        config.esInstallationType == EsInstallationType.UbuntuDockerImageWithEsFromApt,
+        s"chown -R elasticsearch:elasticsearch ${esDir.toString()}"
+      )
+      .runWhen(
+        config.esInstallationType == EsInstallationType.UbuntuDockerImageWithEsFromApt,
+        s"chown -R elasticsearch:elasticsearch ${configDir(config).toString()}"
+      )
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
       .user("elasticsearch")
