@@ -93,7 +93,7 @@ object Summary {
 
   private def createNodeNodeForcedFileConfigWarnings(otherResponses: List[NodeResponse]): List[NodeForcedFileConfig] =
     otherResponses.flatMap {
-      case NodeResponse(nodeId, Right(LoadedRorConfig.ForcedFileConfig(_))) => NodeForcedFileConfig(nodeId) :: Nil
+      case NodeResponse(nodeId, Right(LoadedRorConfig(_))) => NodeForcedFileConfig(nodeId) :: Nil
       case _ => Nil
     }
 

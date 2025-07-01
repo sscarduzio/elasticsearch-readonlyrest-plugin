@@ -16,37 +16,11 @@
  */
 package tech.beshu.ror.configuration.loader.external.dto
 
-import io.circe.Codec
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
-import tech.beshu.ror.utils.CirceOps.*
 
-sealed trait LoadedConfigDTO {
-  def raw: String
-}
+final case class LoadedConfigDTO(raw: String)
 
 object LoadedConfigDTO {
-  implicit val codec: Codec[LoadedConfigDTO] = codecWithTypeDiscriminator(
-    encode = {
-      case dto: FILE_CONFIG =>
-        derivedEncoderWithType[FILE_CONFIG]("FILE_CONFIG")(dto)
-      case dto: FORCED_FILE_CONFIG =>
-        derivedEncoderWithType[FORCED_FILE_CONFIG]("FORCED_FILE_CONFIG")(dto)
-      case dto: INDEX_CONFIG =>
-        derivedEncoderWithType[INDEX_CONFIG]("INDEX_CONFIG")(dto)
-    },
-    decoders = Map(
-      "FILE_CONFIG" -> derivedDecoderOfSubtype[LoadedConfigDTO, FILE_CONFIG],
-      "FORCED_FILE_CONFIG" -> derivedDecoderOfSubtype[LoadedConfigDTO, FORCED_FILE_CONFIG],
-      "INDEX_CONFIG" -> derivedDecoderOfSubtype[LoadedConfigDTO, INDEX_CONFIG],
-    )
-  )
-  def create(o: LoadedRorConfig[String]): LoadedConfigDTO = o match {
-    case LoadedRorConfig.FileConfig(value) => FILE_CONFIG(value)
-    case LoadedRorConfig.ForcedFileConfig(value) => FORCED_FILE_CONFIG(value)
-    case LoadedRorConfig.IndexConfig(indexName, value) => INDEX_CONFIG(indexName.index.name.value, value)
-  }
-  final case class FILE_CONFIG(raw: String) extends LoadedConfigDTO
-  final case class FORCED_FILE_CONFIG(raw: String) extends LoadedConfigDTO
-  final case class INDEX_CONFIG(indexName: String, raw: String) extends LoadedConfigDTO
+  def create(o: LoadedRorConfig[String]): LoadedConfigDTO = LoadedConfigDTO(o.value)
 }
 

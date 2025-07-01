@@ -18,23 +18,21 @@ package tech.beshu.ror.configuration.loader
 
 import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromIndexSettings
+import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval}
 import tech.beshu.ror.configuration.TestConfigLoading.*
 import tech.beshu.ror.configuration.TestRorConfig
 import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
 object LoadRawTestRorConfig {
 
-  def loadFromIndexWithFallback(configurationIndex: RorConfigurationIndex,
-                                loadingDelay: LoadingDelay,
-                                indexLoadingAttemptsCount: LoadingAttemptsCount,
-                                indexLoadingAttemptsInterval: LoadingAttemptsInterval,
+  def loadFromIndexWithFallback(indexLoadingSettings: LoadFromIndexSettings,
                                 fallbackConfig: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
     attemptLoadingConfigFromIndex(
-      index = configurationIndex,
-      currentDelay = loadingDelay.value,
-      attemptsCount = indexLoadingAttemptsCount,
-      attemptsInterval = indexLoadingAttemptsInterval,
+      index = indexLoadingSettings.rorConfigIndex,
+      currentDelay = indexLoadingSettings.loadingDelay.value,
+      attemptsCount = indexLoadingSettings.loadingAttemptsCount,
+      attemptsInterval = indexLoadingSettings.loadingAttemptsInterval,
       fallback = fallbackConfig
     )
   }
@@ -47,7 +45,7 @@ object LoadRawTestRorConfig {
     attemptsCount.value.value match {
       case 0 =>
         Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](
-          Right(LoadedTestRorConfig.FallbackConfig[TestRorConfig](fallback))
+          Right(LoadedTestRorConfig[TestRorConfig](fallback))
         )
       case attemptsCount =>
         for {

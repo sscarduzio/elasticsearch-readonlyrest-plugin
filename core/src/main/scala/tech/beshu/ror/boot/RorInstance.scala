@@ -34,7 +34,7 @@ import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.index.{IndexConfigError, SavingIndexConfigError}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, RorProperties}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -57,15 +57,9 @@ class RorInstance private(boot: ReadonlyRest,
 
   logger.info("ReadonlyREST was loaded ...")
   private val configsReloadTask = mode match {
-    case Mode.WithPeriodicIndexCheck =>
-      RorProperties.rorIndexSettingsReloadInterval(systemContext.propertiesProvider) match {
-        case RefreshInterval.Disabled =>
-          logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
-          Cancelable.empty
-        case RefreshInterval.Enabled(interval) =>
-          scheduleEnginesReload(interval)
-      }
-    case Mode.NoPeriodicIndexCheck =>
+    case Mode.WithPeriodicIndexCheck(RefreshInterval.Enabled(interval)) =>
+      scheduleEnginesReload(interval)
+    case Mode.WithPeriodicIndexCheck(RefreshInterval.Disabled) | Mode.NoPeriodicIndexCheck =>
       logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
       Cancelable.empty
   }
@@ -273,11 +267,12 @@ object RorInstance {
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
                                    mainEngine: ReadonlyRest.MainEngine,
                                    testEngine: ReadonlyRest.TestEngine,
+                                   refreshInterval: RefreshInterval,
                                    rorSettingsFile: File,
                                    rorSettingsIndex: RorConfigurationIndex)
                                   (implicit systemContext: SystemContext,
                                    scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.WithPeriodicIndexCheck, mainEngine, testEngine, rorSettingsFile, rorSettingsIndex)
+    create(boot, Mode.WithPeriodicIndexCheck(refreshInterval), mainEngine, testEngine, rorSettingsFile, rorSettingsIndex)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
@@ -315,7 +310,7 @@ object RorInstance {
 
   private sealed trait Mode
   private object Mode {
-    case object WithPeriodicIndexCheck extends Mode
+    final case class WithPeriodicIndexCheck(reloadInterval: RefreshInterval) extends Mode
     case object NoPeriodicIndexCheck extends Mode
   }
 

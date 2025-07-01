@@ -22,7 +22,6 @@ import tech.beshu.ror.configuration.ConfigLoading.*
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.{LoadFromFileSettings, LoadFromIndexSettings}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval}
-import tech.beshu.ror.configuration.loader.LoadedRorConfig.FileConfig
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, RefinedDurationOps}
 
 import scala.concurrent.duration.DurationInt
@@ -69,7 +68,7 @@ object LoadRawRorConfig {
                                             currentDelay: NonNegativeFiniteDuration,
                                             attemptsCount: LoadingAttemptsCount,
                                             attemptsInterval: LoadingAttemptsInterval,
-                                            fallback: LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]]): LoadRorConfig[LoadResult] = {
+                                            fallback: LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]]): LoadRorConfig[LoadResult] = {
     attemptsCount.value.value match {
       case 0 =>
         fallback.map(identity)

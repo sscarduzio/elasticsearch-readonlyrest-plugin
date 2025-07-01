@@ -46,7 +46,7 @@ object TestConfigLoadingInterpreter extends Logging {
             }
             testConfig
           }
-          .bimap(convertIndexError, IndexConfig(configIndex, _))
+          .bimap(convertIndexError, LoadedTestRorConfig.apply)
           .leftMap { error =>
             logIndexLoadingError(error)
             error

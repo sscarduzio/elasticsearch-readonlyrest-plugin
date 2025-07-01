@@ -16,15 +16,10 @@
  */
 package tech.beshu.ror.configuration.loader
 
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-
 import java.nio.file.Path
 
-sealed trait LoadedRorConfig[A]
+final case class LoadedRorConfig[A](value: A)
 object LoadedRorConfig {
-  final case class FileConfig[A](value: A) extends LoadedRorConfig[A]
-  final case class ForcedFileConfig[A](value: A) extends LoadedRorConfig[A]
-  final case class IndexConfig[A](indexName: RorConfigurationIndex, value: A) extends LoadedRorConfig[A]
 
   sealed trait Error
   final case class FileParsingError(message: String) extends LoadedRorConfig.Error
@@ -39,10 +34,8 @@ object LoadedRorConfig {
   case object IndexNotExist extends LoadedRorConfig.Error with LoadingIndexError
 }
 
-sealed trait LoadedTestRorConfig[A]
+final case class LoadedTestRorConfig[A](value: A)
 object LoadedTestRorConfig {
-  final case class IndexConfig[A](indexName: RorConfigurationIndex, value: A) extends LoadedTestRorConfig[A]
-  final case class FallbackConfig[A](value: A) extends LoadedTestRorConfig[A]
 
   sealed trait LoadingIndexError
   final case class IndexParsingError(message: String) extends LoadingIndexError

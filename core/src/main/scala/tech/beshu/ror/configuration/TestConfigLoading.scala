@@ -28,11 +28,11 @@ object TestConfigLoading {
   sealed trait LoadTestConfigAction[A]
   object LoadTestConfigAction {
     final case class LoadRorConfigFromIndex(index: RorConfigurationIndex, loadingDelay: NonNegativeFiniteDuration)
-      extends LoadTestConfigAction[IndexErrorOr[LoadedTestRorConfig.IndexConfig[TestRorConfig]]]
+      extends LoadTestConfigAction[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]]
   }
 
   def loadRorConfigFromIndex(index: RorConfigurationIndex,
-                             loadingDelay: NonNegativeFiniteDuration): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig.IndexConfig[TestRorConfig]]] =
+                             loadingDelay: NonNegativeFiniteDuration): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] =
     Free.liftF(LoadTestConfigAction.LoadRorConfigFromIndex(index, loadingDelay))
 
 }

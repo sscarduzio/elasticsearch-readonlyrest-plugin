@@ -74,9 +74,9 @@ class ReadonlyRest(coreFactory: CoreFactory,
         LoadRawRorConfig.loadFromFile(settings)
       case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, fallbackSettings) =>
         // todo: move
-//        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
-//        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
-//        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
+        //        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
+        //        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
+        //        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
         LoadRawRorConfig.loadFromIndexWithFileFallback(settings, fallbackSettings)
     }
     runStartingFailureProgram(action)
@@ -85,19 +85,16 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def loadRorTestConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedTestRorConfig[TestRorConfig]] = {
     esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
       case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
-        EitherT.right(Task.now(LoadedTestRorConfig.FallbackConfig(TestRorConfig.NotSet)))
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, _) =>
-        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
-        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
-        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
-        val action = LoadRawTestRorConfig
-          .loadFromIndexWithFallback(
-            configurationIndex = esConfig.rorEsLevelSettings.rorConfigIndex,
-            loadingDelay = loadingDelay,
-            indexLoadingAttemptsCount = loadingAttemptsCount,
-            indexLoadingAttemptsInterval = loadingAttemptsInterval,
-            fallbackConfig = notSetTestRorConfig
-          )
+        EitherT.right(Task.now(LoadedTestRorConfig(TestRorConfig.NotSet)))
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
+        // todo: move
+        //        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
+        //        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
+        //        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
+        val action = LoadRawTestRorConfig.loadFromIndexWithFallback(
+          indexLoadingSettings = settings,
+          fallbackConfig = notSetTestRorConfig
+        )
         EitherT.right(runTestProgram(action))
     }
   }
@@ -135,13 +132,13 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .leftMap {
         case LoadedTestRorConfig.IndexParsingError(message) =>
           logger.error(s"Loading ReadonlyREST test settings from index failed: ${message.show}. No test settings will be loaded.")
-          LoadedTestRorConfig.FallbackConfig(notSetTestRorConfig)
+          LoadedTestRorConfig(notSetTestRorConfig)
         case LoadedTestRorConfig.IndexUnknownStructure =>
           logger.error("Loading ReadonlyREST test settings from index failed: index content malformed. No test settings will be loaded.")
-          LoadedTestRorConfig.FallbackConfig(notSetTestRorConfig)
+          LoadedTestRorConfig(notSetTestRorConfig)
         case LoadedTestRorConfig.IndexNotExist =>
           logger.info("Loading ReadonlyREST test settings from index failed: cannot find index. No test settings will be loaded.")
-          LoadedTestRorConfig.FallbackConfig(notSetTestRorConfig)
+          LoadedTestRorConfig(notSetTestRorConfig)
       }
       .merge
   }
@@ -202,13 +199,13 @@ class ReadonlyRest(coreFactory: CoreFactory,
                                 testEngine: TestEngine,
                                 loadedConfig: LoadedRorConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
-      loadedConfig match {
-        case LoadedRorConfig.FileConfig(config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsFile, esConfig.rorEsLevelSettings.rorConfigIndex)
-        case LoadedRorConfig.ForcedFileConfig(config) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsFile, esConfig.rorEsLevelSettings.rorConfigIndex)
-        case LoadedRorConfig.IndexConfig(_, config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsFile, esConfig.rorEsLevelSettings.rorConfigIndex)
+      val rorSettingsFile = esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsFile
+      val rorConfigIndex = esConfig.rorEsLevelSettings.rorConfigIndex
+      esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
+        case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
+          RorInstance.createWithoutPeriodicIndexCheck(this, MainEngine(engine, loadedConfig.value), testEngine, rorSettingsFile, rorConfigIndex)
+        case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
+          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, loadedConfig.value), testEngine, settings.refreshInterval, rorSettingsFile, rorConfigIndex)
       }
     }
   }

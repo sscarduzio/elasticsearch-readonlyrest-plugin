@@ -17,30 +17,10 @@
 package tech.beshu.ror.configuration
 
 import cats.Functor
-import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 
 package object loader {
 
-  implicit class LoadedConfigOps[A](fa: LoadedRorConfig[A]) {
-    lazy val value: A = fa match {
-      case FileConfig(value) => value
-      case ForcedFileConfig(value) => value
-      case IndexConfig(_, value) => value
-    }
-  }
-
-  implicit class LoadedTestConfigOps[A](fa: LoadedTestRorConfig[A]) {
-    lazy val value: A = fa match {
-      case LoadedTestRorConfig.IndexConfig(_, value) => value
-      case LoadedTestRorConfig.FallbackConfig(value) => value
-    }
-  }
-
   implicit val functorLoadedConfig: Functor[LoadedRorConfig] = new Functor[LoadedRorConfig] {
-    override def map[A, B](fa: LoadedRorConfig[A])(f: A => B): LoadedRorConfig[B] = fa match {
-      case FileConfig(value) => FileConfig(f(value))
-      case ForcedFileConfig(value) => ForcedFileConfig(f(value))
-      case IndexConfig(indexName, value) => IndexConfig(indexName, f(value))
-    }
+    override def map[A, B](fa: LoadedRorConfig[A])(f: A => B): LoadedRorConfig[B] = LoadedRorConfig(f(fa.value))
   }
 }
