@@ -67,7 +67,13 @@ stages:
               echo "[OPTIONAL_CHECKS] executing ROR_TASK=$ROR_TASK"
 
               export DEPENDENCY_CHECK_DATA_DIR=$var_dependency_check_data_dir
-              export NVD_API_KEY=$var_nvd_api_key
+
+              if [ "$var_is_fork" = "False" ]; then
+                # Export API key only when PR is from the same repo; forks do not get secrets.
+                # Using the wrong API key breaks the CVE check.
+
+                export NVD_API_KEY=$var_nvd_api_key
+              fi
 
               ci/run-pipeline.sh
             continueOnError: true
@@ -75,6 +81,7 @@ stages:
               ROR_TASK: cve_check
               var_nvd_api_key: $(NVD_API_KEY)
               var_dependency_check_data_dir: $(dependencyCheckDataDir)
+              var_is_fork: $(System.PullRequest.IsFork)
           - task: Cache@2
             displayName: 'Save updated CVE DB in cache'
             inputs:
