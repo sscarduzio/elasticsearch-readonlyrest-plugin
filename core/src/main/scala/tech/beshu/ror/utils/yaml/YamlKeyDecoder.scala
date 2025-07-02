@@ -43,16 +43,20 @@ private class YamlKeyDecoder[A: Decoder](segments: NonEmptyList[String]) extends
 
 object YamlKeyDecoder {
   def apply[A: Decoder](path: NonEmptyList[String], default: A): Decoder[A] = {
-    new YamlKeyDecoder[A](path).map(_.getOrElse(default))
+    apply(path).map(_.getOrElse(default))
   }
 
   def apply[A: Decoder](path: NonEmptyList[String], alternativePath: NonEmptyList[String], default: A): Decoder[A] = {
     for {
-      decodedValue <- new YamlKeyDecoder[A](path)
+      decodedValue <- apply(path)
       alternativeDecodedValue <- decodedValue match {
         case Some(value) => Decoder.const[Option[A]](Some(value))
-        case None => new YamlKeyDecoder[A](alternativePath)
+        case None => apply(alternativePath)
       }
     } yield alternativeDecodedValue.getOrElse(default)
+  }
+
+  def apply[A: Decoder](path: NonEmptyList[String]): Decoder[Option[A]] = {
+    new YamlKeyDecoder[A](path)
   }
 }

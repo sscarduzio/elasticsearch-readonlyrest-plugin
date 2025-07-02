@@ -57,7 +57,7 @@ import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
-import tech.beshu.ror.utils.yaml.RorYamlParser
+import tech.beshu.ror.utils.yaml.YamlParser
 
 import java.nio.file.Path
 import java.time.Duration
@@ -69,7 +69,7 @@ import scala.util.{Failure, Success}
 object TestsUtils {
 
   implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-  val rorYamlParser = new RorYamlParser(Megabytes(3))
+  val rorYamlParser = new YamlParser(Megabytes(3))
 
   val defaultEsVersionForTests: EsVersion = EsVersion(8, 17, 0)
 

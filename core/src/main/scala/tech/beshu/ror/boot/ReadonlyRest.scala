@@ -34,9 +34,9 @@ import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, Core
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
-import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
+import tech.beshu.ror.configuration.RorConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy
-import tech.beshu.ror.configuration.TestConfigLoading.*
+import tech.beshu.ror.configuration.TestRorConfigLoading.*
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.*
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
@@ -46,13 +46,15 @@ import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import java.time.Instant
 
 class ReadonlyRest(coreFactory: CoreFactory,
+                   indexContentService: IndexJsonContentService,
                    auditSinkServiceCreator: AuditSinkServiceCreator,
-                   val indexConfigManager: IndexConfigManager,
-                   val indexTestConfigManager: IndexTestConfigManager,
-                   val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
                    val esEnv: EsEnv)
                   (implicit systemContext: SystemContext,
                    scheduler: Scheduler) extends Logging {
+
+  private [boot] val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService, ???)
+  private [boot] val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService, ???)
+  private [boot] val authServicesMocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
   def start(): Task[Either[StartingFailure, RorInstance]] = {
     (for {
@@ -64,7 +66,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def loadEsConfig() = {
-    val action = ConfigLoading.loadEsConfig(esEnv)
+    val action = RorConfigLoading.loadEsConfig(esEnv)
     runStartingFailureProgram(action)
   }
 
@@ -100,7 +102,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def runStartingFailureProgram[A](action: LoadRorConfig[ErrorOr[A]]) = {
-    val compiler = ConfigLoadingInterpreter.create(indexConfigManager)
+    val compiler = RorConfigLoadingInterpreter.create(indexConfigManager)
     EitherT(action.foldMap(compiler))
       .leftMap(toStartingFailure)
   }
@@ -127,7 +129,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def runTestProgram(action: LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]]): Task[LoadedTestRorConfig[TestRorConfig]] = {
-    val compiler = TestConfigLoadingInterpreter.create(indexTestConfigManager)
+    val compiler = TestRorConfigLoadingInterpreter.create(indexTestConfigManager)
     EitherT(action.foldMap(compiler))
       .leftMap {
         case LoadedTestRorConfig.IndexParsingError(message) =>
@@ -200,12 +202,13 @@ class ReadonlyRest(coreFactory: CoreFactory,
                                 loadedConfig: LoadedRorConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
       val rorSettingsFile = esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsFile
+      val rorSettingsMaxSize = esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsMaxSize
       val rorConfigIndex = esConfig.rorEsLevelSettings.rorConfigIndex
       esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
         case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, MainEngine(engine, loadedConfig.value), testEngine, rorSettingsFile, rorConfigIndex)
+          RorInstance.createWithoutPeriodicIndexCheck(this, MainEngine(engine, loadedConfig.value), testEngine, rorSettingsFile, rorSettingsMaxSize, rorConfigIndex)
         case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
-          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, loadedConfig.value), testEngine, settings.refreshInterval, rorSettingsFile, rorConfigIndex)
+          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, loadedConfig.value), testEngine, settings.refreshInterval, rorSettingsFile, rorSettingsMaxSize, rorConfigIndex)
       }
     }
   }
@@ -337,10 +340,6 @@ object ReadonlyRest {
              env: EsEnv)
             (implicit scheduler: Scheduler,
              systemContext: SystemContext): ReadonlyRest = {
-    val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
-    val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
-    val mocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
-
-    new ReadonlyRest(coreFactory, auditSinkServiceCreator, indexConfigManager, indexTestConfigManager, mocksProvider, env)
+    new ReadonlyRest(coreFactory, indexContentService, auditSinkServiceCreator, env)
   }
 }

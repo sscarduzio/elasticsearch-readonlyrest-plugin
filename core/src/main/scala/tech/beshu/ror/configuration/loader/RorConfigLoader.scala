@@ -17,27 +17,24 @@
 package tech.beshu.ror.configuration.loader
 
 import cats.Show
-import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.RawRorConfigYamlParser.ParsingRorConfigError
 
-trait ConfigLoader[SPECIALIZED_ERROR] {
+trait RorConfigLoader[SPECIALIZED_ERROR] {
 
-  def load(): Task[Either[ConfigLoaderError[SPECIALIZED_ERROR], RawRorConfig]]
-
+  def load(): Task[Either[RorConfigLoader.Error[SPECIALIZED_ERROR], RawRorConfig]]
 }
 
-object ConfigLoader {
+object RorConfigLoader {
 
-  sealed trait ConfigLoaderError[+SPECIALIZED_ERROR]
-  object ConfigLoaderError {
-    final case class ParsingError(error: ParsingRorConfigError) extends ConfigLoaderError[Nothing]
-    final case class SpecializedError[ERROR](error: ERROR) extends ConfigLoaderError[ERROR]
+  sealed trait Error[+SPECIALIZED_ERROR]
+  object Error {
+    final case class ParsingError(error: ParsingRorConfigError) extends Error[Nothing]
+    final case class SpecializedError[ERROR](error: ERROR) extends Error[ERROR]
 
-    implicit def show[E: Show]: Show[ConfigLoaderError[E]] = Show.show {
-      case ParsingError(error) => Show[RawRorConfig.ParsingRorConfigError].show(error)
+    implicit def show[E: Show]: Show[Error[E]] = Show.show {
+      case ParsingError(error) => Show[ParsingRorConfigError].show(error)
       case SpecializedError(error) => Show[E].show(error)
     }
   }

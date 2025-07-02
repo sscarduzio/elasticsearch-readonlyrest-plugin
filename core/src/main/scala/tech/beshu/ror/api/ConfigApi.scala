@@ -22,7 +22,6 @@ import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
 import tech.beshu.ror.api.ConfigApi.*
 import tech.beshu.ror.api.ConfigApi.ConfigRequest.Type
@@ -30,18 +29,18 @@ import tech.beshu.ror.api.ConfigApi.ConfigResponse.*
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{RawRorConfig, RawRorConfigYamlParser}
 import tech.beshu.ror.configuration.index.IndexConfigError.IndexConfigNotExist
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
-import tech.beshu.ror.configuration.loader.FileConfigLoader
+import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.SpecializedError
+import tech.beshu.ror.configuration.loader.FileRorConfigLoader
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
 class ConfigApi(rorInstance: RorInstance,
+                rawRorConfigYamlParser: RawRorConfigYamlParser,
                 indexConfigManager: IndexConfigManager,
-                fileConfigLoader: FileConfigLoader,
+                fileConfigLoader: FileRorConfigLoader,
                 rorConfigurationIndex: RorConfigurationIndex)
-               (implicit val systemContext: SystemContext)
   extends Logging {
 
   import ConfigApi.Utils.*
@@ -116,7 +115,7 @@ class ConfigApi(rorInstance: RorInstance,
   }
 
   private def rorConfigFrom(configString: String): EitherT[Task, ConfigResponse, RawRorConfig] = EitherT {
-    RawRorConfig
+    rawRorConfigYamlParser
       .fromString(configString)
       .map(_.left.map(error => UpdateIndexConfig.Failure(error.show)))
   }

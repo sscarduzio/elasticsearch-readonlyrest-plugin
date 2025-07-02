@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import squants.information.{Bytes, Kilobytes}
 import tech.beshu.ror.utils.TestsUtils.*
-import tech.beshu.ror.utils.yaml.RorYamlParser
+import tech.beshu.ror.utils.yaml.YamlParser
 
 class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
@@ -196,7 +196,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
           |      auth_key: "admin:container"
           |""".stripMargin
 
-      val result = new RorYamlParser(Bytes(10)).parse(yamlContent)
+      val result = new YamlParser(Bytes(10)).parse(yamlContent)
       inside(result) {
         case Left(parsingFailure) =>
           parsingFailure.message should be("The incoming YAML document exceeds the limit: 10 code points.")
@@ -205,5 +205,5 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
   }
 
   private def parseYaml(yamlContent: String): Json =
-    new RorYamlParser(Kilobytes(100)).parse(yamlContent).toTry.get
+    new YamlParser(Kilobytes(100)).parse(yamlContent).toTry.get
 }

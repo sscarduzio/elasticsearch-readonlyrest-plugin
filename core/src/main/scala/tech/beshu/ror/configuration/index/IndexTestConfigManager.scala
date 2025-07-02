@@ -23,7 +23,6 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
@@ -36,9 +35,9 @@ import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorConfigurationIn
 import tech.beshu.ror.configuration.TestRorConfig.Present
 import tech.beshu.ror.configuration.index.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.index.IndexTestConfigManager.Const
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.{RawRorConfig, TestRorConfig}
+import tech.beshu.ror.configuration.loader.RorConfigLoader
+import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.{RawRorConfigYamlParser, TestRorConfig}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 import tech.beshu.ror.syntax.*
@@ -50,12 +49,12 @@ import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService)
-                                  (implicit systemContext: SystemContext)
+final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService,
+                                   rarRorConfigYamlParser: RawRorConfigYamlParser)
   extends BaseIndexConfigManager[TestRorConfig]
     with Logging {
 
-  type Error = ConfigLoaderError[IndexConfigError]
+  type Error = RorConfigLoader.Error[IndexConfigError]
 
   override def load(indexName: RorConfigurationIndex): Task[Either[Error, TestRorConfig]] = {
     indexJsonContentService
@@ -94,7 +93,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
         rawRorConfigString <- getConfigProperty(config, Const.properties.settings)
         authMocksConfigString <- getConfigProperty(config, Const.properties.mocks)
         rawRorConfig <- EitherT {
-          RawRorConfig
+          rarRorConfigYamlParser
             .fromString(rawRorConfigString)
             .map(_.left.map(ParsingError.apply))
         }

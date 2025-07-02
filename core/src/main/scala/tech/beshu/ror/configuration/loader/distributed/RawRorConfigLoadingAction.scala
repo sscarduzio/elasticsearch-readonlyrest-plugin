@@ -19,27 +19,28 @@ package tech.beshu.ror.configuration.loader.distributed
 import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.configuration.ConfigLoading.LoadRorConfig
+import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfig
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.index.IndexConfigManager
-import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig}
-import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
-import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
+import tech.beshu.ror.configuration.loader.{RorConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig}
+import tech.beshu.ror.configuration.{RorConfigLoading, RawRorConfig}
+import tech.beshu.ror.es.EsEnv
 
 object RawRorConfigLoadingAction {
 
-  def loadFromIndex(env: EsEnv, indexJsonContentService: IndexJsonContentService)
+  // todo: IndexConfigManager or maybe not?
+  def loadFromIndex(env: EsEnv, indexConfigManager: IndexConfigManager)
                    (implicit systemContext: SystemContext): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
-    val compiler = ConfigLoadingInterpreter.create(new IndexConfigManager(indexJsonContentService))
+    val compiler = RorConfigLoadingInterpreter.create(indexConfigManager)
     (for {
-      esConfig <- EitherT(ConfigLoading.loadEsConfig(env))
+      esConfig <- EitherT(RorConfigLoading.loadEsConfig(env))
       loadedConfig <- esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
         case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
           EitherT.leftT[LoadRorConfig, LoadedRorConfig[RawRorConfig]](
             LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled("todo"): LoadedRorConfig.Error // todo: fixme
           )
-        case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, _) =>
-          EitherT(LoadRawRorConfig.loadFromIndex(esConfig.rorEsLevelSettings.rorConfigIndex))
+        case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
+          EitherT(LoadRawRorConfig.loadFromIndex(settings))
       }
     } yield loadedConfig).value.foldMap(compiler)
   }

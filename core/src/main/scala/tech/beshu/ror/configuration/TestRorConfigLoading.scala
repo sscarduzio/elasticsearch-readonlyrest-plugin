@@ -17,22 +17,20 @@
 package tech.beshu.ror.configuration
 
 import cats.free.Free
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromIndexSettings
 import tech.beshu.ror.configuration.loader.LoadedTestRorConfig
-import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
-object TestConfigLoading {
+object TestRorConfigLoading {
   type IndexErrorOr[A] = LoadedTestRorConfig.LoadingIndexError Either A
-  type LoadTestRorConfig[A] = Free[LoadTestConfigAction, A]
+  type LoadTestRorConfig[A] = Free[LoadRorTestConfigAction, A]
 
-  sealed trait LoadTestConfigAction[A]
-  object LoadTestConfigAction {
-    final case class LoadRorConfigFromIndex(index: RorConfigurationIndex, loadingDelay: NonNegativeFiniteDuration)
-      extends LoadTestConfigAction[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]]
+  sealed trait LoadRorTestConfigAction[A]
+  object LoadRorTestConfigAction {
+    final case class LoadTestRorConfigFromIndex(settings: LoadFromIndexSettings)
+      extends LoadRorTestConfigAction[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]]
   }
 
-  def loadRorConfigFromIndex(index: RorConfigurationIndex,
-                             loadingDelay: NonNegativeFiniteDuration): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] =
-    Free.liftF(LoadTestConfigAction.LoadRorConfigFromIndex(index, loadingDelay))
+  def loadTestRorConfigFromIndex(settings: LoadFromIndexSettings): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] =
+    Free.liftF(LoadRorTestConfigAction.LoadTestRorConfigFromIndex(settings))
 
 }

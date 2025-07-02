@@ -22,8 +22,8 @@ import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
-import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
-import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction.*
+import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction
+import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction.*
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
@@ -149,10 +149,10 @@ object LoadRawRorConfigTest {
 
 }
 object IdCompiler {
-  def instance(mocksDef: List[(LoadConfigAction[_], _)]): LoadConfigAction ~> Id = new (LoadConfigAction ~> Id) {
-    var mocks: List[(LoadConfigAction[_], _)] = mocksDef
+  def instance(mocksDef: List[(LoadRorConfigAction[_], _)]): LoadRorConfigAction ~> Id = new (LoadRorConfigAction ~> Id) {
+    var mocks: List[(LoadRorConfigAction[_], _)] = mocksDef
 
-    override def apply[A](fa: LoadConfigAction[A]): Id[A] = {
+    override def apply[A](fa: LoadRorConfigAction[A]): Id[A] = {
       val (f1, r) = mocks.head
       mocks = mocks.tail
       assert(f1 == fa)

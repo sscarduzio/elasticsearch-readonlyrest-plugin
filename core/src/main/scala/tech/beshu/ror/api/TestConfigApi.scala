@@ -20,7 +20,6 @@ import cats.data.EitherT
 import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
-import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, RequestId}
 import tech.beshu.ror.api.TestConfigApi.TestConfigRequest.Type
@@ -29,7 +28,7 @@ import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{RawRorConfig, RawRorConfigYamlParser}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 import tech.beshu.ror.utils.DurationOps.*
@@ -38,8 +37,8 @@ import java.time.Instant
 import scala.concurrent.duration.*
 import scala.util.Try
 
-class TestConfigApi(rorInstance: RorInstance)
-                   (implicit systemContext: SystemContext) {
+class TestConfigApi(rorInstance: RorInstance,
+                    rawRorConfigYamlParser: RawRorConfigYamlParser) {
 
   import tech.beshu.ror.api.TestConfigApi.Utils.*
   import tech.beshu.ror.api.TestConfigApi.Utils.decoders.*
@@ -73,7 +72,7 @@ class TestConfigApi(rorInstance: RorInstance)
   }
 
   private def rorTestConfig(configString: String): EitherT[Task, TestConfigResponse, RawRorConfig] = EitherT {
-    RawRorConfig
+    rawRorConfigYamlParser
       .fromString(configString)
       .map(_.left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(error.show)))
   }

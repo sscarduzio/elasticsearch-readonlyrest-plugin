@@ -23,7 +23,7 @@ import tech.beshu.ror.org.yaml.snakeyaml.LoaderOptions
 
 import java.io.{Reader, StringReader}
 
-class RorYamlParser(maxSize: Information) {
+class YamlParser(maxSize: Option[Information] = None) {
 
   def parse(yaml: Reader): Either[ParsingFailure, Json] = {
     tech.beshu.ror.utils.yaml.parser.parse(yaml, loaderOptions)
@@ -39,7 +39,7 @@ class RorYamlParser(maxSize: Information) {
 
   private lazy val loaderOptions: LoaderOptions = {
     val options = new LoaderOptions
-    options.setCodePointLimit(maxSize.toBytes.toInt)
+    maxSize.foreach { m => options.setCodePointLimit(m.toBytes.toInt) }
     options
   }
 }

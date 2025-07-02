@@ -17,12 +17,10 @@
 package tech.beshu.ror.configuration.loader
 
 import cats.free.Free
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.ConfigLoading.*
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.{LoadFromFileSettings, LoadFromIndexSettings}
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval}
-import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, RefinedDurationOps}
+import tech.beshu.ror.configuration.RorConfigLoading.*
+import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}
 
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
@@ -34,10 +32,7 @@ object LoadRawRorConfig {
   def loadFromIndexWithFileFallback(indexLoadingSettings: LoadFromIndexSettings,
                                     fallbackFileLoadingSettings: LoadFromFileSettings): LoadRorConfig[LoadResult] = {
     attemptLoadingConfigFromIndex(
-      index = indexLoadingSettings.rorConfigIndex,
-      currentDelay = indexLoadingSettings.loadingDelay.value,
-      attemptsCount = indexLoadingSettings.loadingAttemptsCount,
-      attemptsInterval = indexLoadingSettings.loadingAttemptsInterval,
+      settings = indexLoadingSettings,
       fallback = loadRorConfigFromFile(fallbackFileLoadingSettings)
     )
   }
@@ -48,48 +43,43 @@ object LoadRawRorConfig {
     } yield loadedConfig
   }
 
-  def loadFromIndex(configurationIndex: RorConfigurationIndex): LoadRorConfig[LoadResult] = {
+  def loadFromIndex(settings: LoadFromIndexSettings): LoadRorConfig[LoadResult] = {
     for {
-      result <- loadRorConfigFromIndex(configurationIndex, loadingDelay = (0 seconds).toRefinedNonNegativeUnsafe)
+      // todo: is the copy ok?
+      result <- loadRorConfigFromIndex(settings.copy(loadingDelay = LoadingDelay.unsafeFrom(0 seconds)))
       rawRorConfig <- result match {
         case Left(LoadedRorConfig.IndexNotExist) =>
-          Free.pure[LoadConfigAction, LoadResult](Left(LoadedRorConfig.IndexNotExist))
+          Free.pure[LoadRorConfigAction, LoadResult](Left(LoadedRorConfig.IndexNotExist))
         case Left(LoadedRorConfig.IndexUnknownStructure) =>
-          Free.pure[LoadConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
+          Free.pure[LoadRorConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
         case Left(error@LoadedRorConfig.IndexParsingError(_)) =>
-          Free.pure[LoadConfigAction, LoadResult](Left(error))
+          Free.pure[LoadRorConfigAction, LoadResult](Left(error))
         case Right(value) =>
-          Free.pure[LoadConfigAction, LoadResult](Right(value))
+          Free.pure[LoadRorConfigAction, LoadResult](Right(value))
       }
     } yield rawRorConfig
   }
 
-  private def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
-                                            currentDelay: NonNegativeFiniteDuration,
-                                            attemptsCount: LoadingAttemptsCount,
-                                            attemptsInterval: LoadingAttemptsInterval,
+  private def attemptLoadingConfigFromIndex(settings: LoadFromIndexSettings,
                                             fallback: LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]]): LoadRorConfig[LoadResult] = {
-    attemptsCount.value.value match {
+    settings.loadingAttemptsCount.value.value match {
       case 0 =>
         fallback.map(identity)
       case attemptsCount =>
         for {
-          result <- loadRorConfigFromIndex(index, loadingDelay = currentDelay)
+          result <- loadRorConfigFromIndex(settings)
           rawRorConfig <- result match {
             case Left(LoadedRorConfig.IndexNotExist) =>
               Free.defer(attemptLoadingConfigFromIndex(
-                index = index,
-                currentDelay = attemptsInterval.value,
-                attemptsCount = LoadingAttemptsCount.unsafeFrom(attemptsCount - 1),
-                attemptsInterval = attemptsInterval,
+                settings.copy(loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(settings.loadingAttemptsCount.value.value - 1)),
                 fallback = fallback
               ))
             case Left(LoadedRorConfig.IndexUnknownStructure) =>
-              Free.pure[LoadConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
+              Free.pure[LoadRorConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
             case Left(error@LoadedRorConfig.IndexParsingError(_)) =>
-              Free.pure[LoadConfigAction, LoadResult](Left(error))
+              Free.pure[LoadRorConfigAction, LoadResult](Left(error))
             case Right(value) =>
-              Free.pure[LoadConfigAction, LoadResult](Right(value))
+              Free.pure[LoadRorConfigAction, LoadResult](Right(value))
           }
         } yield rawRorConfig
     }

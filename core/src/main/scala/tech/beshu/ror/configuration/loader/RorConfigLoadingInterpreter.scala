@@ -22,24 +22,23 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
+import tech.beshu.ror.configuration.RawRorConfigYamlParser.ParsingRorConfigError.*
+import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction
+import tech.beshu.ror.configuration.RorProperties.LoadingDelay
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.*
-import tech.beshu.ror.configuration.{ConfigLoading, EsConfig}
+import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.{EsConfig, RawRorConfigYamlParser, RorConfigLoading}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
-object ConfigLoadingInterpreter extends Logging {
+object RorConfigLoadingInterpreter extends Logging {
 
   def create(indexConfigManager: IndexConfigManager)
-            (implicit systemContext: SystemContext): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
-    override def apply[A](fa: LoadConfigAction[A]): Task[A] = fa match {
-      case ConfigLoading.LoadConfigAction.LoadEsConfig(env) =>
+            (implicit systemContext: SystemContext): LoadRorConfigAction ~> Task = new (LoadRorConfigAction ~> Task) {
+    override def apply[A](fa: LoadRorConfigAction[A]): Task[A] = fa match {
+      case RorConfigLoading.LoadRorConfigAction.LoadEsConfig(env) =>
         logger.info(s"Loading Elasticsearch settings from file: ${env.elasticsearchConfig.show}")
         EsConfig
           .from(env)
@@ -56,28 +55,31 @@ object ConfigLoadingInterpreter extends Logging {
                 }
               )
           })
-      case ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(settings) =>
+      case RorConfigLoading.LoadRorConfigAction.ForceLoadRorConfigFromFile(settings) =>
         val rorSettingsFile = settings.rorSettingsFile
+        val rawRorConfigYamlParser = new RawRorConfigYamlParser(settings.settingsMaxSize)
         logger.info(s"Loading ReadonlyREST settings forced loading from file from: ${rorSettingsFile.show}")
-        EitherT(new FileConfigLoader(rorSettingsFile).load())
+        EitherT(new FileRorConfigLoader(rorSettingsFile, rawRorConfigYamlParser).load())
           .bimap(convertFileError, LoadedRorConfig.apply)
           .leftMap { error =>
             logger.error(s"Loading ReadonlyREST from file failed: ${error.toString}")
             error
           }.value
-      case ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(settings) =>
+      case RorConfigLoading.LoadRorConfigAction.LoadRorConfigFromFile(settings) =>
         val rorSettingsFile = settings.rorSettingsFile
+        val rawRorConfigYamlParser = new RawRorConfigYamlParser(settings.settingsMaxSize)
         logger.info(s"Loading ReadonlyREST settings from file from: ${rorSettingsFile.show}, because index not exist")
-        EitherT(new FileConfigLoader(rorSettingsFile).load())
+        EitherT(new FileRorConfigLoader(rorSettingsFile, rawRorConfigYamlParser).load())
           .bimap(convertFileError, LoadedRorConfig.apply)
           .leftMap { error =>
             logger.error(s"Loading ReadonlyREST from file failed: ${error.toString}")
             error
           }
           .value
-      case ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(configIndex, inIndexLoadingDelay) =>
-        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${configIndex.index.show}) ...")
-        loadFromIndex(indexConfigManager, configIndex, inIndexLoadingDelay)
+      case RorConfigLoading.LoadRorConfigAction.LoadRorConfigFromIndex(settings) =>
+        val rorConfigIndex = settings.rorConfigIndex
+        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${rorConfigIndex.index.show}) ...")
+        loadFromIndex(indexConfigManager, rorConfigIndex, settings.loadingDelay)
           .map { rawRorConfig =>
             logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw config from index: ${rawRorConfig.raw.show}")
             rawRorConfig
@@ -103,24 +105,24 @@ object ConfigLoadingInterpreter extends Logging {
 
   private def loadFromIndex[A](indexConfigManager: IndexConfigManager,
                                index: RorConfigurationIndex,
-                               loadingDelay: NonNegativeFiniteDuration) = {
+                               loadingDelay: LoadingDelay) = {
     EitherT {
       indexConfigManager
         .load(index)
-        .delayExecution(loadingDelay.value)
+        .delayExecution(loadingDelay.value.value)
     }
   }
 
-  private def convertFileError(error: ConfigLoaderError[FileConfigError]): LoadedRorConfig.Error = {
+  private def convertFileError(error: RorConfigLoader.Error[FileRorConfigLoader.Error]): LoadedRorConfig.Error = {
     error match {
       case ParsingError(error) =>
         val show = error.show
         LoadedRorConfig.FileParsingError(show)
-      case SpecializedError(FileConfigError.FileNotExist(file)) => LoadedRorConfig.FileNotExist(file.path)
+      case SpecializedError(FileRorConfigLoader.Error.FileNotExist(file)) => LoadedRorConfig.FileNotExist(file.path)
     }
   }
 
-  private def convertIndexError(error: ConfigLoaderError[IndexConfigError])=
+  private def convertIndexError(error: RorConfigLoader.Error[IndexConfigError])=
     error match {
       case ParsingError(error) => LoadedRorConfig.IndexParsingError(error.show)
       case SpecializedError(IndexConfigError.IndexConfigNotExist) => LoadedRorConfig.IndexNotExist

@@ -18,12 +18,13 @@ package tech.beshu.ror.configuration.index
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
+import tech.beshu.ror.configuration.loader.RorConfigLoader
+import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.SpecializedError
 
+// todo: it looks like this manager should extend RorConfigLoader
 trait BaseIndexConfigManager[A] {
 
-  def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], A]]
+  def load(indexName: RorConfigurationIndex): Task[Either[RorConfigLoader.Error[IndexConfigError], A]]
 
   def save(config: A, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]]
 

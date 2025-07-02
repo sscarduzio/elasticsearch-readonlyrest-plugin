@@ -18,21 +18,20 @@ package tech.beshu.ror.configuration.index
 
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{RawRorConfig, RawRorConfigYamlParser}
 import tech.beshu.ror.configuration.index.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.ParsingError
+import tech.beshu.ror.configuration.loader.RorConfigLoader.Error
+import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.ParsingError
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 
-final class IndexConfigManager(indexJsonContentService: IndexJsonContentService)
-                              (implicit systemContext: SystemContext)
+final class IndexConfigManager(indexJsonContentService: IndexJsonContentService,
+                               rarRorConfigYamlParser: RawRorConfigYamlParser)
   extends BaseIndexConfigManager[RawRorConfig]
   with Logging {
 
-  override def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
+  override def load(indexName: RorConfigurationIndex): Task[Either[Error[IndexConfigError], RawRorConfig]] = {
     indexJsonContentService
       .sourceOf(indexName.index, Config.rorSettingsIndexConst.id)
       .flatMap {
@@ -40,7 +39,7 @@ final class IndexConfigManager(indexJsonContentService: IndexJsonContentService)
           source
             .find(_._1 == Config.rorSettingsIndexConst.settingsKey)
             .map { case (_, rorYamlString) =>
-              RawRorConfig
+              rarRorConfigYamlParser
                 .fromString(rorYamlString)
                 .map(_.left.map(ParsingError.apply))
             }

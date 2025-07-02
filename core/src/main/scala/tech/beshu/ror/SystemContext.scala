@@ -18,10 +18,8 @@ package tech.beshu.ror
 
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
-import tech.beshu.ror.configuration.RorProperties
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
-import tech.beshu.ror.utils.yaml.RorYamlParser
 
 import java.time.Clock
 
@@ -31,11 +29,7 @@ final class SystemContext(val clock: Clock = Clock.systemUTC(),
                           val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
                           val uuidProvider: UuidProvider = JavaUuidProvider,
                           val jsCompiler: JsCompiler = MozillaJsCompiler,
-                          val variablesFunctions: SupportedVariablesFunctions = SupportedVariablesFunctions.default) {
-
-  val yamlParser: RorYamlParser = new RorYamlParser(RorProperties.rorSettingsMaxSize(propertiesProvider))
-}
-
+                          val variablesFunctions: SupportedVariablesFunctions = SupportedVariablesFunctions.default)
 object SystemContext {
 
   val default: SystemContext = new SystemContext()

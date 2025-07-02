@@ -22,10 +22,13 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.yaml.YamlParser
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 
 final class YamlFileBasedConfigLoader(file: File)
                                      (implicit systemContext: SystemContext) {
+
+  private val yamlParser: YamlParser = new YamlParser()
 
   private val jsonConfigResolver = new JsonConfigStaticVariableResolver(
     systemContext.envVarsProvider,
@@ -43,8 +46,7 @@ final class YamlFileBasedConfigLoader(file: File)
 
   private lazy val loadedConfigJson: Either[MalformedSettings, Json] = {
     file.fileReader { reader =>
-      systemContext
-        .yamlParser
+      yamlParser
         .parse(reader)
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString.show} content. Cause: ${e.message.show}"))
         .flatMap { json =>

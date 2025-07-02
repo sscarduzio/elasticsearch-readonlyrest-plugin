@@ -20,18 +20,16 @@ import better.files.File
 import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
-import tech.beshu.ror.SystemContext
-import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
-import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError.FileNotExist
+import tech.beshu.ror.configuration.loader.RorConfigLoader.Error
+import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.loader.FileRorConfigLoader.Error.FileNotExist
+import tech.beshu.ror.configuration.{RawRorConfig, RawRorConfigYamlParser}
 
-class FileConfigLoader(rorSettingsFile: File)
-                      (implicit systemContext: SystemContext)
-  extends ConfigLoader[FileConfigError] {
+class FileRorConfigLoader(rorSettingsFile: File,
+                          rarRorConfigYamlParser: RawRorConfigYamlParser)
+  extends RorConfigLoader[FileRorConfigLoader.Error] {
 
-  override def load(): Task[Either[ConfigLoaderError[FileConfigError], RawRorConfig]] = {
+  override def load(): Task[Either[Error[FileRorConfigLoader.Error], RawRorConfig]] = {
     val file = rorSettingsFile
     (for {
       _ <- checkIfFileExist(file)
@@ -39,21 +37,21 @@ class FileConfigLoader(rorSettingsFile: File)
     } yield config).value
   }
 
-  private def checkIfFileExist(file: File): EitherT[Task, ConfigLoaderError[FileConfigError], File] =
+  private def checkIfFileExist(file: File): EitherT[Task, Error[FileRorConfigLoader.Error], File] =
     EitherT.cond(file.exists, file, SpecializedError(FileNotExist(file)))
 
-  private def loadConfigFromFile(file: File): EitherT[Task, ConfigLoaderError[FileConfigError], RawRorConfig] = {
-    EitherT(RawRorConfig.fromFile(file).map(_.left.map(ParsingError.apply)))
+  private def loadConfigFromFile(file: File): EitherT[Task, Error[FileRorConfigLoader.Error], RawRorConfig] = {
+    EitherT(rarRorConfigYamlParser.fromFile(file).map(_.left.map(ParsingError.apply)))
   }
 }
 
-object FileConfigLoader {
+object FileRorConfigLoader {
 
-  sealed trait FileConfigError
-  object FileConfigError {
-    final case class FileNotExist(file: File) extends FileConfigError
+  sealed trait Error
+  object Error {
+    final case class FileNotExist(file: File) extends Error
 
-    implicit val show: Show[FileConfigError] = Show.show {
+    implicit val show: Show[Error] = Show.show {
       case FileNotExist(file) => s"Cannot find settings file: ${file.pathAsString}"
     }
   }

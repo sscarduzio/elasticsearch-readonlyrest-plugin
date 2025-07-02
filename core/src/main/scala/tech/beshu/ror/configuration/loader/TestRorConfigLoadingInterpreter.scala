@@ -21,22 +21,22 @@ import cats.~>
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.TestConfigLoading.LoadTestConfigAction
+import tech.beshu.ror.configuration.RorProperties.LoadingDelay
+import tech.beshu.ror.configuration.TestRorConfigLoading.LoadRorTestConfigAction
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexTestConfigManager}
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.*
-import tech.beshu.ror.configuration.{TestConfigLoading, TestRorConfig}
+import tech.beshu.ror.configuration.{TestRorConfig, TestRorConfigLoading}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
-object TestConfigLoadingInterpreter extends Logging {
+object TestRorConfigLoadingInterpreter extends Logging {
 
-  def create(indexConfigManager: IndexTestConfigManager): LoadTestConfigAction ~> Task = new (LoadTestConfigAction ~> Task) {
-    override def apply[A](fa: LoadTestConfigAction[A]): Task[A] = fa match {
-      case TestConfigLoading.LoadTestConfigAction.LoadRorConfigFromIndex(configIndex, loadingDelay) =>
-        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${configIndex.index.show}) ...")
-        loadFromIndex(indexConfigManager, configIndex, loadingDelay)
+  def create(indexConfigManager: IndexTestConfigManager): LoadRorTestConfigAction ~> Task = new (LoadRorTestConfigAction ~> Task) {
+    override def apply[A](fa: LoadRorTestConfigAction[A]): Task[A] = fa match {
+      case TestRorConfigLoading.LoadRorTestConfigAction.LoadTestRorConfigFromIndex(settings) =>
+        val rorConfigIndex = settings.rorConfigIndex
+        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${rorConfigIndex.index.show}) ...")
+        loadFromIndex(indexConfigManager, rorConfigIndex, settings.loadingDelay)
           .map { testConfig =>
             testConfig match {
               case TestRorConfig.Present(rawConfig, _, _) =>
@@ -67,15 +67,15 @@ object TestConfigLoadingInterpreter extends Logging {
 
   private def loadFromIndex(indexConfigManager: IndexTestConfigManager,
                             index: RorConfigurationIndex,
-                            loadingDelay: NonNegativeFiniteDuration) = {
+                            loadingDelay: LoadingDelay) = {
     EitherT {
       indexConfigManager
         .load(index)
-        .delayExecution(loadingDelay.value)
+        .delayExecution(loadingDelay.value.value)
     }
   }
 
-  private def convertIndexError(error: ConfigLoaderError[IndexConfigError]): LoadedTestRorConfig.LoadingIndexError =
+  private def convertIndexError(error: RorConfigLoader.Error[IndexConfigError]): LoadedTestRorConfig.LoadingIndexError =
     error match {
       case ParsingError(error) => LoadedTestRorConfig.IndexParsingError(error.show)
       case SpecializedError(IndexConfigError.IndexConfigNotExist) => LoadedTestRorConfig.IndexNotExist

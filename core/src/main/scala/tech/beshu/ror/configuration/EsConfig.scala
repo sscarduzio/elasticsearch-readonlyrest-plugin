@@ -131,10 +131,15 @@ object EsConfig {
         extends LoadingRorCoreStrategy
     }
 
-    implicit class RorSettingsFileFromLoadingRorCoreStrategy(val strategy: LoadingRorCoreStrategy) extends AnyVal {
-      def rorSettingsFile: File = strategy match
+    implicit class FromLoadingRorCoreStrategy(val strategy: LoadingRorCoreStrategy) extends AnyVal {
+      def rorSettingsFile: File = strategy match {
         case ForceLoadingFromFile(settings) => settings.rorSettingsFile
         case LoadFromIndexWithFileFallback(_, fallbackSettings) => fallbackSettings.rorSettingsFile
+      }
+      def rorSettingsMaxSize: Information = strategy match {
+        case ForceLoadingFromFile(settings) => settings.settingsMaxSize
+        case LoadFromIndexWithFileFallback(settings, _) => settings.settingsMaxSize
+      }
     }
 
     final case class LoadFromFileSettings(rorSettingsFile: File,
@@ -169,8 +174,8 @@ object EsConfig {
         alternativePath = NonEmptyList.of("readonlyrest", "force_load_from_file"), // for a sake of backward compatibility
         default = false
       ) map {
-        case true => ???
-        case false => ???
+        case true => LoadingRorCoreStrategy.ForceLoadingFromFile(???)
+        case false => LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(???, ???)
       }
     }
 
@@ -203,6 +208,11 @@ object EsConfig {
         (booleanDecoder or stringDecoder) map XpackSettings.apply
       }
     }
+
+//    private implicit val loadFromFileSettingsDecoder: Decoder[LoadFromFileSettings] = {
+//      //YamlKeyDecoder[String](path = NonEmptyList.of("readonlyrest", "settings", "file", "path"))
+//      ???
+//    }
   }
 
 }
