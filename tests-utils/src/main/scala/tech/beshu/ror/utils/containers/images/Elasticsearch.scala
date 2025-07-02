@@ -134,7 +134,7 @@ class Elasticsearch(esVersion: String,
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(missingTar, "microdnf install -y tar")
       .runWhen(
-        config.esInstallationType == EsInstallationType.UbuntuDockerImageWithEsFromApt,
+        true,//config.esInstallationType == EsInstallationType.UbuntuDockerImageWithEsFromApt,
         s"chown -R elasticsearch:elasticsearch ${esDir.toString()}"
       )
       .run(s"chown -R elasticsearch:elasticsearch ${configDir(config).toString()}")
