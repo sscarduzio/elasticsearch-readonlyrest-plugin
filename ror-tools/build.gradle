@@ -71,14 +71,6 @@ test {
     maxParallelForks = 1
 }
 
-subprojects {
-    tasks.withType(Test).tap {
-        configureEach {
-            maxParallelForks = Runtime.runtime.availableProcessors()
-        }
-    }
-}
-
 configurations {
     shadowRuntime {
         extendsFrom runtimeClasspath

@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
-import org.scalatest.{BeforeAndAfterAll, Suite}
+import org.scalatest.Suite
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.providers.*
 import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClusterProvider, EsRemoteClustersContainer}
@@ -53,8 +53,7 @@ object support {
     extends RorConfigFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
-      with ForAllTestContainer
-      with BeforeAndAfterAll {
+      with ForAllTestContainer {
     this: Suite with EsClusterProvider with ESVersionSupport =>
 
     import com.dimafeng.testcontainers.LazyContainer.*
@@ -76,14 +75,5 @@ object support {
   }
 
   trait SingleClientSupport extends SingleClient with SingleEsTarget
-
   trait MultipleClientsSupport extends MultipleClients with MultipleEsTargets
 }
-
-//private def pruneDockerImages(): Unit = {
-//  val logger: Logger = LogManager.getLogger("prune-docker-images")
-//  val dockerClient: DockerClient = DockerClientFactory.instance().client()
-//  logger.info("Pruning docker images after test suite")
-//  val reclaimedSpace = 1.0 * dockerClient.pruneCmd(PruneType.IMAGES).withDangling(false).exec().getSpaceReclaimed / 1024 / 1024
-//  logger.info(s"Pruning docker images complete, reclaimed $reclaimedSpace MB")
-//}

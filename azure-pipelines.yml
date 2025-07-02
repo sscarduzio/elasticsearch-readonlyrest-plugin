@@ -190,8 +190,6 @@ stages:
           matrix:
             IT_es90x:
               ROR_TASK: integration_es90x
-            RTT_es90x:
-              ROR_TASK: ror_tools_es90x
       - job:
         condition:
           and(
@@ -263,12 +261,6 @@ stages:
               ROR_TASK: integration_es81x
             IT_es80x:
               ROR_TASK: integration_es80x
-            RTT_es818x:
-              ROR_TASK: ror_tools_es818x
-            RTT_es810x:
-              ROR_TASK: ror_tools_es810x
-            RTT_es80x:
-              ROR_TASK: ror_tools_es80x
       - job:
         condition:
           and(
@@ -306,8 +298,6 @@ stages:
           matrix:
             IT_es90x:
               ROR_TASK: integration_es90x
-            RTT_es90x:
-              ROR_TASK: ror_tools_es90x
       - job:
         condition:
           and(
@@ -345,16 +335,10 @@ stages:
           matrix:
             IT_es818x:
               ROR_TASK: integration_es818x
-#             IT_es810x:
-#               ROR_TASK: integration_es810x
+            IT_es810x:
+              ROR_TASK: integration_es810x
             IT_es80x:
               ROR_TASK: integration_es80x
-            RTT_es818x:
-              ROR_TASK: ror_tools_es818x
-#             RTT_es810x:
-#               ROR_TASK: ror_tools_es810x
-            RTT_es80x:
-              ROR_TASK: ror_tools_es80x
       - job:
         condition:
           and(
@@ -417,14 +401,6 @@ stages:
               ROR_TASK: integration_es70x
             IT_es67x:
               ROR_TASK: integration_es67x
-            RTT_es717x:
-              ROR_TASK: ror_tools_es717x
-            RTT_es710x:
-              ROR_TASK: ror_tools_es710x
-            RTT_es70x:
-              ROR_TASK: ror_tools_es70x
-            RTT_es67x:
-              ROR_TASK: ror_tools_es67x
       - job:
         condition:
           and(
@@ -461,20 +437,12 @@ stages:
           matrix:
             IT_es717x:
               ROR_TASK: integration_es717x
-#             IT_es710x:
-#               ROR_TASK: integration_es710x
+            IT_es710x:
+              ROR_TASK: integration_es710x
             IT_es70x:
               ROR_TASK: integration_es70x
             IT_es67x:
               ROR_TASK: integration_es67x
-            RTT_es717x:
-              ROR_TASK: integration_es717x
-#             RTT_es710x:
-#               ROR_TASK: ror_tools_es710x
-            RTT_es70x:
-              ROR_TASK: ror_tools_es70x
-            RTT_es67x:
-              ROR_TASK: ror_tools_es67x
 
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'

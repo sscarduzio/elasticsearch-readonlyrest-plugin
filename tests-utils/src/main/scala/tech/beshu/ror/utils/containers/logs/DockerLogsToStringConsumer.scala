@@ -21,7 +21,7 @@ import org.testcontainers.containers.output.OutputFrame
 import java.util.function.Consumer
 import scala.language.postfixOps
 
-class DockerLogsToStringConsumer() extends Consumer[OutputFrame] {
+class DockerLogsToStringConsumer extends Consumer[OutputFrame] {
 
   private val buffer = new StringBuilder()
 
