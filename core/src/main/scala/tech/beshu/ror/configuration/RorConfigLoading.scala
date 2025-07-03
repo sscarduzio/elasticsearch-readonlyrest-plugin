@@ -19,7 +19,6 @@ package tech.beshu.ror.configuration
 import cats.free.Free
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.{LoadFromFileSettings, LoadFromIndexSettings}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
-import tech.beshu.ror.es.EsEnv
 
 object RorConfigLoading {
   type ErrorOr[A] = LoadedRorConfig.Error Either A
@@ -28,8 +27,6 @@ object RorConfigLoading {
 
   sealed trait LoadRorConfigAction[A]
   object LoadRorConfigAction {
-    final case class LoadEsConfig(env: EsEnv)
-      extends LoadRorConfigAction[ErrorOr[EsConfig]]
     final case class ForceLoadRorConfigFromFile(settings: LoadFromFileSettings)
       extends LoadRorConfigAction[ErrorOr[LoadedRorConfig[RawRorConfig]]]
     final case class LoadRorConfigFromFile(settings: LoadFromFileSettings)
@@ -43,9 +40,6 @@ object RorConfigLoading {
 
   def loadRorConfigFromFile(settings: LoadFromFileSettings): LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]] =
     Free.liftF(LoadRorConfigAction.LoadRorConfigFromFile(settings))
-
-  def loadEsConfig(env: EsEnv): LoadRorConfig[ErrorOr[EsConfig]] =
-    Free.liftF(LoadRorConfigAction.LoadEsConfig(env))
 
   def forceLoadRorConfigFromFile(settings: LoadFromFileSettings): LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]] =
     Free.liftF(LoadRorConfigAction.ForceLoadRorConfigFromFile(settings))

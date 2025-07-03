@@ -51,10 +51,6 @@ class RorApiManager(client: RestClient,
     call(createGetRorInIndexConfigRequest(), new RorApiJsonResponse(_))
   }
 
-  def loadRorCurrentConfig(additionalParams: Map[String, String] = Map.empty): RorApiJsonResponse = {
-    call(createLoadRorCurrentConfigRequest(additionalParams), new RorApiJsonResponse(_))
-  }
-
   def updateRorInIndexConfig(config: String): RorApiResponseWithBusinessStatus = {
     call(createUpdateRorInIndexConfigRequest(config), new RorApiResponseWithBusinessStatus(_))
   }
@@ -204,10 +200,6 @@ class RorApiManager(client: RestClient,
 
   private def provideAuthMocksRequest() = {
     new HttpGet(client.from("/_readonlyrest/admin/config/test/authmock"))
-  }
-
-  private def createLoadRorCurrentConfigRequest(additionalParams: Map[String, String]) = {
-    new HttpGet(client.from("/_readonlyrest/admin/config/load", additionalParams))
   }
 
   final class RorApiJsonResponse(override val response: HttpResponse)

@@ -34,8 +34,9 @@ import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, Core
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
-import tech.beshu.ror.configuration.RorConfigLoading.{ErrorOr, LoadRorConfig}
+import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy
+import tech.beshu.ror.configuration.RorConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.TestRorConfigLoading.*
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.*
@@ -66,8 +67,15 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def loadEsConfig() = {
-    val action = RorConfigLoading.loadEsConfig(esEnv)
-    runStartingFailureProgram(action)
+    EitherT(EsConfig.from(esEnv))
+      .leftMap {
+        case LoadEsConfigError.FileNotFound(file) =>
+          StartingFailure(s"Cannot find elasticsearch settings file: [${file.show}]")
+        case LoadEsConfigError.MalformedContent(file, message) =>
+          StartingFailure(s"Settings file is malformed: [${file.show}], ${message.show}")
+        case LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled(typeOfConfiguration) =>
+          StartingFailure(s"Cannot use ROR ${typeOfConfiguration.show} when XPack Security is enabled")
+      }
   }
 
   private def loadRorConfig(esConfig: EsConfig) = {
@@ -113,12 +121,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
         StartingFailure(message)
       case LoadedRorConfig.FileNotExist(path) =>
         StartingFailure(s"Cannot find settings file: ${path.show}")
-      case LoadedRorConfig.EsFileNotExist(path) =>
-        StartingFailure(s"Cannot find elasticsearch settings file: [${path.show}]")
-      case LoadedRorConfig.EsFileMalformed(path, message) =>
-        StartingFailure(s"Settings file is malformed: [${path.show}], ${message.show}")
-      case LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled(typeOfConfiguration) =>
-        StartingFailure(s"Cannot use ROR ${typeOfConfiguration.show} when XPack Security is enabled")
       case LoadedRorConfig.IndexParsingError(message) =>
         StartingFailure(message)
       case LoadedRorConfig.IndexUnknownStructure =>

@@ -22,15 +22,13 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
-import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
 import tech.beshu.ror.configuration.RawRorConfigYamlParser.ParsingRorConfigError.*
 import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction
 import tech.beshu.ror.configuration.RorProperties.LoadingDelay
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.*
 import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.{EsConfig, RawRorConfigYamlParser, RorConfigLoading}
+import tech.beshu.ror.configuration.{RawRorConfigYamlParser, RorConfigLoading}
 import tech.beshu.ror.implicits.*
 
 object RorConfigLoadingInterpreter extends Logging {
@@ -38,23 +36,6 @@ object RorConfigLoadingInterpreter extends Logging {
   def create(indexConfigManager: IndexConfigManager)
             (implicit systemContext: SystemContext): LoadRorConfigAction ~> Task = new (LoadRorConfigAction ~> Task) {
     override def apply[A](fa: LoadRorConfigAction[A]): Task[A] = fa match {
-      case RorConfigLoading.LoadRorConfigAction.LoadEsConfig(env) =>
-        logger.info(s"Loading Elasticsearch settings from file: ${env.elasticsearchConfig.show}")
-        EsConfig
-          .from(env)
-          .map(_.left.map {
-            case LoadEsConfigError.FileNotFound(file) =>
-              EsFileNotExist(file.path)
-            case LoadEsConfigError.MalformedContent(file, msg) =>
-              EsFileMalformed(file.path, msg)
-            case LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled(aType) =>
-              CannotUseRorConfigurationWhenXpackSecurityIsEnabled(
-                aType match {
-                  case SettingsType.Ssl => "SSL configuration"
-                  case SettingsType.Fips => "FIBS configuration"
-                }
-              )
-          })
       case RorConfigLoading.LoadRorConfigAction.ForceLoadRorConfigFromFile(settings) =>
         val rorSettingsFile = settings.rorSettingsFile
         val rawRorConfigYamlParser = new RawRorConfigYamlParser(settings.settingsMaxSize)

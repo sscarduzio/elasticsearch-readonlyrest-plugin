@@ -59,6 +59,7 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.ScalaOps.*
@@ -332,6 +333,11 @@ trait LogsShowInstances
       s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
     case ComplianceResult.NonCompliantWith(JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier) =>
       s"JWT variables are not allowed to be used in Groups rule"
+  }
+
+  implicit val settingsTypeShow: Show[SettingsType] = Show.show {
+    case SettingsType.Ssl => "SSL configuration"
+    case SettingsType.Fips => "FIBS configuration"
   }
 
   def obfuscatedHeaderShow(obfuscatedHeaders: Iterable[Header.Name]): Show[Header] = {
