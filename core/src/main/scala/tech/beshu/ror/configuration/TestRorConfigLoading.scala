@@ -16,21 +16,58 @@
  */
 package tech.beshu.ror.configuration
 
-import cats.free.Free
+import cats.data.EitherT
+import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromIndexSettings
-import tech.beshu.ror.configuration.loader.LoadedTestRorConfig
+import tech.beshu.ror.configuration.index.{IndexConfigError, IndexTestConfigManager}
+import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.IndexParsingError
+import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.loader.{LoadedTestRorConfig, RorConfigLoader}
+import tech.beshu.ror.implicits.*
 
-object TestRorConfigLoading {
-  type IndexErrorOr[A] = LoadedTestRorConfig.LoadingIndexError Either A
-  type LoadTestRorConfig[A] = Free[LoadRorTestConfigAction, A]
+object TestRorConfigLoading extends Logging {
 
-  sealed trait LoadRorTestConfigAction[A]
-  object LoadRorTestConfigAction {
-    final case class LoadTestRorConfigFromIndex(settings: LoadFromIndexSettings)
-      extends LoadRorTestConfigAction[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]]
+  def loadTestRorConfigFromIndex(settings: LoadFromIndexSettings,
+                                 indexConfigManager: IndexTestConfigManager): Task[Either[LoadedTestRorConfig.LoadingIndexError, LoadedTestRorConfig[TestRorConfig]]] = {
+    val rorConfigIndex = settings.rorConfigIndex
+    val loadingDelay = settings.loadingDelay
+    logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${rorConfigIndex.index.show}) ...")
+    EitherT {
+      indexConfigManager
+        .load(rorConfigIndex)
+        .delayExecution(loadingDelay.value.value)
+    }.map { testConfig =>
+        testConfig match {
+          case TestRorConfig.Present(rawConfig, _, _) =>
+            logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw test config from index: ${rawConfig.raw.show}")
+          case TestRorConfig.NotSet =>
+            logger.debug("[CLUSTERWIDE SETTINGS] There was no test settings in index. Test settings engine will be not initialized.")
+        }
+        testConfig
+      }
+      .bimap(convertIndexError, LoadedTestRorConfig.apply)
+      .leftMap { error =>
+        logIndexLoadingError(error)
+        error
+      }.value
   }
 
-  def loadTestRorConfigFromIndex(settings: LoadFromIndexSettings): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] =
-    Free.liftF(LoadRorTestConfigAction.LoadTestRorConfigFromIndex(settings))
+  private def logIndexLoadingError(error: LoadedTestRorConfig.LoadingIndexError): Unit = {
+    error match {
+      case IndexParsingError(message) =>
+        logger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
+      case LoadedTestRorConfig.IndexUnknownStructure =>
+        logger.info("Loading ReadonlyREST test settings from index failed: index content malformed")
+      case LoadedTestRorConfig.IndexNotExist =>
+        logger.info("Loading ReadonlyREST test settings from index failed: cannot find index")
+    }
+  }
+  private def convertIndexError(error: RorConfigLoader.Error[IndexConfigError]): LoadedTestRorConfig.LoadingIndexError =
+    error match {
+      case ParsingError(error) => LoadedTestRorConfig.IndexParsingError(error.show)
+      case SpecializedError(IndexConfigError.IndexConfigNotExist) => LoadedTestRorConfig.IndexNotExist
+      case SpecializedError(IndexConfigError.IndexConfigUnknownStructure) => LoadedTestRorConfig.IndexUnknownStructure
+    }
 
 }

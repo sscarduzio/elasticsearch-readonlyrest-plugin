@@ -16,11 +16,13 @@
  */
 package tech.beshu.ror.configuration.loader
 
-import cats.free.Free
+import monix.eval.Task
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromIndexSettings
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}
 import tech.beshu.ror.configuration.TestRorConfig
 import tech.beshu.ror.configuration.TestRorConfigLoading.*
+import tech.beshu.ror.configuration.index.IndexTestConfigManager
+import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.LoadingIndexError
 
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
@@ -28,35 +30,40 @@ import scala.language.postfixOps
 object LoadRawTestRorConfig {
 
   def loadFromIndexWithFallback(indexLoadingSettings: LoadFromIndexSettings,
-                                fallbackConfig: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
+                                fallbackConfig: TestRorConfig,
+                                indexConfigManager: IndexTestConfigManager): Task[Either[LoadingIndexError, LoadedTestRorConfig[TestRorConfig]]] = {
     attemptLoadingConfigFromIndex(
       settings = indexLoadingSettings,
-      fallback = fallbackConfig
+      fallback = fallbackConfig,
+      indexConfigManager
     )
   }
 
   private def attemptLoadingConfigFromIndex(settings: LoadFromIndexSettings,
-                                            fallback: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
+                                            fallback: TestRorConfig,
+                                            indexConfigManager: IndexTestConfigManager): Task[Either[LoadingIndexError, LoadedTestRorConfig[TestRorConfig]]] = {
     settings.loadingAttemptsCount.value.value match {
       case 0 =>
-        Free.pure[LoadRorTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](
-          Right(LoadedTestRorConfig[TestRorConfig](fallback))
-        )
+        Task.now(Right(LoadedTestRorConfig[TestRorConfig](fallback)))
       case attemptsCount =>
         for {
-          result <- loadTestRorConfigFromIndex(settings.copy(loadingDelay = LoadingDelay.unsafeFrom(0 seconds)))
+          result <- loadTestRorConfigFromIndex(
+            settings.copy(loadingDelay = LoadingDelay.unsafeFrom(0 seconds)),
+            indexConfigManager
+          )
           rawRorConfig <- result match {
             case Left(LoadedTestRorConfig.IndexNotExist) =>
-              Free.defer(attemptLoadingConfigFromIndex(
+              attemptLoadingConfigFromIndex(
                 settings.copy(loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(settings.loadingAttemptsCount.value.value - 1)),
-                fallback = fallback
-              ))
+                fallback = fallback,
+                indexConfigManager
+              )
             case Left(error@LoadedTestRorConfig.IndexUnknownStructure) =>
-              Free.pure[LoadRorTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Left(error))
+              Task.now(Left(error))
             case Left(error@LoadedTestRorConfig.IndexParsingError(_)) =>
-              Free.pure[LoadRorTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Left(error))
+              Task.now(Left(error))
             case Right(value) =>
-              Free.pure[LoadRorTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Right(value))
+              Task.now(Right(value))
           }
         } yield rawRorConfig
     }

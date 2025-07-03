@@ -36,8 +36,6 @@ import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy
-import tech.beshu.ror.configuration.RorConfigLoading.{ErrorOr, LoadRorConfig}
-import tech.beshu.ror.configuration.TestRorConfigLoading.*
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.*
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
@@ -78,41 +76,49 @@ class ReadonlyRest(coreFactory: CoreFactory,
       }
   }
 
-  private def loadRorConfig(esConfig: EsConfig) = {
-    val action = esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
+  private def loadRorConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedRorConfig[RawRorConfig]] = {
+    esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
       case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
-        LoadRawRorConfig.loadFromFile(settings)
+        EitherT(LoadRawRorConfig.loadFromFile(settings))
+          .leftMap(toStartingFailure)
       case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, fallbackSettings) =>
         // todo: move
         //        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
         //        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
         //        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
-        LoadRawRorConfig.loadFromIndexWithFileFallback(settings, fallbackSettings)
+        EitherT(LoadRawRorConfig.loadFromIndexWithFileFallback(settings, fallbackSettings, indexConfigManager))
+          .leftMap(toStartingFailure)
     }
-    runStartingFailureProgram(action)
   }
 
   private def loadRorTestConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedTestRorConfig[TestRorConfig]] = {
     esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
       case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
-        EitherT.right(Task.now(LoadedTestRorConfig(TestRorConfig.NotSet)))
+        EitherT.rightT[Task, StartingFailure](LoadedTestRorConfig(TestRorConfig.NotSet))
       case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
         // todo: move
         //        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
         //        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
         //        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
-        val action = LoadRawTestRorConfig.loadFromIndexWithFallback(
-          indexLoadingSettings = settings,
-          fallbackConfig = notSetTestRorConfig
-        )
-        EitherT.right(runTestProgram(action))
-    }
-  }
 
-  private def runStartingFailureProgram[A](action: LoadRorConfig[ErrorOr[A]]) = {
-    val compiler = RorConfigLoadingInterpreter.create(indexConfigManager)
-    EitherT(action.foldMap(compiler))
-      .leftMap(toStartingFailure)
+        EitherT {
+          LoadRawTestRorConfig.loadFromIndexWithFallback(
+            indexLoadingSettings = settings,
+            fallbackConfig = notSetTestRorConfig,
+            indexTestConfigManager
+          )
+        }.leftFlatMap {
+          case LoadedTestRorConfig.IndexParsingError(message) =>
+            logger.error(s"Loading ReadonlyREST test settings from index failed: ${message.show}. No test settings will be loaded.")
+            EitherT.rightT[Task, StartingFailure](LoadedTestRorConfig(notSetTestRorConfig))
+          case LoadedTestRorConfig.IndexUnknownStructure =>
+            logger.error("Loading ReadonlyREST test settings from index failed: index content malformed. No test settings will be loaded.")
+            EitherT.rightT[Task, StartingFailure](LoadedTestRorConfig(notSetTestRorConfig))
+          case LoadedTestRorConfig.IndexNotExist =>
+            logger.info("Loading ReadonlyREST test settings from index failed: cannot find index. No test settings will be loaded.")
+            EitherT.rightT[Task, StartingFailure](LoadedTestRorConfig(notSetTestRorConfig))
+        }
+    }
   }
 
   private def toStartingFailure(error: LoadedRorConfig.Error) = {
@@ -128,23 +134,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
       case LoadedRorConfig.IndexNotExist =>
         StartingFailure(s"Settings index doesn't exist")
     }
-  }
-
-  private def runTestProgram(action: LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]]): Task[LoadedTestRorConfig[TestRorConfig]] = {
-    val compiler = TestRorConfigLoadingInterpreter.create(indexTestConfigManager)
-    EitherT(action.foldMap(compiler))
-      .leftMap {
-        case LoadedTestRorConfig.IndexParsingError(message) =>
-          logger.error(s"Loading ReadonlyREST test settings from index failed: ${message.show}. No test settings will be loaded.")
-          LoadedTestRorConfig(notSetTestRorConfig)
-        case LoadedTestRorConfig.IndexUnknownStructure =>
-          logger.error("Loading ReadonlyREST test settings from index failed: index content malformed. No test settings will be loaded.")
-          LoadedTestRorConfig(notSetTestRorConfig)
-        case LoadedTestRorConfig.IndexNotExist =>
-          logger.info("Loading ReadonlyREST test settings from index failed: cannot find index. No test settings will be loaded.")
-          LoadedTestRorConfig(notSetTestRorConfig)
-      }
-      .merge
   }
 
   private def startRor(esConfig: EsConfig,

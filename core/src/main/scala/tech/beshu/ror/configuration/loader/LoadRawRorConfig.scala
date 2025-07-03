@@ -16,70 +16,74 @@
  */
 package tech.beshu.ror.configuration.loader
 
-import cats.free.Free
+import monix.eval.Task
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.{LoadFromFileSettings, LoadFromIndexSettings}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.RorConfigLoading.*
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}
+import tech.beshu.ror.configuration.index.IndexConfigManager
 
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
 
 object LoadRawRorConfig {
 
-  type LoadResult = ErrorOr[LoadedRorConfig[RawRorConfig]]
-
   def loadFromIndexWithFileFallback(indexLoadingSettings: LoadFromIndexSettings,
-                                    fallbackFileLoadingSettings: LoadFromFileSettings): LoadRorConfig[LoadResult] = {
+                                    fallbackFileLoadingSettings: LoadFromFileSettings,
+                                    indexConfigManager: IndexConfigManager): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
     attemptLoadingConfigFromIndex(
       settings = indexLoadingSettings,
-      fallback = loadRorConfigFromFile(fallbackFileLoadingSettings)
+      fallback = loadRorConfigFromFile(fallbackFileLoadingSettings),
+      indexConfigManager
     )
   }
 
-  def loadFromFile(settings: LoadFromFileSettings): LoadRorConfig[LoadResult] = {
-    for {
-      loadedConfig <- forceLoadRorConfigFromFile(settings)
-    } yield loadedConfig
+  def loadFromFile(settings: LoadFromFileSettings): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
+    forceLoadRorConfigFromFile(settings)
   }
 
-  def loadFromIndex(settings: LoadFromIndexSettings): LoadRorConfig[LoadResult] = {
+  def loadFromIndex(settings: LoadFromIndexSettings, indexConfigManager: IndexConfigManager): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
     for {
       // todo: is the copy ok?
-      result <- loadRorConfigFromIndex(settings.copy(loadingDelay = LoadingDelay.unsafeFrom(0 seconds)))
+      result <- loadRorConfigFromIndex(
+        settings.copy(loadingDelay = LoadingDelay.unsafeFrom(0 seconds)),
+        indexConfigManager
+      )
       rawRorConfig <- result match {
         case Left(LoadedRorConfig.IndexNotExist) =>
-          Free.pure[LoadRorConfigAction, LoadResult](Left(LoadedRorConfig.IndexNotExist))
+          Task.now(Left(LoadedRorConfig.IndexNotExist: LoadedRorConfig.Error))
         case Left(LoadedRorConfig.IndexUnknownStructure) =>
-          Free.pure[LoadRorConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
+          Task.now(Left(LoadedRorConfig.IndexUnknownStructure: LoadedRorConfig.Error))
         case Left(error@LoadedRorConfig.IndexParsingError(_)) =>
-          Free.pure[LoadRorConfigAction, LoadResult](Left(error))
+          Task.now(Left(error: LoadedRorConfig.Error))
         case Right(value) =>
-          Free.pure[LoadRorConfigAction, LoadResult](Right(value))
+          Task.now(Right(value))
       }
     } yield rawRorConfig
   }
 
   private def attemptLoadingConfigFromIndex(settings: LoadFromIndexSettings,
-                                            fallback: LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]]): LoadRorConfig[LoadResult] = {
+                                            fallback: Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]],
+                                            indexConfigManager: IndexConfigManager): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
     settings.loadingAttemptsCount.value.value match {
       case 0 =>
         fallback.map(identity)
       case attemptsCount =>
         for {
-          result <- loadRorConfigFromIndex(settings)
+          result <- loadRorConfigFromIndex(settings, indexConfigManager)
           rawRorConfig <- result match {
             case Left(LoadedRorConfig.IndexNotExist) =>
-              Free.defer(attemptLoadingConfigFromIndex(
+              attemptLoadingConfigFromIndex(
                 settings.copy(loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(settings.loadingAttemptsCount.value.value - 1)),
-                fallback = fallback
-              ))
+                fallback = fallback,
+                indexConfigManager
+              )
             case Left(LoadedRorConfig.IndexUnknownStructure) =>
-              Free.pure[LoadRorConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
+              Task.now(Left(LoadedRorConfig.IndexUnknownStructure))
             case Left(error@LoadedRorConfig.IndexParsingError(_)) =>
-              Free.pure[LoadRorConfigAction, LoadResult](Left(error))
+              Task.now(Left(error))
             case Right(value) =>
-              Free.pure[LoadRorConfigAction, LoadResult](Right(value))
+              Task.now(Right(value))
           }
         } yield rawRorConfig
     }

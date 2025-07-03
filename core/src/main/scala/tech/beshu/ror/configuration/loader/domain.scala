@@ -18,6 +18,7 @@ package tech.beshu.ror.configuration.loader
 
 import java.nio.file.Path
 
+// todo: do we need this wrapper?
 final case class LoadedRorConfig[A](value: A)
 object LoadedRorConfig {
 
