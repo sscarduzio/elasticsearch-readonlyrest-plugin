@@ -24,7 +24,8 @@ import tech.beshu.ror.utils.containers.images.DockerImageDescription.Command.{Ch
 
 object DockerImageCreator extends StrictLogging {
 
-  def create(imageDescription: DockerImageDescription): ImageFromDockerfile = {
+  def create(elasticsearch: Elasticsearch): ImageFromDockerfile = {
+    val imageDescription = elasticsearch.toDockerImageDescription
     copyFilesFrom(imageDescription, to = new ImageFromDockerfile())
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         val dockerfile = builder

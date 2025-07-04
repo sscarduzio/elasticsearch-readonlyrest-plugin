@@ -65,7 +65,6 @@ object EsContainerWithXpackSecurity extends StrictLogging {
       Elasticsearch
         .create(esVersion, esConfig)
         .install(new XpackSecurityPlugin(esVersion, xpackSecurityConfig))
-        .toDockerImageDescription
     )
   }
 }

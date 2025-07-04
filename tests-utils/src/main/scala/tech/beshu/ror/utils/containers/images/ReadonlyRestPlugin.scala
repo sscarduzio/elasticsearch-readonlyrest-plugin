@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils.containers.images
 
 import better.files.*
-import tech.beshu.ror.utils.containers.images.Elasticsearch.{configDir, esDir, fromResourceBy}
+import tech.beshu.ror.utils.containers.images.Elasticsearch.{esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
@@ -69,14 +69,14 @@ class ReadonlyRestPlugin(esVersion: String,
   override def updateEsImage(image: DockerImageDescription, esConfig: Elasticsearch.Config): DockerImageDescription = {
     image
       .copyFile(os.root / "tmp" / config.rorPlugin.name, config.rorPlugin)
-      .copyFile(configDir(esConfig) / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
-      .copyFile(configDir(esConfig) / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
-      .copyFile(configDir(esConfig) / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
-      .copyFile(configDir(esConfig) / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
-      .copyFile(configDir(esConfig) / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
+      .copyFile(esConfig.esConfigDir / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
+      .copyFile(esConfig.esConfigDir / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
+      .copyFile(esConfig.esConfigDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
+      .copyFile(esConfig.esConfigDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
+      .copyFile(esConfig.esConfigDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .updateFipsDependencies(esConfig)
       .user("elasticsearch")
-      .copyFile(configDir(esConfig) / "readonlyrest.yml", config.rorConfig)
+      .copyFile(esConfig.esConfigDir / "readonlyrest.yml", config.rorConfig)
       .user("root")
       .installRorPlugin()
       .when(performPatching, _.patchES())
@@ -140,12 +140,12 @@ class ReadonlyRestPlugin(esVersion: String,
     def updateFipsDependencies(esConfig: Elasticsearch.Config): DockerImageDescription = {
       if (isFibsEnabled) {
         image
-          .copyFile(configDir(esConfig) / "additional-permissions.policy", fromResourceBy(name = "additional-permissions.policy"))
-          .copyFile(configDir(esConfig) / "ror-keystore.bcfks", fromResourceBy(name = "ror-keystore.bcfks"))
-          .copyFile(configDir(esConfig) / "ror-truststore.bcfks", fromResourceBy(name = "ror-truststore.bcfks"))
-          .copyFile(configDir(esConfig) / "elastic-certificates.bcfks", fromResourceBy(name = "elastic-certificates.bcfks"))
+          .copyFile(esConfig.esConfigDir / "additional-permissions.policy", fromResourceBy(name = "additional-permissions.policy"))
+          .copyFile(esConfig.esConfigDir / "ror-keystore.bcfks", fromResourceBy(name = "ror-keystore.bcfks"))
+          .copyFile(esConfig.esConfigDir / "ror-truststore.bcfks", fromResourceBy(name = "ror-truststore.bcfks"))
+          .copyFile(esConfig.esConfigDir / "elastic-certificates.bcfks", fromResourceBy(name = "elastic-certificates.bcfks"))
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 10, 0),
-            s"cat ${configDir(esConfig).toString()}/additional-permissions.policy >> ${esDir.toString()}/jdk/conf/security/java.policy"
+            s"cat ${esConfig.esConfigDir.toString()}/additional-permissions.policy >> ${esDir.toString()}/jdk/conf/security/java.policy"
           )
       }
       else {

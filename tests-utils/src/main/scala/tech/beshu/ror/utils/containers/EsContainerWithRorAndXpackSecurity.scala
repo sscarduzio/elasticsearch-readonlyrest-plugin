@@ -115,7 +115,6 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
       Elasticsearch.create(esVersion, esConfig)
         .install(new ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion, securityConfig, performPatching))
         .when(customEntrypoint, _.setEntrypoint(_))
-        .toDockerImageDescription
     )
   }
 }

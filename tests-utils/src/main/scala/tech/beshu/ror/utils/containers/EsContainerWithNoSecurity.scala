@@ -63,7 +63,6 @@ object EsContainerWithNoSecurity extends StrictLogging {
             additionalElasticsearchYamlEntries = esConfig.additionalElasticsearchYamlEntries ++ Map("xpack.security.enabled" -> "false")
           )
         )
-        .toDockerImageDescription
     )
   }
 }
