@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
 import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestConfigApi}
 import tech.beshu.ror.boot.engines.{Engines, MainConfigBasedReloadableEngine, TestConfigBasedReloadableEngine}
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
-import tech.beshu.ror.configuration.index.{IndexConfigError, SavingIndexConfigError}
+import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager, IndexTestConfigManager, SavingIndexConfigError}
 import tech.beshu.ror.configuration.loader.RorConfigLoader.Error
 import tech.beshu.ror.configuration.loader.FileRorConfigLoader
 import tech.beshu.ror.configuration.{RawRorConfig, RawRorConfigYamlParser, RorConfig}
@@ -47,6 +47,8 @@ class RorInstance private(boot: ReadonlyRest,
                           mainReloadInProgress: Semaphore[Task],
                           initialTestEngine: ReadonlyRest.TestEngine,
                           testReloadInProgress: Semaphore[Task],
+                          indexConfigManager: IndexConfigManager,
+                          indexTestConfigManager: IndexTestConfigManager,
                           rorSettingsIndex: RorConfigurationIndex,
                           rorSettingsFile: File,
                           rorSettingsMaxSize: Information)
@@ -70,12 +72,14 @@ class RorInstance private(boot: ReadonlyRest,
     boot,
     (initialEngine.engine, initialEngine.config),
     mainReloadInProgress,
+    indexConfigManager,
     rorSettingsIndex,
   )
   private val anTestConfigEngine = TestConfigBasedReloadableEngine.create(
     boot,
     initialTestEngine,
     testReloadInProgress,
+    indexTestConfigManager,
     rorSettingsIndex
   )
 
@@ -84,7 +88,7 @@ class RorInstance private(boot: ReadonlyRest,
   private val configRestApi = new ConfigApi(
     rorInstance = this,
     rarRorConfigYamlParser,
-    boot.indexConfigManager,
+    indexConfigManager,
     new FileRorConfigLoader(rorSettingsFile, rarRorConfigYamlParser),
     rorSettingsIndex
   )
@@ -270,30 +274,36 @@ object RorInstance {
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
                                    mainEngine: ReadonlyRest.MainEngine,
                                    testEngine: ReadonlyRest.TestEngine,
+                                   indexConfigManager: IndexConfigManager,
+                                   indexTestConfigManager: IndexTestConfigManager,
                                    refreshInterval: RefreshInterval,
                                    rorSettingsFile: File,
                                    rorSettingsMaxSize: Information,
                                    rorSettingsIndex: RorConfigurationIndex)
                                   (implicit systemContext: SystemContext,
                                    scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.WithPeriodicIndexCheck(refreshInterval), mainEngine, testEngine, rorSettingsFile, rorSettingsMaxSize, rorSettingsIndex)
+    create(boot, Mode.WithPeriodicIndexCheck(refreshInterval), mainEngine, testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize, rorSettingsIndex)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
                                       mainEngine: ReadonlyRest.MainEngine,
                                       testEngine: ReadonlyRest.TestEngine,
+                                      indexConfigManager: IndexConfigManager,
+                                      indexTestConfigManager: IndexTestConfigManager,
                                       rorSettingsFile: File,
                                       rorSettingsMaxSize: Information,
                                       rorSettingsIndex: RorConfigurationIndex)
                                      (implicit systemContext: SystemContext,
                                       scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, rorSettingsFile, rorSettingsMaxSize, rorSettingsIndex)
+    create(boot, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize, rorSettingsIndex)
   }
 
   private def create(boot: ReadonlyRest,
                      mode: RorInstance.Mode,
                      engine: ReadonlyRest.MainEngine,
                      testEngine: ReadonlyRest.TestEngine,
+                     indexConfigManager: IndexConfigManager,
+                     indexTestConfigManager: IndexTestConfigManager,
                      rorSettingsFile: File,
                      rorSettingsMaxSize: Information,
                      rorSettingsIndex: RorConfigurationIndex)
@@ -309,6 +319,8 @@ object RorInstance {
       mainReloadInProgress = isReloadInProgressSemaphore,
       initialTestEngine = testEngine,
       testReloadInProgress = isTestReloadInProgressSemaphore,
+      indexConfigManager = indexConfigManager,
+      indexTestConfigManager = indexTestConfigManager,
       rorSettingsIndex = rorSettingsIndex,
       rorSettingsFile = rorSettingsFile,
       rorSettingsMaxSize = rorSettingsMaxSize

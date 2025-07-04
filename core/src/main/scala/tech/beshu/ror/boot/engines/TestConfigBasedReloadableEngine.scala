@@ -33,7 +33,7 @@ import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpirationConfig, EngineState, InitialEngine}
 import tech.beshu.ror.boot.engines.ConfigHash.*
 import tech.beshu.ror.configuration.TestRorConfig.Present.ExpirationConfig
-import tech.beshu.ror.configuration.index.SavingIndexConfigError
+import tech.beshu.ror.configuration.index.{IndexTestConfigManager, SavingIndexConfigError}
 import tech.beshu.ror.configuration.{RawRorConfig, TestRorConfig}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
@@ -41,6 +41,7 @@ import tech.beshu.ror.utils.ScalaOps.value
 private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
                                                             initialEngine: InitialEngine,
                                                             reloadInProgress: Semaphore[Task],
+                                                            indexTestConfigManager: IndexTestConfigManager,
                                                             rorConfigurationIndex: RorConfigurationIndex)
                                                            (implicit systemContext: SystemContext,
                                                             scheduler: Scheduler)
@@ -184,7 +185,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
 
   private def saveConfigInIndex[A](newConfig: TestRorConfig.Present,
                                    onFailure: SavingIndexConfigError => A): EitherT[Task, A, Unit] = {
-    EitherT(boot.indexTestConfigManager.save(newConfig, rorConfigurationIndex))
+    EitherT(indexTestConfigManager.save(newConfig, rorConfigurationIndex))
       .leftMap(onFailure)
   }
 
@@ -209,7 +210,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
   }
 
   private def loadRorConfigFromIndex(): EitherT[Task, IndexConfigReloadError, TestRorConfig] = EitherT {
-    boot.indexTestConfigManager
+    indexTestConfigManager
       .load(rorConfigurationIndex)
       .map(_.left.map(IndexConfigReloadError.LoadingConfigError.apply))
   }
@@ -237,6 +238,7 @@ object TestConfigBasedReloadableEngine {
   def create(boot: ReadonlyRest,
              initialEngine: ReadonlyRest.TestEngine,
              reloadInProgress: Semaphore[Task],
+             indexTestConfigManager: IndexTestConfigManager,
              rorConfigurationIndex: RorConfigurationIndex)
             (implicit systemContext: SystemContext,
              scheduler: Scheduler): TestConfigBasedReloadableEngine = {
@@ -248,7 +250,7 @@ object TestConfigBasedReloadableEngine {
       case TestEngine.Invalidated(config, expiration) =>
         InitialEngine.Invalidated(config, expirationConfig(expiration))
     }
-    new TestConfigBasedReloadableEngine(boot, engine, reloadInProgress, rorConfigurationIndex)
+    new TestConfigBasedReloadableEngine(boot, engine, reloadInProgress, indexTestConfigManager, rorConfigurationIndex)
   }
 
   private def expirationConfig(config: TestEngine.Expiration) = EngineExpirationConfig(config.ttl, config.validTo)

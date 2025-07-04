@@ -51,16 +51,17 @@ class ReadonlyRest(coreFactory: CoreFactory,
                   (implicit systemContext: SystemContext,
                    scheduler: Scheduler) extends Logging {
 
-  private [boot] val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService, ???)
-  private [boot] val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService, ???)
   private [boot] val authServicesMocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
   def start(): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       esConfig <- loadEsConfig()
-      loadedRorConfig <- loadRorConfig(esConfig)
-      loadedTestRorConfig <- loadRorTestConfig(esConfig)
-      instance <- startRor(esConfig, loadedRorConfig, loadedTestRorConfig)
+      rorYamlParser = new RawRorConfigYamlParser(esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsMaxSize)
+      indexConfigManager = new IndexConfigManager(indexContentService, rorYamlParser)
+      indexTestConfigManager = new IndexTestConfigManager(indexContentService, rorYamlParser)
+      loadedRorConfig <- loadRorConfig(esConfig, indexConfigManager)
+      loadedTestRorConfig <- loadRorTestConfig(esConfig, indexTestConfigManager)
+      instance <- startRor(esConfig, loadedRorConfig, loadedTestRorConfig, indexConfigManager, indexTestConfigManager)
     } yield instance).value
   }
 
@@ -76,7 +77,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
       }
   }
 
-  private def loadRorConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedRorConfig[RawRorConfig]] = {
+  private def loadRorConfig(esConfig: EsConfig,
+                            indexConfigManager: IndexConfigManager): EitherT[Task, StartingFailure, LoadedRorConfig[RawRorConfig]] = {
     esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
       case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
         EitherT(LoadRawRorConfig.loadFromFile(settings))
@@ -91,7 +93,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
     }
   }
 
-  private def loadRorTestConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedTestRorConfig[TestRorConfig]] = {
+  private def loadRorTestConfig(esConfig: EsConfig,
+                                indexTestConfigManager: IndexTestConfigManager): EitherT[Task, StartingFailure, LoadedTestRorConfig[TestRorConfig]] = {
     esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
       case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
         EitherT.rightT[Task, StartingFailure](LoadedTestRorConfig(TestRorConfig.NotSet))
@@ -138,11 +141,13 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def startRor(esConfig: EsConfig,
                        loadedConfig: LoadedRorConfig[RawRorConfig],
-                       loadedTestRorConfig: LoadedTestRorConfig[TestRorConfig]) = {
+                       loadedTestRorConfig: LoadedTestRorConfig[TestRorConfig],
+                       indexConfigManager: IndexConfigManager,
+                       indexTestConfigManager: IndexTestConfigManager) = {
     for {
       mainEngine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorEsLevelSettings.rorConfigIndex))
       testEngine <- EitherT.right(loadTestEngine(esConfig, loadedTestRorConfig))
-      rorInstance <- createRorInstance(esConfig, mainEngine, testEngine, loadedConfig)
+      rorInstance <- createRorInstance(esConfig, mainEngine, testEngine, indexConfigManager, indexTestConfigManager, loadedConfig)
     } yield rorInstance
   }
 
@@ -190,6 +195,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createRorInstance(esConfig: EsConfig,
                                 engine: Engine,
                                 testEngine: TestEngine,
+                                indexConfigManager: IndexConfigManager,
+                                indexTestConfigManager: IndexTestConfigManager,
                                 loadedConfig: LoadedRorConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
       val rorSettingsFile = esConfig.rorEsLevelSettings.loadingRorCoreStrategy.rorSettingsFile
@@ -197,9 +204,9 @@ class ReadonlyRest(coreFactory: CoreFactory,
       val rorConfigIndex = esConfig.rorEsLevelSettings.rorConfigIndex
       esConfig.rorEsLevelSettings.loadingRorCoreStrategy match {
         case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, MainEngine(engine, loadedConfig.value), testEngine, rorSettingsFile, rorSettingsMaxSize, rorConfigIndex)
+          RorInstance.createWithoutPeriodicIndexCheck(this, MainEngine(engine, loadedConfig.value), testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize, rorConfigIndex)
         case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
-          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, loadedConfig.value), testEngine, settings.refreshInterval, rorSettingsFile, rorSettingsMaxSize, rorConfigIndex)
+          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, loadedConfig.value), testEngine, indexConfigManager, indexTestConfigManager, settings.refreshInterval, rorSettingsFile, rorSettingsMaxSize, rorConfigIndex)
       }
     }
   }

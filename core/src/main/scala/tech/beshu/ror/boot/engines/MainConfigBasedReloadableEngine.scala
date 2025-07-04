@@ -33,12 +33,14 @@ import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
 import tech.beshu.ror.boot.engines.ConfigHash.*
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.index.IndexConfigManager
 import tech.beshu.ror.configuration.index.SavingIndexConfigError.CannotSaveConfig
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
                                                     initialEngine: (Engine, RawRorConfig),
                                                     reloadInProgress: Semaphore[Task],
+                                                    indexConfigManager: IndexConfigManager,
                                                     rorConfigurationIndex: RorConfigurationIndex)
                                                    (implicit systemContext: SystemContext,
                                                     scheduler: Scheduler)
@@ -122,12 +124,12 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
 
   private def saveConfig(newConfig: RawRorConfig): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
     for {
-      saveResult <- boot.indexConfigManager.save(newConfig, rorConfigurationIndex)
+      saveResult <- indexConfigManager.save(newConfig, rorConfigurationIndex)
     } yield saveResult.left.map(IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply)
   }
 
   private def loadRorConfigFromIndex() = {
-    boot.indexConfigManager
+    indexConfigManager
       .load(rorConfigurationIndex)
       .map(_.left.map(IndexConfigReloadError.LoadingConfigError.apply))
   }
