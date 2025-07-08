@@ -17,18 +17,13 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditValue}
-import tech.beshu.ror.audit.instances.QueryAuditLogSerializerV1.queryV1AuditFields
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.AllowedEventSerializationMode
+import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2.defaultV2AuditFields
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext}
 
-class QueryAuditLogSerializerV1(environmentContext: AuditEnvironmentContext) extends AuditLogSerializer {
+class ReportingAllEventsAuditLogSerializer(environmentContext: AuditEnvironmentContext) extends DefaultAuditLogSerializer(environmentContext) {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
-    BaseAuditLogSerializer.serialize(responseContext, environmentContext, queryV1AuditFields, AllowedEventSerializationMode.SerializeOnlyEventsWithInfoLevelVerbose)
+    BaseAuditLogSerializer.serialize(responseContext, environmentContext, defaultV2AuditFields, AllowedEventSerializationMode.AlwaysSerialize)
 
-}
-
-object QueryAuditLogSerializerV1 {
-  val queryV1AuditFields: Map[String, AuditValue] =
-    DefaultAuditLogSerializerV1.defaultV1AuditFields ++ Map("content" -> AuditValue.Content)
 }

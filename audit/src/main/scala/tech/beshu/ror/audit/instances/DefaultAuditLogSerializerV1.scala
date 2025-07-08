@@ -17,82 +17,42 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.AuditResponseContext._
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
+import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditValue}
+import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1.defaultV1AuditFields
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditResponseContext}
 
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import scala.collection.JavaConverters._
-import scala.concurrent.duration.FiniteDuration
+class DefaultAuditLogSerializerV1(environmentContext: AuditEnvironmentContext) extends AuditLogSerializer {
 
-class DefaultAuditLogSerializerV1 extends AuditLogSerializer {
+  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
+    BaseAuditLogSerializer.serialize(responseContext, environmentContext, defaultV1AuditFields, AllowedEventSerializationMode.SerializeOnlyEventsWithInfoLevelVerbose)
 
-  private val timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneId.of("GMT"))
+}
 
-  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = responseContext match {
-    case Allowed(requestContext, verbosity, reason) =>
-      verbosity match {
-        case Verbosity.Info =>
-          Some(createEntry(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, None))
-        case Verbosity.Error =>
-          None
-      }
-    case ForbiddenBy(requestContext, _, reason) =>
-      Some(createEntry(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, None))
-    case Forbidden(requestContext) =>
-      Some(createEntry(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None))
-    case RequestedIndexNotExist(requestContext) =>
-      Some(createEntry(matched = false, "INDEX NOT EXIST", "Requested index doesn't exist", responseContext.duration, requestContext, None))
-    case Errored(requestContext, cause) =>
-      Some(createEntry(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause)))
-  }
-
-  private def createEntry(matched: Boolean,
-                          finalState: String,
-                          reason: String,
-                          duration: FiniteDuration,
-                          requestContext: AuditRequestContext,
-                          error: Option[Throwable]) = {
-    new JSONObject()
-      .put("match", matched)
-      .put("block", reason)
-      .put("id", requestContext.id)
-      .put("final_state", finalState)
-      .put("@timestamp", timestampFormatter.format(requestContext.timestamp))
-      .put("correlation_id", requestContext.correlationId)
-      .put("processingMillis", duration.toMillis)
-      .put("error_type", error.map(_.getClass.getSimpleName).orNull)
-      .put("error_message", error.map(_.getMessage).orNull)
-      .put("content_len", requestContext.contentLength)
-      .put("content_len_kb", requestContext.contentLength / 1024)
-      .put("type", requestContext.`type`)
-      .put("origin", requestContext.remoteAddress)
-      .put("destination", requestContext.localAddress)
-      .put("xff", requestContext.requestHeaders.getValue("X-Forwarded-For").flatMap(_.headOption).orNull)
-      .put("task_id", requestContext.taskId)
-      .put("req_method", requestContext.httpMethod)
-      .put("headers", requestContext.requestHeaders.names.asJava)
-      .put("path", requestContext.uriPath)
-      .put("user", SerializeUser.serialize(requestContext).orNull)
-      .put("impersonated_by", requestContext.impersonatedByUserName.orNull)
-      .put("action", requestContext.action)
-      .put("indices", if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava)
-      .put("acl_history", requestContext.history)
-      .mergeWith(requestContext.generalAuditEvents)
-  }
-
-  private implicit class JsonObjectOps(val mainJson: JSONObject) {
-    def mergeWith(secondaryJson: JSONObject): JSONObject = {
-      jsonKeys(secondaryJson).foldLeft(mainJson) {
-        case (json, name) if !json.has(name) =>
-          json.put(name, secondaryJson.get(name))
-        case (json, _) =>
-          json
-      }
-    }
-
-    private def jsonKeys(json: JSONObject) = {
-      Option(JSONObject.getNames(json)).toList.flatten
-    }
-  }
+object DefaultAuditLogSerializerV1 {
+  val defaultV1AuditFields: Map[String, AuditValue] = Map(
+    "match" -> AuditValue.IsMatched,
+    "block" -> AuditValue.Reason,
+    "id" -> AuditValue.Id,
+    "final_state" -> AuditValue.FinalState,
+    "@timestamp" -> AuditValue.Timestamp,
+    "correlation_id" -> AuditValue.CorrelationId,
+    "processingMillis" -> AuditValue.ProcessingDurationMillis,
+    "error_type" -> AuditValue.ErrorType,
+    "error_message" -> AuditValue.ErrorMessage,
+    "content_len" -> AuditValue.ContentLengthInBytes,
+    "content_len_kb" -> AuditValue.ContentLengthInKb,
+    "type" -> AuditValue.Type,
+    "origin" -> AuditValue.RemoteAddress,
+    "destination" -> AuditValue.LocalAddress,
+    "xff" -> AuditValue.XForwardedForHttpHeader,
+    "task_id" -> AuditValue.TaskId,
+    "req_method" -> AuditValue.HttpMethod,
+    "headers" -> AuditValue.HttpHeaderNames,
+    "path" -> AuditValue.HttpPath,
+    "user" -> AuditValue.User,
+    "impersonated_by" -> AuditValue.ImpersonatedByUser,
+    "action" -> AuditValue.Action,
+    "indices" -> AuditValue.InvolvedIndices,
+    "acl_history" -> AuditValue.AclHistory,
+  )
 }
