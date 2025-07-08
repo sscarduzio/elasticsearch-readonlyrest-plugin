@@ -25,6 +25,7 @@ import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 
 import scala.annotation.unused
 
+// todo: rename
 final case class RorConfig(services: RorConfig.Services,
                            localUsers: LocalUsers,
                            impersonationWarningsReader: ImpersonationWarningsReader,

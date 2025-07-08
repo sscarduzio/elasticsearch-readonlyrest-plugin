@@ -17,7 +17,7 @@
 package tech.beshu.ror.configuration.loader
 
 import monix.eval.Task
-import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.{LoadFromFileSettings, LoadFromIndexSettings}
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.{LoadFromFileSettings, LoadFromIndexSettings}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.RorConfigLoading.*
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}

@@ -20,12 +20,12 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
-import tech.beshu.ror.configuration.{Environment, MalformedSettings, RorBootConfiguration}
+import tech.beshu.ror.configuration.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
+import tech.beshu.ror.configuration.{Environment, MalformedSettings, RorBootSettings}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath}
 
-class RorBootConfigurationTest
+class RorBootSettingsTest
   extends AnyWordSpec with Inside {
 
   private implicit val systemContext: SystemContext = SystemContext.default
@@ -33,7 +33,7 @@ class RorBootConfigurationTest
   "A ReadonlyREST ES starting settings" should {
     "be loaded from elasticsearch config file" when {
       "configuration contains not started response code" in {
-        val config = RorBootConfiguration
+        val config = RorBootSettings
           .load(esEnvFrom("/boot_tests/boot_config/not_started_code_defined/"))
           .runSyncUnsafe()
 
@@ -42,7 +42,7 @@ class RorBootConfigurationTest
         ))
       }
       "configuration contains failed to start response code" in {
-        val config = RorBootConfiguration
+        val config = RorBootSettings
           .load(esEnvFrom("/boot_tests/boot_config/failed_to_start_code_defined/"))
           .runSyncUnsafe()
 
@@ -51,22 +51,22 @@ class RorBootConfigurationTest
         ))
       }
       "configuration contains all codes" in {
-        val config = RorBootConfiguration
+        val config = RorBootSettings
           .load(esEnvFrom("/boot_tests/boot_config/all_codes_defined/"))
           .runSyncUnsafe()
 
-        config should be(Right(RorBootConfiguration(
+        config should be(Right(RorBootSettings(
           rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
           rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
         )))
       }
     }
     "there is no response codes defined in config, default values should be used" in {
-      val config = RorBootConfiguration
+      val config = RorBootSettings
         .load(esEnvFrom("/boot_tests/boot_config/"))
         .runSyncUnsafe()
 
-      config should be(Right(RorBootConfiguration(
+      config should be(Right(RorBootSettings(
         rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
         rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
       )))
@@ -77,7 +77,7 @@ class RorBootConfigurationTest
       val configFolderPath = "/boot_tests/boot_config/not_started_code_malformed/"
       val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
 
-      RorBootConfiguration.load(esEnvFrom(configFolderPath)).runSyncUnsafe() shouldBe Left {
+      RorBootSettings.load(esEnvFrom(configFolderPath)).runSyncUnsafe() shouldBe Left {
         MalformedSettings(
           s"Cannot load ROR boot configuration from file $expectedFilePath. " +
           s"Cause: Unsupported response code [200] for readonlyrest.not_started_response_code. Supported response codes are: 403, 503."
@@ -88,7 +88,7 @@ class RorBootConfigurationTest
       val configFolderPath = "/boot_tests/boot_config/failed_to_start_code_malformed/"
       val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
 
-      RorBootConfiguration.load(esEnvFrom(configFolderPath)).runSyncUnsafe() shouldBe Left {
+      RorBootSettings.load(esEnvFrom(configFolderPath)).runSyncUnsafe() shouldBe Left {
         MalformedSettings(
           s"Cannot load ROR boot configuration from file $expectedFilePath. " +
           s"Cause: Unsupported response code [200] for readonlyrest.failed_to_start_response_code. Supported response codes are: 403, 503."

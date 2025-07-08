@@ -25,34 +25,28 @@ import squants.information.Information
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
-import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
-import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent, RorSettingsInactiveWhenXpackSecurityIsEnabled}
-import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
-import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.{LoadFromFileSettings, LoadingRorCoreStrategy}
-import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadingRorCoreStrategy.{ForceLoadingFromFile, LoadFromIndexWithFileFallback}
-import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadEsConfigError.{FileNotFound, MalformedContent, RorSettingsInactiveWhenXpackSecurityIsEnabled}
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy.{ForceLoadingFromFile, LoadFromIndexWithFileFallback}
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay, RefreshInterval}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 import scala.language.implicitConversions
 
-final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings)
+final case class EsConfigBasedRorSettings(boot: RorBootSettings,
+                                          ssl: Option[RorSsl],
+                                          rorConfigIndex: RorConfigurationIndex,
+                                          loadingRorCoreStrategy: LoadingRorCoreStrategy)
 
-object EsConfig {
+object EsConfigBasedRorSettings {
 
   def from(esEnv: EsEnv)
-          (implicit systemContext: SystemContext): Task[Either[LoadEsConfigError, EsConfig]] = {
+          (implicit systemContext: SystemContext): Task[Either[LoadEsConfigError, EsConfigBasedRorSettings]] = {
     val configFile = esEnv.elasticsearchConfig
-    (for {
+    val result = for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
-      rorEsLevelSettings <- loadRorEsLevelSettings(esEnv)
-    } yield EsConfig(rorEsLevelSettings)).value
-  }
-
-  private def loadRorEsLevelSettings(esEnv: EsEnv)
-                                    (implicit systemContext: SystemContext) = {
-    for {
+      bootSettings <- loadRorBootSettings(esEnv)
       loadingRorCoreStrategyAndIndex <- loadLoadingRorCoreStrategyAndRorIndex(esEnv)
       (loadingRorCoreStrategy, rorIndex) = loadingRorCoreStrategyAndIndex
       xpackSettings <- loadXpackSettings(esEnv, esEnv.isOssDistribution)
@@ -60,9 +54,15 @@ object EsConfig {
         case ForceLoadingFromFile(settings) => settings
         case LoadFromIndexWithFileFallback(_, fallbackSettings) => fallbackSettings
       }
-      sslSettings <- loadSslSettings(esEnv,  rorFileSettings, xpackSettings)
-      fibsConfiguration <- loadFipsConfiguration(esEnv, rorFileSettings, xpackSettings)
-    } yield RorEsLevelSettings(rorIndex, loadingRorCoreStrategy, sslSettings, fibsConfiguration)
+      sslSettings <- loadSslSettings(esEnv, rorFileSettings, xpackSettings)
+    } yield EsConfigBasedRorSettings(bootSettings, sslSettings, rorIndex, loadingRorCoreStrategy)
+    result.value
+  }
+
+  private def loadRorBootSettings(esEnv: EsEnv)
+                                 (implicit systemContext: SystemContext) = {
+    EitherT(RorBootSettings.load(esEnv))
+      .leftMap(error => MalformedContent(esEnv.configPath, error.message))
   }
 
   private def loadXpackSettings(esEnv: EsEnv, ossDistribution: Boolean)
@@ -76,29 +76,14 @@ object EsConfig {
   }
 
   private def loadSslSettings(esEnv: EsEnv, rorFileSettings: LoadFromFileSettings, xpackSettings: XpackSettings)
-                             (implicit systemContext: SystemContext): EitherT[Task, LoadEsConfigError, RorSsl] = {
+                             (implicit systemContext: SystemContext): EitherT[Task, LoadEsConfigError, Option[RorSsl]] = {
     EitherT(RorSsl.load(esEnv, rorFileSettings))
       .leftMap(error => MalformedContent(esEnv.elasticsearchConfig, error.message))
-      .subflatMap { rorSsl =>
-        if (rorSsl != RorSsl.noSsl && xpackSettings.securityEnabled) {
-          Left(RorSettingsInactiveWhenXpackSecurityIsEnabled(SettingsType.Ssl))
-        } else {
+      .subflatMap {
+        case Some(ssl) if xpackSettings.securityEnabled =>
+          Left(RorSettingsInactiveWhenXpackSecurityIsEnabled)
+        case rorSsl@(Some(_) | None) =>
           Right(rorSsl)
-        }
-      }
-  }
-
-  private def loadFipsConfiguration(esEnv: EsEnv, rorFileSettings: LoadFromFileSettings, xpackSettings: XpackSettings)
-                                   (implicit systemContext: SystemContext): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
-    EitherT(FipsConfiguration.load(esEnv, rorFileSettings))
-      .leftMap(error => MalformedContent(esEnv.elasticsearchConfig, error.message))
-      .subflatMap { fipsConfiguration =>
-        fipsConfiguration.fipsMode match {
-          case FipsMode.SslOnly if xpackSettings.securityEnabled =>
-            Left(RorSettingsInactiveWhenXpackSecurityIsEnabled(SettingsType.Fips))
-          case FipsMode.NonFips | FipsMode.SslOnly =>
-            Right(fipsConfiguration)
-        }
       }
   }
 
@@ -118,53 +103,42 @@ object EsConfig {
     }
   }
 
-  final case class RorEsLevelSettings(rorConfigIndex: RorConfigurationIndex,
-                                      loadingRorCoreStrategy: LoadingRorCoreStrategy,
-                                      ssl: RorSsl,
-                                      fipsConfiguration: FipsConfiguration)
-  object RorEsLevelSettings {
-    sealed trait LoadingRorCoreStrategy
-    object LoadingRorCoreStrategy {
-      final case class ForceLoadingFromFile(settings: LoadFromFileSettings) extends LoadingRorCoreStrategy
-      final case class LoadFromIndexWithFileFallback(settings: LoadFromIndexSettings,
-                                                     fallbackSettings: LoadFromFileSettings)
-        extends LoadingRorCoreStrategy
-    }
-
-    implicit class FromLoadingRorCoreStrategy(val strategy: LoadingRorCoreStrategy) extends AnyVal {
-      def rorSettingsFile: File = strategy match {
-        case ForceLoadingFromFile(settings) => settings.rorSettingsFile
-        case LoadFromIndexWithFileFallback(_, fallbackSettings) => fallbackSettings.rorSettingsFile
-      }
-      def rorSettingsMaxSize: Information = strategy match {
-        case ForceLoadingFromFile(settings) => settings.settingsMaxSize
-        case LoadFromIndexWithFileFallback(settings, _) => settings.settingsMaxSize
-      }
-    }
-
-    final case class LoadFromFileSettings(rorSettingsFile: File,
-                                          settingsMaxSize: Information)
-    final case class LoadFromIndexSettings(rorConfigIndex: RorConfigurationIndex,
-                                           refreshInterval: RefreshInterval,
-                                           loadingAttemptsInterval: LoadingAttemptsInterval,
-                                           loadingAttemptsCount: LoadingAttemptsCount,
-                                           loadingDelay: LoadingDelay,
-                                           settingsMaxSize: Information)
+  sealed trait LoadingRorCoreStrategy
+  object LoadingRorCoreStrategy {
+    final case class ForceLoadingFromFile(settings: LoadFromFileSettings) extends LoadingRorCoreStrategy
+    final case class LoadFromIndexWithFileFallback(settings: LoadFromIndexSettings,
+                                                   fallbackSettings: LoadFromFileSettings)
+      extends LoadingRorCoreStrategy
   }
+
+  implicit class FromLoadingRorCoreStrategy(val strategy: LoadingRorCoreStrategy) extends AnyVal {
+    def rorSettingsFile: File = strategy match {
+      case ForceLoadingFromFile(settings) => settings.rorSettingsFile
+      case LoadFromIndexWithFileFallback(_, fallbackSettings) => fallbackSettings.rorSettingsFile
+    }
+
+    def rorSettingsMaxSize: Information = strategy match {
+      case ForceLoadingFromFile(settings) => settings.settingsMaxSize
+      case LoadFromIndexWithFileFallback(settings, _) => settings.settingsMaxSize
+    }
+  }
+
+  final case class LoadFromFileSettings(rorSettingsFile: File,
+                                        settingsMaxSize: Information)
+  final case class LoadFromIndexSettings(rorConfigIndex: RorConfigurationIndex,
+                                         refreshInterval: RefreshInterval,
+                                         loadingAttemptsInterval: LoadingAttemptsInterval,
+                                         loadingAttemptsCount: LoadingAttemptsCount,
+                                         loadingDelay: LoadingDelay,
+                                         settingsMaxSize: Information)
+
   private final case class XpackSettings(securityEnabled: Boolean)
 
   sealed trait LoadEsConfigError
   object LoadEsConfigError {
     final case class FileNotFound(file: File) extends LoadEsConfigError
     final case class MalformedContent(file: File, message: String) extends LoadEsConfigError
-    final case class RorSettingsInactiveWhenXpackSecurityIsEnabled(settingsType: SettingsType) extends LoadEsConfigError
-    object RorSettingsInactiveWhenXpackSecurityIsEnabled {
-      sealed trait SettingsType
-      object SettingsType {
-        case object Ssl extends SettingsType
-        case object Fips extends SettingsType
-      }
-    }
+    case object RorSettingsInactiveWhenXpackSecurityIsEnabled extends LoadEsConfigError
   }
 
   private object decoders {
@@ -209,10 +183,10 @@ object EsConfig {
       }
     }
 
-//    private implicit val loadFromFileSettingsDecoder: Decoder[LoadFromFileSettings] = {
-//      //YamlKeyDecoder[String](path = NonEmptyList.of("readonlyrest", "settings", "file", "path"))
-//      ???
-//    }
+    //    private implicit val loadFromFileSettingsDecoder: Decoder[LoadFromFileSettings] = {
+    //      //YamlKeyDecoder[String](path = NonEmptyList.of("readonlyrest", "settings", "file", "path"))
+    //      ???
+    //    }
   }
 
 }

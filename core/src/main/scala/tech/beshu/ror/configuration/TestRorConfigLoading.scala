@@ -19,7 +19,7 @@ package tech.beshu.ror.configuration
 import cats.data.EitherT
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromIndexSettings
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromIndexSettings
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.IndexParsingError
 import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.{ParsingError, SpecializedError}

@@ -22,26 +22,26 @@ import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
+import tech.beshu.ror.configuration.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
-final case class RorBootConfiguration(rorNotStartedResponse: RorNotStartedResponse,
-                                      rorFailedToStartResponse: RorFailedToStartResponse)
+final case class RorBootSettings(rorNotStartedResponse: RorNotStartedResponse,
+                                 rorFailedToStartResponse: RorFailedToStartResponse)
 
-object RorBootConfiguration extends Logging {
+object RorBootSettings extends Logging {
 
   def load(env: EsEnv)
-          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, RorBootConfiguration]] = Task {
-    implicit val rorBootConfigurationDecoder: Decoder[RorBootConfiguration] = Decoders.decoder
-    loadRorBootstrapConfig(env.elasticsearchConfig)
+          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, RorBootSettings]] = Task {
+    implicit val rorBootConfigurationDecoder: Decoder[RorBootSettings] = Decoders.decoder
+    loadRorBootstrapSettings(env.elasticsearchConfig)
   }
 
-  private def loadRorBootstrapConfig(configFile: File)
-                                    (implicit decoder: Decoder[RorBootConfiguration],
-                                     systemContext: SystemContext) = {
-    new YamlFileBasedConfigLoader(configFile).loadConfig[RorBootConfiguration](configName = "ROR boot configuration")
+  private def loadRorBootstrapSettings(configFile: File)
+                                      (implicit decoder: Decoder[RorBootSettings],
+                                       systemContext: SystemContext) = {
+    new YamlFileBasedConfigLoader(configFile).loadConfig[RorBootSettings](configName = "ROR boot settings")
   }
 
   final case class RorNotStartedResponse(httpCode: RorNotStartedResponse.HttpCode)
@@ -71,11 +71,11 @@ private object Decoders extends Logging {
     val rorFailedTpStartResponseCode = "failed_to_start_response_code"
   }
 
-  def decoder: Decoder[RorBootConfiguration] = Decoder.instance { c =>
+  def decoder: Decoder[RorBootSettings] = Decoder.instance { c =>
     for {
       notStarted <- c.as[RorNotStartedResponse]
       failedToStart <- c.as[RorFailedToStartResponse]
-    } yield RorBootConfiguration(notStarted, failedToStart)
+    } yield RorBootSettings(notStarted, failedToStart)
   }
 
   private implicit val rorNotStartedResponseDecoder: Decoder[RorNotStartedResponse] = {

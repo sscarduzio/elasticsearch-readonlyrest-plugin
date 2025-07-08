@@ -59,7 +59,7 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadEsConfigError
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.ScalaOps.*
@@ -335,11 +335,6 @@ trait LogsShowInstances
       s"JWT variables are not allowed to be used in Groups rule"
   }
 
-  implicit val settingsTypeShow: Show[SettingsType] = Show.show {
-    case SettingsType.Ssl => "SSL configuration"
-    case SettingsType.Fips => "FIBS configuration"
-  }
-
   def obfuscatedHeaderShow(obfuscatedHeaders: Iterable[Header.Name]): Show[Header] = {
     Show.show[Header] {
       case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
@@ -402,4 +397,11 @@ trait LogsShowInstances
     case MustBePresent(value) => value.show
     case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
   }
+
+  implicit val loadEsConfigErrorShow: Show[LoadEsConfigError] = Show.show {
+    case LoadEsConfigError.FileNotFound(file) => s"Cannot find elasticsearch settings file: [${file.show}]"
+    case LoadEsConfigError.MalformedContent(file, message) => s"Settings file is malformed: [${file.show}], ${message.show}"
+    case LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled => s"Cannot use ROR SSL when XPack Security is enabled"
+  }
+
 }

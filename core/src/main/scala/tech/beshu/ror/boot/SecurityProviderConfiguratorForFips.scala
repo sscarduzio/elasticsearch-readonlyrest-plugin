@@ -18,22 +18,30 @@ package tech.beshu.ror.boot
 
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
-import tech.beshu.ror.configuration.FipsConfiguration
-import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
+import tech.beshu.ror.configuration.RorSsl
+import tech.beshu.ror.configuration.SslConfiguration.FipsMode.{NonFips, SslOnly}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.security.Security
 
 object SecurityProviderConfiguratorForFips {
 
-  def configureIfRequired(fipsConfiguration: FipsConfiguration): Unit = {
-    fipsConfiguration.fipsMode match {
-      case FipsMode.SslOnly =>
+  def configureIfRequired(ssl: RorSsl): Unit = {
+    val fipsModes = ssl match {
+      case RorSsl.OnlyExternalSslConfiguration(ssl) => ssl.fipsMode :: Nil
+      case RorSsl.OnlyInternodeSslConfiguration(ssl) => ssl.fipsMode :: Nil
+      case RorSsl.ExternalAndInternodeSslConfiguration(external, internode) => external.fipsMode :: internode.fipsMode :: Nil
+    }
+    fipsModes
+      .find {
+        case SslOnly => true
+        case NonFips => false
+      }
+      .foreach { _ =>
         doPrivileged {
           Security.insertProviderAt(new BouncyCastleFipsProvider(), 1) // basic encryption provider
           Security.insertProviderAt(new BouncyCastleJsseProvider("fips:BCFIPS"), 2) // tls
         }
-      case FipsMode.NonFips =>
-    }
+      }
   }
 }

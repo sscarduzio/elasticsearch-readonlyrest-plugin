@@ -28,13 +28,14 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import org.elasticsearch.xcontent.NamedXContentRegistry
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.configuration.ReadonlyRestEsConfig
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
@@ -58,14 +59,14 @@ class IndexLevelActionFilter(nodeName: String,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
                              esInitListener: EsInitListener,
-                             rorEsConfig: ReadonlyRestEsConfig)
+                             esConfig: EsConfigBasedRorSettings)
                             (implicit systemContext: SystemContext)
   extends ActionFilter with Logging {
 
   private implicit val generator: UniqueIdentifierGenerator = systemContext.uniqueIdentifierGenerator
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
-    new RorNotAvailableRequestHandler(rorEsConfig.bootConfig)
+    new RorNotAvailableRequestHandler(esConfig.boot)
 
   private val ror = ReadonlyRest.create(
     new EsIndexJsonContentService(client),
@@ -207,7 +208,7 @@ class IndexLevelActionFilter(nodeName: String,
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- ror.start()
+      result <- ror.start(esConfig)
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>

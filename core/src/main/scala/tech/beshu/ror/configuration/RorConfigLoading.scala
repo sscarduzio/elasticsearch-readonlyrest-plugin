@@ -20,7 +20,7 @@ import cats.data.EitherT
 import cats.implicits.toShow
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.{LoadFromFileSettings, LoadFromIndexSettings}
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.{LoadFromFileSettings, LoadFromIndexSettings}
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.IndexParsingError
 import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.{ParsingError, SpecializedError}

@@ -22,8 +22,8 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings.LoadFromFileSettings
-import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration}
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromFileSettings
+import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, FipsMode, InternodeSslConfiguration}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.SSLCertHelper
@@ -31,55 +31,84 @@ import tech.beshu.ror.utils.SSLCertHelper
 import java.io.File as JFile
 import java.nio.file.{Path, Paths}
 
-final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
-                        interNodeSsl: Option[InternodeSslConfiguration])
-
+sealed trait RorSsl
 object RorSsl extends Logging {
 
-  val noSsl: RorSsl = RorSsl(None, None)
+  final case class OnlyExternalSslConfiguration(ssl: ExternalSslConfiguration) extends RorSsl
+  final case class OnlyInternodeSslConfiguration(ssl: InternodeSslConfiguration) extends RorSsl
+  final case class ExternalAndInternodeSslConfiguration(external: ExternalSslConfiguration,
+                                                        internode: InternodeSslConfiguration) extends RorSsl
+
+  implicit class ExtractSsl(val rorSsl: RorSsl) extends AnyVal {
+    def externalSsl: Option[ExternalSslConfiguration] = rorSsl match {
+      case OnlyExternalSslConfiguration(ssl) => Some(ssl)
+      case OnlyInternodeSslConfiguration(_) => None
+      case ExternalAndInternodeSslConfiguration(ssl, _) => Some(ssl)
+    }
+
+    def internodeSsl: Option[InternodeSslConfiguration] = rorSsl match {
+      case OnlyExternalSslConfiguration(_) => None
+      case OnlyInternodeSslConfiguration(ssl) => Some(ssl)
+      case ExternalAndInternodeSslConfiguration(_, ssl) => Some(ssl)
+    }
+  }
+
+  implicit class IsSslFipsCompliant(val fipsMode: FipsMode) extends AnyVal {
+    def isSslFipsCompliant: Boolean = fipsMode match {
+      case FipsMode.NonFips => false
+      case FipsMode.SslOnly => true
+    }
+  }
 
   def load(esEnv: EsEnv, loadRorFromFileSettings: LoadFromFileSettings)
-          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, RorSsl]] = Task {
-    implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esEnv.configPath)
+          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, Option[RorSsl]]] = Task {
+    implicit val sslDecoder: Decoder[Option[RorSsl]] = SslDecoders.rorSslDecoder(esEnv.configPath)
     val esConfigFile = esEnv.elasticsearchConfig
     loadSslConfigFromFile(esConfigFile)
       .fold(
         error => Left(error),
         {
-          case RorSsl(None, None) =>
+          case None =>
             logger.info(s"Cannot find SSL configuration in ${esConfigFile.show} ...")
             fallbackToRorConfig(loadRorFromFileSettings.rorSettingsFile)
-          case ssl =>
-            Right(ssl)
+          case Some(ssl) =>
+            Right(Some(ssl))
         }
       )
   }
 
   private def fallbackToRorConfig(rorSettingsFile: File)
-                                 (implicit rorSslDecoder: Decoder[RorSsl],
+                                 (implicit rorSslDecoder: Decoder[Option[RorSsl]],
                                   systemContext: SystemContext) = {
     logger.info(s"... trying: ${rorSettingsFile.show}")
     if (rorSettingsFile.exists) {
       loadSslConfigFromFile(rorSettingsFile)
     } else {
-      Right(RorSsl.noSsl)
+      Right(None)
     }
   }
 
   private def loadSslConfigFromFile(configFile: File)
-                                   (implicit rorSslDecoder: Decoder[RorSsl],
+                                   (implicit rorSslDecoder: Decoder[Option[RorSsl]],
                                     systemContext: SystemContext) = {
-    new YamlFileBasedConfigLoader(configFile).loadConfig[RorSsl](configName = "ROR SSL settings")
+    new YamlFileBasedConfigLoader(configFile).loadConfig[Option[RorSsl]](configName = "ROR SSL settings")
   }
 }
 
 sealed trait SslConfiguration {
   def serverCertificateConfiguration: SslConfiguration.ServerCertificateConfiguration
+
   def clientCertificateConfiguration: Option[SslConfiguration.ClientCertificateConfiguration]
+
   def allowedProtocols: Set[SslConfiguration.Protocol]
+
   def allowedCiphers: Set[SslConfiguration.Cipher]
+
   def clientAuthenticationEnabled: Boolean
+
   def certificateVerificationEnabled: Boolean
+
+  def fipsMode: FipsMode
 }
 
 object SslConfiguration {
@@ -117,7 +146,8 @@ object SslConfiguration {
                                             clientCertificateConfiguration: Option[ClientCertificateConfiguration],
                                             allowedProtocols: Set[SslConfiguration.Protocol],
                                             allowedCiphers: Set[SslConfiguration.Cipher],
-                                            clientAuthenticationEnabled: Boolean)
+                                            clientAuthenticationEnabled: Boolean,
+                                            fipsMode: FipsMode)
     extends SslConfiguration {
 
     val certificateVerificationEnabled: Boolean = false
@@ -129,15 +159,25 @@ object SslConfiguration {
                                              allowedCiphers: Set[SslConfiguration.Cipher],
                                              clientAuthenticationEnabled: Boolean,
                                              certificateVerificationEnabled: Boolean,
-                                             hostnameVerificationEnabled: Boolean)
+                                             hostnameVerificationEnabled: Boolean,
+                                             fipsMode: FipsMode)
     extends SslConfiguration
+
+  sealed trait FipsMode
+  object FipsMode {
+    case object NonFips extends FipsMode
+    case object SslOnly extends FipsMode
+  }
+
 }
 
 private object SslDecoders extends Logging {
+
   import tech.beshu.ror.configuration.SslConfiguration.*
 
   object consts {
     val rorSection = "readonlyrest"
+    val fipsMode = "fips_mode"
     val externalSsl = "ssl"
     val internodeSsl = "ssl_internode"
     val keystoreFile = "keystore_file"
@@ -163,7 +203,6 @@ private object SslDecoders extends Logging {
                                        allowedProtocols: Set[SslConfiguration.Protocol],
                                        allowedCiphers: Set[SslConfiguration.Cipher],
                                        clientAuthentication: Option[Boolean])
-
 
   private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = DecoderHelpers.decodeStringLike.map(KeystorePassword.apply)
   private implicit val truststorePasswordDecoder: Decoder[TruststorePassword] = DecoderHelpers.decodeStringLike.map(TruststorePassword.apply)
@@ -242,16 +281,34 @@ private object SslDecoders extends Logging {
     }
   }
 
-  def rorSslDecoder(basePath: Path): Decoder[RorSsl] = Decoder.instance { c =>
-    implicit val internodeSslConfigDecoder: Decoder[Option[InternodeSslConfiguration]] = sslInternodeConfigurationDecoder(basePath)
-    implicit val externalSslConfigDecoder: Decoder[Option[ExternalSslConfiguration]] = sslExternalConfigurationDecoder(basePath)
+  def rorSslDecoder(basePath: Path): Decoder[Option[RorSsl]] = Decoder.instance { c =>
+    implicit val isFipsCompliantDecoder: Decoder[FipsMode] = Decoder.decodeString.emap {
+      case "NON_FIPS" => Right(FipsMode.NonFips)
+      case "SSL_ONLY" => Right(FipsMode.SslOnly)
+      case _ => Left("Invalid configuration option for FIPS MODE. Valid values are: NON_FIPS, SSL_ONLY")
+    }
     for {
-      interNodeSsl <- c.downField(consts.rorSection).downField(consts.internodeSsl).as[Option[Option[InternodeSslConfiguration]]]
-      externalSsl <- c.downField(consts.rorSection).downField(consts.externalSsl).as[Option[Option[ExternalSslConfiguration]]]
-    } yield RorSsl(externalSsl.flatten, interNodeSsl.flatten)
+      fipsMode <- c.downField(consts.rorSection).downField(consts.fipsMode).as[Option[FipsMode]]
+      interNodeSsl <- {
+        implicit val internodeSslConfigDecoder = sslInternodeConfigurationDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
+        c.downField(consts.rorSection).downField(consts.internodeSsl).as[Option[Option[InternodeSslConfiguration]]]
+      }
+      externalSsl <- {
+        implicit val externalSslConfigDecoder = sslExternalConfigurationDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
+        c.downField(consts.rorSection).downField(consts.externalSsl).as[Option[Option[ExternalSslConfiguration]]]
+      }
+    } yield {
+      (externalSsl.flatten, interNodeSsl.flatten) match {
+        case (Some(ssl), None) => Some(RorSsl.OnlyExternalSslConfiguration(ssl))
+        case (None, Some(ssl)) => Some(RorSsl.OnlyInternodeSslConfiguration(ssl))
+        case (Some(externalSsl), Some(internalSsl)) => Some(RorSsl.ExternalAndInternodeSslConfiguration(externalSsl, internalSsl))
+        case (None, None) => None
+      }
+    }
   }
 
-  private def sslInternodeConfigurationDecoder(basePath: Path): Decoder[Option[InternodeSslConfiguration]] = Decoder.instance { c =>
+  private def sslInternodeConfigurationDecoder(basePath: Path,
+                                               fipsMode: FipsMode): Decoder[Option[InternodeSslConfiguration]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
         certificateVerification <- c.downField(consts.certificateVerification).as[Option[Boolean]]
@@ -266,12 +323,14 @@ private object SslDecoders extends Logging {
           allowedCiphers = sslCommonProperties.allowedCiphers,
           clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.getOrElse(false),
           certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false),
-          hostnameVerificationEnabled = hostnameVerification.getOrElse(false)
+          hostnameVerificationEnabled = hostnameVerification.getOrElse(false),
+          fipsMode = fipsMode
         )
     }
   }
 
-  private def sslExternalConfigurationDecoder(basePath: Path): Decoder[Option[ExternalSslConfiguration]] = Decoder.instance { c =>
+  private def sslExternalConfigurationDecoder(basePath: Path,
+                                              fipsMode: FipsMode): Decoder[Option[ExternalSslConfiguration]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
         verification <- c.downField(consts.verification).as[Option[Boolean]]
@@ -282,7 +341,8 @@ private object SslDecoders extends Logging {
           clientCertificateConfiguration = sslCommonProperties.clientCertificateConfiguration,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
-          clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.orElse(verification).getOrElse(false)
+          clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.orElse(verification).getOrElse(false),
+          fipsMode = fipsMode
         )
     }
   }
