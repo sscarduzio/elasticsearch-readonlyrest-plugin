@@ -15,8 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.utils.containers.images
-
-import tech.beshu.ror.utils.containers.images.Elasticsearch.{configDir, esDir, fromResourceBy}
+import tech.beshu.ror.utils.containers.images.Elasticsearch.{esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.misc.Version
@@ -39,12 +38,12 @@ class XpackSecurityPlugin(esVersion: String,
                           config: Config)
   extends Elasticsearch.Plugin {
 
-  override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
+  override def updateEsImage(image: DockerImageDescription, esConfig: Elasticsearch.Config): DockerImageDescription = {
     image
-      .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
-      .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
-      .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
-      .configureKeystore()
+      .copyFile(esConfig.esConfigDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
+      .copyFile(esConfig.esConfigDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
+      .copyFile(esConfig.esConfigDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
+      .configureKeystore
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
@@ -91,7 +90,7 @@ class XpackSecurityPlugin(esVersion: String,
 
   private implicit class ConfigureKeystore(val image: DockerImageDescription) {
 
-    def configureKeystore(): DockerImageDescription = {
+    def configureKeystore: DockerImageDescription = {
       image
         .run(createKeystoreCommand)
         .runWhen(
@@ -119,7 +118,7 @@ class XpackSecurityPlugin(esVersion: String,
     private def createKeystoreCommand = s"${esDir.toString()}/bin/elasticsearch-keystore create"
 
     private def addToKeystoreCommand(key: String, value: String) = {
-      s"printf '$value\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add $key"
+      s"printf '$value\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add --force $key"
     }
   }
 }

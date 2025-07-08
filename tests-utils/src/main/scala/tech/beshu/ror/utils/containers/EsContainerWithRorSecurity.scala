@@ -17,10 +17,13 @@
 package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
+import org.testcontainers.containers.output.OutputFrame
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, ReadonlyRestPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
+
+import java.util.function.Consumer
 
 class EsContainerWithRorSecurity private(esVersion: String,
                                          esConfig: Elasticsearch.Config,
@@ -45,7 +48,8 @@ object EsContainerWithRorSecurity extends StrictLogging {
              esConfig: Elasticsearch.Config,
              rorConfig: ReadonlyRestPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
+             startedClusterDependencies: StartedClusterDependencies,
+             additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
     val rorContainer = new EsContainerWithRorSecurity(
       esVersion,
       esConfig,
@@ -56,7 +60,7 @@ object EsContainerWithRorSecurity extends StrictLogging {
         case Enabled.No => false
       }
     )
-    EsContainer.init(rorContainer, initializer, logger)
+    EsContainer.init(rorContainer, initializer, logger, additionalLogConsumer)
   }
 
   private def esImageWithRorFromDockerfile(esVersion: String,
@@ -65,7 +69,6 @@ object EsContainerWithRorSecurity extends StrictLogging {
     DockerImageCreator.create(
       Elasticsearch.create(esVersion, esConfig)
         .install(new ReadonlyRestPlugin(esVersion, rorConfig, performPatching = true))
-        .toDockerImageDescription
     )
   }
 }

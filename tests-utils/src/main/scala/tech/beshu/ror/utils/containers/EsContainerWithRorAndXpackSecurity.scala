@@ -17,12 +17,15 @@
 package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
+import org.testcontainers.containers.output.OutputFrame
 import org.testcontainers.images.builder.ImageFromDockerfile
 import os.Path
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
+
+import java.util.function.Consumer
 
 class EsContainerWithRorAndXpackSecurity private(esConfig: Elasticsearch.Config,
                                                  esVersion: String,
@@ -45,7 +48,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
              esConfig: Elasticsearch.Config,
              securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
+             startedClusterDependencies: StartedClusterDependencies,
+             additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
     create(
       esVersion = esVersion,
       esConfig = esConfig,
@@ -54,7 +58,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
       startedClusterDependencies = startedClusterDependencies,
       customEntrypoint = None,
       performPatching = true,
-      awaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness
+      awaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness,
+      additionalLogConsumer = additionalLogConsumer,
     )
   }
 
@@ -64,7 +69,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
                                  initializer: ElasticsearchNodeDataInitializer,
                                  startedClusterDependencies: StartedClusterDependencies,
                                  customEntrypoint: Option[Path],
-                                 awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
+                                 awaitingReadyStrategy: AwaitingReadyStrategy,
+                                 additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
     create(
       esVersion = esVersion,
       esConfig = esConfig,
@@ -73,7 +79,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
       startedClusterDependencies = startedClusterDependencies,
       customEntrypoint = customEntrypoint,
       performPatching = false,
-      awaitingReadyStrategy = awaitingReadyStrategy
+      awaitingReadyStrategy = awaitingReadyStrategy,
+      additionalLogConsumer = additionalLogConsumer,
     )
   }
 
@@ -84,7 +91,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
                      startedClusterDependencies: StartedClusterDependencies,
                      customEntrypoint: Option[Path],
                      performPatching: Boolean,
-                     awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
+                     awaitingReadyStrategy: AwaitingReadyStrategy,
+                     additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
     val rorContainer = new EsContainerWithRorAndXpackSecurity(
       esConfig,
       esVersion,
@@ -95,7 +103,7 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
         case Enabled.No => false
       }
     )
-    EsContainer.init(rorContainer, initializer, logger, awaitingReadyStrategy)
+    EsContainer.init(rorContainer, initializer, logger, additionalLogConsumer, awaitingReadyStrategy)
   }
 
   private def esImageWithRorAndXpackFromDockerfile(esVersion: String,
@@ -107,7 +115,6 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
       Elasticsearch.create(esVersion, esConfig)
         .install(new ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion, securityConfig, performPatching))
         .when(customEntrypoint, _.setEntrypoint(_))
-        .toDockerImageDescription
     )
   }
 }
