@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.{IndexName, LocalUsers, RorConfigurationIndex, User}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
@@ -202,7 +202,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           val rorConfig = rorConfigFromUnsafe(config)
           inside(createCore(rorConfig, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
-              core.rorConfig.localUsers should be(allUsersResolved(Set(
+              core.dependencies.localUsers should be(allUsersResolved(Set(
                 User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
               )))
           }
@@ -299,11 +299,11 @@ class LocalUsersTest extends AnyWordSpec with Inside {
     val rorConfig = rorConfigFromUnsafe(config)
     inside(createCore(rorConfig)) {
       case Right(core) =>
-        core.rorConfig.localUsers should be(expected)
+        core.dependencies.localUsers should be(expected)
     }
   }
 
-  private def createCore(config: RawRorConfig,
+  private def createCore(config: RawRorSettings,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider,
                          clientsFactory: HttpClientsFactory = MockHttpClientsFactory) = {
     factory

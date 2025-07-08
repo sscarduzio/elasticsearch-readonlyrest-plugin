@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -482,7 +482,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
     }
   }
 
-  private def createCore(config: RawRorConfig,
+  private def createCore(config: RawRorSettings,
                          clientsFactory: HttpClientsFactory = MockHttpClientsFactory) = {
     factory
       .createCoreFrom(

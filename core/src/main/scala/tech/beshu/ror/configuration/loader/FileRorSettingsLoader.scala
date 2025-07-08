@@ -20,16 +20,16 @@ import better.files.File
 import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
-import tech.beshu.ror.configuration.loader.RorConfigLoader.Error
-import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.loader.FileRorConfigLoader.Error.FileNotExist
-import tech.beshu.ror.configuration.{RawRorConfig, RawRorConfigYamlParser}
+import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error
+import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.loader.FileRorSettingsLoader.Error.FileNotExist
+import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 
-class FileRorConfigLoader(rorSettingsFile: File,
-                          rarRorConfigYamlParser: RawRorConfigYamlParser)
-  extends RorConfigLoader[FileRorConfigLoader.Error] {
+class FileRorSettingsLoader(rorSettingsFile: File,
+                            rarRorConfigYamlParser: RawRorSettingsYamlParser)
+  extends RorSettingsLoader[FileRorSettingsLoader.Error] {
 
-  override def load(): Task[Either[Error[FileRorConfigLoader.Error], RawRorConfig]] = {
+  override def load(): Task[Either[Error[FileRorSettingsLoader.Error], RawRorSettings]] = {
     val file = rorSettingsFile
     (for {
       _ <- checkIfFileExist(file)
@@ -37,15 +37,15 @@ class FileRorConfigLoader(rorSettingsFile: File,
     } yield config).value
   }
 
-  private def checkIfFileExist(file: File): EitherT[Task, Error[FileRorConfigLoader.Error], File] =
+  private def checkIfFileExist(file: File): EitherT[Task, Error[FileRorSettingsLoader.Error], File] =
     EitherT.cond(file.exists, file, SpecializedError(FileNotExist(file)))
 
-  private def loadConfigFromFile(file: File): EitherT[Task, Error[FileRorConfigLoader.Error], RawRorConfig] = {
+  private def loadConfigFromFile(file: File): EitherT[Task, Error[FileRorSettingsLoader.Error], RawRorSettings] = {
     EitherT(rarRorConfigYamlParser.fromFile(file).map(_.left.map(ParsingError.apply)))
   }
 }
 
-object FileRorConfigLoader {
+object FileRorSettingsLoader {
 
   sealed trait Error
   object Error {

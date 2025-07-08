@@ -32,12 +32,14 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.L
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorConfigurationIndex, User}
-import tech.beshu.ror.configuration.TestRorConfig.Present
-import tech.beshu.ror.configuration.index.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
-import tech.beshu.ror.configuration.index.IndexTestConfigManager.Const
-import tech.beshu.ror.configuration.loader.RorConfigLoader
-import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.{RawRorConfigYamlParser, TestRorConfig}
+import tech.beshu.ror.configuration.TestRorSettings.Present
+import tech.beshu.ror.configuration.index.IndexJsonContentServiceBasedIndexTestSettingsManager.Const
+import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError.{IndexNotExist, UnknownStructureOfIndexDocument}
+import tech.beshu.ror.configuration.index.IndexSettingsManager.SavingIndexSettingsError.CannotSaveSettings
+import tech.beshu.ror.configuration.loader.RorSettingsLoader
+import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.{RawRorSettingsYamlParser, TestRorSettings}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 import tech.beshu.ror.syntax.*
@@ -49,14 +51,14 @@ import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService,
-                                   rarRorConfigYamlParser: RawRorConfigYamlParser)
-  extends BaseIndexConfigManager[TestRorConfig]
+final class IndexJsonContentServiceBasedIndexTestSettingsManager(indexJsonContentService: IndexJsonContentService,
+                                                                 rarRorConfigYamlParser: RawRorSettingsYamlParser)
+  extends IndexSettingsManager[TestRorSettings]
     with Logging {
 
-  type Error = RorConfigLoader.Error[IndexConfigError]
+  type Error = RorSettingsLoader.Error[LoadingIndexSettingsError]
 
-  override def load(indexName: RorConfigurationIndex): Task[Either[Error, TestRorConfig]] = {
+  override def load(indexName: RorConfigurationIndex): Task[Either[Error, TestRorSettings]] = {
     indexJsonContentService
       .sourceOf(indexName.index, Config.rorTestSettingsIndexConst.id)
       .flatMap {
@@ -64,28 +66,28 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
           val properties = source.collect { case (key: String, value: String) => (key, value) }
           getSettings(properties).value
         case Left(CannotReachContentSource) =>
-          configLoaderError(IndexConfigNotExist)
+          settingsLoaderError(IndexNotExist)
         case Left(ContentNotFound) =>
-          Task.now(Right(TestRorConfig.NotSet))
+          Task.now(Right(TestRorSettings.NotSet))
       }
   }
 
-  override def save(config: TestRorConfig,
-                    rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]] = {
+  override def save(settings: TestRorSettings,
+                    rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexSettingsError, Unit]] = {
     indexJsonContentService
       .saveContent(
         rorConfigurationIndex.index,
         Config.rorTestSettingsIndexConst.id,
-        formatSettings(config)
+        formatSettings(settings)
       )
       .map {
-        _.left.map { case CannotWriteToIndex => SavingIndexConfigError.CannotSaveConfig }
+        _.left.map { case CannotWriteToIndex => CannotSaveSettings }
       }
   }
 
-  private def getSettings(config: Map[String, String]): EitherT[Task, Error, TestRorConfig] = {
+  private def getSettings(config: Map[String, String]): EitherT[Task, Error, TestRorSettings] = {
     if (config.isEmpty) {
-      EitherT.right[Error](Task.now(TestRorConfig.NotSet)).widen[TestRorConfig]
+      EitherT.right[Error](Task.now(TestRorSettings.NotSet)).widen[TestRorSettings]
     } else {
       for {
         expirationTimeString <- getConfigProperty(config, Const.properties.expirationTime)
@@ -101,16 +103,16 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
         expirationTtl <- getExpirationTtl(expirationTtlString)
         mocks <- getMocks(authMocksConfigString)
       } yield Present(
-        rawConfig = rawRorConfig,
+        rawSettings = rawRorConfig,
         mocks = mocks,
         expiration = Present.ExpirationConfig(ttl = expirationTtl, validTo = expirationTime)
       )
     }
   }
 
-  private def formatSettings(config: TestRorConfig): Map[String, String] = {
+  private def formatSettings(config: TestRorSettings): Map[String, String] = {
     config match {
-      case TestRorConfig.NotSet =>
+      case TestRorSettings.NotSet =>
         Map.empty
       case Present(rawConfig, mocks, expiration) =>
         Map(
@@ -136,7 +138,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
   }
 
   private def parserError: Error =
-    SpecializedError[IndexConfigError](IndexConfigUnknownStructure)
+    SpecializedError[LoadingIndexSettingsError](UnknownStructureOfIndexDocument)
 
   private def getInstant(value: String): EitherT[Task, Error, Instant] = {
     Try(DateTimeFormatter.ISO_DATE_TIME.parse(value))
@@ -243,7 +245,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
 
 }
 
-private object IndexTestConfigManager {
+private object IndexJsonContentServiceBasedIndexTestSettingsManager {
   object Const {
     object properties {
       val settings = "settings"

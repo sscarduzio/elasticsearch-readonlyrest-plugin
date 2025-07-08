@@ -18,23 +18,24 @@ package tech.beshu.ror.configuration.loader
 
 import cats.Show
 import monix.eval.Task
-import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.configuration.RawRorConfigYamlParser.ParsingRorConfigError
+import tech.beshu.ror.configuration.RawRorSettings
+import tech.beshu.ror.configuration.RawRorSettingsYamlParser.ParsingRorSettingsError
 
-trait RorConfigLoader[SPECIALIZED_ERROR] {
+trait RorSettingsLoader[SPECIALIZED_ERROR] {
 
-  def load(): Task[Either[RorConfigLoader.Error[SPECIALIZED_ERROR], RawRorConfig]]
+  def load(): Task[Either[RorSettingsLoader.Error[SPECIALIZED_ERROR], RawRorSettings]]
 }
 
-object RorConfigLoader {
+object RorSettingsLoader {
 
   sealed trait Error[+SPECIALIZED_ERROR]
   object Error {
-    final case class ParsingError(error: ParsingRorConfigError) extends Error[Nothing]
+    final case class ParsingError(error: ParsingRorSettingsError) extends Error[Nothing]
     final case class SpecializedError[ERROR](error: ERROR) extends Error[ERROR]
 
+    // todo: move?
     implicit def show[E: Show]: Show[Error[E]] = Show.show {
-      case ParsingError(error) => Show[ParsingRorConfigError].show(error)
+      case ParsingError(error) => Show[ParsingRorSettingsError].show(error)
       case SpecializedError(error) => Show[E].show(error)
     }
   }

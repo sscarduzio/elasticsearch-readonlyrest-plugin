@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.{RawRorSettings, RorDependencies}
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
@@ -234,13 +234,13 @@ class RorIndexTest extends AnyWordSpec
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
-                              rawRorConfig: RawRorConfig): CoreFactory = {
+                              rawRorConfig: RawRorSettings): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
+        (config: RawRorSettings, _, _, _, _) => config == rawRorConfig
       })
       .once()
-      .returns(Task.now(Right(Core(mockAccessControl, RorConfig.disabled))))
+      .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp))))
     mockedCoreFactory
   }
 

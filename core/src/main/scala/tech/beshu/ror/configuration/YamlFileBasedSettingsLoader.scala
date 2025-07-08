@@ -20,37 +20,37 @@ import better.files.File
 import io.circe.{Decoder, DecodingFailure, Json}
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
+import tech.beshu.ror.accesscontrol.factory.JsonStaticVariablesResolver
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlParser
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 
-final class YamlFileBasedConfigLoader(file: File)
-                                     (implicit systemContext: SystemContext) {
+final class YamlFileBasedSettingsLoader(file: File)
+                                       (implicit systemContext: SystemContext) {
 
   private val yamlParser: YamlParser = new YamlParser()
 
-  private val jsonConfigResolver = new JsonConfigStaticVariableResolver(
+  private val jsonStaticVariableResolver = new JsonStaticVariablesResolver(
     systemContext.envVarsProvider,
     TransformationCompiler.withoutAliases(systemContext.variablesFunctions)
   )
 
-  def loadConfig[CONFIG: Decoder](configName: String): Either[MalformedSettings, CONFIG] = {
-    loadedConfigJson
+  def loadSettings[SETTINGS: Decoder](settingsName: String): Either[MalformedSettings, SETTINGS] = {
+    loadedSettingsJson
       .flatMap { json =>
-        implicitly[Decoder[CONFIG]]
+        implicitly[Decoder[SETTINGS]]
           .decodeJson(json)
-          .left.map(e => MalformedSettings(s"Cannot load ${configName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"))
+          .left.map(e => MalformedSettings(s"Cannot load ${settingsName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"))
       }
   }
 
-  private lazy val loadedConfigJson: Either[MalformedSettings, Json] = {
+  private lazy val loadedSettingsJson: Either[MalformedSettings, Json] = {
     file.fileReader { reader =>
       yamlParser
         .parse(reader)
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString.show} content. Cause: ${e.message.show}"))
         .flatMap { json =>
-          jsonConfigResolver
+          jsonStaticVariableResolver
             .resolve(json)
             .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString.show}. $e."))
         }

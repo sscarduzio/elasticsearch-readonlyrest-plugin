@@ -23,6 +23,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
@@ -33,7 +34,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.{RawRorSettings, RorDependencies}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.utils.TestsUtils.*
@@ -177,7 +178,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               NoOpMocksProvider
             )
             .runSyncUnsafe()
-          inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _, Some(auditingSettings)))) =>
             auditingSettings.auditSinks.size should be(3)
 
             val sink1 = auditingSettings.auditSinks.head
@@ -834,7 +835,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               NoOpMocksProvider
             )
             .runSyncUnsafe()
-          inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _, Some(auditingSettings)))) =>
             auditingSettings.auditSinks.size should be(3)
 
             val sink1 = auditingSettings.auditSinks.head
@@ -893,7 +894,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               NoOpMocksProvider
             )
             .runSyncUnsafe()
-          inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _, Some(auditingSettings)))) =>
             auditingSettings.auditSinks.size should be(2)
 
             val sink1 = auditingSettings.auditSinks.head
@@ -1676,7 +1677,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertSettingsNoPresent(config: RawRorConfig): Unit = {
+  private def assertSettingsNoPresent(config: RawRorSettings): Unit = {
     val core = factory()
       .createCoreFrom(
         config,
@@ -1686,10 +1687,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorConfig(_, _, _, None))) => }
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _, None))) => }
   }
 
-  private def assertSettings(config: RawRorConfig, expectedConfigs: NonEmptyList[AuditSink]): Unit = {
+  private def assertSettings(config: RawRorSettings, expectedConfigs: NonEmptyList[AuditSink]): Unit = {
     val core = factory()
       .createCoreFrom(
         config,
@@ -1699,13 +1700,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(settings)))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _, Some(settings)))) =>
       settings.auditSinks should be(expectedConfigs)
     }
   }
 
 
-  private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
+  private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorSettings,
                                                                                       expectedIndexName: NonEmptyString,
                                                                                       expectedAuditCluster: AuditCluster) = {
     val core = factory()
@@ -1717,7 +1718,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _, Some(auditingSettings)))) =>
       auditingSettings.auditSinks.size should be(1)
 
       val headSink = auditingSettings.auditSinks.head
@@ -1733,7 +1734,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertDataStreamAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
+  private def assertDataStreamAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorSettings,
                                                                                       expectedDataStreamName: NonEmptyString,
                                                                                       expectedAuditCluster: AuditCluster,
                                                                                       esVersion: EsVersion = defaultEsVersionForTests) = {
@@ -1746,7 +1747,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _, Some(auditingSettings)))) =>
       auditingSettings.auditSinks.size should be(1)
 
       val headSink = auditingSettings.auditSinks.head
@@ -1762,7 +1763,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
+  private def assertLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorSettings,
                                                                                     expectedLoggerName: NonEmptyString) = {
     val core = factory()
       .createCoreFrom(
@@ -1773,7 +1774,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _, Some(auditingSettings)))) =>
       auditingSettings.auditSinks.size should be(1)
 
       val headSink = auditingSettings.auditSinks.head
@@ -1788,7 +1789,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertInvalidSettings(config: RawRorConfig,
+  private def assertInvalidSettings(config: RawRorSettings,
                                     expectedErrorMessage: String,
                                     esVersion: EsVersion = defaultEsVersionForTests): Unit = {
     val core = factory(esVersion)

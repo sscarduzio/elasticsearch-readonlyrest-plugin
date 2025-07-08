@@ -45,9 +45,9 @@ import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, TestConfig}
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.configuration.RorConfig.NoOpImpersonationWarningsReader
+import tech.beshu.ror.configuration.RorDependencies.NoOpImpersonationWarningsReader
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.{RawRorSettings, RorDependencies}
 import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
@@ -181,7 +181,7 @@ class ReadonlyRestStartingTests
             createCoreResult =
               Task
                 .sleep(100 millis)
-                .map(_ => Right(Core(mockEnabledAccessControl, RorConfig.disabled))) // very long creation
+                .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp))) // very long creation
           )
           mockIndexJsonContentManagerSaveCall(
             mockedIndexJsonContentManager,
@@ -424,7 +424,7 @@ class ReadonlyRestStartingTests
 
               rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
                 TestConfig.Present(
-                  config = RorConfig.disabled,
+                  dependencies = RorDependencies.noOp,
                   rawConfig = testConfig1,
                   configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
                   validTo = expirationTimestamp
@@ -915,7 +915,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
-              config = RorConfig.disabled,
+              dependencies = RorDependencies.noOp,
               rawConfig = testConfig1,
               configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp
@@ -952,7 +952,7 @@ class ReadonlyRestStartingTests
         }) { case (rorInstance, (mockedIndexJsonContentManager, expirationTimestamp)) =>
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
-              config = RorConfig.disabled,
+              dependencies = RorDependencies.noOp,
               rawConfig = testConfig1,
               configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp
@@ -978,7 +978,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
-              config = RorConfig.disabled,
+              dependencies = RorDependencies.noOp,
               rawConfig = testConfig1,
               configuredTtl = (200 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp2
@@ -1016,7 +1016,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
-              config = RorConfig.disabled,
+              dependencies = RorDependencies.noOp,
               rawConfig = testConfig1,
               configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp
@@ -1042,7 +1042,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
-              config = RorConfig.disabled,
+              dependencies = RorDependencies.noOp,
               rawConfig = testConfig1,
               configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp2
@@ -1080,7 +1080,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
-              config = RorConfig.disabled,
+              dependencies = RorDependencies.noOp,
               rawConfig = testConfig1,
               configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp
@@ -1263,7 +1263,7 @@ class ReadonlyRestStartingTests
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
-              config = RorConfig.disabled,
+              dependencies = RorDependencies.noOp,
               rawConfig = testConfig1,
               configuredTtl = (100 seconds).toRefinedPositiveUnsafe,
               validTo = expirationTimestamp
@@ -1324,7 +1324,7 @@ class ReadonlyRestStartingTests
           mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorConfig(RorConfig.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader, Some(AuditingTool.Settings(
+          RorConfig(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader, Some(AuditingTool.Settings(
             NonEmptyList.of(
               AuditSink.Enabled(dataStreamSinkConfig1),
               AuditSink.Enabled(dataStreamSinkConfig2))
@@ -1461,31 +1461,31 @@ class ReadonlyRestStartingTests
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               resourceFileName: String,
                               accessControlMock: AccessControlList = mockEnabledAccessControl,
-                              rorConfig: RorConfig = RorConfig.disabled): CoreFactory = {
-    mockCoreFactory(mockedCoreFactory, rorConfigFromResource(resourceFileName), accessControlMock, rorConfig)
+                              dependencies: RorDependencies = RorDependencies.noOp): CoreFactory = {
+    mockCoreFactory(mockedCoreFactory, rorConfigFromResource(resourceFileName), accessControlMock, dependencies)
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
-                              rawRorConfig: RawRorConfig,
+                              rawRorConfig: RawRorSettings,
                               accessControlMock: AccessControlList,
-                              rorConfig: RorConfig): CoreFactory = {
+                              dependencies: RorDependencies): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
+        (config: RawRorSettings, _, _, _, _) => config == rawRorConfig
       })
       .once()
-      .returns(Task.now(Right(Core(accessControlMock, rorConfig))))
+      .returns(Task.now(Right(Core(accessControlMock, dependencies))))
     mockedCoreFactory
   }
 
-  private def disabledRorConfig = RorConfig.disabled
+  private def disabledRorConfig = RorDependencies.noOp
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               resourceFileName: String,
                               createCoreResult: Task[Either[NonEmptyList[CoreCreationError], Core]]) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, _, _, _) => config == rorConfigFromResource(resourceFileName)
+        (config: RawRorSettings, _, _, _, _) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
       .returns(createCoreResult)
@@ -1498,10 +1498,10 @@ class ReadonlyRestStartingTests
   }
 
   private def mockFailedCoreFactory(mockedCoreFactory: CoreFactory,
-                                    rawRorConfig: RawRorConfig): CoreFactory = {
+                                    rawRorConfig: RawRorSettings): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
+        (config: RawRorSettings, _, _, _, _) => config == rawRorConfig
       })
       .once()
       .returns(Task.now(Left(NonEmptyList.one(CoreCreationError.GeneralReadonlyrestSettingsError(Message("failed"))))))

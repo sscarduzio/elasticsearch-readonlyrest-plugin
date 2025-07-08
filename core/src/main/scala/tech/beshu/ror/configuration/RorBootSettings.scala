@@ -41,7 +41,7 @@ object RorBootSettings extends Logging {
   private def loadRorBootstrapSettings(configFile: File)
                                       (implicit decoder: Decoder[RorBootSettings],
                                        systemContext: SystemContext) = {
-    new YamlFileBasedConfigLoader(configFile).loadConfig[RorBootSettings](configName = "ROR boot settings")
+    new YamlFileBasedSettingsLoader(configFile).loadSettings[RorBootSettings](settingsName = "ROR boot settings")
   }
 
   final case class RorNotStartedResponse(httpCode: RorNotStartedResponse.HttpCode)

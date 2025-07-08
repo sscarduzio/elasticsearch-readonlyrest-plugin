@@ -50,7 +50,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
@@ -379,17 +379,17 @@ object TestsUtils {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)
   }
 
-  def rorConfigFromUnsafe(yamlContent: String): RawRorConfig = {
+  def rorConfigFromUnsafe(yamlContent: String): RawRorSettings = {
     rorConfigFrom(yamlContent).toOption.get
   }
 
-  def rorConfigFrom(yamlContent: String): Either[ParsingFailure, RawRorConfig] = {
+  def rorConfigFrom(yamlContent: String): Either[ParsingFailure, RawRorSettings] = {
     rorYamlParser
       .parse(yamlContent)
-      .map(json => RawRorConfig(json, yamlContent))
+      .map(json => RawRorSettings(json, yamlContent))
   }
 
-  def rorConfigFromResource(resource: String): RawRorConfig = {
+  def rorConfigFromResource(resource: String): RawRorSettings = {
     rorConfigFromUnsafe {
       getResourceContent(resource)
     }

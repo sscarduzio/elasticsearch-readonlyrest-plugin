@@ -29,17 +29,17 @@ import tech.beshu.ror.api.ConfigApi.ConfigResponse.*
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.{RawRorConfig, RawRorConfigYamlParser}
-import tech.beshu.ror.configuration.index.IndexConfigError.IndexConfigNotExist
-import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
-import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.SpecializedError
-import tech.beshu.ror.configuration.loader.FileRorConfigLoader
+import tech.beshu.ror.configuration.index.IndexSettingsManager
+import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
+import tech.beshu.ror.configuration.loader.FileRorSettingsLoader
+import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.SpecializedError
+import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
 class ConfigApi(rorInstance: RorInstance,
-                rawRorConfigYamlParser: RawRorConfigYamlParser,
-                indexConfigManager: IndexConfigManager,
-                fileConfigLoader: FileRorConfigLoader,
+                rawRorConfigYamlParser: RawRorSettingsYamlParser,
+                indexConfigManager: IndexSettingsManager[RawRorSettings],
+                fileConfigLoader: FileRorSettingsLoader,
                 rorConfigurationIndex: RorConfigurationIndex)
   extends Logging {
 
@@ -102,8 +102,8 @@ class ConfigApi(rorInstance: RorInstance,
       .map {
         case Right(config) =>
           ProvideIndexConfig.Config(config.raw)
-        case Left(SpecializedError(error: IndexConfigNotExist.type)) =>
-          ProvideIndexConfig.ConfigNotFound(Show[IndexConfigError].show(error))
+        case Left(SpecializedError(error: LoadingIndexSettingsError.IndexNotExist.type)) =>
+          ProvideIndexConfig.ConfigNotFound(Show[LoadingIndexSettingsError].show(error))
         case Left(error) =>
           ProvideIndexConfig.Failure(error.show)
       }
@@ -114,13 +114,13 @@ class ConfigApi(rorInstance: RorInstance,
       .left.map(error => ConfigResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage.show}]"))
   }
 
-  private def rorConfigFrom(configString: String): EitherT[Task, ConfigResponse, RawRorConfig] = EitherT {
+  private def rorConfigFrom(configString: String): EitherT[Task, ConfigResponse, RawRorSettings] = EitherT {
     rawRorConfigYamlParser
       .fromString(configString)
       .map(_.left.map(error => UpdateIndexConfig.Failure(error.show)))
   }
 
-  private def forceReloadAndSaveNewConfig(config: RawRorConfig)
+  private def forceReloadAndSaveNewConfig(config: RawRorSettings)
                                          (implicit requestId: RequestId): EitherT[Task, ConfigResponse, Unit] = {
     EitherT(rorInstance.forceReloadAndSave(config))
       .leftMap {

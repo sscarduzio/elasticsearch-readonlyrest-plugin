@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.configuration.index
 
+// todo: what about it?
 private[index] object Config {
   object rorSettingsIndexConst {
     val id = "1"

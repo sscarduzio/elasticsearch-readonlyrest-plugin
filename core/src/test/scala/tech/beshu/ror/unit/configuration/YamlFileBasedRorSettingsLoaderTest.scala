@@ -22,9 +22,9 @@ import io.circe.Decoder
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.configuration.{Environment, YamlFileBasedConfigLoader}
+import tech.beshu.ror.configuration.{Environment, YamlFileBasedSettingsLoader}
 
-class YamlFileBasedRorConfigLoaderTest extends AnyWordSpec with Inside {
+class YamlFileBasedRorSettingsLoaderTest extends AnyWordSpec with Inside {
 
   private implicit val systemContext: SystemContext = new Environment(
     envVarsProvider = name =>
@@ -59,10 +59,10 @@ class YamlFileBasedRorConfigLoaderTest extends AnyWordSpec with Inside {
   private def loadFromTempFile[A: Decoder](content: String) =
     tempFile(content).map { file =>
       createFileConfigLoader(file)
-        .loadConfig[A]("TEST")
+        .loadSettings[A]("TEST")
     }.get()
 
   private def tempFile(content: String) = File.temporaryFile().map(_.write(content))
 
-  private def createFileConfigLoader(file: File) = new YamlFileBasedConfigLoader(file)
+  private def createFileConfigLoader(file: File) = new YamlFileBasedSettingsLoader(file)
 }

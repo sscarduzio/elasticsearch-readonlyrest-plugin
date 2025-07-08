@@ -28,7 +28,7 @@ import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.{RawRorConfig, RawRorConfigYamlParser}
+import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 import tech.beshu.ror.utils.DurationOps.*
@@ -38,7 +38,7 @@ import scala.concurrent.duration.*
 import scala.util.Try
 
 class TestConfigApi(rorInstance: RorInstance,
-                    rawRorConfigYamlParser: RawRorConfigYamlParser) {
+                    rawRorConfigYamlParser: RawRorSettingsYamlParser) {
 
   import tech.beshu.ror.api.TestConfigApi.Utils.*
   import tech.beshu.ror.api.TestConfigApi.Utils.decoders.*
@@ -71,7 +71,7 @@ class TestConfigApi(rorInstance: RorInstance,
       .left.map(error => TestConfigResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage}]"))
   }
 
-  private def rorTestConfig(configString: String): EitherT[Task, TestConfigResponse, RawRorConfig] = EitherT {
+  private def rorTestConfig(configString: String): EitherT[Task, TestConfigResponse, RawRorSettings] = EitherT {
     rawRorConfigYamlParser
       .fromString(configString)
       .map(_.left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(error.show)))
@@ -96,12 +96,12 @@ class TestConfigApi(rorInstance: RorInstance,
       .map {
         case TestConfig.NotSet =>
           TestConfigResponse.ProvideTestConfig.TestSettingsNotConfigured("ROR Test settings are not configured")
-        case TestConfig.Present(config, rawConfig, configuredTtl, validTo) =>
+        case TestConfig.Present(rawConfig, dependencies, configuredTtl, validTo) =>
           TestConfigResponse.ProvideTestConfig.CurrentTestSettings(
             ttl = apiFormat(configuredTtl),
             validTo = validTo,
             settings = rawConfig,
-            warnings = config.impersonationWarningsReader.read().map(toWarningDto)
+            warnings = dependencies.impersonationWarningsReader.read().map(toWarningDto)
           )
         case TestConfig.Invalidated(recentConfig, ttl) =>
           TestConfigResponse.ProvideTestConfig.TestSettingsInvalidated("ROR Test settings are invalidated", recentConfig, apiFormat(ttl))
@@ -115,18 +115,18 @@ class TestConfigApi(rorInstance: RorInstance,
       .map {
         case TestConfig.NotSet =>
           TestConfigResponse.ProvideLocalUsers.TestSettingsNotConfigured("ROR Test settings are not configured")
-        case TestConfig.Present(config, _, _, _) =>
-          val filteredLocalUsers = config.localUsers.users -- loggedUser.map(_.id)
+        case TestConfig.Present(_, dependencies, _, _) =>
+          val filteredLocalUsers = dependencies.localUsers.users -- loggedUser.map(_.id)
           TestConfigResponse.ProvideLocalUsers.SuccessResponse(
             users = filteredLocalUsers.map(_.value.value).toList,
-            unknownUsers = config.localUsers.unknownUsers
+            unknownUsers = dependencies.localUsers.unknownUsers
           )
         case _:TestConfig.Invalidated =>
           TestConfigResponse.ProvideLocalUsers.TestSettingsInvalidated("ROR Test settings are invalidated")
       }
   }
 
-  private def forceReloadTestConfig(config: RawRorConfig,
+  private def forceReloadTestConfig(config: RawRorSettings,
                                     ttl: PositiveFiniteDuration)
                                    (implicit requestId: RequestId): EitherT[Task, TestConfigResponse, TestConfigResponse] = {
     EitherT(
@@ -138,7 +138,7 @@ class TestConfigApi(rorInstance: RorInstance,
               TestConfigResponse.UpdateTestConfig.SuccessResponse(
                 message = "updated settings",
                 validTo = newTestConfig.validTo,
-                warnings = newTestConfig.config.impersonationWarningsReader.read().map(toWarningDto)
+                warnings = newTestConfig.dependencies.impersonationWarningsReader.read().map(toWarningDto)
               )
             }
             .leftMap {
@@ -192,12 +192,12 @@ object TestConfigApi {
     object ProvideTestConfig {
       final case class CurrentTestSettings(ttl: FiniteDuration,
                                            validTo: Instant,
-                                           settings: RawRorConfig,
+                                           settings: RawRorSettings,
                                            warnings: List[Warning]) extends ProvideTestConfig
 
       final case class TestSettingsNotConfigured(message: String) extends ProvideTestConfig
       final case class TestSettingsInvalidated(message: String,
-                                               settings: RawRorConfig,
+                                               settings: RawRorSettings,
                                                ttl: FiniteDuration) extends ProvideTestConfig
     }
 

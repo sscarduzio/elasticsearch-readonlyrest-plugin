@@ -24,7 +24,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction
 import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction.*
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig}
@@ -35,8 +35,8 @@ import java.nio.file.Paths
 import scala.concurrent.duration.*
 import scala.language.{existentials, postfixOps}
 
-class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
-  import LoadRawRorConfigTest.*
+class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
+  import LoadRawRorSettingsTest.*
   "Free monad loader program" should {
     "load forced file" in {
       val steps = List(
@@ -45,7 +45,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
       val compiler = IdCompiler.instance(steps)
       val program = LoadRawRorConfig.loadFromFile(esEnv.configPath)
       val result = program.foldMap(compiler)
-      val ffc = result.asInstanceOf[Right[Nothing, ForcedFileConfig[RawRorConfig]]]
+      val ffc = result.asInstanceOf[Right[Nothing, ForcedFileConfig[RawRorSettings]]]
       ffc.value.value shouldEqual rawRorConfig
     }
     "load successfully from index" in {
@@ -62,7 +62,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         fallbackConfigFilePath = esEnv.configPath
       )
       val result = program.foldMap(compiler)
-      val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
+      val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorSettings]]]
       ffc.value.value shouldEqual rawRorConfig
     }
     "load successfully from index, after failure" in {
@@ -81,7 +81,7 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
         fallbackConfigFilePath = esEnv.configPath
       )
       val result = program.foldMap(compiler)
-      val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
+      val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorSettings]]]
       ffc.value.value shouldEqual rawRorConfig
     }
     "load from file when index not exist" in {
@@ -141,10 +141,10 @@ class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
     }
   }
 }
-object LoadRawRorConfigTest {
+object LoadRawRorSettingsTest {
 
   private val esEnv = EsEnv(Paths.get("unused_file_path"), Paths.get("unused_file_path"), defaultEsVersionForTests)
-  private val rawRorConfig = RawRorConfig(Json.False, "forced file config")
+  private val rawRorConfig = RawRorSettings(Json.False, "forced file config")
   private val rorConfigurationIndex = RorConfigurationIndex(IndexName.Full("rorConfigurationIndex"))
 
 }

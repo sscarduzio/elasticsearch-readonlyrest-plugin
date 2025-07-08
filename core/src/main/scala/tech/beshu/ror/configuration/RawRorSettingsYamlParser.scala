@@ -22,27 +22,27 @@ import cats.Show
 import io.circe.{Json, ParsingFailure}
 import monix.eval.Task
 import squants.information.Information
-import tech.beshu.ror.configuration.RawRorConfigYamlParser.ParsingRorConfigError
-import tech.beshu.ror.configuration.RawRorConfigYamlParser.ParsingRorConfigError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
+import tech.beshu.ror.configuration.RawRorSettingsYamlParser.ParsingRorSettingsError
+import tech.beshu.ror.configuration.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlParser
 
 import java.io.StringReader
 
-class RawRorConfigYamlParser(maxSize: Information) {
+class RawRorSettingsYamlParser(maxSize: Information) {
 
   private val yamlParser: YamlParser = new YamlParser(Some(maxSize))
 
-  def fromFile(file: File): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
+  def fromFile(file: File): Task[Either[ParsingRorSettingsError, RawRorSettings]] = {
     fromString(file.contentAsString)
   }
 
-  def fromString(content: String): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
+  def fromString(content: String): Task[Either[ParsingRorSettingsError, RawRorSettings]] = {
     val contentResource = Resource.make(Task(new StringReader(content))) { reader => Task(reader.close()) }
     contentResource.use { reader =>
       Task {
         handleParseResult(yamlParser.parse(reader))
-          .map(RawRorConfig(_, content))
+          .map(RawRorSettings(_, content))
       }
     }
   }
@@ -61,15 +61,15 @@ class RawRorConfigYamlParser(maxSize: Information) {
     }
   }
 }
-object RawRorConfigYamlParser {
+object RawRorSettingsYamlParser {
 
-  sealed trait ParsingRorConfigError
-  object ParsingRorConfigError {
-    case object NoRorSection extends ParsingRorConfigError
-    case object MoreThanOneRorSection extends ParsingRorConfigError
-    final case class InvalidContent(throwable: Throwable) extends ParsingRorConfigError
+  sealed trait ParsingRorSettingsError
+  object ParsingRorSettingsError {
+    case object NoRorSection extends ParsingRorSettingsError
+    case object MoreThanOneRorSection extends ParsingRorSettingsError
+    final case class InvalidContent(throwable: Throwable) extends ParsingRorSettingsError
 
-    implicit val show: Show[ParsingRorConfigError] = Show.show {
+    implicit val show: Show[ParsingRorSettingsError] = Show.show {
       case NoRorSection => "Cannot find any 'readonlyrest' section in settings"
       case MoreThanOneRorSection => "Only one 'readonlyrest' section is required"
       case InvalidContent(ex) => s"Settings content is malformed. Details: ${ex.getMessage.show}"

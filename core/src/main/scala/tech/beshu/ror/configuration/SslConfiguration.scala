@@ -91,7 +91,7 @@ object RorSsl extends Logging {
   private def loadSslConfigFromFile(configFile: File)
                                    (implicit rorSslDecoder: Decoder[Option[RorSsl]],
                                     systemContext: SystemContext) = {
-    new YamlFileBasedConfigLoader(configFile).loadConfig[Option[RorSsl]](configName = "ROR SSL settings")
+    new YamlFileBasedSettingsLoader(configFile).loadSettings[Option[RorSsl]](settingsName = "ROR SSL settings")
   }
 }
 

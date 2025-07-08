@@ -21,13 +21,13 @@ import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.{Clock, Instant}
 
-sealed trait TestRorConfig
-object TestRorConfig {
+sealed trait TestRorSettings
+object TestRorSettings {
 
-  case object NotSet extends TestRorConfig
-  final case class Present(rawConfig: RawRorConfig,
+  case object NotSet extends TestRorSettings
+  final case class Present(rawSettings: RawRorSettings,
                            mocks: AuthServicesMocks,
-                           expiration: Present.ExpirationConfig) extends TestRorConfig {
+                           expiration: Present.ExpirationConfig) extends TestRorSettings {
     def isExpired(clock: Clock): Boolean = {
       expiration.validTo.isBefore(clock.instant())
     }

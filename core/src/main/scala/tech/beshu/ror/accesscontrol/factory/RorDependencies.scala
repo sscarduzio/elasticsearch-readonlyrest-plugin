@@ -14,25 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.accesscontrol.factory
 
-import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.domain.{LocalUsers, RequestId}
-import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
+import tech.beshu.ror.accesscontrol.factory.RorDependencies.ImpersonationWarningsReader
 
 import scala.annotation.unused
 
-// todo: rename
-final case class RorConfig(services: RorConfig.Services,
-                           localUsers: LocalUsers,
-                           impersonationWarningsReader: ImpersonationWarningsReader,
-                           auditingSettings: Option[AuditingTool.Settings])
+final case class RorDependencies(services: RorDependencies.Services,
+                                 localUsers: LocalUsers,
+                                 impersonationWarningsReader: ImpersonationWarningsReader)
 
-object RorConfig {
-  def disabled: RorConfig = RorConfig(RorConfig.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader, None)
+object RorDependencies {
+  def noOp: RorDependencies = RorDependencies(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader)
 
   final case class Services(authenticationServices: Seq[ExternalAuthenticationService#Id],
                             authorizationServices: Seq[ExternalAuthorizationService#Id],

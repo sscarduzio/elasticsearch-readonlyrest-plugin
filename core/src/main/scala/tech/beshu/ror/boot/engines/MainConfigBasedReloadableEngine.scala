@@ -16,31 +16,29 @@
  */
 package tech.beshu.ror.boot.engines
 
-import tech.beshu.ror.implicits.*
 import cats.data.EitherT
-import cats.implicits.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.*
+import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.{ConfigUpToDate, ReloadingFailed, RorInstanceStopped}
-import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
 import tech.beshu.ror.boot.engines.ConfigHash.*
-import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.configuration.index.IndexConfigManager
-import tech.beshu.ror.configuration.index.SavingIndexConfigError.CannotSaveConfig
+import tech.beshu.ror.configuration.RawRorSettings
+import tech.beshu.ror.configuration.index.IndexSettingsManager
+import tech.beshu.ror.configuration.index.IndexSettingsManager.SavingIndexSettingsError
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
-                                                    initialEngine: (Engine, RawRorConfig),
+                                                    initialEngine: (Engine, RawRorSettings),
                                                     reloadInProgress: Semaphore[Task],
-                                                    indexConfigManager: IndexConfigManager,
+                                                    indexConfigManager: IndexSettingsManager[RawRorSettings],
                                                     rorConfigurationIndex: RorConfigurationIndex)
                                                    (implicit systemContext: SystemContext,
                                                     scheduler: Scheduler)
@@ -52,7 +50,7 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
     rorConfigurationIndex = rorConfigurationIndex
   ) {
 
-  def forceReloadAndSave(config: RawRorConfig)
+  def forceReloadAndSave(config: RawRorSettings)
                         (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
     for {
       _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of provided settings was forced (new engine id=${config.hashString()}) ..."))
@@ -75,7 +73,7 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
           logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${message.show}")
         case Left(ReloadError(RorInstanceStopped)) =>
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
-        case Left(IndexConfigSavingError(CannotSaveConfig)) =>
+        case Left(IndexConfigSavingError(SavingIndexSettingsError.CannotSaveSettings)) =>
           // todo: invalidate created core?
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
       })
@@ -105,14 +103,14 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
   }
 
   def reloadEngineUsingIndexConfig()
-                                  (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {
+                                  (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorSettings]] = {
     reloadInProgress.withPermit {
       reloadEngineUsingIndexConfigWithoutPermit()
     }
   }
 
   private[boot] def reloadEngineUsingIndexConfigWithoutPermit()
-                                                             (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {
+                                                             (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorSettings]] = {
     val result = for {
       newConfig <- EitherT(loadRorConfigFromIndex())
       _ <- reloadEngine(newConfig)
@@ -122,7 +120,7 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
     result.value
   }
 
-  private def saveConfig(newConfig: RawRorConfig): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
+  private def saveConfig(newConfig: RawRorSettings): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
     for {
       saveResult <- indexConfigManager.save(newConfig, rorConfigurationIndex)
     } yield saveResult.left.map(IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply)

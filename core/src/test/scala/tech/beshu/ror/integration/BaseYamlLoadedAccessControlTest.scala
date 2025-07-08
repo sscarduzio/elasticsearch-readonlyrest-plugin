@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -48,7 +48,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
   lazy val acl: AccessControlList = {
     val aclEngineT = for {
-      config <- RawRorConfig
+      config <- RawRorSettings
         .fromString(configYaml)
         .map(_.fold(err => throw new IllegalStateException(err.show), identity))
       core <- factory

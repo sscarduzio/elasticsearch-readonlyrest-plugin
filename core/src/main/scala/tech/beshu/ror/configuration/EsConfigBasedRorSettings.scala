@@ -69,8 +69,8 @@ object EsConfigBasedRorSettings {
                                (implicit systemContext: SystemContext) = {
     EitherT.fromEither[Task] {
       implicit val xpackSettingsDecoder: Decoder[XpackSettings] = decoders.xpackSettingsDecoder(ossDistribution)
-      new YamlFileBasedConfigLoader(esEnv.configPath)
-        .loadConfig[XpackSettings](configName = "X-Pack settings")
+      new YamlFileBasedSettingsLoader(esEnv.configPath)
+        .loadSettings[XpackSettings](settingsName = "X-Pack settings")
         .left.map(error => MalformedContent(esEnv.configPath, error.message))
     }
   }
@@ -91,13 +91,13 @@ object EsConfigBasedRorSettings {
                                                    (implicit systemContext: SystemContext) = {
     EitherT.fromEither[Task] {
       import decoders.{loadRorCoreStrategyDecoder, rorConfigurationIndexDecoder}
-      val loader = new YamlFileBasedConfigLoader(esEnv.configPath)
+      val loader = new YamlFileBasedSettingsLoader(esEnv.configPath)
       for {
         strategy <- loader
-          .loadConfig[LoadingRorCoreStrategy](configName = "ROR loading core settings")
+          .loadSettings[LoadingRorCoreStrategy](settingsName = "ROR loading core settings")
           .left.map(error => MalformedContent(esEnv.configPath, error.message))
         rorIndex <- loader
-          .loadConfig[RorConfigurationIndex](configName = "ROR configuration index settings")
+          .loadSettings[RorConfigurationIndex](settingsName = "ROR configuration index settings")
           .left.map(error => MalformedContent(esEnv.configPath, error.message))
       } yield (strategy, rorIndex)
     }

@@ -16,16 +16,16 @@
  */
 package tech.beshu.ror.boot.engines
 
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.utils.Hasher
 
 import scala.language.implicitConversions
 
-private[engines] class ConfigHash(val config: RawRorConfig) extends AnyVal {
+private[engines] class ConfigHash(val config: RawRorSettings) extends AnyVal {
 
   def hashString(): String = Hasher.Sha1.hashString(config.raw)
 }
 
 private[engines] object ConfigHash {
-  implicit def toConfigHash(config: RawRorConfig): ConfigHash = new ConfigHash(config)
+  implicit def toConfigHash(config: RawRorSettings): ConfigHash = new ConfigHash(config)
 }

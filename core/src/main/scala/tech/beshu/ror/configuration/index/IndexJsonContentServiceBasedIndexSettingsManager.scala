@@ -19,19 +19,21 @@ package tech.beshu.ror.configuration.index
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.configuration.{RawRorConfig, RawRorConfigYamlParser}
-import tech.beshu.ror.configuration.index.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
-import tech.beshu.ror.configuration.loader.RorConfigLoader.Error
-import tech.beshu.ror.configuration.loader.RorConfigLoader.Error.ParsingError
+import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
+import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError.*
+import tech.beshu.ror.configuration.index.IndexSettingsManager.SavingIndexSettingsError.CannotSaveSettings
+import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error
+import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.ParsingError
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 
-final class IndexConfigManager(indexJsonContentService: IndexJsonContentService,
-                               rarRorConfigYamlParser: RawRorConfigYamlParser)
-  extends BaseIndexConfigManager[RawRorConfig]
+final class IndexJsonContentServiceBasedIndexSettingsManager(indexJsonContentService: IndexJsonContentService,
+                                                             rarRorConfigYamlParser: RawRorSettingsYamlParser)
+  extends IndexSettingsManager[RawRorSettings]
   with Logging {
 
-  override def load(indexName: RorConfigurationIndex): Task[Either[Error[IndexConfigError], RawRorConfig]] = {
+  override def load(indexName: RorConfigurationIndex): Task[Either[Error[LoadingIndexSettingsError], RawRorSettings]] = {
     indexJsonContentService
       .sourceOf(indexName.index, Config.rorSettingsIndexConst.id)
       .flatMap {
@@ -43,23 +45,23 @@ final class IndexConfigManager(indexJsonContentService: IndexJsonContentService,
                 .fromString(rorYamlString)
                 .map(_.left.map(ParsingError.apply))
             }
-            .getOrElse(configLoaderError(IndexConfigUnknownStructure))
+            .getOrElse(settingsLoaderError(UnknownStructureOfIndexDocument))
         case Left(CannotReachContentSource) =>
-          configLoaderError(IndexConfigNotExist)
+          settingsLoaderError(IndexNotExist)
         case Left(ContentNotFound) =>
-          configLoaderError(IndexConfigNotExist)
+          settingsLoaderError(IndexNotExist)
       }
   }
 
-  override def save(config: RawRorConfig, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]] = {
+  override def save(settings: RawRorSettings, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexSettingsError, Unit]] = {
     indexJsonContentService
       .saveContent(
         rorConfigurationIndex.index,
         Config.rorSettingsIndexConst.id,
-        Map(Config.rorSettingsIndexConst.settingsKey -> config.raw)
+        Map(Config.rorSettingsIndexConst.settingsKey -> settings.raw)
       )
       .map {
-        _.left.map { case CannotWriteToIndex => SavingIndexConfigError.CannotSaveConfig }
+        _.left.map { case CannotWriteToIndex => CannotSaveSettings }
       }
   }
 }

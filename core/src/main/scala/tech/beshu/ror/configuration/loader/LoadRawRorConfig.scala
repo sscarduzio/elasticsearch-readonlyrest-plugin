@@ -16,21 +16,29 @@
  */
 package tech.beshu.ror.configuration.loader
 
+import cats.data.EitherT
+import cats.implicits.toShow
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.{LoadFromFileSettings, LoadFromIndexSettings}
-import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.configuration.RorConfigLoading.*
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}
-import tech.beshu.ror.configuration.index.IndexConfigManager
+import tech.beshu.ror.configuration.index.IndexSettingsManager
+import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
+import tech.beshu.ror.configuration.loader.LoadedRorConfig.IndexParsingError
+import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
+import tech.beshu.ror.implicits.*
 
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
 
-object LoadRawRorConfig {
+// todo: indexConfigManager should be passed in constructor?
+// todo: refactor methods
+object LoadRawRorConfig extends Logging {
 
   def loadFromIndexWithFileFallback(indexLoadingSettings: LoadFromIndexSettings,
                                     fallbackFileLoadingSettings: LoadFromFileSettings,
-                                    indexConfigManager: IndexConfigManager): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
+                                    indexConfigManager: IndexSettingsManager[RawRorSettings]): Task[Either[LoadedRorConfig.Error, RawRorSettings]] = {
     attemptLoadingConfigFromIndex(
       settings = indexLoadingSettings,
       fallback = loadRorConfigFromFile(fallbackFileLoadingSettings),
@@ -38,11 +46,12 @@ object LoadRawRorConfig {
     )
   }
 
-  def loadFromFile(settings: LoadFromFileSettings): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
+  def loadFromFile(settings: LoadFromFileSettings): Task[Either[LoadedRorConfig.Error, RawRorSettings]] = {
     forceLoadRorConfigFromFile(settings)
   }
 
-  def loadFromIndex(settings: LoadFromIndexSettings, indexConfigManager: IndexConfigManager): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
+  def loadFromIndex(settings: LoadFromIndexSettings,
+                    indexConfigManager: IndexSettingsManager[RawRorSettings]): Task[Either[LoadedRorConfig.Error, RawRorSettings]] = {
     for {
       // todo: is the copy ok?
       result <- loadRorConfigFromIndex(
@@ -63,8 +72,8 @@ object LoadRawRorConfig {
   }
 
   private def attemptLoadingConfigFromIndex(settings: LoadFromIndexSettings,
-                                            fallback: Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]],
-                                            indexConfigManager: IndexConfigManager): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
+                                            fallback: Task[Either[LoadedRorConfig.Error, RawRorSettings]],
+                                            indexConfigManager: IndexSettingsManager[RawRorSettings]): Task[Either[LoadedRorConfig.Error, RawRorSettings]] = {
     settings.loadingAttemptsCount.value.value match {
       case 0 =>
         fallback.map(identity)
@@ -88,4 +97,78 @@ object LoadRawRorConfig {
         } yield rawRorConfig
     }
   }
+
+  private def loadRorConfigFromIndex(settings: LoadFromIndexSettings,
+                                     indexConfigManager: IndexSettingsManager[RawRorSettings]) = {
+    val rorConfigIndex = settings.rorConfigIndex
+    logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${rorConfigIndex.index.show}) ...")
+    EitherT {
+      indexConfigManager
+        .load(settings.rorConfigIndex)
+        .delayExecution(settings.loadingDelay.value.value)
+    }.map { rawRorConfig =>
+        logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw config from index: ${rawRorConfig.raw.show}")
+        rawRorConfig
+      }
+      .leftMap { error =>
+        val newError = convertIndexError(error)
+        logIndexLoadingError(newError)
+        newError
+      }
+      .value
+  }
+
+  private def loadRorConfigFromFile(settings: LoadFromFileSettings): Task[Either[LoadedRorConfig.Error, RawRorSettings]] = {
+    val rorSettingsFile = settings.rorSettingsFile
+    val rawRorConfigYamlParser = new RawRorSettingsYamlParser(settings.settingsMaxSize)
+    logger.info(s"Loading ReadonlyREST settings from file from: ${rorSettingsFile.show}, because index not exist")
+    EitherT(new FileRorSettingsLoader(rorSettingsFile, rawRorConfigYamlParser).load())
+      .leftMap { error =>
+        val newError = convertFileError(error)
+        logger.error(s"Loading ReadonlyREST from file failed: ${newError.toString}")
+        newError
+      }
+      .value
+  }
+
+  private def forceLoadRorConfigFromFile(settings: LoadFromFileSettings): Task[Either[LoadedRorConfig.Error, RawRorSettings]] = {
+    val rorSettingsFile = settings.rorSettingsFile
+    val rawRorConfigYamlParser = new RawRorSettingsYamlParser(settings.settingsMaxSize)
+    logger.info(s"Loading ReadonlyREST settings forced loading from file from: ${rorSettingsFile.show}")
+    EitherT(new FileRorSettingsLoader(rorSettingsFile, rawRorConfigYamlParser).load())
+      .leftMap { error =>
+        val newError = convertFileError(error)
+        logger.error(s"Loading ReadonlyREST from file failed: ${newError.toString}")
+        newError
+      }
+      .value
+  }
+
+  private def convertFileError(error: RorSettingsLoader.Error[FileRorSettingsLoader.Error]): LoadedRorConfig.Error = {
+    error match {
+      case ParsingError(error) =>
+        val show = error.show
+        LoadedRorConfig.FileParsingError(show)
+      case SpecializedError(FileRorSettingsLoader.Error.FileNotExist(file)) => LoadedRorConfig.FileNotExist(file.path)
+    }
+  }
+
+  private def convertIndexError(error: RorSettingsLoader.Error[LoadingIndexSettingsError]) =
+    error match {
+      case ParsingError(error) => LoadedRorConfig.IndexParsingError(error.show)
+      case SpecializedError(LoadingIndexSettingsError.IndexNotExist) => LoadedRorConfig.IndexNotExist
+      case SpecializedError(LoadingIndexSettingsError.UnknownStructureOfIndexDocument) => LoadedRorConfig.IndexUnknownStructure
+    }
+
+  private def logIndexLoadingError[A](error: LoadedRorConfig.LoadingIndexError): Unit = {
+    error match {
+      case IndexParsingError(message) =>
+        logger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
+      case LoadedRorConfig.IndexUnknownStructure =>
+        logger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
+      case LoadedRorConfig.IndexNotExist =>
+        logger.info(s"Loading ReadonlyREST settings from index failed: cannot find index")
+    }
+  }
+
 }

@@ -29,13 +29,15 @@ import squants.information.Information
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.factory.RorDependencies
 import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestConfigApi}
 import tech.beshu.ror.boot.engines.{Engines, MainConfigBasedReloadableEngine, TestConfigBasedReloadableEngine}
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
-import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager, IndexTestConfigManager, SavingIndexConfigError}
-import tech.beshu.ror.configuration.loader.RorConfigLoader.Error
-import tech.beshu.ror.configuration.loader.FileRorConfigLoader
-import tech.beshu.ror.configuration.{RawRorConfig, RawRorConfigYamlParser, RorConfig}
+import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.index.IndexSettingsManager
+import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error
+import tech.beshu.ror.configuration.loader.FileRorSettingsLoader
+import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -47,8 +49,8 @@ class RorInstance private(boot: ReadonlyRest,
                           mainReloadInProgress: Semaphore[Task],
                           initialTestEngine: ReadonlyRest.TestEngine,
                           testReloadInProgress: Semaphore[Task],
-                          indexConfigManager: IndexConfigManager,
-                          indexTestConfigManager: IndexTestConfigManager,
+                          indexConfigManager: IndexSettingsManager[RawRorSettings],
+                          indexTestConfigManager: IndexSettingsManager[TestRorSettings],
                           rorSettingsIndex: RorConfigurationIndex,
                           rorSettingsFile: File,
                           rorSettingsMaxSize: Information)
@@ -83,13 +85,13 @@ class RorInstance private(boot: ReadonlyRest,
     rorSettingsIndex
   )
 
-  private val rarRorConfigYamlParser = new RawRorConfigYamlParser(rorSettingsMaxSize)
+  private val rarRorConfigYamlParser = new RawRorSettingsYamlParser(rorSettingsMaxSize)
 
   private val configRestApi = new ConfigApi(
     rorInstance = this,
     rarRorConfigYamlParser,
     indexConfigManager,
-    new FileRorConfigLoader(rorSettingsFile, rarRorConfigYamlParser),
+    new FileRorSettingsLoader(rorSettingsFile, rarRorConfigYamlParser),
     rorSettingsIndex
   )
 
@@ -111,7 +113,7 @@ class RorInstance private(boot: ReadonlyRest,
                           (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, Unit]] =
     aMainConfigEngine.forceReloadFromIndex()
 
-  def forceReloadAndSave(config: RawRorConfig)
+  def forceReloadAndSave(config: RawRorSettings)
                         (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] =
     aMainConfigEngine.forceReloadAndSave(config)
 
@@ -120,7 +122,7 @@ class RorInstance private(boot: ReadonlyRest,
     anTestConfigEngine.currentTestConfig()
   }
 
-  def forceReloadTestConfigEngine(config: RawRorConfig,
+  def forceReloadTestConfigEngine(config: RawRorSettings,
                                   ttl: PositiveFiniteDuration)
                                  (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestConfig.Present]] = {
     anTestConfigEngine.forceReloadTestConfigEngine(config, ttl)
@@ -226,32 +228,32 @@ object RorInstance {
   sealed trait RawConfigReloadError
   object RawConfigReloadError {
     final case class ReloadingFailed(failure: ReadonlyRest.StartingFailure) extends RawConfigReloadError
-    final case class ConfigUpToDate(config: RawRorConfig) extends RawConfigReloadError
+    final case class ConfigUpToDate(config: RawRorSettings) extends RawConfigReloadError
     object RorInstanceStopped extends RawConfigReloadError
   }
 
   sealed trait IndexConfigReloadWithUpdateError
   object IndexConfigReloadWithUpdateError {
     final case class ReloadError(undefined: RawConfigReloadError) extends IndexConfigReloadWithUpdateError
-    final case class IndexConfigSavingError(underlying: SavingIndexConfigError) extends IndexConfigReloadWithUpdateError
+    final case class IndexConfigSavingError(underlying: SavingIndexSettingsError) extends IndexConfigReloadWithUpdateError
   }
 
   sealed trait IndexConfigReloadError
   object IndexConfigReloadError {
-    final case class LoadingConfigError(underlying: Error[IndexConfigError]) extends IndexConfigReloadError
+    final case class LoadingConfigError(underlying: Error[LoadingIndexSettingsError]) extends IndexConfigReloadError
     final case class ReloadError(underlying: RawConfigReloadError) extends IndexConfigReloadError
   }
 
   sealed trait IndexConfigUpdateError
   object IndexConfigUpdateError {
-    final case class IndexConfigSavingError(underlying: SavingIndexConfigError) extends IndexConfigUpdateError
+    final case class IndexConfigSavingError(underlying: SavingIndexSettingsError) extends IndexConfigUpdateError
     case object TestSettingsNotSet extends IndexConfigUpdateError
     case object TestSettingsInvalidated extends IndexConfigUpdateError
   }
 
   sealed trait IndexConfigInvalidationError
   object IndexConfigInvalidationError {
-    final case class IndexConfigSavingError(underlying: SavingIndexConfigError) extends IndexConfigInvalidationError
+    final case class IndexConfigSavingError(underlying: SavingIndexSettingsError) extends IndexConfigInvalidationError
   }
 
   private sealed trait ScheduledReloadError
@@ -263,19 +265,19 @@ object RorInstance {
   sealed trait TestConfig
   object TestConfig {
     case object NotSet extends TestConfig
-    final case class Present(config: RorConfig,
-                             rawConfig: RawRorConfig,
+    final case class Present(rawConfig: RawRorSettings,
+                             dependencies: RorDependencies,
                              configuredTtl: PositiveFiniteDuration,
                              validTo: Instant) extends TestConfig
-    final case class Invalidated(recent: RawRorConfig,
+    final case class Invalidated(recent: RawRorSettings,
                                  configuredTtl: PositiveFiniteDuration) extends TestConfig
   }
 
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
                                    mainEngine: ReadonlyRest.MainEngine,
                                    testEngine: ReadonlyRest.TestEngine,
-                                   indexConfigManager: IndexConfigManager,
-                                   indexTestConfigManager: IndexTestConfigManager,
+                                   indexConfigManager: IndexSettingsManager[RawRorSettings],
+                                   indexTestConfigManager: IndexSettingsManager[TestRorSettings],
                                    refreshInterval: RefreshInterval,
                                    rorSettingsFile: File,
                                    rorSettingsMaxSize: Information,
@@ -288,8 +290,8 @@ object RorInstance {
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
                                       mainEngine: ReadonlyRest.MainEngine,
                                       testEngine: ReadonlyRest.TestEngine,
-                                      indexConfigManager: IndexConfigManager,
-                                      indexTestConfigManager: IndexTestConfigManager,
+                                      indexConfigManager: IndexSettingsManager[RawRorSettings],
+                                      indexTestConfigManager: IndexSettingsManager[TestRorSettings],
                                       rorSettingsFile: File,
                                       rorSettingsMaxSize: Information,
                                       rorSettingsIndex: RorConfigurationIndex)
@@ -302,8 +304,8 @@ object RorInstance {
                      mode: RorInstance.Mode,
                      engine: ReadonlyRest.MainEngine,
                      testEngine: ReadonlyRest.TestEngine,
-                     indexConfigManager: IndexConfigManager,
-                     indexTestConfigManager: IndexTestConfigManager,
+                     indexConfigManager: IndexSettingsManager[RawRorSettings],
+                     indexTestConfigManager: IndexSettingsManager[TestRorSettings],
                      rorSettingsFile: File,
                      rorSettingsMaxSize: Information,
                      rorSettingsIndex: RorConfigurationIndex)

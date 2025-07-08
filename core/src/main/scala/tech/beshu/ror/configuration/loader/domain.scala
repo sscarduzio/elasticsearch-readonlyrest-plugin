@@ -18,8 +18,7 @@ package tech.beshu.ror.configuration.loader
 
 import java.nio.file.Path
 
-// todo: do we need this wrapper?
-final case class LoadedRorConfig[A](value: A)
+// todo: move?
 object LoadedRorConfig {
 
   sealed trait Error
@@ -32,7 +31,6 @@ object LoadedRorConfig {
   case object IndexNotExist extends LoadedRorConfig.Error with LoadingIndexError
 }
 
-final case class LoadedTestRorConfig[A](value: A)
 object LoadedTestRorConfig {
 
   sealed trait LoadingIndexError

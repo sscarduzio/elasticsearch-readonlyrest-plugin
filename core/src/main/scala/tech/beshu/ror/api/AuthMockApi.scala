@@ -30,9 +30,9 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenti
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RequestId, User}
+import tech.beshu.ror.accesscontrol.factory.RorDependencies
 import tech.beshu.ror.boot.RorInstance.{IndexConfigUpdateError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.RorConfig
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.CirceErrorOps
 
@@ -65,7 +65,7 @@ class AuthMockApi(rorInstance: RorInstance)
       .map(_.merge)
   }
 
-  private def readCurrentAuthMocks(services: RorConfig.Services)
+  private def readCurrentAuthMocks(services: RorDependencies.Services)
                                   (implicit requestId: RequestId): AuthMockResponse.ProvideAuthMock.CurrentAuthMocks = {
     val ldaps = services.ldaps.map { serviceId =>
       toAuthMockService(serviceId, rorInstance.mocksProvider.ldapServiceWith(serviceId))
@@ -99,7 +99,7 @@ class AuthMockApi(rorInstance: RorInstance)
   }
 
   private def readCurrentAuthServices()
-                                     (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, RorConfig.Services] = {
+                                     (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, RorDependencies.Services] = {
     EitherT(withRorConfigAuthServices(
       action = identity,
       onNotSet = AuthMockResponse.UpdateAuthMock.NotConfigured.apply,
@@ -107,15 +107,15 @@ class AuthMockApi(rorInstance: RorInstance)
     ))
   }
 
-  private def withRorConfigAuthServices[A, B](action: RorConfig.Services => B,
+  private def withRorConfigAuthServices[A, B](action: RorDependencies.Services => B,
                                               onNotSet: String => A,
                                               onInvalidated: String => A)
                                              (implicit requestId: RequestId): Task[Either[A, B]] = {
     rorInstance.currentTestConfig().map {
       case TestConfig.NotSet =>
         Left(onNotSet(testSettingsNotConfiguredMessage))
-      case TestConfig.Present(config, _, _, _) =>
-        Right(action(config.services))
+      case TestConfig.Present(_, dependencies, _, _) =>
+        Right(action(dependencies.services))
       case _:TestConfig.Invalidated =>
         Left(onInvalidated(testSettingsInvalidatedMessage))
     }
@@ -126,7 +126,7 @@ class AuthMockApi(rorInstance: RorInstance)
   private val testSettingsNotConfiguredMessage = "ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active."
 
   private def validateAuthMocks(updateRequest: UpdateMocksRequest,
-                                services: RorConfig.Services): EitherT[Task, AuthMockResponse, Unit] = {
+                                services: RorDependencies.Services): EitherT[Task, AuthMockResponse, Unit] = {
     updateRequest
       .services
       .map {

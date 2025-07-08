@@ -14,26 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.index
+package tech.beshu.ror.configuration
 
-import cats.Show
+import cats.Eq
+import io.circe.Json
 
-sealed trait IndexConfigError
-object IndexConfigError {
-  case object IndexConfigNotExist extends IndexConfigError
-  case object IndexConfigUnknownStructure extends IndexConfigError
-
-  implicit val show: Show[IndexConfigError] = Show.show {
-    case IndexConfigNotExist => "Cannot find settings index"
-    case IndexConfigUnknownStructure => s"Unknown structure of index settings"
-  }
-}
-
-sealed trait SavingIndexConfigError
-object SavingIndexConfigError {
-  case object CannotSaveConfig extends SavingIndexConfigError
-
-  implicit val show: Show[SavingIndexConfigError] = Show.show {
-    case CannotSaveConfig => "Cannot save settings in index"
-  }
+final case class RawRorSettings(settingsJson: Json, raw: String)
+object RawRorSettings {
+  implicit val eq: Eq[RawRorSettings] = Eq.fromUniversalEquals
 }

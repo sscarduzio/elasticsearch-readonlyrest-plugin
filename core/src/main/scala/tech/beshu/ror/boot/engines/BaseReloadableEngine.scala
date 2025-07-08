@@ -31,7 +31,7 @@ import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.EngineState.NotStartedYet
 import tech.beshu.ror.boot.engines.ConfigHash.*
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.*
 
@@ -127,18 +127,18 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
 
   protected final def currentEngineState: EngineState = currentEngine.get()
 
-  protected def reloadEngine(newConfig: RawRorConfig)
+  protected def reloadEngine(newConfig: RawRorSettings)
                             (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
     reloadEngineWithoutTtl(newConfig)
   }
 
-  protected def reloadEngine(newConfig: RawRorConfig,
+  protected def reloadEngine(newConfig: RawRorSettings,
                              newConfigEngineTtl: PositiveFiniteDuration)
                             (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, ReloadResult] = {
     reloadEngineWithConfiguredTtl(newConfig, UpdatedConfigExpiration.ByTtl(newConfigEngineTtl))
   }
 
-  protected def reloadEngine(newConfig: RawRorConfig,
+  protected def reloadEngine(newConfig: RawRorSettings,
                              newConfigExpirationTime: Instant,
                              configuredTtl: PositiveFiniteDuration)
                             (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
@@ -165,7 +165,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     }
   }
 
-  private def reloadEngineWithConfiguredTtl(newConfig: RawRorConfig,
+  private def reloadEngineWithConfiguredTtl(newConfig: RawRorSettings,
                                             expiration: UpdatedConfigExpiration)
                                            (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, ReloadResult] = {
     for {
@@ -183,7 +183,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     } yield expirationConfig
   }
 
-  private def reloadEngineWithoutTtl(newConfig: RawRorConfig)
+  private def reloadEngineWithoutTtl(newConfig: RawRorSettings)
                                     (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
     for {
       _ <- canBeReloaded(newConfig)
@@ -191,7 +191,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     } yield ()
   }
 
-  private def runReload(newConfig: RawRorConfig,
+  private def runReload(newConfig: RawRorSettings,
                         configExpiration: Option[UpdatedConfigExpiration])
                        (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, EngineWithConfig] = {
     for {
@@ -200,7 +200,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     } yield newEngineWithConfig
   }
 
-  private def checkUpdateType(newConfig: RawRorConfig,
+  private def checkUpdateType(newConfig: RawRorSettings,
                               newConfigExpiration: UpdatedConfigExpiration): EitherT[Task, RawConfigReloadError, EngineUpdateType] = {
     EitherT {
       Task.delay {
@@ -234,7 +234,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     }
   }
 
-  private def canBeReloaded(newConfig: RawRorConfig): EitherT[Task, RawConfigReloadError, Unit] = {
+  private def canBeReloaded(newConfig: RawRorSettings): EitherT[Task, RawConfigReloadError, Unit] = {
     EitherT {
       Task.delay {
         currentEngine.get() match {
@@ -251,7 +251,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     }
   }
 
-  private def reloadWith(newConfig: RawRorConfig,
+  private def reloadWith(newConfig: RawRorSettings,
                          configExpiration: Option[UpdatedConfigExpiration]): EitherT[Task, RawConfigReloadError, EngineWithConfig] = EitherT {
     tryToLoadRorCore(newConfig)
       .map(_
@@ -275,8 +275,8 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     }
   }
 
-  private def tryToLoadRorCore(config: RawRorConfig) =
-    boot.loadRorCore(config, rorConfigurationIndex)
+  private def tryToLoadRorCore(config: RawRorSettings) =
+    boot.loadRorEngine(config, rorConfigurationIndex)
 
   private def replaceCurrentEngine(newEngineWithConfig: EngineWithConfig)
                                   (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
@@ -426,29 +426,29 @@ object BaseReloadableEngine {
   private[engines] object InitialEngine {
     case object NotConfigured extends InitialEngine
     final case class Configured(engine: Engine,
-                                config: RawRorConfig,
+                                config: RawRorSettings,
                                 expirationConfig: Option[EngineExpirationConfig]) extends InitialEngine
-    final case class Invalidated(config: RawRorConfig,
+    final case class Invalidated(config: RawRorSettings,
                                  expirationConfig: EngineExpirationConfig) extends InitialEngine
   }
 
   private[engines] final case class ReloadResult(engine: Engine,
                                                  expirationConfig: EngineExpirationConfig)
 
-  private[engines] final case class InvalidationResult(config: RawRorConfig,
+  private[engines] final case class InvalidationResult(config: RawRorSettings,
                                                        expirationConfig: EngineExpirationConfig)
 
   private[engines] final case class EngineExpirationConfig(ttl: PositiveFiniteDuration,
                                                            validTo: Instant)
 
   private[engines] final case class EngineWithConfig(engine: Engine,
-                                                     config: RawRorConfig,
+                                                     config: RawRorSettings,
                                                      expirationConfig: Option[EngineExpirationConfig])
 
   private[engines] sealed trait EngineState
 
   private[engines] object EngineState {
-    final case class NotStartedYet(recentConfig: Option[RawRorConfig],
+    final case class NotStartedYet(recentConfig: Option[RawRorSettings],
                                    recentExpirationConfig: Option[EngineExpirationConfig])
       extends EngineState
 

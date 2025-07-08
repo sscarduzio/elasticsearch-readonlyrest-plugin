@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
@@ -365,13 +365,13 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
     val rorConfig = rorConfigFromUnsafe(config)
     inside(createCore(config = rorConfig, mocksProvider = mocksProvider)) {
       case Right(core) =>
-        core.rorConfig.impersonationWarningsReader
+        core.dependencies.impersonationWarningsReader
     }
   }
 
   private implicit val dummyRequestID: RequestId = RequestId("dummy")
 
-  private def createCore(config: RawRorConfig,
+  private def createCore(config: RawRorSettings,
                          clientsFactory: HttpClientsFactory = MockHttpClientsFactory,
                          mocksProvider: MocksProvider) = {
     factory

@@ -24,7 +24,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
-import tech.beshu.ror.accesscontrol.audit.LoggingContext
+import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
@@ -42,6 +42,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RorDependencies.ImpersonationWarningsReader
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
@@ -49,8 +50,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, G
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -58,10 +58,11 @@ import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class Core(accessControl: AccessControlList,
-                      rorConfig: RorConfig)
+                      dependencies: RorDependencies,
+                      auditingSettings: Option[AuditingTool.Settings])
 
 trait CoreFactory {
-  def createCoreFrom(config: RawRorConfig,
+  def createCoreFrom(config: RawRorSettings,
                      rorIndexNameConfiguration: RorConfigurationIndex,
                      httpClientFactory: HttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
@@ -72,14 +73,14 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
                                   (implicit systemContext: SystemContext)
   extends CoreFactory with Logging {
 
-  override def createCoreFrom(config: RawRorConfig,
+  override def createCoreFrom(config: RawRorSettings,
                               rorIndexNameConfiguration: RorConfigurationIndex,
                               httpClientFactory: HttpClientsFactory,
                               ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                               mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
-    config.configJson \\ Attributes.rorSectionName match {
+    config.settingsJson \\ Attributes.rorSectionName match {
       case Nil => createCoreFromRorSection(
-        config.configJson,
+        config.settingsJson,
         rorIndexNameConfiguration,
         httpClientFactory,
         ldapConnectionPoolProvider,
@@ -101,7 +102,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
                                        httpClientFactory: HttpClientsFactory,
                                        ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                                        mocksProvider: MocksProvider) = {
-    val jsonConfigResolver = new JsonConfigStaticVariableResolver(
+    val jsonConfigResolver = new JsonStaticVariablesResolver(
       systemContext.envVarsProvider,
       TransformationCompiler.withoutAliases(systemContext.variablesFunctions),
     )
@@ -127,8 +128,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
       if (!enabled) {
-        AsyncDecoderCreator
-          .from(Decoder.const(Core(DisabledAccessControlList, RorConfig.disabled)))
+        AsyncDecoderCreator.from(Decoder.const(Core(DisabledAccessControlList, RorDependencies.noOp, None)))
       } else {
         for {
           globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorConfigurationIndex))
@@ -386,15 +386,14 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
           (fromBlocks :+ fromUserDefs :+ fromImpersonatorDefs).combineAll
         }
 
-        val rorConfig = RorConfig(
-          services = RorConfig.Services(
+        val rorDependencies = RorDependencies(
+          services = RorDependencies.Services(
             authenticationServices = authenticationServices.items.map(_.id),
             authorizationServices = authorizationServices.items.map(_.id),
             ldaps = ldapServices.items.map(_.id)
           ),
           localUsers = localUsers,
           impersonationWarningsReader = new ImpersonationWarningsCombinedReader(blocksNel.map(_.impersonationWarnings).toList: _*),
-          auditingSettings = auditingTools,
         )
         val accessControl = new EnabledAccessControlList(
           blocks,
@@ -404,7 +403,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
             obfuscatedHeaders
           )
         ): AccessControlList
-        Core(accessControl, rorConfig)
+        Core(accessControl, rorDependencies, auditingTools)
       }
       decoder.apply(c)
     }

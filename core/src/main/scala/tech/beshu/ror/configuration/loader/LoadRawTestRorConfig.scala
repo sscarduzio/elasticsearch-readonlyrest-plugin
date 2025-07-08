@@ -16,22 +16,27 @@
  */
 package tech.beshu.ror.configuration.loader
 
+import cats.data.EitherT
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromIndexSettings
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}
-import tech.beshu.ror.configuration.TestRorConfig
-import tech.beshu.ror.configuration.TestRorConfigLoading.*
-import tech.beshu.ror.configuration.index.IndexTestConfigManager
-import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.LoadingIndexError
+import tech.beshu.ror.configuration.TestRorSettings
+import tech.beshu.ror.configuration.index.IndexSettingsManager
+import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
+import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.{IndexParsingError, LoadingIndexError}
+import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
+import tech.beshu.ror.implicits.*
 
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
 
-object LoadRawTestRorConfig {
+
+object LoadRawTestRorConfig extends Logging {
 
   def loadFromIndexWithFallback(indexLoadingSettings: LoadFromIndexSettings,
-                                fallbackConfig: TestRorConfig,
-                                indexConfigManager: IndexTestConfigManager): Task[Either[LoadingIndexError, LoadedTestRorConfig[TestRorConfig]]] = {
+                                fallbackConfig: TestRorSettings,
+                                indexConfigManager: IndexSettingsManager[TestRorSettings]): Task[Either[LoadingIndexError, TestRorSettings]] = {
     attemptLoadingConfigFromIndex(
       settings = indexLoadingSettings,
       fallback = fallbackConfig,
@@ -40,11 +45,11 @@ object LoadRawTestRorConfig {
   }
 
   private def attemptLoadingConfigFromIndex(settings: LoadFromIndexSettings,
-                                            fallback: TestRorConfig,
-                                            indexConfigManager: IndexTestConfigManager): Task[Either[LoadingIndexError, LoadedTestRorConfig[TestRorConfig]]] = {
+                                            fallback: TestRorSettings,
+                                            indexConfigManager: IndexSettingsManager[TestRorSettings]): Task[Either[LoadingIndexError, TestRorSettings]] = {
     settings.loadingAttemptsCount.value.value match {
       case 0 =>
-        Task.now(Right(LoadedTestRorConfig[TestRorConfig](fallback)))
+        Task.now(Right(fallback))
       case attemptsCount =>
         for {
           result <- loadTestRorConfigFromIndex(
@@ -68,4 +73,50 @@ object LoadRawTestRorConfig {
         } yield rawRorConfig
     }
   }
+
+  private def loadTestRorConfigFromIndex(settings: LoadFromIndexSettings,
+                                         indexConfigManager: IndexSettingsManager[TestRorSettings]) = {
+    val rorConfigIndex = settings.rorConfigIndex
+    val loadingDelay = settings.loadingDelay
+    logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${rorConfigIndex.index.show}) ...")
+    EitherT {
+      indexConfigManager
+        .load(rorConfigIndex)
+        .delayExecution(loadingDelay.value.value)
+    }
+      .map { testConfig =>
+        testConfig match {
+          case TestRorSettings.Present(rawConfig, _, _) =>
+            logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw test config from index: ${rawConfig.raw.show}")
+          case TestRorSettings.NotSet =>
+            logger.debug("[CLUSTERWIDE SETTINGS] There was no test settings in index. Test settings engine will be not initialized.")
+        }
+        testConfig
+      }
+      .leftMap { error =>
+        val newError = convertIndexError(error)
+        logIndexLoadingError(newError)
+        newError
+      }
+      .value
+  }
+
+  private def convertIndexError(error: RorSettingsLoader.Error[LoadingIndexSettingsError]): LoadedTestRorConfig.LoadingIndexError =
+    error match {
+      case ParsingError(error) => LoadedTestRorConfig.IndexParsingError(error.show)
+      case SpecializedError(LoadingIndexSettingsError.IndexNotExist) => LoadedTestRorConfig.IndexNotExist
+      case SpecializedError(LoadingIndexSettingsError.UnknownStructureOfIndexDocument) => LoadedTestRorConfig.IndexUnknownStructure
+    }
+
+  private def logIndexLoadingError(error: LoadedTestRorConfig.LoadingIndexError): Unit = {
+    error match {
+      case IndexParsingError(message) =>
+        logger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
+      case LoadedTestRorConfig.IndexUnknownStructure =>
+        logger.info("Loading ReadonlyREST test settings from index failed: index content malformed")
+      case LoadedTestRorConfig.IndexNotExist =>
+        logger.info("Loading ReadonlyREST test settings from index failed: cannot find index")
+    }
+  }
+
 }
