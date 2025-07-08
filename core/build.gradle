@@ -105,8 +105,7 @@ dependencies {
     api group: 'org.typelevel',                 name: 'squants_3',                          version: '1.8.3'
     api group: 'com.unboundid',                 name: 'unboundid-ldapsdk',                  version: '6.0.11'
     api group: 'com.lihaoyi',                   name: 'upickle_3',                          version: '4.0.2'
-    // https://www.bouncycastle.org/latest_releases.html#1.0.2.4-NONCERT
-    api group: 'org.bouncycastle',          name: 'bc-noncert',                             version: '1.0.2.5'
+    api group: 'org.bouncycastle',          name: 'bc-fips',                                version: '1.0.2.5'
     api(group: 'org.bouncycastle',          name: 'bctls-fips',                             version: '1.0.19') {
         exclude group: 'org.bouncycastle', module: 'bc-fips'
     }
