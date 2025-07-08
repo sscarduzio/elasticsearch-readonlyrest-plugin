@@ -75,9 +75,7 @@ class ReadonlyRestPlugin(esVersion: String,
       .copyFile(esConfig.esConfigDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
       .copyFile(esConfig.esConfigDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .updateFipsDependencies(esConfig)
-      .user("elasticsearch")
       .copyFile(esConfig.esConfigDir / "readonlyrest.yml", config.rorConfig)
-      .user("root")
       .installRorPlugin()
       .when(performPatching, _.patchES())
   }

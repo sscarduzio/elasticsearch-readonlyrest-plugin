@@ -92,7 +92,7 @@ object DockerImageCreator extends StrictLogging {
     def setCommandFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
       imageDescription
         .command
-        .foldLeft(builder) { case (b, command) => b.user("elasticsearch").cmd(command) }
+        .foldLeft(builder) { case (b, command) => b.cmd(command) }
     }
 
   }
