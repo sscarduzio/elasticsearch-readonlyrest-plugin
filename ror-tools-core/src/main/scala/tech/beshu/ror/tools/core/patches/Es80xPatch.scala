@@ -30,7 +30,7 @@ import scala.language.postfixOps
 private[patches] class Es80xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
-      new ModifyBootstrapPolicyUtilClass(NonEmptyList.of(
+      new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
         runtimeCreateClassLoaderPermission, securityGetPropertyPermission
       )),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)

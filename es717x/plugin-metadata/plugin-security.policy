@@ -8,7 +8,6 @@ grant {
   permission java.lang.RuntimePermission "setContextClassLoader";
   permission java.net.SocketPermission "*", "accept, resolve, connect";
   permission java.security.SecurityPermission "insertProvider";
-  permission java.security.SecurityPermission "getProperty.*";
   permission java.security.SecurityPermission "putProviderProperty.BCFIPS";
   permission java.security.SecurityPermission "putProviderProperty.BCJSSE";
 };

@@ -17,13 +17,16 @@
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
 import cats.data.NonEmptyList
+import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
+import tech.beshu.ror.tools.core.utils.EsUtil.es800
 
 import java.io.{File, InputStream}
 import java.security.Permission
 
-private [patches] class ModifyBootstrapPolicyUtilClass(additionalAllowedPermissions: NonEmptyList[Permission])
+private[patches] class ModifyBootstrapPolicyUtilClass(esVersion: SemVer,
+                                                      additionalAllowedPermissions: NonEmptyList[Permission])
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -73,13 +76,23 @@ private [patches] class ModifyBootstrapPolicyUtilClass(additionalAllowedPermissi
     )
     methodVisitor.visitCode()
     methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKEVIRTUAL,
-      "org/elasticsearch/bootstrap/PluginPolicyInfo",
-      "file",
-      "()Ljava/nio/file/Path;",
-      false
-    )
+    esVersion match {
+      case v if v >= es800 =>
+        methodVisitor.visitMethodInsn(
+          Opcodes.INVOKEVIRTUAL,
+          "org/elasticsearch/bootstrap/PluginPolicyInfo",
+          "file",
+          "()Ljava/nio/file/Path;",
+          false
+        )
+      case _ =>
+        methodVisitor.visitFieldInsn(
+          Opcodes.GETFIELD,
+          "org/elasticsearch/bootstrap/PluginPolicyInfo",
+          "file",
+          "Ljava/nio/file/Path;"
+        );
+    }
     methodVisitor.visitMethodInsn(
       Opcodes.INVOKEINTERFACE,
       "java/nio/file/Path",
@@ -335,6 +348,5 @@ private [patches] class ModifyBootstrapPolicyUtilClass(additionalAllowedPermissi
       underlying.visitEnd()
     }
   }
-
 
 }

@@ -31,7 +31,7 @@ private[patches] class Es89xPatch(rorPluginDirectory: RorPluginDirectory, esVers
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       OpenModule,
-      new ModifyBootstrapPolicyUtilClass(NonEmptyList.of(
+      new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
         runtimeCreateClassLoaderPermission, securityGetPropertyPermission
       )),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
