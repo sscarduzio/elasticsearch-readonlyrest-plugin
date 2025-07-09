@@ -16,12 +16,15 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
+import cats.data.NonEmptyList
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
+import java.security.Permission
 
-private [patches] object ModifyBootstrapPolicyUtilClass extends BytecodeJarModifier {
+private [patches] class ModifyBootstrapPolicyUtilClass(additionalAllowedPermissions: NonEmptyList[Permission])
+  extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -179,24 +182,9 @@ private [patches] object ModifyBootstrapPolicyUtilClass extends BytecodeJarModif
       "(Ljava/util/function/Consumer;)V",
       true
     )
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
-    methodVisitor.visitTypeInsn(Opcodes.NEW, "java/lang/RuntimePermission")
-    methodVisitor.visitInsn(Opcodes.DUP)
-    methodVisitor.visitLdcInsn("createClassLoader")
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKESPECIAL,
-      "java/lang/RuntimePermission",
-      "<init>",
-      "(Ljava/lang/String;)V",
-      false
-    )
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKEVIRTUAL,
-      "java/security/PermissionCollection",
-      "add",
-      "(Ljava/security/Permission;)V",
-      false
-    )
+    additionalAllowedPermissions.toList.foreach { permission =>
+      includeAdditionalPermission(methodVisitor, permission)
+    }
     methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
     methodVisitor.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
@@ -230,6 +218,28 @@ private [patches] object ModifyBootstrapPolicyUtilClass extends BytecodeJarModif
     methodVisitor.visitInsn(Opcodes.ARETURN)
     methodVisitor.visitMaxs(4, 1)
     methodVisitor.visitEnd()
+
+    private def includeAdditionalPermission(methodVisitor: MethodVisitor, permission: Permission): Unit = {
+      val jvmStylePermissionClassName = permission.getClass.getName.replace('.', '/')
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
+      methodVisitor.visitTypeInsn(Opcodes.NEW, jvmStylePermissionClassName)
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitLdcInsn(permission.getName)
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKESPECIAL,
+        jvmStylePermissionClassName,
+        "<init>",
+        "(Ljava/lang/String;)V",
+        false
+      )
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        "java/security/PermissionCollection",
+        "add",
+        "(Ljava/security/Permission;)V",
+        false
+      )
+    }
   }
 
   private class GetPluginPolicyInfoAddingRorExtraPermission(underlying: MethodVisitor)
@@ -325,5 +335,6 @@ private [patches] object ModifyBootstrapPolicyUtilClass extends BytecodeJarModif
       underlying.visitEnd()
     }
   }
+
 
 }

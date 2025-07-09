@@ -16,23 +16,29 @@
  */
 package tech.beshu.ror.tools.core.patches
 
+import cats.data.NonEmptyList
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddCreateClassLoaderPermission
+import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
+import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
 
 import scala.language.postfixOps
 
 private[patches] class Es80xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
-      ModifyBootstrapPolicyUtilClass,
+      new ModifyBootstrapPolicyUtilClass(NonEmptyList.of(
+        runtimeCreateClassLoaderPermission, securityGetPropertyPermission
+      )),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
-      AddCreateClassLoaderPermission
+      AddAdditionalPermissions(NonEmptyList.of(
+        runtimeCreateClassLoaderPermission, securityGetPropertyPermission
+      )),
     ),
     new XPackCoreJarPatchCreator(
       AlwaysGrantApplicationPermission
