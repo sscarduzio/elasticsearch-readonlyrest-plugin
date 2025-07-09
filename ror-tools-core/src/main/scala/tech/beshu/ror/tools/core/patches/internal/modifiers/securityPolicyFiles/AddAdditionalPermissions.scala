@@ -36,6 +36,6 @@ private[patches] class AddAdditionalPermissions(permission: NonEmptyList[Permiss
   }
 }
 private[patches] object AddAdditionalPermissions {
-  val runtimeCreateClassLoaderPermission = new RuntimePermission("createClassLoader")
-  val securityGetPropertyPermission = new SecurityPermission("getProperty.*")
+  val createClassLoaderRuntimePermission = new RuntimePermission("createClassLoader")
+  val getPropertySecurityPermission = new SecurityPermission("getProperty.*")
 }

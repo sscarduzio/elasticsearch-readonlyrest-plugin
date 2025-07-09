@@ -32,13 +32,13 @@ private[patches] class Es813xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     new ElasticsearchJarPatchCreator(
       OpenModule,
       new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
-        runtimeCreateClassLoaderPermission, securityGetPropertyPermission
+        createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
       AddAdditionalPermissions(NonEmptyList.of(
-        runtimeCreateClassLoaderPermission, securityGetPropertyPermission
+        createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
     ),
     new XPackCoreJarPatchCreator(

@@ -23,7 +23,7 @@ import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, RorSecurityPolicyPatchCreator, XPackCoreJarPatchCreator, XPackSecurityJarPatchCreator}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
-import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.securityGetPropertyPermission
+import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
 
 import scala.language.postfixOps
 
@@ -31,14 +31,14 @@ private[patches] class Es717xPatch(rorPluginDirectory: RorPluginDirectory, esVer
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
-        securityGetPropertyPermission
+        getPropertySecurityPermission
       )),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion),
       new SecurityManagerShouldAllowReadingEsConfigFile(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
       AddAdditionalPermissions(NonEmptyList.of(
-        securityGetPropertyPermission
+        getPropertySecurityPermission
       )),
     ),
     new XPackCoreJarPatchCreator(
