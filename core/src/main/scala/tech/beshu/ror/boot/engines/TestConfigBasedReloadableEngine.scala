@@ -22,7 +22,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.{StartingFailure, TestEngine}
 import tech.beshu.ror.boot.RorInstance.*
@@ -32,21 +32,19 @@ import tech.beshu.ror.boot.engines.ConfigHash.*
 import tech.beshu.ror.configuration.TestRorSettings.Present.ExpirationConfig
 import tech.beshu.ror.configuration.index.IndexSettingsManager
 import tech.beshu.ror.configuration.index.IndexSettingsManager.SavingIndexSettingsError
-import tech.beshu.ror.configuration.{RawRorSettings, TestRorSettings}
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
+                                                            esConfig: EsConfigBasedRorSettings,
                                                             initialEngine: InitialEngine,
                                                             reloadInProgress: Semaphore[Task],
-                                                            indexTestConfigManager: IndexSettingsManager[TestRorSettings],
-                                                            rorConfigurationIndex: RorConfigurationIndex)
+                                                            indexTestConfigManager: IndexSettingsManager[TestRorSettings])
                                                            (implicit systemContext: SystemContext,
                                                             scheduler: Scheduler)
-  extends BaseReloadableEngine(
-    "test", boot, initialEngine, reloadInProgress, rorConfigurationIndex
-  ) {
+  extends BaseReloadableEngine("test", boot, esConfig, initialEngine, reloadInProgress) {
 
   def currentTestConfig()
                        (implicit requestId: RequestId): Task[TestConfig] = {
@@ -184,7 +182,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
 
   private def saveConfigInIndex[A](newConfig: TestRorSettings.Present,
                                    onFailure: SavingIndexSettingsError => A): EitherT[Task, A, Unit] = {
-    EitherT(indexTestConfigManager.save(newConfig, rorConfigurationIndex))
+    EitherT(indexTestConfigManager.save(newConfig))
       .leftMap(onFailure)
   }
 
@@ -210,7 +208,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
 
   private def loadRorConfigFromIndex(): EitherT[Task, IndexConfigReloadError, TestRorSettings] = EitherT {
     indexTestConfigManager
-      .load(rorConfigurationIndex)
+      .load()
       .map(_.left.map(IndexConfigReloadError.LoadingConfigError.apply))
   }
 
@@ -235,10 +233,10 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
 
 object TestConfigBasedReloadableEngine {
   def create(boot: ReadonlyRest,
+             esConfig: EsConfigBasedRorSettings,
              initialEngine: ReadonlyRest.TestEngine,
              reloadInProgress: Semaphore[Task],
-             indexTestConfigManager: IndexSettingsManager[TestRorSettings],
-             rorConfigurationIndex: RorConfigurationIndex)
+             indexTestConfigManager: IndexSettingsManager[TestRorSettings])
             (implicit systemContext: SystemContext,
              scheduler: Scheduler): TestConfigBasedReloadableEngine = {
     val engine = initialEngine match {
@@ -249,7 +247,7 @@ object TestConfigBasedReloadableEngine {
       case TestEngine.Invalidated(config, expiration) =>
         InitialEngine.Invalidated(config, expirationConfig(expiration))
     }
-    new TestConfigBasedReloadableEngine(boot, engine, reloadInProgress, indexTestConfigManager, rorConfigurationIndex)
+    new TestConfigBasedReloadableEngine(boot, esConfig, engine, reloadInProgress, indexTestConfigManager)
   }
 
   private def expirationConfig(config: TestEngine.Expiration) = EngineExpirationConfig(config.ttl, config.validTo)

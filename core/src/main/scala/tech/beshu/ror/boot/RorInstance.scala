@@ -37,7 +37,7 @@ import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSett
 import tech.beshu.ror.configuration.index.IndexSettingsManager
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error
 import tech.beshu.ror.configuration.loader.FileRorSettingsLoader
-import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -45,13 +45,14 @@ import java.time.Instant
 
 class RorInstance private(boot: ReadonlyRest,
                           mode: RorInstance.Mode,
+                          esConfig: EsConfigBasedRorSettings,
                           initialEngine: ReadonlyRest.MainEngine,
                           mainReloadInProgress: Semaphore[Task],
                           initialTestEngine: ReadonlyRest.TestEngine,
                           testReloadInProgress: Semaphore[Task],
                           indexConfigManager: IndexSettingsManager[RawRorSettings],
                           indexTestConfigManager: IndexSettingsManager[TestRorSettings],
-                          rorSettingsIndex: RorConfigurationIndex,
+                          rorSettingsIndex: RorConfigurationIndex, // todo: do we need this?
                           rorSettingsFile: File,
                           rorSettingsMaxSize: Information)
                          (implicit systemContext: SystemContext,
@@ -72,17 +73,17 @@ class RorInstance private(boot: ReadonlyRest,
 
   private val aMainConfigEngine = new MainConfigBasedReloadableEngine(
     boot,
+    esConfig,
     (initialEngine.engine, initialEngine.config),
     mainReloadInProgress,
-    indexConfigManager,
-    rorSettingsIndex,
+    indexConfigManager
   )
   private val anTestConfigEngine = TestConfigBasedReloadableEngine.create(
     boot,
+    esConfig,
     initialTestEngine,
     testReloadInProgress,
-    indexTestConfigManager,
-    rorSettingsIndex
+    indexTestConfigManager
   )
 
   private val rarRorConfigYamlParser = new RawRorSettingsYamlParser(rorSettingsMaxSize)
@@ -91,8 +92,7 @@ class RorInstance private(boot: ReadonlyRest,
     rorInstance = this,
     rarRorConfigYamlParser,
     indexConfigManager,
-    new FileRorSettingsLoader(rorSettingsFile, rarRorConfigYamlParser),
-    rorSettingsIndex
+    new FileRorSettingsLoader(rorSettingsFile, rarRorConfigYamlParser)
   )
 
   private val authMockRestApi = new AuthMockApi(rorInstance = this)
@@ -274,6 +274,7 @@ object RorInstance {
   }
 
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
+                                   esConfig: EsConfigBasedRorSettings,
                                    mainEngine: ReadonlyRest.MainEngine,
                                    testEngine: ReadonlyRest.TestEngine,
                                    indexConfigManager: IndexSettingsManager[RawRorSettings],
@@ -284,10 +285,11 @@ object RorInstance {
                                    rorSettingsIndex: RorConfigurationIndex)
                                   (implicit systemContext: SystemContext,
                                    scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.WithPeriodicIndexCheck(refreshInterval), mainEngine, testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize, rorSettingsIndex)
+    create(boot, esConfig, Mode.WithPeriodicIndexCheck(refreshInterval), mainEngine, testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize, rorSettingsIndex)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
+                                      esConfig: EsConfigBasedRorSettings,
                                       mainEngine: ReadonlyRest.MainEngine,
                                       testEngine: ReadonlyRest.TestEngine,
                                       indexConfigManager: IndexSettingsManager[RawRorSettings],
@@ -301,6 +303,7 @@ object RorInstance {
   }
 
   private def create(boot: ReadonlyRest,
+                     esConfig: EsConfigBasedRorSettings,
                      mode: RorInstance.Mode,
                      engine: ReadonlyRest.MainEngine,
                      testEngine: ReadonlyRest.TestEngine,
@@ -316,6 +319,7 @@ object RorInstance {
       isTestReloadInProgressSemaphore <- Semaphore[Task](1)
     } yield new RorInstance(
       boot = boot,
+      esConfig = esConfig,
       mode = mode,
       initialEngine = engine,
       mainReloadInProgress = isReloadInProgressSemaphore,

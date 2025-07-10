@@ -24,14 +24,14 @@ import monix.execution.atomic.{Atomic, AtomicAny}
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.EngineState.NotStartedYet
 import tech.beshu.ror.boot.engines.ConfigHash.*
-import tech.beshu.ror.configuration.RawRorSettings
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.*
 
@@ -41,9 +41,9 @@ import scala.language.postfixOps
 
 private[engines] abstract class BaseReloadableEngine(val name: String,
                                                      boot: ReadonlyRest,
+                                                     esConfig: EsConfigBasedRorSettings,
                                                      initialEngine: InitialEngine,
-                                                     reloadInProgress: Semaphore[Task],
-                                                     rorConfigurationIndex: RorConfigurationIndex)
+                                                     reloadInProgress: Semaphore[Task])
                                                     (implicit systemContext: SystemContext,
                                                      scheduler: Scheduler)
   extends Logging {
@@ -127,9 +127,9 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
 
   protected final def currentEngineState: EngineState = currentEngine.get()
 
-  protected def reloadEngine(newConfig: RawRorSettings)
+  protected def reloadEngine(rorSettings: RawRorSettings)
                             (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
-    reloadEngineWithoutTtl(newConfig)
+    reloadEngineWithoutTtl(rorSettings)
   }
 
   protected def reloadEngine(newConfig: RawRorSettings,
@@ -183,19 +183,19 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     } yield expirationConfig
   }
 
-  private def reloadEngineWithoutTtl(newConfig: RawRorSettings)
+  private def reloadEngineWithoutTtl(rorSettings: RawRorSettings)
                                     (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
     for {
-      _ <- canBeReloaded(newConfig)
-      _ <- runReload(newConfig, None)
+      _ <- canBeReloaded(rorSettings)
+      _ <- runReload(rorSettings, None)
     } yield ()
   }
 
-  private def runReload(newConfig: RawRorSettings,
+  private def runReload(rorSettings: RawRorSettings,
                         configExpiration: Option[UpdatedConfigExpiration])
                        (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, EngineWithConfig] = {
     for {
-      newEngineWithConfig <- reloadWith(newConfig, configExpiration)
+      newEngineWithConfig <- reloadWith(rorSettings, configExpiration)
       _ <- replaceCurrentEngine(newEngineWithConfig)
     } yield newEngineWithConfig
   }
@@ -251,14 +251,14 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     }
   }
 
-  private def reloadWith(newConfig: RawRorSettings,
+  private def reloadWith(rorSettings: RawRorSettings,
                          configExpiration: Option[UpdatedConfigExpiration]): EitherT[Task, RawConfigReloadError, EngineWithConfig] = EitherT {
-    tryToLoadRorCore(newConfig)
+    tryToLoadRorCore(rorSettings)
       .map(_
         .map { engine =>
           EngineWithConfig(
             engine = engine,
-            config = newConfig,
+            config = rorSettings,
             expirationConfig = configExpiration.map(engineExpirationConfig)
           )
         }
@@ -275,8 +275,8 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     }
   }
 
-  private def tryToLoadRorCore(config: RawRorSettings) =
-    boot.loadRorEngine(config, rorConfigurationIndex)
+  private def tryToLoadRorCore(rorSettings: RawRorSettings) =
+    boot.loadRorEngine(rorSettings, esConfig)
 
   private def replaceCurrentEngine(newEngineWithConfig: EngineWithConfig)
                                   (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {

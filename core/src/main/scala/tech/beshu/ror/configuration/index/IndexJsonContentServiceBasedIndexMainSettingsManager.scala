@@ -19,6 +19,7 @@ package tech.beshu.ror.configuration.index
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.configuration.index.IndexJsonContentServiceBasedIndexMainSettingsManager.Const
 import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError.*
@@ -28,18 +29,19 @@ import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.ParsingError
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 
-final class IndexJsonContentServiceBasedIndexSettingsManager(indexJsonContentService: IndexJsonContentService,
-                                                             rarRorConfigYamlParser: RawRorSettingsYamlParser)
+final class IndexJsonContentServiceBasedIndexMainSettingsManager(settingsIndex: RorConfigurationIndex,
+                                                                 indexJsonContentService: IndexJsonContentService,
+                                                                 rarRorConfigYamlParser: RawRorSettingsYamlParser)
   extends IndexSettingsManager[RawRorSettings]
   with Logging {
 
-  override def load(indexName: RorConfigurationIndex): Task[Either[Error[LoadingIndexSettingsError], RawRorSettings]] = {
+  override def load(): Task[Either[Error[LoadingIndexSettingsError], RawRorSettings]] = {
     indexJsonContentService
-      .sourceOf(indexName.index, Config.rorSettingsIndexConst.id)
+      .sourceOf(settingsIndex.index, Const.id)
       .flatMap {
         case Right(source) =>
           source
-            .find(_._1 == Config.rorSettingsIndexConst.settingsKey)
+            .find(_._1 == Const.settingsKey)
             .map { case (_, rorYamlString) =>
               rarRorConfigYamlParser
                 .fromString(rorYamlString)
@@ -53,15 +55,21 @@ final class IndexJsonContentServiceBasedIndexSettingsManager(indexJsonContentSer
       }
   }
 
-  override def save(settings: RawRorSettings, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexSettingsError, Unit]] = {
+  override def save(settings: RawRorSettings): Task[Either[SavingIndexSettingsError, Unit]] = {
     indexJsonContentService
       .saveContent(
-        rorConfigurationIndex.index,
-        Config.rorSettingsIndexConst.id,
-        Map(Config.rorSettingsIndexConst.settingsKey -> settings.raw)
+        settingsIndex.index,
+        Const.id,
+        Map(Const.settingsKey -> settings.raw)
       )
       .map {
         _.left.map { case CannotWriteToIndex => CannotSaveSettings }
       }
+  }
+}
+object IndexJsonContentServiceBasedIndexMainSettingsManager {
+  private [IndexJsonContentServiceBasedIndexMainSettingsManager] object Const {
+    val id = "1"
+    val settingsKey = "settings"
   }
 }

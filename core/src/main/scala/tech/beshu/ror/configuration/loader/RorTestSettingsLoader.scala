@@ -24,48 +24,43 @@ import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, Loading
 import tech.beshu.ror.configuration.TestRorSettings
 import tech.beshu.ror.configuration.index.IndexSettingsManager
 import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
-import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.{IndexParsingError, LoadingIndexError}
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.loader.RorTestSettingsLoader.{IndexNotExist, IndexParsingError, IndexUnknownStructure, LoadingIndexError}
 import tech.beshu.ror.implicits.*
 
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
 
-
-object LoadRawTestRorConfig extends Logging {
+class RorTestSettingsLoader(indexConfigManager: IndexSettingsManager[TestRorSettings])
+  extends Logging {
 
   def loadFromIndexWithFallback(indexLoadingSettings: LoadFromIndexSettings,
-                                fallbackConfig: TestRorSettings,
-                                indexConfigManager: IndexSettingsManager[TestRorSettings]): Task[Either[LoadingIndexError, TestRorSettings]] = {
+                                fallbackConfig: TestRorSettings): Task[Either[LoadingIndexError, TestRorSettings]] = {
     attemptLoadingConfigFromIndex(
       settings = indexLoadingSettings,
-      fallback = fallbackConfig,
-      indexConfigManager
+      fallback = fallbackConfig
     )
   }
 
   private def attemptLoadingConfigFromIndex(settings: LoadFromIndexSettings,
-                                            fallback: TestRorSettings,
-                                            indexConfigManager: IndexSettingsManager[TestRorSettings]): Task[Either[LoadingIndexError, TestRorSettings]] = {
+                                            fallback: TestRorSettings): Task[Either[LoadingIndexError, TestRorSettings]] = {
     settings.loadingAttemptsCount.value.value match {
       case 0 =>
         Task.now(Right(fallback))
       case attemptsCount =>
         for {
           result <- loadTestRorConfigFromIndex(
-            settings.copy(loadingDelay = LoadingDelay.unsafeFrom(0 seconds)),
-            indexConfigManager
+            settings.copy(loadingDelay = LoadingDelay.unsafeFrom(0 seconds))
           )
           rawRorConfig <- result match {
-            case Left(LoadedTestRorConfig.IndexNotExist) =>
+            case Left(IndexNotExist) =>
               attemptLoadingConfigFromIndex(
                 settings.copy(loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(settings.loadingAttemptsCount.value.value - 1)),
-                fallback = fallback,
-                indexConfigManager
+                fallback = fallback
               )
-            case Left(error@LoadedTestRorConfig.IndexUnknownStructure) =>
+            case Left(error@IndexUnknownStructure) =>
               Task.now(Left(error))
-            case Left(error@LoadedTestRorConfig.IndexParsingError(_)) =>
+            case Left(error@IndexParsingError(_)) =>
               Task.now(Left(error))
             case Right(value) =>
               Task.now(Right(value))
@@ -74,8 +69,7 @@ object LoadRawTestRorConfig extends Logging {
     }
   }
 
-  private def loadTestRorConfigFromIndex(settings: LoadFromIndexSettings,
-                                         indexConfigManager: IndexSettingsManager[TestRorSettings]) = {
+  private def loadTestRorConfigFromIndex(settings: LoadFromIndexSettings) = {
     val rorConfigIndex = settings.rorConfigIndex
     val loadingDelay = settings.loadingDelay
     logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${rorConfigIndex.index.show}) ...")
@@ -101,22 +95,29 @@ object LoadRawTestRorConfig extends Logging {
       .value
   }
 
-  private def convertIndexError(error: RorSettingsLoader.Error[LoadingIndexSettingsError]): LoadedTestRorConfig.LoadingIndexError =
+  private def convertIndexError(error: RorSettingsLoader.Error[LoadingIndexSettingsError]): LoadingIndexError =
     error match {
-      case ParsingError(error) => LoadedTestRorConfig.IndexParsingError(error.show)
-      case SpecializedError(LoadingIndexSettingsError.IndexNotExist) => LoadedTestRorConfig.IndexNotExist
-      case SpecializedError(LoadingIndexSettingsError.UnknownStructureOfIndexDocument) => LoadedTestRorConfig.IndexUnknownStructure
+      case ParsingError(error) => IndexParsingError(error.show)
+      case SpecializedError(LoadingIndexSettingsError.IndexNotExist) => IndexNotExist
+      case SpecializedError(LoadingIndexSettingsError.UnknownStructureOfIndexDocument) => IndexUnknownStructure
     }
 
-  private def logIndexLoadingError(error: LoadedTestRorConfig.LoadingIndexError): Unit = {
+  private def logIndexLoadingError(error: LoadingIndexError): Unit = {
     error match {
       case IndexParsingError(message) =>
         logger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
-      case LoadedTestRorConfig.IndexUnknownStructure =>
+      case IndexUnknownStructure =>
         logger.info("Loading ReadonlyREST test settings from index failed: index content malformed")
-      case LoadedTestRorConfig.IndexNotExist =>
+      case IndexNotExist =>
         logger.info("Loading ReadonlyREST test settings from index failed: cannot find index")
     }
   }
 
+}
+
+object RorTestSettingsLoader {
+  sealed trait LoadingIndexError
+  final case class IndexParsingError(message: String) extends LoadingIndexError
+  case object IndexUnknownStructure extends LoadingIndexError
+  case object IndexNotExist extends LoadingIndexError
 }

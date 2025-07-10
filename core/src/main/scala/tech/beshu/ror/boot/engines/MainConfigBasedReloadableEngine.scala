@@ -29,25 +29,25 @@ import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexCo
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.{ConfigUpToDate, ReloadingFailed, RorInstanceStopped}
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
 import tech.beshu.ror.boot.engines.ConfigHash.*
-import tech.beshu.ror.configuration.RawRorSettings
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
 import tech.beshu.ror.configuration.index.IndexSettingsManager
 import tech.beshu.ror.configuration.index.IndexSettingsManager.SavingIndexSettingsError
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
+                                                    esConfig: EsConfigBasedRorSettings,
                                                     initialEngine: (Engine, RawRorSettings),
                                                     reloadInProgress: Semaphore[Task],
-                                                    indexConfigManager: IndexSettingsManager[RawRorSettings],
-                                                    rorConfigurationIndex: RorConfigurationIndex)
+                                                    indexConfigManager: IndexSettingsManager[RawRorSettings])
                                                    (implicit systemContext: SystemContext,
                                                     scheduler: Scheduler)
   extends BaseReloadableEngine(
     name = "main",
     boot = boot,
+    esConfig = esConfig,
     initialEngine = InitialEngine.Configured(engine = initialEngine._1, config = initialEngine._2, expirationConfig = None),
-    reloadInProgress = reloadInProgress,
-    rorConfigurationIndex = rorConfigurationIndex
+    reloadInProgress = reloadInProgress
   ) {
 
   def forceReloadAndSave(config: RawRorSettings)
@@ -122,7 +122,7 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
 
   private def saveConfig(newConfig: RawRorSettings): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
     for {
-      saveResult <- indexConfigManager.save(newConfig, rorConfigurationIndex)
+      saveResult <- indexConfigManager.save(rorConfigurationIndex, newConfig)
     } yield saveResult.left.map(IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply)
   }
 

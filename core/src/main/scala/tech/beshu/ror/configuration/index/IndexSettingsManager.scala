@@ -18,17 +18,17 @@ package tech.beshu.ror.configuration.index
 
 import cats.Show
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
 import tech.beshu.ror.configuration.loader.RorSettingsLoader
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.SpecializedError
 
+// todo: maybe we need settings manager to encapsulate file and index loading/saving logic?
 // todo: it looks like this manager should extend RorConfigLoader
 trait IndexSettingsManager[SETTINGS] {
 
-  def load(indexName: RorConfigurationIndex): Task[Either[RorSettingsLoader.Error[LoadingIndexSettingsError], SETTINGS]]
+  def load(): Task[Either[RorSettingsLoader.Error[LoadingIndexSettingsError], SETTINGS]]
 
-  def save(settings: SETTINGS, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexSettingsError, Unit]]
+  def save(settings: SETTINGS): Task[Either[SavingIndexSettingsError, Unit]]
 
   // todo: is this ok?
   protected final def settingsLoaderError(error: LoadingIndexSettingsError): Task[Either[SpecializedError[LoadingIndexSettingsError], SETTINGS]] =

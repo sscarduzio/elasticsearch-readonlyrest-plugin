@@ -62,8 +62,8 @@ final case class Core(accessControl: AccessControlList,
                       auditingSettings: Option[AuditingTool.Settings])
 
 trait CoreFactory {
-  def createCoreFrom(config: RawRorSettings,
-                     rorIndexNameConfiguration: RorConfigurationIndex,
+  def createCoreFrom(rorSettings: RawRorSettings,
+                     rorSettingsIndex: RorConfigurationIndex,
                      httpClientFactory: HttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                      mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
@@ -73,22 +73,22 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
                                   (implicit systemContext: SystemContext)
   extends CoreFactory with Logging {
 
-  override def createCoreFrom(config: RawRorSettings,
-                              rorIndexNameConfiguration: RorConfigurationIndex,
+  override def createCoreFrom(rorSettings: RawRorSettings,
+                              rorSettingsIndex: RorConfigurationIndex,
                               httpClientFactory: HttpClientsFactory,
                               ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                               mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
-    config.settingsJson \\ Attributes.rorSectionName match {
+    rorSettings.settingsJson \\ Attributes.rorSectionName match {
       case Nil => createCoreFromRorSection(
-        config.settingsJson,
-        rorIndexNameConfiguration,
+        rorSettings.settingsJson,
+        rorSettingsIndex,
         httpClientFactory,
         ldapConnectionPoolProvider,
         mocksProvider
       )
       case rorSection :: Nil => createCoreFromRorSection(
         rorSection,
-        rorIndexNameConfiguration,
+        rorSettingsIndex,
         httpClientFactory,
         ldapConnectionPoolProvider,
         mocksProvider

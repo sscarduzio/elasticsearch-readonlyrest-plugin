@@ -21,6 +21,7 @@ import monix.eval.Task
 import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.configuration.RawRorSettingsYamlParser.ParsingRorSettingsError
 
+// todo: do we need it?
 trait RorSettingsLoader[SPECIALIZED_ERROR] {
 
   def load(): Task[Either[RorSettingsLoader.Error[SPECIALIZED_ERROR], RawRorSettings]]

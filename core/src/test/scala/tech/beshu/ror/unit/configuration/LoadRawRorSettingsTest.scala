@@ -27,7 +27,7 @@ import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction.*
 import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig}
+import tech.beshu.ror.configuration.loader.{RorMainSettingsManager, LoadedRorConfig}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, unsafeNes}
 
@@ -43,7 +43,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         (ForceLoadRorConfigFromFile(esEnv.configPath), Right(ForcedFileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.loadFromFile(esEnv.configPath)
+      val program = RorMainSettingsManager.loadFromFile(esEnv.configPath)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, ForcedFileConfig[RawRorSettings]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -54,7 +54,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         (LoadRorConfigFromIndex(rorConfigurationIndex, loadingDelay.value), Right(IndexConfig(rorConfigurationIndex, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.loadFromIndexWithFileFallback(
+      val program = RorMainSettingsManager.loadFromIndexWithFileFallback(
         configurationIndex = rorConfigurationIndex,
         loadingDelay = loadingDelay,
         loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(1),
@@ -73,7 +73,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         (LoadRorConfigFromIndex(rorConfigurationIndex, loadingAttemptsInterval.value), Right(IndexConfig(rorConfigurationIndex, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.loadFromIndexWithFileFallback(
+      val program = RorMainSettingsManager.loadFromIndexWithFileFallback(
         configurationIndex = rorConfigurationIndex,
         loadingDelay = loadingDelay,
         loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(5),
@@ -96,7 +96,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         (LoadRorConfigFromFile(esEnv.configPath), Right(FileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.loadFromIndexWithFileFallback(
+      val program = RorMainSettingsManager.loadFromIndexWithFileFallback(
         configurationIndex = rorConfigurationIndex,
         loadingDelay = loadingDelay,
         loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(5),
@@ -112,7 +112,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         (LoadRorConfigFromIndex(rorConfigurationIndex, loadingDelay.value), Left(LoadedRorConfig.IndexUnknownStructure)),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.loadFromIndexWithFileFallback(
+      val program = RorMainSettingsManager.loadFromIndexWithFileFallback(
         configurationIndex = rorConfigurationIndex,
         loadingDelay = loadingDelay,
         loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(5),
@@ -128,7 +128,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         (LoadRorConfigFromIndex(rorConfigurationIndex, loadingDelay.value), Left(LoadedRorConfig.IndexParsingError("error"))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.loadFromIndexWithFileFallback(
+      val program = RorMainSettingsManager.loadFromIndexWithFileFallback(
         configurationIndex = rorConfigurationIndex,
         loadingDelay = loadingDelay,
         loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(5),

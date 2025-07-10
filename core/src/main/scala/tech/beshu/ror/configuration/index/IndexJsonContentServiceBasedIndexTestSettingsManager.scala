@@ -51,16 +51,17 @@ import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-final class IndexJsonContentServiceBasedIndexTestSettingsManager(indexJsonContentService: IndexJsonContentService,
+final class IndexJsonContentServiceBasedIndexTestSettingsManager(settingsIndex: RorConfigurationIndex,
+                                                                 indexJsonContentService: IndexJsonContentService,
                                                                  rarRorConfigYamlParser: RawRorSettingsYamlParser)
   extends IndexSettingsManager[TestRorSettings]
     with Logging {
 
   type Error = RorSettingsLoader.Error[LoadingIndexSettingsError]
 
-  override def load(indexName: RorConfigurationIndex): Task[Either[Error, TestRorSettings]] = {
+  override def load(): Task[Either[Error, TestRorSettings]] = {
     indexJsonContentService
-      .sourceOf(indexName.index, Config.rorTestSettingsIndexConst.id)
+      .sourceOf(settingsIndex.index, Const.id)
       .flatMap {
         case Right(source) =>
           val properties = source.collect { case (key: String, value: String) => (key, value) }
@@ -72,14 +73,9 @@ final class IndexJsonContentServiceBasedIndexTestSettingsManager(indexJsonConten
       }
   }
 
-  override def save(settings: TestRorSettings,
-                    rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexSettingsError, Unit]] = {
+  override def save(settings: TestRorSettings): Task[Either[SavingIndexSettingsError, Unit]] = {
     indexJsonContentService
-      .saveContent(
-        rorConfigurationIndex.index,
-        Config.rorTestSettingsIndexConst.id,
-        formatSettings(settings)
-      )
+      .saveContent(settingsIndex.index, Const.id, formatSettings(settings))
       .map {
         _.left.map { case CannotWriteToIndex => CannotSaveSettings }
       }
@@ -246,7 +242,8 @@ final class IndexJsonContentServiceBasedIndexTestSettingsManager(indexJsonConten
 }
 
 private object IndexJsonContentServiceBasedIndexTestSettingsManager {
-  object Const {
+  private [IndexJsonContentServiceBasedIndexTestSettingsManager] object Const {
+    val id = "2"
     object properties {
       val settings = "settings"
       val expirationTtl = "expiration_ttl_millis"

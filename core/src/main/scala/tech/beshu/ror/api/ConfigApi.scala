@@ -22,7 +22,7 @@ import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.ConfigApi.*
 import tech.beshu.ror.api.ConfigApi.ConfigRequest.Type
 import tech.beshu.ror.api.ConfigApi.ConfigResponse.*
@@ -39,8 +39,7 @@ import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 class ConfigApi(rorInstance: RorInstance,
                 rawRorConfigYamlParser: RawRorSettingsYamlParser,
                 indexConfigManager: IndexSettingsManager[RawRorSettings],
-                fileConfigLoader: FileRorSettingsLoader,
-                rorConfigurationIndex: RorConfigurationIndex)
+                fileConfigLoader: FileRorSettingsLoader)
   extends Logging {
 
   import ConfigApi.Utils.*
@@ -98,7 +97,7 @@ class ConfigApi(rorInstance: RorInstance,
 
   private def provideRorIndexConfig(): Task[ConfigResponse] = {
     indexConfigManager
-      .load(rorConfigurationIndex)
+      .load()
       .map {
         case Right(config) =>
           ProvideIndexConfig.Config(config.raw)
