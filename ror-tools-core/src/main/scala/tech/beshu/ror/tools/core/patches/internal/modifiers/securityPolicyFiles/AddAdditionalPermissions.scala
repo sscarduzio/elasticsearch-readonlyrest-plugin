@@ -16,13 +16,26 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles
 
+import cats.data.NonEmptyList
 import tech.beshu.ror.tools.core.patches.internal.modifiers.SecurityPolicyFileModifier
 
 import java.io.File
+import java.security.Permission
+import java.security.SecurityPermission
 
-private[patches] object AddCreateClassLoaderPermission extends SecurityPolicyFileModifier {
+private[patches] class AddAdditionalPermissions(permission: NonEmptyList[Permission]) extends SecurityPolicyFileModifier {
 
   override def apply(policyFile: File): Unit = {
-    addPermission(policyFile, "permission java.lang.RuntimePermission \"createClassLoader\";")
+    permission.toList.foreach { permission =>
+      addAdditionalPermission(policyFile, permission)
+    }
   }
+
+  private def addAdditionalPermission(policyFile: File, permission: Permission): Unit = {
+    addPermission(policyFile, s"permission ${permission.getClass.getName} \"${permission.getName}\";")
+  }
+}
+private[patches] object AddAdditionalPermissions {
+  val createClassLoaderRuntimePermission = new RuntimePermission("createClassLoader")
+  val getPropertySecurityPermission = new SecurityPermission("getProperty.*")
 }
