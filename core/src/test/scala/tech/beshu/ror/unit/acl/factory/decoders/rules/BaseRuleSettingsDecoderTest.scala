@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.SystemContext
@@ -62,7 +62,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+          RorSettingsIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider,
           mocksProvider
@@ -85,7 +85,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+          RorSettingsIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider,
           mocksProvider

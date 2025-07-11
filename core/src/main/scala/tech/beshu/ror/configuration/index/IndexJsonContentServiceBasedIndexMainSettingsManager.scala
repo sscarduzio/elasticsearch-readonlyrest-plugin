@@ -18,7 +18,7 @@ package tech.beshu.ror.configuration.index
 
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
 import tech.beshu.ror.configuration.index.IndexJsonContentServiceBasedIndexMainSettingsManager.Const
 import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
@@ -29,7 +29,7 @@ import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.ParsingError
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 
-final class IndexJsonContentServiceBasedIndexMainSettingsManager(settingsIndex: RorConfigurationIndex,
+final class IndexJsonContentServiceBasedIndexMainSettingsManager(settingsIndex: RorSettingsIndex,
                                                                  indexJsonContentService: IndexJsonContentService,
                                                                  rarRorConfigYamlParser: RawRorSettingsYamlParser)
   extends IndexSettingsManager[RawRorSettings]

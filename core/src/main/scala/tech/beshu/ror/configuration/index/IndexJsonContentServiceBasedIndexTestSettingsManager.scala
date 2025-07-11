@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthoriza
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorSettingsIndex, User}
 import tech.beshu.ror.configuration.TestRorSettings.Present
 import tech.beshu.ror.configuration.index.IndexJsonContentServiceBasedIndexTestSettingsManager.Const
 import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
@@ -51,7 +51,7 @@ import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-final class IndexJsonContentServiceBasedIndexTestSettingsManager(settingsIndex: RorConfigurationIndex,
+final class IndexJsonContentServiceBasedIndexTestSettingsManager(settingsIndex: RorSettingsIndex,
                                                                  indexJsonContentService: IndexJsonContentService,
                                                                  rarRorConfigYamlParser: RawRorSettingsYamlParser)
   extends IndexSettingsManager[TestRorSettings]

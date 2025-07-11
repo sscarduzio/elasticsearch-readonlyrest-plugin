@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.domain.{IndexName, LocalUsers, RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, LocalUsers, RorSettingsIndex, User}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
@@ -309,7 +309,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
     factory
       .createCoreFrom(
         config,
-        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
         ldapConnectionPoolProvider,
         NoOpMocksProvider

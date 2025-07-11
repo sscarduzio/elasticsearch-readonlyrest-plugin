@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{LocalAuditCluster, RemoteAuditCluster}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditLoggerName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditLoggerName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
@@ -172,7 +172,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           val core = factory()
             .createCoreFrom(
               config,
-              RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+              RorSettingsIndex(IndexName.Full(".readonlyrest")),
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
               NoOpMocksProvider
@@ -829,7 +829,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           val core = factory()
             .createCoreFrom(
               config,
-              RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+              RorSettingsIndex(IndexName.Full(".readonlyrest")),
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
               NoOpMocksProvider
@@ -888,7 +888,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           val core = factory()
             .createCoreFrom(
               config,
-              RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+              RorSettingsIndex(IndexName.Full(".readonlyrest")),
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
               NoOpMocksProvider
@@ -1681,7 +1681,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     val core = factory()
       .createCoreFrom(
         config,
-        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider
@@ -1694,7 +1694,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     val core = factory()
       .createCoreFrom(
         config,
-        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider
@@ -1712,7 +1712,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     val core = factory()
       .createCoreFrom(
         config,
-        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider
@@ -1741,7 +1741,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     val core = factory(esVersion)
       .createCoreFrom(
         config,
-        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider
@@ -1768,7 +1768,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     val core = factory()
       .createCoreFrom(
         config,
-        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider
@@ -1795,7 +1795,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     val core = factory(esVersion)
       .createCoreFrom(
         config,
-        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider

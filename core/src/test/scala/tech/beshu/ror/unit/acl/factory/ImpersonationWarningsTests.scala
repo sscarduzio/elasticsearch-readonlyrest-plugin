@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationSe
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.mocks.MockHttpClientsFactory
@@ -377,7 +377,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
     factory
       .createCoreFrom(
         config,
-        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
         new UnboundidLdapConnectionPoolProvider(),
         mocksProvider

@@ -75,10 +75,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
         EitherT(rorSettingsLoader.loadFromFile(settings))
           .leftMap(toStartingFailure)
       case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, fallbackSettings) =>
-        // todo: move
-        //        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
-        //        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
-        //        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
         EitherT(rorSettingsLoader.loadFromIndexWithFileFallback(settings, fallbackSettings))
           .leftMap(toStartingFailure)
     }
@@ -90,11 +86,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
       case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
         EitherT.rightT[Task, StartingFailure](TestRorSettings.NotSet)
       case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
-        // todo: move
-        //        val loadingDelay = RorProperties.atStartupRorIndexSettingLoadingDelay(systemContext.propertiesProvider)
-        //        val loadingAttemptsCount = RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(systemContext.propertiesProvider)
-        //        val loadingAttemptsInterval = RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(systemContext.propertiesProvider)
-
         EitherT {
           rorSettingsLoader.loadFromIndexWithFallback(
             indexLoadingSettings = settings,

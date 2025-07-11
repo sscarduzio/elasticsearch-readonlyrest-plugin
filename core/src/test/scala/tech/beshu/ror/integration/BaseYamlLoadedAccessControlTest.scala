@@ -21,7 +21,7 @@ import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
@@ -54,7 +54,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
       core <- factory
         .createCoreFrom(
           config,
-          RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+          RorSettingsIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider,
           mockProvider

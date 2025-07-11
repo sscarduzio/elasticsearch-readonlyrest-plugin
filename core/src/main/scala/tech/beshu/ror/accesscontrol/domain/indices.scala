@@ -526,10 +526,9 @@ object IndexAttribute {
   case object Closed extends IndexAttribute
 }
 
-// todo: change name to RorSettingsIndex
-final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal {
+final case class RorSettingsIndex(index: IndexName.Full) extends AnyVal {
   def toLocal: ClusterIndexName.Local = ClusterIndexName.Local(index)
 }
-object RorConfigurationIndex {
-  val default: RorConfigurationIndex = RorConfigurationIndex(IndexName.Full(nes(".readonlyrest")))
+object RorSettingsIndex {
+  val default: RorSettingsIndex = RorSettingsIndex(IndexName.Full(nes(".readonlyrest")))
 }

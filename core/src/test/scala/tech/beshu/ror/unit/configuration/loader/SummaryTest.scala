@@ -20,7 +20,7 @@ import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.configuration.loader.distributed.Summary.CurrentNodeHaveToProduceResult
@@ -170,5 +170,5 @@ class SummaryTest extends AnyWordSpec {
     }
   }
 
-  private def configIndex(value: NonEmptyString) = RorConfigurationIndex(IndexName.Full(value))
+  private def configIndex(value: NonEmptyString) = RorSettingsIndex(IndexName.Full(value))
 }

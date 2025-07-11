@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.*
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, IndexName, RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, IndexName, RorSettingsIndex, User}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
@@ -38,7 +38,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
       showBasicAuthPrompt = true,
       forbiddenRequestMessage = "Forbidden",
       flsEngine = FlsEngine.default,
-      configurationIndex = RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+      configurationIndex = RorSettingsIndex(IndexName.Full(".readonlyrest")),
       userIdCaseSensitivity = CaseSensitivity.Enabled,
       usersDefinitionDuplicateUsernamesValidationEnabled = true
     ),

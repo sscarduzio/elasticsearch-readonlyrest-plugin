@@ -22,31 +22,32 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromFileSettings
-import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, FipsMode, InternodeSslConfiguration}
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromFileParameters
+import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslSettings, FipsMode, InternodeSslSettings}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.SSLCertHelper
 
-sealed trait RorSsl
-object RorSsl extends Logging {
+sealed trait RorSslSettings
+object RorSslSettings extends Logging {
 
-  final case class OnlyExternalSslConfiguration(ssl: ExternalSslConfiguration) extends RorSsl
-  final case class OnlyInternodeSslConfiguration(ssl: InternodeSslConfiguration) extends RorSsl
-  final case class ExternalAndInternodeSslConfiguration(external: ExternalSslConfiguration,
-                                                        internode: InternodeSslConfiguration) extends RorSsl
+  final case class OnlyExternalSslSettings(ssl: ExternalSslSettings) extends RorSslSettings
+  final case class OnlyInternodeSslSettings(ssl: InternodeSslSettings) extends RorSslSettings
+  final case class ExternalAndInternodeSslSettings(external: ExternalSslSettings,
+                                                   internode: InternodeSslSettings)
+    extends RorSslSettings
 
-  implicit class ExtractSsl(val rorSsl: RorSsl) extends AnyVal {
-    def externalSsl: Option[ExternalSslConfiguration] = rorSsl match {
-      case OnlyExternalSslConfiguration(ssl) => Some(ssl)
-      case OnlyInternodeSslConfiguration(_) => None
-      case ExternalAndInternodeSslConfiguration(ssl, _) => Some(ssl)
+  implicit class ExtractSsl(val rorSsl: RorSslSettings) extends AnyVal {
+    def externalSsl: Option[ExternalSslSettings] = rorSsl match {
+      case OnlyExternalSslSettings(ssl) => Some(ssl)
+      case OnlyInternodeSslSettings(_) => None
+      case ExternalAndInternodeSslSettings(ssl, _) => Some(ssl)
     }
 
-    def internodeSsl: Option[InternodeSslConfiguration] = rorSsl match {
-      case OnlyExternalSslConfiguration(_) => None
-      case OnlyInternodeSslConfiguration(ssl) => Some(ssl)
-      case ExternalAndInternodeSslConfiguration(_, ssl) => Some(ssl)
+    def internodeSsl: Option[InternodeSslSettings] = rorSsl match {
+      case OnlyExternalSslSettings(_) => None
+      case OnlyInternodeSslSettings(ssl) => Some(ssl)
+      case ExternalAndInternodeSslSettings(_, ssl) => Some(ssl)
     }
   }
 
@@ -57,38 +58,39 @@ object RorSsl extends Logging {
     }
   }
 
-  def load(esEnv: EsEnv, loadRorFromFileSettings: LoadFromFileSettings)
-          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, Option[RorSsl]]] = Task {
-    implicit val sslDecoder: Decoder[Option[RorSsl]] = SslDecoders.rorSslDecoder(esEnv.configDir)
+  def load(esEnv: EsEnv, loadFromFileParameters: LoadFromFileParameters)
+          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, Option[RorSslSettings]]] = Task {
+    implicit val rorSslSettingsDecoder: Decoder[Option[RorSslSettings]] = SslDecoders.rorSslDecoder(esEnv.configDir)
     val esConfigFile = esEnv.elasticsearchYmlFile
-    loadSslConfigFromFile(esConfigFile)
+    loadSslSettingsFrom(esConfigFile)
       .fold(
         error => Left(error),
         {
           case None =>
-            logger.info(s"Cannot find SSL configuration in ${esConfigFile.show} ...")
-            fallbackToRorConfig(loadRorFromFileSettings.rorSettingsFile)
+            logger.info(s"Cannot find ROR SSL settings in ${esConfigFile.show} ...")
+            fallbackToRorSettingsFile(loadFromFileParameters.rorSettingsFile)
           case Some(ssl) =>
             Right(Some(ssl))
         }
       )
   }
 
-  private def fallbackToRorConfig(rorSettingsFile: File)
-                                 (implicit rorSslDecoder: Decoder[Option[RorSsl]],
-                                  systemContext: SystemContext) = {
+  private def fallbackToRorSettingsFile(rorSettingsFile: File)
+                                       (implicit decoder: Decoder[Option[RorSslSettings]],
+                                        systemContext: SystemContext) = {
     logger.info(s"... trying: ${rorSettingsFile.show}")
     if (rorSettingsFile.exists) {
-      loadSslConfigFromFile(rorSettingsFile)
+      loadSslSettingsFrom(rorSettingsFile)
     } else {
       Right(None)
     }
   }
 
-  private def loadSslConfigFromFile(configFile: File)
-                                   (implicit rorSslDecoder: Decoder[Option[RorSsl]],
-                                    systemContext: SystemContext) = {
-    new YamlFileBasedSettingsLoader(configFile).loadSettings[Option[RorSsl]](settingsName = "ROR SSL settings")
+  private def loadSslSettingsFrom(settingsFile: File)
+                                 (implicit decoder: Decoder[Option[RorSslSettings]],
+                                  systemContext: SystemContext) = {
+    new YamlFileBasedSettingsLoader(settingsFile)
+      .loadSettings[Option[RorSslSettings]](settingsName = "ROR SSL settings")
   }
 }
 
@@ -139,25 +141,25 @@ object SslConfiguration {
     final case class FileBasedConfiguration(clientTrustedCertificateFile: ClientTrustedCertificateFile) extends ClientCertificateConfiguration
   }
 
-  final case class ExternalSslConfiguration(serverCertificateConfiguration: ServerCertificateConfiguration,
-                                            clientCertificateConfiguration: Option[ClientCertificateConfiguration],
-                                            allowedProtocols: Set[SslConfiguration.Protocol],
-                                            allowedCiphers: Set[SslConfiguration.Cipher],
-                                            clientAuthenticationEnabled: Boolean,
-                                            fipsMode: FipsMode)
+  final case class ExternalSslSettings(serverCertificateConfiguration: ServerCertificateConfiguration,
+                                       clientCertificateConfiguration: Option[ClientCertificateConfiguration],
+                                       allowedProtocols: Set[SslConfiguration.Protocol],
+                                       allowedCiphers: Set[SslConfiguration.Cipher],
+                                       clientAuthenticationEnabled: Boolean,
+                                       fipsMode: FipsMode)
     extends SslConfiguration {
 
     val certificateVerificationEnabled: Boolean = false
   }
 
-  final case class InternodeSslConfiguration(serverCertificateConfiguration: ServerCertificateConfiguration,
-                                             clientCertificateConfiguration: Option[ClientCertificateConfiguration],
-                                             allowedProtocols: Set[SslConfiguration.Protocol],
-                                             allowedCiphers: Set[SslConfiguration.Cipher],
-                                             clientAuthenticationEnabled: Boolean,
-                                             certificateVerificationEnabled: Boolean,
-                                             hostnameVerificationEnabled: Boolean,
-                                             fipsMode: FipsMode)
+  final case class InternodeSslSettings(serverCertificateConfiguration: ServerCertificateConfiguration,
+                                        clientCertificateConfiguration: Option[ClientCertificateConfiguration],
+                                        allowedProtocols: Set[SslConfiguration.Protocol],
+                                        allowedCiphers: Set[SslConfiguration.Cipher],
+                                        clientAuthenticationEnabled: Boolean,
+                                        certificateVerificationEnabled: Boolean,
+                                        hostnameVerificationEnabled: Boolean,
+                                        fipsMode: FipsMode)
     extends SslConfiguration
 
   sealed trait FipsMode
@@ -278,7 +280,7 @@ private object SslDecoders extends Logging {
     }
   }
 
-  def rorSslDecoder(basePath: File): Decoder[Option[RorSsl]] = Decoder.instance { c =>
+  def rorSslDecoder(basePath: File): Decoder[Option[RorSslSettings]] = Decoder.instance { c =>
     implicit val isFipsCompliantDecoder: Decoder[FipsMode] = Decoder.decodeString.emap {
       case "NON_FIPS" => Right(FipsMode.NonFips)
       case "SSL_ONLY" => Right(FipsMode.SslOnly)
@@ -288,24 +290,24 @@ private object SslDecoders extends Logging {
       fipsMode <- c.downField(consts.rorSection).downField(consts.fipsMode).as[Option[FipsMode]]
       interNodeSsl <- {
         implicit val internodeSslConfigDecoder = sslInternodeConfigurationDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
-        c.downField(consts.rorSection).downField(consts.internodeSsl).as[Option[Option[InternodeSslConfiguration]]]
+        c.downField(consts.rorSection).downField(consts.internodeSsl).as[Option[Option[InternodeSslSettings]]]
       }
       externalSsl <- {
         implicit val externalSslConfigDecoder = sslExternalConfigurationDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
-        c.downField(consts.rorSection).downField(consts.externalSsl).as[Option[Option[ExternalSslConfiguration]]]
+        c.downField(consts.rorSection).downField(consts.externalSsl).as[Option[Option[ExternalSslSettings]]]
       }
     } yield {
       (externalSsl.flatten, interNodeSsl.flatten) match {
-        case (Some(ssl), None) => Some(RorSsl.OnlyExternalSslConfiguration(ssl))
-        case (None, Some(ssl)) => Some(RorSsl.OnlyInternodeSslConfiguration(ssl))
-        case (Some(externalSsl), Some(internalSsl)) => Some(RorSsl.ExternalAndInternodeSslConfiguration(externalSsl, internalSsl))
+        case (Some(ssl), None) => Some(RorSslSettings.OnlyExternalSslSettings(ssl))
+        case (None, Some(ssl)) => Some(RorSslSettings.OnlyInternodeSslSettings(ssl))
+        case (Some(externalSsl), Some(internalSsl)) => Some(RorSslSettings.ExternalAndInternodeSslSettings(externalSsl, internalSsl))
         case (None, None) => None
       }
     }
   }
 
   private def sslInternodeConfigurationDecoder(basePath: File,
-                                               fipsMode: FipsMode): Decoder[Option[InternodeSslConfiguration]] = Decoder.instance { c =>
+                                               fipsMode: FipsMode): Decoder[Option[InternodeSslSettings]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
         certificateVerification <- c.downField(consts.certificateVerification).as[Option[Boolean]]
@@ -313,7 +315,7 @@ private object SslDecoders extends Logging {
         verification <- c.downField(consts.verification).as[Option[Boolean]]
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
-        InternodeSslConfiguration(
+        InternodeSslSettings(
           serverCertificateConfiguration = sslCommonProperties.serverCertificateConfiguration,
           clientCertificateConfiguration = sslCommonProperties.clientCertificateConfiguration,
           allowedProtocols = sslCommonProperties.allowedProtocols,
@@ -327,13 +329,13 @@ private object SslDecoders extends Logging {
   }
 
   private def sslExternalConfigurationDecoder(basePath: File,
-                                              fipsMode: FipsMode): Decoder[Option[ExternalSslConfiguration]] = Decoder.instance { c =>
+                                              fipsMode: FipsMode): Decoder[Option[ExternalSslSettings]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
         verification <- c.downField(consts.verification).as[Option[Boolean]]
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
-        ExternalSslConfiguration(
+        ExternalSslSettings(
           serverCertificateConfiguration = sslCommonProperties.serverCertificateConfiguration,
           clientCertificateConfiguration = sslCommonProperties.clientCertificateConfiguration,
           allowedProtocols = sslCommonProperties.allowedProtocols,

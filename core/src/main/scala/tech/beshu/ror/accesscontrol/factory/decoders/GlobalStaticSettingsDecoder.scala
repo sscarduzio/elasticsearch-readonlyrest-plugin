@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
@@ -29,7 +29,7 @@ object GlobalStaticSettingsDecoder {
 
   private val globalSettingsSectionName = "global_settings"
 
-  def instance(rorConfigurationIndex: RorConfigurationIndex): Decoder[GlobalSettings] = {
+  def instance(rorConfigurationIndex: RorSettingsIndex): Decoder[GlobalSettings] = {
     for {
       showBasicAuthPrompt <- decoderFor[Boolean]("prompt_for_basic_auth")
       forbiddenRequestMessage <- decoderFor[String]("response_if_req_forbidden")

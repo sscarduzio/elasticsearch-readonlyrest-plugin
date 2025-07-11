@@ -20,7 +20,7 @@ import cats.data.EitherT
 import cats.implicits.toShow
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.{LoadFromFileSettings, LoadFromIndexSettings}
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.{LoadFromFileParameters, LoadFromIndexParameters}
 import tech.beshu.ror.configuration.RorProperties.LoadingAttemptsCount
 import tech.beshu.ror.configuration.index.IndexSettingsManager
 import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
@@ -35,53 +35,51 @@ import scala.language.postfixOps
 class RorMainSettingsManager(indexSettingsManager: IndexSettingsManager[RawRorSettings])
   extends Logging {
 
-  def loadFromFile(settings: LoadFromFileSettings): Task[Either[RorMainSettingsManager.Error, RawRorSettings]] = {
-    forceLoadFromFile(settings)
+  def loadFromFile(loadFromFileParameters: LoadFromFileParameters): Task[Either[RorMainSettingsManager.Error, RawRorSettings]] = {
+    forceLoadFromFile(loadFromFileParameters)
   }
 
-  def loadFromIndexWithFileFallback(indexLoadingSettings: LoadFromIndexSettings,
-                                    fallbackFileLoadingSettings: LoadFromFileSettings): Task[Either[RorMainSettingsManager.Error, RawRorSettings]] = {
+  def loadFromIndexWithFileFallback(loadFromIndexParameters: LoadFromIndexParameters,
+                                    loadFromFileParameters: LoadFromFileParameters): Task[Either[RorMainSettingsManager.Error, RawRorSettings]] = {
     attemptLoadingFromIndex(
-      settings = indexLoadingSettings,
-      fallback = loadRorSettingsFromFile(fallbackFileLoadingSettings)
+      parameters = loadFromIndexParameters,
+      fallback = loadRorSettingsFromFile(loadFromFileParameters)
     )
   }
 
-  private def attemptLoadingFromIndex(settings: LoadFromIndexSettings,
+  private def attemptLoadingFromIndex(parameters: LoadFromIndexParameters,
                                       fallback: Task[Either[RorMainSettingsManager.Error, RawRorSettings]]): Task[Either[RorMainSettingsManager.Error, RawRorSettings]] = {
-    settings.loadingAttemptsCount.value.value match {
+    parameters.loadingAttemptsCount.value.value match {
       case 0 =>
         fallback.map(identity)
       case attemptsCount =>
-        for {
-          result <- loadRorConfigFromIndex(settings)
-          rawRorConfig <- result match {
-            case Left(RorMainSettingsManager.IndexNotExist) =>
-              attemptLoadingFromIndex(
-                settings.copy(loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(settings.loadingAttemptsCount.value.value - 1)),
-                fallback = fallback
-              )
-            case Left(RorMainSettingsManager.IndexUnknownStructure) =>
-              Task.now(Left(RorMainSettingsManager.IndexUnknownStructure))
-            case Left(error@RorMainSettingsManager.IndexParsingError(_)) =>
-              Task.now(Left(error))
-            case Right(value) =>
-              Task.now(Right(value))
-          }
-        } yield rawRorConfig
+        loadRorSettingsFromIndex(parameters).flatMap {
+          case Left(RorMainSettingsManager.IndexNotExist) =>
+            attemptLoadingFromIndex(
+              parameters.copy(loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(parameters.loadingAttemptsCount.value.value - 1)),
+              fallback = fallback
+            )
+          case Left(RorMainSettingsManager.IndexUnknownStructure) =>
+            Task.now(Left(RorMainSettingsManager.IndexUnknownStructure))
+          case Left(error@RorMainSettingsManager.IndexParsingError(_)) =>
+            Task.now(Left(error))
+          case Right(value) =>
+            Task.now(Right(value))
+        }
     }
   }
 
-  private def loadRorConfigFromIndex(settings: LoadFromIndexSettings) = {
-    val rorConfigIndex = settings.rorConfigIndex
-    logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${rorConfigIndex.index.show}) ...")
+  private def loadRorSettingsFromIndex(parameters: LoadFromIndexParameters) = {
+    val rorSettingsIndex = parameters.rorSettingsIndex
+    logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${rorSettingsIndex.index.show}) ...")
     EitherT {
       indexSettingsManager
         .load()
-        .delayExecution(settings.loadingDelay.value.value)
-    }.map { rawRorConfig =>
-        logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw config from index: ${rawRorConfig.raw.show}")
-        rawRorConfig
+        .delayExecution(parameters.loadingDelay.value.value)
+    }
+      .map { rorSettings =>
+        logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw ReadonlyREST settings from index: ${rorSettings.raw.show}")
+        rorSettings
       }
       .leftMap { error =>
         val newError = convertIndexError(error)
@@ -92,9 +90,9 @@ class RorMainSettingsManager(indexSettingsManager: IndexSettingsManager[RawRorSe
   }
 
   // todo: these two are almost the same (logging differs only)
-  private def loadRorSettingsFromFile(settings: LoadFromFileSettings): Task[Either[RorMainSettingsManager.Error, RawRorSettings]] = {
-    val rorSettingsFile = settings.rorSettingsFile
-    val rawRorSettingsYamlParser = new RawRorSettingsYamlParser(settings.settingsMaxSize)
+  private def loadRorSettingsFromFile(parameters: LoadFromFileParameters): Task[Either[RorMainSettingsManager.Error, RawRorSettings]] = {
+    val rorSettingsFile = parameters.rorSettingsFile
+    val rawRorSettingsYamlParser = new RawRorSettingsYamlParser(parameters.settingsMaxSize)
     logger.info(s"Loading ReadonlyREST settings from file from: ${rorSettingsFile.show}, because index not exist")
     EitherT(new FileRorSettingsLoader(rorSettingsFile, rawRorSettingsYamlParser).load())
       .leftMap { error =>
@@ -105,9 +103,9 @@ class RorMainSettingsManager(indexSettingsManager: IndexSettingsManager[RawRorSe
       .value
   }
 
-  private def forceLoadFromFile(settings: LoadFromFileSettings): Task[Either[RorMainSettingsManager.Error, RawRorSettings]] = {
-    val rorSettingsFile = settings.rorSettingsFile
-    val rawRorSettingsYamlParser = new RawRorSettingsYamlParser(settings.settingsMaxSize)
+  private def forceLoadFromFile(parameters: LoadFromFileParameters): Task[Either[RorMainSettingsManager.Error, RawRorSettings]] = {
+    val rorSettingsFile = parameters.rorSettingsFile
+    val rawRorSettingsYamlParser = new RawRorSettingsYamlParser(parameters.settingsMaxSize)
     logger.info(s"Loading ReadonlyREST settings forced loading from file from: ${rorSettingsFile.show}")
     EitherT(new FileRorSettingsLoader(rorSettingsFile, rawRorSettingsYamlParser).load())
       .leftMap { error =>

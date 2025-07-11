@@ -21,7 +21,7 @@ import io.circe.Json
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction
 import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction.*
 import tech.beshu.ror.configuration.RawRorSettings
@@ -145,7 +145,7 @@ object LoadRawRorSettingsTest {
 
   private val esEnv = EsEnv(Paths.get("unused_file_path"), Paths.get("unused_file_path"), defaultEsVersionForTests)
   private val rawRorConfig = RawRorSettings(Json.False, "forced file config")
-  private val rorConfigurationIndex = RorConfigurationIndex(IndexName.Full("rorConfigurationIndex"))
+  private val rorConfigurationIndex = RorSettingsIndex(IndexName.Full("rorConfigurationIndex"))
 
 }
 object IdCompiler {

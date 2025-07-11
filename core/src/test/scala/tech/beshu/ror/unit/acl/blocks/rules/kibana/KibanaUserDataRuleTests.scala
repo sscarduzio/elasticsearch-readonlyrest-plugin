@@ -58,7 +58,7 @@ class KibanaUserDataRuleTests
           appsToHide = Set.empty,
           allowedApiPaths = Set.empty,
           metadata = None,
-          rorIndex = RorConfigurationIndex(rorIndex)
+          rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
         blockContext.userMetadata should be {
@@ -82,7 +82,7 @@ class KibanaUserDataRuleTests
           appsToHide = apps.toCovariantSet,
           allowedApiPaths = Set.empty,
           metadata = None,
-          rorIndex = RorConfigurationIndex(rorIndex)
+          rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
         blockContext.userMetadata should be {
@@ -119,7 +119,7 @@ class KibanaUserDataRuleTests
           appsToHide = Set.empty,
           allowedApiPaths = paths.toCovariantSet,
           metadata = None,
-          rorIndex = RorConfigurationIndex(rorIndex)
+          rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
         blockContext.userMetadata should be {
@@ -161,7 +161,7 @@ class KibanaUserDataRuleTests
           appsToHide = Set.empty,
           allowedApiPaths = Set.empty,
           metadata = Option(resolvableMetadataJsonRepresentation),
-          rorIndex = RorConfigurationIndex(rorIndex)
+          rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
         blockContext.userMetadata should be {
@@ -226,7 +226,7 @@ class KibanaUserDataRuleTests
       appsToHide = Set.empty,
       allowedApiPaths = Set.empty,
       metadata = None,
-      rorIndex = RorConfigurationIndex(rorIndex)
+      rorIndex = RorSettingsIndex(rorIndex)
     )
 
   override protected def defaultOutputBlockContextAssertion(settings: KibanaUserDataRule.Settings,

@@ -253,7 +253,7 @@ abstract class BaseKibanaRule(val settings: Settings)
 object BaseKibanaRule {
 
   abstract class Settings(val access: KibanaAccess,
-                          val rorIndex: RorConfigurationIndex)
+                          val rorIndex: RorSettingsIndex)
 
   type ProcessingContext = ReaderT[Id, (RequestContext, KibanaIndexName), Boolean]
   object ProcessingContext {

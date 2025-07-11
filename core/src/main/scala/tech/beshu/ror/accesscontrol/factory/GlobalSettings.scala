@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorSettingsIndex}
 
 final case class GlobalSettings(showBasicAuthPrompt: Boolean,
                                 forbiddenRequestMessage: String,
                                 flsEngine: GlobalSettings.FlsEngine,
-                                configurationIndex: RorConfigurationIndex,
+                                configurationIndex: RorSettingsIndex,
                                 userIdCaseSensitivity: CaseSensitivity,
                                 usersDefinitionDuplicateUsernamesValidationEnabled: Boolean)
 

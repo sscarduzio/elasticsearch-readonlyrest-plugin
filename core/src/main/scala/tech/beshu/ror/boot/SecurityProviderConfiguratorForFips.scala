@@ -18,7 +18,7 @@ package tech.beshu.ror.boot
 
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
-import tech.beshu.ror.configuration.RorSsl
+import tech.beshu.ror.configuration.RorSslSettings
 import tech.beshu.ror.configuration.SslConfiguration.FipsMode.{NonFips, SslOnly}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
@@ -26,11 +26,11 @@ import java.security.Security
 
 object SecurityProviderConfiguratorForFips {
 
-  def configureIfRequired(ssl: RorSsl): Unit = {
+  def configureIfRequired(ssl: RorSslSettings): Unit = {
     val fipsModes = ssl match {
-      case RorSsl.OnlyExternalSslConfiguration(ssl) => ssl.fipsMode :: Nil
-      case RorSsl.OnlyInternodeSslConfiguration(ssl) => ssl.fipsMode :: Nil
-      case RorSsl.ExternalAndInternodeSslConfiguration(external, internode) => external.fipsMode :: internode.fipsMode :: Nil
+      case RorSslSettings.OnlyExternalSslSettings(ssl) => ssl.fipsMode :: Nil
+      case RorSslSettings.OnlyInternodeSslSettings(ssl) => ssl.fipsMode :: Nil
+      case RorSslSettings.ExternalAndInternodeSslSettings(external, internode) => external.fipsMode :: internode.fipsMode :: Nil
     }
     fipsModes
       .find {

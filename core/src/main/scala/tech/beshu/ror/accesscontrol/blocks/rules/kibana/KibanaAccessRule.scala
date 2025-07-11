@@ -60,6 +60,6 @@ object KibanaAccessRule {
   }
 
   final case class Settings(override val access: KibanaAccess,
-                            override val rorIndex: RorConfigurationIndex)
+                            override val rorIndex: RorSettingsIndex)
     extends BaseKibanaRule.Settings(access, rorIndex)
 }

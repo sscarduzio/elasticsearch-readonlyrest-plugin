@@ -63,7 +63,7 @@ final case class Core(accessControl: AccessControlList,
 
 trait CoreFactory {
   def createCoreFrom(rorSettings: RawRorSettings,
-                     rorSettingsIndex: RorConfigurationIndex,
+                     rorSettingsIndex: RorSettingsIndex,
                      httpClientFactory: HttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                      mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
@@ -74,7 +74,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
   extends CoreFactory with Logging {
 
   override def createCoreFrom(rorSettings: RawRorSettings,
-                              rorSettingsIndex: RorConfigurationIndex,
+                              rorSettingsIndex: RorSettingsIndex,
                               httpClientFactory: HttpClientsFactory,
                               ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                               mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
@@ -98,7 +98,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
   }
 
   private def createCoreFromRorSection(rorSection: Json,
-                                       rorIndexNameConfiguration: RorConfigurationIndex,
+                                       rorIndexNameConfiguration: RorSettingsIndex,
                                        httpClientFactory: HttpClientsFactory,
                                        ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                                        mocksProvider: MocksProvider) = {
@@ -120,7 +120,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
   }
 
   private def createFrom(settingsJson: Json,
-                         rorConfigurationIndex: RorConfigurationIndex,
+                         rorConfigurationIndex: RorSettingsIndex,
                          httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                          mocksProvider: MocksProvider) = {

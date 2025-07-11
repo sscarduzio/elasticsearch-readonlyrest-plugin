@@ -18,7 +18,7 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.matchers.should.Matchers.*
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.GeneralReadonlyrestSettingsError
@@ -504,6 +504,6 @@ class GlobalSettingsTests
 
 private object GlobalSettingsTests {
   val decoder: SyncDecoder[GlobalSettings] = SyncDecoderCreator.from(
-    GlobalStaticSettingsDecoder.instance(RorConfigurationIndex(IndexName.Full(NonEmptyString.unsafeFrom(".readonlyrest"))))
+    GlobalStaticSettingsDecoder.instance(RorSettingsIndex(IndexName.Full(NonEmptyString.unsafeFrom(".readonlyrest"))))
   )
 }

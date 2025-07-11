@@ -39,7 +39,7 @@ import tech.beshu.ror.utils.js.JsCompiler
 
 import scala.util.{Failure, Success}
 
-class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
+class KibanaUserDataRuleDecoder(configurationIndex: RorSettingsIndex,
                                 variableCreator: RuntimeResolvableVariableCreator)
                                (implicit jsCompiler: JsCompiler)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule]

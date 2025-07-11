@@ -19,7 +19,7 @@ package tech.beshu.ror.configuration.loader
 import cats.data.EitherT
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromIndexSettings
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromIndexParameters
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}
 import tech.beshu.ror.configuration.TestRorSettings
 import tech.beshu.ror.configuration.index.IndexSettingsManager
@@ -34,7 +34,7 @@ import scala.language.postfixOps
 class RorTestSettingsLoader(indexConfigManager: IndexSettingsManager[TestRorSettings])
   extends Logging {
 
-  def loadFromIndexWithFallback(indexLoadingSettings: LoadFromIndexSettings,
+  def loadFromIndexWithFallback(indexLoadingSettings: LoadFromIndexParameters,
                                 fallbackConfig: TestRorSettings): Task[Either[LoadingIndexError, TestRorSettings]] = {
     attemptLoadingConfigFromIndex(
       settings = indexLoadingSettings,
@@ -42,7 +42,7 @@ class RorTestSettingsLoader(indexConfigManager: IndexSettingsManager[TestRorSett
     )
   }
 
-  private def attemptLoadingConfigFromIndex(settings: LoadFromIndexSettings,
+  private def attemptLoadingConfigFromIndex(settings: LoadFromIndexParameters,
                                             fallback: TestRorSettings): Task[Either[LoadingIndexError, TestRorSettings]] = {
     settings.loadingAttemptsCount.value.value match {
       case 0 =>
@@ -69,8 +69,8 @@ class RorTestSettingsLoader(indexConfigManager: IndexSettingsManager[TestRorSett
     }
   }
 
-  private def loadTestRorConfigFromIndex(settings: LoadFromIndexSettings) = {
-    val rorConfigIndex = settings.rorConfigIndex
+  private def loadTestRorConfigFromIndex(settings: LoadFromIndexParameters) = {
+    val rorConfigIndex = settings.rorSettingsIndex
     val loadingDelay = settings.loadingDelay
     // todo: log is ok?
     logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${rorConfigIndex.index.show}) ...")

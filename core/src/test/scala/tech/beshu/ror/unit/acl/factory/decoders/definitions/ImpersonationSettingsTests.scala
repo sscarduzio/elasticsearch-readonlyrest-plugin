@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationSe
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{AuthKeyRule, AuthKeySha1Rule}
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorConfigurationIndex, User, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorSettingsIndex, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
@@ -37,7 +37,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
       showBasicAuthPrompt = true,
       forbiddenRequestMessage = "Forbidden by ReadonlyREST",
       flsEngine = FlsEngine.ES,
-      configurationIndex = RorConfigurationIndex(fullIndexName(".readonlyrest")),
+      configurationIndex = RorSettingsIndex(fullIndexName(".readonlyrest")),
       userIdCaseSensitivity = CaseSensitivity.Enabled,
       usersDefinitionDuplicateUsernamesValidationEnabled = true
     ),
