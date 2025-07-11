@@ -59,7 +59,7 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadEsConfigError
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingError
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.ScalaOps.*
@@ -398,10 +398,10 @@ trait LogsShowInstances
     case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
   }
 
-  implicit val loadEsConfigErrorShow: Show[LoadEsConfigError] = Show.show {
-    case LoadEsConfigError.FileNotFound(file) => s"Cannot find elasticsearch settings file: [${file.show}]"
-    case LoadEsConfigError.MalformedContent(file, message) => s"Settings file is malformed: [${file.show}], ${message.show}"
-    case LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled => s"Cannot use ROR SSL when XPack Security is enabled"
+  implicit val loadEsConfigErrorShow: Show[LoadingError] = Show.show {
+    case LoadingError.FileNotFound(file) => s"Cannot find elasticsearch settings file: [${file.show}]"
+    case LoadingError.MalformedContent(file, message) => s"Settings file is malformed: [${file.show}], ${message.show}"
+    case LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled => s"Cannot use ROR SSL when XPack Security is enabled"
   }
 
 }

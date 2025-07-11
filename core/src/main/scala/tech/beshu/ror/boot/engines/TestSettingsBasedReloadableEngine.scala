@@ -27,8 +27,8 @@ import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.{StartingFailure, TestEngine}
 import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
-import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpirationConfig, EngineState, InitialEngine}
-import tech.beshu.ror.boot.engines.ConfigHash.*
+import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpiration, EngineState, InitialEngine}
+import tech.beshu.ror.boot.engines.SettingsHash.*
 import tech.beshu.ror.configuration.TestRorSettings.Present.Expiration
 import tech.beshu.ror.configuration.loader.RorTestSettingsManager
 import tech.beshu.ror.configuration.loader.SettingsManager.SavingIndexSettingsError
@@ -52,17 +52,17 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
       currentEngineState match {
         case EngineState.NotStartedYet(None, _) | EngineState.Stopped =>
           TestSettings.NotSet
-        case EngineState.NotStartedYet(Some(recentConfig), recentExpirationConfig) =>
-          val expiration = recentExpirationConfig.getOrElse(throw new IllegalStateException("Test Config based engine should have an expiration config defined"))
-          TestSettings.Invalidated(recentConfig, expiration.ttl)
-        case EngineState.Working(engineWithConfig, _) =>
-          val expiration = engineWithConfig.expirationConfig.getOrElse(throw new IllegalStateException("Test Config based engine should have an expiration config defined"))
-          TestSettings.Present(engineWithConfig.config, engineWithConfig.engine.core.dependencies, expiration.ttl, expiration.validTo)
+        case EngineState.NotStartedYet(Some(recentSettings), recentExpiration) =>
+          val expiration = recentExpiration.getOrElse(throw new IllegalStateException("Test settings based engine should have an expiration defined"))
+          TestSettings.Invalidated(recentSettings, expiration.ttl)
+        case EngineState.Working(engineWithSettings, _) =>
+          val expiration = engineWithSettings.expiration.getOrElse(throw new IllegalStateException("Test settings based engine should have an expiration defined"))
+          TestSettings.Present(engineWithSettings.settings, engineWithSettings.engine.core.dependencies, expiration.ttl, expiration.validTo)
       }
     }
   }
 
-  def forceReloadTestSettingsEngine(config: RawRorSettings,
+  def forceReloadTestSettingsEngine(settings: RawRorSettings,
                                     ttl: PositiveFiniteDuration)
                                    (implicit requestId: RequestId): Task[Either[IndexSettingsReloadWithUpdateError, TestSettings.Present]] = {
     for {
@@ -70,33 +70,33 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
       reloadResult <- reloadInProgress.withPermit {
         value {
           for {
-            engineExpirationConfig <- reloadEngine(config, ttl).leftMap(IndexSettingsReloadWithUpdateError.ReloadError.apply)
-            testRorConfig = TestRorSettings.Present(
-              rawSettings = config,
+            engineExpiration <- reloadEngine(settings, ttl).leftMap(IndexSettingsReloadWithUpdateError.ReloadError.apply)
+            testRorSettings = TestRorSettings.Present(
+              rawSettings = settings,
               expiration = TestRorSettings.Present.Expiration(
-                ttl = engineExpirationConfig.expirationConfig.ttl,
-                validTo = engineExpirationConfig.expirationConfig.validTo
+                ttl = engineExpiration.expiration.ttl,
+                validTo = engineExpiration.expiration.validTo
               ),
               mocks = boot.authServicesMocksProvider.currentMocks
             )
-            _ <- saveConfigInIndex(
-              newConfig = testRorConfig,
+            _ <- saveSettingsInIndex(
+              newSettings = testRorSettings,
               onFailure = IndexSettingsReloadWithUpdateError.IndexSettingsSavingError.apply
             )
               .leftWiden[IndexSettingsReloadWithUpdateError]
           } yield TestSettings.Present(
-            dependencies = engineExpirationConfig.engine.core.dependencies,
-            rawSettings = config,
-            configuredTtl = engineExpirationConfig.expirationConfig.ttl,
-            validTo = engineExpirationConfig.expirationConfig.validTo
+            dependencies = engineExpiration.engine.core.dependencies,
+            rawSettings = settings,
+            configuredTtl = engineExpiration.expiration.ttl,
+            validTo = engineExpiration.expiration.validTo
           )
         }
       }
       _ <- Task.delay(reloadResult match {
         case Right(_) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${config.hashString().show}) reloaded!")
-        case Left(ReloadError(RawSettingsReloadError.SettingsUpToDate(oldConfig))) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${oldConfig.hashString().show}) already loaded!")
+          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${settings.hashString().show}) reloaded!")
+        case Left(ReloadError(RawSettingsReloadError.SettingsUpToDate(oldSettings))) =>
+          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${oldSettings.hashString().show}) already loaded!")
         case Left(ReloadError(RawSettingsReloadError.ReloadingFailed(StartingFailure(message, Some(ex))))) =>
           logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: ${message.show}", ex)
         case Left(ReloadError(RawSettingsReloadError.ReloadingFailed(StartingFailure(message, None)))) =>
@@ -113,19 +113,19 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
                                   (implicit requestId: RequestId): Task[Either[IndexSettingsInvalidationError, Unit]] = {
     reloadInProgress.withPermit {
       for {
-        invalidated <- invalidate(keepPreviousConfiguration = true)
+        invalidated <- invalidate(keepPreviousSettings = true)
         result <- invalidated match {
           case Some(invalidatedEngine) =>
-            val config = TestRorSettings.Present(
-              rawSettings = invalidatedEngine.config,
+            val settings = TestRorSettings.Present(
+              rawSettings = invalidatedEngine.settings,
               expiration = Expiration(
-                ttl = invalidatedEngine.expirationConfig.ttl,
-                validTo = invalidatedEngine.expirationConfig.validTo
+                ttl = invalidatedEngine.expiration.ttl,
+                validTo = invalidatedEngine.expiration.validTo
               ),
               mocks = boot.authServicesMocksProvider.currentMocks
             )
-            saveConfigInIndex(
-              newConfig = config,
+            saveSettingsInIndex(
+              newSettings = settings,
               onFailure = IndexSettingsInvalidationError.IndexSettingsSavingError.apply
             )
               .leftWiden[IndexSettingsInvalidationError]
@@ -142,18 +142,18 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     reloadInProgress.withPermit {
       value {
         for {
-          config <- readCurrentTestConfigForUpdate()
+          settings <- readCurrentTestSettingsForUpdate()
           _ <- updateMocksProvider(mocks)
-          testRorConfig = TestRorSettings.Present(
-            rawSettings = config.rawSettings,
+          testRorSettings = TestRorSettings.Present(
+            rawSettings = settings.rawSettings,
             expiration = TestRorSettings.Present.Expiration(
-              ttl = config.configuredTtl,
-              validTo = config.validTo
+              ttl = settings.configuredTtl,
+              validTo = settings.validTo
             ),
             mocks = boot.authServicesMocksProvider.currentMocks
           )
-          _ <- saveConfigInIndex[IndexSettingsUpdateError](
-            newConfig = testRorConfig,
+          _ <- saveSettingsInIndex[IndexSettingsUpdateError](
+            newSettings = testRorSettings,
             onFailure = IndexSettingsUpdateError.IndexSettingsSavingError.apply
           )
         } yield ()
@@ -161,15 +161,15 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     }
   }
 
-  private def readCurrentTestConfigForUpdate()
+  private def readCurrentTestSettingsForUpdate()
                                             (implicit requestId: RequestId): EitherT[Task, IndexSettingsUpdateError, TestSettings.Present] = {
     EitherT {
       currentTestSettings()
         .map {
           case TestSettings.NotSet =>
             Left(IndexSettingsUpdateError.TestSettingsNotSet)
-          case config: TestSettings.Present =>
-            Right(config)
+          case settings: TestSettings.Present =>
+            Right(settings)
           case _: TestSettings.Invalidated =>
             Left(IndexSettingsUpdateError.TestSettingsInvalidated)
         }
@@ -180,9 +180,9 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     EitherT.right(Task.delay(boot.authServicesMocksProvider.update(mocks)))
   }
 
-  private def saveConfigInIndex[A](newConfig: TestRorSettings.Present,
-                                   onFailure: SavingIndexSettingsError => A): EitherT[Task, A, Unit] = {
-    EitherT(testSettingsManager.saveToIndex(newConfig))
+  private def saveSettingsInIndex[A](newSettings: TestRorSettings.Present,
+                                     onFailure: SavingIndexSettingsError => A): EitherT[Task, A, Unit] = {
+    EitherT(testSettingsManager.saveToIndex(newSettings))
       .leftMap(onFailure)
   }
 
@@ -190,34 +190,34 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
                                                                (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, Unit]] = {
     value {
       for {
-        loadedConfig <- loadRorConfigFromIndex()
-        config <- loadedConfig match {
+        loadedSettings <- loadRorTestSettingsFromIndex()
+        result <- loadedSettings match {
           case TestRorSettings.NotSet =>
-            invalidateTestConfigByIndex[IndexSettingsReloadError]()
-          case TestRorSettings.Present(rawConfig, mocks, expiration) =>
+            invalidateTestSettingsByIndex[IndexSettingsReloadError]()
+          case TestRorSettings.Present(rawSettings, mocks, expiration) =>
             for {
-              _ <- reloadEngine(rawConfig, expiration.validTo, expiration.ttl)
+              _ <- reloadEngine(rawSettings, expiration.validTo, expiration.ttl)
                 .leftMap(IndexSettingsReloadError.ReloadError.apply)
                 .leftWiden[IndexSettingsReloadError]
               _ <- updateMocksProvider[IndexSettingsReloadError](mocks)
             } yield ()
         }
-      } yield config
+      } yield result
     }
   }
 
-  private def loadRorConfigFromIndex(): EitherT[Task, IndexSettingsReloadError, TestRorSettings] = EitherT {
+  private def loadRorTestSettingsFromIndex(): EitherT[Task, IndexSettingsReloadError, TestRorSettings] = EitherT {
     testSettingsManager
       .loadFromIndex()
       .map(_.left.map(IndexSettingsReloadError.LoadingSettingsError.apply))
   }
 
-  private def invalidateTestConfigByIndex[A]()
+  private def invalidateTestSettingsByIndex[A]()
                                             (implicit requestId: RequestId): EitherT[Task, A, Unit] = {
     EitherT.right[A] {
       for {
         _ <-
-          invalidate(keepPreviousConfiguration = false)
+          invalidate(keepPreviousSettings = false)
             .map {
               case Some(_) => ()
               case None => ()
@@ -242,13 +242,13 @@ object TestSettingsBasedReloadableEngine {
     val engine = initialEngine match {
       case TestEngine.NotConfigured =>
         InitialEngine.NotConfigured
-      case TestEngine.Configured(engine, config, expiration) =>
-        InitialEngine.Configured(engine, config, Some(expirationConfig(expiration)))
-      case TestEngine.Invalidated(config, expiration) =>
-        InitialEngine.Invalidated(config, expirationConfig(expiration))
+      case TestEngine.Configured(engine, settings, expiration) =>
+        InitialEngine.Configured(engine, settings, Some(engineExpiration(expiration)))
+      case TestEngine.Invalidated(settings, expiration) =>
+        InitialEngine.Invalidated(settings, engineExpiration(expiration))
     }
     new TestSettingsBasedReloadableEngine(boot, esConfig, engine, reloadInProgress, testSettingsManager)
   }
 
-  private def expirationConfig(config: TestEngine.Expiration) = EngineExpirationConfig(config.ttl, config.validTo)
+  private def engineExpiration(expiration: TestEngine.Expiration) = EngineExpiration(expiration.ttl, expiration.validTo)
 }

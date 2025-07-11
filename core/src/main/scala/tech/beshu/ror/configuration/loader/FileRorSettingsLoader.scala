@@ -26,22 +26,22 @@ import tech.beshu.ror.configuration.loader.FileRorSettingsLoader.Error.FileNotEx
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 
 class FileRorSettingsLoader(rorSettingsFile: File,
-                            rarRorConfigYamlParser: RawRorSettingsYamlParser)
+                            rawRorSettingsYamlParser: RawRorSettingsYamlParser)
   extends RorSettingsLoader[FileRorSettingsLoader.Error] {
 
   override def load(): Task[Either[Error[FileRorSettingsLoader.Error], RawRorSettings]] = {
     val file = rorSettingsFile
     (for {
       _ <- checkIfFileExist(file)
-      config <- loadConfigFromFile(file)
-    } yield config).value
+      settings <- loadSettingsFromFile(file)
+    } yield settings).value
   }
 
   private def checkIfFileExist(file: File): EitherT[Task, Error[FileRorSettingsLoader.Error], File] =
     EitherT.cond(file.exists, file, SpecializedError(FileNotExist(file)))
 
-  private def loadConfigFromFile(file: File): EitherT[Task, Error[FileRorSettingsLoader.Error], RawRorSettings] = {
-    EitherT(rarRorConfigYamlParser.fromFile(file).map(_.left.map(ParsingError.apply)))
+  private def loadSettingsFromFile(file: File): EitherT[Task, Error[FileRorSettingsLoader.Error], RawRorSettings] = {
+    EitherT(rawRorSettingsYamlParser.fromFile(file).map(_.left.map(ParsingError.apply)))
   }
 }
 

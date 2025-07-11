@@ -25,7 +25,7 @@ import squants.information.Information
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadEsConfigError.{FileNotFound, MalformedContent, RorSettingsInactiveWhenXpackSecurityIsEnabled}
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingError.{FileNotFound, MalformedContent, CannotUseRorSslWhenXPackSecurityIsEnabled}
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy.{ForceLoadingFromFile, LoadFromIndexWithFileFallback}
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay, RefreshInterval}
@@ -43,7 +43,7 @@ final case class EsConfigBasedRorSettings(boot: RorBootSettings,
 object EsConfigBasedRorSettings {
 
   def from(esEnv: EsEnv)
-          (implicit systemContext: SystemContext): Task[Either[LoadEsConfigError, EsConfigBasedRorSettings]] = {
+          (implicit systemContext: SystemContext): Task[Either[LoadingError, EsConfigBasedRorSettings]] = {
     val configFile = esEnv.elasticsearchYmlFile
     val result = for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
@@ -81,12 +81,12 @@ object EsConfigBasedRorSettings {
   private def loadRorSslSettings(esEnv: EsEnv,
                                  rorSettingsFromFileParameters: LoadFromFileParameters,
                                  xpackSecurity: XpackSecurity)
-                                (implicit systemContext: SystemContext): EitherT[Task, LoadEsConfigError, Option[RorSslSettings]] = {
+                                (implicit systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
     EitherT(RorSslSettings.load(esEnv, rorSettingsFromFileParameters))
       .leftMap(error => MalformedContent(esEnv.elasticsearchYmlFile, error.message))
       .subflatMap {
         case Some(ssl) if xpackSecurity.enabled =>
-          Left(RorSettingsInactiveWhenXpackSecurityIsEnabled)
+          Left(CannotUseRorSslWhenXPackSecurityIsEnabled)
         case rorSsl@(Some(_) | None) =>
           Right(rorSsl)
       }
@@ -140,11 +140,11 @@ object EsConfigBasedRorSettings {
 
   private final case class XpackSecurity(enabled: Boolean)
 
-  sealed trait LoadEsConfigError
-  object LoadEsConfigError {
-    final case class FileNotFound(file: File) extends LoadEsConfigError
-    final case class MalformedContent(file: File, message: String) extends LoadEsConfigError
-    case object RorSettingsInactiveWhenXpackSecurityIsEnabled extends LoadEsConfigError
+  sealed trait LoadingError
+  object LoadingError {
+    final case class FileNotFound(file: File) extends LoadingError
+    final case class MalformedContent(file: File, message: String) extends LoadingError
+    case object CannotUseRorSslWhenXPackSecurityIsEnabled extends LoadingError
   }
 
   private object decoders {

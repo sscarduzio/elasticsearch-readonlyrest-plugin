@@ -28,10 +28,10 @@ import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.RawSettingsReloadError.{ReloadingFailed, RorInstanceStopped, SettingsUpToDate}
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
-import tech.beshu.ror.boot.engines.ConfigHash.*
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
+import tech.beshu.ror.boot.engines.SettingsHash.*
 import tech.beshu.ror.configuration.loader.RorMainSettingsManager
 import tech.beshu.ror.configuration.loader.SettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.value
 
@@ -46,29 +46,29 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
     name = "main",
     boot = boot,
     esConfig = esConfig,
-    initialEngine = InitialEngine.Configured(engine = initialEngine._1, config = initialEngine._2, expirationConfig = None),
+    initialEngine = InitialEngine.Configured(engine = initialEngine._1, settings = initialEngine._2, expiration = None),
     reloadInProgress = reloadInProgress
   ) {
 
-  def forceReloadAndSave(config: RawRorSettings)
+  def forceReloadAndSave(settings: RawRorSettings)
                         (implicit requestId: RequestId): Task[Either[IndexSettingsReloadWithUpdateError, Unit]] = {
     for {
-      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of provided settings was forced (new engine id=${config.hashString()}) ..."))
+      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of provided settings was forced (new engine id=${settings.hashString()}) ..."))
       reloadResult <- reloadInProgress.withPermit {
         value {
           for {
-            _ <- reloadEngine(config).leftMap(IndexSettingsReloadWithUpdateError.ReloadError.apply)
-            _ <- saveConfig(config)
+            _ <- reloadEngine(settings).leftMap(IndexSettingsReloadWithUpdateError.ReloadError.apply)
+            _ <- saveSettings(settings)
           } yield ()
         }
       }
       _ <- Task.delay(reloadResult match {
         case Right(_) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${config.hashString().show}) settings reloaded!")
-        case Left(ReloadError(SettingsUpToDate(oldConfig))) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${oldConfig.hashString().show}) already loaded!")
+          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${settings.hashString().show}) settings reloaded!")
+        case Left(ReloadError(SettingsUpToDate(oldSettings))) =>
+          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${oldSettings.hashString().show}) already loaded!")
         case Left(ReloadError(ReloadingFailed(StartingFailure(message, Some(ex))))) =>
-          logger.error(s"[${requestId.show}] [${config.hashString()}] Cannot reload ROR settings - failure: ${message.show}", ex)
+          logger.error(s"[${requestId.show}] [${settings.hashString()}] Cannot reload ROR settings - failure: ${message.show}", ex)
         case Left(ReloadError(ReloadingFailed(StartingFailure(message, None)))) =>
           logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${message.show}")
         case Left(ReloadError(RorInstanceStopped)) =>
@@ -84,12 +84,12 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
                           (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, Unit]] = {
     for {
       _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of in-index settings was forced ..."))
-      reloadResult <- reloadEngineUsingIndexConfig()
+      reloadResult <- reloadEngineUsingIndexSettings()
       _ <- Task.delay(reloadResult match {
-        case Right(config) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${config.hashString().show}) settings reloaded!")
-        case Left(IndexSettingsReloadError.ReloadError(SettingsUpToDate(config))) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${config.hashString().show}) already loaded!")
+        case Right(settings) =>
+          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${settings.hashString().show}) settings reloaded!")
+        case Left(IndexSettingsReloadError.ReloadError(SettingsUpToDate(settings))) =>
+          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${settings.hashString().show}) already loaded!")
         case Left(IndexSettingsReloadError.ReloadError(ReloadingFailed(StartingFailure(message, Some(ex))))) =>
           logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${message.show}", ex)
         case Left(IndexSettingsReloadError.ReloadError(ReloadingFailed(StartingFailure(message, None)))) =>
@@ -102,8 +102,8 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
     } yield reloadResult.map(_ => ())
   }
 
-  def reloadEngineUsingIndexConfig()
-                                  (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, RawRorSettings]] = {
+  def reloadEngineUsingIndexSettings()
+                                    (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, RawRorSettings]] = {
     reloadInProgress.withPermit {
       reloadEngineUsingIndexSettingsWithoutPermit()
     }
@@ -120,7 +120,7 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
     result.value
   }
 
-  private def saveConfig(settings: RawRorSettings): EitherT[Task, IndexSettingsReloadWithUpdateError, Unit] = EitherT {
+  private def saveSettings(settings: RawRorSettings): EitherT[Task, IndexSettingsReloadWithUpdateError, Unit] = EitherT {
     for {
       saveResult <- settingsManager.saveToIndex(settings)
     } yield saveResult.left.map(IndexSettingsReloadWithUpdateError.IndexSettingsSavingError.apply)

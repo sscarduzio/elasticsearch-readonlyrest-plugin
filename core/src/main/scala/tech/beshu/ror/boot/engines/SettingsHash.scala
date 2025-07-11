@@ -21,11 +21,11 @@ import tech.beshu.ror.utils.Hasher
 
 import scala.language.implicitConversions
 
-private[engines] class ConfigHash(val config: RawRorSettings) extends AnyVal {
+private[engines] class SettingsHash(val settings: RawRorSettings) extends AnyVal {
 
-  def hashString(): String = Hasher.Sha1.hashString(config.raw)
+  def hashString(): String = Hasher.Sha1.hashString(settings.raw)
 }
 
-private[engines] object ConfigHash {
-  implicit def toConfigHash(config: RawRorSettings): ConfigHash = new ConfigHash(config)
+private[engines] object SettingsHash {
+  implicit def toSettingsHash(config: RawRorSettings): SettingsHash = new SettingsHash(config)
 }

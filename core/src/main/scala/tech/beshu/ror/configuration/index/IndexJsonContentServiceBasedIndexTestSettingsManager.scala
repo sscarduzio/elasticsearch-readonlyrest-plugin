@@ -53,7 +53,7 @@ import scala.util.Try
 
 final class IndexJsonContentServiceBasedIndexTestSettingsManager(override val settingsIndex: RorSettingsIndex,
                                                                  indexJsonContentService: IndexJsonContentService,
-                                                                 rarRorConfigYamlParser: RawRorSettingsYamlParser)
+                                                                 rawRorSettingsYamlParser: RawRorSettingsYamlParser)
   extends IndexSettingsManager[TestRorSettings]
     with Logging {
 
@@ -91,7 +91,7 @@ final class IndexJsonContentServiceBasedIndexTestSettingsManager(override val se
         rawRorConfigString <- getConfigProperty(config, Const.properties.settings)
         authMocksConfigString <- getConfigProperty(config, Const.properties.mocks)
         rawRorConfig <- EitherT {
-          rarRorConfigYamlParser
+          rawRorSettingsYamlParser
             .fromString(rawRorConfigString)
             .map(_.left.map(ParsingError.apply))
         }

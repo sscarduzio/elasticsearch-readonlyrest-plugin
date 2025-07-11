@@ -31,7 +31,7 @@ import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, Cann
 
 final class IndexJsonContentServiceBasedIndexMainSettingsManager(override val settingsIndex: RorSettingsIndex,
                                                                  indexJsonContentService: IndexJsonContentService,
-                                                                 rarRorConfigYamlParser: RawRorSettingsYamlParser)
+                                                                 rawRorSettingsYamlParser: RawRorSettingsYamlParser)
   extends IndexSettingsManager[RawRorSettings]
   with Logging {
 
@@ -43,7 +43,7 @@ final class IndexJsonContentServiceBasedIndexMainSettingsManager(override val se
           source
             .find(_._1 == Const.settingsKey)
             .map { case (_, rorYamlString) =>
-              rarRorConfigYamlParser
+              rawRorSettingsYamlParser
                 .fromString(rorYamlString)
                 .map(_.left.map(ParsingError.apply))
             }
