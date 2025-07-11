@@ -72,10 +72,11 @@ class RorTestSettingsLoader(indexConfigManager: IndexSettingsManager[TestRorSett
   private def loadTestRorConfigFromIndex(settings: LoadFromIndexSettings) = {
     val rorConfigIndex = settings.rorConfigIndex
     val loadingDelay = settings.loadingDelay
+    // todo: log is ok?
     logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${rorConfigIndex.index.show}) ...")
     EitherT {
       indexConfigManager
-        .load(rorConfigIndex)
+        .load()
         .delayExecution(loadingDelay.value.value)
     }
       .map { testConfig =>

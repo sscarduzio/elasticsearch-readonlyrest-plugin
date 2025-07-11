@@ -553,7 +553,6 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
-            timeoutInMinutes: 180
 
           - script: |
               set -e
@@ -574,6 +573,7 @@ stages:
 
               echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
+            timeoutInMinutes: 360
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)

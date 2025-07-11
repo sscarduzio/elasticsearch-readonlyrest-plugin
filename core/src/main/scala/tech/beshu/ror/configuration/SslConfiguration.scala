@@ -28,9 +28,6 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.SSLCertHelper
 
-import java.io.File as JFile
-import java.nio.file.{Path, Paths}
-
 sealed trait RorSsl
 object RorSsl extends Logging {
 
@@ -62,8 +59,8 @@ object RorSsl extends Logging {
 
   def load(esEnv: EsEnv, loadRorFromFileSettings: LoadFromFileSettings)
           (implicit systemContext: SystemContext): Task[Either[MalformedSettings, Option[RorSsl]]] = Task {
-    implicit val sslDecoder: Decoder[Option[RorSsl]] = SslDecoders.rorSslDecoder(esEnv.configPath)
-    val esConfigFile = esEnv.elasticsearchConfig
+    implicit val sslDecoder: Decoder[Option[RorSsl]] = SslDecoders.rorSslDecoder(esEnv.configDir)
+    val esConfigFile = esEnv.elasticsearchYmlFile
     loadSslConfigFromFile(esConfigFile)
       .fold(
         error => Left(error),
@@ -114,12 +111,12 @@ sealed trait SslConfiguration {
 object SslConfiguration {
 
   final case class KeystorePassword(value: String)
-  final case class KeystoreFile(value: JFile)
+  final case class KeystoreFile(value: File)
   final case class TruststorePassword(value: String)
-  final case class TruststoreFile(value: JFile)
-  final case class ServerCertificateKeyFile(value: JFile)
-  final case class ServerCertificateFile(value: JFile)
-  final case class ClientTrustedCertificateFile(value: JFile)
+  final case class TruststoreFile(value: File)
+  final case class ServerCertificateKeyFile(value: File)
+  final case class ServerCertificateFile(value: File)
+  final case class ClientTrustedCertificateFile(value: File)
   final case class KeyPass(value: String)
   final case class KeyAlias(value: String)
   final case class Cipher(value: String)
@@ -211,10 +208,10 @@ private object SslDecoders extends Logging {
   private implicit val cipherDecoder: Decoder[Cipher] = DecoderHelpers.decodeStringLike.map(Cipher.apply)
   private implicit val protocolDecoder: Decoder[Protocol] = DecoderHelpers.decodeStringLike.map(Protocol.apply)
 
-  private def clientCertificateConfigurationDecoder(basePath: Path): Decoder[Option[ClientCertificateConfiguration]] = {
-    val jFileDecoder: Decoder[JFile] = fileDecoder(basePath)
-    implicit val truststoreFileDecoder = jFileDecoder.map(TruststoreFile.apply)
-    implicit val clientTrustedCertificateFileDecoder = jFileDecoder.map(ClientTrustedCertificateFile.apply)
+  private def clientCertificateConfigurationDecoder(basePath: File): Decoder[Option[ClientCertificateConfiguration]] = {
+    val aFileDecoder: Decoder[File] = fileDecoder(basePath)
+    implicit val truststoreFileDecoder = aFileDecoder.map(TruststoreFile.apply)
+    implicit val clientTrustedCertificateFileDecoder = aFileDecoder.map(ClientTrustedCertificateFile.apply)
 
     val truststoreBasedClientCertificateConfigurationDecoder: Decoder[ClientCertificateConfiguration] =
       Decoder.forProduct2(consts.truststoreFile, consts.truststorePass)(ClientCertificateConfiguration.TruststoreBasedConfiguration.apply)
@@ -246,11 +243,11 @@ private object SslDecoders extends Logging {
     }
   }
 
-  private def serverCertificateConfigurationDecoder(basePath: Path): Decoder[ServerCertificateConfiguration] = {
-    val jFileDecoder: Decoder[JFile] = fileDecoder(basePath)
-    implicit val keystoreFileDecoder = jFileDecoder.map(KeystoreFile.apply)
-    implicit val serverCertificateFileDecoder = jFileDecoder.map(ServerCertificateFile.apply)
-    implicit val serverCertificateKeyFileDecoder = jFileDecoder.map(ServerCertificateKeyFile.apply)
+  private def serverCertificateConfigurationDecoder(basePath: File): Decoder[ServerCertificateConfiguration] = {
+    val aFileDecoder: Decoder[File] = fileDecoder(basePath)
+    implicit val keystoreFileDecoder = aFileDecoder.map(KeystoreFile.apply)
+    implicit val serverCertificateFileDecoder = aFileDecoder.map(ServerCertificateFile.apply)
+    implicit val serverCertificateKeyFileDecoder = aFileDecoder.map(ServerCertificateKeyFile.apply)
     val keystoreBasedServerCertificateConfigurationDecoder: Decoder[ServerCertificateConfiguration] =
       Decoder.forProduct4(consts.keystoreFile, consts.keystorePass, consts.keyAlias, consts.keyPass)(ServerCertificateConfiguration.KeystoreBasedConfiguration.apply)
     val fileBasedServerCertificateConfigurationDecoder: Decoder[ServerCertificateConfiguration] =
@@ -281,7 +278,7 @@ private object SslDecoders extends Logging {
     }
   }
 
-  def rorSslDecoder(basePath: Path): Decoder[Option[RorSsl]] = Decoder.instance { c =>
+  def rorSslDecoder(basePath: File): Decoder[Option[RorSsl]] = Decoder.instance { c =>
     implicit val isFipsCompliantDecoder: Decoder[FipsMode] = Decoder.decodeString.emap {
       case "NON_FIPS" => Right(FipsMode.NonFips)
       case "SSL_ONLY" => Right(FipsMode.SslOnly)
@@ -307,7 +304,7 @@ private object SslDecoders extends Logging {
     }
   }
 
-  private def sslInternodeConfigurationDecoder(basePath: Path,
+  private def sslInternodeConfigurationDecoder(basePath: File,
                                                fipsMode: FipsMode): Decoder[Option[InternodeSslConfiguration]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
@@ -329,7 +326,7 @@ private object SslDecoders extends Logging {
     }
   }
 
-  private def sslExternalConfigurationDecoder(basePath: Path,
+  private def sslExternalConfigurationDecoder(basePath: File,
                                               fipsMode: FipsMode): Decoder[Option[ExternalSslConfiguration]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
@@ -347,7 +344,7 @@ private object SslDecoders extends Logging {
     }
   }
 
-  private def sslCommonPropertiesDecoder(basePath: Path, c: HCursor) = {
+  private def sslCommonPropertiesDecoder(basePath: File, c: HCursor) = {
     for {
       ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
       protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
@@ -371,8 +368,6 @@ private object SslDecoders extends Logging {
     } yield result
   }
 
-  private def fileDecoder(basePath: Path): Decoder[JFile] =
-    Decoder
-      .decodeString
-      .map { str => basePath.resolve(Paths.get(str)).toFile }
+  private def fileDecoder(basePath: File): Decoder[File] =
+    Decoder.decodeString.map { str => basePath / str }
 }

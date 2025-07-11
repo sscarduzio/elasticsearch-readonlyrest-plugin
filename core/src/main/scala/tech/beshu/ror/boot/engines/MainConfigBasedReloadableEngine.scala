@@ -21,7 +21,7 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.boot.RorInstance.*
@@ -122,13 +122,13 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
 
   private def saveConfig(newConfig: RawRorSettings): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
     for {
-      saveResult <- indexConfigManager.save(rorConfigurationIndex, newConfig)
+      saveResult <- indexConfigManager.save(newConfig)
     } yield saveResult.left.map(IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply)
   }
 
   private def loadRorConfigFromIndex() = {
     indexConfigManager
-      .load(rorConfigurationIndex)
+      .load()
       .map(_.left.map(IndexConfigReloadError.LoadingConfigError.apply))
   }
 

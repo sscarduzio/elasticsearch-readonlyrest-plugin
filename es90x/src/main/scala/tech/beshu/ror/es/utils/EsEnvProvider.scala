@@ -23,8 +23,8 @@ import tech.beshu.ror.es.{EsEnv, EsVersion}
 object EsEnvProvider {
   def create(environment: Environment): EsEnv = {
     EsEnv(
-      configPath = environment.configDir(),
-      modulesPath = environment.modulesDir(),
+      configDir = environment.configDir(),
+      modulesDir = environment.modulesDir(),
       esVersion = EsVersion(major = Version.CURRENT.major, minor = Version.CURRENT.minor, revision = Version.CURRENT.revision)
     )
   }

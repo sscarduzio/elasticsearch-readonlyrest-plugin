@@ -16,11 +16,9 @@
  */
 package tech.beshu.ror.configuration
 
-import better.files.File
 import cats.data.NonEmptyList
 import io.circe.Decoder
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.configuration.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.es.EsEnv
@@ -30,18 +28,13 @@ import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 final case class RorBootSettings(rorNotStartedResponse: RorNotStartedResponse,
                                  rorFailedToStartResponse: RorFailedToStartResponse)
 
-object RorBootSettings extends Logging {
+object RorBootSettings {
 
   def load(env: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[MalformedSettings, RorBootSettings]] = Task {
-    implicit val rorBootConfigurationDecoder: Decoder[RorBootSettings] = Decoders.decoder
-    loadRorBootstrapSettings(env.elasticsearchConfig)
-  }
-
-  private def loadRorBootstrapSettings(configFile: File)
-                                      (implicit decoder: Decoder[RorBootSettings],
-                                       systemContext: SystemContext) = {
-    new YamlFileBasedSettingsLoader(configFile).loadSettings[RorBootSettings](settingsName = "ROR boot settings")
+    implicit val rorBootSettingsDecoder: Decoder[RorBootSettings] = Decoders.decoder
+    new YamlFileBasedSettingsLoader(env.elasticsearchYmlFile)
+      .loadSettings[RorBootSettings](settingsName = "ROR boot settings")
   }
 
   final case class RorNotStartedResponse(httpCode: RorNotStartedResponse.HttpCode)
@@ -63,7 +56,7 @@ object RorBootSettings extends Logging {
   }
 }
 
-private object Decoders extends Logging {
+private object Decoders {
 
   object consts {
     val rorSection = "readonlyrest"

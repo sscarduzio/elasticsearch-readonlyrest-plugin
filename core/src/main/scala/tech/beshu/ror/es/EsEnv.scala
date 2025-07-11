@@ -16,23 +16,18 @@
  */
 package tech.beshu.ror.es
 
-import better.files.File
-
-import java.nio.file.Path
+import better.files._
 import scala.util.Try
 
-final case class EsEnv(configPath: Path, modulesPath: Path, esVersion: EsVersion) {
+final case class EsEnv(configDir: File, modulesDir: File, esVersion: EsVersion) {
 
   def isOssDistribution: Boolean = {
     Try {
-      !modulesPath.resolve("x-pack-security").toFile.exists()
+      !(modulesDir / "x-pack-security").exists
     } getOrElse {
       false
     }
   }
 
-  def elasticsearchConfig: File = {
-    File(s"${configPath.toAbsolutePath}/elasticsearch.yml")
-  }
-
+  def elasticsearchYmlFile: File = configDir / "elasticsearch.yml"
 }

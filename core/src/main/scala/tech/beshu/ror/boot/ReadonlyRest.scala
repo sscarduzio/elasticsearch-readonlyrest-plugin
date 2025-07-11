@@ -191,12 +191,11 @@ class ReadonlyRest(coreFactory: CoreFactory,
     EitherT.right[StartingFailure] {
       val rorSettingsFile = esConfig.loadingRorCoreStrategy.rorSettingsFile
       val rorSettingsMaxSize = esConfig.loadingRorCoreStrategy.rorSettingsMaxSize
-      val rorConfigIndex = esConfig.rorConfigIndex
       esConfig.loadingRorCoreStrategy match {
         case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, MainEngine(engine, loadedConfig), testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize, rorConfigIndex)
+          RorInstance.createWithoutPeriodicIndexCheck(this, esConfig, MainEngine(engine, loadedConfig), testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize)
         case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
-          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, loadedConfig), testEngine, indexConfigManager, indexTestConfigManager, settings.refreshInterval, rorSettingsFile, rorSettingsMaxSize, rorConfigIndex)
+          RorInstance.createWithPeriodicIndexCheck(this, esConfig, MainEngine(engine, loadedConfig), testEngine, indexConfigManager, indexTestConfigManager, settings.refreshInterval, rorSettingsFile, rorSettingsMaxSize)
       }
     }
   }

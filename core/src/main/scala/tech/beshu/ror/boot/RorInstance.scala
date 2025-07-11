@@ -28,15 +28,15 @@ import org.apache.logging.log4j.scala.Logging
 import squants.information.Information
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.RorDependencies
 import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestConfigApi}
 import tech.beshu.ror.boot.engines.{Engines, MainConfigBasedReloadableEngine, TestConfigBasedReloadableEngine}
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
-import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
 import tech.beshu.ror.configuration.index.IndexSettingsManager
-import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error
+import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
 import tech.beshu.ror.configuration.loader.FileRorSettingsLoader
+import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -52,7 +52,6 @@ class RorInstance private(boot: ReadonlyRest,
                           testReloadInProgress: Semaphore[Task],
                           indexConfigManager: IndexSettingsManager[RawRorSettings],
                           indexTestConfigManager: IndexSettingsManager[TestRorSettings],
-                          rorSettingsIndex: RorConfigurationIndex, // todo: do we need this?
                           rorSettingsFile: File,
                           rorSettingsMaxSize: Information)
                          (implicit systemContext: SystemContext,
@@ -281,11 +280,10 @@ object RorInstance {
                                    indexTestConfigManager: IndexSettingsManager[TestRorSettings],
                                    refreshInterval: RefreshInterval,
                                    rorSettingsFile: File,
-                                   rorSettingsMaxSize: Information,
-                                   rorSettingsIndex: RorConfigurationIndex)
+                                   rorSettingsMaxSize: Information)
                                   (implicit systemContext: SystemContext,
                                    scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, esConfig, Mode.WithPeriodicIndexCheck(refreshInterval), mainEngine, testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize, rorSettingsIndex)
+    create(boot, esConfig, Mode.WithPeriodicIndexCheck(refreshInterval), mainEngine, testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
@@ -295,11 +293,10 @@ object RorInstance {
                                       indexConfigManager: IndexSettingsManager[RawRorSettings],
                                       indexTestConfigManager: IndexSettingsManager[TestRorSettings],
                                       rorSettingsFile: File,
-                                      rorSettingsMaxSize: Information,
-                                      rorSettingsIndex: RorConfigurationIndex)
+                                      rorSettingsMaxSize: Information)
                                      (implicit systemContext: SystemContext,
                                       scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize, rorSettingsIndex)
+    create(boot, esConfig, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize)
   }
 
   private def create(boot: ReadonlyRest,
@@ -310,8 +307,7 @@ object RorInstance {
                      indexConfigManager: IndexSettingsManager[RawRorSettings],
                      indexTestConfigManager: IndexSettingsManager[TestRorSettings],
                      rorSettingsFile: File,
-                     rorSettingsMaxSize: Information,
-                     rorSettingsIndex: RorConfigurationIndex)
+                     rorSettingsMaxSize: Information)
                     (implicit systemContext: SystemContext,
                      scheduler: Scheduler) = {
     for {
@@ -327,7 +323,6 @@ object RorInstance {
       testReloadInProgress = isTestReloadInProgressSemaphore,
       indexConfigManager = indexConfigManager,
       indexTestConfigManager = indexTestConfigManager,
-      rorSettingsIndex = rorSettingsIndex,
       rorSettingsFile = rorSettingsFile,
       rorSettingsMaxSize = rorSettingsMaxSize
     )

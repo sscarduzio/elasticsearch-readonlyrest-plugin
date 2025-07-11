@@ -40,10 +40,10 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
   "Free monad loader program" should {
     "load forced file" in {
       val steps = List(
-        (ForceLoadRorConfigFromFile(esEnv.configPath), Right(ForcedFileConfig(rawRorConfig))),
+        (ForceLoadRorConfigFromFile(esEnv.configDir), Right(ForcedFileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = RorMainSettingsManager.loadFromFile(esEnv.configPath)
+      val program = RorMainSettingsManager.loadFromFile(esEnv.configDir)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, ForcedFileConfig[RawRorSettings]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -59,7 +59,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         loadingDelay = loadingDelay,
         loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(1),
         loadingAttemptsInterval = LoadingAttemptsInterval.unsafeFrom(1 second),
-        fallbackConfigFilePath = esEnv.configPath
+        fallbackConfigFilePath = esEnv.configDir
       )
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorSettings]]]
@@ -78,7 +78,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         loadingDelay = loadingDelay,
         loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(5),
         loadingAttemptsInterval = loadingAttemptsInterval,
-        fallbackConfigFilePath = esEnv.configPath
+        fallbackConfigFilePath = esEnv.configDir
       )
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorSettings]]]
@@ -93,7 +93,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         (LoadRorConfigFromIndex(rorConfigurationIndex, loadingAttemptsInterval.value), Left(LoadedRorConfig.IndexNotExist)),
         (LoadRorConfigFromIndex(rorConfigurationIndex, loadingAttemptsInterval.value), Left(LoadedRorConfig.IndexNotExist)),
         (LoadRorConfigFromIndex(rorConfigurationIndex, loadingAttemptsInterval.value), Left(LoadedRorConfig.IndexNotExist)),
-        (LoadRorConfigFromFile(esEnv.configPath), Right(FileConfig(rawRorConfig))),
+        (LoadRorConfigFromFile(esEnv.configDir), Right(FileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
       val program = RorMainSettingsManager.loadFromIndexWithFileFallback(
@@ -101,7 +101,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         loadingDelay = loadingDelay,
         loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(5),
         loadingAttemptsInterval = loadingAttemptsInterval,
-        fallbackConfigFilePath = esEnv.configPath
+        fallbackConfigFilePath = esEnv.configDir
       )
       val result = program.foldMap(compiler)
       result.toOption.get shouldBe FileConfig(rawRorConfig)
@@ -117,7 +117,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         loadingDelay = loadingDelay,
         loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(5),
         loadingAttemptsInterval = LoadingAttemptsInterval.unsafeFrom(1 second),
-        fallbackConfigFilePath = esEnv.configPath
+        fallbackConfigFilePath = esEnv.configDir
       )
       val result = program.foldMap(compiler)
       result shouldBe a[Left[LoadedRorConfig.IndexUnknownStructure.type, _]]
@@ -133,7 +133,7 @@ class LoadRawRorSettingsTest extends AnyWordSpec with EitherValues{
         loadingDelay = loadingDelay,
         loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(5),
         loadingAttemptsInterval = LoadingAttemptsInterval.unsafeFrom(1 second),
-        fallbackConfigFilePath = esEnv.configPath
+        fallbackConfigFilePath = esEnv.configDir
       )
       val result = program.foldMap(compiler)
       result shouldBe a[Left[LoadedRorConfig.IndexParsingError, _]]

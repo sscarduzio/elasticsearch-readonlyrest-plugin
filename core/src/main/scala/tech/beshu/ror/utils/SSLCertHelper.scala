@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils
 
+import better.files.*
 import cats.effect.{IO, Resource}
 import io.netty.buffer.ByteBufAllocator
 import io.netty.channel.ChannelHandlerContext
@@ -32,7 +33,7 @@ import tech.beshu.ror.configuration.SslConfiguration.ClientCertificateConfigurat
 import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.KeystoreBasedConfiguration
 import tech.beshu.ror.implicits.*
 
-import java.io.{File, FileInputStream, FileReader, IOException}
+import java.io.{FileInputStream, FileReader, IOException}
 import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.{KeyStore, PrivateKey}
 import javax.net.ssl.{KeyManagerFactory, SNIServerName, SSLEngine, TrustManagerFactory}
@@ -201,7 +202,7 @@ object SSLCertHelper extends Logging {
 
   private def loadKeystoreFromFile(keystoreFile: File, password: Array[Char], fipsCompliant: Boolean): IO[KeyStore] = {
     Resource
-      .fromAutoCloseable(IO(new FileInputStream(keystoreFile)))
+      .fromAutoCloseable(IO(new FileInputStream(keystoreFile.toJava)))
       .use { keystoreFile =>
         IO {
           val keystore = if (fipsCompliant) {
@@ -270,7 +271,7 @@ object SSLCertHelper extends Logging {
 
   private def loadPrivateKey(file: File): IO[PrivateKey] = {
     Resource
-      .fromAutoCloseable(IO(new FileReader(file)))
+      .fromAutoCloseable(IO(new FileReader(file.toJava)))
       .use { privateKeyFileReader =>
         IO {
           val pemParser = new PEMParser(privateKeyFileReader)
@@ -283,7 +284,7 @@ object SSLCertHelper extends Logging {
 
   private def loadCertificateChain(file: File): IO[Array[X509Certificate]] = {
     Resource
-      .fromAutoCloseable(IO(new FileInputStream(file)))
+      .fromAutoCloseable(IO(new FileInputStream(file.toJava)))
       .use { certificateChainFile =>
         IO {
           val certFactory = CertificateFactory.getInstance("X.509")
