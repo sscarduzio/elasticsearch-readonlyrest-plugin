@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.boot
 
-import better.files.File
 import cats.Show
 import cats.effect.Resource
 import cats.implicits.toShow
@@ -30,14 +29,12 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.RorDependencies
-import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestConfigApi}
-import tech.beshu.ror.boot.engines.{Engines, MainConfigBasedReloadableEngine, TestConfigBasedReloadableEngine}
+import tech.beshu.ror.api.{AuthMockApi, MainRorSettingsApi, TestRorSettingsApi}
+import tech.beshu.ror.boot.engines.{Engines, MainSettingsBasedReloadableEngine, TestSettingsBasedReloadableEngine}
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
-import tech.beshu.ror.configuration.index.IndexSettingsManager
-import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
-import tech.beshu.ror.configuration.loader.FileRorSettingsLoader
-import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
+import tech.beshu.ror.configuration.loader.SettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.loader.{RorMainSettingsManager, RorTestSettingsManager}
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -46,13 +43,12 @@ import java.time.Instant
 class RorInstance private(boot: ReadonlyRest,
                           mode: RorInstance.Mode,
                           esConfig: EsConfigBasedRorSettings,
-                          initialEngine: ReadonlyRest.MainEngine,
+                          mainInitialEngine: ReadonlyRest.MainEngine,
                           mainReloadInProgress: Semaphore[Task],
-                          initialTestEngine: ReadonlyRest.TestEngine,
+                          mainSettingsManager: RorMainSettingsManager,
+                          testInitialEngine: ReadonlyRest.TestEngine,
                           testReloadInProgress: Semaphore[Task],
-                          indexConfigManager: IndexSettingsManager[RawRorSettings],
-                          indexTestConfigManager: IndexSettingsManager[TestRorSettings],
-                          rorSettingsFile: File,
+                          testSettingsManager: RorTestSettingsManager,
                           rorSettingsMaxSize: Information)
                          (implicit systemContext: SystemContext,
                           scheduler: Scheduler)
@@ -62,7 +58,7 @@ class RorInstance private(boot: ReadonlyRest,
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
 
   logger.info("ReadonlyREST was loaded ...")
-  private val configsReloadTask = mode match {
+  private val enginesReloadTask = mode match {
     case Mode.WithPeriodicIndexCheck(RefreshInterval.Enabled(interval)) =>
       scheduleEnginesReload(interval)
     case Mode.WithPeriodicIndexCheck(RefreshInterval.Disabled) | Mode.NoPeriodicIndexCheck =>
@@ -70,79 +66,78 @@ class RorInstance private(boot: ReadonlyRest,
       Cancelable.empty
   }
 
-  private val aMainConfigEngine = new MainConfigBasedReloadableEngine(
+  private val theMainSettingsEngine = new MainSettingsBasedReloadableEngine(
     boot,
     esConfig,
-    (initialEngine.engine, initialEngine.config),
+    (mainInitialEngine.engine, mainInitialEngine.settings),
     mainReloadInProgress,
-    indexConfigManager
+    mainSettingsManager
   )
-  private val anTestConfigEngine = TestConfigBasedReloadableEngine.create(
+  private val theTestSettingsEngine = TestSettingsBasedReloadableEngine.create(
     boot,
     esConfig,
-    initialTestEngine,
+    testInitialEngine,
     testReloadInProgress,
-    indexTestConfigManager
+    testSettingsManager
   )
 
-  private val rarRorConfigYamlParser = new RawRorSettingsYamlParser(rorSettingsMaxSize)
+  private val rarRorSettingsYamlParser = new RawRorSettingsYamlParser(rorSettingsMaxSize)
 
-  private val configRestApi = new ConfigApi(
+  private val mainSettingsRestApi = new MainRorSettingsApi(
     rorInstance = this,
-    rarRorConfigYamlParser,
-    indexConfigManager,
-    new FileRorSettingsLoader(rorSettingsFile, rarRorConfigYamlParser)
+    rarRorSettingsYamlParser,
+    mainSettingsManager
   )
 
   private val authMockRestApi = new AuthMockApi(rorInstance = this)
 
-  private val testConfigRestApi = new TestConfigApi(rorInstance = this, rarRorConfigYamlParser)
+  private val testSettingsRestApi = new TestRorSettingsApi(rorInstance = this, rarRorSettingsYamlParser)
 
-  def engines: Option[Engines] = aMainConfigEngine.engine.map(Engines(_, anTestConfigEngine.engine))
+  def engines: Option[Engines] = theMainSettingsEngine.engine.map(Engines(_, theTestSettingsEngine.engine))
 
-  def configApi: ConfigApi = configRestApi
+  def mainSettingsApi: MainRorSettingsApi = mainSettingsRestApi
 
   def authMockApi: AuthMockApi = authMockRestApi
 
-  def testConfigApi: TestConfigApi = testConfigRestApi
+  def testSettingsApi: TestRorSettingsApi = testSettingsRestApi
 
   def mocksProvider: MocksProvider = boot.authServicesMocksProvider
 
   def forceReloadFromIndex()
-                          (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, Unit]] =
-    aMainConfigEngine.forceReloadFromIndex()
+                          (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, Unit]] =
+    theMainSettingsEngine.forceReloadFromIndex()
 
-  def forceReloadAndSave(config: RawRorSettings)
-                        (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] =
-    aMainConfigEngine.forceReloadAndSave(config)
+  def forceReloadAndSave(settings: RawRorSettings)
+                        (implicit requestId: RequestId): Task[Either[IndexSettingsReloadWithUpdateError, Unit]] =
+    theMainSettingsEngine.forceReloadAndSave(settings)
 
-  def currentTestConfig()
-                       (implicit requestId: RequestId): Task[TestConfig] = {
-    anTestConfigEngine.currentTestConfig()
+  def currentTestSettings()
+                         (implicit requestId: RequestId): Task[TestSettings] = {
+    theTestSettingsEngine.currentTestSettings()
   }
 
-  def forceReloadTestConfigEngine(config: RawRorSettings,
-                                  ttl: PositiveFiniteDuration)
-                                 (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestConfig.Present]] = {
-    anTestConfigEngine.forceReloadTestConfigEngine(config, ttl)
+  def forceReloadTestSettingsEngine(settings: RawRorSettings,
+                                    ttl: PositiveFiniteDuration)
+                                   (implicit requestId: RequestId): Task[Either[IndexSettingsReloadWithUpdateError, TestSettings.Present]] = {
+    theTestSettingsEngine.forceReloadTestSettingsEngine(settings, ttl)
   }
 
-  def invalidateTestConfigEngine()
-                                (implicit requestId: RequestId): Task[Either[IndexConfigInvalidationError, Unit]] = {
-    anTestConfigEngine.invalidateTestConfigEngine()
+  def invalidateTestSettingsEngine()
+                                  (implicit requestId: RequestId): Task[Either[IndexSettingsInvalidationError, Unit]] = {
+    theTestSettingsEngine.invalidateTestSettingsEngine()
   }
 
   def updateAuthMocks(mocks: AuthServicesMocks)
-                     (implicit requestId: RequestId): Task[Either[IndexConfigUpdateError, Unit]] = {
-    anTestConfigEngine.saveConfig(mocks)
+                     (implicit requestId: RequestId): Task[Either[IndexSettingsUpdateError, Unit]] = {
+    theTestSettingsEngine.saveServicesMocks(mocks)
   }
 
   def stop(): Task[Unit] = {
     implicit val requestId: RequestId = RequestId("ES sigterm")
     for {
-      _ <- Task.delay(configsReloadTask.cancel())
-      _ <- anTestConfigEngine.stop()
-      _ <- aMainConfigEngine.stop()
+      _ <- Task.delay(enginesReloadTask.cancel())
+      _ <- theTestSettingsEngine.stop()
+      _ <- theMainSettingsEngine.stop()
     } yield ()
   }
 
@@ -150,51 +145,51 @@ class RorInstance private(boot: ReadonlyRest,
     val reloadTask = { (requestId: RequestId) =>
       Task.sequence {
         Seq(
-          tryMainEngineReload(requestId).map(result => (ConfigType.Main, result)),
-          tryTestEngineReload(requestId).map(result => (ConfigType.Test, result))
+          tryMainEngineReload(requestId).map(result => (SettingsType.Main, result)),
+          tryTestEngineReload(requestId).map(result => (SettingsType.Test, result))
         )
       }
     }
-    scheduleIndexConfigChecking(interval, reloadTask)
+    scheduleIndexSettingsChecking(interval, reloadTask)
   }
 
-  private def scheduleIndexConfigChecking(interval: PositiveFiniteDuration,
-                                          reloadTask: RequestId => Task[Seq[(ConfigType, Either[ScheduledReloadError, Unit])]]): Cancelable = {
+  private def scheduleIndexSettingsChecking(interval: PositiveFiniteDuration,
+                                          reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]]): Cancelable = {
     logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within ${interval.show}")
     scheduler.scheduleOnce(interval.value) {
       implicit val requestId: RequestId = RequestId(systemContext.uuidProvider.random.toString)
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ReadonlyREST configs from index ...")
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ReadonlyREST settings from index ...")
       reloadTask(requestId)
         .runAsync {
           case Right(reloadResults) =>
-            reloadResults.foreach(logConfigReloadResult)
-            scheduleIndexConfigChecking(interval, reloadTask)
+            reloadResults.foreach(logSettingsReloadResult)
+            scheduleIndexSettingsChecking(interval, reloadTask)
           case Left(ex) =>
-            logger.error(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Checking index config failed: error", ex)
-            scheduleIndexConfigChecking(interval, reloadTask)
+            logger.error(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Checking index settings failed: error", ex)
+            scheduleIndexSettingsChecking(interval, reloadTask)
         }
     }
   }
 
-  private def logConfigReloadResult(configReloadResult: (ConfigType, Either[ScheduledReloadError, Unit]))
-                                   (implicit requestId: RequestId): Unit = configReloadResult match {
+  private def logSettingsReloadResult(settingsReloadResult: (SettingsType, Either[ScheduledReloadError, Unit]))
+                                   (implicit requestId: RequestId): Unit = settingsReloadResult match {
     case (_, Right(())) =>
     case (name, Left(ReloadingInProgress)) =>
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Reloading of ${name.show} engine in progress ... skipping")
-    case (name, Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate(_))))) =>
+    case (name, Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.SettingsUpToDate(_))))) =>
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ${name.show} settings are up to date. Nothing to reload.")
-    case (name, Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)))) =>
+    case (name, Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.RorInstanceStopped)))) =>
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Stopping periodic ${name.show} settings check - application is being stopped")
-    case (name, Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(startingFailure))))) =>
+    case (name, Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.ReloadingFailed(startingFailure))))) =>
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ReadonlyREST ${name.show} engine starting failed: ${startingFailure.message.show}")
-    case (name, Left(EngineReloadError(IndexConfigReloadError.LoadingConfigError(error)))) =>
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ${name.show} config from index failed: ${error.show}")
+    case (name, Left(EngineReloadError(IndexSettingsReloadError.LoadingSettingsError(error)))) =>
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ${name.show} settings from index failed: ${error.show}")
   }
 
   private def tryMainEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
     withGuard(mainReloadInProgress) {
-      aMainConfigEngine
-        .reloadEngineUsingIndexConfigWithoutPermit()(requestId)
+      theMainSettingsEngine
+        .reloadEngineUsingIndexSettingsWithoutPermit()(requestId)
         .map(_.map(_ => ()))
         .map(_.leftMap(ScheduledReloadError.EngineReloadError.apply))
     }
@@ -202,8 +197,8 @@ class RorInstance private(boot: ReadonlyRest,
 
   private def tryTestEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
     withGuard(testReloadInProgress) {
-      anTestConfigEngine
-        .reloadEngineUsingIndexConfigWithoutPermit()(requestId)
+      theTestSettingsEngine
+        .reloadEngineUsingIndexSettingsWithoutPermit()(requestId)
         .map(_.leftMap(ScheduledReloadError.EngineReloadError.apply))
     }
   }
@@ -224,89 +219,86 @@ class RorInstance private(boot: ReadonlyRest,
 
 object RorInstance {
 
-  sealed trait RawConfigReloadError
-  object RawConfigReloadError {
-    final case class ReloadingFailed(failure: ReadonlyRest.StartingFailure) extends RawConfigReloadError
-    final case class ConfigUpToDate(config: RawRorSettings) extends RawConfigReloadError
-    object RorInstanceStopped extends RawConfigReloadError
+  sealed trait RawSettingsReloadError
+  object RawSettingsReloadError {
+    final case class ReloadingFailed(failure: ReadonlyRest.StartingFailure) extends RawSettingsReloadError
+    final case class SettingsUpToDate(settings: RawRorSettings) extends RawSettingsReloadError
+    object RorInstanceStopped extends RawSettingsReloadError
   }
 
-  sealed trait IndexConfigReloadWithUpdateError
-  object IndexConfigReloadWithUpdateError {
-    final case class ReloadError(undefined: RawConfigReloadError) extends IndexConfigReloadWithUpdateError
-    final case class IndexConfigSavingError(underlying: SavingIndexSettingsError) extends IndexConfigReloadWithUpdateError
+  sealed trait IndexSettingsReloadWithUpdateError
+  object IndexSettingsReloadWithUpdateError {
+    final case class ReloadError(undefined: RawSettingsReloadError) extends IndexSettingsReloadWithUpdateError
+    final case class IndexSettingsSavingError(underlying: SavingIndexSettingsError) extends IndexSettingsReloadWithUpdateError
   }
 
-  sealed trait IndexConfigReloadError
-  object IndexConfigReloadError {
-    final case class LoadingConfigError(underlying: Error[LoadingIndexSettingsError]) extends IndexConfigReloadError
-    final case class ReloadError(underlying: RawConfigReloadError) extends IndexConfigReloadError
+  sealed trait IndexSettingsReloadError
+  object IndexSettingsReloadError {
+    final case class LoadingSettingsError(underlying: LoadingFromIndexError) extends IndexSettingsReloadError
+    final case class ReloadError(underlying: RawSettingsReloadError) extends IndexSettingsReloadError
   }
 
-  sealed trait IndexConfigUpdateError
-  object IndexConfigUpdateError {
-    final case class IndexConfigSavingError(underlying: SavingIndexSettingsError) extends IndexConfigUpdateError
-    case object TestSettingsNotSet extends IndexConfigUpdateError
-    case object TestSettingsInvalidated extends IndexConfigUpdateError
+  sealed trait IndexSettingsUpdateError
+  object IndexSettingsUpdateError {
+    final case class IndexSettingsSavingError(underlying: SavingIndexSettingsError) extends IndexSettingsUpdateError
+    case object TestSettingsNotSet extends IndexSettingsUpdateError
+    case object TestSettingsInvalidated extends IndexSettingsUpdateError
   }
 
-  sealed trait IndexConfigInvalidationError
-  object IndexConfigInvalidationError {
-    final case class IndexConfigSavingError(underlying: SavingIndexSettingsError) extends IndexConfigInvalidationError
+  sealed trait IndexSettingsInvalidationError
+  object IndexSettingsInvalidationError {
+    final case class IndexSettingsSavingError(underlying: SavingIndexSettingsError) extends IndexSettingsInvalidationError
   }
 
   private sealed trait ScheduledReloadError
   private object ScheduledReloadError {
     case object ReloadingInProgress extends ScheduledReloadError
-    final case class EngineReloadError(underlying: IndexConfigReloadError) extends ScheduledReloadError
+    final case class EngineReloadError(underlying: IndexSettingsReloadError) extends ScheduledReloadError
   }
 
-  sealed trait TestConfig
-  object TestConfig {
-    case object NotSet extends TestConfig
-    final case class Present(rawConfig: RawRorSettings,
+  sealed trait TestSettings
+  object TestSettings {
+    case object NotSet extends TestSettings
+    final case class Present(rawSettings: RawRorSettings,
                              dependencies: RorDependencies,
                              configuredTtl: PositiveFiniteDuration,
-                             validTo: Instant) extends TestConfig
+                             validTo: Instant) extends TestSettings
     final case class Invalidated(recent: RawRorSettings,
-                                 configuredTtl: PositiveFiniteDuration) extends TestConfig
+                                 configuredTtl: PositiveFiniteDuration) extends TestSettings
   }
 
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
                                    esConfig: EsConfigBasedRorSettings,
                                    mainEngine: ReadonlyRest.MainEngine,
                                    testEngine: ReadonlyRest.TestEngine,
-                                   indexConfigManager: IndexSettingsManager[RawRorSettings],
-                                   indexTestConfigManager: IndexSettingsManager[TestRorSettings],
+                                   mainSettingsManager: RorMainSettingsManager,
+                                   testSettingsManager: RorTestSettingsManager,
                                    refreshInterval: RefreshInterval,
-                                   rorSettingsFile: File,
                                    rorSettingsMaxSize: Information)
                                   (implicit systemContext: SystemContext,
                                    scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, esConfig, Mode.WithPeriodicIndexCheck(refreshInterval), mainEngine, testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize)
+    create(boot, esConfig, Mode.WithPeriodicIndexCheck(refreshInterval), mainEngine, testEngine, mainSettingsManager, testSettingsManager, rorSettingsMaxSize)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
                                       esConfig: EsConfigBasedRorSettings,
                                       mainEngine: ReadonlyRest.MainEngine,
                                       testEngine: ReadonlyRest.TestEngine,
-                                      indexConfigManager: IndexSettingsManager[RawRorSettings],
-                                      indexTestConfigManager: IndexSettingsManager[TestRorSettings],
-                                      rorSettingsFile: File,
+                                      mainSettingsManager: RorMainSettingsManager,
+                                      testSettingsManager: RorTestSettingsManager,
                                       rorSettingsMaxSize: Information)
                                      (implicit systemContext: SystemContext,
                                       scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, esConfig, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize)
+    create(boot, esConfig, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, mainSettingsManager, testSettingsManager, rorSettingsMaxSize)
   }
 
   private def create(boot: ReadonlyRest,
                      esConfig: EsConfigBasedRorSettings,
                      mode: RorInstance.Mode,
-                     engine: ReadonlyRest.MainEngine,
+                     mainEngine: ReadonlyRest.MainEngine,
                      testEngine: ReadonlyRest.TestEngine,
-                     indexConfigManager: IndexSettingsManager[RawRorSettings],
-                     indexTestConfigManager: IndexSettingsManager[TestRorSettings],
-                     rorSettingsFile: File,
+                     mainSettingsManager: RorMainSettingsManager,
+                     testSettingsManager: RorTestSettingsManager,
                      rorSettingsMaxSize: Information)
                     (implicit systemContext: SystemContext,
                      scheduler: Scheduler) = {
@@ -317,13 +309,12 @@ object RorInstance {
       boot = boot,
       esConfig = esConfig,
       mode = mode,
-      initialEngine = engine,
+      mainInitialEngine = mainEngine,
       mainReloadInProgress = isReloadInProgressSemaphore,
-      initialTestEngine = testEngine,
+      mainSettingsManager = mainSettingsManager,
+      testInitialEngine = testEngine,
       testReloadInProgress = isTestReloadInProgressSemaphore,
-      indexConfigManager = indexConfigManager,
-      indexTestConfigManager = indexTestConfigManager,
-      rorSettingsFile = rorSettingsFile,
+      testSettingsManager = testSettingsManager,
       rorSettingsMaxSize = rorSettingsMaxSize
     )
   }
@@ -334,12 +325,12 @@ object RorInstance {
     case object NoPeriodicIndexCheck extends Mode
   }
 
-  private sealed trait ConfigType
-  private object ConfigType {
-    case object Main extends ConfigType
-    case object Test extends ConfigType
+  private sealed trait SettingsType
+  private object SettingsType {
+    case object Main extends SettingsType
+    case object Test extends SettingsType
 
-    implicit val show: Show[ConfigType] = Show.show {
+    implicit val show: Show[SettingsType] = Show.show {
       case Main => "main"
       case Test => "test"
     }

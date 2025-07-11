@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
-import tech.beshu.ror.boot.RorInstance.TestConfig
+import tech.beshu.ror.boot.RorInstance.TestSettings
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.{RawRorSettings, RorDependencies}
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
@@ -129,10 +129,10 @@ class RorIndexTest extends AnyWordSpec
           val rorInstance = result.value
           val forceReloadingResult =
             rorInstance
-              .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
+              .forceReloadTestSettingsEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
-          forceReloadingResult.value shouldBe a[TestConfig.Present]
+          forceReloadingResult.value shouldBe a[TestSettings.Present]
         }
       }
       "custom index is defined in config" should {
@@ -205,10 +205,10 @@ class RorIndexTest extends AnyWordSpec
           val rorInstance = result.value
           val forceReloadingResult =
             rorInstance
-              .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
+              .forceReloadTestSettingsEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
-          forceReloadingResult.value shouldBe a[TestConfig.Present]
+          forceReloadingResult.value shouldBe a[TestSettings.Present]
         }
       }
     }

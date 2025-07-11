@@ -26,16 +26,18 @@ import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.index.*
 import tech.beshu.ror.configuration.loader.*
+import tech.beshu.ror.configuration.loader.RorMainSettingsManager.LoadingFromFileError
+import tech.beshu.ror.configuration.loader.SettingsManager.{LoadingError, LoadingFromIndexError}
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -54,21 +56,19 @@ class ReadonlyRest(coreFactory: CoreFactory,
   def start(esConfig: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       rorYamlParser <- lift(new RawRorSettingsYamlParser(esConfig.loadingRorCoreStrategy.rorSettingsMaxSize))
-      indexConfigManager <- lift(new IndexJsonContentServiceBasedIndexMainSettingsManager(esConfig.rorConfigIndex, indexContentService, rorYamlParser))
-      rorMainSettingsLoader <- lift(new RorMainSettingsManager(indexConfigManager))
-      indexTestConfigManager <- lift(new IndexJsonContentServiceBasedIndexTestSettingsManager(esConfig.rorConfigIndex, indexContentService, rorYamlParser))
-      rorTestSettingsLoader <- lift(new RorTestSettingsLoader(indexTestConfigManager))
-      loadedRorConfig <- loadRorConfig(esConfig, rorMainSettingsLoader)
-      loadedTestRorConfig <- loadRorTestConfig(esConfig, rorTestSettingsLoader)
-      instance <- startRor(esConfig, loadedRorConfig, loadedTestRorConfig, indexConfigManager, indexTestConfigManager)
+      rorMainSettingsLoader <- lift(new RorMainSettingsManager(
+        new IndexJsonContentServiceBasedIndexMainSettingsManager(esConfig.rorSettingsIndex, indexContentService, rorYamlParser)
+      ))
+      rorTestSettingsLoader <- lift(new RorTestSettingsManager(
+        new IndexJsonContentServiceBasedIndexTestSettingsManager(esConfig.rorSettingsIndex, indexContentService, rorYamlParser)
+      ))
+      loadedMainRorSettings <- loadMainRorSettings(esConfig, rorMainSettingsLoader)
+      loadedTestRorSettings <- loadRorTestSettings(esConfig, rorTestSettingsLoader)
+      instance <- startRor(esConfig, loadedMainRorSettings, rorMainSettingsLoader, loadedTestRorSettings, rorTestSettingsLoader)
     } yield instance).value
   }
 
-  private def lift[A](value: => A) = {
-    EitherT.liftF(Task.delay(value))
-  }
-
-  private def loadRorConfig(esConfig: EsConfigBasedRorSettings,
+  private def loadMainRorSettings(esConfig: EsConfigBasedRorSettings,
                             rorSettingsLoader: RorMainSettingsManager): EitherT[Task, StartingFailure, RawRorSettings] = {
     esConfig.loadingRorCoreStrategy match {
       case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
@@ -80,66 +80,67 @@ class ReadonlyRest(coreFactory: CoreFactory,
     }
   }
 
-  private def loadRorTestConfig(esConfig: EsConfigBasedRorSettings,
-                                rorSettingsLoader: RorTestSettingsLoader): EitherT[Task, StartingFailure, TestRorSettings] = {
+  private def loadRorTestSettings(esConfig: EsConfigBasedRorSettings,
+                                rorSettingsLoader: RorTestSettingsManager): EitherT[Task, StartingFailure, TestRorSettings] = {
     esConfig.loadingRorCoreStrategy match {
       case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
         EitherT.rightT[Task, StartingFailure](TestRorSettings.NotSet)
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(parameters, _) =>
         EitherT {
           rorSettingsLoader.loadFromIndexWithFallback(
-            indexLoadingSettings = settings,
-            fallbackConfig = notSetTestRorConfig
+            loadFromIndexParameters = parameters,
+            fallbackSettings = notSetTestRorSettings
           )
         }.leftFlatMap {
-          case RorTestSettingsLoader.IndexParsingError(message) =>
+          case LoadingFromIndexError.IndexParsingError(message) =>
             logger.error(s"Loading ReadonlyREST test settings from index failed: ${message.show}. No test settings will be loaded.")
-            EitherT.rightT[Task, StartingFailure](notSetTestRorConfig)
-          case RorTestSettingsLoader.IndexUnknownStructure =>
+            EitherT.rightT[Task, StartingFailure](notSetTestRorSettings)
+          case LoadingFromIndexError.IndexUnknownStructure =>
             logger.error("Loading ReadonlyREST test settings from index failed: index content malformed. No test settings will be loaded.")
-            EitherT.rightT[Task, StartingFailure](notSetTestRorConfig)
-          case RorTestSettingsLoader.IndexNotExist =>
+            EitherT.rightT[Task, StartingFailure](notSetTestRorSettings)
+          case LoadingFromIndexError.IndexNotExist =>
             logger.info("Loading ReadonlyREST test settings from index failed: cannot find index. No test settings will be loaded.")
-            EitherT.rightT[Task, StartingFailure](notSetTestRorConfig)
+            EitherT.rightT[Task, StartingFailure](notSetTestRorSettings)
         }
     }
   }
 
-  private def toStartingFailure(error: RorMainSettingsManager.Error) = {
+  private def toStartingFailure(error: LoadingError) = {
     error match {
-      case RorMainSettingsManager.FileParsingError(message) =>
+      case LoadingFromFileError.FileParsingError(message) =>
         StartingFailure(message)
-      case RorMainSettingsManager.FileNotExist(path) =>
+      case LoadingFromFileError.FileNotExist(path) =>
         StartingFailure(s"Cannot find settings file: ${path.show}")
-      case RorMainSettingsManager.IndexParsingError(message) =>
+      case LoadingFromIndexError.IndexParsingError(message) =>
         StartingFailure(message)
-      case RorMainSettingsManager.IndexUnknownStructure =>
+      case LoadingFromIndexError.IndexUnknownStructure =>
         StartingFailure(s"Settings index is malformed")
-      case RorMainSettingsManager.IndexNotExist =>
+      case LoadingFromIndexError.IndexNotExist =>
         StartingFailure(s"Settings index doesn't exist")
     }
   }
 
   private def startRor(esConfig: EsConfigBasedRorSettings,
-                       loadedRorSettings: RawRorSettings,
-                       loadedTestRorConfig: TestRorSettings,
-                       indexConfigManager: IndexSettingsManager[RawRorSettings],
-                       indexTestConfigManager: IndexSettingsManager[TestRorSettings]) = {
+                       loadedMainRorSettings: RawRorSettings,
+                       mainSettingsManager: RorMainSettingsManager,
+                       loadedTestRorSettings: TestRorSettings,
+                       testSettingsManager: RorTestSettingsManager) = {
     for {
-      mainEngine <- EitherT(loadRorEngine(loadedRorSettings, esConfig))
-      testEngine <- EitherT.right(loadTestEngine(esConfig, loadedTestRorConfig))
-      rorInstance <- createRorInstance(esConfig, mainEngine, testEngine, indexConfigManager, indexTestConfigManager, loadedRorSettings)
+      mainEngine <- EitherT(loadRorEngine(loadedMainRorSettings, esConfig))
+      testEngine <- EitherT.right(loadTestEngine(esConfig, loadedTestRorSettings))
+      rorInstance <- createRorInstance(esConfig, mainEngine, mainSettingsManager, testEngine, testSettingsManager, loadedMainRorSettings)
     } yield rorInstance
   }
 
-  private def loadTestEngine(esConfig: EsConfigBasedRorSettings, loadedTestRorConfig: TestRorSettings) = {
-    loadedTestRorConfig match {
+  private def loadTestEngine(esConfig: EsConfigBasedRorSettings,
+                             loadedTestRorSettings: TestRorSettings) = {
+    loadedTestRorSettings match {
       case TestRorSettings.NotSet =>
         Task.now(TestEngine.NotConfigured)
-      case config: TestRorSettings.Present if !config.isExpired(systemContext.clock) =>
-        loadActiveTestEngine(esConfig, config)
-      case config: TestRorSettings.Present =>
-        loadInvalidatedTestEngine(config)
+      case settings: TestRorSettings.Present if !settings.isExpired(systemContext.clock) =>
+        loadActiveTestEngine(esConfig, settings)
+      case settings: TestRorSettings.Present =>
+        loadInvalidatedTestEngine(settings)
     }
   }
 
@@ -151,42 +152,41 @@ class ReadonlyRest(coreFactory: CoreFactory,
           case Right(loadedEngine) =>
             TestEngine.Configured(
               engine = loadedEngine,
-              config = testSettings.rawSettings,
-              expiration = expirationConfig(testSettings.expiration)
+              settings = testSettings.rawSettings,
+              expiration = expirationFrom(testSettings.expiration)
             )
           case Left(startingFailure) =>
             logger.error(s"Unable to start test engine. Cause: ${startingFailure.message.show}. Test settings engine will be marked as invalidated.")
-            TestEngine.Invalidated(testSettings.rawSettings, expirationConfig(testSettings.expiration))
+            TestEngine.Invalidated(testSettings.rawSettings, expirationFrom(testSettings.expiration))
         }
     } yield testEngine
   }
 
-  private def loadInvalidatedTestEngine(testConfig: TestRorSettings.Present) = {
+  private def loadInvalidatedTestEngine(testSettings: TestRorSettings.Present) = {
     Task
-      .delay(authServicesMocksProvider.update(testConfig.mocks))
+      .delay(authServicesMocksProvider.update(testSettings.mocks))
       .map { _ =>
-        TestEngine.Invalidated(testConfig.rawSettings, expirationConfig(testConfig.expiration))
+        TestEngine.Invalidated(testSettings.rawSettings, expirationFrom(testSettings.expiration))
       }
   }
 
-  private def expirationConfig(config: TestRorSettings.Present.ExpirationConfig): TestEngine.Expiration = {
-    TestEngine.Expiration(config.ttl, config.validTo)
+  private def expirationFrom(expiration: TestRorSettings.Present.Expiration): TestEngine.Expiration = {
+    TestEngine.Expiration(expiration.ttl, expiration.validTo)
   }
 
   private def createRorInstance(esConfig: EsConfigBasedRorSettings,
-                                engine: Engine,
+                                mainEngine: Engine,
+                                mainSettingsManager: RorMainSettingsManager,
                                 testEngine: TestEngine,
-                                indexConfigManager: IndexSettingsManager[RawRorSettings],
-                                indexTestConfigManager: IndexSettingsManager[TestRorSettings],
-                                loadedConfig: RawRorSettings) = {
+                                testSettingsManager: RorTestSettingsManager,
+                                alreadyLoadedSettings: RawRorSettings) = {
     EitherT.right[StartingFailure] {
-      val rorSettingsFile = esConfig.loadingRorCoreStrategy.rorSettingsFile
       val rorSettingsMaxSize = esConfig.loadingRorCoreStrategy.rorSettingsMaxSize
       esConfig.loadingRorCoreStrategy match {
         case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, esConfig, MainEngine(engine, loadedConfig), testEngine, indexConfigManager, indexTestConfigManager, rorSettingsFile, rorSettingsMaxSize)
+          RorInstance.createWithoutPeriodicIndexCheck(this, esConfig, MainEngine(mainEngine, alreadyLoadedSettings), testEngine, mainSettingsManager, testSettingsManager, rorSettingsMaxSize)
         case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
-          RorInstance.createWithPeriodicIndexCheck(this, esConfig, MainEngine(engine, loadedConfig), testEngine, indexConfigManager, indexTestConfigManager, settings.refreshInterval, rorSettingsFile, rorSettingsMaxSize)
+          RorInstance.createWithPeriodicIndexCheck(this, esConfig, MainEngine(mainEngine, alreadyLoadedSettings), testEngine, mainSettingsManager, testSettingsManager, settings.refreshInterval, rorSettingsMaxSize)
       }
     }
   }
@@ -198,7 +198,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
     EitherT(
       coreFactory
-        .createCoreFrom(rorSettings, esConfig.rorConfigIndex, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
+        .createCoreFrom(rorSettings, esConfig.rorSettingsIndex, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
     )
       .flatMap(core => createEngine(httpClientsFactory, ldapConnectionPoolProvider, core))
       .semiflatTap { engine =>
@@ -254,7 +254,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     }
   }
 
-  private def handleLoadingCoreErrors(errors: NonEmptyList[RawRorConfigBasedCoreFactory.CoreCreationError]) = {
+  private def handleLoadingCoreErrors(errors: NonEmptyList[RawRorSettingsBasedCoreFactory.CoreCreationError]) = {
     val errorsMessage = errors
       .map(_.reason)
       .map {
@@ -266,7 +266,11 @@ class ReadonlyRest(coreFactory: CoreFactory,
     StartingFailure(errorsMessage)
   }
 
-  private def notSetTestRorConfig: TestRorSettings = TestRorSettings.NotSet
+  private def notSetTestRorSettings: TestRorSettings = TestRorSettings.NotSet
+
+  private def lift[A](value: => A) = {
+    EitherT.liftF(Task.delay(value))
+  }
 }
 
 object ReadonlyRest {
@@ -274,7 +278,7 @@ object ReadonlyRest {
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
   final case class MainEngine(engine: Engine,
-                              config: RawRorSettings)
+                              settings: RawRorSettings)
 
   sealed trait TestEngine
 
@@ -282,10 +286,10 @@ object ReadonlyRest {
     object NotConfigured extends TestEngine
 
     final case class Configured(engine: Engine,
-                                config: RawRorSettings,
+                                settings: RawRorSettings,
                                 expiration: Expiration) extends TestEngine
 
-    final case class Invalidated(config: RawRorSettings,
+    final case class Invalidated(settings: RawRorSettings,
                                  expiration: Expiration) extends TestEngine
 
     final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
@@ -309,7 +313,7 @@ object ReadonlyRest {
              env: EsEnv)
             (implicit scheduler: Scheduler,
              systemContext: SystemContext): ReadonlyRest = {
-    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(env.esVersion)
+    val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env.esVersion)
     create(coreFactory, indexContentService, auditSinkServiceCreator, env)
   }
 

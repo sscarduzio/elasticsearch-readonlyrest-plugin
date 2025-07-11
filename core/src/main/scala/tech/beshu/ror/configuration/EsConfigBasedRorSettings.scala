@@ -37,7 +37,7 @@ import scala.language.implicitConversions
 
 final case class EsConfigBasedRorSettings(boot: RorBootSettings,
                                           ssl: Option[RorSslSettings],
-                                          rorConfigIndex: RorSettingsIndex,
+                                          rorSettingsIndex: RorSettingsIndex,
                                           loadingRorCoreStrategy: LoadingRorCoreStrategy)
 
 object EsConfigBasedRorSettings {

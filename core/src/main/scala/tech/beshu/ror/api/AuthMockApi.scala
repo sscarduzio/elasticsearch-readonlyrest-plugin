@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvid
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RequestId, User}
 import tech.beshu.ror.accesscontrol.factory.RorDependencies
-import tech.beshu.ror.boot.RorInstance.{IndexConfigUpdateError, TestConfig}
+import tech.beshu.ror.boot.RorInstance.{IndexSettingsUpdateError, TestSettings}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.CirceErrorOps
@@ -111,12 +111,12 @@ class AuthMockApi(rorInstance: RorInstance)
                                               onNotSet: String => A,
                                               onInvalidated: String => A)
                                              (implicit requestId: RequestId): Task[Either[A, B]] = {
-    rorInstance.currentTestConfig().map {
-      case TestConfig.NotSet =>
+    rorInstance.currentTestSettings().map {
+      case TestSettings.NotSet =>
         Left(onNotSet(testSettingsNotConfiguredMessage))
-      case TestConfig.Present(_, dependencies, _, _) =>
+      case TestSettings.Present(_, dependencies, _, _) =>
         Right(action(dependencies.services))
-      case _:TestConfig.Invalidated =>
+      case _:TestSettings.Invalidated =>
         Left(onInvalidated(testSettingsInvalidatedMessage))
     }
   }
@@ -157,11 +157,11 @@ class AuthMockApi(rorInstance: RorInstance)
       .map {
         case Right(()) =>
           Right(UpdateAuthMock.Success("Auth mock updated"))
-        case Left(IndexConfigUpdateError.TestSettingsNotSet) =>
+        case Left(IndexSettingsUpdateError.TestSettingsNotSet) =>
           Left(AuthMockResponse.UpdateAuthMock.NotConfigured(testSettingsNotConfiguredMessage))
-        case Left(IndexConfigUpdateError.TestSettingsInvalidated) =>
+        case Left(IndexSettingsUpdateError.TestSettingsInvalidated) =>
           Left(AuthMockResponse.UpdateAuthMock.Invalidated(testSettingsInvalidatedMessage))
-        case Left(IndexConfigUpdateError.IndexConfigSavingError(error)) =>
+        case Left(IndexSettingsUpdateError.IndexSettingsSavingError(error)) =>
           Left(AuthMockResponse.UpdateAuthMock.Failed(s"Cannot save auth services mocks: ${error.show}"))
       }
   }

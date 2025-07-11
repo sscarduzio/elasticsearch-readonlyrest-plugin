@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
-import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers.*
@@ -48,14 +48,14 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
-  protected def factory: RawRorConfigBasedCoreFactory = {
+  protected def factory: RawRorSettingsBasedCoreFactory = {
     implicit val systemContext: SystemContext = new Environment(envVarsProvider = envVarsProvider)
-    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
+    new RawRorSettingsBasedCoreFactory(defaultEsVersionForTests)
   }
 
   def assertDecodingSuccess(yaml: String,
                             assertion: T => Unit,
-                            aFactory: RawRorConfigBasedCoreFactory = factory,
+                            aFactory: RawRorSettingsBasedCoreFactory = factory,
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory,
                             mocksProvider: MocksProvider = NoOpMocksProvider): Unit = {
     inside(
@@ -78,7 +78,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   def assertDecodingFailure(yaml: String,
                             assertion: NonEmptyList[CoreCreationError] => Unit,
-                            aFactory: RawRorConfigBasedCoreFactory = factory,
+                            aFactory: RawRorSettingsBasedCoreFactory = factory,
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory,
                             mocksProvider: MocksProvider = NoOpMocksProvider): Unit = {
     inside(

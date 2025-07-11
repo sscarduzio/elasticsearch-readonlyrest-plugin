@@ -27,13 +27,13 @@ object TestRorSettings {
   case object NotSet extends TestRorSettings
   final case class Present(rawSettings: RawRorSettings,
                            mocks: AuthServicesMocks,
-                           expiration: Present.ExpirationConfig) extends TestRorSettings {
+                           expiration: Present.Expiration) extends TestRorSettings {
     def isExpired(clock: Clock): Boolean = {
       expiration.validTo.isBefore(clock.instant())
     }
   }
 
   object Present {
-    final case class ExpirationConfig(ttl: PositiveFiniteDuration, validTo: Instant)
+    final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
   }
 }

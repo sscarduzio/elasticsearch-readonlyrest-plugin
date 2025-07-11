@@ -29,7 +29,7 @@ import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.ParsingError
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 
-final class IndexJsonContentServiceBasedIndexMainSettingsManager(settingsIndex: RorSettingsIndex,
+final class IndexJsonContentServiceBasedIndexMainSettingsManager(override val settingsIndex: RorSettingsIndex,
                                                                  indexJsonContentService: IndexJsonContentService,
                                                                  rarRorConfigYamlParser: RawRorSettingsYamlParser)
   extends IndexSettingsManager[RawRorSettings]

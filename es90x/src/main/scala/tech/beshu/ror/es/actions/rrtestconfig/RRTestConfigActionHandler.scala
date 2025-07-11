@@ -21,7 +21,7 @@ import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.api.TestConfigApi.TestConfigResponse
+import tech.beshu.ror.api.TestRorSettingsApi.TestSettingsResponse
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
@@ -46,7 +46,7 @@ class RRTestConfigActionHandler extends Logging {
     }
   }
 
-  private def handle(result: Either[Throwable, TestConfigResponse],
+  private def handle(result: Either[Throwable, TestSettingsResponse],
                      listener: ActionListener[RRTestConfigResponse])
                     (implicit requestId: RequestId): Unit = result match {
     case Right(response) =>
@@ -57,5 +57,5 @@ class RRTestConfigActionHandler extends Logging {
   }
 
   private def getApi =
-    RorInstanceSupplier.get().map(_.testConfigApi)
+    RorInstanceSupplier.get().map(_.testSettingsApi)
 }

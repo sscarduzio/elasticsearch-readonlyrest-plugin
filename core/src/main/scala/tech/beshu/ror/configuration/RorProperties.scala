@@ -159,6 +159,8 @@ object RorProperties extends Logging {
 
   final case class LoadingDelay(value: NonNegativeFiniteDuration) extends AnyVal
   object LoadingDelay {
+    val none: LoadingDelay = unsafeFrom(0 seconds)
+
     def unsafeFrom(value: FiniteDuration): LoadingDelay = LoadingDelay(value.toRefinedNonNegativeUnsafe)
 
     implicit val show: Show[LoadingDelay] = Show[FiniteDuration].contramap(_.value.value)

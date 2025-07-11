@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvid
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsIndex}
-import tech.beshu.ror.accesscontrol.factory.{CoreFactory, HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.{CoreFactory, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.syntax.*
@@ -387,6 +387,6 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
   private val factory: CoreFactory = {
     implicit val systemContext: SystemContext = SystemContext.default
-    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
+    new RawRorSettingsBasedCoreFactory(defaultEsVersionForTests)
   }
 }

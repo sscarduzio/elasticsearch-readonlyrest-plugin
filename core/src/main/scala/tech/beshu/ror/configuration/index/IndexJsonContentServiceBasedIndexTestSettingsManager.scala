@@ -51,7 +51,7 @@ import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-final class IndexJsonContentServiceBasedIndexTestSettingsManager(settingsIndex: RorSettingsIndex,
+final class IndexJsonContentServiceBasedIndexTestSettingsManager(override val settingsIndex: RorSettingsIndex,
                                                                  indexJsonContentService: IndexJsonContentService,
                                                                  rarRorConfigYamlParser: RawRorSettingsYamlParser)
   extends IndexSettingsManager[TestRorSettings]
@@ -101,7 +101,7 @@ final class IndexJsonContentServiceBasedIndexTestSettingsManager(settingsIndex: 
       } yield Present(
         rawSettings = rawRorConfig,
         mocks = mocks,
-        expiration = Present.ExpirationConfig(ttl = expirationTtl, validTo = expirationTime)
+        expiration = Present.Expiration(ttl = expirationTtl, validTo = expirationTime)
       )
     }
   }

@@ -20,34 +20,34 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.rest.RestStatus
 import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
-import tech.beshu.ror.api.ConfigApi
-import tech.beshu.ror.api.ConfigApi.ConfigResponse.*
-import tech.beshu.ror.api.ConfigApi.*
+import tech.beshu.ror.api.MainRorSettingsApi
+import tech.beshu.ror.api.MainRorSettingsApi.MainSettingsResponse.*
+import tech.beshu.ror.api.MainRorSettingsApi.*
 import tech.beshu.ror.es.utils.StatusToXContentObject
 
-class RRAdminResponse(response: ConfigApi.ConfigResponse)
+class RRAdminResponse(response: MainRorSettingsApi.MainSettingsResponse)
   extends ActionResponse with StatusToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response match {
-      case forceReloadConfig: ConfigResponse.ForceReloadConfig => forceReloadConfig match {
-        case ForceReloadConfig.Success(message) => addResponseJson(builder, response.status, message)
-        case ForceReloadConfig.Failure(message) => addResponseJson(builder, response.status, message)
+      case forceReloadConfig: MainSettingsResponse.ForceReloadMainSettings => forceReloadConfig match {
+        case ForceReloadMainSettings.Success(message) => addResponseJson(builder, response.status, message)
+        case ForceReloadMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
       }
-      case provideIndexConfig: ConfigResponse.ProvideIndexConfig => provideIndexConfig match {
-        case ProvideIndexConfig.Config(rawConfig) => addResponseJson(builder, response.status, rawConfig)
-        case ProvideIndexConfig.ConfigNotFound(message) => addResponseJson(builder, response.status, message)
-        case ProvideIndexConfig.Failure(message) => addResponseJson(builder, response.status, message)
+      case provideIndexConfig: MainSettingsResponse.ProvideIndexMainSettings => provideIndexConfig match {
+        case ProvideIndexMainSettings.MainSettings(rawConfig) => addResponseJson(builder, response.status, rawConfig)
+        case ProvideIndexMainSettings.MainSettingsNotFound(message) => addResponseJson(builder, response.status, message)
+        case ProvideIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
       }
-      case provideFileConfig: ConfigResponse.ProvideFileConfig => provideFileConfig match {
-        case ProvideFileConfig.Config(rawConfig) => addResponseJson(builder, response.status, rawConfig)
-        case ProvideFileConfig.Failure(message) => addResponseJson(builder, response.status, message)
+      case provideFileConfig: MainSettingsResponse.ProvideFileMainSettings => provideFileConfig match {
+        case ProvideFileMainSettings.MainSettings(rawConfig) => addResponseJson(builder, response.status, rawConfig)
+        case ProvideFileMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
       }
-      case updateIndexConfig: ConfigResponse.UpdateIndexConfig => updateIndexConfig match {
-        case UpdateIndexConfig.Success(message) => addResponseJson(builder, response.status, message)
-        case UpdateIndexConfig.Failure(message) => addResponseJson(builder, response.status, message)
+      case updateIndexConfig: MainSettingsResponse.UpdateIndexMainSettings => updateIndexConfig match {
+        case UpdateIndexMainSettings.Success(message) => addResponseJson(builder, response.status, message)
+        case UpdateIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
       }
-      case failure: ConfigResponse.Failure => failure match {
+      case failure: MainSettingsResponse.Failure => failure match {
         case Failure.BadRequest(message) => addResponseJson(builder, response.status, message)
       }
     }
@@ -58,10 +58,10 @@ class RRAdminResponse(response: ConfigApi.ConfigResponse)
 
   override def status: RestStatus = {
     response match {
-      case _: ForceReloadConfig => RestStatus.OK
-      case _: ProvideIndexConfig => RestStatus.OK
-      case _: ProvideFileConfig => RestStatus.OK
-      case _: UpdateIndexConfig => RestStatus.OK
+      case _: ForceReloadMainSettings => RestStatus.OK
+      case _: ProvideIndexMainSettings => RestStatus.OK
+      case _: ProvideFileMainSettings => RestStatus.OK
+      case _: UpdateIndexMainSettings => RestStatus.OK
       case failure: Failure => failure match {
         case Failure.BadRequest(_) => RestStatus.BAD_REQUEST
       }

@@ -39,9 +39,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.*
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.*
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.*
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.*
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RorDependencies.ImpersonationWarningsReader
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
@@ -69,8 +69,8 @@ trait CoreFactory {
                      mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
 }
 
-class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
-                                  (implicit systemContext: SystemContext)
+class RawRorSettingsBasedCoreFactory(esVersion: EsVersion)
+                                    (implicit systemContext: SystemContext)
   extends CoreFactory with Logging {
 
   override def createCoreFrom(rorSettings: RawRorSettings,
@@ -127,14 +127,14 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
-      if (!enabled) {
-        AsyncDecoderCreator.from(Decoder.const(Core(DisabledAccessControlList, RorDependencies.noOp, None)))
-      } else {
-        for {
-          globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorConfigurationIndex))
-          core <- coreDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
-        } yield core
-      }
+        if (!enabled) {
+          AsyncDecoderCreator.from(Decoder.const(Core(DisabledAccessControlList, RorDependencies.noOp, None)))
+        } else {
+          for {
+            globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorConfigurationIndex))
+            core <- coreDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
+          } yield core
+        }
     } yield core
 
     decoder(HCursor.fromJson(settingsJson))
@@ -148,7 +148,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
     }
   }
 
-  import RawRorConfigBasedCoreFactory.*
+  import RawRorSettingsBasedCoreFactory.*
 
   private def rulesNelDecoder(definitions: DefinitionsPack,
                               globalSettings: GlobalSettings,
@@ -157,15 +157,15 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
 
     val (_, result) = c.keys.toList.flatten // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
-      for {
-        last <- collectedRuleResults
-        current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings, mocksProvider).map {
-          case RuleDecodingResult.Result(value) => Validated.Valid(value.map(_ :: Nil))
-          case RuleDecodingResult.UnknownRule => Validated.Invalid(currentRuleName :: Nil)
-          case RuleDecodingResult.Skipped => Validated.Valid(Right(List.empty))
-        }
-      } yield Monoid.combine(last, current)
-    }
+        for {
+          last <- collectedRuleResults
+          current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings, mocksProvider).map {
+            case RuleDecodingResult.Result(value) => Validated.Valid(value.map(_ :: Nil))
+            case RuleDecodingResult.UnknownRule => Validated.Invalid(currentRuleName :: Nil)
+            case RuleDecodingResult.Skipped => Validated.Valid(Right(List.empty))
+          }
+        } yield Monoid.combine(last, current)
+      }
       .run(c)
       .value
 
@@ -218,10 +218,10 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
         .decodeString
         .toSyncDecoder
         .emapE[Verbosity] {
-        case "info" => Right(Verbosity.Info)
-        case "error" => Right(Verbosity.Error)
-        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'.")))
-      }
+          case "info" => Right(Verbosity.Info)
+          case "error" => Right(Verbosity.Error)
+          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'.")))
+        }
         .decoder
     Decoder
       .instance { c =>
@@ -456,7 +456,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
   }
 }
 
-object RawRorConfigBasedCoreFactory {
+object RawRorSettingsBasedCoreFactory {
 
   sealed trait CoreCreationError {
     def reason: Reason
@@ -478,7 +478,7 @@ object RawRorConfigBasedCoreFactory {
       final case class MalformedValue private(value: String) extends Reason
       object MalformedValue {
         def fromString(str: String): MalformedValue = MalformedValue(str)
-        
+
         def apply(json: Json): MalformedValue = from(json)
 
         def from(json: Json): MalformedValue = MalformedValue {
