@@ -14,12 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader
+package tech.beshu.ror.configuration.manager
 
 import cats.Show
 import monix.eval.Task
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromIndexParameters
-import tech.beshu.ror.configuration.loader.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
 
 trait SettingsManager[SETTINGS] {
 

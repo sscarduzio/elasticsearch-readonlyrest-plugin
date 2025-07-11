@@ -35,9 +35,9 @@ import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.index.*
-import tech.beshu.ror.configuration.loader.*
-import tech.beshu.ror.configuration.loader.RorMainSettingsManager.LoadingFromFileError
-import tech.beshu.ror.configuration.loader.SettingsManager.{LoadingError, LoadingFromIndexError}
+import tech.beshu.ror.configuration.manager.*
+import tech.beshu.ror.configuration.manager.RorMainSettingsManager.LoadingFromFileError
+import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError}
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration

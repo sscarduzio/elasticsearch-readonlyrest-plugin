@@ -32,8 +32,8 @@ import tech.beshu.ror.accesscontrol.factory.RorDependencies
 import tech.beshu.ror.api.{AuthMockApi, MainRorSettingsApi, TestRorSettingsApi}
 import tech.beshu.ror.boot.engines.{Engines, MainSettingsBasedReloadableEngine, TestSettingsBasedReloadableEngine}
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
-import tech.beshu.ror.configuration.loader.SettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
-import tech.beshu.ror.configuration.loader.{RorMainSettingsManager, RorTestSettingsManager}
+import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.manager.{RorMainSettingsManager, RorTestSettingsManager}
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration

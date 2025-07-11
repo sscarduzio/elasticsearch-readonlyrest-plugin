@@ -29,8 +29,8 @@ import tech.beshu.ror.api.MainRorSettingsApi.MainSettingsResponse.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.loader.RorMainSettingsManager
-import tech.beshu.ror.configuration.loader.SettingsManager.LoadingFromIndexError
+import tech.beshu.ror.configuration.manager.RorMainSettingsManager
+import tech.beshu.ror.configuration.manager.SettingsManager.LoadingFromIndexError
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 

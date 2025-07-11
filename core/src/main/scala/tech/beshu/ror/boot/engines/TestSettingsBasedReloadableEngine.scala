@@ -30,8 +30,8 @@ import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{Index
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpiration, EngineState, InitialEngine}
 import tech.beshu.ror.boot.engines.SettingsHash.*
 import tech.beshu.ror.configuration.TestRorSettings.Present.Expiration
-import tech.beshu.ror.configuration.loader.RorTestSettingsManager
-import tech.beshu.ror.configuration.loader.SettingsManager.SavingIndexSettingsError
+import tech.beshu.ror.configuration.manager.RorTestSettingsManager
+import tech.beshu.ror.configuration.manager.SettingsManager.SavingIndexSettingsError
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration

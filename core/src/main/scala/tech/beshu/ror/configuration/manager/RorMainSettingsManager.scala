@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader
+package tech.beshu.ror.configuration.manager
 
 import cats.Show
 import cats.data.EitherT
@@ -25,9 +25,10 @@ import tech.beshu.ror.configuration.EsConfigBasedRorSettings.{LoadFromFileParame
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}
 import tech.beshu.ror.configuration.index.IndexSettingsManager
 import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
-import tech.beshu.ror.configuration.loader.RorMainSettingsManager.LoadingFromFileError
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.loader.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.loader.{FileRorSettingsLoader, RorSettingsLoader}
+import tech.beshu.ror.configuration.manager.RorMainSettingsManager.LoadingFromFileError
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.implicits.*
 

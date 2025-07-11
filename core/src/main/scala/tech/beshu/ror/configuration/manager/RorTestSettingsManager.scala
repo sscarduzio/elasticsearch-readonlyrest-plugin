@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader
+package tech.beshu.ror.configuration.manager
 
 import cats.data.EitherT
 import monix.eval.Task
@@ -24,8 +24,9 @@ import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, Loading
 import tech.beshu.ror.configuration.TestRorSettings
 import tech.beshu.ror.configuration.index.IndexSettingsManager
 import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
+import tech.beshu.ror.configuration.loader.RorSettingsLoader
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.loader.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
 import tech.beshu.ror.implicits.*
 
 import scala.language.postfixOps
