@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.audit.adapters.*
+import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditValue}
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
@@ -214,6 +215,10 @@ object AuditingSettingsDecoder extends Logging {
         val serializer =
           Try(clazz.getConstructor(classOf[AuditEnvironmentContext]))
             .map(_.newInstance(summon[AuditEnvironmentContext]))
+            .orElse(
+              Try(clazz.getConstructor(classOf[AuditEnvironmentContext], classOf[AllowedEventSerializationMode], classOf[Map[String, AuditValue]]))
+                .map(_.newInstance(summon[AuditEnvironmentContext], AllowedEventSerializationMode.AlwaysSerialize, Map.empty))
+            )
             .orElse(Try(clazz.getDeclaredConstructor()).map(_.newInstance()))
             .getOrElse(
               throw new IllegalStateException(
@@ -238,6 +243,20 @@ object AuditingSettingsDecoder extends Logging {
           case Success(None) => Left(AuditingSettingsCreationError(Message(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}")))
           case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '${fullClassName.show}', error: ${ex.getMessage.show}")))
         }
+      }
+      .decoder
+
+  given allowedEventSerializationMode: Decoder[AllowedEventSerializationMode] =
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
+      .map(_.toUpperCase)
+      .emapE[AllowedEventSerializationMode] {
+        case "SERIALIZE_ONLY_EVENTS_WITH_INFO_LEVEL_VERBOSE" =>
+          Right(AllowedEventSerializationMode.SerializeOnlyEventsWithInfoLevelVerbose)
+        case "ALWAYS_SERIALIZE" =>
+          Right(AllowedEventSerializationMode.AlwaysSerialize)
+        case other =>
+          Left(AuditingSettingsCreationError(Message(s"Not supported AllowedEventSerializationMode $other")))
       }
       .decoder
 

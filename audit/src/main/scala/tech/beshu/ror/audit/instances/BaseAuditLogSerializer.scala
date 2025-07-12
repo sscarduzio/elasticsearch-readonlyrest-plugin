@@ -39,49 +39,57 @@ object BaseAuditLogSerializer {
           None
         case (Verbosity.Info, AllowedEventSerializationMode.SerializeOnlyEventsWithInfoLevelVerbose) |
              (_, AllowedEventSerializationMode.AlwaysSerialize) =>
-          Some(createEntry(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, None))
+          Some(createEntry(fields, environmentContext, matched = true, "ALLOWED", reason, responseContext.duration, requestContext, None))
       }
     case ForbiddenBy(requestContext, _, reason) =>
-      Some(createEntry(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, None))
+      Some(createEntry(fields, environmentContext, matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, None))
     case Forbidden(requestContext) =>
-      Some(createEntry(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None))
+      Some(createEntry(fields, environmentContext, matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None))
     case RequestedIndexNotExist(requestContext) =>
-      Some(createEntry(matched = false, "INDEX NOT EXIST", "Requested index doesn't exist", responseContext.duration, requestContext, None))
+      Some(createEntry(fields, environmentContext, matched = false, "INDEX NOT EXIST", "Requested index doesn't exist", responseContext.duration, requestContext, None))
     case Errored(requestContext, cause) =>
-      Some(createEntry(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause)))
+      Some(createEntry(fields, environmentContext, matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause)))
   }
 
-  private def createEntry(matched: Boolean,
+  private def createEntry(fields: Map[String, AuditValue],
+                          environmentContext: AuditEnvironmentContext,
+                          matched: Boolean,
                           finalState: String,
                           reason: String,
                           duration: FiniteDuration,
                           requestContext: AuditRequestContext,
                           error: Option[Throwable]) = {
-    new JSONObject()
-      .put("match", matched)
-      .put("block", reason)
-      .put("id", requestContext.id)
-      .put("final_state", finalState)
-      .put("@timestamp", timestampFormatter.format(requestContext.timestamp))
-      .put("correlation_id", requestContext.correlationId)
-      .put("processingMillis", duration.toMillis)
-      .put("error_type", error.map(_.getClass.getSimpleName).orNull)
-      .put("error_message", error.map(_.getMessage).orNull)
-      .put("content_len", requestContext.contentLength)
-      .put("content_len_kb", requestContext.contentLength / 1024)
-      .put("type", requestContext.`type`)
-      .put("origin", requestContext.remoteAddress)
-      .put("destination", requestContext.localAddress)
-      .put("xff", requestContext.requestHeaders.getValue("X-Forwarded-For").flatMap(_.headOption).orNull)
-      .put("task_id", requestContext.taskId)
-      .put("req_method", requestContext.httpMethod)
-      .put("headers", requestContext.requestHeaders.names.asJava)
-      .put("path", requestContext.uriPath)
-      .put("user", SerializeUser.serialize(requestContext).orNull)
-      .put("impersonated_by", requestContext.impersonatedByUserName.orNull)
-      .put("action", requestContext.action)
-      .put("indices", if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava)
-      .put("acl_history", requestContext.history)
+    val resolvedFields: Map[String, Any] = fields.view.mapValues {
+      case AuditValue.IsMatched => matched
+      case AuditValue.FinalState => finalState
+      case AuditValue.Reason => reason
+      case AuditValue.User => SerializeUser.serialize(requestContext).orNull
+      case AuditValue.ImpersonatedByUser => requestContext.impersonatedByUserName.orNull
+      case AuditValue.Action => requestContext.action
+      case AuditValue.InvolvedIndices => if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava
+      case AuditValue.AclHistory => requestContext.history
+      case AuditValue.ProcessingDurationMillis => duration.toMillis
+      case AuditValue.Timestamp => timestampFormatter.format(requestContext.timestamp)
+      case AuditValue.Id => requestContext.id
+      case AuditValue.CorrelationId => requestContext.correlationId
+      case AuditValue.TaskId => requestContext.taskId
+      case AuditValue.ErrorType => error.map(_.getClass.getSimpleName).orNull
+      case AuditValue.ErrorMessage => error.map(_.getMessage).orNull
+      case AuditValue.Type => requestContext.`type`
+      case AuditValue.HttpMethod => requestContext.httpMethod
+      case AuditValue.HttpHeaderNames => requestContext.requestHeaders.names.asJava
+      case AuditValue.HttpPath => requestContext.uriPath
+      case AuditValue.XForwardedForHttpHeader => requestContext.requestHeaders.getValue("X-Forwarded-For").flatMap(_.headOption).orNull
+      case AuditValue.RemoteAddress => requestContext.remoteAddress
+      case AuditValue.LocalAddress => requestContext.localAddress
+      case AuditValue.Content => requestContext.content
+      case AuditValue.ContentLengthInBytes => requestContext.contentLength
+      case AuditValue.ContentLengthInKb => requestContext.contentLength / 1024
+      case AuditValue.EsNodeName => environmentContext.esNodeName
+      case AuditValue.EsClusterName => environmentContext.esClusterName
+    }.toMap
+    resolvedFields
+      .foldLeft(new JSONObject()) { case (soFar, (key, value)) => soFar.put(key, value) }
       .mergeWith(requestContext.generalAuditEvents)
   }
 
