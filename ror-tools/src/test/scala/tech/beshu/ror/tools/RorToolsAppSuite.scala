@@ -165,7 +165,7 @@ class RorToolsAppSuite
           |""".stripMargin
       )
     }
-    "Patching not started when user declines to accept implications of patching (in env variable and arg)" in {
+    "Patching not started when user declines to accept implications of patching (when env variable is set and arg is passed in the same time)" in {
       val (result, output) = captureResultAndOutput(
         RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "no"))(_, _),
         mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "no")
