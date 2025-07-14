@@ -51,7 +51,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                   (implicit systemContext: SystemContext,
                    scheduler: Scheduler) extends Logging {
 
-  private [boot] val authServicesMocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
+  private[boot] val authServicesMocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
   def start(esConfig: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
     (for {
@@ -69,7 +69,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def loadMainRorSettings(esConfig: EsConfigBasedRorSettings,
-                            rorSettingsLoader: RorMainSettingsManager): EitherT[Task, StartingFailure, RawRorSettings] = {
+                                  rorSettingsLoader: RorMainSettingsManager): EitherT[Task, StartingFailure, RawRorSettings] = {
     esConfig.loadingRorCoreStrategy match {
       case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
         EitherT(rorSettingsLoader.loadFromFile(settings))
@@ -81,7 +81,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def loadRorTestSettings(esConfig: EsConfigBasedRorSettings,
-                                rorSettingsLoader: RorTestSettingsManager): EitherT[Task, StartingFailure, TestRorSettings] = {
+                                  rorSettingsLoader: RorTestSettingsManager): EitherT[Task, StartingFailure, TestRorSettings] = {
     esConfig.loadingRorCoreStrategy match {
       case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
         EitherT.rightT[Task, StartingFailure](TestRorSettings.NotSet)

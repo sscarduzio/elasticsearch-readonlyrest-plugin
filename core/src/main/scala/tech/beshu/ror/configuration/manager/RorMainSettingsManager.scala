@@ -16,27 +16,25 @@
  */
 package tech.beshu.ror.configuration.manager
 
-import cats.Show
+import better.files.File
 import cats.data.EitherT
 import cats.implicits.toShow
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.{LoadFromFileParameters, LoadFromIndexParameters}
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.{LoadFromFileParameters, LoadFromIndexParameters, LoadingRorCoreStrategy}
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}
 import tech.beshu.ror.configuration.index.IndexSettingsManager
-import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
 import tech.beshu.ror.configuration.loader.{FileRorSettingsLoader, RorSettingsLoader}
 import tech.beshu.ror.configuration.manager.RorMainSettingsManager.LoadingFromFileError
-import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
+import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.implicits.*
 
-import java.nio.file.Path
 import scala.language.postfixOps
 
 // todo: refactor methods
-class RorMainSettingsManager(indexSettingsManager: IndexSettingsManager[RawRorSettings])
+class RorMainSettingsManager private(indexSettingsManager: IndexSettingsManager[RawRorSettings])
   extends SettingsManager[RawRorSettings] with Logging {
 
   def loadFromFile(loadFromFileParameters: LoadFromFileParameters): Task[Either[LoadingFromFileError, RawRorSettings]] = {
@@ -64,7 +62,11 @@ class RorMainSettingsManager(indexSettingsManager: IndexSettingsManager[RawRorSe
   }
 
   override def saveToIndex(settings: RawRorSettings): Task[Either[SavingIndexSettingsError, Unit]] = {
-    ???
+    EitherT(indexSettingsManager.save(settings))
+      .leftMap {
+        case IndexSettingsManager.SavingIndexSettingsError.CannotSaveSettings => SettingsManager.SavingIndexSettingsError.CannotSaveSettings
+      }
+      .value
   }
 
   private def attemptLoadingFromIndex(parameters: LoadFromIndexParameters,
@@ -143,11 +145,11 @@ class RorMainSettingsManager(indexSettingsManager: IndexSettingsManager[RawRorSe
     }
   }
 
-  private def convertIndexError(error: RorSettingsLoader.Error[LoadingIndexSettingsError]) =
+  private def convertIndexError(error: RorSettingsLoader.Error[IndexSettingsManager.LoadingIndexSettingsError]) =
     error match {
       case ParsingError(error) => LoadingFromIndexError.IndexParsingError(error.show)
-      case SpecializedError(LoadingIndexSettingsError.IndexNotExist) => LoadingFromIndexError.IndexNotExist
-      case SpecializedError(LoadingIndexSettingsError.UnknownStructureOfIndexDocument) => LoadingFromIndexError.IndexUnknownStructure
+      case SpecializedError(IndexSettingsManager.LoadingIndexSettingsError.IndexNotExist) => LoadingFromIndexError.IndexNotExist
+      case SpecializedError(IndexSettingsManager.LoadingIndexSettingsError.UnknownStructureOfIndexDocument) => LoadingFromIndexError.IndexUnknownStructure
     }
 
   private def logIndexLoadingError[A](error: LoadingFromIndexError): Unit = {
@@ -161,14 +163,20 @@ class RorMainSettingsManager(indexSettingsManager: IndexSettingsManager[RawRorSe
     }
   }
 }
+
 object RorMainSettingsManager {
+
+  def create(esConfigBasedRorSettings: EsConfigBasedRorSettings): RorMainSettingsManager = {
+    esConfigBasedRorSettings.loadingRorCoreStrategy match {
+      case LoadingRorCoreStrategy.ForceLoadingFromFile(parameters) => ???
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(parameters, fallbackParameters) => ???
+    }
+  }
 
   sealed trait LoadingFromFileError extends LoadingError
   object LoadingFromFileError {
     final case class FileParsingError(message: String) extends LoadingFromFileError
-    final case class FileNotExist(path: Path) extends LoadingFromFileError
-
-    implicit val show: Show[LoadingFromFileError] = ???
+    final case class FileNotExist(file: File) extends LoadingFromFileError
   }
 
 }

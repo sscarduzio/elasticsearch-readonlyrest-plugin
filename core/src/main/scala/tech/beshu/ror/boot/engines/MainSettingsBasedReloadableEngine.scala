@@ -120,19 +120,14 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
     result.value
   }
 
-  private def saveSettings(settings: RawRorSettings): EitherT[Task, IndexSettingsReloadWithUpdateError, Unit] = EitherT {
-    for {
-      saveResult <- settingsManager.saveToIndex(settings)
-    } yield saveResult.left.map(IndexSettingsReloadWithUpdateError.IndexSettingsSavingError.apply)
+  private def saveSettings(settings: RawRorSettings): EitherT[Task, IndexSettingsReloadWithUpdateError, Unit] = {
+    EitherT(settingsManager.saveToIndex(settings))
+      .leftMap(IndexSettingsReloadWithUpdateError.IndexSettingsSavingError.apply)
   }
 
   private def loadRorSettingFromIndex() = {
     EitherT(settingsManager.loadFromIndex())
-      .leftMap {
-        case LoadingFromIndexError.IndexParsingError(message) => ???
-        case LoadingFromIndexError.IndexUnknownStructure => ???
-        case LoadingFromIndexError.IndexNotExist => ???
-      }
+      .leftMap(IndexSettingsReloadError.LoadingSettingsError.apply)
   }
 
 }

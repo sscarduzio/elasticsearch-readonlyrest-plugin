@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.configuration.index
 
-import cats.Show
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
 import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
@@ -43,20 +42,10 @@ object IndexSettingsManager {
   object LoadingIndexSettingsError {
     case object IndexNotExist extends LoadingIndexSettingsError
     case object UnknownStructureOfIndexDocument extends LoadingIndexSettingsError
-
-    // todo: move to implicits?
-    implicit val show: Show[LoadingIndexSettingsError] = Show.show {
-      case IndexNotExist => "Cannot find settings index"
-      case UnknownStructureOfIndexDocument => s"Unknown structure of index settings"
-    }
   }
 
   sealed trait SavingIndexSettingsError
   object SavingIndexSettingsError {
     case object CannotSaveSettings extends SavingIndexSettingsError
-
-    implicit val show: Show[SavingIndexSettingsError] = Show.show {
-      case CannotSaveSettings => "Cannot save settings in index"
-    }
   }
 }

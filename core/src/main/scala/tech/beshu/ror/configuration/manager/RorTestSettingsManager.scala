@@ -21,17 +21,19 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromIndexParameters
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}
-import tech.beshu.ror.configuration.TestRorSettings
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, TestRorSettings}
 import tech.beshu.ror.configuration.index.IndexSettingsManager
 import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
-import tech.beshu.ror.configuration.loader.RorSettingsLoader
+import tech.beshu.ror.configuration.loader.{FileRorSettingsLoader, RorSettingsLoader}
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
 import tech.beshu.ror.implicits.*
 
 import scala.language.postfixOps
 
-class RorTestSettingsManager(indexConfigManager: IndexSettingsManager[TestRorSettings])
+class RorTestSettingsManager(esConfigBasedRorSettings: EsConfigBasedRorSettings,
+                             fileSettingsLoader: FileRorSettingsLoader,
+                             indexSettingsManager: IndexSettingsManager[TestRorSettings])
   extends SettingsManager[TestRorSettings] with Logging {
 
   def loadFromIndexWithFallback(loadFromIndexParameters: LoadFromIndexParameters,
@@ -54,11 +56,15 @@ class RorTestSettingsManager(indexConfigManager: IndexSettingsManager[TestRorSet
   }
 
   override def loadFromIndex(): Task[Either[LoadingFromIndexError, TestRorSettings]] = {
-    ???
+    loadTestRorConfigFromIndex(LoadingDelay.none)
   }
 
   override def saveToIndex(settings: TestRorSettings): Task[Either[SavingIndexSettingsError, Unit]] = {
-    ???
+    EitherT(indexSettingsManager.save(settings))
+      .leftMap {
+        case IndexSettingsManager.SavingIndexSettingsError.CannotSaveSettings => SettingsManager.SavingIndexSettingsError.CannotSaveSettings
+      }
+      .value
   }
 
   private def attemptLoadingConfigFromIndex(parameters: LoadFromIndexParameters,
@@ -67,7 +73,7 @@ class RorTestSettingsManager(indexConfigManager: IndexSettingsManager[TestRorSet
       case 0 =>
         fallback
       case attemptsCount =>
-        loadTestRorConfigFromIndex(parameters.copy(loadingDelay = LoadingDelay.none)).flatMap {
+        loadTestRorConfigFromIndex(LoadingDelay.none).flatMap {
           case Left(LoadingFromIndexError.IndexNotExist) =>
             attemptLoadingConfigFromIndex(
               parameters.copy(loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(parameters.loadingAttemptsCount.value.value - 1)),
@@ -83,13 +89,12 @@ class RorTestSettingsManager(indexConfigManager: IndexSettingsManager[TestRorSet
     }
   }
 
-  private def loadTestRorConfigFromIndex(settings: LoadFromIndexParameters) = {
-    val rorConfigIndex = settings.rorSettingsIndex
-    val loadingDelay = settings.loadingDelay
+  private def loadTestRorConfigFromIndex(loadingDelay: LoadingDelay) = {
+    val settingsIndex = indexSettingsManager.settingsIndex
     // todo: log is ok?
-    logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${rorConfigIndex.index.show}) ...")
+    logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${settingsIndex.index.show}) ...")
     EitherT {
-      indexConfigManager
+      indexSettingsManager
         .load()
         .delayExecution(loadingDelay.value.value)
     }

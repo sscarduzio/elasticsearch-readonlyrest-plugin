@@ -206,10 +206,9 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     }
   }
 
-  private def loadRorTestSettingsFromIndex(): EitherT[Task, IndexSettingsReloadError, TestRorSettings] = EitherT {
-    testSettingsManager
-      .loadFromIndex()
-      .map(_.left.map(IndexSettingsReloadError.LoadingSettingsError.apply))
+  private def loadRorTestSettingsFromIndex(): EitherT[Task, IndexSettingsReloadError, TestRorSettings] = {
+    EitherT(testSettingsManager.loadFromIndex())
+      .leftMap(IndexSettingsReloadError.LoadingSettingsError.apply)
   }
 
   private def invalidateTestSettingsByIndex[A]()

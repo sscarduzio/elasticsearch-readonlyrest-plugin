@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.configuration.manager
 
-import cats.Show
 import monix.eval.Task
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromIndexParameters
 import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
@@ -38,14 +37,10 @@ object SettingsManager {
     final case class IndexParsingError(message: String) extends LoadingFromIndexError
     case object IndexUnknownStructure extends LoadingFromIndexError
     case object IndexNotExist extends LoadingFromIndexError
-
-    implicit val show: Show[LoadingFromIndexError] = ???
   }
 
   sealed trait SavingIndexSettingsError
   object SavingIndexSettingsError {
     case object CannotSaveSettings extends SavingIndexSettingsError
-
-    implicit val show: Show[SavingIndexSettingsError] = ???
   }
 }

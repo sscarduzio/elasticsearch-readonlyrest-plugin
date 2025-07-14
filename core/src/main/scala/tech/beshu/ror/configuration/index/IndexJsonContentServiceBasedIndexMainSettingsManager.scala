@@ -47,7 +47,9 @@ final class IndexJsonContentServiceBasedIndexMainSettingsManager(override val se
                 .fromString(rorYamlString)
                 .map(_.left.map(ParsingError.apply))
             }
-            .getOrElse(settingsLoaderError(UnknownStructureOfIndexDocument))
+            .getOrElse {
+              settingsLoaderError(UnknownStructureOfIndexDocument)
+            }
         case Left(CannotReachContentSource) =>
           settingsLoaderError(IndexNotExist)
         case Left(ContentNotFound) =>

@@ -33,7 +33,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
@@ -44,8 +43,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
-import tech.beshu.ror.accesscontrol.domain.Address.Ip
+import tech.beshu.ror.accesscontrol.domain.AccessRequirement.MustBePresent
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -60,6 +58,8 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingError
+import tech.beshu.ror.configuration.manager.RorMainSettingsManager.LoadingFromFileError
+import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.ScalaOps.*
@@ -404,4 +404,18 @@ trait LogsShowInstances
     case LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled => s"Cannot use ROR SSL when XPack Security is enabled"
   }
 
+  implicit val loadingFromIndexErrorShow: Show[LoadingFromIndexError] = Show.show {
+    case LoadingFromIndexError.IndexNotExist => "Cannot find ReadonlyREST settings index"
+    case LoadingFromIndexError.IndexUnknownStructure => "Unknown structure of ReadonlyREST index settings document"
+    case LoadingFromIndexError.IndexParsingError(message) => s"Cannot parse in-index ReadonlyREST settings. Cause: $message"
+  }
+
+  implicit val loadingFromFileErrorShow: Show[LoadingFromFileError] = Show.show {
+    case LoadingFromFileError.FileParsingError(message) => s"Cannot parse file ReadonlyREST settings. Cause: $message"
+    case LoadingFromFileError.FileNotExist(file) => s"Cannot find ReadonlyREST settings file: ${file.pathAsString}"
+  }
+
+  implicit val savingIndexSettingsErrorShow: Show[SavingIndexSettingsError] = Show.show {
+    case SavingIndexSettingsError.CannotSaveSettings => "Cannot save settings in the ReadonlyREST index"
+  }
 }

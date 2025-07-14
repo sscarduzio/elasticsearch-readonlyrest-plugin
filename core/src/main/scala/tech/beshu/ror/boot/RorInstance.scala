@@ -84,6 +84,7 @@ class RorInstance private(boot: ReadonlyRest,
   private val rarRorSettingsYamlParser = new RawRorSettingsYamlParser(rorSettingsMaxSize)
 
   private val mainSettingsRestApi = new MainRorSettingsApi(
+    esConfigBasedRorSettings = esConfig,
     rorInstance = this,
     rarRorSettingsYamlParser,
     mainSettingsManager
