@@ -67,13 +67,14 @@ trait RorTools {
     }
   }
 
-  private def readArgsFromEnvVariables()(implicit rawEnvVariablesProvider: RawEnvVariablesProvider): Array[String] = {
+  private def readArgsFromEnvVariables()
+                                      (implicit rawEnvVariablesProvider: RawEnvVariablesProvider): Array[String] = {
     val allowedEnvVariableNames = List(
       consentFlagName,
     )
     rawEnvVariablesProvider.getSysEnv.toList
       .filter(env => allowedEnvVariableNames.contains(env._1.toLowerCase))
-      .flatMap { case (name, value) => Array(s"--$name", value) }
+      .flatMap { case (name, value) => Array(s"--${name.toLowerCase}", value) }
       .toArray
   }
 
@@ -192,6 +193,7 @@ trait RorTools {
     patchCommand,
     note(""),
     opt[String](consentFlagName)
+      .unbounded()
       .valueName("<yes/no>")
       .validate {
         case "yes" => success
@@ -255,7 +257,6 @@ trait RorTools {
 
   private def effectSetup(implicit inOut: InOut): OEffectSetup = new DefaultOEffectSetup {
     override def displayToOut(msg: String): Unit = inOut.println(msg)
-
     override def displayToErr(msg: String): Unit = inOut.printlnErr(msg)
   }
 

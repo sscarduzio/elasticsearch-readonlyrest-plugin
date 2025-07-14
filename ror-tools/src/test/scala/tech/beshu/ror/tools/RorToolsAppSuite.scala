@@ -28,7 +28,7 @@ import tech.beshu.ror.tools.RorTools.Result
 import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
-import tech.beshu.ror.tools.core.utils.{OsRawEnvVariablesProvider, RawEnvVariablesProvider, InOut}
+import tech.beshu.ror.tools.core.utils.{InOut, OsRawEnvVariablesProvider, RawEnvVariablesProvider}
 import tech.beshu.ror.tools.utils.{CapturingOutputAndMockingInput, ExampleEsWithRorContainer}
 import tech.beshu.ror.utils.files.FileUtils
 
@@ -156,6 +156,18 @@ class RorToolsAppSuite
     "Patching not started when user declines to accept implications of patching (in env variable)" in {
       val (result, output) = captureResultAndOutput(
         RorToolsTestApp.run(Array("patch"))(_, _),
+        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "no")
+      )
+      result should equal(Result.Failure)
+      output should equal(
+        """You have to confirm, that You understand the implications of ES patching in order to perform it.
+          |You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
+          |""".stripMargin
+      )
+    }
+    "Patching not started when user declines to accept implications of patching (when env variable is set and arg is passed in the same time)" in {
+      val (result, output) = captureResultAndOutput(
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "no"))(_, _),
         mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "no")
       )
       result should equal(Result.Failure)
@@ -336,7 +348,6 @@ class RorToolsAppSuite
           .stripMargin
       )
     }
-
     "The patch is not detected when metadata file is missing and `verify` command is executed" in {
       val (patchResult, patchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
@@ -368,7 +379,6 @@ class RorToolsAppSuite
            |""".stripMargin
       )
     }
-
     "The patch is not detected when metadata file is missing and `verify` command is executed (ES 9.x with detailed assertions)" excludeES(allEs6x, allEs7x, allEs8x) in {
       val (patchResult, patchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
