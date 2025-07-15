@@ -29,15 +29,13 @@ import tech.beshu.ror.api.MainRorSettingsApi.MainSettingsResponse.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.manager.RorMainSettingsManager
-import tech.beshu.ror.configuration.manager.SettingsManager.LoadingFromIndexError
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser}
+import tech.beshu.ror.configuration.manager.InIndexSettingsManager.LoadingFromIndexError
+import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
-class MainRorSettingsApi(esConfigBasedRorSettings: EsConfigBasedRorSettings,
-                         rorInstance: RorInstance,
+class MainRorSettingsApi(rorInstance: RorInstance,
                          settingsYamlParser: RawRorSettingsYamlParser,
                          settingsManager: RorMainSettingsManager)
   extends Logging {
@@ -88,12 +86,7 @@ class MainRorSettingsApi(esConfigBasedRorSettings: EsConfigBasedRorSettings,
 
   private def provideRorFileSettings(): Task[MainSettingsResponse] = {
     settingsManager
-      .loadFromFile {
-        esConfigBasedRorSettings.loadingRorCoreStrategy match {
-          case LoadingRorCoreStrategy.ForceLoadingFromFile(parameters) => parameters
-          case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, fallbackParameters) => fallbackParameters
-        }
-      }
+      .loadFromFile()
       .map {
         case Right(settings) => ProvideFileMainSettings.MainSettings(settings.raw)
         case Left(error) => ProvideFileMainSettings.Failure(error.show)

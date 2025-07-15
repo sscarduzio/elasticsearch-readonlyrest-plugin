@@ -24,15 +24,15 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
-import squants.information.Information
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.RorDependencies
 import tech.beshu.ror.api.{AuthMockApi, MainRorSettingsApi, TestRorSettingsApi}
 import tech.beshu.ror.boot.engines.{Engines, MainSettingsBasedReloadableEngine, TestSettingsBasedReloadableEngine}
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
-import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.manager.InIndexSettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
 import tech.beshu.ror.configuration.manager.{RorMainSettingsManager, RorTestSettingsManager}
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.implicits.*
@@ -48,8 +48,7 @@ class RorInstance private(boot: ReadonlyRest,
                           mainSettingsManager: RorMainSettingsManager,
                           testInitialEngine: ReadonlyRest.TestEngine,
                           testReloadInProgress: Semaphore[Task],
-                          testSettingsManager: RorTestSettingsManager,
-                          rorSettingsMaxSize: Information)
+                          testSettingsManager: RorTestSettingsManager)
                          (implicit systemContext: SystemContext,
                           scheduler: Scheduler)
   extends Logging {
@@ -81,18 +80,11 @@ class RorInstance private(boot: ReadonlyRest,
     testSettingsManager
   )
 
-  private val rarRorSettingsYamlParser = new RawRorSettingsYamlParser(rorSettingsMaxSize)
+  private val rarRorSettingsYamlParser = new RawRorSettingsYamlParser(esConfig.loadingRorCoreStrategy.rorSettingsMaxSize)
 
-  private val mainSettingsRestApi = new MainRorSettingsApi(
-    esConfigBasedRorSettings = esConfig,
-    rorInstance = this,
-    rarRorSettingsYamlParser,
-    mainSettingsManager
-  )
-
-  private val authMockRestApi = new AuthMockApi(rorInstance = this)
-
+  private val mainSettingsRestApi = new MainRorSettingsApi(rorInstance = this, rarRorSettingsYamlParser, mainSettingsManager)
   private val testSettingsRestApi = new TestRorSettingsApi(rorInstance = this, rarRorSettingsYamlParser)
+  private val authMockRestApi = new AuthMockApi(rorInstance = this)
 
   def engines: Option[Engines] = theMainSettingsEngine.engine.map(Engines(_, theTestSettingsEngine.engine))
 
@@ -155,7 +147,7 @@ class RorInstance private(boot: ReadonlyRest,
   }
 
   private def scheduleIndexSettingsChecking(interval: PositiveFiniteDuration,
-                                          reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]]): Cancelable = {
+                                            reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]]): Cancelable = {
     logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within ${interval.show}")
     scheduler.scheduleOnce(interval.value) {
       implicit val requestId: RequestId = RequestId(systemContext.uuidProvider.random.toString)
@@ -173,7 +165,7 @@ class RorInstance private(boot: ReadonlyRest,
   }
 
   private def logSettingsReloadResult(settingsReloadResult: (SettingsType, Either[ScheduledReloadError, Unit]))
-                                   (implicit requestId: RequestId): Unit = settingsReloadResult match {
+                                     (implicit requestId: RequestId): Unit = settingsReloadResult match {
     case (_, Right(())) =>
     case (name, Left(ReloadingInProgress)) =>
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Reloading of ${name.show} engine in progress ... skipping")
@@ -219,6 +211,47 @@ class RorInstance private(boot: ReadonlyRest,
 }
 
 object RorInstance {
+
+  def create(boot: ReadonlyRest,
+             esConfig: EsConfigBasedRorSettings,
+             mainEngine: ReadonlyRest.MainEngine,
+             testEngine: ReadonlyRest.TestEngine,
+             mainSettingsManager: RorMainSettingsManager,
+             testSettingsManager: RorTestSettingsManager)
+            (implicit systemContext: SystemContext,
+             scheduler: Scheduler): Task[RorInstance] = {
+    esConfig.loadingRorCoreStrategy match {
+      case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
+        createInstance(boot, esConfig, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, mainSettingsManager, testSettingsManager)
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
+        createInstance(boot, esConfig, Mode.WithPeriodicIndexCheck(settings.refreshInterval), mainEngine, testEngine, mainSettingsManager, testSettingsManager)
+    }
+  }
+
+  private def createInstance(boot: ReadonlyRest,
+                             esConfig: EsConfigBasedRorSettings,
+                             mode: RorInstance.Mode,
+                             mainEngine: ReadonlyRest.MainEngine,
+                             testEngine: ReadonlyRest.TestEngine,
+                             mainSettingsManager: RorMainSettingsManager,
+                             testSettingsManager: RorTestSettingsManager)
+                            (implicit systemContext: SystemContext,
+                             scheduler: Scheduler) = {
+    for {
+      isReloadInProgressSemaphore <- Semaphore[Task](1)
+      isTestReloadInProgressSemaphore <- Semaphore[Task](1)
+    } yield new RorInstance(
+      boot = boot,
+      esConfig = esConfig,
+      mode = mode,
+      mainInitialEngine = mainEngine,
+      mainReloadInProgress = isReloadInProgressSemaphore,
+      mainSettingsManager = mainSettingsManager,
+      testInitialEngine = testEngine,
+      testReloadInProgress = isTestReloadInProgressSemaphore,
+      testSettingsManager = testSettingsManager
+    )
+  }
 
   sealed trait RawSettingsReloadError
   object RawSettingsReloadError {
@@ -266,58 +299,6 @@ object RorInstance {
                              validTo: Instant) extends TestSettings
     final case class Invalidated(recent: RawRorSettings,
                                  configuredTtl: PositiveFiniteDuration) extends TestSettings
-  }
-
-  def createWithPeriodicIndexCheck(boot: ReadonlyRest,
-                                   esConfig: EsConfigBasedRorSettings,
-                                   mainEngine: ReadonlyRest.MainEngine,
-                                   testEngine: ReadonlyRest.TestEngine,
-                                   mainSettingsManager: RorMainSettingsManager,
-                                   testSettingsManager: RorTestSettingsManager,
-                                   refreshInterval: RefreshInterval,
-                                   rorSettingsMaxSize: Information)
-                                  (implicit systemContext: SystemContext,
-                                   scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, esConfig, Mode.WithPeriodicIndexCheck(refreshInterval), mainEngine, testEngine, mainSettingsManager, testSettingsManager, rorSettingsMaxSize)
-  }
-
-  def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
-                                      esConfig: EsConfigBasedRorSettings,
-                                      mainEngine: ReadonlyRest.MainEngine,
-                                      testEngine: ReadonlyRest.TestEngine,
-                                      mainSettingsManager: RorMainSettingsManager,
-                                      testSettingsManager: RorTestSettingsManager,
-                                      rorSettingsMaxSize: Information)
-                                     (implicit systemContext: SystemContext,
-                                      scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, esConfig, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, mainSettingsManager, testSettingsManager, rorSettingsMaxSize)
-  }
-
-  private def create(boot: ReadonlyRest,
-                     esConfig: EsConfigBasedRorSettings,
-                     mode: RorInstance.Mode,
-                     mainEngine: ReadonlyRest.MainEngine,
-                     testEngine: ReadonlyRest.TestEngine,
-                     mainSettingsManager: RorMainSettingsManager,
-                     testSettingsManager: RorTestSettingsManager,
-                     rorSettingsMaxSize: Information)
-                    (implicit systemContext: SystemContext,
-                     scheduler: Scheduler) = {
-    for {
-      isReloadInProgressSemaphore <- Semaphore[Task](1)
-      isTestReloadInProgressSemaphore <- Semaphore[Task](1)
-    } yield new RorInstance(
-      boot = boot,
-      esConfig = esConfig,
-      mode = mode,
-      mainInitialEngine = mainEngine,
-      mainReloadInProgress = isReloadInProgressSemaphore,
-      mainSettingsManager = mainSettingsManager,
-      testInitialEngine = testEngine,
-      testReloadInProgress = isTestReloadInProgressSemaphore,
-      testSettingsManager = testSettingsManager,
-      rorSettingsMaxSize = rorSettingsMaxSize
-    )
   }
 
   private sealed trait Mode

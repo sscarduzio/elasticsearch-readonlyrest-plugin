@@ -19,41 +19,40 @@ package tech.beshu.ror.configuration.manager
 import cats.data.EitherT
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromIndexParameters
-import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingDelay}
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, TestRorSettings}
-import tech.beshu.ror.configuration.index.IndexSettingsManager
+import tech.beshu.ror.configuration.RorProperties.LoadingDelay
 import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
-import tech.beshu.ror.configuration.loader.{FileRorSettingsLoader, RorSettingsLoader}
+import tech.beshu.ror.configuration.index.{IndexJsonContentServiceBasedIndexTestSettingsManager, IndexSettingsManager}
+import tech.beshu.ror.configuration.loader.RorSettingsLoader
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.manager.InIndexSettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettingsYamlParser, TestRorSettings}
+import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.implicits.*
 
 import scala.language.postfixOps
 
-class RorTestSettingsManager(esConfigBasedRorSettings: EsConfigBasedRorSettings,
-                             fileSettingsLoader: FileRorSettingsLoader,
-                             indexSettingsManager: IndexSettingsManager[TestRorSettings])
-  extends SettingsManager[TestRorSettings] with Logging {
+class RorTestSettingsManager private(indexSettingsManager: IndexSettingsManager[TestRorSettings])
+  extends InIndexSettingsManager[TestRorSettings]
+    with Logging {
 
-  def loadFromIndexWithFallback(loadFromIndexParameters: LoadFromIndexParameters,
-                                fallbackSettings: TestRorSettings): Task[Either[LoadingFromIndexError, TestRorSettings]] = {
-    loadFromIndexWithFallback(
-      loadFromIndexParameters = loadFromIndexParameters,
-      fallback = Task.delay(Right(fallbackSettings))
-    ).map(_.leftMap {
-      case error: LoadingFromIndexError => error
-      case error => throw new IllegalStateException(s"Unexpected $error type")
-    })
-  }
-
-  override def loadFromIndexWithFallback(loadFromIndexParameters: LoadFromIndexParameters,
-                                         fallback: Task[Either[LoadingError, TestRorSettings]]): Task[Either[LoadingError, TestRorSettings]] = {
-    attemptLoadingConfigFromIndex(
-      parameters = loadFromIndexParameters,
-      fallback = fallback
-    )
-  }
+  // todo: remove?
+  //  def loadFromIndexWithFallback(loadFromIndexParameters: LoadFromIndexParameters,
+  //                                fallbackSettings: TestRorSettings): Task[Either[LoadingFromIndexError, TestRorSettings]] = {
+  //    loadFromIndexWithFallback(
+  //      loadFromIndexParameters = loadFromIndexParameters,
+  //      fallback = Task.delay(Right(fallbackSettings))
+  //    ).map(_.leftMap {
+  //      case error: LoadingFromIndexError => error
+  //      case error => throw new IllegalStateException(s"Unexpected $error type")
+  //    })
+  //  }
+  //  override def loadFromIndexWithFallback(loadFromIndexParameters: LoadFromIndexParameters,
+  //                                         fallback: Task[Either[LoadingError, TestRorSettings]]): Task[Either[LoadingError, TestRorSettings]] = {
+  //    attemptLoadingConfigFromIndex(
+  //      parameters = loadFromIndexParameters,
+  //      fallback = fallback
+  //    )
+  //  }
 
   override def loadFromIndex(): Task[Either[LoadingFromIndexError, TestRorSettings]] = {
     loadTestRorConfigFromIndex(LoadingDelay.none)
@@ -62,32 +61,33 @@ class RorTestSettingsManager(esConfigBasedRorSettings: EsConfigBasedRorSettings,
   override def saveToIndex(settings: TestRorSettings): Task[Either[SavingIndexSettingsError, Unit]] = {
     EitherT(indexSettingsManager.save(settings))
       .leftMap {
-        case IndexSettingsManager.SavingIndexSettingsError.CannotSaveSettings => SettingsManager.SavingIndexSettingsError.CannotSaveSettings
+        case IndexSettingsManager.SavingIndexSettingsError.CannotSaveSettings => InIndexSettingsManager.SavingIndexSettingsError.CannotSaveSettings
       }
       .value
   }
 
-  private def attemptLoadingConfigFromIndex(parameters: LoadFromIndexParameters,
-                                            fallback: Task[Either[LoadingError, TestRorSettings]]): Task[Either[LoadingError, TestRorSettings]] = {
-    parameters.loadingAttemptsCount.value.value match {
-      case 0 =>
-        fallback
-      case attemptsCount =>
-        loadTestRorConfigFromIndex(LoadingDelay.none).flatMap {
-          case Left(LoadingFromIndexError.IndexNotExist) =>
-            attemptLoadingConfigFromIndex(
-              parameters.copy(loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(parameters.loadingAttemptsCount.value.value - 1)),
-              fallback = fallback
-            )
-          case Left(error@LoadingFromIndexError.IndexUnknownStructure) =>
-            Task.now(Left(error))
-          case Left(error@LoadingFromIndexError.IndexParsingError(_)) =>
-            Task.now(Left(error))
-          case Right(value) =>
-            Task.now(Right(value))
-        }
-    }
-  }
+  // todo: remove?
+  //  private def attemptLoadingConfigFromIndex(parameters: LoadFromIndexParameters,
+  //                                            fallback: Task[Either[LoadingError, TestRorSettings]]): Task[Either[LoadingError, TestRorSettings]] = {
+  //    parameters.loadingAttemptsCount.value.value match {
+  //      case 0 =>
+  //        fallback
+  //      case attemptsCount =>
+  //        loadTestRorConfigFromIndex(LoadingDelay.none).flatMap {
+  //          case Left(LoadingFromIndexError.IndexNotExist) =>
+  //            attemptLoadingConfigFromIndex(
+  //              parameters.copy(loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(parameters.loadingAttemptsCount.value.value - 1)),
+  //              fallback = fallback
+  //            )
+  //          case Left(error@LoadingFromIndexError.IndexUnknownStructure) =>
+  //            Task.now(Left(error))
+  //          case Left(error@LoadingFromIndexError.IndexParsingError(_)) =>
+  //            Task.now(Left(error))
+  //          case Right(value) =>
+  //            Task.now(Right(value))
+  //        }
+  //    }
+  //  }
 
   private def loadTestRorConfigFromIndex(loadingDelay: LoadingDelay) = {
     val settingsIndex = indexSettingsManager.settingsIndex
@@ -133,4 +133,17 @@ class RorTestSettingsManager(esConfigBasedRorSettings: EsConfigBasedRorSettings,
     }
   }
 
+}
+object RorTestSettingsManager {
+
+  def create(esConfigBasedRorSettings: EsConfigBasedRorSettings,
+             indexJsonContentService: IndexJsonContentService): RorTestSettingsManager = {
+    new RorTestSettingsManager(
+      new IndexJsonContentServiceBasedIndexTestSettingsManager(
+        settingsIndex = esConfigBasedRorSettings.rorSettingsIndex,
+        indexJsonContentService = indexJsonContentService,
+        rorSettingsYamlParser = RawRorSettingsYamlParser(esConfigBasedRorSettings.loadingRorCoreStrategy.rorSettingsMaxSize)
+      )
+    )
+  }
 }

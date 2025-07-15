@@ -17,22 +17,17 @@
 package tech.beshu.ror.configuration.manager
 
 import monix.eval.Task
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromIndexParameters
-import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.manager.InIndexSettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
 
-trait SettingsManager[SETTINGS] {
-
-  def loadFromIndexWithFallback(loadFromIndexParameters: LoadFromIndexParameters,
-                                fallback: Task[Either[LoadingError, SETTINGS]]): Task[Either[LoadingError, SETTINGS]]
+trait InIndexSettingsManager[SETTINGS] {
 
   def loadFromIndex(): Task[Either[LoadingFromIndexError, SETTINGS]]
 
   def saveToIndex(settings: SETTINGS): Task[Either[SavingIndexSettingsError, Unit]]
 }
-object SettingsManager {
-  trait LoadingError
+object InIndexSettingsManager {
 
-  sealed trait LoadingFromIndexError extends LoadingError
+  sealed trait LoadingFromIndexError
   object LoadingFromIndexError {
     final case class IndexParsingError(message: String) extends LoadingFromIndexError
     case object IndexUnknownStructure extends LoadingFromIndexError

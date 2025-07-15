@@ -34,10 +34,10 @@ import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
-import tech.beshu.ror.configuration.index.*
 import tech.beshu.ror.configuration.manager.*
-import tech.beshu.ror.configuration.manager.RorMainSettingsManager.LoadingFromFileError
-import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingError, LoadingFromIndexError}
+import tech.beshu.ror.configuration.manager.FileSettingsManager.LoadingFromFileError
+import tech.beshu.ror.configuration.manager.InIndexSettingsManager.LoadingFromIndexError
+import tech.beshu.ror.configuration.manager.RorMainSettingsManager.LoadingError
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -49,35 +49,24 @@ class ReadonlyRest(coreFactory: CoreFactory,
                    auditSinkServiceCreator: AuditSinkServiceCreator,
                    val esEnv: EsEnv)
                   (implicit systemContext: SystemContext,
-                   scheduler: Scheduler) extends Logging {
+                   scheduler: Scheduler)
+  extends Logging {
 
   private[boot] val authServicesMocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
   def start(esConfig: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
     (for {
-      rorYamlParser <- lift(new RawRorSettingsYamlParser(esConfig.loadingRorCoreStrategy.rorSettingsMaxSize))
-      rorMainSettingsLoader <- lift(new RorMainSettingsManager(
-        new IndexJsonContentServiceBasedIndexMainSettingsManager(esConfig.rorSettingsIndex, indexContentService, rorYamlParser)
-      ))
-      rorTestSettingsLoader <- lift(new RorTestSettingsManager(
-        new IndexJsonContentServiceBasedIndexTestSettingsManager(esConfig.rorSettingsIndex, indexContentService, rorYamlParser)
-      ))
-      loadedMainRorSettings <- loadMainRorSettings(esConfig, rorMainSettingsLoader)
-      loadedTestRorSettings <- loadRorTestSettings(esConfig, rorTestSettingsLoader)
-      instance <- startRor(esConfig, loadedMainRorSettings, rorMainSettingsLoader, loadedTestRorSettings, rorTestSettingsLoader)
+      rorMainSettingsManager <- lift(RorMainSettingsManager.create(esConfig, indexContentService))
+      rorTestSettingsManager <- lift(RorTestSettingsManager.create(esConfig, indexContentService))
+      loadedMainRorSettings <- loadMainSettingsAccordingToStrategy(rorMainSettingsManager)
+      loadedTestRorSettings <- loadRorTestSettings(esConfig, rorTestSettingsManager)
+      instance <- startRor(esConfig, loadedMainRorSettings, rorMainSettingsManager, loadedTestRorSettings, rorTestSettingsManager)
     } yield instance).value
   }
 
-  private def loadMainRorSettings(esConfig: EsConfigBasedRorSettings,
-                                  rorSettingsLoader: RorMainSettingsManager): EitherT[Task, StartingFailure, RawRorSettings] = {
-    esConfig.loadingRorCoreStrategy match {
-      case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
-        EitherT(rorSettingsLoader.loadFromFile(settings))
-          .leftMap(toStartingFailure)
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, fallbackSettings) =>
-        EitherT(rorSettingsLoader.loadFromIndexWithFileFallback(settings, fallbackSettings))
-          .leftMap(toStartingFailure)
-    }
+  private def loadMainSettingsAccordingToStrategy(rorSettingsLoader: RorMainSettingsManager): EitherT[Task, StartingFailure, RawRorSettings] = {
+    EitherT(rorSettingsLoader.loadAccordingToStrategy())
+      .leftMap(toStartingFailure)
   }
 
   private def loadRorTestSettings(esConfig: EsConfigBasedRorSettings,
@@ -87,10 +76,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
         EitherT.rightT[Task, StartingFailure](TestRorSettings.NotSet)
       case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(parameters, _) =>
         EitherT {
-          rorSettingsLoader.loadFromIndexWithFallback(
-            loadFromIndexParameters = parameters,
-            fallbackSettings = notSetTestRorSettings
-          )
+          rorSettingsLoader.loadFromIndex()
         }.leftFlatMap {
           case LoadingFromIndexError.IndexParsingError(message) =>
             logger.error(s"Loading ReadonlyREST test settings from index failed: ${message.show}. No test settings will be loaded.")
@@ -107,15 +93,15 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def toStartingFailure(error: LoadingError) = {
     error match {
-      case LoadingFromFileError.FileParsingError(message) =>
+      case Left(LoadingFromFileError.FileParsingError(message)) =>
         StartingFailure(message)
-      case LoadingFromFileError.FileNotExist(path) =>
+      case Left(LoadingFromFileError.FileNotExist(path)) =>
         StartingFailure(s"Cannot find settings file: ${path.show}")
-      case LoadingFromIndexError.IndexParsingError(message) =>
+      case Right(LoadingFromIndexError.IndexParsingError(message)) =>
         StartingFailure(message)
-      case LoadingFromIndexError.IndexUnknownStructure =>
+      case Right(LoadingFromIndexError.IndexUnknownStructure) =>
         StartingFailure(s"Settings index is malformed")
-      case LoadingFromIndexError.IndexNotExist =>
+      case Right(LoadingFromIndexError.IndexNotExist) =>
         StartingFailure(s"Settings index doesn't exist")
     }
   }
@@ -181,13 +167,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                                 testSettingsManager: RorTestSettingsManager,
                                 alreadyLoadedSettings: RawRorSettings) = {
     EitherT.right[StartingFailure] {
-      val rorSettingsMaxSize = esConfig.loadingRorCoreStrategy.rorSettingsMaxSize
-      esConfig.loadingRorCoreStrategy match {
-        case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, esConfig, MainEngine(mainEngine, alreadyLoadedSettings), testEngine, mainSettingsManager, testSettingsManager, rorSettingsMaxSize)
-        case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
-          RorInstance.createWithPeriodicIndexCheck(this, esConfig, MainEngine(mainEngine, alreadyLoadedSettings), testEngine, mainSettingsManager, testSettingsManager, settings.refreshInterval, rorSettingsMaxSize)
-      }
+      RorInstance.create(this, esConfig, MainEngine(mainEngine, alreadyLoadedSettings), testEngine, mainSettingsManager, testSettingsManager)
     }
   }
 

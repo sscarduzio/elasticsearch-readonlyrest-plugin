@@ -31,7 +31,7 @@ import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpiration, Engin
 import tech.beshu.ror.boot.engines.SettingsHash.*
 import tech.beshu.ror.configuration.TestRorSettings.Present.Expiration
 import tech.beshu.ror.configuration.manager.RorTestSettingsManager
-import tech.beshu.ror.configuration.manager.SettingsManager.SavingIndexSettingsError
+import tech.beshu.ror.configuration.manager.InIndexSettingsManager.SavingIndexSettingsError
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration

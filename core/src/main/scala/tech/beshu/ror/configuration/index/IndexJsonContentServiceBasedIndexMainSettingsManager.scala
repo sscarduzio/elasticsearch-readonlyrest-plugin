@@ -30,8 +30,8 @@ import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 
 final class IndexJsonContentServiceBasedIndexMainSettingsManager(override val settingsIndex: RorSettingsIndex,
-                                                                 indexJsonContentService: IndexJsonContentService,
-                                                                 rawRorSettingsYamlParser: RawRorSettingsYamlParser)
+                                                                 override val rorSettingsYamlParser: RawRorSettingsYamlParser,
+                                                                 indexJsonContentService: IndexJsonContentService)
   extends IndexSettingsManager[RawRorSettings]
   with Logging {
 
@@ -43,7 +43,7 @@ final class IndexJsonContentServiceBasedIndexMainSettingsManager(override val se
           source
             .find(_._1 == Const.settingsKey)
             .map { case (_, rorYamlString) =>
-              rawRorSettingsYamlParser
+              rorSettingsYamlParser
                 .fromString(rorYamlString)
                 .map(_.left.map(ParsingError.apply))
             }

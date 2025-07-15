@@ -18,6 +18,7 @@ package tech.beshu.ror.configuration.index
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
+import tech.beshu.ror.configuration.RawRorSettingsYamlParser
 import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
 import tech.beshu.ror.configuration.loader.RorSettingsLoader
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.SpecializedError
@@ -27,6 +28,8 @@ import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.SpecializedEr
 trait IndexSettingsManager[SETTINGS] {
 
   def settingsIndex: RorSettingsIndex
+
+  def rorSettingsYamlParser: RawRorSettingsYamlParser
 
   def load(): Task[Either[RorSettingsLoader.Error[LoadingIndexSettingsError], SETTINGS]]
 

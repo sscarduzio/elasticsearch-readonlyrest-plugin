@@ -20,14 +20,16 @@ import better.files.File
 import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
+import tech.beshu.ror.configuration.loader.FileRorSettingsLoader.Error.FileNotExist
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error
 import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.loader.FileRorSettingsLoader.Error.FileNotExist
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 
 class FileRorSettingsLoader(rorSettingsFile: File,
                             rawRorSettingsYamlParser: RawRorSettingsYamlParser)
   extends RorSettingsLoader[FileRorSettingsLoader.Error] {
+
+  def settingsFile: File = rorSettingsFile
 
   override def load(): Task[Either[Error[FileRorSettingsLoader.Error], RawRorSettings]] = {
     val file = rorSettingsFile

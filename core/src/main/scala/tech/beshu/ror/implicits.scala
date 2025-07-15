@@ -58,8 +58,8 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingError
-import tech.beshu.ror.configuration.manager.RorMainSettingsManager.LoadingFromFileError
-import tech.beshu.ror.configuration.manager.SettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.manager.FileSettingsManager.LoadingFromFileError
+import tech.beshu.ror.configuration.manager.InIndexSettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.ScalaOps.*
