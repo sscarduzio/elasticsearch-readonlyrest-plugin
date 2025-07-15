@@ -82,7 +82,7 @@ object EsConfigBasedRorSettings {
                                  rorSettingsFromFileParameters: LoadFromFileParameters,
                                  xpackSecurity: XpackSecurity)
                                 (implicit systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
-    EitherT(RorSslSettings.load(esEnv, rorSettingsFromFileParameters))
+    EitherT(RorSslSettings.load(rorSettingsFromFileParameters.rorSettingsFile, esEnv.elasticsearchYmlFile))
       .leftMap(error => MalformedContent(esEnv.elasticsearchYmlFile, error.message))
       .subflatMap {
         case Some(ssl) if xpackSecurity.enabled =>

@@ -238,14 +238,14 @@ object ScalaOps {
     }
   }
 
-  implicit class PositiveFiniteDurationAdd(val duration: PositiveFiniteDuration) extends AnyVal {
+  implicit class PositiveFiniteDurationAdd(duration: PositiveFiniteDuration) extends AnyVal {
 
     def +(duration: PositiveFiniteDuration): PositiveFiniteDuration = {
       Refined.unsafeApply(this.duration.value + duration.value)
     }
   }
 
-  implicit class LoggerOps(val logger: Logger) extends AnyVal {
+  implicit class LoggerOps(logger: Logger) {
     def dInfo(msg: String): Task[Unit] = {
       Task.delay(logger.info(msg))
     }

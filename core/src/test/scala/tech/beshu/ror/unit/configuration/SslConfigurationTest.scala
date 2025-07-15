@@ -20,6 +20,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.configuration.SslConfiguration.*
 import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.{FileBasedConfiguration, KeystoreBasedConfiguration}
 import tech.beshu.ror.configuration.{Environment, MalformedSettings, RorSslSettings}
@@ -30,7 +31,7 @@ import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePat
 class SslConfigurationTest
   extends AnyWordSpec with Inside {
 
-  private implicit val systemContext: SystemContext = new Environment(
+  private implicit val systemContext: SystemContext = new SystemContext(
     propertiesProvider = TestsPropertiesProvider.default
   )
 

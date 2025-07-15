@@ -22,9 +22,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromFileParameters
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslSettings, FipsMode, InternodeSslSettings}
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.SSLCertHelper
 
@@ -58,17 +56,16 @@ object RorSslSettings extends Logging {
     }
   }
 
-  def load(esEnv: EsEnv, loadFromFileParameters: LoadFromFileParameters)
+  def load(rorSettingsFile: File, esConfigFile: File)
           (implicit systemContext: SystemContext): Task[Either[MalformedSettings, Option[RorSslSettings]]] = Task {
-    implicit val rorSslSettingsDecoder: Decoder[Option[RorSslSettings]] = SslDecoders.rorSslDecoder(esEnv.configDir)
-    val esConfigFile = esEnv.elasticsearchYmlFile
+    implicit val rorSslSettingsDecoder: Decoder[Option[RorSslSettings]] = SslDecoders.rorSslDecoder(esConfigFile.parent)
     loadSslSettingsFrom(esConfigFile)
       .fold(
         error => Left(error),
         {
           case None =>
             logger.info(s"Cannot find ROR SSL settings in ${esConfigFile.show} ...")
-            fallbackToRorSettingsFile(loadFromFileParameters.rorSettingsFile)
+            fallbackToRorSettingsFile(rorSettingsFile)
           case Some(ssl) =>
             Right(Some(ssl))
         }

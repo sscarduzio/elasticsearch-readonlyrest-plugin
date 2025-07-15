@@ -22,12 +22,8 @@ import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
-import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction
-import tech.beshu.ror.configuration.RorConfigLoading.LoadRorConfigAction.*
 import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
-import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.{RorMainSettingsManager, LoadedRorConfig}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, unsafeNes}
 

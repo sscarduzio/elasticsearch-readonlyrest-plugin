@@ -38,7 +38,8 @@ import scala.language.postfixOps
 
 class RorMainSettingsManager private(esConfigBasedRorSettings: EsConfigBasedRorSettings,
                                      fileSettingsLoader: FileRorSettingsLoader,
-                                     indexSettingsManager: IndexSettingsManager[RawRorSettings])
+                                     indexSettingsManager: IndexSettingsManager[RawRorSettings],
+                                     indexJsonContentService: IndexJsonContentService)
   extends FileSettingsManager[RawRorSettings]
     with InIndexSettingsManager[RawRorSettings]
     with Logging {
@@ -135,6 +136,28 @@ class RorMainSettingsManager private(esConfigBasedRorSettings: EsConfigBasedRorS
         )
     } yield settings
     result.value
+  }
+
+  private def loadSettingsFromIndex() = {
+    indexJsonContentService
+      .sourceOf(settingsIndex.index, Const.id)
+      .flatMap {
+        case Right(source) =>
+          source
+            .find(_._1 == Const.settingsKey)
+            .map { case (_, rorYamlString) =>
+              rorSettingsYamlParser
+                .fromString(rorYamlString)
+                .map(_.left.map(ParsingError.apply))
+            }
+            .getOrElse {
+              settingsLoaderError(UnknownStructureOfIndexDocument)
+            }
+        case Left(CannotReachContentSource) =>
+          settingsLoaderError(IndexNotExist)
+        case Left(ContentNotFound) =>
+          settingsLoaderError(IndexNotExist)
+      }
   }
 
   private def convertFileError(error: RorSettingsLoader.Error[FileRorSettingsLoader.Error]): LoadingFromFileError = {

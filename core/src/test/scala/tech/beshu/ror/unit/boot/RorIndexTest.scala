@@ -24,14 +24,15 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{EitherValues, Inside, OptionValues}
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
-import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
+import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.boot.RorInstance.TestSettings
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.configuration.{RawRorSettings, RorDependencies}
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
@@ -42,6 +43,7 @@ import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
+// todo: change name
 class RorIndexTest extends AnyWordSpec
   with Inside with OptionValues with EitherValues
   with MockFactory with Eventually {
@@ -217,7 +219,7 @@ class RorIndexTest extends AnyWordSpec
   private def readonlyRestBoot(factory: CoreFactory,
                                indexJsonContentService: IndexJsonContentService,
                                configPath: String) = {
-    implicit val systemContext: SystemContext = new Environment(
+    implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(
         Map(
           "com.readonlyrest.settings.loading.delay" -> "1"
@@ -240,7 +242,7 @@ class RorIndexTest extends AnyWordSpec
         (config: RawRorSettings, _, _, _, _) => config == rawRorConfig
       })
       .once()
-      .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp))))
+      .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp, None))))
     mockedCoreFactory
   }
 

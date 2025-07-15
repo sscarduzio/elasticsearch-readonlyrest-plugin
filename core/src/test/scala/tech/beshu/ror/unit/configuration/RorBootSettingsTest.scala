@@ -20,8 +20,9 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.configuration.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
-import tech.beshu.ror.configuration.{Environment, MalformedSettings, RorBootSettings}
+import tech.beshu.ror.configuration.{MalformedSettings, RorBootSettings}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath}
 

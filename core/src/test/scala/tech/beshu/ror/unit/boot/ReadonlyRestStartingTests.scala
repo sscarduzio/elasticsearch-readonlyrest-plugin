@@ -29,6 +29,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{EitherValues, Inside, OptionValues}
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
@@ -40,14 +41,14 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenti
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
+import tech.beshu.ror.accesscontrol.factory.RorDependencies.NoOpImpersonationWarningsReader
+import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, TestSettings}
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.configuration.RorDependencies.NoOpImpersonationWarningsReader
-import tech.beshu.ror.configuration.index.SavingIndexConfigError
-import tech.beshu.ror.configuration.{RawRorSettings, RorDependencies}
+import tech.beshu.ror.configuration.RawRorSettings
+import tech.beshu.ror.configuration.manager.InIndexSettingsManager.SavingIndexSettingsError
 import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
@@ -181,7 +182,7 @@ class ReadonlyRestStartingTests
             createCoreResult =
               Task
                 .sleep(100 millis)
-                .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp))) // very long creation
+                .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp, None))) // very long creation
           )
           mockIndexJsonContentManagerSaveCall(
             mockedIndexJsonContentManager,
@@ -415,7 +416,7 @@ class ReadonlyRestStartingTests
 
               val coreFactory = mock[CoreFactory]
               mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-              mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
+              mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig, None)
 
               val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
               (readonlyRest, expirationTimestamp)
@@ -597,7 +598,7 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
+          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig, None)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
           (readonlyRest, mockedIndexJsonContentManager)
@@ -1285,7 +1286,7 @@ class ReadonlyRestStartingTests
             .returns(Task.now(Left(CannotWriteToIndex)))
 
           rorInstance.invalidateTestSettingsEngine()(newRequestId()).runSyncUnsafe() should be(
-            Left(IndexSettingsInvalidationError.IndexSettingsSavingError(SavingIndexConfigError.CannotSaveConfig))
+            Left(IndexSettingsInvalidationError.IndexSettingsSavingError(SavingIndexSettingsError.CannotSaveConfig))
           )
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -1324,7 +1325,8 @@ class ReadonlyRestStartingTests
           mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorConfig(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader, Some(AuditingTool.Settings(
+          RorDependencies(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader),
+          Some(AuditingTool.Settings(
             NonEmptyList.of(
               AuditSink.Enabled(dataStreamSinkConfig1),
               AuditSink.Enabled(dataStreamSinkConfig2))
@@ -1409,7 +1411,7 @@ class ReadonlyRestStartingTests
         .map(size => "com.readonlyrest.settings.maxSize" -> size)
         .toMap
 
-    implicit val systemContext: SystemContext = new Environment(
+    implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(
         mapWithIntervalFrom(refreshInterval) ++
           mapWithMaxYamlSize(maxYamlSize) ++
@@ -1461,20 +1463,22 @@ class ReadonlyRestStartingTests
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               resourceFileName: String,
                               accessControlMock: AccessControlList = mockEnabledAccessControl,
-                              dependencies: RorDependencies = RorDependencies.noOp): CoreFactory = {
-    mockCoreFactory(mockedCoreFactory, rorConfigFromResource(resourceFileName), accessControlMock, dependencies)
+                              dependencies: RorDependencies = RorDependencies.noOp,
+                              auditingSettings: Option[AuditingTool.Settings] = None): CoreFactory = {
+    mockCoreFactory(mockedCoreFactory, rorConfigFromResource(resourceFileName), accessControlMock, dependencies, auditingSettings)
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               rawRorConfig: RawRorSettings,
                               accessControlMock: AccessControlList,
-                              dependencies: RorDependencies): CoreFactory = {
+                              dependencies: RorDependencies,
+                              auditingSettings: Option[AuditingTool.Settings]): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (config: RawRorSettings, _, _, _, _) => config == rawRorConfig
       })
       .once()
-      .returns(Task.now(Right(Core(accessControlMock, dependencies))))
+      .returns(Task.now(Right(Core(accessControlMock, dependencies, auditingSettings))))
     mockedCoreFactory
   }
 
