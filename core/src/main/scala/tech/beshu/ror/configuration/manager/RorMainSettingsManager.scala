@@ -31,11 +31,11 @@ import tech.beshu.ror.configuration.manager.RorMainSettingsManager.LoadingError
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.ScalaOps.LoggerOps
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.postfixOps
 
-// todo: refactor methods
 class RorMainSettingsManager private(esConfigBasedRorSettings: EsConfigBasedRorSettings,
                                      fileSettingsLoader: FileRorSettingsLoader,
                                      indexSettingsManager: IndexSettingsManager[RawRorSettings])
@@ -63,7 +63,15 @@ class RorMainSettingsManager private(esConfigBasedRorSettings: EsConfigBasedRorS
   }
 
   override def loadFromFile(): Task[Either[LoadingFromFileError, RawRorSettings]] = {
-    forceLoadFromFile()
+    val result = for {
+      _ <- lift(logger.info(s"Loading ReadonlyREST settings from file: ${fileSettingsLoader.settingsFile.show}"))
+      settings <- EitherT(fileSettingsLoader.load())
+        .leftMap(convertFileError)
+        .leftSemiflatTap { error =>
+          logger.dError(s"Loading ReadonlyREST settings from file failed: ${error.toString}")
+        }
+    } yield settings
+    result.value
   }
 
   override def loadFromIndex(): Task[Either[LoadingFromIndexError, RawRorSettings]] = {
@@ -108,43 +116,25 @@ class RorMainSettingsManager private(esConfigBasedRorSettings: EsConfigBasedRorS
 
   private def loadRorSettingsFromIndex() = {
     val settingsIndex = indexSettingsManager.settingsIndex
-    logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${settingsIndex.index.show}) ...")
-    EitherT(indexSettingsManager.load())
-      .map { rorSettings =>
-        logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw ReadonlyREST settings from index: ${rorSettings.raw.show}")
-        rorSettings
-      }
-      .leftMap { error =>
-        val newError = convertIndexError(error)
-        logIndexLoadingError(newError)
-        newError
-      }
-      .value
-  }
-
-  // todo: these two are almost the same (logging differs only)
-  //  private def loadRorSettingsFromFile(parameters: LoadFromFileParameters): Task[Either[LoadingError, RawRorSettings]] = {
-  //    val rorSettingsFile = parameters.rorSettingsFile
-  //    val rawRorSettingsYamlParser = new RawRorSettingsYamlParser(parameters.settingsMaxSize)
-  //    logger.info(s"Loading ReadonlyREST settings from file from: ${rorSettingsFile.show}, because index not exist")
-  //    EitherT(new FileRorSettingsLoader(rorSettingsFile, rawRorSettingsYamlParser).load())
-  //      .leftMap { error =>
-  //        val newError = convertFileError(error)
-  //        logger.error(s"Loading ReadonlyREST from file failed: ${newError.toString}")
-  //        newError
-  //      }
-  //      .value
-  //  }
-
-  private def forceLoadFromFile(): Task[Either[LoadingFromFileError, RawRorSettings]] = {
-    logger.info(s"Loading ReadonlyREST settings forced loading from file from: ${fileSettingsLoader.settingsFile.show}")
-    EitherT(fileSettingsLoader.load())
-      .leftMap { error =>
-        val newError = convertFileError(error)
-        logger.error(s"Loading ReadonlyREST from file failed: ${newError.toString}")
-        newError
-      }
-      .value
+    val result = for {
+      _ <- lift(logger.info(s"Loading ReadonlyREST settings from index (${settingsIndex.index.show}) ..."))
+      settings <- EitherT(indexSettingsManager.load())
+        .leftMap(convertIndexError)
+        .biSemiflatTap(
+          {
+            case LoadingFromIndexError.IndexParsingError(message) =>
+              logger.dError(s"Loading ReadonlyREST settings from index failed: ${message.show}")
+            case LoadingFromIndexError.IndexUnknownStructure =>
+              logger.dInfo(s"Loading ReadonlyREST settings from index failed: index content malformed")
+            case LoadingFromIndexError.IndexNotExist =>
+              logger.dInfo(s"Loading ReadonlyREST settings from index failed: cannot find index")
+          },
+          rorSettings => {
+            logger.dDebug(s"Loaded ReadonlyREST settings from index: ${rorSettings.raw.show}")
+          }
+        )
+    } yield settings
+    result.value
   }
 
   private def convertFileError(error: RorSettingsLoader.Error[FileRorSettingsLoader.Error]): LoadingFromFileError = {
@@ -161,20 +151,11 @@ class RorMainSettingsManager private(esConfigBasedRorSettings: EsConfigBasedRorS
       case SpecializedError(IndexSettingsManager.LoadingIndexSettingsError.UnknownStructureOfIndexDocument) => LoadingFromIndexError.IndexUnknownStructure
     }
 
-  private def logIndexLoadingError[A](error: LoadingFromIndexError): Unit = {
-    error match {
-      case LoadingFromIndexError.IndexParsingError(message) =>
-        logger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
-      case LoadingFromIndexError.IndexUnknownStructure =>
-        logger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
-      case LoadingFromIndexError.IndexNotExist =>
-        logger.info(s"Loading ReadonlyREST settings from index failed: cannot find index")
-    }
-  }
-
   private def wait(duration: FiniteDuration) = {
     Task.sleep(duration).map(Right.apply)
   }
+
+  private def lift[A](value: => A) = EitherT(Task.delay(Right(value)))
 }
 
 object RorMainSettingsManager {

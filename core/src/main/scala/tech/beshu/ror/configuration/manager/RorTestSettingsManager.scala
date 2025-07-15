@@ -19,7 +19,6 @@ package tech.beshu.ror.configuration.manager
 import cats.data.EitherT
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.RorProperties.LoadingDelay
 import tech.beshu.ror.configuration.index.IndexSettingsManager.LoadingIndexSettingsError
 import tech.beshu.ror.configuration.index.{IndexJsonContentServiceBasedIndexTestSettingsManager, IndexSettingsManager}
 import tech.beshu.ror.configuration.loader.RorSettingsLoader
@@ -28,6 +27,7 @@ import tech.beshu.ror.configuration.manager.InIndexSettingsManager.{LoadingFromI
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettingsYamlParser, TestRorSettings}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.ScalaOps.LoggerOps
 
 import scala.language.postfixOps
 
@@ -35,82 +35,36 @@ class RorTestSettingsManager private(indexSettingsManager: IndexSettingsManager[
   extends InIndexSettingsManager[TestRorSettings]
     with Logging {
 
-  // todo: remove?
-  //  def loadFromIndexWithFallback(loadFromIndexParameters: LoadFromIndexParameters,
-  //                                fallbackSettings: TestRorSettings): Task[Either[LoadingFromIndexError, TestRorSettings]] = {
-  //    loadFromIndexWithFallback(
-  //      loadFromIndexParameters = loadFromIndexParameters,
-  //      fallback = Task.delay(Right(fallbackSettings))
-  //    ).map(_.leftMap {
-  //      case error: LoadingFromIndexError => error
-  //      case error => throw new IllegalStateException(s"Unexpected $error type")
-  //    })
-  //  }
-  //  override def loadFromIndexWithFallback(loadFromIndexParameters: LoadFromIndexParameters,
-  //                                         fallback: Task[Either[LoadingError, TestRorSettings]]): Task[Either[LoadingError, TestRorSettings]] = {
-  //    attemptLoadingConfigFromIndex(
-  //      parameters = loadFromIndexParameters,
-  //      fallback = fallback
-  //    )
-  //  }
-
   override def loadFromIndex(): Task[Either[LoadingFromIndexError, TestRorSettings]] = {
-    loadTestRorConfigFromIndex(LoadingDelay.none)
+    val settingsIndex = indexSettingsManager.settingsIndex
+    val result = for {
+      _ <- lift(logger.info(s"Loading ReadonlyREST test settings from index (${settingsIndex.index.show}) ..."))
+      settings <- EitherT(indexSettingsManager.load())
+        .leftMap(convertIndexError)
+        .biSemiflatTap(
+          {
+            case LoadingFromIndexError.IndexParsingError(message) =>
+              logger.dError(s"Loading ReadonlyREST test settings from index failed: ${message.show}")
+            case LoadingFromIndexError.IndexUnknownStructure =>
+              logger.dInfo("Loading ReadonlyREST test settings from index failed: index content malformed")
+            case LoadingFromIndexError.IndexNotExist =>
+              logger.dInfo("Loading ReadonlyREST test settings from index failed: cannot find index")
+          },
+          {
+            case TestRorSettings.Present(rawConfig, _, _) =>
+              logger.dDebug(s"Loaded ReadonlyREST test settings from index: ${rawConfig.raw.show}")
+            case TestRorSettings.NotSet =>
+              logger.dDebug("There was no ReadonlyREST test settings in the index. Test settings engine will be not initialized.")
+          }
+        )
+    } yield settings
+    result.value
   }
 
   override def saveToIndex(settings: TestRorSettings): Task[Either[SavingIndexSettingsError, Unit]] = {
     EitherT(indexSettingsManager.save(settings))
       .leftMap {
         case IndexSettingsManager.SavingIndexSettingsError.CannotSaveSettings => InIndexSettingsManager.SavingIndexSettingsError.CannotSaveSettings
-      }
-      .value
-  }
-
-  // todo: remove?
-  //  private def attemptLoadingConfigFromIndex(parameters: LoadFromIndexParameters,
-  //                                            fallback: Task[Either[LoadingError, TestRorSettings]]): Task[Either[LoadingError, TestRorSettings]] = {
-  //    parameters.loadingAttemptsCount.value.value match {
-  //      case 0 =>
-  //        fallback
-  //      case attemptsCount =>
-  //        loadTestRorConfigFromIndex(LoadingDelay.none).flatMap {
-  //          case Left(LoadingFromIndexError.IndexNotExist) =>
-  //            attemptLoadingConfigFromIndex(
-  //              parameters.copy(loadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(parameters.loadingAttemptsCount.value.value - 1)),
-  //              fallback = fallback
-  //            )
-  //          case Left(error@LoadingFromIndexError.IndexUnknownStructure) =>
-  //            Task.now(Left(error))
-  //          case Left(error@LoadingFromIndexError.IndexParsingError(_)) =>
-  //            Task.now(Left(error))
-  //          case Right(value) =>
-  //            Task.now(Right(value))
-  //        }
-  //    }
-  //  }
-
-  private def loadTestRorConfigFromIndex(loadingDelay: LoadingDelay) = {
-    val settingsIndex = indexSettingsManager.settingsIndex
-    // todo: log is ok?
-    logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${settingsIndex.index.show}) ...")
-    EitherT {
-      indexSettingsManager
-        .load()
-        .delayExecution(loadingDelay.value.value)
-    }
-      .map { testConfig =>
-        testConfig match {
-          case TestRorSettings.Present(rawConfig, _, _) =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw test config from index: ${rawConfig.raw.show}")
-          case TestRorSettings.NotSet =>
-            logger.debug("[CLUSTERWIDE SETTINGS] There was no test settings in index. Test settings engine will be not initialized.")
-        }
-        testConfig
-      }
-      .leftMap { error =>
-        val newError = convertIndexError(error)
-        logIndexLoadingError(newError)
-        newError
       }
       .value
   }
@@ -122,17 +76,7 @@ class RorTestSettingsManager private(indexSettingsManager: IndexSettingsManager[
       case SpecializedError(LoadingIndexSettingsError.UnknownStructureOfIndexDocument) => LoadingFromIndexError.IndexUnknownStructure
     }
 
-  private def logIndexLoadingError(error: LoadingFromIndexError): Unit = {
-    error match {
-      case LoadingFromIndexError.IndexParsingError(message) =>
-        logger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
-      case LoadingFromIndexError.IndexUnknownStructure =>
-        logger.info("Loading ReadonlyREST test settings from index failed: index content malformed")
-      case LoadingFromIndexError.IndexNotExist =>
-        logger.info("Loading ReadonlyREST test settings from index failed: cannot find index")
-    }
-  }
-
+  private def lift[A](value: => A) = EitherT(Task.delay(Right(value)))
 }
 object RorTestSettingsManager {
 
