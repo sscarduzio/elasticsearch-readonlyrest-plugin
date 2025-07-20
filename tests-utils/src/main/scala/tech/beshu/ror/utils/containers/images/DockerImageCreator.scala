@@ -24,7 +24,8 @@ import tech.beshu.ror.utils.containers.images.DockerImageDescription.Command.{Ch
 
 object DockerImageCreator extends StrictLogging {
 
-  def create(imageDescription: DockerImageDescription): ImageFromDockerfile = {
+  def create(elasticsearch: Elasticsearch): ImageFromDockerfile = {
+    val imageDescription = elasticsearch.toDockerImageDescription
     copyFilesFrom(imageDescription, to = new ImageFromDockerfile())
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         val dockerfile = builder
@@ -33,6 +34,7 @@ object DockerImageCreator extends StrictLogging {
           .runCommandsFrom(imageDescription)
           .addEnvsFrom(imageDescription)
           .setEntrypointFrom(imageDescription)
+          .setCommandFrom(imageDescription)
           .build()
         logger.info("Dockerfile\n" + dockerfile)
       })
@@ -85,6 +87,12 @@ object DockerImageCreator extends StrictLogging {
       imageDescription
         .entrypoint
         .foldLeft(builder) { case (b, entrypoint) => b.entryPoint(entrypoint.toIO.getAbsolutePath) }
+    }
+
+    def setCommandFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
+      imageDescription
+        .command
+        .foldLeft(builder) { case (b, command) => b.cmd(command) }
     }
 
   }

@@ -17,9 +17,12 @@
 package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
+import org.testcontainers.containers.output.OutputFrame
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
 import tech.beshu.ror.utils.httpclient.RestClient
+
+import java.util.function.Consumer
 
 class EsContainerWithNoSecurity private(esConfig: Elasticsearch.Config,
                                         esVersion: String,
@@ -39,14 +42,15 @@ object EsContainerWithNoSecurity extends StrictLogging {
   def create(esVersion: String,
              esConfig: Elasticsearch.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
+             startedClusterDependencies: StartedClusterDependencies,
+             additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
     val esContainer = new EsContainerWithNoSecurity(
       esConfig,
       esVersion,
       startedClusterDependencies,
       esImageFromDockerfile(esVersion, esConfig)
     )
-    EsContainer.init(esContainer, initializer, logger)
+    EsContainer.init(esContainer, initializer, logger, additionalLogConsumer)
   }
 
   private def esImageFromDockerfile(esVersion: String,
@@ -59,7 +63,6 @@ object EsContainerWithNoSecurity extends StrictLogging {
             additionalElasticsearchYamlEntries = esConfig.additionalElasticsearchYamlEntries ++ Map("xpack.security.enabled" -> "false")
           )
         )
-        .toDockerImageDescription
     )
   }
 }

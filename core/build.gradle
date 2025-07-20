@@ -105,14 +105,8 @@ dependencies {
     api group: 'org.typelevel',                 name: 'squants_3',                          version: '1.8.3'
     api group: 'com.unboundid',                 name: 'unboundid-ldapsdk',                  version: '6.0.11'
     api group: 'com.lihaoyi',                   name: 'upickle_3',                          version: '4.0.2'
-    // https://www.bouncycastle.org/latest_releases.html#1.0.2.4-NONCERT
-    api group: 'org.bouncycastle',          name: 'bc-noncert',                             version: '1.0.2.4'
-    api(group: 'org.bouncycastle',          name: 'bctls-fips',                             version: '1.0.19') {
-        exclude group: 'org.bouncycastle', module: 'bc-fips'
-    }
-    api(group: 'org.bouncycastle',          name: 'bcpkix-fips',                            version: '1.0.7') {
-        exclude group: 'org.bouncycastle', module: 'bc-fips'
-    }
+    api group: 'org.bouncycastle',              name: 'bctls-fips',                         version: '2.1.20'
+    api group: 'org.bouncycastle',              name: 'bcpkix-fips',                        version: '2.1.9'
 
     testImplementation  project(':tests-utils')
     testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                 version: '2.24.2'
