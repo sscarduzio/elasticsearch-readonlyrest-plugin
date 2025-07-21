@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.audit.instances
 
+import enumeratum.*
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext.*
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, AuditResponseContext}
@@ -87,7 +88,9 @@ object BaseAuditLogSerializer {
       case AuditValue.ContentLengthInKb => requestContext.contentLength / 1024
       case AuditValue.EsNodeName => environmentContext.esNodeName
       case AuditValue.EsClusterName => environmentContext.esClusterName
-    }.toMap
+    }.toMap ++ Map(
+      "@timestamp" -> timestampFormatter.format(requestContext.timestamp),
+    )
     resolvedFields
       .foldLeft(new JSONObject()) { case (soFar, (key, value)) => soFar.put(key, value) }
       .mergeWith(requestContext.generalAuditEvents)
@@ -108,9 +111,11 @@ object BaseAuditLogSerializer {
     }
   }
 
-  sealed trait AuditValue
+  final case class Fields(value: Map[String, AuditValue])
 
-  object AuditValue {
+  sealed trait AuditValue extends EnumEntry.UpperSnakecase
+
+  object AuditValue extends Enum[AuditValue] {
 
     // Rule
     case object IsMatched extends AuditValue
@@ -170,6 +175,8 @@ object BaseAuditLogSerializer {
     case object EsNodeName extends AuditValue
 
     case object EsClusterName extends AuditValue
+
+    override def values: IndexedSeq[AuditValue] = findValues
 
   }
 

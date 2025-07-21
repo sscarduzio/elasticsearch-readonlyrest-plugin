@@ -65,15 +65,10 @@ class LocalClusterAuditingToolsSuite
 
         updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
         performAndAssertExampleSearchRequest(indexManager)
-
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2")
-        performAndAssertExampleSearchRequest(indexManager)
-
         forEachAuditManager { adminAuditManager =>
           eventually {
             val auditEntries = adminAuditManager.getEntries.force().jsons
-            auditEntries.size shouldBe 2
-
+            auditEntries.size shouldBe 1
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
@@ -81,7 +76,16 @@ class LocalClusterAuditingToolsSuite
                 entry.obj.get("es_node_name").isEmpty &&
                 entry.obj.get("es_cluster_name").isEmpty
             ) shouldBe true
+          }
+        }
 
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2")
+        performAndAssertExampleSearchRequest(indexManager)
+
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.force().jsons
+            auditEntries.size shouldBe 1
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
@@ -127,7 +131,6 @@ class LocalClusterAuditingToolsSuite
           eventually {
             val auditEntries = adminAuditManager.getEntries.force().jsons
             assert(auditEntries.size >= 3)
-
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
@@ -151,19 +154,12 @@ class LocalClusterAuditingToolsSuite
         forEachAuditManager { adminAuditManager =>
           eventually {
             val auditEntries = adminAuditManager.getEntries.force().jsons
-            assert(auditEntries.size >= 3)
+            auditEntries.size shouldBe 1
 
             auditEntries.exists(entry =>
-              entry("final_state").str == "ALLOWED" &&
-                entry("user").str == "username" &&
-                entry("block").str.contains("name: 'Rule 1'") &&
-                Try(entry("es_node_name")).map(_.str) == Success("ROR_SINGLE_1") &&
-                Try(entry("es_cluster_name")).map(_.str) == Success("ROR_SINGLE") &&
-                Try(entry("content")).map(_.str) == Success("")
+              entry("abrakadabra").str == "ROR_SINGLE_1" &&
+                entry("another_field").str == "ROR_SINGLE"
             ) shouldBe true
-
-            auditEntries.exists(entry => entry("path").str == "/_readonlyrest/admin/refreshconfig/") shouldBe true
-            auditEntries.exists(entry => entry("path").str == "/audit_index/_search/") shouldBe true
           }
         }
       }
@@ -181,5 +177,7 @@ class LocalClusterAuditingToolsSuite
     val modifiedConfig = initialConfig.replace(serializerUsedInOriginalConfigFile, s"""        serializer: "$serializer"""")
     rorApiManager.updateRorInIndexConfig(modifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
     rorApiManager.reloadRorConfig().force()
+    Thread.sleep(1000) // We need to wait a little while (set to 1 second) after changing the serializers, because some last events could have been serialized using previous serializer
+    truncateAllAuditManagers()
   }
 }

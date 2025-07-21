@@ -74,6 +74,9 @@ trait BaseAuditingToolsSuite
       }
     }
 
+  protected def truncateAllAuditManagers(): Unit =
+    adminAuditManagers.values.foreach(_.truncate())
+
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
