@@ -335,6 +335,8 @@ stages:
           matrix:
             IT_es818x:
               ROR_TASK: integration_es818x
+            IT_es816x:
+              ROR_TASK: integration_es816x
             IT_es810x:
               ROR_TASK: integration_es810x
             IT_es80x:
