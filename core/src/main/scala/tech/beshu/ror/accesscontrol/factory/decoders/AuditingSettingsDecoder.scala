@@ -17,8 +17,8 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
-import io.circe.{Decoder, HCursor}
 import io.circe.Decoder.*
+import io.circe.{Decoder, HCursor}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
@@ -220,8 +220,8 @@ object AuditingSettingsDecoder extends Logging {
 
   @nowarn("cat=deprecation")
   given auditLogSerializerInstanceDecoder(using context: AuditEnvironmentContext,
-                                          allowedEventSerializationMode: Option[AllowedEventSerializationMode],
-                                          fields: Option[AuditFields]): Decoder[AuditLogSerializer] =
+                                          allowedEventSerializationModeOpt: Option[AllowedEventSerializationMode],
+                                          fieldsOpt: Option[AuditFields]): Decoder[AuditLogSerializer] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { fullClassName =>
@@ -233,8 +233,15 @@ object AuditingSettingsDecoder extends Logging {
         }
 
         def createInstanceOfCustomizableSerializer() = {
-          Try(clazz.getConstructor(classOf[AuditEnvironmentContext], classOf[AllowedEventSerializationMode], classOf[AuditFields]))
-            .map(_.newInstance(context, allowedEventSerializationMode.get, fields.get))
+          for {
+            constructor <- Try(clazz.getConstructor(classOf[AuditEnvironmentContext], classOf[AllowedEventSerializationMode], classOf[AuditFields]))
+            allowedEventSerializationMode <- Try(allowedEventSerializationModeOpt.getOrElse(
+              throw new IllegalStateException(s"Configurable serializer is used, but the serialize_all_allowed_events setting is missing in configuration")
+            ))
+            fields <- Try(fieldsOpt.getOrElse(
+              throw new IllegalStateException(s"Configurable serializer is used, but the fields setting is missing in configuration")
+            ))
+          } yield constructor.newInstance(context, allowedEventSerializationMode, fields)
         }
 
         def createInstanceOfSimpleSerializer() = {
