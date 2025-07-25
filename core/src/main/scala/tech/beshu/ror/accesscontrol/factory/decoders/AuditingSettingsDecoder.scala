@@ -215,7 +215,8 @@ object AuditingSettingsDecoder extends Logging {
       fields <- c.downField("fields").as[Option[Map[String, AuditFieldValue]]]
       given Option[AuditFields] = fields.map(AuditFields.apply)
       serializer <- c.downField("serializer").as[Option[AuditLogSerializer]](decodeOption(auditLogSerializerInstanceDecoder))
-    } yield serializer
+      legacyFieldNameSerializer <- c.downField("audit_serializer").as[Option[AuditLogSerializer]](decodeOption(auditLogSerializerInstanceDecoder))
+    } yield serializer.orElse(legacyFieldNameSerializer)
   }
 
   @nowarn("cat=deprecation")
@@ -349,7 +350,9 @@ object AuditingSettingsDecoder extends Logging {
       whenEnabled(c) {
         for {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)("index_template", fallbackKey = "audit_index_template")
-          logSerializer <- c.as[Option[AuditLogSerializer]]
+          logSerializerOutsideAuditSection <- c.as[Option[AuditLogSerializer]]
+          logSerializerInAuditSection <- c.downField("audit").success.map(_.as[Option[AuditLogSerializer]]).getOrElse(Right(None))
+          logSerializer = logSerializerOutsideAuditSection.orElse(logSerializerInAuditSection)
           remoteAuditCluster <- decodeOptionalSetting[AuditCluster.RemoteAuditCluster](c)("cluster", fallbackKey = "audit_cluster")
         } yield AuditingTool.AuditSettings(
           auditSinks = NonEmptyList.one(
