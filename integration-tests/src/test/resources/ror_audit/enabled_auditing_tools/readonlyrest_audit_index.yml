@@ -10,6 +10,8 @@ readonlyrest:
         fields:
           node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
           another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+          tid: "{TASK_ID}"
+          bytes: "{CONTENT_LENGTH_IN_BYTES}"
 
   access_control_rules:
 

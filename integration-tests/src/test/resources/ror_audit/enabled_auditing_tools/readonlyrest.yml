@@ -10,6 +10,8 @@ readonlyrest:
         fields:
           node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
           another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+          tid: "{TASK_ID}"
+          bytes: "{CONTENT_LENGTH_IN_BYTES}"
       - type: data_stream
         data_stream: "audit_data_stream"
         serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
@@ -17,6 +19,8 @@ readonlyrest:
         fields:
           node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
           another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+          tid: "{TASK_ID}"
+          bytes: "{CONTENT_LENGTH_IN_BYTES}"
 
   access_control_rules:
 

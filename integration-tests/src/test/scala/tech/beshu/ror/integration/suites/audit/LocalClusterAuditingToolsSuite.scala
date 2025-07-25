@@ -65,19 +65,6 @@ class LocalClusterAuditingToolsSuite
 
         updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
         performAndAssertExampleSearchRequest(indexManager)
-        forEachAuditManager { adminAuditManager =>
-          eventually {
-            val auditEntries = adminAuditManager.getEntries.force().jsons
-            auditEntries.size shouldBe 1
-            auditEntries.exists(entry =>
-              entry("final_state").str == "ALLOWED" &&
-                entry("user").str == "username" &&
-                entry("block").str.contains("name: 'Rule 1'") &&
-                entry.obj.get("es_node_name").isEmpty &&
-                entry.obj.get("es_cluster_name").isEmpty
-            ) shouldBe true
-          }
-        }
 
         updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2")
         performAndAssertExampleSearchRequest(indexManager)
@@ -85,7 +72,14 @@ class LocalClusterAuditingToolsSuite
         forEachAuditManager { adminAuditManager =>
           eventually {
             val auditEntries = adminAuditManager.getEntries.force().jsons
-            auditEntries.size shouldBe 1
+            auditEntries.size shouldBe 2
+            auditEntries.exists(entry =>
+              entry("final_state").str == "ALLOWED" &&
+                entry("user").str == "username" &&
+                entry("block").str.contains("name: 'Rule 1'") &&
+                entry.obj.get("es_node_name").isEmpty &&
+                entry.obj.get("es_cluster_name").isEmpty
+            ) shouldBe true
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
@@ -165,7 +159,9 @@ class LocalClusterAuditingToolsSuite
 
             auditEntries.exists(entry =>
               entry("node_name_with_static_suffix").str == "ROR_SINGLE_1 with suffix" &&
-                entry("another_field").str == "ROR_SINGLE GET"
+                entry("another_field").str == "ROR_SINGLE GET" &&
+                entry("tid").numOpt.isDefined &&
+                entry("bytes").num == 0
             ) shouldBe true
           }
         }

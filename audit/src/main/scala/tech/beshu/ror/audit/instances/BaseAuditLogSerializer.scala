@@ -62,7 +62,15 @@ object BaseAuditLogSerializer {
                           error: Option[Throwable]) = {
     val resolvedFields: Map[String, Any] = Map(
       "@timestamp" -> timestampFormatter.format(requestContext.timestamp),
-    ) ++ fields.view.mapValues(_.value.map(resolvePlaceholder(_, environmentContext, matched, finalState, reason, duration, requestContext, error)).mkString).toMap
+    ) ++ fields.view.mapValues(
+      _.value.map(
+        resolvePlaceholder(_, environmentContext, matched, finalState, reason, duration, requestContext, error)
+      ) match {
+        case Nil => ""
+        case singleElement :: Nil => singleElement
+        case multipleElements => multipleElements.mkString
+      }
+    ).toMap
     resolvedFields
       .foldLeft(new JSONObject()) { case (soFar, (key, value)) => soFar.put(key, value) }
       .mergeWith(requestContext.generalAuditEvents)
