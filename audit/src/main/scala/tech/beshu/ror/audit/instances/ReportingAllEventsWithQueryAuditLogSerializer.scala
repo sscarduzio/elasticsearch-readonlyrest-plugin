@@ -24,6 +24,6 @@ import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext}
 class ReportingAllEventsWithQueryAuditLogSerializer(environmentContext: AuditEnvironmentContext) extends DefaultAuditLogSerializer(environmentContext) {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
-    BaseAuditLogSerializer.serialize(responseContext, environmentContext, queryV2AuditFields, AllowedEventSerializationMode.AlwaysSerialize)
+    BaseAuditLogSerializer.serialize(responseContext, environmentContext, queryV2AuditFields, AllowedEventSerializationMode.SerializeAllAllowedEvents)
 
 }

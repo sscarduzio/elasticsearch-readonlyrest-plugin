@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
 import io.circe.{Decoder, HCursor}
+import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
@@ -33,7 +34,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.AllowedEventSerializationMode.*
-import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditValue, Fields}
+import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFieldValue, AuditFields}
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
@@ -122,14 +123,10 @@ object AuditingSettingsDecoder extends Logging {
 
     given Decoder[LogBasedSink] = Decoder.instance { c =>
       for {
-        serializeAllAllowedEvents <- c.downField("serialize_all_allowed_events").as[Option[Boolean]]
-        given Option[AllowedEventSerializationMode] = serializeAllAllowedEvents.map(c => if (c) AlwaysSerialize else SerializeOnlyEventsWithInfoLevelVerbose)
-        fields <- c.downField("fields").as[Option[Map[String, AuditValue]]]
-        given Option[Fields] = fields.map(Fields.apply)
-        logSerializerCreator <- c.downField("serializer").as[Option[AuditLogSerializer]]
+        logSerializer <- c.as[Option[AuditLogSerializer]]
         loggerName <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
       } yield LogBasedSink(
-        logSerializer = logSerializerCreator.getOrElse(LogBasedSink.default.logSerializer),
+        logSerializer = logSerializer.getOrElse(LogBasedSink.default.logSerializer),
         loggerName = loggerName.getOrElse(LogBasedSink.default.loggerName)
       )
     }
@@ -137,14 +134,10 @@ object AuditingSettingsDecoder extends Logging {
     given Decoder[EsIndexBasedSink] = Decoder.instance { c =>
       for {
         auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
-        serializeAllAllowedEvents <- c.downField("serialize_all_allowed_events").as[Option[Boolean]]
-        given Option[AllowedEventSerializationMode] = serializeAllAllowedEvents.map(c => if (c) AlwaysSerialize else SerializeOnlyEventsWithInfoLevelVerbose)
-        fields <- c.downField("fields").as[Option[Map[String, AuditValue]]]
-        given Option[Fields] = fields.map(Fields.apply)
-        customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
+        logSerializer <- c.as[Option[AuditLogSerializer]]
         remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
       } yield EsIndexBasedSink(
-        customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
+        logSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
         auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
         remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
       )
@@ -153,14 +146,10 @@ object AuditingSettingsDecoder extends Logging {
     given Decoder[EsDataStreamBasedSink] = Decoder.instance { c =>
       for {
         rorAuditDataStream <- c.downField("data_stream").as[Option[RorAuditDataStream]]
-        serializeAllAllowedEvents <- c.downField("serialize_all_allowed_events").as[Option[Boolean]]
-        given Option[AllowedEventSerializationMode] = serializeAllAllowedEvents.map(c => if (c) AlwaysSerialize else SerializeOnlyEventsWithInfoLevelVerbose)
-        fields <- c.downField("fields").as[Option[Map[String, AuditValue]]]
-        given Option[Fields] = fields.map(Fields.apply)
-        customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
+        logSerializer <- c.as[Option[AuditLogSerializer]]
         remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
       } yield EsDataStreamBasedSink(
-        customAuditSerializer.getOrElse(EsDataStreamBasedSink.default.logSerializer),
+        logSerializer.getOrElse(EsDataStreamBasedSink.default.logSerializer),
         rorAuditDataStream.getOrElse(EsDataStreamBasedSink.default.rorAuditDataStream),
         remoteAuditCluster.getOrElse(EsDataStreamBasedSink.default.auditCluster),
       )
@@ -219,11 +208,20 @@ object AuditingSettingsDecoder extends Logging {
       }
       .decoder
 
+  given auditLogSerializerDecoder(using context: AuditEnvironmentContext): Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
+    for {
+      serializeAllAllowedEvents <- c.downField("serialize_all_allowed_events").as[Option[Boolean]]
+      given Option[AllowedEventSerializationMode] = serializeAllAllowedEvents.map(c => if (c) SerializeAllAllowedEvents else SerializeOnlyAllowedEventsWithInfoLevelVerbose)
+      fields <- c.downField("fields").as[Option[Map[String, AuditFieldValue]]]
+      given Option[AuditFields] = fields.map(AuditFields.apply)
+      serializer <- c.downField("serializer").as[Option[AuditLogSerializer]](decodeOption(auditLogSerializerInstanceDecoder))
+    } yield serializer
+  }
+
   @nowarn("cat=deprecation")
-  private given customAuditLogSerializer(using
-                                         context: AuditEnvironmentContext,
-                                         allowedEventSerializationMode: Option[AllowedEventSerializationMode],
-                                         fields: Option[Fields]): Decoder[AuditLogSerializer] =
+  given auditLogSerializerInstanceDecoder(using context: AuditEnvironmentContext,
+                                          allowedEventSerializationMode: Option[AllowedEventSerializationMode],
+                                          fields: Option[AuditFields]): Decoder[AuditLogSerializer] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { fullClassName =>
@@ -235,7 +233,7 @@ object AuditingSettingsDecoder extends Logging {
         }
 
         def createInstanceOfCustomizableSerializer() = {
-          Try(clazz.getConstructor(classOf[AuditEnvironmentContext], classOf[AllowedEventSerializationMode], classOf[Fields]))
+          Try(clazz.getConstructor(classOf[AuditEnvironmentContext], classOf[AllowedEventSerializationMode], classOf[AuditFields]))
             .map(_.newInstance(context, allowedEventSerializationMode.get, fields.get))
         }
 
@@ -274,10 +272,10 @@ object AuditingSettingsDecoder extends Logging {
       }
       .decoder
 
-  given auditValueDecoder: Decoder[AuditValue] = {
+  given auditValueDecoder: Decoder[AuditFieldValue] = {
     SyncDecoderCreator
       .from(Decoder.decodeString)
-      .emap(AuditValue.withNameEither(_).left.map(_.getMessage))
+      .emap(AuditFieldValue.fromString(_))
       .decoder
   }
 
@@ -344,17 +342,13 @@ object AuditingSettingsDecoder extends Logging {
       whenEnabled(c) {
         for {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)("index_template", fallbackKey = "audit_index_template")
-          serializeAllAllowedEvents <- c.downField("serialize_all_allowed_events").as[Option[Boolean]]
-          given Option[AllowedEventSerializationMode] = serializeAllAllowedEvents.map(c => if (c) AlwaysSerialize else SerializeOnlyEventsWithInfoLevelVerbose)
-          fields <- c.downField("fields").as[Option[Map[String, AuditValue]]]
-          given Option[Fields] = fields.map(Fields.apply)
-          customAuditSerializer <- decodeOptionalSetting[AuditLogSerializer](c)("serializer", fallbackKey = "audit_serializer")
+          logSerializer <- c.as[Option[AuditLogSerializer]]
           remoteAuditCluster <- decodeOptionalSetting[AuditCluster.RemoteAuditCluster](c)("cluster", fallbackKey = "audit_cluster")
         } yield AuditingTool.AuditSettings(
           auditSinks = NonEmptyList.one(
             AuditSink.Enabled(
               EsIndexBasedSink(
-                logSerializer = customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
+                logSerializer = logSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
                 rorAuditIndexTemplate = auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
                 auditCluster = remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
               )

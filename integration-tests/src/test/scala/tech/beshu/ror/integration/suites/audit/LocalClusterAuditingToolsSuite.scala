@@ -95,6 +95,7 @@ class LocalClusterAuditingToolsSuite
             ) shouldBe true
           }
         }
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
       }
       "using ReportingAllEventsAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
@@ -120,6 +121,9 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry => entry("path").str == "/audit_index/_search/") shouldBe true
           }
         }
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+        // This test uses serializer, that reports all events. We need to wait a moment, to ensure that there will be no more events using that serializer
+        Thread.sleep(3000)
       }
       "using ReportingAllEventsWithQueryAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
@@ -144,6 +148,9 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry => entry("path").str == "/audit_index/_search/") shouldBe true
           }
         }
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+        // This test uses serializer, that reports all events. We need to wait a moment, to ensure that there will be no more events using that serializer
+        Thread.sleep(3000)
       }
       "using ConfigurableQueryAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
@@ -157,11 +164,12 @@ class LocalClusterAuditingToolsSuite
             auditEntries.size shouldBe 1
 
             auditEntries.exists(entry =>
-              entry("abrakadabra").str == "ROR_SINGLE_1" &&
-                entry("another_field").str == "ROR_SINGLE"
+              entry("abrakadabra").str == "ROR_SINGLE_1 with suffix" &&
+                entry("another_field").str == "ROR_SINGLE GET"
             ) shouldBe true
           }
         }
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
       }
     }
   }
@@ -177,7 +185,6 @@ class LocalClusterAuditingToolsSuite
     val modifiedConfig = initialConfig.replace(serializerUsedInOriginalConfigFile, s"""        serializer: "$serializer"""")
     rorApiManager.updateRorInIndexConfig(modifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
     rorApiManager.reloadRorConfig().force()
-    Thread.sleep(1000) // We need to wait a little while (set to 1 second) after changing the serializers, because some last events could have been serialized using previous serializer
     truncateAllAuditManagers()
   }
 }

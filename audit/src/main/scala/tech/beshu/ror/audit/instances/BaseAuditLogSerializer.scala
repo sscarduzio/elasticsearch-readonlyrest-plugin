@@ -32,14 +32,14 @@ object BaseAuditLogSerializer {
 
   def serialize(responseContext: AuditResponseContext,
                 environmentContext: AuditEnvironmentContext,
-                fields: Map[String, AuditValue],
+                fields: Map[String, AuditFieldValue],
                 allowedEventSerializationMode: AllowedEventSerializationMode): Option[JSONObject] = responseContext match {
     case Allowed(requestContext, verbosity, reason) =>
       (verbosity, allowedEventSerializationMode) match {
-        case (Verbosity.Error, AllowedEventSerializationMode.SerializeOnlyEventsWithInfoLevelVerbose) =>
+        case (Verbosity.Error, AllowedEventSerializationMode.SerializeOnlyAllowedEventsWithInfoLevelVerbose) =>
           None
-        case (Verbosity.Info, AllowedEventSerializationMode.SerializeOnlyEventsWithInfoLevelVerbose) |
-             (_, AllowedEventSerializationMode.AlwaysSerialize) =>
+        case (Verbosity.Info, AllowedEventSerializationMode.SerializeOnlyAllowedEventsWithInfoLevelVerbose) |
+             (_, AllowedEventSerializationMode.SerializeAllAllowedEvents) =>
           Some(createEntry(fields, environmentContext, matched = true, "ALLOWED", reason, responseContext.duration, requestContext, None))
       }
     case ForbiddenBy(requestContext, _, reason) =>
@@ -52,7 +52,7 @@ object BaseAuditLogSerializer {
       Some(createEntry(fields, environmentContext, matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause)))
   }
 
-  private def createEntry(fields: Map[String, AuditValue],
+  private def createEntry(fields: Map[String, AuditFieldValue],
                           environmentContext: AuditEnvironmentContext,
                           matched: Boolean,
                           finalState: String,
@@ -60,40 +60,52 @@ object BaseAuditLogSerializer {
                           duration: FiniteDuration,
                           requestContext: AuditRequestContext,
                           error: Option[Throwable]) = {
-    val resolvedFields: Map[String, Any] = fields.view.mapValues {
-      case AuditValue.IsMatched => matched
-      case AuditValue.FinalState => finalState
-      case AuditValue.Reason => reason
-      case AuditValue.User => SerializeUser.serialize(requestContext).orNull
-      case AuditValue.ImpersonatedByUser => requestContext.impersonatedByUserName.orNull
-      case AuditValue.Action => requestContext.action
-      case AuditValue.InvolvedIndices => if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava
-      case AuditValue.AclHistory => requestContext.history
-      case AuditValue.ProcessingDurationMillis => duration.toMillis
-      case AuditValue.Timestamp => timestampFormatter.format(requestContext.timestamp)
-      case AuditValue.Id => requestContext.id
-      case AuditValue.CorrelationId => requestContext.correlationId
-      case AuditValue.TaskId => requestContext.taskId
-      case AuditValue.ErrorType => error.map(_.getClass.getSimpleName).orNull
-      case AuditValue.ErrorMessage => error.map(_.getMessage).orNull
-      case AuditValue.Type => requestContext.`type`
-      case AuditValue.HttpMethod => requestContext.httpMethod
-      case AuditValue.HttpHeaderNames => requestContext.requestHeaders.names.asJava
-      case AuditValue.HttpPath => requestContext.uriPath
-      case AuditValue.XForwardedForHttpHeader => requestContext.requestHeaders.getValue("X-Forwarded-For").flatMap(_.headOption).orNull
-      case AuditValue.RemoteAddress => requestContext.remoteAddress
-      case AuditValue.LocalAddress => requestContext.localAddress
-      case AuditValue.Content => requestContext.content
-      case AuditValue.ContentLengthInBytes => requestContext.contentLength
-      case AuditValue.ContentLengthInKb => requestContext.contentLength / 1024
-      case AuditValue.EsNodeName => environmentContext.esNodeName
-      case AuditValue.EsClusterName => environmentContext.esClusterName
-    }.toMap ++ Map(
+    val resolvedFields: Map[String, Any] = Map(
       "@timestamp" -> timestampFormatter.format(requestContext.timestamp),
-    )
+    ) ++ fields.view.mapValues(_.value.map(resolvePlaceholder(_, environmentContext, matched, finalState, reason, duration, requestContext, error)).mkString).toMap
     resolvedFields
       .foldLeft(new JSONObject()) { case (soFar, (key, value)) => soFar.put(key, value) }
       .mergeWith(requestContext.generalAuditEvents)
+  }
+
+  private def resolvePlaceholder(auditValue: AuditValuePlaceholder | String,
+                                 environmentContext: AuditEnvironmentContext,
+                                 matched: Boolean,
+                                 finalState: String,
+                                 reason: String,
+                                 duration: FiniteDuration,
+                                 requestContext: AuditRequestContext,
+                                 error: Option[Throwable]): Any = {
+    auditValue match {
+      case stringValue: String => stringValue
+      case AuditValuePlaceholder.IsMatched => matched
+      case AuditValuePlaceholder.FinalState => finalState
+      case AuditValuePlaceholder.Reason => reason
+      case AuditValuePlaceholder.User => SerializeUser.serialize(requestContext).orNull
+      case AuditValuePlaceholder.ImpersonatedByUser => requestContext.impersonatedByUserName.orNull
+      case AuditValuePlaceholder.Action => requestContext.action
+      case AuditValuePlaceholder.InvolvedIndices => if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava
+      case AuditValuePlaceholder.AclHistory => requestContext.history
+      case AuditValuePlaceholder.ProcessingDurationMillis => duration.toMillis
+      case AuditValuePlaceholder.Timestamp => timestampFormatter.format(requestContext.timestamp)
+      case AuditValuePlaceholder.Id => requestContext.id
+      case AuditValuePlaceholder.CorrelationId => requestContext.correlationId
+      case AuditValuePlaceholder.TaskId => requestContext.taskId
+      case AuditValuePlaceholder.ErrorType => error.map(_.getClass.getSimpleName).orNull
+      case AuditValuePlaceholder.ErrorMessage => error.map(_.getMessage).orNull
+      case AuditValuePlaceholder.Type => requestContext.`type`
+      case AuditValuePlaceholder.HttpMethod => requestContext.httpMethod
+      case AuditValuePlaceholder.HttpHeaderNames => requestContext.requestHeaders.names.asJava
+      case AuditValuePlaceholder.HttpPath => requestContext.uriPath
+      case AuditValuePlaceholder.XForwardedForHttpHeader => requestContext.requestHeaders.getValue("X-Forwarded-For").flatMap(_.headOption).orNull
+      case AuditValuePlaceholder.RemoteAddress => requestContext.remoteAddress
+      case AuditValuePlaceholder.LocalAddress => requestContext.localAddress
+      case AuditValuePlaceholder.Content => requestContext.content
+      case AuditValuePlaceholder.ContentLengthInBytes => requestContext.contentLength
+      case AuditValuePlaceholder.ContentLengthInKb => requestContext.contentLength / 1024
+      case AuditValuePlaceholder.EsNodeName => environmentContext.esNodeName
+      case AuditValuePlaceholder.EsClusterName => environmentContext.esClusterName
+    }
   }
 
   private implicit class JsonObjectOps(val mainJson: JSONObject) {
@@ -111,81 +123,118 @@ object BaseAuditLogSerializer {
     }
   }
 
-  final case class Fields(value: Map[String, AuditValue])
-
-  sealed trait AuditValue extends EnumEntry.UpperSnakecase
-
-  object AuditValue extends Enum[AuditValue] {
-
-    // Rule
-    case object IsMatched extends AuditValue
-
-    case object FinalState extends AuditValue
-
-    case object Reason extends AuditValue
-
-    case object User extends AuditValue
-
-    case object ImpersonatedByUser extends AuditValue
-
-    case object Action extends AuditValue
-
-    case object InvolvedIndices extends AuditValue
-
-    case object AclHistory extends AuditValue
-
-    case object ProcessingDurationMillis extends AuditValue
-
-    // Identifiers
-    case object Timestamp extends AuditValue
-
-    case object Id extends AuditValue
-
-    case object CorrelationId extends AuditValue
-
-    case object TaskId extends AuditValue
-
-    // Error details
-    case object ErrorType extends AuditValue
-
-    case object ErrorMessage extends AuditValue
-
-    case object Type extends AuditValue
-
-    // HTTP protocol values
-    case object HttpMethod extends AuditValue
-
-    case object HttpHeaderNames extends AuditValue
-
-    case object HttpPath extends AuditValue
-
-    case object XForwardedForHttpHeader extends AuditValue
-
-    case object RemoteAddress extends AuditValue
-
-    case object LocalAddress extends AuditValue
-
-    case object Content extends AuditValue
-
-    case object ContentLengthInBytes extends AuditValue
-
-    case object ContentLengthInKb extends AuditValue
-
-    // Environment
-    case object EsNodeName extends AuditValue
-
-    case object EsClusterName extends AuditValue
-
-    override def values: IndexedSeq[AuditValue] = findValues
-
-  }
-
   sealed trait AllowedEventSerializationMode
 
   object AllowedEventSerializationMode {
-    case object SerializeOnlyEventsWithInfoLevelVerbose extends AllowedEventSerializationMode
+    case object SerializeOnlyAllowedEventsWithInfoLevelVerbose extends AllowedEventSerializationMode
 
-    case object AlwaysSerialize extends AllowedEventSerializationMode
+    case object SerializeAllAllowedEvents extends AllowedEventSerializationMode
+  }
+
+  final case class AuditFields(value: Map[String, AuditFieldValue])
+
+  final case class AuditFieldValue private(value: List[AuditValuePlaceholder | String])
+
+  object AuditFieldValue {
+
+    private val pattern = "\\{([^}]+)\\}".r
+
+    def apply(placeholder: AuditValuePlaceholder): AuditFieldValue = AuditFieldValue(List(placeholder))
+
+    def fromString(str: String): Either[String, AuditFieldValue] = {
+      val matches = pattern.findAllMatchIn(str).toList
+
+      val (parts, missing, lastIndex) =
+        matches.foldLeft((List.empty[AuditValuePlaceholder | String], List.empty[String], 0)) {
+          case ((partsAcc, missingAcc, lastEnd), m) =>
+            val key = m.group(1)
+            val before = str.substring(lastEnd, m.start)
+            val partBefore = Option.when(before.nonEmpty)(before).toList
+
+            val (partAfter, newMissing) = AuditValuePlaceholder.withNameOption(key) match {
+              case Some(placeholder) => (List(placeholder), Nil)
+              case None => (Nil, List(key))
+            }
+
+            (partsAcc ++ partBefore ++ partAfter, missingAcc ++ newMissing, m.end)
+        }
+
+      val trailing = Option.when(lastIndex < str.length)(str.substring(lastIndex)).toList
+      val allParts = parts ++ trailing
+
+      missing match {
+        case Nil => Right(AuditFieldValue(allParts))
+        case missingList => Left(s"There are invalid placeholder values: ${missingList.mkString(", ")}")
+      }
+    }
+
+  }
+
+  sealed trait AuditValuePlaceholder extends EnumEntry.UpperSnakecase
+
+  object AuditValuePlaceholder extends Enum[AuditValuePlaceholder] {
+
+    // Rule
+    case object IsMatched extends AuditValuePlaceholder
+
+    case object FinalState extends AuditValuePlaceholder
+
+    case object Reason extends AuditValuePlaceholder
+
+    case object User extends AuditValuePlaceholder
+
+    case object ImpersonatedByUser extends AuditValuePlaceholder
+
+    case object Action extends AuditValuePlaceholder
+
+    case object InvolvedIndices extends AuditValuePlaceholder
+
+    case object AclHistory extends AuditValuePlaceholder
+
+    case object ProcessingDurationMillis extends AuditValuePlaceholder
+
+    // Identifiers
+    case object Timestamp extends AuditValuePlaceholder
+
+    case object Id extends AuditValuePlaceholder
+
+    case object CorrelationId extends AuditValuePlaceholder
+
+    case object TaskId extends AuditValuePlaceholder
+
+    // Error details
+    case object ErrorType extends AuditValuePlaceholder
+
+    case object ErrorMessage extends AuditValuePlaceholder
+
+    case object Type extends AuditValuePlaceholder
+
+    // HTTP protocol values
+    case object HttpMethod extends AuditValuePlaceholder
+
+    case object HttpHeaderNames extends AuditValuePlaceholder
+
+    case object HttpPath extends AuditValuePlaceholder
+
+    case object XForwardedForHttpHeader extends AuditValuePlaceholder
+
+    case object RemoteAddress extends AuditValuePlaceholder
+
+    case object LocalAddress extends AuditValuePlaceholder
+
+    case object Content extends AuditValuePlaceholder
+
+    case object ContentLengthInBytes extends AuditValuePlaceholder
+
+    case object ContentLengthInKb extends AuditValuePlaceholder
+
+    // Environment
+    case object EsNodeName extends AuditValuePlaceholder
+
+    case object EsClusterName extends AuditValuePlaceholder
+
+    override def values: IndexedSeq[AuditValuePlaceholder] = findValues
+
   }
 
 }

@@ -17,42 +17,42 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditValue}
+import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFieldValue, AuditValuePlaceholder}
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1.defaultV1AuditFields
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditResponseContext}
 
 class DefaultAuditLogSerializerV1(environmentContext: AuditEnvironmentContext) extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
-    BaseAuditLogSerializer.serialize(responseContext, environmentContext, defaultV1AuditFields, AllowedEventSerializationMode.SerializeOnlyEventsWithInfoLevelVerbose)
+    BaseAuditLogSerializer.serialize(responseContext, environmentContext, defaultV1AuditFields, AllowedEventSerializationMode.SerializeOnlyAllowedEventsWithInfoLevelVerbose)
 
 }
 
 object DefaultAuditLogSerializerV1 {
-  val defaultV1AuditFields: Map[String, AuditValue] = Map(
-    "match" -> AuditValue.IsMatched,
-    "block" -> AuditValue.Reason,
-    "id" -> AuditValue.Id,
-    "final_state" -> AuditValue.FinalState,
-    "@timestamp" -> AuditValue.Timestamp,
-    "correlation_id" -> AuditValue.CorrelationId,
-    "processingMillis" -> AuditValue.ProcessingDurationMillis,
-    "error_type" -> AuditValue.ErrorType,
-    "error_message" -> AuditValue.ErrorMessage,
-    "content_len" -> AuditValue.ContentLengthInBytes,
-    "content_len_kb" -> AuditValue.ContentLengthInKb,
-    "type" -> AuditValue.Type,
-    "origin" -> AuditValue.RemoteAddress,
-    "destination" -> AuditValue.LocalAddress,
-    "xff" -> AuditValue.XForwardedForHttpHeader,
-    "task_id" -> AuditValue.TaskId,
-    "req_method" -> AuditValue.HttpMethod,
-    "headers" -> AuditValue.HttpHeaderNames,
-    "path" -> AuditValue.HttpPath,
-    "user" -> AuditValue.User,
-    "impersonated_by" -> AuditValue.ImpersonatedByUser,
-    "action" -> AuditValue.Action,
-    "indices" -> AuditValue.InvolvedIndices,
-    "acl_history" -> AuditValue.AclHistory,
+  val defaultV1AuditFields: Map[String, AuditFieldValue] = Map(
+    "match" -> AuditFieldValue(AuditValuePlaceholder.IsMatched),
+    "block" -> AuditFieldValue(AuditValuePlaceholder.Reason),
+    "id" -> AuditFieldValue(AuditValuePlaceholder.Id),
+    "final_state" -> AuditFieldValue(AuditValuePlaceholder.FinalState),
+    "@timestamp" -> AuditFieldValue(AuditValuePlaceholder.Timestamp),
+    "correlation_id" -> AuditFieldValue(AuditValuePlaceholder.CorrelationId),
+    "processingMillis" -> AuditFieldValue(AuditValuePlaceholder.ProcessingDurationMillis),
+    "error_type" -> AuditFieldValue(AuditValuePlaceholder.ErrorType),
+    "error_message" -> AuditFieldValue(AuditValuePlaceholder.ErrorMessage),
+    "content_len" -> AuditFieldValue(AuditValuePlaceholder.ContentLengthInBytes),
+    "content_len_kb" -> AuditFieldValue(AuditValuePlaceholder.ContentLengthInKb),
+    "type" -> AuditFieldValue(AuditValuePlaceholder.Type),
+    "origin" -> AuditFieldValue(AuditValuePlaceholder.RemoteAddress),
+    "destination" -> AuditFieldValue(AuditValuePlaceholder.LocalAddress),
+    "xff" -> AuditFieldValue(AuditValuePlaceholder.XForwardedForHttpHeader),
+    "task_id" -> AuditFieldValue(AuditValuePlaceholder.TaskId),
+    "req_method" -> AuditFieldValue(AuditValuePlaceholder.HttpMethod),
+    "headers" -> AuditFieldValue(AuditValuePlaceholder.HttpHeaderNames),
+    "path" -> AuditFieldValue(AuditValuePlaceholder.HttpPath),
+    "user" -> AuditFieldValue(AuditValuePlaceholder.User),
+    "impersonated_by" -> AuditFieldValue(AuditValuePlaceholder.ImpersonatedByUser),
+    "action" -> AuditFieldValue(AuditValuePlaceholder.Action),
+    "indices" -> AuditFieldValue(AuditValuePlaceholder.InvolvedIndices),
+    "acl_history" -> AuditFieldValue(AuditValuePlaceholder.AclHistory),
   )
 }
