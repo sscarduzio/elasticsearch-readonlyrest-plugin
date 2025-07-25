@@ -53,6 +53,6 @@ object DefaultAuditLogSerializerV1 {
     "impersonated_by" -> AuditFieldValue(AuditValuePlaceholder.ImpersonatedByUser),
     "action" -> AuditFieldValue(AuditValuePlaceholder.Action),
     "indices" -> AuditFieldValue(AuditValuePlaceholder.InvolvedIndices),
-    "acl_history" -> AuditFieldValue(AuditValuePlaceholder.AclHistory),
+    "acl_history" -> AuditFieldValue(AuditValuePlaceholder.AclHistory)
   )
 }

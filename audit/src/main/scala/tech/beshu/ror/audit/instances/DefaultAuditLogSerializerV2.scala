@@ -32,6 +32,6 @@ object DefaultAuditLogSerializerV2 {
   val defaultV2AuditFields: Map[String, AuditFieldValue] =
     DefaultAuditLogSerializerV1.defaultV1AuditFields ++ Map(
       "es_node_name" -> AuditFieldValue(AuditValuePlaceholder.EsNodeName),
-      "es_cluster_name" -> AuditFieldValue(AuditValuePlaceholder.EsClusterName),
+      "es_cluster_name" -> AuditFieldValue(AuditValuePlaceholder.EsClusterName)
     )
 }

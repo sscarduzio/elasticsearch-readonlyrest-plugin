@@ -16,14 +16,15 @@
  */
 package tech.beshu.ror.audit.instances
 
-import enumeratum.*
+import enumeratum._
 import org.json.JSONObject
-import tech.beshu.ror.audit.AuditResponseContext.*
+import tech.beshu.ror.audit.AuditResponseContext._
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, AuditResponseContext}
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import scala.collection.JavaConverters.*
+import scala.collection.immutable.IndexedSeq
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 
 object BaseAuditLogSerializer {
@@ -60,23 +61,27 @@ object BaseAuditLogSerializer {
                           duration: FiniteDuration,
                           requestContext: AuditRequestContext,
                           error: Option[Throwable]) = {
-    val resolvedFields: Map[String, Any] = Map(
-      "@timestamp" -> timestampFormatter.format(requestContext.timestamp),
-    ) ++ fields.view.mapValues(
-      _.value.map(
-        resolvePlaceholder(_, environmentContext, matched, finalState, reason, duration, requestContext, error)
-      ) match {
-        case Nil => ""
-        case singleElement :: Nil => singleElement
-        case multipleElements => multipleElements.mkString
+    val resolvedFields: Map[String, Any] = {
+      Map(
+        "@timestamp" -> timestampFormatter.format(requestContext.timestamp)
+      ) ++ fields.map {
+        case (key, field) =>
+          val resolvedValue = field.value.map {
+            resolvePlaceholder(_, environmentContext, matched, finalState, reason, duration, requestContext, error)
+          } match {
+            case Nil => ""
+            case singleElement :: Nil => singleElement
+            case multipleElements => multipleElements.mkString
+          }
+          key -> resolvedValue
       }
-    ).toMap
+    }
     resolvedFields
       .foldLeft(new JSONObject()) { case (soFar, (key, value)) => soFar.put(key, value) }
       .mergeWith(requestContext.generalAuditEvents)
   }
 
-  private def resolvePlaceholder(auditValue: AuditValuePlaceholder | String,
+  private def resolvePlaceholder(auditValue: AuditValuePlaceholder,
                                  environmentContext: AuditEnvironmentContext,
                                  matched: Boolean,
                                  finalState: String,
@@ -85,7 +90,7 @@ object BaseAuditLogSerializer {
                                  requestContext: AuditRequestContext,
                                  error: Option[Throwable]): Any = {
     auditValue match {
-      case stringValue: String => stringValue
+      case AuditValuePlaceholder.StaticText(text) => text
       case AuditValuePlaceholder.IsMatched => matched
       case AuditValuePlaceholder.FinalState => finalState
       case AuditValuePlaceholder.Reason => reason
@@ -141,7 +146,7 @@ object BaseAuditLogSerializer {
 
   final case class AuditFields(value: Map[String, AuditFieldValue])
 
-  final case class AuditFieldValue private(value: List[AuditValuePlaceholder | String])
+  final case class AuditFieldValue private(value: List[AuditValuePlaceholder])
 
   object AuditFieldValue {
 
@@ -153,11 +158,11 @@ object BaseAuditLogSerializer {
       val matches = pattern.findAllMatchIn(str).toList
 
       val (parts, missing, lastIndex) =
-        matches.foldLeft((List.empty[AuditValuePlaceholder | String], List.empty[String], 0)) {
+        matches.foldLeft((List.empty[AuditValuePlaceholder], List.empty[String], 0)) {
           case ((partsAcc, missingAcc, lastEnd), m) =>
             val key = m.group(1)
             val before = str.substring(lastEnd, m.start)
-            val partBefore = Option.when(before.nonEmpty)(before).toList
+            val partBefore = if (before.nonEmpty) List(AuditValuePlaceholder.StaticText(before)) else Nil
 
             val (partAfter, newMissing) = AuditValuePlaceholder.withNameOption(key) match {
               case Some(placeholder) => (List(placeholder), Nil)
@@ -167,7 +172,7 @@ object BaseAuditLogSerializer {
             (partsAcc ++ partBefore ++ partAfter, missingAcc ++ newMissing, m.end)
         }
 
-      val trailing = Option.when(lastIndex < str.length)(str.substring(lastIndex)).toList
+      val trailing = if (lastIndex < str.length) List(AuditValuePlaceholder.StaticText(str.substring(lastIndex))) else Nil
       val allParts = parts ++ trailing
 
       missing match {
@@ -240,6 +245,8 @@ object BaseAuditLogSerializer {
     case object EsNodeName extends AuditValuePlaceholder
 
     case object EsClusterName extends AuditValuePlaceholder
+
+    final case class StaticText(value: String) extends AuditValuePlaceholder
 
     override def values: IndexedSeq[AuditValuePlaceholder] = findValues
 
