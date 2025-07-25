@@ -250,9 +250,9 @@ object AuditingSettingsDecoder extends Logging {
         }
 
         val serializer =
-          createInstanceOfSimpleSerializer()
+          createInstanceOfCustomizableSerializer()
             .orElse(createInstanceOfEnvironmentAwareSerializer())
-            .orElse(createInstanceOfCustomizableSerializer())
+            .orElse(createInstanceOfSimpleSerializer())
             .getOrElse(
               throw new IllegalStateException(
                 s"Class ${Class.forName(fullClassName).getName} is required to have either one (AuditEnvironmentContext) parameter constructor or constructor without parameters"
