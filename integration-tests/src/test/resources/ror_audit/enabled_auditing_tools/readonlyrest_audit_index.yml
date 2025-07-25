@@ -8,7 +8,7 @@ readonlyrest:
         serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
         serialize_all_allowed_events: false
         fields:
-          abrakadabra: "{ES_NODE_NAME} with suffix"
+          node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
           another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
 
   access_control_rules:

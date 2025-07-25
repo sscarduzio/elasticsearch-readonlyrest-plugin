@@ -164,7 +164,7 @@ class LocalClusterAuditingToolsSuite
             auditEntries.size shouldBe 1
 
             auditEntries.exists(entry =>
-              entry("abrakadabra").str == "ROR_SINGLE_1 with suffix" &&
+              entry("node_name_with_static_suffix").str == "ROR_SINGLE_1 with suffix" &&
                 entry("another_field").str == "ROR_SINGLE GET"
             ) shouldBe true
           }
@@ -181,10 +181,9 @@ class LocalClusterAuditingToolsSuite
 
   private def updateRorConfigToUseSerializer(serializer: String) = {
     val initialConfig = getResourceContent(rorConfigFileName)
-    val serializerUsedInOriginalConfigFile = """        serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1""""
-    val modifiedConfig = initialConfig.replace(serializerUsedInOriginalConfigFile, s"""        serializer: "$serializer"""")
+    val serializerUsedInOriginalConfigFile = """serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1""""
+    val modifiedConfig = initialConfig.replace(serializerUsedInOriginalConfigFile, s"""serializer: "$serializer"""")
     rorApiManager.updateRorInIndexConfig(modifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
     rorApiManager.reloadRorConfig().force()
-    truncateAllAuditManagers()
   }
 }
