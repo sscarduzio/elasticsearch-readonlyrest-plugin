@@ -17,16 +17,21 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext}
+import tech.beshu.ror.audit.BaseAuditLogSerializer.AllowedEventSerializationMode
+import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2.defaultV2AuditFields
+import tech.beshu.ror.audit._
 
-class DefaultAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) extends DefaultAuditLogSerializerV1 {
+class DefaultAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) extends AuditLogSerializer {
 
-  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
-    lazy val additionalFields = Map(
-      "es_node_name" -> environmentContext.esNodeName,
-      "es_cluster_name" -> environmentContext.esClusterName
+  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
+    BaseAuditLogSerializer.serialize(responseContext, environmentContext, defaultV2AuditFields, AllowedEventSerializationMode.SerializeOnlyAllowedEventsWithInfoLevelVerbose)
+
+}
+
+object DefaultAuditLogSerializerV2 {
+  val defaultV2AuditFields: Map[String, AuditFieldValue] =
+    DefaultAuditLogSerializerV1.defaultV1AuditFields ++ Map(
+      "es_node_name" -> AuditFieldValue(AuditFieldValuePlaceholder.EsNodeName),
+      "es_cluster_name" -> AuditFieldValue(AuditFieldValuePlaceholder.EsClusterName)
     )
-    super.onResponse(responseContext)
-      .map(additionalFields.foldLeft(_) { case (soFar, (key, value)) => soFar.put(key, value) })
-  }
 }
