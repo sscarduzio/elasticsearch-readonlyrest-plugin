@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.audit
 
-final case class AuditFieldValue private(value: List[AuditFieldValuePlaceholder])
+final case class AuditFieldValue(value: List[AuditFieldValuePlaceholder])
 
 object AuditFieldValue {
 

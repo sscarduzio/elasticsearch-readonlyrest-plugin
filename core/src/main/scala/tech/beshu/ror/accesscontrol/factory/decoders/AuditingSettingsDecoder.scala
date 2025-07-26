@@ -32,11 +32,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
-import tech.beshu.ror.audit.adapters.*
-import tech.beshu.ror.audit.AuditFieldValue
 import tech.beshu.ror.audit.BaseAuditLogSerializer.AllowedEventSerializationMode.*
 import tech.beshu.ror.audit.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFields}
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer}
+import tech.beshu.ror.audit.adapters.*
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditFieldValue, AuditLogSerializer}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
@@ -229,26 +228,27 @@ object AuditingSettingsDecoder extends Logging {
       .emapE { fullClassName =>
         val clazz = Class.forName(fullClassName)
 
-        def createInstanceOfEnvironmentAwareSerializer() = {
+        def createInstanceOfEnvironmentAwareSerializer(): Option[Either[String, Any]] = {
           Try(clazz.getConstructor(classOf[AuditEnvironmentContext]))
             .map(_.newInstance(summon[AuditEnvironmentContext]))
+            .toOption.map(_.asRight)
         }
 
-        def createInstanceOfCustomizableSerializer() = {
-          for {
-            constructor <- Try(clazz.getConstructor(classOf[AuditEnvironmentContext], classOf[AllowedEventSerializationMode], classOf[AuditFields]))
-            allowedEventSerializationMode <- Try(allowedEventSerializationModeOpt.getOrElse(
-              throw new IllegalStateException(s"Configurable serializer is used, but the serialize_all_allowed_events setting is missing in configuration")
-            ))
-            fields <- Try(fieldsOpt.getOrElse(
-              throw new IllegalStateException(s"Configurable serializer is used, but the fields setting is missing in configuration")
-            ))
-          } yield constructor.newInstance(context, allowedEventSerializationMode, fields)
+        def createInstanceOfCustomizableSerializer(): Option[Either[String, Any]] = {
+          Try(
+            clazz.getConstructor(classOf[AuditEnvironmentContext], classOf[AllowedEventSerializationMode], classOf[AuditFields])
+          ).toOption.map { constructor =>
+            for {
+              allowedEventSerializationMode <- allowedEventSerializationModeOpt.toRight(s"Configurable serializer is used, but the serialize_all_allowed_events setting is missing in configuration")
+              fields <- fieldsOpt.toRight(s"Configurable serializer is used, but the fields setting is missing in configuration")
+            } yield constructor.newInstance(context, allowedEventSerializationMode, fields)
+          }
         }
 
-        def createInstanceOfSimpleSerializer() = {
+        def createInstanceOfSimpleSerializer(): Option[Either[String, Any]] = {
           Try(clazz.getDeclaredConstructor())
             .map(_.newInstance())
+            .toOption.map(_.asRight)
         }
 
         val serializer =
@@ -262,7 +262,7 @@ object AuditingSettingsDecoder extends Logging {
             )
 
         Try {
-          serializer match {
+          serializer.map {
             case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
               Some(serializer)
             case serializer: tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer =>
@@ -272,10 +272,11 @@ object AuditingSettingsDecoder extends Logging {
             case _ => None
           }
         } match {
-          case Success(Some(customSerializer)) =>
+          case Success(Right(Some(customSerializer))) =>
             logger.info(s"Using custom serializer: ${customSerializer.getClass.getName}")
             Right(customSerializer)
-          case Success(None) => Left(AuditingSettingsCreationError(Message(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}")))
+          case Success(Right(None)) => Left(AuditingSettingsCreationError(Message(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}")))
+          case Success(Left(message)) => Left(AuditingSettingsCreationError(Message(message)))
           case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '${fullClassName.show}', error: ${ex.getMessage.show}")))
         }
       }

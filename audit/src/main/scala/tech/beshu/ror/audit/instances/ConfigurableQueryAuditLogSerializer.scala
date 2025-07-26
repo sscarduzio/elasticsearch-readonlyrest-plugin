@@ -20,9 +20,9 @@ import org.json.JSONObject
 import tech.beshu.ror.audit.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFields}
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext, BaseAuditLogSerializer}
 
-class ConfigurableQueryAuditLogSerializer(environmentContext: AuditEnvironmentContext,
-                                          allowedEventSerializationMode: AllowedEventSerializationMode,
-                                          fields: AuditFields) extends DefaultAuditLogSerializer(environmentContext) {
+class ConfigurableQueryAuditLogSerializer(val environmentContext: AuditEnvironmentContext,
+                                          val allowedEventSerializationMode: AllowedEventSerializationMode,
+                                          val fields: AuditFields) extends DefaultAuditLogSerializer(environmentContext) {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
     BaseAuditLogSerializer.serialize(responseContext, environmentContext, fields.value, allowedEventSerializationMode)
