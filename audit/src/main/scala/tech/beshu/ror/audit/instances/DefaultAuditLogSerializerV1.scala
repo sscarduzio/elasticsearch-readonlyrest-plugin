@@ -17,9 +17,9 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFieldValue, AuditValuePlaceholder}
+import tech.beshu.ror.audit.BaseAuditLogSerializer.AllowedEventSerializationMode
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1.defaultV1AuditFields
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.audit._
 
 class DefaultAuditLogSerializerV1(environmentContext: AuditEnvironmentContext) extends AuditLogSerializer {
 
@@ -30,29 +30,29 @@ class DefaultAuditLogSerializerV1(environmentContext: AuditEnvironmentContext) e
 
 object DefaultAuditLogSerializerV1 {
   val defaultV1AuditFields: Map[String, AuditFieldValue] = Map(
-    "match" -> AuditFieldValue(AuditValuePlaceholder.IsMatched),
-    "block" -> AuditFieldValue(AuditValuePlaceholder.Reason),
-    "id" -> AuditFieldValue(AuditValuePlaceholder.Id),
-    "final_state" -> AuditFieldValue(AuditValuePlaceholder.FinalState),
-    "@timestamp" -> AuditFieldValue(AuditValuePlaceholder.Timestamp),
-    "correlation_id" -> AuditFieldValue(AuditValuePlaceholder.CorrelationId),
-    "processingMillis" -> AuditFieldValue(AuditValuePlaceholder.ProcessingDurationMillis),
-    "error_type" -> AuditFieldValue(AuditValuePlaceholder.ErrorType),
-    "error_message" -> AuditFieldValue(AuditValuePlaceholder.ErrorMessage),
-    "content_len" -> AuditFieldValue(AuditValuePlaceholder.ContentLengthInBytes),
-    "content_len_kb" -> AuditFieldValue(AuditValuePlaceholder.ContentLengthInKb),
-    "type" -> AuditFieldValue(AuditValuePlaceholder.Type),
-    "origin" -> AuditFieldValue(AuditValuePlaceholder.RemoteAddress),
-    "destination" -> AuditFieldValue(AuditValuePlaceholder.LocalAddress),
-    "xff" -> AuditFieldValue(AuditValuePlaceholder.XForwardedForHttpHeader),
-    "task_id" -> AuditFieldValue(AuditValuePlaceholder.TaskId),
-    "req_method" -> AuditFieldValue(AuditValuePlaceholder.HttpMethod),
-    "headers" -> AuditFieldValue(AuditValuePlaceholder.HttpHeaderNames),
-    "path" -> AuditFieldValue(AuditValuePlaceholder.HttpPath),
-    "user" -> AuditFieldValue(AuditValuePlaceholder.User),
-    "impersonated_by" -> AuditFieldValue(AuditValuePlaceholder.ImpersonatedByUser),
-    "action" -> AuditFieldValue(AuditValuePlaceholder.Action),
-    "indices" -> AuditFieldValue(AuditValuePlaceholder.InvolvedIndices),
-    "acl_history" -> AuditFieldValue(AuditValuePlaceholder.AclHistory)
+    "match" -> AuditFieldValue(AuditFieldValuePlaceholder.IsMatched),
+    "block" -> AuditFieldValue(AuditFieldValuePlaceholder.Reason),
+    "id" -> AuditFieldValue(AuditFieldValuePlaceholder.Id),
+    "final_state" -> AuditFieldValue(AuditFieldValuePlaceholder.FinalState),
+    "@timestamp" -> AuditFieldValue(AuditFieldValuePlaceholder.Timestamp),
+    "correlation_id" -> AuditFieldValue(AuditFieldValuePlaceholder.CorrelationId),
+    "processingMillis" -> AuditFieldValue(AuditFieldValuePlaceholder.ProcessingDurationMillis),
+    "error_type" -> AuditFieldValue(AuditFieldValuePlaceholder.ErrorType),
+    "error_message" -> AuditFieldValue(AuditFieldValuePlaceholder.ErrorMessage),
+    "content_len" -> AuditFieldValue(AuditFieldValuePlaceholder.ContentLengthInBytes),
+    "content_len_kb" -> AuditFieldValue(AuditFieldValuePlaceholder.ContentLengthInKb),
+    "type" -> AuditFieldValue(AuditFieldValuePlaceholder.Type),
+    "origin" -> AuditFieldValue(AuditFieldValuePlaceholder.RemoteAddress),
+    "destination" -> AuditFieldValue(AuditFieldValuePlaceholder.LocalAddress),
+    "xff" -> AuditFieldValue(AuditFieldValuePlaceholder.XForwardedForHttpHeader),
+    "task_id" -> AuditFieldValue(AuditFieldValuePlaceholder.TaskId),
+    "req_method" -> AuditFieldValue(AuditFieldValuePlaceholder.HttpMethod),
+    "headers" -> AuditFieldValue(AuditFieldValuePlaceholder.HttpHeaderNames),
+    "path" -> AuditFieldValue(AuditFieldValuePlaceholder.HttpPath),
+    "user" -> AuditFieldValue(AuditFieldValuePlaceholder.User),
+    "impersonated_by" -> AuditFieldValue(AuditFieldValuePlaceholder.ImpersonatedByUser),
+    "action" -> AuditFieldValue(AuditFieldValuePlaceholder.Action),
+    "indices" -> AuditFieldValue(AuditFieldValuePlaceholder.InvolvedIndices),
+    "acl_history" -> AuditFieldValue(AuditFieldValuePlaceholder.AclHistory)
   )
 }

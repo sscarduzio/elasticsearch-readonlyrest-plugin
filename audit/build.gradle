@@ -75,6 +75,24 @@ dependencies {
     compileOnly                    group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.3'
 }
 
+// The Scala library is automatically used only in the correct version in cross build.
+// But other libraries also need to be imported as `compileOnly` - otherwise the IntelliJ does not see them.
+// Those other libraries are not automatically excluded from cross build and it needs to be done manually.
+configurations {
+    crossBuildV211CompileClasspath {
+        exclude group: 'com.beachape', module: 'enumeratum_3'
+        exclude group: 'org.scala-lang', module: 'scala3-library_3'
+    }
+    crossBuildV212CompileClasspath {
+        exclude group: 'com.beachape', module: 'enumeratum_3'
+        exclude group: 'org.scala-lang', module: 'scala3-library_3'
+    }
+    crossBuildV213CompileClasspath {
+        exclude group: 'com.beachape', module: 'enumeratum_3'
+        exclude group: 'org.scala-lang', module: 'scala3-library_3'
+    }
+}
+
 test {
     testLogging {
         showStandardStreams = true

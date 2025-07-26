@@ -17,8 +17,8 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFieldValue, AuditFields}
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext}
+import tech.beshu.ror.audit.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFields}
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext, BaseAuditLogSerializer}
 
 class ConfigurableQueryAuditLogSerializer(environmentContext: AuditEnvironmentContext,
                                           allowedEventSerializationMode: AllowedEventSerializationMode,

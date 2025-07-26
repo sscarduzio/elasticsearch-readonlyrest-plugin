@@ -33,8 +33,9 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.audit.adapters.*
-import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.AllowedEventSerializationMode.*
-import tech.beshu.ror.audit.instances.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFieldValue, AuditFields}
+import tech.beshu.ror.audit.AuditFieldValue
+import tech.beshu.ror.audit.BaseAuditLogSerializer.AllowedEventSerializationMode.*
+import tech.beshu.ror.audit.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFields}
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
