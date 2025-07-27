@@ -105,13 +105,15 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
                                optPreferredGroupId: Option[GroupId]): Option[(UserMetadata, Block)] = {
     optPreferredGroupId match {
       case Some(preferredGroupId) =>
-        matchedResults
+        val matchingPreferredGroupResults = matchedResults
           .toList
           .flatMap { case result@Matched(_, bc) =>
             bc.userMetadata.availableGroups.find(_.id == preferredGroupId)
               .map(preferredGroup => (result, preferredGroup))
           }
-          .headOption
+        matchingPreferredGroupResults
+          .find { case (matched, preferredGroup) => matched.blockContext.userMetadata.kibanaIndex.isDefined }
+          .orElse { matchingPreferredGroupResults.headOption }
           .map { case (result, preferredGroup) =>
             val userMetadata =
               updateUserMetadataGroups(result.blockContext, Some(preferredGroup), allAvailableGroupsFrom(matchedResults))
@@ -119,7 +121,9 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
           }
       case None =>
         Some {
-          val Matched(block, bc) = matchedResults.head
+          val Matched(block, bc) = matchedResults.toList
+            .find { _.blockContext.userMetadata.kibanaIndex.isDefined }
+            .getOrElse { matchedResults.head }
           val userMetadata = updateUserMetadataGroups(bc, None, allAvailableGroupsFrom(matchedResults))
           (userMetadata, block)
         }
