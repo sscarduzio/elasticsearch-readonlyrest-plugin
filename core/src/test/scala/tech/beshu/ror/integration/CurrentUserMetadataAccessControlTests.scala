@@ -165,6 +165,24 @@ class CurrentUserMetadataAccessControlTests
       |      response_message: "you are unauthorized to access this resource"
       |    auth_key: user8:pass
       |
+      |  - name: "Allow RW access to all tracy-* indices"
+      |    groups_or: ["tracy_tenant1", "tracy_tenant2"]
+      |    indices: ["tracy-*"]
+      |
+      |  - name: "Allow RW access to tenant1 Kibana"
+      |    groups_or: ["tracy_tenant1"]
+      |    indices: ["tracy-*"]
+      |    kibana:
+      |      access: rw
+      |      index: ".kib_tracy_tenant1"
+      |
+      |  - name: "Allow RW access to tenant2 Kibana"
+      |    groups_or: ["tracy_tenant2"]
+      |    indices: ["tracy-*"]
+      |    kibana:
+      |      access: rw
+      |      index: ".kib_tracy_tenant2"
+      |
       |  users:
       |
       |  - username: user1
@@ -182,6 +200,10 @@ class CurrentUserMetadataAccessControlTests
       |      - id : group6
       |        name: "Group 6"
       |    auth_key: "user4:pass"
+      |
+      |  - username: user9
+      |    groups: [tracy_tenant1, tracy_tenant2]
+      |    auth_key: "user9:pass"
       |
       |  user_groups_providers:
       |
@@ -370,6 +392,20 @@ class CurrentUserMetadataAccessControlTests
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
               userMetadata.availableGroups.toCovariantSet should be (Set(group("ldap2_group1"), group("ldap2_group2")))
             }
+          }
+        }
+        "we allow RW access to multiple tenants and RW access to its indices" in {
+          val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user9:pass"))
+          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
+          inside(result.result) { case Allow(userMetadata, _) =>
+            userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user9"))))
+            userMetadata.currentGroupId should be (Some(GroupId("tracy_tenant1")))
+            userMetadata.availableGroups.toCovariantSet should be (Set(group("tracy_tenant1"), group("tracy_tenant2")))
+            userMetadata.kibanaIndex should be(Some(kibanaIndexName(".kib_tracy_tenant1")))
+            userMetadata.hiddenKibanaApps should be(Set.empty)
+            userMetadata.allowedKibanaApiPaths should be(Set.empty)
+            userMetadata.kibanaAccess should be(Some(KibanaAccess.RW))
+            userMetadata.userOrigin should be(None)
           }
         }
       }
