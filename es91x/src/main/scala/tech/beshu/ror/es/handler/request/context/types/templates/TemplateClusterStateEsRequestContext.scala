@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
-import org.elasticsearch.cluster.metadata.Metadata
+import org.elasticsearch.cluster.metadata.{ComposableIndexTemplate, ProjectMetadata}
 import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{GettingIndexTemplates, GettingLegacyAndIndexTemplates, GettingLegacyTemplates}
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
-import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -117,7 +117,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
     val oldMetadata = response.getState.metadata()
     val filteredTemplates = GetTemplatesEsRequestContext
       .filter(
-        oldMetadata.projects().values().asScala.flatMap(_.templates().values().asScala),
+        oldMetadata.projects().values().asScala.flatMap(_.templates().values().asScala).toList,
         transformation
       )
       .filter { t =>
@@ -130,12 +130,17 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
       .map(_.name())
 
     val newMetadataWithFilteredTemplates = oldMetadata
-      .projects().values().asScala.flatMap(_.templates().keySet().asScala)
-      .foldLeft(Metadata.builder(oldMetadata)) {
-        case (acc, templateName) if filteredTemplates.contains(templateName) => acc
-        case (acc, templateName) => acc.remo .removeTemplate(templateName)
+      .projects().values().asScala
+      .foldLeft(oldMetadata) { case (metadata, project) =>
+        metadata.copyAndUpdateProject(
+          project.id(),
+          (builder: ProjectMetadata.Builder) => {
+            project.templates().keySet().asScala.foreach {
+              case templateName if filteredTemplates.contains(templateName) => // nothing to do
+              case templateName => builder.removeTemplate(templateName)
+            }
+          })
       }
-      .build()
 
     val modifiedClusterState =
       ClusterState
@@ -158,7 +163,11 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
     val filteredTemplatesV2 =
       GetComposableIndexTemplateEsRequestContext
         .filter(
-          oldMetadata.templatesV2().asSafeMap,
+          oldMetadata
+            .projects().values().asScala
+            .foldLeft(Map.empty[String, ComposableIndexTemplate]) {
+              case (acc, project) => acc ++ project.templatesV2().asSafeMap
+            },
           transformation
         )
         .keys
@@ -172,12 +181,17 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
         .toCovariantSet
 
     val newMetadataWithFilteredTemplatesV2 = oldMetadata
-      .templatesV2().keySet().asScala
-      .foldLeft(Metadata.builder(oldMetadata)) {
-        case (acc, templateName) if filteredTemplatesV2.contains(templateName) => acc
-        case (acc, templateName) => acc.removeIndexTemplate(templateName)
+      .projects().values().asScala
+      .foldLeft(oldMetadata) { case (metadata, project) =>
+        metadata.copyAndUpdateProject(
+          project.id(),
+          (builder: ProjectMetadata.Builder) => {
+            project.templatesV2().keySet().asScala.foreach {
+              case templateName if filteredTemplatesV2.contains(templateName) => // nothing to do
+              case templateName => builder.removeIndexTemplate(templateName)
+            }
+          })
       }
-      .build()
 
     val modifiedClusterState =
       ClusterState
