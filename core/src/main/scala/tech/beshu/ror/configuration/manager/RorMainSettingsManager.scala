@@ -38,8 +38,7 @@ import scala.language.postfixOps
 
 class RorMainSettingsManager private(esConfigBasedRorSettings: EsConfigBasedRorSettings,
                                      fileSettingsLoader: FileRorSettingsLoader,
-                                     indexSettingsManager: IndexSettingsManager[RawRorSettings],
-                                     indexJsonContentService: IndexJsonContentService)
+                                     indexSettingsManager: IndexSettingsManager[RawRorSettings])
   extends FileSettingsManager[RawRorSettings]
     with InIndexSettingsManager[RawRorSettings]
     with Logging {
@@ -138,28 +137,6 @@ class RorMainSettingsManager private(esConfigBasedRorSettings: EsConfigBasedRorS
     result.value
   }
 
-  private def loadSettingsFromIndex() = {
-    indexJsonContentService
-      .sourceOf(settingsIndex.index, Const.id)
-      .flatMap {
-        case Right(source) =>
-          source
-            .find(_._1 == Const.settingsKey)
-            .map { case (_, rorYamlString) =>
-              rorSettingsYamlParser
-                .fromString(rorYamlString)
-                .map(_.left.map(ParsingError.apply))
-            }
-            .getOrElse {
-              settingsLoaderError(UnknownStructureOfIndexDocument)
-            }
-        case Left(CannotReachContentSource) =>
-          settingsLoaderError(IndexNotExist)
-        case Left(ContentNotFound) =>
-          settingsLoaderError(IndexNotExist)
-      }
-  }
-
   private def convertFileError(error: RorSettingsLoader.Error[FileRorSettingsLoader.Error]): LoadingFromFileError = {
     error match {
       case ParsingError(error) => LoadingFromFileError.FileParsingError(error.show)
@@ -167,7 +144,7 @@ class RorMainSettingsManager private(esConfigBasedRorSettings: EsConfigBasedRorS
     }
   }
 
-  private def convertIndexError(error: RorSettingsLoader.Error[IndexSettingsManager.LoadingIndexSettingsError]) =
+  private def convertIndexError(error: RorSettingsLoader.Error[IndexSettingsManager.LoadingIndexSettingsError]): LoadingFromIndexError =
     error match {
       case ParsingError(error) => LoadingFromIndexError.IndexParsingError(error.show)
       case SpecializedError(IndexSettingsManager.LoadingIndexSettingsError.IndexNotExist) => LoadingFromIndexError.IndexNotExist
@@ -178,7 +155,7 @@ class RorMainSettingsManager private(esConfigBasedRorSettings: EsConfigBasedRorS
     Task.sleep(duration).map(Right.apply)
   }
 
-  private def lift[A](value: => A) = EitherT(Task.delay(Right(value)))
+  private def lift[A](value: => A): EitherT[Task, Nothing, A] = EitherT(Task.delay(Right(value)))
 }
 
 object RorMainSettingsManager {
