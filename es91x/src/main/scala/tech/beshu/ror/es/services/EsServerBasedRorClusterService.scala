@@ -29,7 +29,7 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{Resolv
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.client.internal.RemoteClusterClient
 import org.elasticsearch.client.internal.node.NodeClient
-import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, RepositoriesMetadata}
+import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, ProjectMetadata, RepositoriesMetadata}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
@@ -70,12 +70,12 @@ class EsServerBasedRorClusterService(nodeName: String,
   import EsServerBasedRorClusterService.*
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
-    val lookup = clusterService.state.metadata.getIndicesLookup
+    val lookups = clusterService.state.metadata.projects().asScala.map(_._2.getIndicesLookup)
     lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getUUID).toCovariantSet
   }
 
   override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
-    val metadata = clusterService.state.metadata
+    val metadata = clusterService.state.metadata.
     extractIndicesAndAliasesFrom(metadata)
   }
 
@@ -174,8 +174,8 @@ class EsServerBasedRorClusterService(nodeName: String,
       .map(results => zip(results, documents))
   }
 
-  private def extractIndicesAndAliasesFrom(metadata: Metadata) = {
-    val indices = metadata.getIndices
+  private def extractIndicesAndAliasesFrom(metadata: ProjectMetadata) = {
+    val indices = metadata.indices()
     indices
       .keySet().asScala
       .flatMap { index =>
@@ -197,7 +197,7 @@ class EsServerBasedRorClusterService(nodeName: String,
       .toCovariantSet
   }
 
-  private def extractDataStreamsAndAliases(metadata: Metadata): Set[FullLocalDataStreamWithAliases] = {
+  private def extractDataStreamsAndAliases(metadata: ProjectMetadata): Set[FullLocalDataStreamWithAliases] = {
     val aliasesPerDataStream = aliasesPerDataStreamFrom(metadata)
     backingIndicesPerDataStreamFrom(metadata)
       .map { case (dataStreamName, backingIndices) =>
@@ -210,7 +210,7 @@ class EsServerBasedRorClusterService(nodeName: String,
       .toCovariantSet
   }
 
-  private def aliasesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[DataStreamName.Full]] = {
+  private def aliasesPerDataStreamFrom(metadata: ProjectMetadata): Map[DataStreamName.Full, Set[DataStreamName.Full]] = {
     lazy val mapMonoid: Monoid[Map[DataStreamName.Full, Set[DataStreamName.Full]]] =
       Monoid[Map[DataStreamName.Full, Set[DataStreamName.Full]]]
     val dataStreamAliases = metadata.dataStreamAliases()
@@ -238,7 +238,7 @@ class EsServerBasedRorClusterService(nodeName: String,
       }
   }
 
-  private def backingIndicesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[IndexName.Full]] = {
+  private def backingIndicesPerDataStreamFrom(metadata: ProjectMetadata): Map[DataStreamName.Full, Set[IndexName.Full]] = {
     val dataStreams = metadata.dataStreams()
     dataStreams
       .keySet().asScala
