@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
-import org.elasticsearch.cluster.metadata.{ComposableIndexTemplate, ProjectMetadata}
+import org.elasticsearch.cluster.metadata.ProjectMetadata
 import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
@@ -33,6 +33,7 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
+import tech.beshu.ror.es.utils.ClusterStateMetadataOps.toOps
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
@@ -116,10 +117,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
                                               transformation: TemplatesTransformation) = {
     val oldMetadata = response.getState.metadata()
     val filteredTemplates = GetTemplatesEsRequestContext
-      .filter(
-        oldMetadata.projects().values().asScala.flatMap(_.templates().values().asScala).toList,
-        transformation
-      )
+      .filter(oldMetadata.allTemplatesMetadata.values, transformation)
       .filter { t =>
         TemplateName
           .fromString(t.name())
@@ -131,11 +129,11 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
 
     val newMetadataWithFilteredTemplates = oldMetadata
       .projects().values().asScala
-      .foldLeft(oldMetadata) { case (metadata, project) =>
-        metadata.copyAndUpdateProject(
-          project.id(),
+      .foldLeft(oldMetadata) { case (clusterMetadata, projectMetadata) =>
+        clusterMetadata.copyAndUpdateProject(
+          projectMetadata.id(),
           (builder: ProjectMetadata.Builder) => {
-            project.templates().keySet().asScala.foreach {
+            projectMetadata.templates().keySet().asScala.foreach {
               case templateName if filteredTemplates.contains(templateName) => // nothing to do
               case templateName => builder.removeTemplate(templateName)
             }
@@ -162,14 +160,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
 
     val filteredTemplatesV2 =
       GetComposableIndexTemplateEsRequestContext
-        .filter(
-          oldMetadata
-            .projects().values().asScala
-            .foldLeft(Map.empty[String, ComposableIndexTemplate]) {
-              case (acc, project) => acc ++ project.templatesV2().asSafeMap
-            },
-          transformation
-        )
+        .filter(oldMetadata.allTemplatesV2Metadata, transformation)
         .keys
         .filter { name =>
           TemplateName

@@ -19,7 +19,6 @@ package tech.beshu.ror.es.ssl
 import io.netty.channel.Channel
 import io.netty.handler.ssl.NotSslRecordException
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.bulk.IncrementalBulkService.Enabled
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.{ClusterSettings, Settings}
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport
@@ -56,7 +55,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
   }
 
   final class SSLHandler(transport: Netty4HttpServerTransport)
-    extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings, TLSConfig.noTLS(), null, null, new Enabled(clusterSettings)) {
+    extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings, TLSConfig.noTLS(), null, null) {
 
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)

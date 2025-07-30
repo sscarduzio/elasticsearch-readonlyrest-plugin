@@ -20,7 +20,6 @@ import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
-import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes

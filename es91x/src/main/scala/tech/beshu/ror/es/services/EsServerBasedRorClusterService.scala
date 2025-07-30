@@ -47,10 +47,10 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService.*
 import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
+import tech.beshu.ror.es.utils.ClusterStateMetadataOps.toOps
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
-import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.function.Supplier
@@ -70,13 +70,13 @@ class EsServerBasedRorClusterService(nodeName: String,
   import EsServerBasedRorClusterService.*
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
-    val lookups = clusterService.state.metadata.projects().asScala.map(_._2.getIndicesLookup)
-    lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getUUID).toCovariantSet
+    val lookups = clusterService.state.metadata.projects().values().asScala.map(_.getIndicesLookup)
+    lookups.flatMap(_.get(indexOrAlias.stringify).getIndices.asScala.map(_.getUUID)).toCovariantSet
   }
 
   override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
-    val metadata = clusterService.state.metadata.
-    extractIndicesAndAliasesFrom(metadata)
+    val projectsMetadata = clusterService.state.metadata.projects().values().asScala
+    projectsMetadata.flatMap(extractIndicesAndAliasesFrom).toCovariantSet
   }
 
   override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
@@ -89,8 +89,8 @@ class EsServerBasedRorClusterService(nodeName: String,
   }
 
   override def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = {
-    val metadata = clusterService.state.metadata
-    extractDataStreamsAndAliases(metadata)
+    val projectsMetadata = clusterService.state.metadata.projects().values().asScala
+    projectsMetadata.flatMap(extractDataStreamsAndAliases).toCovariantSet
   }
 
   override def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] =
@@ -362,6 +362,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         new ResolveIndexAction.Request(Array("*")),
         new ActionListener[ResolveIndexAction.Response] {
           override def onResponse(response: ResolveIndexAction.Response): Unit = promise.trySuccess(response)
+
           override def onFailure(e: Exception): Unit = promise.tryFailure(e)
         }
       )
@@ -414,11 +415,11 @@ class EsServerBasedRorClusterService(nodeName: String,
     repositoriesServiceSupplier.get() match {
       case Some(repositoriesService) =>
         repositoriesService
-          .getSnapshotIds(repository)
+          .getSnapshotIds(repository, clusterService.state.metadata)
           .map { ids =>
             ids.flatMap { snapshotId =>
-              snapshotFullNameFrom(snapshotId).map {
-                name => Snapshot(name, repositoriesService.getSnapshotIndices(repository, snapshotId))
+              snapshotFullNameFrom(snapshotId).map { name =>
+                Snapshot(name, repositoriesService.getSnapshotIndices(repository, snapshotId, clusterService.state.metadata))
               }
             }
           }
@@ -443,34 +444,28 @@ class EsServerBasedRorClusterService(nodeName: String,
                                val fetchIndices: Task[Set[ClusterIndexName]])
 
   private def legacyTemplates(): Set[Template.LegacyTemplate] = {
-    val templates = clusterService.state.metadata().templates()
-    templates
-      .keySet().asScala
-      .flatMap { templateNameString =>
-        val templateMetaData = templates.get(templateNameString)
+    clusterService
+      .state.metadata()
+      .allTemplatesMetadata
+      .flatMap { (name, metadata) =>
         for {
-          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.from(
-            templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString)
-          )
-          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
+          templateName <- NonEmptyString.unapply(name).map(TemplateName.apply)
+          indexPatterns <- UniqueNonEmptyList.from(metadata.patterns().asScala.flatMap(IndexPattern.fromString))
+          aliases = metadata.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
         } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
       .toCovariantSet
   }
 
   private def indexTemplates(): Set[Template.IndexTemplate] = {
-    val templates = clusterService.state.metadata().templatesV2()
-    templates
-      .keySet().asScala
-      .flatMap { templateNameString =>
-        val templateMetaData = templates.get(templateNameString)
+    clusterService
+      .state.metadata()
+      .allTemplatesV2Metadata
+      .flatMap { (name, metadata) =>
         for {
-          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.from(
-            templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString)
-          )
-          aliases = Option(templateMetaData.template()).toCovariantSet
+          templateName <- NonEmptyString.unapply(name).map(TemplateName.apply)
+          indexPatterns <- UniqueNonEmptyList.from(metadata.indexPatterns().asScala.flatMap(IndexPattern.fromString))
+          aliases = Option(metadata.template()).toCovariantSet
             .flatMap(_.aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toCovariantSet)
         } yield Template.IndexTemplate(templateName, indexPatterns, aliases)
       }
@@ -478,14 +473,13 @@ class EsServerBasedRorClusterService(nodeName: String,
   }
 
   private def componentTemplates(): Set[Template.ComponentTemplate] = {
-    val templates = clusterService.state.metadata().componentTemplates()
-    templates
-      .keySet().asScala
-      .flatMap { templateNameString =>
-        val templateMetaData = templates.get(templateNameString)
+    clusterService
+      .state.metadata()
+      .allComponentTemplatesMetadata
+      .flatMap { (name, metadata) =>
         for {
-          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toCovariantSet
+          templateName <- NonEmptyString.unapply(name).map(TemplateName.apply)
+          aliases = metadata.template().aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toCovariantSet
         } yield Template.ComponentTemplate(templateName, aliases)
       }
       .toCovariantSet
@@ -545,16 +539,32 @@ object EsServerBasedRorClusterService {
 
   private implicit class RepositoryServiceOps(val service: RepositoriesService) extends AnyVal {
 
-    def getSnapshotIds(repository: RepositoryName.Full): Task[Set[SnapshotId]] = {
-      val listener = new ActionListenerToTaskAdapter[RepositoryData]()
-      service.getRepositoryData(RepositoryName.toString(repository), listener)
-      listener.result.map(_.getSnapshotIds.asSafeSet)
+    def getSnapshotIds(repository: RepositoryName.Full, clusterMetadata: Metadata): Task[Set[SnapshotId]] = {
+      Task
+        .parSequence {
+          clusterMetadata.projects().asScala.keys
+            .map { projectId =>
+              val listener = new ActionListenerToTaskAdapter[RepositoryData]()
+              service.getRepositoryData(projectId, RepositoryName.toString(repository), listener)
+              listener.result.map(_.getSnapshotIds.asScala)
+            }
+        }
+        .map(_.flatten.toCovariantSet)
     }
 
-    def getSnapshotIndices(repository: RepositoryName.Full, snapshotId: SnapshotId): Task[Set[ClusterIndexName]] = {
-      val listener = new ActionListenerToTaskAdapter[SnapshotInfo]()
-      service.repository(repository.value.value).getSnapshotInfo(snapshotId, listener)
-      listener.result.map(indicesFrom)
+    def getSnapshotIndices(repository: RepositoryName.Full,
+                           snapshotId: SnapshotId,
+                           clusterMetadata: Metadata): Task[Set[ClusterIndexName]] = {
+      Task
+        .parSequence {
+          clusterMetadata.projects().asScala.keys
+            .map { projectId =>
+              val listener = new ActionListenerToTaskAdapter[SnapshotInfo]()
+              service.repository(projectId, repository.value.value).getSnapshotInfo(snapshotId, listener)
+              listener.result.map(indicesFrom)
+            }
+        }
+        .map(_.flatten.toCovariantSet)
     }
 
     private def indicesFrom(snapshotInfo: SnapshotInfo) = {
