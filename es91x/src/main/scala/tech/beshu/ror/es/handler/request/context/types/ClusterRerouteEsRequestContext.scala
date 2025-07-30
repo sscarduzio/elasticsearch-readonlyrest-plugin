@@ -81,15 +81,15 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
         .getOrElse(ClusterIndexName.Local.randomNonexistentIndex())
     command match {
       case c: CancelAllocationCommand =>
-        new CancelAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.allowPrimary())
+        new CancelAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.allowPrimary(), c.projectId())
       case c: MoveAllocationCommand =>
-        new MoveAllocationCommand(randomIndex.stringify, c.shardId(), c.fromNode(), c.toNode)
+        new MoveAllocationCommand(randomIndex.stringify, c.shardId(), c.fromNode(), c.toNode, c.projectId())
       case c: AllocateEmptyPrimaryAllocationCommand =>
-        new AllocateEmptyPrimaryAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.acceptDataLoss())
+        new AllocateEmptyPrimaryAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.acceptDataLoss(), c.projectId())
       case c: AllocateReplicaAllocationCommand =>
-        new AllocateReplicaAllocationCommand(randomIndex.stringify, c.shardId(), c.node())
+        new AllocateReplicaAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.projectId())
       case c: AllocateStalePrimaryAllocationCommand =>
-        new AllocateStalePrimaryAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.acceptDataLoss())
+        new AllocateStalePrimaryAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.acceptDataLoss(), c.projectId())
     }
   }
 }

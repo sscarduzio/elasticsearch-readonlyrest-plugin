@@ -16,34 +16,41 @@
  */
 package tech.beshu.ror.es.actions.rrconfig;
 
+import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.ActionRequestValidationException;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import org.elasticsearch.transport.TransportRequest;
 import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest;
 import tech.beshu.ror.configuration.loader.distributed.internode.NodeConfigRequestSerializer;
 
 import java.io.IOException;
+import java.util.Objects;
 
-public class RRConfigRequest extends TransportRequest {
-    private final NodeConfigRequest nodeConfigRequest;
+public class RRConfigRequest extends ActionRequest {
 
-    public RRConfigRequest(NodeConfigRequest nodeConfigRequest) {
-        super();
-        this.nodeConfigRequest = nodeConfigRequest;
-    }
+  private final NodeConfigRequest nodeConfigRequest;
 
-    public RRConfigRequest(StreamInput in) throws IOException {
-        super(in);
-        this.nodeConfigRequest = NodeConfigRequestSerializer.parse(in.readString());
-    }
+  public RRConfigRequest(NodeConfigRequest nodeConfigRequest) {
+    this.nodeConfigRequest = Objects.requireNonNull(nodeConfigRequest);
+  }
 
-    public NodeConfigRequest getNodeConfigRequest() {
-        return nodeConfigRequest;
-    }
+  public RRConfigRequest(StreamInput in) throws IOException {
+    super(in);
+    this.nodeConfigRequest = NodeConfigRequestSerializer.parse(in.readString());
+  }
 
-    @Override
-    public void writeTo(StreamOutput out) throws IOException {
-        super.writeTo(out);
-        out.writeString(NodeConfigRequestSerializer.serialize(this.nodeConfigRequest));
-    }
+  public NodeConfigRequest getNodeConfigRequest() {
+    return nodeConfigRequest;
+  }
+
+  @Override
+  public void writeTo(StreamOutput out) throws IOException {
+    super.writeTo(out);                                          // header
+    out.writeString(NodeConfigRequestSerializer.serialize(nodeConfigRequest));
+  }
+
+  @Override
+  public ActionRequestValidationException validate() {
+    return null;
+  }
 }
