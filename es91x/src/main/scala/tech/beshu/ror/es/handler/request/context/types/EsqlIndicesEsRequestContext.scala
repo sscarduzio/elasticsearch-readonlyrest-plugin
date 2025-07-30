@@ -34,7 +34,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, UpdateResponse}
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.EsqlRequestHelper
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification}
+import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification, ModificationError}
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -70,7 +70,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
                                 filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    val result: Either[EsqlRequestHelper.ModificationError, UpdateResponse] = for {
+    val result: Either[ModificationError, UpdateResponse] = for {
       _ <- modifyRequestIndices(request, filteredRequestedIndices)
       _ <- Right(applyFieldLevelSecurityTo(request, fieldLevelSecurity))
       _ <- Right(applyFilterTo(request, filter))
@@ -80,7 +80,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
           applyFieldLevelSecurityTo(response, fieldLevelSecurity) match {
             case Right(modifiedResponse) =>
               modifiedResponse
-            case Left(EsqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
+            case Left(ModificationError.UnexpectedException(ex)) =>
               throw new SecurityPermissionException("Cannot apply field level security to the ESQL response", ex)
           }
         }
@@ -96,7 +96,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
   }
 
   private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,
-                                   filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]): Either[EsqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
+                                   filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]): Either[ModificationError, CompositeIndicesRequest] = {
     requestClassification match {
       case Right(EsqlRequestClassification.NonIndicesRelated) =>
         Right(request)

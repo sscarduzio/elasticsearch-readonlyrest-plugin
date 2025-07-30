@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 import just.semver.SemVer
 import org.objectweb.asm.{ClassReader, ClassVisitor, ClassWriter, Label, MethodVisitor, Opcodes}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es8182, es8190, es900}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es8182, es8190, es900, es910}
 
 import java.io.{File, InputStream}
 
@@ -36,6 +36,7 @@ private[patches] class ModifyFilesEntitlementsValidationClass(esVersion: SemVer)
     modifyFileInJar(
       jar = jar,
       filePathString = esVersion match {
+        case v if v >= es910 => "org/elasticsearch/entitlement/bootstrap/FilesEntitlementsValidation.class"
         case v if v >= es900 => "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation.class"
         case v if v >= es8190 => "org/elasticsearch/entitlement/bootstrap/FilesEntitlementsValidation.class"
         case v => "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation.class"
