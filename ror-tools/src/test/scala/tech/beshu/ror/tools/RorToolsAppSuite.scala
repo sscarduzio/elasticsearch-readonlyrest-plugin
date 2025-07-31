@@ -105,6 +105,34 @@ class RorToolsAppSuite
           .stripMargin
       )
     }
+    "Patching successful for ES installation that was not patched (with consent given in both arg and env variable)" in {
+      val (result, output) = captureResultAndOutput(
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _),
+        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes")
+      )
+      result should equal(Result.Success)
+      output should include(
+        """Checking if Elasticsearch is patched ...
+          |Creating backup ...
+          |Patching ...
+          |Elasticsearch is patched! ReadonlyREST is ready to use"""
+          .stripMargin
+      )
+    }
+    "Patching successful for ES installation that was not patched (with consent given in both arg and env variable, with mixed cases)" in {
+      val (result, output) = captureResultAndOutput(
+        RorToolsTestApp.run(Array("patch", "--I_understand_AND_ACCEPT_ES_PATCHING", "yeS", "--es-path", esLocalPath.toString))(_, _),
+        mockedEnvs = Map("I_UNDERSTAND_AND_accept_ES_PATCHING" -> "YEs")
+      )
+      result should equal(Result.Success)
+      output should include(
+        """Checking if Elasticsearch is patched ...
+          |Creating backup ...
+          |Patching ...
+          |Elasticsearch is patched! ReadonlyREST is ready to use"""
+          .stripMargin
+      )
+    }
     "Patching successful for ES installation that was not patched (with consent given in interactive mode)" in {
       val (result, output) = captureResultAndOutputWithInteraction(
         RorToolsTestApp.run(Array("patch", "--es-path", esLocalPath.toString))(_, _),
@@ -175,6 +203,62 @@ class RorToolsAppSuite
         """You have to confirm, that You understand the implications of ES patching in order to perform it.
           |You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
           |""".stripMargin
+      )
+    }
+    "Patching not started when different consent values given in envs (no) and args (yes)" in {
+      val (result, output) = captureResultAndOutput(
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes"))(_, _),
+        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "no")
+      )
+      result should equal(Result.CommandNotParsed)
+      output should include(
+        """Error: There are conflicting values of the I_UNDERSTAND_AND_ACCEPT_ES_PATCHING setting. Please check env variables and program arguments.
+          |ROR tools 1.0.0
+          |Usage: java -jar ror-tools.jar [patch|unpatch|verify] [options]
+          |
+          |Command: patch [options]
+          |patch is a command that modifies ES installation for ROR purposes
+          |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
+          |
+          |  --i_understand_and_accept_es_patching <yes/no>
+          |                           Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
+          |Command: unpatch [options]
+          |unpatch is a command that reverts modifications done by patching
+          |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
+          |
+          |Command: verify [options]
+          |verify is a command that verifies if ES installation is patched
+          |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
+          |
+          |  -h, --help               prints this usage text""".stripMargin
+      )
+    }
+    "Patching not started when different consent values given in envs (yes) and args (no)" in {
+      val (result, output) = captureResultAndOutput(
+        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "no"))(_, _),
+        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes")
+      )
+      result should equal(Result.CommandNotParsed)
+      output should include(
+        """Error: There are conflicting values of the I_UNDERSTAND_AND_ACCEPT_ES_PATCHING setting. Please check env variables and program arguments.
+          |ROR tools 1.0.0
+          |Usage: java -jar ror-tools.jar [patch|unpatch|verify] [options]
+          |
+          |Command: patch [options]
+          |patch is a command that modifies ES installation for ROR purposes
+          |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
+          |
+          |  --i_understand_and_accept_es_patching <yes/no>
+          |                           Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
+          |Command: unpatch [options]
+          |unpatch is a command that reverts modifications done by patching
+          |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
+          |
+          |Command: verify [options]
+          |verify is a command that verifies if ES installation is patched
+          |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
+          |
+          |  -h, --help               prints this usage text""".stripMargin
       )
     }
     "Patching not started when user declines to accept implications of patching (in interactive mode)" in {
