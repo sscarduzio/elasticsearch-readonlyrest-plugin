@@ -159,8 +159,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
             request,
             listener,
             chain,
-            JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet,
-            esEnv.esVersion
+            JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet
           )
         )
     }

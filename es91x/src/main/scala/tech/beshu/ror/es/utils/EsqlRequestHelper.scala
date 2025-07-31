@@ -148,16 +148,14 @@ object EsqlRequestHelper {
     }
 
     private def indicesFrom(statement: Any) = {
-      val tableInfoList = tableInfosFrom {
-        doPreAnalyze(newPreAnalyzer, statement)
-      }
-      tableInfoList
-        .map(tableIdentifierFrom)
-        .map(indexStringFrom)
-        .flatMap { tableString =>
+      val preAnalyze =  doPreAnalyze(newPreAnalyzer, statement)
+      val indexPatterns = indexPatternsFrom(preAnalyze)
+      indexPatterns
+        .map(indexPatternStringFrom)
+        .flatMap { indexPatternString =>
           NonEmptyList
-            .fromList(splitIntoIndices(tableString))
-            .map(IndexTable(tableString, _))
+            .fromList(splitIntoIndices(indexPatternString))
+            .map(IndexTable(indexPatternString, _))
         }
     }
 
@@ -173,16 +171,12 @@ object EsqlRequestHelper {
       on(preAnalyzer).call("preAnalyze", statement).get[Any]()
     }
 
-    private def tableInfosFrom(preAnalysis: Any) = {
+    private def indexPatternsFrom(preAnalysis: Any) = {
       on(preAnalysis).get[java.util.List[Any]]("indices").asScala.toList
     }
 
-    private def tableIdentifierFrom(tableInfo: Any) = {
-      on(tableInfo).call("id").get[Any]()
-    }
-
-    private def indexStringFrom(tableIdentifier: Any) = {
-      on(tableIdentifier).call("indexPattern").get[String]()
+    private def indexPatternStringFrom(indexPattern: Any) = {
+      on(indexPattern).call("indexPattern").get[String]()
     }
 
   }

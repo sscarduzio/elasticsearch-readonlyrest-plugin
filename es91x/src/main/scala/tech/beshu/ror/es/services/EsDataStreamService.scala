@@ -74,7 +74,7 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     val enhancedActionType = client.findActionUnsafe[ActionResponse]("cluster:admin/ilm/get")
     val request =
       onClass("org.elasticsearch.xpack.core.ilm.action.GetLifecycleAction$Request", enhancedActionType.classLoader)
-        .create(masterNodeTimeout, ackTimeout, Array(policyId.value)) // varargs
+        .create(masterNodeTimeout, Array(policyId.value)) // varargs
         .get[ActionRequest]
 
     client.executeT(enhancedActionType.action, request)
