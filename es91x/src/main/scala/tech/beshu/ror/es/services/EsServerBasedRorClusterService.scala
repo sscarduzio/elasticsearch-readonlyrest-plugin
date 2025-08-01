@@ -132,18 +132,21 @@ class EsServerBasedRorClusterService(nodeName: String,
   }
 
   private def determineAllSnapshots(): Map[RepositoryName.Full, Task[Set[Snapshot]]] = {
-    val repositoriesMetadata: RepositoriesMetadata = clusterService.state().metadata().custom(RepositoriesMetadata.TYPE)
-    repositoriesMetadata
-      .repositories().asSafeList
-      .flatMap { repositoryMetadata =>
-        RepositoryName
-          .from(repositoryMetadata.name())
-          .flatMap {
-            case r: RepositoryName.Full => Some(r)
-            case _ => None
-          }
-          .map { name =>
-            (name, allSnapshotsFrom(name))
+    val projectsMetadata = clusterService.state.metadata.projects().values().asScala
+    projectsMetadata
+      .flatMap(pm => Option(RepositoriesMetadata.get(pm)))
+      .flatMap {
+        _.repositories().asSafeList
+          .flatMap { repositoryMetadata =>
+            RepositoryName
+              .from(repositoryMetadata.name())
+              .flatMap {
+                case r: RepositoryName.Full => Some(r)
+                case _ => None
+              }
+              .map { name =>
+                (name, allSnapshotsFrom(name))
+              }
           }
       }
       .toMap
