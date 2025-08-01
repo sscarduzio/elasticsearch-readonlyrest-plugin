@@ -188,8 +188,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es90x:
-              ROR_TASK: integration_es90x
+            IT_es91x:
+              ROR_TASK: integration_es91x
       - job:
         condition:
           and(
@@ -296,6 +296,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es91x:
+              ROR_TASK: integration_es91x
             IT_es90x:
               ROR_TASK: integration_es90x
       - job:
