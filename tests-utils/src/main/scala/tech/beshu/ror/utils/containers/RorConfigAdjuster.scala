@@ -50,7 +50,7 @@ object RorConfigAdjuster {
 
   private def resolveReplacementForGivenMode(dependency: StartedDependency): Replacement = {
     Replacement(
-      host = dependency.container.ipAddressFromFirstNetwork.getOrElse(throw new IllegalStateException("Could not extract ip address inside docker network")),
+      host = "localhost",
       port = dependency.originalPort
     )
   }

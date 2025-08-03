@@ -21,16 +21,17 @@ import monix.eval.Coeval
 object dependencies {
 
   def ldap(name: String, ldapInitScript: String): DependencyDef = {
+    val ldap = LdapContainer.create(name, ldapInitScript)
     DependencyDef(
       name = name,
-      Coeval(LdapContainer.create(name, ldapInitScript)),
-      originalPort = LdapContainer.defaults.ldap.port)
+      Coeval(ldap),
+      originalPort = ldap.ldapPort)
   }
 
-  def ldap(name: String, ldap: NonStoppableLdapContainer): DependencyDef = DependencyDef(
+  def ldap(name: String, ldap: LdapContainer): DependencyDef = DependencyDef(
     name = name,
     Coeval(ldap),
-    originalPort = LdapContainer.defaults.ldap.port
+    originalPort = ldap.ldapPort
   )
 
   def wiremock(name: String, mappings: String*): DependencyDef = {

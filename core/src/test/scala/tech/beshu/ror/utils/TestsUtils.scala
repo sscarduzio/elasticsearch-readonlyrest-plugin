@@ -397,7 +397,7 @@ object TestsUtils {
   }
 
   def getResourcePath(resource: String): Path = {
-    File(getClass.getResource(resource).getPath).path
+    File(getClass.getResource(resource).toURI).path
   }
 
   def getResourceContent(resource: String): String = {
