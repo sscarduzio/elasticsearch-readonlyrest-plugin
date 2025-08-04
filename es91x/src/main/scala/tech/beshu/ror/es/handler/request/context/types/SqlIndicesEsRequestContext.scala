@@ -29,12 +29,10 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnB
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, UpdateResponse}
+import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.SqlRequestHelper
-import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -49,9 +47,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
 
   private lazy val sqlIndicesExtractResult = SqlRequestHelper.indicesFrom(actionRequest) match {
     case result@Right(_) => result
-    case result@Left(SqlRequestHelper.IndicesError.ParsingException) => result
-    case Left(SqlRequestHelper.IndicesError.UnexpectedException(ex)) =>
-      throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.show}", ex)
+    case result@Left(SqlRequestHelper.IndicesError.ParsingException(_)) => result
   }
 
   override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
@@ -65,44 +61,29 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
                                 filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    val result: Either[SqlRequestHelper.ModificationError, UpdateResponse] = for {
-      _ <- modifyRequestIndices(request, filteredRequestedIndices)
-      _ <- Right(applyFieldLevelSecurityTo(request, fieldLevelSecurity))
-      _ <- Right(applyFilterTo(request, filter))
-    } yield {
-      UpdateResponse { response =>
-        Task.delay {
-          applyFieldLevelSecurityTo(response, fieldLevelSecurity) match {
-            case Right(modifiedResponse) =>
-              modifiedResponse
-            case Left(SqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
-              throw new SecurityPermissionException("Cannot apply field level security to the SQL response", ex)
-          }
-        }
+    modifyRequestIndices(request, filteredRequestedIndices)
+    applyFieldLevelSecurityTo(request, fieldLevelSecurity)
+    applyFilterTo(request, filter)
+    UpdateResponse { response =>
+      Task.delay {
+        applyFieldLevelSecurityTo(response, fieldLevelSecurity)
       }
     }
-    result.fold(
-      error => {
-        logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request; error=${error.show}")
-        CannotModify
-      },
-      identity
-    )
   }
 
   private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,
-                                   indices: NonEmptyList[RequestedIndex[ClusterIndexName]]): Either[SqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
+                                   indices: NonEmptyList[RequestedIndex[ClusterIndexName]]): CompositeIndicesRequest = {
     sqlIndicesExtractResult match {
       case Right(sqlIndices) =>
         val indicesStrings = indices.stringify.toCovariantSet
         if (indicesStrings != sqlIndices.indices) {
           SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings)
         } else {
-          Right(request)
+          request
         }
       case Left(_) =>
         logger.debug(s"[${id.show}] Cannot parse SQL statement - we can pass it though, because ES is going to reject it")
-        Right(request)
+        request
     }
   }
 
@@ -128,7 +109,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
       case Some(fls) =>
         SqlRequestHelper.modifyResponseAccordingToFieldLevelSecurity(response, fls)
       case None =>
-        Right(response)
+        response
     }
   }
 
