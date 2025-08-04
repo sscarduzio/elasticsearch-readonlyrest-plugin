@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.utils
 
-import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
@@ -25,85 +24,53 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
-import tech.beshu.ror.es.utils.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps.*
 
-import java.lang.reflect.Modifier
 import java.util.List as JList
 import java.util.regex.Pattern
 import scala.jdk.CollectionConverters.*
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 object EsqlRequestHelper {
 
-  final case class IndexTable(tableStringInQuery: String, indices: NonEmptyList[String])
-
-  sealed trait ModificationError
-  object ModificationError {
-    final case class UnexpectedException(ex: Throwable) extends ModificationError
-
-    implicit val show: Show[ModificationError] = Show.show(_.toString)
-  }
-
   def modifyIndicesOf(request: CompositeIndicesRequest,
                       requestTables: NonEmptyList[IndexTable],
-                      finalIndices: Set[String]): Either[ModificationError, CompositeIndicesRequest] = {
-    Try {
-      setQuery(request, newQueryFrom(getQuery(request), requestTables, finalIndices))
-    }.toEither.left.map(ModificationError.UnexpectedException.apply)
+                      finalIndices: Set[String]): CompositeIndicesRequest = {
+    setQuery(request, newQueryFrom(getQuery(request), requestTables, finalIndices))
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(response: ActionResponse,
-                                                  fieldLevelSecurity: FieldLevelSecurity): Either[ModificationError, ActionResponse] = {
-    Try(new EsqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions).underlyingObject)
-      .toEither.left.map(ModificationError.UnexpectedException.apply)
+                                                  fieldLevelSecurity: FieldLevelSecurity): ActionResponse = {
+    new EsqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions).underlyingObject
   }
 
-  sealed trait EsqlRequestClassification
-  object EsqlRequestClassification {
-    final case class IndicesRelated(tables: NonEmptyList[IndexTable]) extends EsqlRequestClassification {
-      lazy val indices: Set[String] = tables.toCovariantSet.flatMap(_.indices.toIterable)
-    }
-    case object NonIndicesRelated extends EsqlRequestClassification
-  }
-
-  sealed trait ClassificationError
-  object ClassificationError {
-    final case class UnexpectedException(ex: Throwable) extends ClassificationError
-    case object ParsingException extends ClassificationError
-  }
-
-  import EsqlRequestClassification._
+  import EsqlRequestClassification.*
 
   def classifyEsqlRequest(request: CompositeIndicesRequest): Either[ClassificationError, EsqlRequestClassification] = {
-    val result = Try {
-      val query = getQuery(request)
-      val params = ReflecUtils.invokeMethodCached(request, request.getClass, "params")
+    createStatement(request) match {
+      case Right(statement: IndicesRelatedStatement) => Right(IndicesRelated(statement.indices))
+      case Right(command: OtherCommand) => Right(NonIndicesRelated)
+      case Left(error) => Left(error)
+    }
+  }
 
-      implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-      Try(new EsqlParser().createStatement(query, params)) match {
-        case Success(statement: IndicesRelatedStatement) => Right(IndicesRelated(statement.indices))
-        case Success(command: OtherCommand) => Right(NonIndicesRelated)
-        case Failure(_) => Left(ClassificationError.ParsingException: ClassificationError)
-      }
-    }
-    result match {
-      case Success(value) => value
-      case Failure(exception) => Left(ClassificationError.UnexpectedException(exception))
-    }
+  private def createStatement(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
+    implicit val classLoader: ClassLoader = request.getClass.getClassLoader
+    new EsqlParser().createStatementBasedOn(request)
   }
 
   private def getQuery(request: CompositeIndicesRequest): String = {
-    ReflecUtils.invokeMethodCached(request, request.getClass, "query").asInstanceOf[String]
+    on(request).call("query").get[String]
   }
 
   private def setQuery(request: CompositeIndicesRequest, newQuery: String): CompositeIndicesRequest = {
-    ReflecUtils
-      .getMethodOf(request.getClass, Modifier.PUBLIC, "query", 1)
-      .invoke(request, newQuery)
+    on(request).call("query", newQuery)
     request
+  }
+
+  private def getParams(request: CompositeIndicesRequest): AnyRef = {
+    on(request).call("params").get[AnyRef]
   }
 
   private def newQueryFrom(oldQuery: String, requestTables: NonEmptyList[IndexTable], finalIndices: Set[String]) = {
@@ -129,18 +96,26 @@ object EsqlRequestHelper {
       onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser"))
         .create().get[Any]()
 
-    def createStatement(query: String, params: AnyRef): Statement = {
-      val statement = on(underlyingObject).call("createStatement", query, params).get[Any]
-      NonEmptyList.fromList(indicesFrom(statement)) match {
-        case Some(indices) => new IndicesRelatedStatement(statement, indices)
-        case None => OtherCommand(statement)
+    def createStatementBasedOn(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
+      createStatement(request).map { statement =>
+        NonEmptyList.fromList(indicesFrom(statement)) match {
+          case Some(indices) => new IndicesRelatedStatement(statement, indices)
+          case None => OtherCommand(statement)
+        }
       }
     }
 
+    private def createStatement(request: CompositeIndicesRequest) = {
+      val query = getQuery(request)
+      val params = getParams(request)
+      Try(on(underlyingObject).call("createStatement", query, params).get[Any])
+        .toEither
+        .left.map { ex => ClassificationError.ParsingException(ex) }
+    }
+
     private def indicesFrom(statement: Any) = {
-      val tableInfoList = tableInfosFrom {
-        doPreAnalyze(newPreAnalyzer, statement)
-      }
+      val preAnalyze =  doPreAnalyze(newPreAnalyzer, statement)
+      val tableInfoList = tableInfosFrom(preAnalyze)
       tableInfoList
         .map(tableIdentifierFrom)
         .map(indexStringFrom)
@@ -271,5 +246,20 @@ object EsqlRequestHelper {
         array
       }
     }
+  }
+
+  final case class IndexTable(tableStringInQuery: String, indices: NonEmptyList[String])
+
+  sealed trait EsqlRequestClassification
+  object EsqlRequestClassification {
+    final case class IndicesRelated(tables: NonEmptyList[IndexTable]) extends EsqlRequestClassification {
+      lazy val indices: Set[String] = tables.toCovariantSet.flatMap(_.indices.toIterable)
+    }
+    case object NonIndicesRelated extends EsqlRequestClassification
+  }
+
+  sealed trait ClassificationError
+  object ClassificationError {
+    final case class ParsingException(cause: Throwable) extends ClassificationError
   }
 }

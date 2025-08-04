@@ -45,10 +45,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  private lazy val sqlIndicesExtractResult = SqlRequestHelper.indicesFrom(actionRequest) match {
-    case result@Right(_) => result
-    case result@Left(SqlRequestHelper.IndicesError.ParsingException(_)) => result
-  }
+  private lazy val sqlIndicesExtractResult = SqlRequestHelper.indicesFrom(actionRequest)
 
   override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
     sqlIndicesExtractResult.map(_.indices.flatMap(RequestedIndex.fromString)) match {

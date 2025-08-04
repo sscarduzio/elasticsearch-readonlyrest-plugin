@@ -184,16 +184,16 @@ final class SimpleStatement(val underlyingObject: AnyRef)
 
   private def tableInfosFrom(preAnalysis: Any) = {
     on(preAnalysis)
-      .call("indices").get[java.util.List[AnyRef]]()
+      .get[java.util.List[AnyRef]]("indices")
       .asScala.toList
   }
 
   private def tableIdentifierFrom(tableInfo: Any) = {
-    on(tableInfo).call("id").get[AnyRef]
+    on(tableInfo).get[AnyRef]("id")
   }
 
   private def indicesStringFrom(tableIdentifier: Any) = {
-    on(tableIdentifier).call("index").get[String]
+    on(tableIdentifier).get[String]("index")
   }
 
   private def preAnalyzerClass(implicit classLoader: ClassLoader) =
