@@ -32,10 +32,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import static org.reflections.ReflectionUtils.getAllFields;
-import static org.reflections.ReflectionUtils.getAllMethods;
-import static org.reflections.ReflectionUtils.withModifier;
-import static org.reflections.ReflectionUtils.withName;
-import static org.reflections.ReflectionUtils.withParametersCount;
 
 /**
  * Created by sscarduzio on 24/03/2017.
@@ -44,88 +40,6 @@ public class ReflecUtils {
 
   private static final HashMap<String, Method> methodsCache = new HashMap<>(128);
   private static final Logger logger = LogManager.getLogger(ReflecUtils.class);
-
-  public static Object invokeMethodCached(Object o, Class c, String method) {
-    String cacheKey = c.getName() + "#" + method;
-
-    return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
-      try {
-        Method m = methodsCache.get(cacheKey);
-        if (m != null) {
-          return m.invoke(o);
-        }
-        try {
-          m = c.getDeclaredMethod(method);
-        } catch (NoSuchMethodException nsme) {
-          m = c.getMethod(method);
-        }
-        m.setAccessible(true);
-        methodsCache.put(cacheKey, m);
-        return m.invoke(o);
-      } catch (Exception e) {
-        e.printStackTrace();
-        return null;
-      }
-    });
-  }
-
-  public static Object getField(Object o, Class c, String field) {
-    return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
-      try {
-        Field f;
-        try {
-          f = c.getDeclaredField(field);
-        } catch (NoSuchFieldException nsfe) {
-          f = c.getField(field);
-        }
-        f.setAccessible(true);
-        return f.get(o);
-
-      } catch (Exception e) {
-        e.printStackTrace();
-        return null;
-      }
-    });
-  }
-
-  public static Object setField(Object o, Class c, String field, Object value) {
-    return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
-      try {
-        Field f;
-        try {
-          f = c.getDeclaredField(field);
-        } catch (NoSuchFieldException nsfe) {
-          f = c.getField(field);
-        }
-        f.setAccessible(true);
-        f.set(o, value);
-        return o;
-      } catch (Exception e) {
-        e.printStackTrace();
-        return null;
-      }
-    });
-  }
-
-  public static Object invokeMethod(Object o, Class c, String method) {
-    String cacheKey = c.getName() + "#" + method;
-    return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
-      try {
-        Method m;
-        try {
-          m = c.getDeclaredMethod(method);
-        } catch (NoSuchMethodException nsme) {
-          m = c.getMethod(method);
-        }
-        m.setAccessible(true);
-        methodsCache.put(cacheKey, m);
-        return m.invoke(o);
-      } catch (Exception e) {
-        e.printStackTrace();
-        return null;
-      }
-    });
-  }
 
   public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o) {
     return AccessController.doPrivileged((PrivilegedAction<String[]>) () -> {
@@ -215,36 +129,5 @@ public class ReflecUtils {
       return null;
     });
     return res[0];
-  }
-
-  public static Method getMethodOf(Class<?> aClass, int modifier, String name, int paramsCount) {
-    Set<Method> allMethods = getAllMethods(
-        aClass,
-        withModifier(modifier),
-        withName(name),
-        withParametersCount(paramsCount)
-    );
-    if (allMethods.size() == 0) {
-      throw new IllegalArgumentException("Cannot find method '" + name + "' of class " + aClass.getSimpleName());
-    } else if (allMethods.size() == 1) {
-      return allMethods.toArray(new Method[0])[0];
-    } else {
-      throw new IllegalArgumentException("More than one method with name '" + name + "' of class " + aClass.getSimpleName());
-    }
-  }
-
-  public static Field getFieldOf(Class<?> aClass, int modifier, String name) {
-    Set<Field> allFields = getAllFields(
-        aClass,
-        withModifier(modifier),
-        withName(name)
-    );
-    if (allFields.size() == 0) {
-      throw new IllegalArgumentException("Cannot find field with name '" + name + "' of class " + aClass.getSimpleName());
-    } else if (allFields.size() == 1) {
-      return allFields.toArray(new Field[0])[0];
-    } else {
-      throw new IllegalArgumentException("More than one field with name '" + name + "' of class " + aClass.getSimpleName());
-    }
   }
 }

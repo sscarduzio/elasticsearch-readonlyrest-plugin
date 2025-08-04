@@ -19,6 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types.datastreams
 import monix.eval.Task
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
@@ -30,7 +31,6 @@ import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBas
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ReflecUtils.{invokeMethod, setField}
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
@@ -89,15 +89,13 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
   private def updateActionResponse(response: ActionResponse,
                                    allAllowedIndices: Iterable[ClusterIndexName]): ActionResponse = {
     val allowedIndicesMatcher = PatternsMatcher.create(allAllowedIndices)
-    val filteredDataStreams =
-      invokeMethod(response, response.getClass, "getDataStreams")
-        .asInstanceOf[java.util.List[Object]]
+    val filteredDataStreams = on(response).call("getDataStreams").get[java.util.List[Object]]()
         .asScala
         .filter { dataStreamInfo =>
           backingIndiesMatchesAllowedIndices(dataStreamInfo, allowedIndicesMatcher)
         }
 
-    setField(response, response.getClass, "dataStreams", filteredDataStreams.asJava)
+    on(response).set("dataStreams", filteredDataStreams.asJava)
     response
   }
 
@@ -109,15 +107,11 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
 
   private def indicesFromDataStreamInfo(info: Object): Try[Set[ClusterIndexName]] = {
     for {
-      dataStream <- Try(invokeMethod(info, info.getClass, "getDataStream"))
-      backingIndices <- Try {
-        invokeMethod(dataStream, dataStream.getClass, "getIndices")
-          .asInstanceOf[java.util.List[Object]]
-          .asSafeList
-      }
+      dataStream <- Try(on(info).call("getDataStream").get[AnyVal]())
+      backingIndices <- Try (on(dataStream).call("getIndices").get[java.util.List[Object]]().asSafeList)
       indices <- Try {
         backingIndices
-          .flatMap(backingIndex => Option(invokeMethod(backingIndex, backingIndex.getClass, "getName").asInstanceOf[String]))
+          .flatMap(backingIndex => Option(on(backingIndex).call("getName").get[String]))
           .flatMap(ClusterIndexName.fromString)
           .toCovariantSet
       }
