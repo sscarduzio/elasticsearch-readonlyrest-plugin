@@ -66,13 +66,6 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
         applyFieldLevelSecurityTo(response, fieldLevelSecurity)
       }
     }
-    result.fold(
-      error => {
-        logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request; error=${error.show}")
-        CannotModify
-      },
-      identity
-    )
   }
 
   private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,
