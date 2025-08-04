@@ -49,7 +49,7 @@ object SearchHitOps {
         .map(fields => FieldsFiltering.filterNonMetadataDocumentFields(fields, fieldsRestrictions))
         .map(_.value)
         .foreach { newDocumentFields =>
-          ReflecUtils.setField(searchHit, searchHit.getClass, "documentFields", newDocumentFields.asJava)
+          on(searchHit).set("documentFields", newDocumentFields.asJava)
         }
       searchHit
     }
