@@ -88,7 +88,6 @@ public class ReflecUtils {
     });
   }
 
-
   public static Object setField(Object o, Class c, String field, Object value) {
     return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
       try {
