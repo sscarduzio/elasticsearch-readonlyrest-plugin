@@ -80,7 +80,7 @@ object ReflectionBasedIndicesEsRequestContext {
   }
 
   private def getIndicesUsingReflection(request: ActionRequest, methodName: String) = {
-    NonEmptyList.fromList(ReflecUtils.ReflecUtils.extractStringArrayFromPrivateMethod(methodName, request).asSafeList)
+    NonEmptyList.fromList(ReflecUtils.extractStringArrayFromPrivateMethod(methodName, request).asSafeList)
   }
 
 }

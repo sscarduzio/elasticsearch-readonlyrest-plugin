@@ -91,9 +91,9 @@ object ReflectionBasedDataStreamsEsRequestContext {
         .find(_ === actionRequestClass.value)
         .map { _ =>
           Matched.apply[A] {
-            ReflecUtils.extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest)
-              .asSafeSet
-              .flatMap((value: String) => toDomain(value))
+            ReflecUtils
+              .extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest).asSafeSet
+              .flatMap(toDomain)
           }
         }
         .getOrElse(NotMatched())

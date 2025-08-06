@@ -19,6 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types.datastreams
 import monix.eval.Task
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
@@ -30,7 +31,6 @@ import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBas
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
-import org.joor.Reflect.on
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*

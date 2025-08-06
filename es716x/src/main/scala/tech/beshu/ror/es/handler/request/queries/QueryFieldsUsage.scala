@@ -20,11 +20,11 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.index.query.*
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsedField, UsingFields}
 import tech.beshu.ror.es.handler.request.queries.QueryType.instances.*
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
-import org.joor.Reflect.on
 
 import scala.annotation.nowarn
 

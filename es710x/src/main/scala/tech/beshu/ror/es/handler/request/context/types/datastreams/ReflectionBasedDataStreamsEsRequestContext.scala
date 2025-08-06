@@ -92,7 +92,7 @@ object ReflectionBasedDataStreamsEsRequestContext {
         .map { _ =>
           Matched.apply[A] {
             ReflecUtils
-              .ReflecUtils.extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest).asSafeSet
+              .extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest).asSafeSet
               .flatMap(toDomain)
           }
         }

@@ -21,7 +21,7 @@ import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.{ActionListener, ActionResponse}
+import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.from
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.RorProcessedActionListener
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
@@ -78,7 +79,7 @@ class RegularRequestHandler(engine: Engine,
         case RegularRequestResult.TemplateNotFound() =>
           onTemplateNotFound(request)
         case RegularRequestResult.Failed(ex) =>
-          esContext.listener.onFailure(ex.asInstanceOf[Exception])
+          esContext.listener.onFailure(new Exception(ex))
         case RegularRequestResult.PassedThrough() =>
           proceed(request, esContext.listener)
       }
@@ -86,7 +87,7 @@ class RegularRequestHandler(engine: Engine,
       case Success(_) =>
       case Failure(ex) =>
         logger.errorEx(s"[${request.id.toRequestId.show}] ACL committing result failure", ex)
-        esContext.listener.onFailure(ex.asInstanceOf[Exception])
+        esContext.listener.onFailure(new Exception(ex))
     }
   }
 
@@ -95,7 +96,7 @@ class RegularRequestHandler(engine: Engine,
     configureResponseTransformations(blockContext.responseTransformations)
     request.modifyUsing(blockContext) match {
       case ModificationResult.Modified =>
-        proceed(request)
+        proceed(request, esContext.listener)
       case ModificationResult.ShouldBeInterrupted =>
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.CannotModify =>
@@ -208,7 +209,7 @@ class RegularRequestHandler(engine: Engine,
   private def handleModificationResult(requestContext: RequestContext, modificationResult: ModificationResult): Unit = {
     modificationResult match {
       case ModificationResult.Modified =>
-        proceed(requestContext)
+        proceed(requestContext, esContext.listener)
       case ModificationResult.CannotModify =>
         onForbidden(requestContext, NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.ShouldBeInterrupted =>
@@ -227,14 +228,14 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def proceed(requestContext: RequestContext, listener: ActionListener[ActionResponse] = esContext.listener): Unit = {
+  private def proceed(requestContext: RequestContext, listener: RorProcessedActionListener[ActionResponse]): Unit = {
     logRequestProcessingTime(requestContext)
     addProperHeader()
     esContext.chain.continue(esContext, listener)
   }
 
   private def addProperHeader(): Unit = {
-    if(esContext.action.isFieldCapsAction || esContext.action.isRollupAction || esContext.action.isGetSettingsAction)
+    if (esContext.action.isFieldCapsAction || esContext.action.isRollupAction || esContext.action.isGetSettingsAction)
       threadPool.getThreadContext.addSystemAuthenticationHeader(esContext.nodeName)
     else if (esContext.action.isXpackSecurityAction)
       threadPool.getThreadContext.addRorUserAuthenticationHeader(esContext.nodeName)
@@ -251,19 +252,19 @@ class RegularRequestHandler(engine: Engine,
     logger.debug(s"[${requestContext.id.toRequestId.show}] Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
   }
 
-  private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse]) extends ActionListener[ActionResponse] {
+  private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse])
+    extends RorProcessedActionListener(esContext.listener, esContext.correlationId) {
+
     override def onResponse(response: ActionResponse): Unit = doPrivileged {
       val stashedContext = threadPool.getThreadContext.stashAndMergeResponseHeaders(esContext)
       update(response) runAsync {
         case Right(updatedResponse) =>
           stashedContext.restore()
-          esContext.listener.onResponse(updatedResponse)
+          super.onResponse(updatedResponse)
         case Left(ex) =>
           stashedContext.close()
           onFailure(new Exception(ex))
       }
     }
-
-    override def onFailure(e: Exception): Unit = esContext.listener.onFailure(e)
   }
 }
