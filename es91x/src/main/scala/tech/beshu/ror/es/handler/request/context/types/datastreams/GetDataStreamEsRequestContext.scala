@@ -29,10 +29,10 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
-import tech.beshu.ror.syntax.*
 
 class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
                                     esContext: EsContext,

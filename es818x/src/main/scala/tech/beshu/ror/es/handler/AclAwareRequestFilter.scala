@@ -16,10 +16,12 @@
  */
 package tech.beshu.ror.es.handler
 
+import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
@@ -68,6 +70,7 @@ import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.*
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.RorProcessedActionListener
 import tech.beshu.ror.es.handler.request.context.types.*
 import tech.beshu.ror.es.handler.request.context.types.datastreams.*
 import tech.beshu.ror.es.handler.request.context.types.repositories.*
@@ -268,24 +271,17 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 object AclAwareRequestFilter {
 
   final class EsContext(val channel: RorRestChannel,
+                        val correlationId: Eval[CorrelationId],
                         val nodeName: String,
                         val task: EsTask,
                         val action: Action,
                         val actionRequest: ActionRequest,
-                        val listener: ActionListener[ActionResponse],
+                        val listener: RorProcessedActionListener[ActionResponse],
                         val chain: EsChain,
                         val threadContextResponseHeaders: Set[(String, String)],
                         val esVersion: EsVersion) {
 
     val timestamp: Instant = Instant.now()
-
-    lazy val correlationId: CorrelationId =
-      channel.restRequest
-        .allHeaders
-        .find(_.name === Header.Name.correlationId)
-        .map(_.value)
-        .map(CorrelationId.apply)
-        .getOrElse(CorrelationId.random)
 
     private lazy val isImpersonationHeader =
       channel.restRequest
@@ -300,6 +296,36 @@ object AclAwareRequestFilter {
         case Some(_) | None => Right(engines.mainEngine)
       }
     }
+  }
+  object EsContext {
+
+    implicit class CorrelationIdFrom(val channel: RorRestChannel) extends AnyVal {
+      def correlationId: Eval[CorrelationId] = Eval.later {
+        channel.restRequest
+          .allHeaders
+          .find(_.name === Header.Name.correlationId)
+          .map(_.value)
+          .map(CorrelationId.apply)
+          .getOrElse(CorrelationId.random)
+      }
+    }
+
+    class RorProcessedActionListener[T](underlying: ActionListener[T],
+                                        correlationId: Eval[CorrelationId])
+      extends ActionListener[T] with Logging {
+
+      override def onResponse(response: T): Unit =
+        underlying.onResponse(response)
+
+      override def onFailure(e: Exception): Unit = e match {
+        case esException: ElasticsearchException =>
+          underlying.onFailure(esException)
+        case other =>
+          logger.error(s"[${correlationId.value.show}] Internal error.", other)
+          underlying.onFailure(new ElasticsearchException(s"[${correlationId.value.show}] Internal error. See logs for details."))
+      }
+    }
+
   }
 
   final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse]) {

@@ -32,7 +32,6 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.es.handler.request.context.types.templates.SimulateIndexTemplateRequestEsRequestContext.TunedSimulateIndexTemplateResponse
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 import org.joor.Reflect.on
 
