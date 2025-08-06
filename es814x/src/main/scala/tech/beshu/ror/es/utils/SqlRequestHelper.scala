@@ -197,7 +197,7 @@ final class SimpleStatement(val underlyingObject: AnyRef)
   }
 
   private def preAnalyzerClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.PreAnalyzer")
+    classLoader.loadClass("org.elasticsearch.xpack.ql.analyzer.PreAnalyzer")
 }
 
 final class Command(val underlyingObject: Any)
