@@ -212,7 +212,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {
-    logger.warn(s"[${esContext.correlationId.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet")
+    logger.warn(s"[${esContext.correlationId.value.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet")
     rorNotAvailableRequestHandler.handleRorNotReadyYet(esContext)
   }
 
