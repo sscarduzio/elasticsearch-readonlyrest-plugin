@@ -87,7 +87,7 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
   }
 
   private def searchResponseFrom(response: ActionResponse) = {
-    Option(on(response).call("getSearchResponse"))
+    Option(on(response).call("getSearchResponse").get[AnyRef]())
       .collect { case sr: SearchResponse => sr }
   }
 }

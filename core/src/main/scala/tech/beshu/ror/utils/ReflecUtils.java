@@ -20,7 +20,6 @@ package tech.beshu.ror.utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import tech.beshu.ror.constants$;
-import tech.beshu.ror.exceptions.SecurityPermissionException;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -68,7 +67,7 @@ public class ReflecUtils {
           }
         } catch (SecurityException e) {
           logger.error("Can't get indices for request because of wrong security configuration " + o.getClass());
-          throw new SecurityPermissionException(
+          throw new RuntimeException(
               "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
         } catch (Exception e) {
           logger.debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
