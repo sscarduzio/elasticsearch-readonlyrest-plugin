@@ -53,7 +53,7 @@ trait RorTools {
     OParser.runParser(
       parser,
       allArgs.map(arg => if (arg.startsWith("--")) arg.toLowerCase else arg),
-      Arguments(Command.Verify(None), PatchingConsent.AnswerNotGiven),
+      Arguments(Command.Verify(None), List.empty),
       parserSetup,
     ) match {
       case (result, effects) =>
@@ -105,17 +105,20 @@ trait RorTools {
 
     def handle(command: Command.Patch,
                arguments: Arguments): Result = {
-      arguments.userUnderstandsImplicationsOfESPatching match {
-        case PatchingConsent.Accepted =>
+      arguments.patchingConsent match {
+        case Right(PatchingConsent.Accepted) =>
           performPatching(command.customEsPath)
-        case PatchingConsent.Rejected =>
+        case Right(PatchingConsent.Rejected) =>
           abortPatchingBecauseUserDidNotAcceptConsequences()
-        case PatchingConsent.AnswerNotGiven =>
+        case Right(PatchingConsent.AnswerNotGiven) =>
           askUserAboutPatchingConsent() match {
             case PatchingConsent.Accepted => performPatching(command.customEsPath)
             case PatchingConsent.Rejected => abortPatchingBecauseUserDidNotAcceptConsequences()
             case PatchingConsent.AnswerNotGiven => Result.Failure
           }
+        case Left(_) =>
+          // This case should have been handled by OParser, by throwing parsing error and displaying error message
+          Result.Failure
       }
     }
 
@@ -185,8 +188,6 @@ trait RorTools {
 
   import builder.*
 
-  private val consentFlagName = "i_understand_and_accept_es_patching"
-
   private lazy val parser = OParser.sequence(
     head("ROR tools", "1.0.0"),
     programName("java -jar ror-tools.jar"),
@@ -195,18 +196,26 @@ trait RorTools {
     opt[String](consentFlagName)
       .unbounded()
       .valueName("<yes/no>")
-      .validate {
-        case "yes" => success
-        case "no" => success
-        case other => failure(s"ERROR: Invalid value [$other]. Only values 'yes' and 'no' can be provided as an answer.")
+      .validate { value =>
+        value.toLowerCase match {
+          case "yes" => success
+          case "no" => success
+          case other => failure(s"ERROR: Invalid value [$other]. Only values 'yes' and 'no' can be provided as an answer.")
+        }
       }
       .action { (answer, config) =>
         answer.toLowerCase match {
-          case "yes" => config.copy(userUnderstandsImplicationsOfESPatching = PatchingConsent.Accepted)
-          case "no" => config.copy(userUnderstandsImplicationsOfESPatching = PatchingConsent.Rejected)
+          case "yes" => config.copy(patchingConsentValues = config.patchingConsentValues ::: PatchingConsent.Accepted :: Nil)
+          case "no" => config.copy(patchingConsentValues = config.patchingConsentValues ::: PatchingConsent.Rejected :: Nil)
         }
       }
       .text("Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch."),
+    checkConfig { c =>
+      c.patchingConsent match {
+        case Right(_) => success
+        case Left(error) => failure(error)
+      }
+    },
     unpatchCommand,
     note(""),
     verifyCommand,
@@ -263,8 +272,17 @@ trait RorTools {
 }
 
 object RorTools {
+  private val consentFlagName = "i_understand_and_accept_es_patching"
+
   private final case class Arguments(command: Command,
-                                     userUnderstandsImplicationsOfESPatching: PatchingConsent)
+                                     patchingConsentValues: List[PatchingConsent]) {
+    def patchingConsent: Either[String, PatchingConsent] = {
+      if (patchingConsentValues.isEmpty) Right(PatchingConsent.AnswerNotGiven)
+      else if (patchingConsentValues.forall(_ == PatchingConsent.Accepted)) Right(PatchingConsent.Accepted)
+      else if (patchingConsentValues.forall(_ == PatchingConsent.Rejected)) Right(PatchingConsent.Rejected)
+      else Left(s"There are conflicting values of the ${consentFlagName.toUpperCase} setting. Please check env variables and program arguments.")
+    }
+  }
 
   private sealed trait Command
   private object Command {
