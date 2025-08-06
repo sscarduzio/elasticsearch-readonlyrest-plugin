@@ -101,7 +101,6 @@ class InMemoryLdapService(name: String, ldapInitScript: InitScriptSource)
     server.startListening()
     logger.info(s"LDAP in-memory server '$name' started on port ${server.getListenPort}")
     initLdapFromFile()
-
   }
 
   def stop(): Unit = {

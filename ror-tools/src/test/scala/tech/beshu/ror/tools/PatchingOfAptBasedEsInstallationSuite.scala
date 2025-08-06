@@ -29,7 +29,7 @@ import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
+import tech.beshu.ror.utils.containers.images.{DockerImageCreator, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.containers.logs.DockerLogsToStringConsumer
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
@@ -148,7 +148,7 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
 
     def stop(): Task[Unit] = for {
       _ <- Task.delay(esContainer.stop())
-      _ <- Task.delay(dockerClient.removeImageCmd(esContainer.imageFromDockerfile.get()).withForce(true).exec())
+      _ <- Task.delay(dockerClient.removeImageCmd(esContainer.esImage.get()).withForce(true).exec())
     } yield ()
 
     def getLogs: String = dockerLogsCollector.getLogs
