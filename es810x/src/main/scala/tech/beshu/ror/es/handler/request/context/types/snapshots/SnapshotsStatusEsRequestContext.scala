@@ -63,9 +63,9 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
   }
 
   private def updateSnapshotStatusResponse(blockContext: SnapshotRequestBlockContext): ModificationResult = {
-    ModificationResult.UpdateResponse.create {
-      case r: SnapshotsStatusResponse => Task.delay(filterOutNotAllowedSnapshotsAndRepositories(r, blockContext))
-      case r => Task.now(r)
+    ModificationResult.UpdateResponse.sync {
+      case r: SnapshotsStatusResponse => filterOutNotAllowedSnapshotsAndRepositories(r, blockContext)
+      case r => r
     }
   }
 

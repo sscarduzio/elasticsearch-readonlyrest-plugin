@@ -16,6 +16,9 @@
  */
 package tech.beshu.ror.utils
 
+import monix.eval.Task
+import monix.execution.Scheduler
+
 import java.security.{AccessController, PrivilegedAction}
 
 object AccessControllerHelper {
@@ -23,5 +26,14 @@ object AccessControllerHelper {
     AccessController.doPrivileged(new PrivilegedAction[T] {
       override def run(): T = action
     })
+  }
+
+  def doPrivileged[T](actionTask: Task[T])
+                     (implicit scheduler: Scheduler): Task[T] = {
+    Task.eval {
+      doPrivileged {
+        actionTask.runSyncUnsafe()
+      }
+    }
   }
 }

@@ -17,13 +17,11 @@
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
 import cats.implicits.*
-import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
@@ -65,11 +63,11 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
     } yield update(actionRequest, snapshots, repository)
     updateResult match {
       case Right(_) =>
-        ModificationResult.UpdateResponse.create {
+        ModificationResult.UpdateResponse.sync {
           case r: GetSnapshotsResponse =>
-            Task.delay(updateGetSnapshotResponse(r, blockContext.allAllowedIndices))
+            updateGetSnapshotResponse(r, blockContext.allAllowedIndices)
           case r =>
-            Task.now(r)
+            r
         }
       case Left(_) =>
         logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")

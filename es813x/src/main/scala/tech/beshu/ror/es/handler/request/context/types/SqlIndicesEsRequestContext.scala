@@ -61,10 +61,10 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     modifyRequestIndices(request, filteredRequestedIndices)
     applyFieldLevelSecurityTo(request, fieldLevelSecurity)
     applyFilterTo(request, filter)
-    UpdateResponse.create { response =>
-      Task.delay {
+    UpdateResponse.using { response =>
+//      Task.delay {
         applyFieldLevelSecurityTo(response, fieldLevelSecurity)
-      }
+//      }
     }
   }
 
