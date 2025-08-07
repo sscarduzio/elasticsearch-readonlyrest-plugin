@@ -68,7 +68,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
         filterFieldsFromResponse(fieldLevelSecurity)(new ReflectionBasedSearchTemplateResponse(resp))
       }
     else
-      ModificationResult.UpdateResponse(callSearchOnceAgain(filter, fieldLevelSecurity))
+      ModificationResult.UpdateResponse.create(callSearchOnceAgain(filter, fieldLevelSecurity))
   }
 
   /*

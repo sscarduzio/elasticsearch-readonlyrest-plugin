@@ -84,7 +84,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
   }
 
   private def updateResponse(`using`: TemplateRequestBlockContext) = {
-    ModificationResult.UpdateResponse {
+    ModificationResult.UpdateResponse.create {
       case r: GetIndexTemplatesResponse =>
         Task.now(new GetIndexTemplatesResponse(
           GetTemplatesEsRequestContext

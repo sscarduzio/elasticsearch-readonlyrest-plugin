@@ -65,7 +65,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
       case Some((indices, aliases)) =>
         updateIndices(actionRequest, indices)
         updateAliases(actionRequest, aliases)
-        UpdateResponse(updateAliasesResponse(aliases.includedOnly, _))
+        UpdateResponse.create(updateAliasesResponse(aliases.includedOnly, _))
       case None =>
         logger.error(s"[${id.show}] At least one alias and one index has to be allowed. " +
           s"Found allowed indices: [${blockContext.indices.show}]." +

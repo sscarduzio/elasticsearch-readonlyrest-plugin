@@ -75,7 +75,7 @@ import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, EsVersion, HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel}
+import tech.beshu.ror.es.{EsVersion, HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel, AtEsLevelUpdateActionResponseListener}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 

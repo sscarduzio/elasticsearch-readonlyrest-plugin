@@ -80,7 +80,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
         .foreach { case (item, pack) =>
           updateItem(item, pack)
         }
-      ModificationResult.UpdateResponse(updateFunction(blockContext.filter, blockContext.fieldLevelSecurity))
+      ModificationResult.UpdateResponse.create(updateFunction(blockContext.filter, blockContext.fieldLevelSecurity))
     } else {
       logger.error(
         s"""[${id.show}] Cannot alter MultiGetRequest request, because origin request contained different

@@ -64,7 +64,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
     modifyRequestIndices(request, filteredRequestedIndices)
     applyFieldLevelSecurityTo(request, fieldLevelSecurity)
     applyFilterTo(request, filter)
-    UpdateResponse { response =>
+    UpdateResponse.create { response =>
       Task.delay {
         applyFieldLevelSecurityTo(response, fieldLevelSecurity)
       }

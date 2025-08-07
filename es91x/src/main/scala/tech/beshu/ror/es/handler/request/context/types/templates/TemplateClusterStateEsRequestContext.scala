@@ -76,7 +76,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   }
 
   override def modifyWhenTemplateNotFound: ModificationResult = {
-    ModificationResult.UpdateResponse(_ => Task.now(emptyClusterResponse))
+    ModificationResult.UpdateResponse.create(_ => Task.now(emptyClusterResponse))
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
@@ -104,7 +104,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   }
 
   private def updateResponse(func: ClusterStateResponse => ClusterStateResponse) = {
-    ModificationResult.UpdateResponse {
+    ModificationResult.UpdateResponse.create {
       case response: ClusterStateResponse =>
         Task.delay(func(response))
       case other =>

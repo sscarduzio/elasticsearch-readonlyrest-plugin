@@ -77,7 +77,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
         .foreach { case (request, pack) =>
           updateRequest(request, pack)
         }
-      ModificationResult.UpdateResponse(
+      ModificationResult.UpdateResponse.create(
         callSearchOnceAgain(blockContext.filter, blockContext.fieldLevelSecurity)
       )
     } else {

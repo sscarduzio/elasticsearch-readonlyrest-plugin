@@ -87,7 +87,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
   }
 
   private def updateResponse(`using`: TemplateRequestBlockContext) = {
-    ModificationResult.UpdateResponse {
+    ModificationResult.UpdateResponse.create {
       case r: GetComponentTemplateAction.Response =>
         Task.now(new GetComponentTemplateAction.Response(
           filter(

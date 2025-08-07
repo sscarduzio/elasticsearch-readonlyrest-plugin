@@ -49,7 +49,7 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
-    ModificationResult.UpdateResponse(filterAliases(_, allAllowedIndices))
+    ModificationResult.UpdateResponse.create(filterAliases(_, allAllowedIndices))
   }
 
   private def filterAliases(response: ActionResponse,

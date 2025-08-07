@@ -56,7 +56,7 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
 
   override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     setDataStreamNames(blockContext.dataStreams)
-    ModificationResult.UpdateResponse {
+    ModificationResult.UpdateResponse.create {
       case r: GetDataStreamAction.Response =>
         blockContext.backingIndices match {
           case BackingIndices.IndicesInvolved(_, allAllowedIndices) =>

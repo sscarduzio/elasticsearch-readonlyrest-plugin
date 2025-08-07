@@ -65,7 +65,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
     } yield update(actionRequest, snapshots, repository)
     updateResult match {
       case Right(_) =>
-        ModificationResult.UpdateResponse {
+        ModificationResult.UpdateResponse.create {
           case r: GetSnapshotsResponse =>
             Task.delay(updateGetSnapshotResponse(r, blockContext.allAllowedIndices))
           case r =>

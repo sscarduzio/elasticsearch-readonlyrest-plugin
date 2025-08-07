@@ -65,7 +65,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
                             index: RequestedIndex[ClusterIndexName],
                             allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indexName(index.stringify)
-    ModificationResult.UpdateResponse {
+    ModificationResult.UpdateResponse.create {
       case response: SimulateIndexTemplateResponse =>
         Task.now(SimulateIndexTemplateRequestEsRequestContext.filterAliasesAndIndexPatternsIn(response, allAllowedIndices.toList))
       case other =>

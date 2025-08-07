@@ -87,7 +87,7 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
   }
 
   private def updateResponse(`using`: TemplateRequestBlockContext) = {
-    ModificationResult.UpdateResponse {
+    ModificationResult.UpdateResponse.create {
       case r: GetComposableIndexTemplateAction.Response =>
         Task.now(new GetComposableIndexTemplateAction.Response(
           GetComposableIndexTemplateEsRequestContext

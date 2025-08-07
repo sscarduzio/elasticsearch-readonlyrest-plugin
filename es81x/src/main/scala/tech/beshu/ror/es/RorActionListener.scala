@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es
 
-import cats.implicits.*
 import cats.Eval
+import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -27,7 +27,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 sealed abstract class RorActionListener[T](val underlying: ActionListener[T]) extends ActionListener[T] {
 
@@ -60,7 +59,7 @@ final class AtEsLevelUpdateActionResponseListener(esContext: EsContext,
                                                  (implicit scheduler: Scheduler)
   extends RorActionListener[ActionResponse](esContext.listener.underlying) {
 
-  override def onResponse(response: ActionResponse): Unit = doPrivileged {
+  override def onResponse(response: ActionResponse): Unit = {
     val stashedContext = threadPool.getThreadContext.stashAndMergeResponseHeaders(esContext)
     update(response) runAsync {
       case Right(updatedResponse) =>

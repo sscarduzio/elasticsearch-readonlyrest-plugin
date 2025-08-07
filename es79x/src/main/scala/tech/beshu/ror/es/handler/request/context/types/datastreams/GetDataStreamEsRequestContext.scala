@@ -53,7 +53,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
 
   override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     if (modifyActionRequest(blockContext)) {
-      ModificationResult.UpdateResponse {
+      ModificationResult.UpdateResponse.create {
         case r: ActionResponse if isGetDataStreamActionResponse(r) =>
           blockContext.backingIndices match {
             case BackingIndices.IndicesInvolved(_, allAllowedIndices) =>

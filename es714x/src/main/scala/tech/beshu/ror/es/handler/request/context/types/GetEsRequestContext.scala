@@ -57,7 +57,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val indexName = filteredRequestedIndices.head
     request.index(indexName.stringify)
-    ModificationResult.UpdateResponse(updateFunction(filter, fieldLevelSecurity))
+    ModificationResult.UpdateResponse.create(updateFunction(filter, fieldLevelSecurity))
   }
 
   private def updateFunction(filter: Option[Filter],
