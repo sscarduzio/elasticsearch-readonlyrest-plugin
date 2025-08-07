@@ -32,14 +32,13 @@ import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
+import tech.beshu.ror.es.{RorActionListener, AtEsLevelUpdateActionResponseListener}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.RorProcessedActionListener
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps.*
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.LoggerOps.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -105,7 +104,7 @@ class RegularRequestHandler(engine: Engine,
       case CustomResponse(response) =>
         respond(request, response)
       case UpdateResponse(updateFunc) =>
-        proceed(request, new UpdateResponseListener(updateFunc))
+        proceed(request, new AtEsLevelUpdateActionResponseListener(esContext, updateFunc, threadPool))
     }
   }
 
@@ -217,7 +216,7 @@ class RegularRequestHandler(engine: Engine,
       case CustomResponse(response) =>
         respond(requestContext, response)
       case UpdateResponse(updateFunc) =>
-        proceed(requestContext, new UpdateResponseListener(updateFunc))
+        proceed(requestContext, new AtEsLevelUpdateActionResponseListener(esContext, updateFunc, threadPool))
     }
   }
 
@@ -228,7 +227,7 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def proceed(requestContext: RequestContext, listener: RorProcessedActionListener[ActionResponse]): Unit = {
+  private def proceed(requestContext: RequestContext, listener: RorActionListener[ActionResponse]): Unit = {
     logRequestProcessingTime(requestContext)
     addProperHeader()
     esContext.chain.continue(esContext, listener)
@@ -250,21 +249,5 @@ class RegularRequestHandler(engine: Engine,
 
   private def logRequestProcessingTime(requestContext: RequestContext): Unit = {
     logger.debug(s"[${requestContext.id.toRequestId.show}] Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
-  }
-
-  private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse])
-    extends RorProcessedActionListener(esContext.listener, esContext.correlationId) {
-
-    override def onResponse(response: ActionResponse): Unit = doPrivileged {
-      val stashedContext = threadPool.getThreadContext.stashAndMergeResponseHeaders(esContext)
-      update(response) runAsync {
-        case Right(updatedResponse) =>
-          stashedContext.restore()
-          super.onResponse(updatedResponse)
-        case Left(ex) =>
-          stashedContext.close()
-          onFailure(new Exception(ex))
-      }
-    }
   }
 }

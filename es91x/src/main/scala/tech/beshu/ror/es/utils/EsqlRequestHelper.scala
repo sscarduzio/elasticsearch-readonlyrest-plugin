@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
 import org.joor.Reflect.*
+import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.es.handler.response.FieldsFiltering
@@ -31,7 +32,7 @@ import java.time.ZoneOffset
 import java.util.regex.Pattern
 import java.util.{Locale, List as JList}
 import scala.jdk.CollectionConverters.*
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object EsqlRequestHelper {
 
@@ -130,9 +131,11 @@ object EsqlRequestHelper {
       val query = getQuery(request)
       val params = getParams(request)
       val configuration = createConfiguration(request)
-      Try(on(underlyingObject).call("createStatement", query, params, configuration).get[Any])
-        .toEither
-        .left.map { ex => ClassificationError.ParsingException(ex) }
+      Try(on(underlyingObject).call("createStatement", query, params, configuration).get[AnyRef]) match {
+        case Success(s) => Right(s)
+        case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
+        case Failure(ex) => Left(ClassificationError.ParsingException(ex))
+      }
     }
 
     private def indicesFrom(statement: Any) = {

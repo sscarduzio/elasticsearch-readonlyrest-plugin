@@ -21,7 +21,6 @@ import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
@@ -68,13 +67,12 @@ import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.*
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.RorProcessedActionListener
 import tech.beshu.ror.es.handler.request.context.types.*
 import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.es.{RorClusterService, RorRestChannel}
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -253,7 +251,7 @@ object AclAwareRequestFilter {
                         val task: EsTask,
                         val action: Action,
                         val actionRequest: ActionRequest,
-                        val listener: RorProcessedActionListener[ActionResponse],
+                        val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
                         val threadContextResponseHeaders: Set[(String, String)]) {
 
@@ -286,29 +284,17 @@ object AclAwareRequestFilter {
       }
     }
 
-    class RorProcessedActionListener[T](underlying: ActionListener[T],
-                                        correlationId: Eval[CorrelationId])
-      extends ActionListener[T] with Logging {
-
-      override def onResponse(response: T): Unit =
-        underlying.onResponse(response)
-
-      override def onFailure(e: Exception): Unit = e match {
-        case esException: ElasticsearchException =>
-          underlying.onFailure(esException)
-        case other =>
-          logger.error(s"[${correlationId.value.show}] Internal error.", other)
-          underlying.onFailure(new ElasticsearchException(s"[${correlationId.value.show}] Internal error. See logs for details."))
-      }
-    }
-
   }
 
   final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse]) {
 
     def continue(esContext: EsContext,
-                 listener: ActionListener[ActionResponse]): Unit = {
-      continue(esContext.task, esContext.action, esContext.actionRequest, listener)
+                 listener: RorActionListener[ActionResponse]): Unit = {
+      val esListener = listener match {
+        case listener: HidingInternalErrorDetailsRorActionListener[_] => listener.underlying
+        case listener: AtEsLevelUpdateActionResponseListener => listener
+      }
+      continue(esContext.task, esContext.action, esContext.actionRequest, esListener)
     }
 
     def continue(task: EsTask,

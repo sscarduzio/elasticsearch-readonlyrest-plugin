@@ -37,7 +37,7 @@ import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.{CorrelationIdFrom, RorProcessedActionListener}
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.{EsIndexJsonContentService, EsServerBasedRorClusterService, NodeClientBasedAuditSinkService, RestClientAuditSinkService}
@@ -157,7 +157,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         chain.continue(task, action, request, listener)
       case Some(channel) =>
         val correlationId = channel.correlationId
-        val rorProcessedActionListenerDecorator = new RorProcessedActionListener(listener, correlationId)
+        val rorActionListener = new HidingInternalErrorDetailsRorActionListener(listener, correlationId)
         Try {
           proceedByRorEngine(
             new EsContext(
@@ -167,14 +167,14 @@ class IndexLevelActionFilter(clusterService: ClusterService,
               task,
               action,
               request,
-              rorProcessedActionListenerDecorator,
+              rorActionListener,
               chain,
               JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet
             )
           )
         } recover {
-          case e: Exception if NonFatal(e) => rorProcessedActionListenerDecorator.onFailure(e)
-          case NonFatal(t) => rorProcessedActionListenerDecorator.onFailure(new RuntimeException(t))
+          case e: Exception if NonFatal(e) => rorActionListener.onFailure(e)
+          case NonFatal(t) => rorActionListener.onFailure(new Exception(t))
         }
     }
   }

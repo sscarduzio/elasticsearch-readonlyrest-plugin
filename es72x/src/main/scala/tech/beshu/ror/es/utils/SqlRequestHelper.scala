@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.ScalaOps.*
 import java.util.List as JList
 import java.util.regex.Pattern
 import scala.jdk.CollectionConverters.*
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 sealed trait ExtractedIndices {
   def indices: Set[String]
@@ -137,13 +137,12 @@ final class SqlParser(implicit classLoader: ClassLoader) {
   private val underlyingObject = aClass.getConstructor().newInstance()
 
   def createStatement(query: String, params: AnyRef): Either[IndicesError.ParsingException, Statement] = {
-    Try(on(underlyingObject).call("createStatement", query, params))
-      .toEither
-      .map {
-        case s if Command.isClassOf(s) => new Command(s)
-        case s => new SimpleStatement(s)
-      }
-      .left.map { ex => IndicesError.ParsingException(ex) }
+    Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
+      case Success(s) if Command.isClassOf(s) => Right(new Command(s))
+      case Success(s) => Right(new SimpleStatement(s))
+      case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
+      case Failure(ex) => Left(IndicesError.ParsingException(ex))
+    }
   }
 
 }
