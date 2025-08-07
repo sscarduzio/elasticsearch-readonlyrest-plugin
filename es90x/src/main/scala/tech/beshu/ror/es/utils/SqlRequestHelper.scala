@@ -18,6 +18,7 @@ package tech.beshu.ror.es.utils
 
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
 import org.joor.Reflect.on
+import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.es.handler.response.FieldsFiltering
