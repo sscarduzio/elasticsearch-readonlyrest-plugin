@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.index.query.QueryBuilder
 import org.elasticsearch.threadpool.ThreadPool
@@ -64,11 +63,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
     modifyRequestIndices(request, filteredRequestedIndices)
     applyFieldLevelSecurityTo(request, fieldLevelSecurity)
     applyFilterTo(request, filter)
-    UpdateResponse.create { response =>
-      Task.delay {
-        applyFieldLevelSecurityTo(response, fieldLevelSecurity)
-      }
-    }
+    UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
   }
 
   private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,

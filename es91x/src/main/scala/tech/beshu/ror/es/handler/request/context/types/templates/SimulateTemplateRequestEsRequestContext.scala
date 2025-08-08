@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateResponse, SimulateTemplateAction}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -131,11 +130,11 @@ abstract class SimulateTemplateRequestEsRequestContext[O <: TemplateOperation](a
 
   protected def updateResponse(allowedTemplates: List[TemplateNamePattern],
                                allowedIndices: List[ClusterIndexName]): ModificationResult.UpdateResponse = {
-    ModificationResult.UpdateResponse.create {
+    ModificationResult.UpdateResponse.sync {
       case response: SimulateIndexTemplateResponse =>
-        Task.now(filterTemplatesIn(response, allowedTemplates, allowedIndices))
+        filterTemplatesIn(response, allowedTemplates, allowedIndices)
       case other =>
-        Task.now(other)
+        other
     }
   }
 

@@ -70,7 +70,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
         .foreach { case (request, pack) =>
           updateRequest(request, pack, blockContext.filter, blockContext.fieldLevelSecurity)
         }
-      ModificationResult.UpdateResponse.using(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
+      ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
     } else {
       logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
