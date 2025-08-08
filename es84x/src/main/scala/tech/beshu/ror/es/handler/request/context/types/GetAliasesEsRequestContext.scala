@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.alias.get.{GetAliasesRequest, GetAliasesResponse}
 import org.elasticsearch.cluster.metadata.{AliasMetadata, DataStreamAlias}
@@ -65,7 +64,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
       case Some((indices, aliases)) =>
         updateIndices(actionRequest, indices)
         updateAliases(actionRequest, aliases)
-        UpdateResponse.create(updateAliasesResponse(aliases.includedOnly, _))
+        UpdateResponse.sync(updateAliasesResponse(aliases.includedOnly, _))
       case None =>
         logger.error(s"[${id.show}] At least one alias and one index has to be allowed. " +
           s"Found allowed indices: [${blockContext.indices.show}]." +
@@ -140,7 +139,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
   }
 
   private def updateAliasesResponse(allowedAliases: Set[ClusterIndexName],
-                                    response: ActionResponse): Task[ActionResponse] = {
+                                    response: ActionResponse): ActionResponse = {
     val (aliases, streams) = response match {
       case aliasesResponse: GetAliasesResponse =>
         (
@@ -154,7 +153,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
           Map.asEmptyJavaMap[String, JList[DataStreamAlias]]
         )
     }
-    Task.now(new GetAliasesResponse(aliases, streams))
+    new GetAliasesResponse(aliases, streams)
   }
 
   private def isRequestedEmptyAliasesSet(request: GetAliasesRequest) = rawRequestAliasesSet(request).isEmpty

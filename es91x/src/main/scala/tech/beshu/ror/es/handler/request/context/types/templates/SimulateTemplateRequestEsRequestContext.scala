@@ -131,10 +131,8 @@ abstract class SimulateTemplateRequestEsRequestContext[O <: TemplateOperation](a
   protected def updateResponse(allowedTemplates: List[TemplateNamePattern],
                                allowedIndices: List[ClusterIndexName]): ModificationResult.UpdateResponse = {
     ModificationResult.UpdateResponse.sync {
-      case response: SimulateIndexTemplateResponse =>
-        filterTemplatesIn(response, allowedTemplates, allowedIndices)
-      case other =>
-        other
+      case response: SimulateIndexTemplateResponse => filterTemplatesIn(response, allowedTemplates, allowedIndices)
+      case other => other
     }
   }
 

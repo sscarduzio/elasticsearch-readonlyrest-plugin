@@ -65,10 +65,8 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
     updateResult match {
       case Right(_) =>
         ModificationResult.UpdateResponse.sync {
-          case r: GetSnapshotsResponse =>
-            updateGetSnapshotResponse(r, blockContext.allAllowedIndices)
-          case r =>
-            r
+          case r: GetSnapshotsResponse => updateGetSnapshotResponse(r, blockContext.allAllowedIndices)
+          case r => r
         }
       case Left(_) =>
         logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")

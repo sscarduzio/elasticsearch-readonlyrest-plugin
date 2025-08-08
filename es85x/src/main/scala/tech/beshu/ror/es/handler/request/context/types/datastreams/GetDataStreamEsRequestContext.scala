@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
-import monix.eval.Task
 import org.elasticsearch.action.datastreams.GetDataStreamAction
 import org.elasticsearch.action.datastreams.GetDataStreamAction.Response
 import org.elasticsearch.index.Index
@@ -56,16 +55,16 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
 
   override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     setDataStreamNames(blockContext.dataStreams)
-    ModificationResult.UpdateResponse.create {
+    ModificationResult.UpdateResponse.sync {
       case r: GetDataStreamAction.Response =>
         blockContext.backingIndices match {
           case BackingIndices.IndicesInvolved(_, allAllowedIndices) =>
-            Task.now(updateGetDataStreamResponse(r, extendAllowedIndicesSet(allAllowedIndices)))
+            updateGetDataStreamResponse(r, extendAllowedIndicesSet(allAllowedIndices))
           case BackingIndices.IndicesNotInvolved =>
-            Task.now(r)
+            r
         }
       case r =>
-        Task.now(r)
+        r
     }
   }
 
