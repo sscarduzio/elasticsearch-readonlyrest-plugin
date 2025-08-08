@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
-import monix.eval.Task
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
@@ -53,16 +52,16 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
 
   override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     if (modifyActionRequest(blockContext)) {
-      ModificationResult.UpdateResponse.create {
+      ModificationResult.UpdateResponse.sync {
         case r: ActionResponse if isGetDataStreamActionResponse(r) =>
           blockContext.backingIndices match {
             case BackingIndices.IndicesInvolved(_, allAllowedIndices) =>
-              Task.now(updateActionResponse(r, extendAllowedIndicesSet(allAllowedIndices)))
+              updateActionResponse(r, extendAllowedIndicesSet(allAllowedIndices))
             case BackingIndices.IndicesNotInvolved =>
-              Task.now(r)
+              r
           }
         case r =>
-          Task.now(r)
+          r
       }
     } else {
       logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")

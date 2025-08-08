@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
 import org.elasticsearch.cluster.metadata.Metadata
 import org.elasticsearch.cluster.{ClusterName, ClusterState}
@@ -75,7 +74,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   }
 
   override def modifyWhenTemplateNotFound: ModificationResult = {
-    ModificationResult.UpdateResponse.create(_ => Task.now(emptyClusterResponse))
+    ModificationResult.UpdateResponse.sync(_ => emptyClusterResponse)
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
@@ -103,11 +102,9 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   }
 
   private def updateResponse(func: ClusterStateResponse => ClusterStateResponse) = {
-    ModificationResult.UpdateResponse.create {
-      case response: ClusterStateResponse =>
-        Task.delay(func(response))
-      case other =>
-        Task.now(other)
+    ModificationResult.UpdateResponse.sync {
+      case response: ClusterStateResponse => func(response)
+      case other => other
     }
   }
 

@@ -19,7 +19,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 import cats.data.NonEmptyList
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
-import monix.eval.Task
 import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateRequest, SimulateIndexTemplateResponse}
 import org.elasticsearch.cluster.metadata.Template as EsMetadataTemplate
 import org.elasticsearch.threadpool.ThreadPool
@@ -65,11 +64,11 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
                             index: RequestedIndex[ClusterIndexName],
                             allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indexName(index.stringify)
-    ModificationResult.UpdateResponse.create {
+    ModificationResult.UpdateResponse.sync {
       case response: SimulateIndexTemplateResponse =>
-        Task.now(SimulateIndexTemplateRequestEsRequestContext.filterAliasesAndIndexPatternsIn(response, allAllowedIndices.toList))
+        SimulateIndexTemplateRequestEsRequestContext.filterAliasesAndIndexPatternsIn(response, allAllowedIndices.toList)
       case other =>
-        Task.now(other)
+        other
     }
   }
 }

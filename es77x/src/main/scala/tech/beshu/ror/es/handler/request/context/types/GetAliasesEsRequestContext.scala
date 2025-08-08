@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.alias.get.{GetAliasesRequest, GetAliasesResponse}
 import org.elasticsearch.cluster.metadata.AliasMetaData
@@ -68,7 +67,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
       case Some((indices, aliases)) =>
         updateIndices(actionRequest, indices)
         updateAliases(actionRequest, aliases)
-        UpdateResponse.create(updateAliasesResponse(aliases.includedOnly, _))
+        UpdateResponse.sync(updateAliasesResponse(aliases.includedOnly, _))
       case None =>
         logger.error(s"[${id.show}] At least one alias and one index has to be allowed. " +
           s"Found allowed indices: [${blockContext.indices.show}]." +
@@ -143,7 +142,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
   }
 
   private def updateAliasesResponse(allowedAliases: Set[ClusterIndexName],
-                                    response: ActionResponse): Task[ActionResponse] = {
+                                    response: ActionResponse): ActionResponse = {
     val aliases: ImmutableOpenMap[String, JList[AliasMetaData]] = response match {
       case aliasesResponse: GetAliasesResponse =>
         aliasesResponse.getAliases.filterOutNotAllowedAliases(allowedAliases)
@@ -151,7 +150,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
         logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetAliasesResponse].show}], was: [${other.getClass.show}]")
         ImmutableOpenMapOps.empty[String, JList[AliasMetaData]]
     }
-    Task.now(new GetAliasesResponse(aliases))
+    new GetAliasesResponse(aliases)
   }
 
   private def isRequestedEmptyAliasesSet(request: GetAliasesRequest) = rawRequestAliasesSet(request).isEmpty
