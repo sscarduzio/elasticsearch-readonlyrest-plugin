@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.handler.request.context
 
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
@@ -69,11 +70,13 @@ object ModificationResult {
   final case class UpdateResponse private(update: ActionResponse => Task[ActionResponse]) extends ModificationResult
 
   object UpdateResponse {
-    def using(update: ActionResponse => ActionResponse): UpdateResponse = {
-      new UpdateResponse(response => Task.now(doPrivileged(update(response))))
+    def sync(update: ActionResponse => ActionResponse): UpdateResponse = {
+      new UpdateResponse(response => Task.delay(doPrivileged(update(response))))
     }
-    def create(update: ActionResponse => Task[ActionResponse]): UpdateResponse = {
-      new UpdateResponse(response => Task.defer(doPrivileged(update(response))))
+
+    def async(update: ActionResponse => Task[ActionResponse])
+             (implicit scheduler: Scheduler): UpdateResponse = {
+      new UpdateResponse(response => doPrivileged(update(response)))
     }
   }
 }
