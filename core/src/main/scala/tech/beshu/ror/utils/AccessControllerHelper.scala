@@ -17,9 +17,10 @@
 package tech.beshu.ror.utils
 
 import monix.eval.Task
-import monix.execution.Scheduler
+import monix.execution.{Cancelable, ExecutionModel, Scheduler, UncaughtExceptionReporter}
 
 import java.security.{AccessController, PrivilegedAction}
+import scala.concurrent.duration.TimeUnit
 
 object AccessControllerHelper {
   def doPrivileged[T](action: => T): T = {
@@ -30,10 +31,40 @@ object AccessControllerHelper {
 
   def doPrivileged[T](actionTask: Task[T])
                      (implicit scheduler: Scheduler): Task[T] = {
-    Task.eval {
-      doPrivileged {
-        actionTask.runSyncUnsafe()
-      }
+    actionTask.executeOn(PrivilegedScheduler(scheduler))
+  }
+
+  private final class PrivilegedScheduler(underlying: Scheduler)
+    extends Scheduler {
+
+    def execute(r: Runnable): Unit =
+      underlying.execute(wrap(r))
+
+    def scheduleOnce(d: Long, u: TimeUnit, r: Runnable): Cancelable =
+      underlying.scheduleOnce(d, u, wrap(r))
+
+    def scheduleAtFixedRate(i: Long, p: Long, u: TimeUnit, r: Runnable): Cancelable =
+      underlying.scheduleAtFixedRate(i, p, u, wrap(r))
+
+    def scheduleWithFixedDelay(i: Long, p: Long, u: TimeUnit, r: Runnable): Cancelable =
+      underlying.scheduleWithFixedDelay(i, p, u, wrap(r))
+
+    def executionModel: ExecutionModel = underlying.executionModel
+
+    def reportFailure(t: Throwable): Unit = underlying.reportFailure(t)
+
+    override def clockRealTime(unit: TimeUnit): Long = underlying.clockRealTime(unit)
+
+    override def clockMonotonic(unit: TimeUnit): Long = underlying.clockMonotonic(unit)
+
+    override def withExecutionModel(em: ExecutionModel): Scheduler = underlying.withExecutionModel(em)
+
+    override def withUncaughtExceptionReporter(r: UncaughtExceptionReporter): Scheduler =
+      underlying.withUncaughtExceptionReporter(underlying)
+
+    private def wrap(r: Runnable): Runnable = {
+      () => doPrivileged(r.run())
     }
+
   }
 }
