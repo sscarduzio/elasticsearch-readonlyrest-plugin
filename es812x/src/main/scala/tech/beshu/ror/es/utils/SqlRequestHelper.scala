@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.es.utils
 
-import cats.Show
-import cats.implicits.*
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
+import org.joor.Reflect.on
+import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.es.handler.response.FieldsFiltering
@@ -26,11 +26,10 @@ import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFie
 import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices
 import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
 import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
+import tech.beshu.ror.es.utils.SqlRequestHelper.IndicesError
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps.*
 
-import java.lang.reflect.Modifier
 import java.time.ZoneId
 import java.util.List as JList
 import java.util.regex.Pattern
@@ -63,71 +62,52 @@ object ExtractedIndices {
 
 object SqlRequestHelper {
 
-  sealed trait ModificationError
-  object ModificationError {
-    final case class UnexpectedException(ex: Throwable) extends ModificationError
-
-    implicit val show: Show[ModificationError] = Show.show(_.toString)
-  }
-
   def modifyIndicesOf(request: CompositeIndicesRequest,
                       extractedIndices: SqlIndices,
-                      finalIndices: Set[String]): Either[ModificationError, CompositeIndicesRequest] = {
-    val result = Try {
-      extractedIndices match {
-        case s: SqlTableRelated =>
-          setQuery(request, newQueryFrom(getQuery(request), s, finalIndices))
-        case SqlNotTableRelated =>
-          request
-      }
+                      finalIndices: Set[String]): CompositeIndicesRequest = {
+    extractedIndices match {
+      case s: SqlTableRelated =>
+        setQuery(request, newQueryFrom(getQuery(request), s, finalIndices))
+      case SqlNotTableRelated =>
+        request
     }
-    result.toEither.left.map(ModificationError.UnexpectedException.apply)
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(response: ActionResponse,
-                                                  fieldLevelSecurity: FieldLevelSecurity): Either[ModificationError, ActionResponse] = {
-    val result = Try {
-      implicit val classLoader: ClassLoader = response.getClass.getClassLoader
-      new SqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions)
-      response
-    }
-    result.toEither.left.map(ModificationError.UnexpectedException.apply)
+                                                  fieldLevelSecurity: FieldLevelSecurity): ActionResponse = {
+    new SqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions)
+    response
   }
 
   sealed trait IndicesError
   object IndicesError {
-    final case class UnexpectedException(ex: Throwable) extends IndicesError
-    case object ParsingException extends IndicesError
+    final case class ParsingException(cause: Throwable) extends IndicesError
   }
 
   def indicesFrom(request: CompositeIndicesRequest): Either[IndicesError, SqlIndices] = {
-    val result = Try {
-      val query = getQuery(request)
-      val params = ReflecUtils.invokeMethodCached(request, request.getClass, "params")
+    val query = getQuery(request)
+    val params = getParams(request)
 
-      implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-      val statement = Try(new SqlParser().createStatement(query, params))
-      statement match {
-        case Success(statement: SimpleStatement) => Right(statement.indices)
-        case Success(command: Command) => Right(command.indices)
-        case Failure(_) => Left(IndicesError.ParsingException: IndicesError)
+    implicit val classLoader: ClassLoader = request.getClass.getClassLoader
+    new SqlParser()
+      .createStatement(query, params)
+      .map {
+        case statement: SimpleStatement => statement.indices
+        case command: Command => command.indices
       }
-    }
-    result match {
-      case Success(value) => value
-      case Failure(exception) => Left(IndicesError.UnexpectedException(exception))
-    }
   }
 
   private def getQuery(request: CompositeIndicesRequest): String = {
-    ReflecUtils.invokeMethodCached(request, request.getClass, "query").asInstanceOf[String]
+    on(request).call("query").get[String]
   }
 
   private def setQuery(request: CompositeIndicesRequest, newQuery: String): CompositeIndicesRequest = {
-    ReflecUtils
-      .getMethodOf(request.getClass, Modifier.PUBLIC, "query", 1)
-      .invoke(request, newQuery)
+    on(request).call("query", newQuery)
     request
+  }
+
+  private def getParams(request: CompositeIndicesRequest): AnyRef = {
+    on(request).call("params").get[AnyRef]
   }
 
   private def newQueryFrom(oldQuery: String, extractedIndices: SqlIndices.SqlTableRelated, finalIndices: Set[String]) = {
@@ -158,12 +138,13 @@ final class SqlParser(implicit classLoader: ClassLoader) {
   private val aClass = classLoader.loadClass("org.elasticsearch.xpack.sql.parser.SqlParser")
   private val underlyingObject = aClass.getConstructor().newInstance()
 
-  def createStatement(query: String, params: AnyRef): Statement = {
-    val statement = ReflecUtils
-      .getMethodOf(aClass, Modifier.PUBLIC, "createStatement", 3)
-      .invoke(underlyingObject, query, params, ZoneId.systemDefault())
-    if (Command.isClassOf(statement)) new Command(statement)
-    else new SimpleStatement(statement)
+  def createStatement(query: String, params: AnyRef): Either[IndicesError.ParsingException, Statement] = {
+    Try(on(underlyingObject).call("createStatement", query, params, ZoneId.systemDefault()).get[AnyRef]) match {
+      case Success(s) if Command.isClassOf(s) => Right(new Command(s))
+      case Success(s) => Right(new SimpleStatement(s))
+      case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
+      case Failure(ex) => Left(IndicesError.ParsingException(ex))
+    }
   }
 
 }
@@ -197,48 +178,26 @@ final class SimpleStatement(val underlyingObject: AnyRef)
     preAnalyzerConstructor.newInstance()
   }
 
-  private def doPreAnalyze(preAnalyzer: Any, statement: AnyRef)
-                          (implicit classLoader: ClassLoader) = {
-    ReflecUtils
-      .getMethodOf(preAnalyzerClass, Modifier.PUBLIC, "preAnalyze", 1)
-      .invoke(preAnalyzer, statement)
+  private def doPreAnalyze(preAnalyzer: Any, statement: AnyRef) = {
+    on(preAnalyzer).call("preAnalyze", statement).get[Any]()
   }
 
-  private def tableInfosFrom(preAnalysis: Any)
-                            (implicit classLoader: ClassLoader) = {
-    ReflecUtils
-      .getFieldOf(preAnalysisClass, Modifier.PUBLIC, "indices")
-      .get(preAnalysis)
-      .asInstanceOf[java.util.List[AnyRef]]
+  private def tableInfosFrom(preAnalysis: Any) = {
+    on(preAnalysis)
+      .get[java.util.List[AnyRef]]("indices")
       .asScala.toList
   }
 
-  private def tableIdentifierFrom(tableInfo: Any)
-                                 (implicit classLoader: ClassLoader) = {
-    ReflecUtils
-      .getMethodOf(tableInfoClass, Modifier.PUBLIC, "id", 0)
-      .invoke(tableInfo)
+  private def tableIdentifierFrom(tableInfo: Any) = {
+    on(tableInfo).get[AnyRef]("id")
   }
 
-  private def indicesStringFrom(tableIdentifier: Any)
-                               (implicit classLoader: ClassLoader) = {
-    ReflecUtils
-      .getMethodOf(tableIdentifierClass, Modifier.PUBLIC, "index", 0)
-      .invoke(tableIdentifier)
-      .asInstanceOf[String]
+  private def indicesStringFrom(tableIdentifier: Any) = {
+    on(tableIdentifier).get[String]("index")
   }
 
   private def preAnalyzerClass(implicit classLoader: ClassLoader) =
     classLoader.loadClass("org.elasticsearch.xpack.ql.analyzer.PreAnalyzer")
-
-  private def preAnalysisClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.ql.analyzer.PreAnalyzer$PreAnalysis")
-
-  private def tableInfoClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.ql.analyzer.TableInfo")
-
-  private def tableIdentifierClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.ql.plan.TableIdentifier")
 }
 
 final class Command(val underlyingObject: Any)
@@ -258,21 +217,14 @@ final class Command(val underlyingObject: Any)
   }
 
   private def getIndicesString = Option {
-    ReflecUtils
-      .getMethodOf(underlyingObject.getClass, Modifier.PUBLIC, "index", 0)
-      .invoke(underlyingObject)
-      .asInstanceOf[String]
+    on(underlyingObject).get[String]("index")
   }
 
   private def getIndexPatternsString = {
     for {
-      pattern <- Option(ReflecUtils
-        .getMethodOf(underlyingObject.getClass, Modifier.PUBLIC, "pattern", 0)
-        .invoke(underlyingObject))
-      index <- Option(ReflecUtils
-        .getMethodOf(pattern.getClass, Modifier.PUBLIC, "asIndexNameWildcard", 0)
-        .invoke(pattern))
-    } yield index.asInstanceOf[String]
+      pattern <- Option(on(underlyingObject).get[AnyRef]("pattern"))
+      index <- Option(on(pattern).get[String]("asIndexNameWildcard"))
+    } yield index
   }
 }
 object Command {
@@ -283,8 +235,7 @@ object Command {
     classLoader.loadClass("org.elasticsearch.xpack.sql.plan.logical.command.Command")
 }
 
-final class SqlQueryResponse(val underlyingObject: Any)
-                            (implicit classLoader: ClassLoader) {
+final class SqlQueryResponse(val underlyingObject: Any) {
 
   def modifyByApplyingRestrictions(restrictions: FieldsRestrictions): Unit = {
     val columnsAndValues = getColumns.zip(getRows.transpose)
@@ -302,50 +253,32 @@ final class SqlQueryResponse(val underlyingObject: Any)
   }
 
   private def getColumns: List[ColumnInfo] = {
-    ReflecUtils
-      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "columns", 0)
-      .invoke(underlyingObject)
-      .asInstanceOf[JList[AnyRef]]
+    on(underlyingObject)
+      .get[JList[AnyRef]]("columns")
       .asSafeList
       .map(new ColumnInfo(_))
   }
 
   private def getRows: List[List[Value]] = {
-    ReflecUtils
-      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "rows", 0)
-      .invoke(underlyingObject)
-      .asInstanceOf[JList[JList[AnyRef]]]
-      .asSafeList.map(_.asSafeList.map(new Value(_)))
+    on(underlyingObject)
+      .get[JList[JList[AnyRef]]]("rows")
+      .asSafeList
+      .map(_.asSafeList.map(new Value(_)))
   }
 
   private def modifyColumns(columns: List[ColumnInfo]): Unit = {
-    ReflecUtils
-      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "columns", 1)
-      .invoke(underlyingObject, columns.map(_.underlyingObject).asJava)
+    on(underlyingObject)
+      .call("columns", columns.map(_.underlyingObject).asJava)
   }
 
   private def modifyRows(rows: List[List[Value]]): Unit = {
-    ReflecUtils
-      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "rows", 1)
-      .invoke(underlyingObject, rows.map(_.map(_.underlyingObject).asJava).asJava)
+    on(underlyingObject)
+      .call("rows", rows.map(_.map(_.underlyingObject).asJava).asJava)
   }
-
-  private def sqlQueryResponseClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.action.SqlQueryResponse")
 }
 
-final class ColumnInfo(val underlyingObject: Any)
-                      (implicit classLoader: ClassLoader) {
-
-  val name: String = {
-    ReflecUtils
-      .getMethodOf(columnInfoClass, Modifier.PUBLIC, "name", 0)
-      .invoke(underlyingObject)
-      .asInstanceOf[String]
-  }
-
-  private def columnInfoClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.proto.ColumnInfo")
+final class ColumnInfo(val underlyingObject: Any){
+  val name: String = on(underlyingObject).get[String]("name")
 }
 
 final class Value(val underlyingObject: Any)

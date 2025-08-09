@@ -17,11 +17,13 @@
 package tech.beshu.ror.es.handler.request.context
 
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.util.Try
 
@@ -65,11 +67,16 @@ object ModificationResult {
   case object CannotModify extends ModificationResult
   case object ShouldBeInterrupted extends ModificationResult
   final case class CustomResponse(response: ActionResponse) extends ModificationResult
-  final case class UpdateResponse(update: ActionResponse => Task[ActionResponse]) extends ModificationResult
+  final case class UpdateResponse private(update: ActionResponse => Task[ActionResponse]) extends ModificationResult
 
   object UpdateResponse {
-    def using(update: ActionResponse => ActionResponse): UpdateResponse = {
-      UpdateResponse(response => Task.now(update(response)))
+    def sync(update: ActionResponse => ActionResponse): UpdateResponse = {
+      new UpdateResponse(response => Task.delay(doPrivileged(update(response))))
+    }
+
+    def async(update: ActionResponse => Task[ActionResponse])
+             (implicit scheduler: Scheduler): UpdateResponse = {
+      new UpdateResponse(response => doPrivileged(update(response)))
     }
   }
 }

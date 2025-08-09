@@ -32,22 +32,25 @@ import tech.beshu.ror.accesscontrol.audit.sink.{AuditSinkServiceCreator, DataStr
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.*
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.{EsIndexJsonContentService, EsServerBasedRorClusterService, NodeClientBasedAuditSinkService, RestClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo, XContentJsonParserFactory}
-import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import java.util.function.Supplier
+import scala.util.Try
+import scala.util.control.NonFatal
 
 class IndexLevelActionFilter(clusterService: ClusterService,
                              client: NodeClient,
@@ -154,18 +157,26 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         threadPool.getThreadContext.addSystemAuthenticationHeader(nodeName)
         chain.continue(task, action, request, listener)
       case Some(channel) =>
-        proceedByRorEngine(
-          new EsContext(
-            channel,
-            nodeName,
-            task,
-            action,
-            request,
-            listener,
-            chain,
-            JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet
+        val correlationId = channel.correlationId
+        val rorActionListener = new HidingInternalErrorDetailsRorActionListener(listener, correlationId)
+        Try {
+          proceedByRorEngine(
+            new EsContext(
+              channel,
+              correlationId,
+              nodeName,
+              task,
+              action,
+              request,
+              rorActionListener,
+              chain,
+              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet
+            )
           )
-        )
+        } recover {
+          case e: Exception if NonFatal(e) => rorActionListener.onFailure(e)
+          case NonFatal(t) => rorActionListener.onFailure(new Exception(t))
+        }
     }
   }
 
@@ -201,12 +212,12 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {
-    logger.warn(s"[${esContext.correlationId.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet")
+    logger.warn(s"[${esContext.correlationId.value.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet")
     rorNotAvailableRequestHandler.handleRorNotReadyYet(esContext)
   }
 
   private def handleRorFailedToStart(esContext: EsContext): Unit = {
-    logger.error(s"[${esContext.correlationId.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST failed to start")
+    logger.error(s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST failed to start")
     rorNotAvailableRequestHandler.handleRorFailedToStart(esContext)
   }
 
@@ -219,15 +230,17 @@ class IndexLevelActionFilter(clusterService: ClusterService,
       case Right(Right(instance)) =>
         RorInstanceSupplier.update(instance)
         rorInstanceState.set(RorInstanceStartingState.Started(instance))
-      case Right(Left(failure)) =>
-        val startingFailureException = StartingFailureException.from(failure)
-        logger.error("ROR starting failure:", startingFailureException)
-        rorInstanceState.set(RorInstanceStartingState.NotStarted(startingFailureException))
+      case Right(Left(staringFailure)) =>
+        logAndSetStartingFailureState(staringFailure)
       case Left(ex) =>
-        val startingFailureException = StartingFailureException.from(ex)
-        logger.error("ROR starting failure:", startingFailureException)
-        rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
+        val startingFailureFromException = StartingFailure("Cannot start ReadonlyREST", Some(ex))
+        logAndSetStartingFailureState(startingFailureFromException)
     }
+  }
+
+  private def logAndSetStartingFailureState(failure: StartingFailure): Unit = {
+    logger.error(s"ROR starting failure: ${failure.message}", failure.throwable.orNull)
+    rorInstanceState.set(RorInstanceStartingState.NotStarted(failure))
   }
 }
 
@@ -235,5 +248,5 @@ private sealed trait RorInstanceStartingState
 private object RorInstanceStartingState {
   case object Starting extends RorInstanceStartingState
   final case class Started(instance: RorInstance) extends RorInstanceStartingState
-  final case class NotStarted(cause: StartingFailureException) extends RorInstanceStartingState
+  final case class NotStarted(cause: StartingFailure) extends RorInstanceStartingState
 }

@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.elasticsearch.action.admin.indices.template.get.GetComponentTemplateAction
 import org.elasticsearch.cluster.metadata
 import org.elasticsearch.cluster.metadata.ComponentTemplate as MetadataComponentTemplate
@@ -87,18 +86,18 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
   }
 
   private def updateResponse(`using`: TemplateRequestBlockContext) = {
-    ModificationResult.UpdateResponse {
+    ModificationResult.UpdateResponse.sync {
       case r: GetComponentTemplateAction.Response =>
-        Task.now(new GetComponentTemplateAction.Response(
+        new GetComponentTemplateAction.Response(
           filter(
             templates = r.getComponentTemplates.asSafeMap,
             usingTemplate = using.responseTemplateTransformation
           ),
           r.getRolloverConfiguration,
           r.getGlobalRetention
-        ))
+        )
       case other =>
-        Task.now(other)
+        other
     }
   }
 

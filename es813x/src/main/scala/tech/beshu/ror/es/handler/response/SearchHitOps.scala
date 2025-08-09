@@ -16,15 +16,14 @@
  */
 package tech.beshu.ror.es.handler.response
 
-import java.util
-
 import org.elasticsearch.common.document.DocumentField
 import org.elasticsearch.search.SearchHit
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
-import tech.beshu.ror.utils.ReflecUtils
 
-import scala.util.Try
+import java.util
 import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
 object SearchHitOps {
 
@@ -49,17 +48,14 @@ object SearchHitOps {
         .map(fields => FieldsFiltering.filterNonMetadataDocumentFields(fields, fieldsRestrictions))
         .map(_.value)
         .foreach { newDocumentFields =>
-          ReflecUtils.setField(searchHit, searchHit.getClass, "documentFields", newDocumentFields.asJava)
+          on(searchHit).set("documentFields", newDocumentFields.asJava)
         }
       searchHit
     }
   }
 
   private def extractDocumentFields(searchHit: SearchHit) = {
-    Try {
-      ReflecUtils.getField(searchHit, searchHit.getClass, "documentFields")
-        .asInstanceOf[util.Map[String, DocumentField]]
-    }
+    Try(on(searchHit).get[util.Map[String, DocumentField]]("documentFields"))
       .getOrElse(throw new IllegalStateException("Could not access document fields in search hit."))
   }
 }

@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
 import org.elasticsearch.cluster.metadata.MetaData
 import org.elasticsearch.cluster.{ClusterName, ClusterState}
@@ -34,6 +33,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -71,7 +71,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   }
 
   override def modifyWhenTemplateNotFound: ModificationResult = {
-    ModificationResult.UpdateResponse(_ => Task.now(emptyClusterResponse))
+    ModificationResult.UpdateResponse.sync(_ => emptyClusterResponse)
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
@@ -89,11 +89,9 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   }
 
   private def updateResponse(func: ClusterStateResponse => ClusterStateResponse) = {
-    ModificationResult.UpdateResponse {
-      case response: ClusterStateResponse =>
-        Task.delay(func(response))
-      case other =>
-        Task.now(other)
+    ModificationResult.UpdateResponse.sync {
+      case response: ClusterStateResponse => func(response)
+      case other => other
     }
   }
 

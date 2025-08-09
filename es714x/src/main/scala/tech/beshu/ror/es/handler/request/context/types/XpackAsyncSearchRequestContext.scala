@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
@@ -31,7 +32,6 @@ import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.response.SearchHitOps.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps.*
 
 class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
@@ -61,11 +61,11 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
       .applyFieldLevelSecurity(fieldLevelSecurity)
       .indices(filteredRequestedIndices.stringify: _*)
 
-    ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
+    ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
   private def searchRequestFrom(request: ActionRequest) = {
-    Option(invokeMethodCached(request, request.getClass, "getSearchRequest"))
+    Option(on(request).call("getSearchRequest").get[AnyRef]())
       .collect { case sr: SearchRequest => sr }
       .getOrElse(throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot extract SearchRequest from SubmitAsyncSearchRequest request"))
   }
@@ -87,7 +87,7 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
   }
 
   private def searchResponseFrom(response: ActionResponse) = {
-    Option(invokeMethodCached(response, response.getClass, "getSearchResponse"))
+    Option(on(response).call("getSearchResponse").get[AnyRef]())
       .collect { case sr: SearchResponse => sr }
   }
 }

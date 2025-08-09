@@ -24,7 +24,6 @@ import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBas
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ReflecUtils
-import tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -103,7 +102,7 @@ object ReflectionBasedDataStreamsEsRequestContext {
         .find(_ === actionRequestClass.value)
         .map { _ =>
           Matched.apply[A] {
-            extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest)
+            ReflecUtils.extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest)
               .asSafeSet
               .flatMap((value: String) => toDomain(value))
           }

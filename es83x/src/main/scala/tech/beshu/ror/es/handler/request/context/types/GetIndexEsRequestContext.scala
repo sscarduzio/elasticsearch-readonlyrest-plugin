@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.threadpool.ThreadPool
@@ -28,7 +27,6 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.*
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -50,31 +48,31 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
-    ModificationResult.UpdateResponse(filterAliases(_, allAllowedIndices))
+    ModificationResult.UpdateResponse.sync(filterAliases(_, allAllowedIndices))
   }
 
   private def filterAliases(response: ActionResponse,
-                            allAllowedAliases: NonEmptyList[ClusterIndexName]): Task[ActionResponse] = {
+                            allAllowedAliases: NonEmptyList[ClusterIndexName]): ActionResponse = {
     response match {
       case getIndexResponse: GetIndexResponse =>
-        Task.now(new GetIndexResponse(
+        new GetIndexResponse(
           getIndexResponse.indices(),
           getIndexResponse.mappings(),
           getIndexResponse.aliases().filterOutNotAllowedAliases(allowedAliases = allAllowedAliases.toList),
           getIndexResponse.settings(),
           getIndexResponse.defaultSettings(),
           getIndexResponse.dataStreams()
-        ))
+        )
       case other =>
         logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetIndexResponse].show}], was: [${other.getClass.show}]")
-        Task.now(new GetIndexResponse(
+        new GetIndexResponse(
           Array.empty,
-          ImmutableOpenMapOps.empty,
-          ImmutableOpenMapOps.empty,
-          ImmutableOpenMapOps.empty,
-          ImmutableOpenMapOps.empty,
-          ImmutableOpenMapOps.empty
-        ))
+          Map.asEmptyJavaMap,
+          Map.asEmptyJavaMap,
+          Map.asEmptyJavaMap,
+          Map.asEmptyJavaMap,
+          Map.asEmptyJavaMap
+        )
     }
   }
 }
