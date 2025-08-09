@@ -30,7 +30,6 @@ import tech.beshu.ror.es.utils.SqlRequestHelper.IndicesError
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-import java.time.ZoneId
 import java.util.List as JList
 import java.util.regex.Pattern
 import scala.jdk.CollectionConverters.*
@@ -139,7 +138,7 @@ final class SqlParser(implicit classLoader: ClassLoader) {
   private val underlyingObject = aClass.getConstructor().newInstance()
 
   def createStatement(query: String, params: AnyRef): Either[IndicesError.ParsingException, Statement] = {
-    Try(on(underlyingObject).call("createStatement", query, params, ZoneId.systemDefault()).get[AnyRef]) match {
+    Try(on(underlyingObject).call("createStatement", query, params)) match {
       case Success(s) if Command.isClassOf(s) => Right(new Command(s))
       case Success(s) => Right(new SimpleStatement(s))
       case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
