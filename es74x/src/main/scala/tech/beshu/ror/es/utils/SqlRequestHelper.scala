@@ -138,7 +138,7 @@ final class SqlParser(implicit classLoader: ClassLoader) {
   private val underlyingObject = aClass.getConstructor().newInstance()
 
   def createStatement(query: String, params: AnyRef): Either[IndicesError.ParsingException, Statement] = {
-    Try(on(underlyingObject).call("createStatement", query, params)) match {
+    Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
       case Success(s) if Command.isClassOf(s) => Right(new Command(s))
       case Success(s) => Right(new SimpleStatement(s))
       case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
