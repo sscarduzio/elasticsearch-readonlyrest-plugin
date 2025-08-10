@@ -20,11 +20,11 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.index.query.*
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsedField, UsingFields}
 import tech.beshu.ror.es.handler.request.queries.QueryType.instances.*
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
-import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 
 import scala.annotation.nowarn
 
@@ -62,7 +62,7 @@ object QueryFieldsUsage extends Logging {
     implicit val termQueryFields: QueryFieldsUsage[TermQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
     implicit val wildcardQueryFields: QueryFieldsUsage[WildcardQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
     implicit val termsSetQueryFields: QueryFieldsUsage[TermsSetQueryBuilder] = query => {
-      Option(invokeMethodCached(query, query.getClass, "getFieldName")) match {
+      Option(on(query).call("getFieldName").get[String]) match {
         case Some(fieldName: String) => UsingFields(NonEmptyList.one(UsedField(fieldName)))
         case _ =>
           logger.debug(s"Cannot extract fields for terms set query")

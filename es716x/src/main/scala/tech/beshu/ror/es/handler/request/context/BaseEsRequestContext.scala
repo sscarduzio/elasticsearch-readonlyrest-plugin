@@ -40,14 +40,14 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override val restRequest = esContext.channel.restRequest
 
-  override val rorKibanaSessionId: CorrelationId = esContext.correlationId
+  override val rorKibanaSessionId: CorrelationId = esContext.correlationId.value
 
   override val timestamp: Instant = esContext.timestamp
 
   override val taskId: Long = esContext.task.getId
 
   override lazy implicit val id: RequestContext.Id = RequestContext.Id.from(
-    sessionCorrelationId = esContext.correlationId,
+    sessionCorrelationId = esContext.correlationId.value,
     requestId = s"${restRequest.hashCode()}#$taskId"
   )
 

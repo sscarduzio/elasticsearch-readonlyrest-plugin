@@ -30,7 +30,6 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, S
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ReflecUtils
-import tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
@@ -81,7 +80,7 @@ object ReflectionBasedIndicesEsRequestContext {
   }
 
   private def getIndicesUsingReflection(request: ActionRequest, methodName: String) = {
-    NonEmptyList.fromList(extractStringArrayFromPrivateMethod(methodName, request).asSafeList)
+    NonEmptyList.fromList(ReflecUtils.extractStringArrayFromPrivateMethod(methodName, request).asSafeList)
   }
 
 }

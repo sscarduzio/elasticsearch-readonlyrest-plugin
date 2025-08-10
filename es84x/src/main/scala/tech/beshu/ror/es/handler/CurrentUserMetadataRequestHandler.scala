@@ -76,7 +76,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
 
   private def onAllow(requestContext: RequestContext, userMetadata: UserMetadata): Unit = {
     logRequestProcessingTime(requestContext)
-    esContext.listener.onResponse(new RRMetadataResponse(userMetadata, esContext.correlationId))
+    esContext.listener.onResponse(new RRMetadataResponse(userMetadata, esContext.correlationId.value))
   }
 
   private def onForbidden(requestContext: RequestContext, causes: NonEmptyList[ForbiddenResponseContext.Cause]): Unit = {

@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
-import monix.execution.CancelablePromise
+import monix.execution.{CancelablePromise, Scheduler}
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
 import org.elasticsearch.action.support.IndicesOptions
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, CompositeIndicesRequest}
@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, RequestedIndex}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.RorClusterService
@@ -52,6 +52,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
                                                   clusterService: RorClusterService,
                                                   nodeClient: NodeClient,
                                                   override implicit val threadPool: ThreadPool)
+                                                 (implicit scheduler: Scheduler)
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
@@ -77,7 +78,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
         .foreach { case (request, pack) =>
           updateRequest(request, pack)
         }
-      ModificationResult.UpdateResponse(
+      ModificationResult.UpdateResponse.async(
         callSearchOnceAgain(blockContext.filter, blockContext.fieldLevelSecurity)
       )
     } else {
@@ -88,9 +89,9 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
   }
 
   /*
- * this is a hack, because in old version there is no way to extend ES SearchRequest and provide different behaviour
+ * This is a hack, because in the old version there is no way to extend ES SearchRequest and provide different behaviour
  * of `source(...)` method. We have to do that, because in method `convert` of `TransportSearchTemplateAction` search
- * source is created from params and script and applied to current search request. In the next step we have to apply
+ * source is created from params and script and applied to the current search request. In the next step, we have to apply
  * out filter and field level security. It is easy to overcome in new ES versions, but in old ones, due to mentioned
  * final modifier, we are forced to do it in the other way - by calling search again when we get the response. This
  * solution is obviously less efficient, but at least it works.
@@ -198,7 +199,8 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
 }
 
 object MultiSearchTemplateEsRequestContext {
-  def unapply(arg: ReflectionBasedActionRequest): Option[MultiSearchTemplateEsRequestContext] = {
+  def unapply(arg: ReflectionBasedActionRequest)
+             (implicit scheduler: Scheduler): Option[MultiSearchTemplateEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("MultiSearchTemplateRequest")) {
       Some(new MultiSearchTemplateEsRequestContext(
         arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],

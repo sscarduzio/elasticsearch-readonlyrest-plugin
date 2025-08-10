@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.handler
 
+import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -71,7 +72,7 @@ import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.es.{RorClusterService, RorRestChannel}
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -245,23 +246,16 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 object AclAwareRequestFilter {
 
   final class EsContext(val channel: RorRestChannel,
+                        val correlationId: Eval[CorrelationId],
                         val nodeName: String,
                         val task: EsTask,
                         val action: Action,
                         val actionRequest: ActionRequest,
-                        val listener: ActionListener[ActionResponse],
+                        val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
                         val threadContextResponseHeaders: Set[(String, String)]) {
 
     val timestamp: Instant = Instant.now()
-
-    lazy val correlationId: CorrelationId =
-      channel.restRequest
-        .allHeaders
-        .find(_.name === Header.Name.correlationId)
-        .map(_.value)
-        .map(CorrelationId.apply)
-        .getOrElse(CorrelationId.random)
 
     private lazy val isImpersonationHeader =
       channel.restRequest
@@ -277,12 +271,30 @@ object AclAwareRequestFilter {
       }
     }
   }
+  object EsContext {
+
+    implicit class CorrelationIdFrom(val channel: RorRestChannel) extends AnyVal {
+      def correlationId: Eval[CorrelationId] = Eval.later {
+        channel.restRequest
+          .allHeaders
+          .find(_.name === Header.Name.correlationId)
+          .map(_.value)
+          .map(CorrelationId.apply)
+          .getOrElse(CorrelationId.random)
+      }
+    }
+
+  }
 
   final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse]) {
 
     def continue(esContext: EsContext,
-                 listener: ActionListener[ActionResponse]): Unit = {
-      continue(esContext.task, esContext.action, esContext.actionRequest, listener)
+                 listener: RorActionListener[ActionResponse]): Unit = {
+      val esListener = listener match {
+        case listener: HidingInternalErrorDetailsRorActionListener[_] => listener.underlying
+        case listener: AtEsLevelUpdateActionResponseListener => listener
+      }
+      continue(esContext.task, esContext.action, esContext.actionRequest, esListener)
     }
 
     def continue(task: EsTask,

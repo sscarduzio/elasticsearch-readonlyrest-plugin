@@ -19,10 +19,11 @@ package tech.beshu.ror.es.handler.response
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.index.get.GetResult
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DocumentId, DocumentWithIndex}
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
-import tech.beshu.ror.utils.ReflecUtils
+
 import scala.jdk.CollectionConverters.*
 
 object DocumentApiOps {
@@ -78,7 +79,7 @@ object DocumentApiOps {
       }
 
       private def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
-        Option(ReflecUtils.getField(response, response.getClass, "getResult"))
+        Option(on(response).get[AnyRef]("getResult"))
           .collect {
             case getResult: GetResult => getResult
           }
