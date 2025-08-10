@@ -25,14 +25,9 @@ object DependencyRunner {
   final case class EvaluatedDependency(name: String, container: Startable, originalPort: Int)
 
   def startDependencies(definitions: List[DependencyDef]): StartedClusterDependencies = {
-    println("A")
     val evaluatedDependencies = evaluate(definitions)
-    println(evaluatedDependencies)
     startContainersAsynchronously(evaluatedDependencies)
-    println("B")
-    val r = convertToStartedDependencies(evaluatedDependencies)
-    println("C")
-    r
+    convertToStartedDependencies(evaluatedDependencies)
   }
 
   private def evaluate(definitions: List[DependencyDef]): List[EvaluatedDependency] = {

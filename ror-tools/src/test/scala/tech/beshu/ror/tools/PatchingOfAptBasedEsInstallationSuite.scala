@@ -27,6 +27,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.testcontainers.DockerClientFactory
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.EsContainer.EsContainerImplementation
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, ReadonlyRestWithEnabledXpackSecurityPlugin}
@@ -148,7 +149,12 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
 
     def stop(): Task[Unit] = for {
       _ <- Task.delay(esContainer.stop())
-      _ <- Task.delay(dockerClient.removeImageCmd(esContainer.esImage.get()).withForce(true).exec())
+      _ <- esContainer.containterImplementation match {
+        case EsContainerImplementation.Windows(_) => 
+          Task.unit
+        case EsContainerImplementation.Linux(esImage, _) =>
+          Task.delay(dockerClient.removeImageCmd(esImage.get()).withForce(true).exec())
+      }
     } yield ()
 
     def getLogs: String = dockerLogsCollector.getLogs

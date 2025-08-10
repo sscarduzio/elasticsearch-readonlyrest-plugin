@@ -22,6 +22,7 @@ import com.typesafe.scalalogging.LazyLogging
 import os.Path
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.images.Elasticsearch.*
+import tech.beshu.ror.utils.containers.windows.WindowsElasticsearchSetup
 import tech.beshu.ror.utils.misc.Version
 
 object Elasticsearch {
@@ -35,8 +36,12 @@ object Elasticsearch {
 
   extension (config: Config)
     def esConfigDir: Path = config.esInstallationType match {
-      case EsInstallationType.EsDockerImage => os.root / "usr" / "share" / "elasticsearch" / "config"
-      case EsInstallationType.UbuntuDockerImageWithEsFromApt => os.root / "etc" / "elasticsearch"
+      case EsInstallationType.EsDockerImage => 
+        os.root / "usr" / "share" / "elasticsearch" / "config"
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        os.root / "etc" / "elasticsearch"
+      case EsInstallationType.WindowsNativeProcess => 
+        WindowsElasticsearchSetup.configPath(config.clusterName, config.nodeName)
     }
 
   sealed trait EsInstallationType
@@ -45,6 +50,8 @@ object Elasticsearch {
     case object EsDockerImage extends EsInstallationType
 
     case object UbuntuDockerImageWithEsFromApt extends EsInstallationType
+
+    case object WindowsNativeProcess extends EsInstallationType
   }
 
   lazy val esDir: Path = os.root / "usr" / "share" / "elasticsearch"
@@ -68,8 +75,8 @@ object Elasticsearch {
   }
 }
 
-class Elasticsearch(esVersion: String,
-                    config: Config,
+class Elasticsearch(val esVersion: String,
+                    val config: Config,
                     plugins: Seq[Plugin],
                     customEntrypoint: Option[Path])
   extends LazyLogging {
@@ -98,6 +105,8 @@ class Elasticsearch(esVersion: String,
       toOfficialEsImageBasedDockerImageDescription
     case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
       toUbuntuWithAptEsDockerImageDescription
+    case EsInstallationType.WindowsNativeProcess =>
+      ???
   }
 
   private def toOfficialEsImageBasedDockerImageDescription: DockerImageDescription = {
@@ -105,7 +114,7 @@ class Elasticsearch(esVersion: String,
       .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
       .copyFile(
         destination = config.esConfigDir / "elasticsearch.yml",
-        file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)
+        file = esConfigFile
       )
       .copyFile(
         destination = config.esConfigDir / "log4j2.properties",
@@ -136,7 +145,7 @@ class Elasticsearch(esVersion: String,
       .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
       .copyFile(
         destination = config.esConfigDir / "elasticsearch.yml",
-        file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)
+        file = esConfigFile
       )
       .copyFile(
         destination = config.esConfigDir / "log4j2.properties",
@@ -174,18 +183,15 @@ class Elasticsearch(esVersion: String,
       .foldLeft(builder) { case (currentBuilder, update) => update(currentBuilder) }
   }
 
-  private def esConfigFileBasedOn(config: Config,
-                                  withEsConfigBuilder: EsConfigBuilder => EsConfigBuilder) = {
+  def esConfigFile: File = {
     val file = File
       .newTemporaryFile()
-      .appendLines(
-        withEsConfigBuilder(baseEsConfigBuilder(config)).entries: _*
-      )
+      .appendLines(updateEsConfigBuilderFromPlugins(baseEsConfigBuilder).entries: _*)
     logger.info(s"elasticsearch.yml content:\n${file.contentAsString}")
     file
   }
 
-  private def baseEsConfigBuilder(config: Config) = {
+  private def baseEsConfigBuilder = {
     EsConfigBuilder
       .empty
       .add(s"node.name: ${config.nodeName}")

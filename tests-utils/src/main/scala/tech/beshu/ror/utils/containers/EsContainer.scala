@@ -24,12 +24,14 @@ import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
-import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
+import tech.beshu.ror.utils.containers.EsContainer.{Credentials, EsContainerImplementation}
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
 import tech.beshu.ror.utils.containers.logs.CompositeLogConsumer
 import tech.beshu.ror.utils.containers.providers.ClientProvider
+import tech.beshu.ror.utils.containers.windows.WindowsBasedEsPseudoGenericContainer
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
 
 import java.util.function.Consumer
@@ -41,24 +43,56 @@ abstract class EsContainer(val esVersion: String,
                            val esConfig: Elasticsearch.Config,
                            val startedClusterDependencies: StartedClusterDependencies,
                            val elasticsearch: Elasticsearch,
-                           initializer: ElasticsearchNodeDataInitializer,
-                           additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
-                           awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
+                           val initializer: ElasticsearchNodeDataInitializer,
+                           val additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
+                           val awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
   extends SingleContainer[GenericContainer[_]]
     with ClientProvider
     with StrictLogging {
 
 
-  val esImage: ImageFromDockerfile = DockerImageCreator.create(elasticsearch)
-  override implicit val container: GenericContainer[_] = new org.testcontainers.containers.GenericContainer(esImage)
+  private val esClient = Coeval(adminClient)
+
+  private val waitStrategy = new ElasticsearchNodeWaitingStrategy(esVersion, esConfig.nodeName, esClient, initializer, awaitingReadyStrategy)
+
+  val containterImplementation: EsContainerImplementation = {
+    if (OsUtils.isWindows) {
+      EsContainerImplementation.Windows(
+        container = new WindowsBasedEsPseudoGenericContainer(elasticsearch, waitStrategy)
+      )
+    } else {
+      val esImage = DockerImageCreator.create(elasticsearch)
+      val container = new org.testcontainers.containers.GenericContainer(esImage)
+      EsContainerImplementation.Linux(
+        esImage = esImage,
+        container = container
+      )
+    }
+  }
+
+  override implicit val container: GenericContainer[_] = containterImplementation match {
+    case EsContainerImplementation.Windows(container) => container
+    case EsContainerImplementation.Linux(esImage, container) => container
+  }
 
   def sslEnabled: Boolean
 
-  def ip: String = container.getHost
+  def ip: String = containterImplementation match {
+    case EsContainerImplementation.Windows(_) => "localhost"
+    case EsContainerImplementation.Linux(_, container) => container.getHost
+  }
 
-  def port: Integer = container.getMappedPort(9200)
+  def port: Integer = containterImplementation match {
+    case EsContainerImplementation.Windows(_) => 9200
+    case EsContainerImplementation.Linux(_, container) => container.getMappedPort(9200)
+  }
 
-  def getAddressInInternalNetwork = s"${containerInfo.getConfig.getHostName}:9200"
+  def getAddressInInternalNetwork = containterImplementation match {
+    case EsContainerImplementation.Windows(_) =>
+      s"localhost:9200"
+    case EsContainerImplementation.Linux(_, container) =>
+      s"${containerInfo.getConfig.getHostName}:9200"
+  }
 
   override def client(credentials: Credentials): RestClient = credentials match {
     case BasicAuth(user, password) => new RestClient(sslEnabled, ip, port, Some(user, password))
@@ -67,22 +101,23 @@ abstract class EsContainer(val esVersion: String,
     case None => new RestClient(sslEnabled, ip, port, Option.empty)
   }
 
-  private val slf4jConsumer = new Slf4jLogConsumer(logger.underlying)
-  private val logConsumer: Consumer[OutputFrame] = additionalLogConsumer match {
-    case Some(additional) => new CompositeLogConsumer(slf4jConsumer, additional)
-    case scala.None => slf4jConsumer
+  containterImplementation match {
+    case EsContainerImplementation.Windows(_) =>
+      ()
+    case EsContainerImplementation.Linux(_, container) =>
+      val slf4jConsumer = new Slf4jLogConsumer(logger.underlying)
+      val logConsumer: Consumer[OutputFrame] = additionalLogConsumer match {
+        case Some(additional) => new CompositeLogConsumer(slf4jConsumer, additional)
+        case scala.None => slf4jConsumer
+      }
+      container.setLogConsumers((logConsumer :: Nil).asJava)
+      container.addExposedPort(9200)
+      container.addExposedPort(9300)
+      container.addExposedPort(8000)
+      container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
+      container.setNetwork(Network.SHARED)
+      container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
   }
-  private val esClient = Coeval(adminClient)
-  container.setLogConsumers((logConsumer :: Nil).asJava)
-  container.addExposedPort(9200)
-  container.addExposedPort(9300)
-  container.addExposedPort(8000)
-  container.setWaitStrategy(
-    new ElasticsearchNodeWaitingStrategy(esVersion, esConfig.nodeName, esClient, initializer, awaitingReadyStrategy)
-      .withStartupTimeout(5 minutes)
-  )
-  container.setNetwork(Network.SHARED)
-  container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
 
 }
 
@@ -98,4 +133,13 @@ object EsContainer {
 
     case object None extends Credentials
   }
+
+  sealed trait EsContainerImplementation
+
+  object EsContainerImplementation {
+    final case class Windows(container: WindowsBasedEsPseudoGenericContainer) extends EsContainerImplementation
+
+    final case class Linux(esImage: ImageFromDockerfile, container: GenericContainer[_]) extends EsContainerImplementation
+  }
+
 }
