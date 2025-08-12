@@ -22,8 +22,10 @@ import com.typesafe.scalalogging.LazyLogging
 import os.Path
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.images.Elasticsearch.*
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateSteps.emptyEsUpdateSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{EsUpdateStep, EsUpdateSteps}
 import tech.beshu.ror.utils.containers.windows.WindowsElasticsearchSetup
-import tech.beshu.ror.utils.misc.Version
+import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
 object Elasticsearch {
 
@@ -35,14 +37,36 @@ object Elasticsearch {
                           esInstallationType: EsInstallationType)
 
   extension (config: Config)
-    def esConfigDir: Path = config.esInstallationType match {
-      case EsInstallationType.EsDockerImage => 
-        os.root / "usr" / "share" / "elasticsearch" / "config"
-      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
-        os.root / "etc" / "elasticsearch"
-      case EsInstallationType.WindowsNativeProcess => 
+    def esConfigDir: Path =
+      if (OsUtils.isWindows) {
         WindowsElasticsearchSetup.configPath(config.clusterName, config.nodeName)
-    }
+      } else {
+        config.esInstallationType match {
+          case EsInstallationType.EsDockerImage =>
+            os.root / "usr" / "share" / "elasticsearch" / "config"
+          case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+            os.root / "etc" / "elasticsearch"
+        }
+      }
+
+    def esDir: Path =
+      if (OsUtils.isWindows) {
+        WindowsElasticsearchSetup.esPath(config.clusterName, config.nodeName)
+      } else {
+        config.esInstallationType match {
+          case EsInstallationType.EsDockerImage =>
+            os.root / "usr" / "share" / "elasticsearch"
+          case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+            os.root / "usr" / "share" / "elasticsearch"
+        }
+      }
+
+    def tempFilePath: Path =
+      if (OsUtils.isWindows) {
+        WindowsElasticsearchSetup.esPath(config.clusterName, config.nodeName) / "temp"
+      } else {
+        os.root / "tmp"
+      }  
 
   sealed trait EsInstallationType
 
@@ -50,18 +74,56 @@ object Elasticsearch {
     case object EsDockerImage extends EsInstallationType
 
     case object UbuntuDockerImageWithEsFromApt extends EsInstallationType
-
-    case object WindowsNativeProcess extends EsInstallationType
   }
 
-  lazy val esDir: Path = os.root / "usr" / "share" / "elasticsearch"
-
   trait Plugin {
-    def updateEsImage(image: DockerImageDescription, config: Config): DockerImageDescription
+    def esUpdateSteps(config: Config): EsUpdateSteps
 
     def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder
 
     def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder
+  }
+
+  object Plugin {
+    final case class EsUpdateSteps(steps: List[EsUpdateStep]) {
+
+      def copyFile(destination: Path, file: File): EsUpdateSteps = {
+        EsUpdateSteps(steps ::: EsUpdateStep.CopyFile(destination, file) :: Nil)
+      }
+
+      def when(condition: Boolean, f: EsUpdateSteps => EsUpdateSteps): EsUpdateSteps = {
+        if (condition) f(this)
+        else this
+      }
+
+      def run(linuxCommand: String, windowsCommand: String): EsUpdateSteps = {
+        EsUpdateSteps(steps ::: EsUpdateStep.RunCommand(linuxCommand, windowsCommand) :: Nil)
+      }
+
+      def runWhen(condition: Boolean, linuxCommand: String, windowsCommand: String): EsUpdateSteps = {
+        if (condition) run(linuxCommand, windowsCommand)
+        else this
+      }
+
+      def user(user: String): EsUpdateSteps = {
+        EsUpdateSteps(steps ::: EsUpdateStep.ChangeUser(user) :: Nil)
+      }
+
+    }
+
+    object EsUpdateSteps {
+      val emptyEsUpdateSteps: EsUpdateSteps = EsUpdateSteps(List.empty)
+    }
+
+    sealed trait EsUpdateStep
+
+    object EsUpdateStep {
+      final case class CopyFile(destination: Path, file: File) extends EsUpdateStep
+
+      final case class RunCommand(linuxCommand: String, windowsCommand: String) extends EsUpdateStep
+
+      final case class ChangeUser(user: String) extends EsUpdateStep
+    }
   }
 
   private[images] def fromResourceBy(name: String): File = {
@@ -105,8 +167,6 @@ class Elasticsearch(val esVersion: String,
       toOfficialEsImageBasedDockerImageDescription
     case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
       toUbuntuWithAptEsDockerImageDescription
-    case EsInstallationType.WindowsNativeProcess =>
-      ???
   }
 
   private def toOfficialEsImageBasedDockerImageDescription: DockerImageDescription = {
@@ -154,7 +214,7 @@ class Elasticsearch(val esVersion: String,
       .user("root")
       // ES is started as Docker CMD, so elasticsearch user must have permission to read ES files.
       // In standard Ubuntu with ES from apt it is not necessary, because ES is executed from systemd
-      .run(s"chown -R elasticsearch:elasticsearch ${esDir.toString()}")
+      .run(s"chown -R elasticsearch:elasticsearch ${config.esDir.toString()}")
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .run("rm /etc/elasticsearch/elasticsearch.keystore")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
@@ -162,11 +222,25 @@ class Elasticsearch(val esVersion: String,
       .user("elasticsearch")
   }
 
+  def esUpdateSteps: EsUpdateSteps = {
+    plugins.map(_.esUpdateSteps(config)).foldLeft(emptyEsUpdateSteps) { case (soFar, next) =>
+      EsUpdateSteps(soFar.steps ++ next.steps)
+    }
+  }
+
   private implicit class InstallPlugins(val image: DockerImageDescription) {
     def installPlugins(): DockerImageDescription = {
-      plugins
+      esUpdateSteps.steps
         .foldLeft(image) {
-          case (currentImage, plugin) => plugin.updateEsImage(currentImage, config)
+          case (currentImage, step) =>
+            step match {
+              case EsUpdateStep.CopyFile(destination, file) =>
+                image.copyFile(destination, file)
+              case EsUpdateStep.RunCommand(linuxCommand, _) =>
+                image.run(linuxCommand)
+              case EsUpdateStep.ChangeUser(user) =>
+                image.user(user)
+            }
         }
     }
   }

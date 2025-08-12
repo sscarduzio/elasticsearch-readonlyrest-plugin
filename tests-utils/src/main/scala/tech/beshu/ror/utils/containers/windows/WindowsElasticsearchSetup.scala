@@ -21,6 +21,7 @@ import com.typesafe.scalalogging.LazyLogging
 import os.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Config
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateStep
 
 import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, StandardCopyOption}
@@ -55,7 +56,28 @@ object WindowsElasticsearchSetup extends LazyLogging {
     downloadEsZipFileWithProgress(elasticsearch.esVersion)
     unzip(elasticsearch.esVersion, elasticsearch.config)
     replaceConfigFile(elasticsearch)
+    elasticsearch.esUpdateSteps.steps.foreach(runStep(elasticsearch))
     startElasticsearch(elasticsearch.config)
+  }
+
+  private def runStep(elasticsearch: Elasticsearch)(step: EsUpdateStep): Unit = step match {
+    case EsUpdateStep.CopyFile(destination, file) =>
+      println(s"COPY FILE $destination $file")
+      os.makeDir.all(destination / os.up)
+      val destBetterFile = File(destination.toNIO)
+      file.copyTo(destBetterFile, overwrite = true)
+      println(s"DONE")
+    case EsUpdateStep.RunCommand(_, windowsCommand) =>
+      println(s"run command $windowsCommand")
+      val cmd = os.proc("cmd", "/c", windowsCommand)
+      val result = cmd.call(
+        cwd = esPath(elasticsearch.config.clusterName, elasticsearch.config.nodeName),
+        stdout = os.ProcessOutput.Readlines(line => logger.info(s"[command] $line")),
+        stderr = os.ProcessOutput.Readlines(line => logger.error(s"[command] $line")),
+      )
+      println(s"DONE $result")
+    case EsUpdateStep.ChangeUser(user) =>
+      ()
   }
 
   private def downloadEsZipFileWithProgress(esVersion: String): Unit = {
