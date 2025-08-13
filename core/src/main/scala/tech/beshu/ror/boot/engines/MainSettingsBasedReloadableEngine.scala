@@ -30,7 +30,7 @@ import tech.beshu.ror.boot.RorInstance.RawSettingsReloadError.{ReloadingFailed, 
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
 import tech.beshu.ror.boot.engines.SettingsHash.*
 import tech.beshu.ror.configuration.manager.RorMainSettingsManager
-import tech.beshu.ror.configuration.manager.InIndexSettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
+import tech.beshu.ror.configuration.manager.InIndexSettingsManager.SavingIndexSettingsError
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.value

@@ -28,7 +28,6 @@ import org.apache.logging.log4j.scala.Logger
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
-import java.util
 import java.util.Base64
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.*
