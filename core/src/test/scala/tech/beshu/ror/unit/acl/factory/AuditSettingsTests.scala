@@ -33,8 +33,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.*
+import tech.beshu.ror.audit.{AuditFieldValuePlaceholder => Placeholder}
+import tech.beshu.ror.audit.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFields}
 import tech.beshu.ror.audit.adapters.{DeprecatedAuditLogSerializerAdapter, EnvironmentAwareAuditLogSerializerAdapter}
-import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
+import tech.beshu.ror.audit.instances.{ConfigurableQueryAuditLogSerializer, DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
@@ -372,6 +374,47 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               config,
               expectedLoggerName = "custom_logger"
             )
+          }
+          "configurable serializer is set" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: log
+                |      serializer: "tech.beshu.ror.audit.instances.ConfigurableQueryAuditLogSerializer"
+                |      serialize_all_allowed_events: false
+                |      fields:
+                |        node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
+                |        another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+                |        tid: "{TASK_ID}"
+                |        bytes: "{CONTENT_LENGTH_IN_BYTES}"
+
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertLogBasedAuditSinkSettingsPresent[ConfigurableQueryAuditLogSerializer](
+              config,
+              expectedLoggerName = "readonlyrest_audit"
+            )
+
+            val configuredSerializer = serializer(config).asInstanceOf[ConfigurableQueryAuditLogSerializer]
+
+            configuredSerializer.environmentContext.esClusterName shouldBe testAuditEnvironmentContext.esClusterName
+            configuredSerializer.environmentContext.esNodeName shouldBe testAuditEnvironmentContext.esNodeName
+            configuredSerializer.allowedEventSerializationMode shouldBe AllowedEventSerializationMode.SerializeOnlyAllowedEventsWithInfoLevelVerbose
+            configuredSerializer.fields shouldBe AuditFields(Map(
+              "node_name_with_static_suffix" -> AuditFieldValue(List(Placeholder.EsNodeName, Placeholder.StaticText(" with suffix"))),
+              "another_field" -> AuditFieldValue(List(Placeholder.EsClusterName, Placeholder.StaticText(" "), Placeholder.HttpMethod)),
+              "tid" -> AuditFieldValue(List(Placeholder.TaskId)),
+              "bytes" -> AuditFieldValue(List(Placeholder.ContentLengthInBytes))
+            ))
           }
         }
         "'index' output type defined" when {
@@ -1240,6 +1283,52 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             assertInvalidSettings(
               config,
               expectedErrorMessage = "The audit 'outputs' array cannot be empty"
+            )
+          }
+          "configurable serializer is set, but without serialize_all_allowed_events setting" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: log
+                |      serializer: "tech.beshu.ror.audit.instances.ConfigurableQueryAuditLogSerializer"
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertInvalidSettings(
+              config,
+              expectedErrorMessage = "Configurable serializer is used, but the serialize_all_allowed_events setting is missing in configuration"
+            )
+          }
+          "configurable serializer is set, but without fields setting" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: log
+                |      serializer: "tech.beshu.ror.audit.instances.ConfigurableQueryAuditLogSerializer"
+                |      serialize_all_allowed_events: false
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertInvalidSettings(
+              config,
+              expectedErrorMessage = "Configurable serializer is used, but the fields setting is missing in configuration"
             )
           }
         }
