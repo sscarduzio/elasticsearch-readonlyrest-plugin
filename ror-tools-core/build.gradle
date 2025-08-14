@@ -18,7 +18,7 @@ plugins {
     id "readonlyrest.base-common-conventions"
 
     id "com.github.johnrengelman.shadow" version "8.1.1"
-    id "com.github.maiflai.scalatest"    version "0.32"
+    id "com.github.maiflai.scalatest"    version "0.33"
     id "java-library"
 }
 
