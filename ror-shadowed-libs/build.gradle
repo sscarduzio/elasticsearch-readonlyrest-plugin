@@ -16,8 +16,9 @@
  */
 
 plugins {
-    id "com.gradleup.shadow"        version "8.3.6"
-    id "org.owasp.dependencycheck"  version "8.4.3"
+    id "readonlyrest.base-common-conventions"
+
+    id "com.gradleup.shadow"        version "9.0.1"
     id "java"
     id "maven-publish"
 }
@@ -28,18 +29,18 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
-dependencyCheck {
-    /*
-       Severity	Base Score
-       None     0
-       Low      0.1-3.9
-       Medium   4.0-6.9
-       High     7.0-8.9
-       Critical 9.0-10.0
-     */
-    failBuildOnCVSS = 3
-    suppressionFiles = ["${project.rootDir}/suppressions_cve.xml"]
-}
+//dependencyCheck {
+//    /*
+//       Severity	Base Score
+//       None     0
+//       Low      0.1-3.9
+//       Medium   4.0-6.9
+//       High     7.0-8.9
+//       Critical 9.0-10.0
+//     */
+//    failBuildOnCVSS = 3
+//    suppressionFiles = ["${project.rootDir}/suppressions_cve.xml"]
+//}
 
 configurations {
     shadowCompile
@@ -66,14 +67,15 @@ dependencies {
 shadowJar {
     configurations = [project.configurations.shadowCompile]
     exclude('META-INF/versions/9/module-info.class')
-}
-
-// Configure Auto Relocation
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
-tasks.named('shadowJar', ShadowJar) {
-    enableRelocation true
-    relocationPrefix "tech.beshu.ror"
+    
+    // Relocate ALL dependencies to avoid jar hell - comprehensive approach
+    relocate('com.fasterxml', 'tech.beshu.ror.com.fasterxml')
+    relocate('org.yaml', 'tech.beshu.ror.org.yaml')
+    relocate('com.jayway', 'tech.beshu.ror.com.jayway')
+    relocate('net.minidev', 'tech.beshu.ror.net.minidev')
+    relocate('org.objectweb.asm', 'tech.beshu.ror.org.objectweb.asm')
+    relocate('org.ow2.asm', 'tech.beshu.ror.org.ow2.asm')
+    relocate('org.slf4j', 'tech.beshu.ror.org.slf4j')
 }
 
 tasks.withType(AbstractArchiveTask).configureEach {

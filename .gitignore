@@ -53,6 +53,7 @@ target/
 
 .travis/secret.pgp
 .java-version
+.sdkmanrc
 
 // docker-envs
 builds/*

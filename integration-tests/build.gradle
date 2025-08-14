@@ -1,7 +1,7 @@
 plugins {
     id "readonlyrest.base-common-conventions"
 
-    id "com.github.maiflai.scalatest"    version "0.32"
+    id "com.github.maiflai.scalatest"    version "0.33"
 }
 
 repositories {
@@ -12,7 +12,7 @@ repositories {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(11)
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 

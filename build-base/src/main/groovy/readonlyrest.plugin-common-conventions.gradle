@@ -58,7 +58,7 @@ dependencyCheck {
        Critical 9.0-10.0
      */
     failBuildOnCVSS = 3
-    scanConfigurations = ['distJars']
+//    scanConfigurations = ['distJars']
     suppressionFiles = ["${project.rootDir}/suppressions_cve.xml"]
 }
 

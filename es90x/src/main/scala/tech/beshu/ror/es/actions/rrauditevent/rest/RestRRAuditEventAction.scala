@@ -16,25 +16,30 @@
  */
 package tech.beshu.ror.es.actions.rrauditevent.rest
 
-import java.util
-
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.xcontent.XContentHelper
+import org.elasticsearch.rest.*
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method.POST
-import org.elasticsearch.rest.*
+import org.elasticsearch.xcontent.{DeprecationHandler, NamedXContentRegistry, XContentFactory, XContentParser, XContentParserConfiguration, XContentType}
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, RRAuditEventRequest}
 
+import java.util
 import scala.jdk.CollectionConverters.*
-import scala.util.Try
+import scala.util.{Try, Using}
 
 class RestRRAuditEventAction
   extends BaseRestHandler with RestHandler {
+
+  private val strictParserConfig = XContentParserConfiguration.EMPTY
+    .withRegistry(NamedXContentRegistry.EMPTY)
+    .withDeprecationHandler(DeprecationHandler.THROW_UNSUPPORTED_OPERATION)
 
   override def routes(): util.List[Route] = List(
     new Route(POST, constants.AUDIT_EVENT_COLLECTOR_PATH)
@@ -70,11 +75,25 @@ class RestRRAuditEventAction
 
   private def validateBodyJson(request: RestRequest) = Try {
     if (request.hasContent) {
-      new JSONObject(XContentHelper.convertToMap(request.requiredContent(), false, request.getXContentType).v2())
+      new JSONObject(asStrictMap(request.requiredContent(), request.getXContentType).asJava)
     } else {
       new JSONObject()
     }
   }.toEither.left.map(_ => new AuditEventBadRequest)
+
+  private def asStrictMap(bytes: BytesReference, contentType: XContentType): Map[String, Any] = {
+    val map = XContentHelper.convertToMap(bytes, false, contentType).v2().asScala
+    if (map.nonEmpty || isExactlyEmptyObject(bytes, contentType)) map.toMap
+    else throw new IllegalArgumentException("Malformed request body")
+  }
+
+  private def isExactlyEmptyObject(bytes: BytesReference, t: XContentType): Boolean = {
+    Using.resource(XContentFactory.xContent(t).createParser(strictParserConfig, bytes.streamInput())) { p =>
+      (p.nextToken() == XContentParser.Token.START_OBJECT) &&
+        (p.nextToken() == XContentParser.Token.END_OBJECT) &&
+        p.nextToken() == null // no trailing data
+    }
+  }
 
   private class AuditEventBadRequest extends ElasticsearchException("Content malformed") {
     override def status(): RestStatus = RestStatus.BAD_REQUEST

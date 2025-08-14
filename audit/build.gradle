@@ -18,7 +18,7 @@
 plugins {
     id "readonlyrest.base-common-conventions"
 
-    id "com.github.prokod.gradle-crossbuild" version "0.16.0"
+    id "com.github.prokod.gradle-crossbuild" version "0.17.0"
     id "java"
     id "java-library"
     id "maven-publish"
