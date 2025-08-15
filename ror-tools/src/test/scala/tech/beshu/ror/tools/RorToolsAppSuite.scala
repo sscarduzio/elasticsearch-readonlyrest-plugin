@@ -368,7 +368,6 @@ class RorToolsAppSuite
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_, _)
       }
-      println(unpatchOutput)
       unpatchResult should equal(Result.Failure)
       unpatchOutput should include(
         """Checking if Elasticsearch is patched ...
