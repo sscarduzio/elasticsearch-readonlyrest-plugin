@@ -219,9 +219,9 @@ class RorToolsAppSuite
           |Command: patch [options]
           |patch is a command that modifies ES installation for ROR purposes
           |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
-          |
           |  --i_understand_and_accept_es_patching <yes/no>
           |                           Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
+          |
           |Command: unpatch [options]
           |unpatch is a command that reverts modifications done by patching
           |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
@@ -247,9 +247,9 @@ class RorToolsAppSuite
           |Command: patch [options]
           |patch is a command that modifies ES installation for ROR purposes
           |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
-          |
           |  --i_understand_and_accept_es_patching <yes/no>
           |                           Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
+          |
           |Command: unpatch [options]
           |unpatch is a command that reverts modifications done by patching
           |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
@@ -317,9 +317,9 @@ class RorToolsAppSuite
           |Command: patch [options]
           |patch is a command that modifies ES installation for ROR purposes
           |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
-          |
           |  --i_understand_and_accept_es_patching <yes/no>
           |                           Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.
+          |
           |Command: unpatch [options]
           |unpatch is a command that reverts modifications done by patching
           |  --es-path <value>        Path to elasticsearch directory; default=/usr/share/elasticsearch
@@ -368,6 +368,7 @@ class RorToolsAppSuite
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_, _)
       }
+      println(unpatchOutput)
       unpatchResult should equal(Result.Failure)
       unpatchOutput should include(
         """Checking if Elasticsearch is patched ...
@@ -640,6 +641,20 @@ class RorToolsAppSuite
            | 2. Upgrade to the newer ES version
            | 3. Patch ES after the upgrade using ror-tools
            |For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch""".stripMargin
+      )
+    }
+    "Error and usage options are displayed when no command is provided" in {
+      patchMetadataFile.exists() should be(false)
+      val (verifyResult, verifyOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array.empty)(_, _)
+      }
+      verifyResult should equal(Result.CommandNotParsed)
+      verifyOutput should include(
+        """Error: No command provided. See usage below.
+          |ROR tools 1.0.0
+          |Usage: java -jar ror-tools.jar [patch|unpatch|verify] [options]
+          |"""
+          .stripMargin
       )
     }
   }

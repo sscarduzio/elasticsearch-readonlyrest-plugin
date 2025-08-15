@@ -20,8 +20,8 @@ import os.Path
 import scopt.*
 import tech.beshu.ror.tools.RorTools.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
-import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 import tech.beshu.ror.tools.core.utils.*
+import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 
 import scala.util.{Failure, Success, Try}
 
@@ -53,7 +53,7 @@ trait RorTools {
     OParser.runParser(
       parser,
       allArgs.map(arg => if (arg.startsWith("--")) arg.toLowerCase else arg),
-      Arguments(Command.Verify(None), List.empty),
+      ScriptArguments(None),
       parserSetup,
     ) match {
       case (result, effects) =>
@@ -78,16 +78,19 @@ trait RorTools {
       .toArray
   }
 
-  private def handleParsedArguments(parsedArguments: Arguments)
+  private def handleParsedArguments(parsedArguments: ScriptArguments)
                                    (implicit inOut: InOut) = {
     Try {
       parsedArguments.command match {
-        case command: Command.Patch =>
-          new PatchCommandHandler().handle(command, parsedArguments)
-        case command: Command.Unpatch =>
+        case Some(command: Command.Patch) =>
+          new PatchCommandHandler().handle(command)
+        case Some(command: Command.Unpatch) =>
           new UnpatchCommandHandler().handle(command)
-        case command: Command.Verify =>
+        case Some(command: Command.Verify) =>
           new VerifyCommandHandler().handle(command)
+        case None =>
+          // This case is handled by OParser validation, the usage info is displayed when no command is provided
+          Result.Failure
       }
     } match {
       case Failure(ex: RorToolsException) =>
@@ -103,9 +106,8 @@ trait RorTools {
 
   private class PatchCommandHandler(implicit inOut: InOut) {
 
-    def handle(command: Command.Patch,
-               arguments: Arguments): Result = {
-      arguments.patchingConsent match {
+    def handle(command: Command.Patch): Result = {
+      command.patchingConsent match {
         case Right(PatchingConsent.Accepted) =>
           performPatching(command.customEsPath)
         case Right(PatchingConsent.Rejected) =>
@@ -117,7 +119,7 @@ trait RorTools {
             case PatchingConsent.AnswerNotGiven => Result.Failure
           }
         case Left(_) =>
-          // This case should have been handled by OParser, by throwing parsing error and displaying error message
+          // This case is handled by OParser validation, the error message is shown
           Result.Failure
       }
     }
@@ -184,7 +186,7 @@ trait RorTools {
     Result.Failure
   }
 
-  private val builder = OParser.builder[Arguments]
+  private val builder = OParser.builder[ScriptArguments]
 
   import builder.*
 
@@ -193,61 +195,53 @@ trait RorTools {
     programName("java -jar ror-tools.jar"),
     patchCommand,
     note(""),
-    opt[String](consentFlagName)
-      .unbounded()
-      .valueName("<yes/no>")
-      .validate { value =>
-        value.toLowerCase match {
-          case "yes" => success
-          case "no" => success
-          case other => failure(s"ERROR: Invalid value [$other]. Only values 'yes' and 'no' can be provided as an answer.")
-        }
-      }
-      .action { (answer, config) =>
-        answer.toLowerCase match {
-          case "yes" => config.copy(patchingConsentValues = config.patchingConsentValues ::: PatchingConsent.Accepted :: Nil)
-          case "no" => config.copy(patchingConsentValues = config.patchingConsentValues ::: PatchingConsent.Rejected :: Nil)
-        }
-      }
-      .text("Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch."),
-    checkConfig { c =>
-      c.patchingConsent match {
-        case Right(_) => success
-        case Left(error) => failure(error)
-      }
-    },
     unpatchCommand,
     note(""),
     verifyCommand,
     note(""),
-    help('h', "help").text("prints this usage text")
+    help('h', "help").text("prints this usage text"),
+    checkConfig { c =>
+      c.command match {
+        case Some(_) => success
+        case None =>  failure("No command provided. See usage below.")
+      }
+    },
   )
 
   private lazy val patchCommand =
     cmd("patch")
-      .action((_, c) => c.copy(command = Command.Patch(None)))
+      .action((_, c) => c.copy(command = Some(Command.Patch(None, List.empty))))
       .text("patch is a command that modifies ES installation for ROR purposes")
       .children(
-        esPathOption
-          .action((p, c) => c.copy(command = c.command.asInstanceOf[Command.Patch].copy(customEsPath = Some(os.Path(p)))))
+        esPathOption.action((p, args) => modifyPatchCommand(args, _.copy(customEsPath = Some(os.Path(p))))),
+        patchingConsent,
+        checkConfig { c =>
+          c.command match {
+            case Some(patch: Command.Patch) =>
+              patch.patchingConsent match {
+                case Right(_) => success
+                case Left(error) => failure(error)
+              }
+            case Some(_) | None =>
+              success
+          }
+        },
       )
 
   private lazy val unpatchCommand =
     cmd("unpatch")
-      .action((_, c) => c.copy(command = Command.Unpatch(None)))
+      .action((_, c) => c.copy(command = Some(Command.Unpatch(None))))
       .text("unpatch is a command that reverts modifications done by patching")
       .children(
-        esPathOption
-          .action((p, c) => c.copy(command = c.command.asInstanceOf[Command.Unpatch].copy(customEsPath = Some(os.Path(p)))))
+        esPathOption.action((p, args) => modifyCommand(args, _.asInstanceOf[Command.Unpatch].copy(customEsPath = Some(os.Path(p)))))
       )
 
   private lazy val verifyCommand =
     cmd("verify")
-      .action((_, c) => c.copy(command = Command.Verify(None)))
+      .action((_, c) => c.copy(command = Some(Command.Verify(None))))
       .text("verify is a command that verifies if ES installation is patched")
       .children(
-        esPathOption
-          .action((p, c) => c.copy(command = c.command.asInstanceOf[Command.Verify].copy(customEsPath = Some(os.Path(p)))))
+        esPathOption.action((p, args) => modifyCommand(args, _.asInstanceOf[Command.Verify].copy(customEsPath = Some(os.Path(p)))))
       )
 
   private lazy val esPathOption =
@@ -259,6 +253,37 @@ trait RorTools {
           .flatMap { p => Either.cond(os.exists(p), (), ()) }
           .left.map(_ => s"Path [$path] does not exist")
       }
+
+  private lazy val patchingConsent =
+    opt[String](consentFlagName)
+      .unbounded()
+      .valueName("<yes/no>")
+      .validate { value =>
+        value.toLowerCase match {
+          case "yes" => success
+          case "no" => success
+          case other => failure(s"ERROR: Invalid value [$other]. Only values 'yes' and 'no' can be provided as an answer.")
+        }
+      }
+      .action { (answer, args) =>
+        answer.toLowerCase match {
+          case "yes" => addPatchingConsentValue(args, PatchingConsent.Accepted)
+          case "no" => addPatchingConsentValue(args, PatchingConsent.Rejected)
+        }
+      }
+      .text("Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.")
+
+  private def addPatchingConsentValue(scriptArguments: ScriptArguments, patchingConsent: PatchingConsent) = {
+    modifyPatchCommand(scriptArguments, patch => patch.copy(patchingConsentValues = patch.patchingConsentValues ::: patchingConsent :: Nil))
+  }
+
+  private def modifyPatchCommand(scriptArguments: ScriptArguments, f: Command.Patch => Command.Patch) = {
+    modifyCommand(scriptArguments, command => f(command.asInstanceOf[Command.Patch]))
+  }
+
+  private def modifyCommand(scriptArguments: ScriptArguments, f: Command => Command) = {
+    scriptArguments.copy(command = scriptArguments.command.map(c => f(c)))
+  }
 
   private def parserSetup: OParserSetup = new DefaultOParserSetup {
     override def showUsageOnError: Option[Boolean] = Some(true)
@@ -274,19 +299,18 @@ trait RorTools {
 object RorTools {
   private val consentFlagName = "i_understand_and_accept_es_patching"
 
-  private final case class Arguments(command: Command,
-                                     patchingConsentValues: List[PatchingConsent]) {
-    def patchingConsent: Either[String, PatchingConsent] = {
-      if (patchingConsentValues.isEmpty) Right(PatchingConsent.AnswerNotGiven)
-      else if (patchingConsentValues.forall(_ == PatchingConsent.Accepted)) Right(PatchingConsent.Accepted)
-      else if (patchingConsentValues.forall(_ == PatchingConsent.Rejected)) Right(PatchingConsent.Rejected)
-      else Left(s"There are conflicting values of the ${consentFlagName.toUpperCase} setting. Please check env variables and program arguments.")
-    }
-  }
+  private final case class ScriptArguments(command: Option[Command])
 
   private sealed trait Command
   private object Command {
-    final case class Patch(customEsPath: Option[os.Path]) extends Command
+    final case class Patch(customEsPath: Option[os.Path], patchingConsentValues: List[PatchingConsent]) extends Command {
+      def patchingConsent: Either[String, PatchingConsent] = {
+        if (patchingConsentValues.isEmpty) Right(PatchingConsent.AnswerNotGiven)
+        else if (patchingConsentValues.forall(_ == PatchingConsent.Accepted)) Right(PatchingConsent.Accepted)
+        else if (patchingConsentValues.forall(_ == PatchingConsent.Rejected)) Right(PatchingConsent.Rejected)
+        else Left(s"There are conflicting values of the ${consentFlagName.toUpperCase} setting. Please check env variables and program arguments.")
+      }
+    }
     final case class Unpatch(customEsPath: Option[os.Path]) extends Command
     final case class Verify(customEsPath: Option[os.Path]) extends Command
   }
