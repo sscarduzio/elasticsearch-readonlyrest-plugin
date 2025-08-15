@@ -19,12 +19,12 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 import just.semver.SemVer
 import org.objectweb.asm.{ClassReader, ClassVisitor, ClassWriter, Label, MethodVisitor, Opcodes}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.es8182
+import tech.beshu.ror.tools.core.utils.EsUtil.{es8182, es8190, es900, es910}
 
 import java.io.{File, InputStream}
 
 /**
- * Modifies the EntitlementInitialization class to bypass forbidden file path validation
+ * Modifies the FilesEntitlementsValidation class to bypass forbidden file path validation
  * specifically for the ReadonlyREST plugin. This is necessary because ReadonlyREST
  * requires access to certain paths that would otherwise be blocked by Elasticsearch's
  * security entitlements system in versions 8.18.2+
@@ -35,7 +35,12 @@ private[patches] class ModifyFilesEntitlementsValidationClass(esVersion: SemVer)
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
-      filePathString = "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation.class",
+      filePathString = esVersion match {
+        case v if v >= es910 => "org/elasticsearch/entitlement/bootstrap/FilesEntitlementsValidation.class"
+        case v if v >= es900 => "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation.class"
+        case v if v >= es8190 => "org/elasticsearch/entitlement/bootstrap/FilesEntitlementsValidation.class"
+        case v => "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation.class"
+      },
       processFileContent = dontValidateForbiddenPathsInCaseOfRorPlugin
     )
   }

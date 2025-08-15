@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import monix.eval.Task
-import monix.execution.CancelablePromise
+import monix.execution.{CancelablePromise, Scheduler}
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.client.node.NodeClient
@@ -42,6 +42,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
                                              clusterService: RorClusterService,
                                              nodeClient: NodeClient,
                                              override implicit val threadPool: ThreadPool)
+                                            (implicit scheduler: Scheduler)
   extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](
     actionRequest, esContext, aclContext, clusterService, threadPool
   ) {
@@ -64,11 +65,11 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
                                 fieldLevelSecurity: Option[domain.FieldLevelSecurity]): ModificationResult = {
     searchRequest.indices(filteredRequestedIndices.stringify: _*)
     if (searchTemplateRequest.isSimulate)
-      ModificationResult.UpdateResponse.using { resp =>
+      ModificationResult.UpdateResponse.sync { resp =>
         filterFieldsFromResponse(fieldLevelSecurity)(new ReflectionBasedSearchTemplateResponse(resp))
       }
     else
-      ModificationResult.UpdateResponse(callSearchOnceAgain(filter, fieldLevelSecurity))
+      ModificationResult.UpdateResponse.async(callSearchOnceAgain(filter, fieldLevelSecurity))
   }
 
   /*
@@ -122,7 +123,8 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
 }
 
 object SearchTemplateEsRequestContext {
-  def unapply(arg: ReflectionBasedActionRequest): Option[SearchTemplateEsRequestContext] = {
+  def unapply(arg: ReflectionBasedActionRequest)
+             (implicit scheduler: Scheduler): Option[SearchTemplateEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("SearchTemplateRequest")) {
       Some(new SearchTemplateEsRequestContext(
         arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],

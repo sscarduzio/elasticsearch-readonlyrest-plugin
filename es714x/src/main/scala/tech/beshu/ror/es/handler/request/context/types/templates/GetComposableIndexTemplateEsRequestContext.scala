@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.template.get.GetComposableIndexTemplateAction
 import org.elasticsearch.cluster.metadata
@@ -87,18 +86,18 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
   }
 
   private def updateResponse(`using`: TemplateRequestBlockContext) = {
-    ModificationResult.UpdateResponse {
+    ModificationResult.UpdateResponse.sync {
       case r: GetComposableIndexTemplateAction.Response =>
-        Task.now(new GetComposableIndexTemplateAction.Response(
+        new GetComposableIndexTemplateAction.Response(
           GetComposableIndexTemplateEsRequestContext
             .filter(
               templates = r.indexTemplates().asSafeMap,
               usingTemplate = `using`.responseTemplateTransformation
             )
             .asJava
-        ))
+        )
       case other =>
-        Task.now(other)
+        other
     }
   }
 

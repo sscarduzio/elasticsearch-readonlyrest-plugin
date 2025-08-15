@@ -63,7 +63,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
     searchTemplateRequest.setRequest(
       searchRequest, filteredRequestedIndices, filter, fieldLevelSecurity
     )
-    ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
+    ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
