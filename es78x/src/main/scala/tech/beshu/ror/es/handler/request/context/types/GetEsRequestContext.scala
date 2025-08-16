@@ -18,6 +18,7 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.index.IndexRequest
@@ -40,6 +41,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                           aclContext: AccessControlStaticContext,
                           clusterService: RorClusterService,
                           override val threadPool: ThreadPool)
+                         (implicit scheduler: Scheduler)
   extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
@@ -57,7 +59,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val indexName = filteredRequestedIndices.head
     request.index(indexName.stringify)
-    ModificationResult.UpdateResponse(updateFunction(filter, fieldLevelSecurity))
+    ModificationResult.UpdateResponse.async(updateFunction(filter, fieldLevelSecurity))
   }
 
   private def updateFunction(filter: Option[Filter],

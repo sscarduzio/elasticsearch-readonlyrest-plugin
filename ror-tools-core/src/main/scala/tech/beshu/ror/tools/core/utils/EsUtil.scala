@@ -23,9 +23,11 @@ object EsUtil {
 
   private val transportNetty4JarNameRegex = """^transport-netty4-(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)\.jar$""".r
 
+  val es910: SemVer = SemVer.unsafeParse("9.1.0")
   val es902: SemVer = SemVer.unsafeParse("9.0.2")
   val es901: SemVer = SemVer.unsafeParse("9.0.1")
   val es900: SemVer = SemVer.unsafeParse("9.0.0")
+  val es8190: SemVer = SemVer.unsafeParse("8.19.0")
   val es8182: SemVer = SemVer.unsafeParse("8.18.2")
   val es8181: SemVer = SemVer.unsafeParse("8.18.1")
   val es8180: SemVer = SemVer.unsafeParse("8.18.0")
