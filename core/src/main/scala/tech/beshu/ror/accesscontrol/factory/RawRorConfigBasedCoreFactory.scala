@@ -111,7 +111,6 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion,
           case Right(settings) =>
             Right(settings)
           case Left(failure) =>
-            println(failure)
             Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
         }
       case Left(errors) =>

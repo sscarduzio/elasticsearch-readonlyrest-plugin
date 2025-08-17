@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.*
-import tech.beshu.ror.audit.AuditSerializationHelper.AllowedEventSerializationMode
+import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventSerializationMode, AuditFieldName}
 import tech.beshu.ror.audit.adapters.{DeprecatedAuditLogSerializerAdapter, EnvironmentAwareAuditLogSerializerAdapter}
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
@@ -383,7 +383,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    enabled: true
                 |    outputs:
                 |    - type: log
-                |      serializer: "tech.beshu.ror.audit.instances.ConfigurableAuditLogSerializer"
+                |      configurable: true
                 |      serialize_all_allowed_events: false
                 |      fields:
                 |        node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
@@ -410,10 +410,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             configuredSerializer.environmentContext.esNodeName shouldBe testAuditEnvironmentContext.esNodeName
             configuredSerializer.allowedEventSerializationMode shouldBe AllowedEventSerializationMode.SerializeOnlyAllowedEventsWithInfoLevelVerbose
             configuredSerializer.fields shouldBe Map(
-              "node_name_with_static_suffix" -> AuditFieldValue.Combined(List(AuditFieldValue.EsNodeName, AuditFieldValue.StaticText(" with suffix"))),
-              "another_field" -> AuditFieldValue.Combined(List(AuditFieldValue.EsClusterName, AuditFieldValue.StaticText(" "), AuditFieldValue.HttpMethod)),
-              "tid" -> AuditFieldValue.Combined(List(AuditFieldValue.TaskId)),
-              "bytes" -> AuditFieldValue.Combined(List(AuditFieldValue.ContentLengthInBytes))
+              AuditFieldName("node_name_with_static_suffix") -> AuditFieldValue.Combined(List(AuditFieldValue.EsNodeName, AuditFieldValue.StaticText(" with suffix"))),
+              AuditFieldName("another_field") -> AuditFieldValue.Combined(List(AuditFieldValue.EsClusterName, AuditFieldValue.StaticText(" "), AuditFieldValue.HttpMethod)),
+              AuditFieldName("tid") -> AuditFieldValue.TaskId,
+              AuditFieldName("bytes") -> AuditFieldValue.ContentLengthInBytes,
             )
           }
         }
@@ -1293,7 +1293,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    enabled: true
                 |    outputs:
                 |    - type: log
-                |      serializer: "tech.beshu.ror.audit.instances.ConfigurableAuditLogSerializer"
+                |      configurable: true
                 |
                 |  access_control_rules:
                 |
@@ -1316,7 +1316,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    enabled: true
                 |    outputs:
                 |    - type: log
-                |      serializer: "tech.beshu.ror.audit.instances.ConfigurableAuditLogSerializer"
+                |      configurable: true
                 |      serialize_all_allowed_events: false
                 |  access_control_rules:
                 |
