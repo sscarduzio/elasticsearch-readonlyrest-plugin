@@ -17,12 +17,12 @@
 package tech.beshu.ror.audit
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.AuditResponseContext.*
+import tech.beshu.ror.audit.AuditResponseContext._
 import tech.beshu.ror.audit.instances.SerializeUser
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import scala.collection.JavaConverters.*
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 
 private[ror] object AuditSerializationHelper {

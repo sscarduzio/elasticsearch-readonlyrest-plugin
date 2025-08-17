@@ -17,7 +17,7 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.*
+import tech.beshu.ror.audit._
 import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventSerializationMode, AuditFieldName}
 import tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer.environmentRelatedAuditFields
 import tech.beshu.ror.audit.instances.QueryAuditLogSerializerV2.queryV2AuditFields
