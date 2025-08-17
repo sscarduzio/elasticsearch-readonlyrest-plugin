@@ -63,34 +63,11 @@ crossBuild {
 
 dependencies {
     implementation                 group: 'org.json',           name: 'json',                version: '20231013'
-    crossBuildV211Implementation   group: 'com.beachape',       name: 'enumeratum_2.11',     version: '1.7.2'
-    crossBuildV212Implementation   group: 'com.beachape',       name: 'enumeratum_2.12',     version: '1.7.5'
-    crossBuildV213Implementation   group: 'com.beachape',       name: 'enumeratum_2.13',     version: '1.7.5'
-    crossBuildV3Implementation     group: 'com.beachape',       name: 'enumeratum_3',        version: '1.7.5'
-    compileOnly                    group: 'com.beachape',       name: 'enumeratum_3',        version: '1.7.5'
     crossBuildV211Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.11.12'
     crossBuildV212Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.12.19'
     crossBuildV213Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.13'
     crossBuildV3Implementation     group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.3'
     compileOnly                    group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.3'
-}
-
-// The Scala library is automatically used only in the correct version in cross build.
-// But other libraries also need to be imported as `compileOnly` - otherwise the IntelliJ does not see them.
-// Those other libraries are not automatically excluded from cross build and it needs to be done manually.
-configurations {
-    crossBuildV211CompileClasspath {
-        exclude group: 'com.beachape', module: 'enumeratum_3'
-        exclude group: 'org.scala-lang', module: 'scala3-library_3'
-    }
-    crossBuildV212CompileClasspath {
-        exclude group: 'com.beachape', module: 'enumeratum_3'
-        exclude group: 'org.scala-lang', module: 'scala3-library_3'
-    }
-    crossBuildV213CompileClasspath {
-        exclude group: 'com.beachape', module: 'enumeratum_3'
-        exclude group: 'org.scala-lang', module: 'scala3-library_3'
-    }
 }
 
 test {

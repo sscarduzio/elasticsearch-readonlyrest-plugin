@@ -14,16 +14,18 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.audit.instances
+package tech.beshu.ror.accesscontrol.audit.configurable
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.BaseAuditLogSerializer.AllowedEventSerializationMode
-import tech.beshu.ror.audit.instances.QueryAuditLogSerializerV2.queryV2AuditFields
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext, BaseAuditLogSerializer}
+import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventSerializationMode, AuditFieldName}
+import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditFieldValue, AuditResponseContext, AuditSerializationHelper}
 
-class ReportingAllEventsWithQueryAuditLogSerializer(environmentContext: AuditEnvironmentContext) extends DefaultAuditLogSerializer(environmentContext) {
+class ConfigurableAuditLogSerializer(val environmentContext: AuditEnvironmentContext,
+                                     val allowedEventSerializationMode: AllowedEventSerializationMode,
+                                     val fields: Map[AuditFieldName, AuditFieldValue]) extends DefaultAuditLogSerializer(environmentContext) {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
-    BaseAuditLogSerializer.serialize(responseContext, environmentContext, queryV2AuditFields, AllowedEventSerializationMode.SerializeAllAllowedEvents)
+    AuditSerializationHelper.serialize(responseContext, Some(environmentContext), fields, allowedEventSerializationMode)
 
 }

@@ -94,7 +94,7 @@ class LocalClusterAuditingToolsSuite
       "using ReportingAllEventsAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.ReportingAllEventsAuditLogSerializer")
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.ReportingAllTypesOfEventsAuditLogSerializer")
         performAndAssertExampleSearchRequest(indexManager)
 
         forEachAuditManager { adminAuditManager =>
@@ -122,7 +122,7 @@ class LocalClusterAuditingToolsSuite
       "using ReportingAllEventsWithQueryAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.ReportingAllEventsWithQueryAuditLogSerializer")
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.ReportingAllTypesOfEventsWithQueryAuditLogSerializer")
         performAndAssertExampleSearchRequest(indexManager)
 
         forEachAuditManager { adminAuditManager =>
@@ -149,7 +149,10 @@ class LocalClusterAuditingToolsSuite
       "using ConfigurableQueryAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.ConfigurableQueryAuditLogSerializer")
+        updateRorConfig(
+          originalString = """serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"""",
+          newString = "configurable: true",
+        )
         performAndAssertExampleSearchRequest(indexManager)
 
         forEachAuditManager { adminAuditManager =>
@@ -175,10 +178,14 @@ class LocalClusterAuditingToolsSuite
     response should have statusCode 200
   }
 
-  private def updateRorConfigToUseSerializer(serializer: String) = {
+  private def updateRorConfigToUseSerializer(serializer: String) = updateRorConfig(
+    originalString = """serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"""",
+    newString = s"""serializer: "$serializer""""
+  )
+
+  private def updateRorConfig(originalString: String, newString: String) = {
     val initialConfig = getResourceContent(rorConfigFileName)
-    val serializerUsedInOriginalConfigFile = """serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1""""
-    val modifiedConfig = initialConfig.replace(serializerUsedInOriginalConfigFile, s"""serializer: "$serializer"""")
+    val modifiedConfig = initialConfig.replace(originalString, newString)
     rorApiManager.updateRorInIndexConfig(modifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
     rorApiManager.reloadRorConfig().force()
   }

@@ -16,39 +16,70 @@
  */
 package tech.beshu.ror.audit
 
-final case class AuditFieldValue(value: List[AuditFieldValuePlaceholder])
+private[ror] sealed trait AuditFieldValue
 
-object AuditFieldValue {
+private[ror] object AuditFieldValue {
 
-  private val pattern = "\\{([^}]+)\\}".r
+  // Rule
+  case object IsMatched extends AuditFieldValue
 
-  def apply(placeholder: AuditFieldValuePlaceholder): AuditFieldValue = AuditFieldValue(List(placeholder))
+  case object FinalState extends AuditFieldValue
 
-  def fromString(str: String): Either[String, AuditFieldValue] = {
-    val matches = pattern.findAllMatchIn(str).toList
+  case object Reason extends AuditFieldValue
 
-    val (parts, missing, lastIndex) =
-      matches.foldLeft((List.empty[AuditFieldValuePlaceholder], List.empty[String], 0)) {
-        case ((partsAcc, missingAcc, lastEnd), m) =>
-          val key = m.group(1)
-          val before = str.substring(lastEnd, m.start)
-          val partBefore = if (before.nonEmpty) List(AuditFieldValuePlaceholder.StaticText(before)) else Nil
+  case object User extends AuditFieldValue
 
-          val (partAfter, newMissing) = AuditFieldValuePlaceholder.withNameOption(key) match {
-            case Some(placeholder) => (List(placeholder), Nil)
-            case None => (Nil, List(key))
-          }
+  case object ImpersonatedByUser extends AuditFieldValue
 
-          (partsAcc ++ partBefore ++ partAfter, missingAcc ++ newMissing, m.end)
-      }
+  case object Action extends AuditFieldValue
 
-    val trailing = if (lastIndex < str.length) List(AuditFieldValuePlaceholder.StaticText(str.substring(lastIndex))) else Nil
-    val allParts = parts ++ trailing
+  case object InvolvedIndices extends AuditFieldValue
 
-    missing match {
-      case Nil => Right(AuditFieldValue(allParts))
-      case missingList => Left(s"There are invalid placeholder values: ${missingList.mkString(", ")}")
-    }
-  }
+  case object AclHistory extends AuditFieldValue
+
+  case object ProcessingDurationMillis extends AuditFieldValue
+
+  // Identifiers
+  case object Timestamp extends AuditFieldValue
+
+  case object Id extends AuditFieldValue
+
+  case object CorrelationId extends AuditFieldValue
+
+  case object TaskId extends AuditFieldValue
+
+  // Error details
+  case object ErrorType extends AuditFieldValue
+
+  case object ErrorMessage extends AuditFieldValue
+
+  case object Type extends AuditFieldValue
+
+  // HTTP protocol values
+  case object HttpMethod extends AuditFieldValue
+
+  case object HttpHeaderNames extends AuditFieldValue
+
+  case object HttpPath extends AuditFieldValue
+
+  case object XForwardedForHttpHeader extends AuditFieldValue
+
+  case object RemoteAddress extends AuditFieldValue
+
+  case object LocalAddress extends AuditFieldValue
+
+  case object Content extends AuditFieldValue
+
+  case object ContentLengthInBytes extends AuditFieldValue
+
+  case object ContentLengthInKb extends AuditFieldValue
+
+  case object EsNodeName extends AuditFieldValue
+
+  case object EsClusterName extends AuditFieldValue
+
+  final case class StaticText(value: String) extends AuditFieldValue
+
+  final case class Combined(values: List[AuditFieldValue]) extends AuditFieldValue
 
 }

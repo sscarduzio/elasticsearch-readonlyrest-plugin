@@ -18,22 +18,23 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
 import io.circe.Decoder.*
-import io.circe.{Decoder, HCursor}
+import io.circe.{Decoder, DecodingFailure, HCursor, KeyDecoder}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
+import tech.beshu.ror.accesscontrol.audit.configurable.{AuditFieldValueDeserializer, ConfigurableAuditLogSerializer}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{AuditingSettingsCreationError, Reason}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
+import tech.beshu.ror.accesscontrol.utils.CirceOps.{AclCreationErrorCoders, DecodingFailureOps}
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
-import tech.beshu.ror.audit.BaseAuditLogSerializer.AllowedEventSerializationMode.*
-import tech.beshu.ror.audit.BaseAuditLogSerializer.{AllowedEventSerializationMode, AuditFields}
+import tech.beshu.ror.audit.AuditSerializationHelper.AllowedEventSerializationMode.*
+import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventSerializationMode, AuditFieldName}
 import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditFieldValue, AuditLogSerializer}
 import tech.beshu.ror.es.EsVersion
@@ -210,82 +211,81 @@ object AuditingSettingsDecoder extends Logging {
 
   given auditLogSerializerDecoder(using context: AuditEnvironmentContext): Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
     for {
-      serializeAllAllowedEvents <- c.downField("serialize_all_allowed_events").as[Option[Boolean]]
-      given Option[AllowedEventSerializationMode] = serializeAllAllowedEvents.map(c => if (c) SerializeAllAllowedEvents else SerializeOnlyAllowedEventsWithInfoLevelVerbose)
-      fields <- c.downField("fields").as[Option[Map[String, AuditFieldValue]]]
-      given Option[AuditFields] = fields.map(AuditFields.apply)
-      serializer <- c.downField("serializer").as[Option[AuditLogSerializer]](decodeOption(auditLogSerializerInstanceDecoder))
+      serializer <- c.as[Option[AuditLogSerializer]](decodeOption(auditLogSerializerInstanceDecoder))
       legacyFieldNameSerializer <- c.downField("audit_serializer").as[Option[AuditLogSerializer]](decodeOption(auditLogSerializerInstanceDecoder))
     } yield serializer.orElse(legacyFieldNameSerializer)
   }
 
-  @nowarn("cat=deprecation")
-  given auditLogSerializerInstanceDecoder(using context: AuditEnvironmentContext,
-                                          allowedEventSerializationModeOpt: Option[AllowedEventSerializationMode],
-                                          fieldsOpt: Option[AuditFields]): Decoder[AuditLogSerializer] =
-    SyncDecoderCreator
-      .from(Decoder.decodeString)
-      .emapE { fullClassName =>
-        val clazz = Class.forName(fullClassName)
-
-        def createInstanceOfEnvironmentAwareSerializer(): Option[Either[String, Any]] = {
-          Try(clazz.getConstructor(classOf[AuditEnvironmentContext]))
-            .map(_.newInstance(summon[AuditEnvironmentContext]))
-            .toOption.map(_.asRight)
-        }
-
-        def createInstanceOfCustomizableSerializer(): Option[Either[String, Any]] = {
-          Try(
-            clazz.getConstructor(classOf[AuditEnvironmentContext], classOf[AllowedEventSerializationMode], classOf[AuditFields])
-          ).toOption.map { constructor =>
+  private def auditLogSerializerInstanceDecoder(using context: AuditEnvironmentContext): Decoder[AuditLogSerializer] = SyncDecoderCreator.from(
+      Decoder.instance[AuditLogSerializer] { c =>
+        for {
+          configurable <- c.downField("configurable").as[Option[Boolean]]
+          serializer <- if (configurable.contains(true)) {
             for {
-              allowedEventSerializationMode <- allowedEventSerializationModeOpt.toRight(s"Configurable serializer is used, but the serialize_all_allowed_events setting is missing in configuration")
-              fields <- fieldsOpt.toRight(s"Configurable serializer is used, but the fields setting is missing in configuration")
-            } yield constructor.newInstance(context, allowedEventSerializationMode, fields)
+              serializeAllAllowedEvents <- c.downField("serialize_all_allowed_events").as[Boolean]
+              allowedEventSerializationMode = if (serializeAllAllowedEvents) SerializeAllAllowedEvents else SerializeOnlyAllowedEventsWithInfoLevelVerbose
+              fields <- c.downField("fields").as[Map[AuditFieldName, AuditFieldValue]]
+              serializer = new ConfigurableAuditLogSerializer(context, allowedEventSerializationMode, fields)
+            } yield serializer
+          } else {
+            for {
+              fullClassName <- c.downField("serializer").as[String]
+              serializer <- createSerializerInstanceFromClassName(fullClassName)
+                .left.map(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
+            } yield serializer
           }
-        }
-
-        def createInstanceOfSimpleSerializer(): Option[Either[String, Any]] = {
-          Try(clazz.getDeclaredConstructor())
-            .map(_.newInstance())
-            .toOption.map(_.asRight)
-        }
-
-        val serializer =
-          createInstanceOfCustomizableSerializer()
-            .orElse(createInstanceOfEnvironmentAwareSerializer())
-            .orElse(createInstanceOfSimpleSerializer())
-            .getOrElse(
-              throw new IllegalStateException(
-                s"Class ${Class.forName(fullClassName).getName} is required to have either one (AuditEnvironmentContext) parameter constructor or constructor without parameters"
-              )
-            )
-
-        Try {
-          serializer.map {
-            case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
-              Some(serializer)
-            case serializer: tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer =>
-              Some(new EnvironmentAwareAuditLogSerializerAdapter(serializer, summon[AuditEnvironmentContext]))
-            case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] =>
-              Some(new DeprecatedAuditLogSerializerAdapter(serializer))
-            case _ => None
-          }
-        } match {
-          case Success(Right(Some(customSerializer))) =>
-            logger.info(s"Using custom serializer: ${customSerializer.getClass.getName}")
-            Right(customSerializer)
-          case Success(Right(None)) => Left(AuditingSettingsCreationError(Message(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}")))
-          case Success(Left(message)) => Left(AuditingSettingsCreationError(Message(message)))
-          case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '${fullClassName.show}', error: ${ex.getMessage.show}")))
-        }
+        } yield serializer
       }
-      .decoder
+    )
+    .decoder
 
-  given auditValueDecoder: Decoder[AuditFieldValue] = {
+  @nowarn("cat=deprecation")
+  private def createSerializerInstanceFromClassName(fullClassName: String)
+                                                   (using context: AuditEnvironmentContext): Either[AuditingSettingsCreationError, AuditLogSerializer] = {
+    val clazz = Class.forName(fullClassName)
+
+    def createInstanceOfEnvironmentAwareSerializer(): Try[Any] =
+      Try(clazz.getConstructor(classOf[AuditEnvironmentContext])).map(_.newInstance(context))
+
+    def createInstanceOfSimpleSerializer(): Try[Any] =
+      Try(clazz.getDeclaredConstructor()).map(_.newInstance())
+
+    val serializer =
+      createInstanceOfEnvironmentAwareSerializer()
+        .orElse(createInstanceOfSimpleSerializer())
+        .getOrElse(
+          throw new IllegalStateException(
+            s"Class ${Class.forName(fullClassName).getName} is required to have either one (AuditEnvironmentContext) parameter constructor or constructor without parameters"
+          )
+        )
+
+    Try {
+      serializer match {
+        case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
+          Some(serializer)
+        case serializer: tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer =>
+          Some(new EnvironmentAwareAuditLogSerializerAdapter(serializer, summon[AuditEnvironmentContext]))
+        case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] =>
+          Some(new DeprecatedAuditLogSerializerAdapter(serializer))
+        case _ => None
+      }
+    } match {
+      case Success(Some(customSerializer)) =>
+        logger.info(s"Using custom serializer: ${customSerializer.getClass.getName}")
+        Right(customSerializer)
+      case Success(None) => Left(AuditingSettingsCreationError(Message(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}")))
+      case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '${fullClassName.show}', error: ${ex.getMessage.show}")))
+    }
+  }
+
+  given auditFieldNameDecoder: KeyDecoder[AuditFieldName] = {
+    KeyDecoder.decodeKeyString.map(AuditFieldName.apply)
+  }
+
+  given auditFieldValueDecoder: Decoder[AuditFieldValue] = {
     SyncDecoderCreator
       .from(Decoder.decodeString)
-      .emap(AuditFieldValue.fromString(_))
+      .emap(AuditFieldValueDeserializer.deserialize)
       .decoder
   }
 
