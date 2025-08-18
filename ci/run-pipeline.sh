@@ -388,32 +388,35 @@ check_maven_artifacts_exist() {
   local ARTIFACT_URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_3/$CURRENT_VERSION/"
   echo ">>> Checking if Maven artifacts already exist at: $ARTIFACT_URL"
   
-  local MVN_STATUS=$(curl --write-out '%{http_code}' --silent --output /dev/null "$ARTIFACT_URL" || echo "000")
+  local MVN_STATUS=$(curl -L --write-out '%{http_code}' --silent --output /dev/null "$ARTIFACT_URL" || echo "000")
   
-  if [[ $MVN_STATUS == "200" ]]; then
+  if [[ $MVN_STATUS == "404" ]]; then
+    echo ">>> Maven artifacts not found"
+    return 1
+  elif [[ $MVN_STATUS == "200" ]]; then
     echo ">>> Maven artifacts for version $CURRENT_VERSION already exist."
     return 0
   else
-    echo ">>> Maven artifacts not found"
-    return 1
+    echo ">>> ERROR: Unexpected HTTP status $MVN_STATUS when checking Maven repository"
+    echo ">>> Cannot determine if artifacts exist, failing to avoid potential issues"
+    exit 1
   fi
 }
 
 if [[ $ROR_TASK == "publish_maven_artifacts" ]] && [[ $TRAVIS_BRANCH == "master" ]]; then
-
   # .travis/secret.pgp is downloaded via Azure secret files, see azure-pipelines.yml
   CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
   PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
 
   if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
-    if ! check_maven_artifacts_exist "$CURRENT_PLUGIN_VER"; then
+    if check_maven_artifacts_exist "$CURRENT_PLUGIN_VER"; then
+      echo ">>> Skipping publishing audit module artifacts"
+    else
       echo ">>> Publishing audit module artifacts to sonatype repo"
       ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
-    else
-      echo ">>> Skipping publishing audit module artifacts"
     fi
   else
-    echp ">>> Version mismatch: current=$CURRENT_PLUGIN_VER, published=$PUBLISHED_PLUGIN_VER"
+    echo ">>> Version mismatch: current=$CURRENT_PLUGIN_VER, published=$PUBLISHED_PLUGIN_VER"
     echo ">>> Skipping publishing audit module artifacts."
   fi
 fi
