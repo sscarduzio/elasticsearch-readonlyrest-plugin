@@ -54,7 +54,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 
   private val parser =
     settings.jwt.checkMethod match {
-      case NoCheck(_) => Jwts.parser().build()
+      case NoCheck(_) => Jwts.parser().unsecured().build()
       case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
       case Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
       case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
