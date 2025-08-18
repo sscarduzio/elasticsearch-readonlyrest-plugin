@@ -17,7 +17,7 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import io.jsonwebtoken.SignatureAlgorithm
+import io.jsonwebtoken.Jwts
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
@@ -36,7 +36,7 @@ class JwtAuthSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  private val algo = SignatureAlgorithm.valueOf("HS256")
+  private val algo = Jwts.SIG.HS256
   private val validKey = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
   private val validKeyRole = "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
   private val wrongKey = "abcdefdsadsadsafdsfsadasdfdsfdfdsfdsfsadsdsaffds"

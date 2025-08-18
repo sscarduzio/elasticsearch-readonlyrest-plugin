@@ -233,7 +233,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
         val variable = forceCreateSingleVariable("@{jwt:tech.beshu.mainGroup}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
             _.withJwtToken(Jwt.Payload {
-              val claims = new DefaultClaims()
+              val claims = new DefaultClaims(new java.util.HashMap[String, AnyRef]())
               claims.put("tech", Map("beshu" -> Map("mainGroup" -> "group1").asJava).asJava)
               claims
             })
@@ -244,7 +244,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
         val variable = forceCreateSingleVariable("""@{jwt:tech.beshu.mainGroup}#{replace_first("^group\d","g")}""")
           .resolve(currentUserMetadataRequestBlockContextFrom(
             _.withJwtToken(Jwt.Payload {
-              val claims = new DefaultClaims()
+              val claims = new DefaultClaims(new java.util.HashMap[String, AnyRef]())
               claims.put("tech", Map("beshu" -> Map("mainGroup" -> "group1").asJava).asJava)
               claims
             })
@@ -256,7 +256,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
           .resolve(currentUserMetadataRequestBlockContextFrom(
             _.withJwtToken(
               Jwt.Payload {
-                val claims = new DefaultClaims()
+                val claims = new DefaultClaims(new java.util.HashMap[String, AnyRef]())
                 claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
                 claims
               }
@@ -268,7 +268,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
         val variable = forceCreateMultiVariable("@explode{jwt:tech.beshu.groups}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
             _.withJwtToken(Jwt.Payload {
-              val claims = new DefaultClaims()
+              val claims = new DefaultClaims(new java.util.HashMap[String, AnyRef]())
               claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
               claims
             })
@@ -287,7 +287,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
           .resolve(currentUserMetadataRequestBlockContextFrom(
             _.withJwtToken(
               Jwt.Payload {
-                val claims = new DefaultClaims()
+                val claims = new DefaultClaims(new java.util.HashMap[String, AnyRef]())
                 claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
                 claims
               }
