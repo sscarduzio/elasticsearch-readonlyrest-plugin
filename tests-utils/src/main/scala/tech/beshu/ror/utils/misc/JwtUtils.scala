@@ -19,8 +19,8 @@ package tech.beshu.ror.utils.misc
 
 import cats.data.NonEmptyList
 import io.jsonwebtoken.impl.DefaultClaims
-import io.jsonwebtoken.security.Keys
-import io.jsonwebtoken.{Jwts, SignatureAlgorithm}
+import io.jsonwebtoken.security.{Keys, MacAlgorithm}
+import io.jsonwebtoken.Jwts
 import tech.beshu.ror.utils.misc.JwtUtils.Jwt.Secret
 
 import scala.jdk.CollectionConverters.*
@@ -37,8 +37,8 @@ object JwtUtils {
         case Secret.KeyWithAlg(alg, key) => Jwts.builder.signWith(Keys.hmacShaKeyFor(key.getBytes()), alg)
       }
       builder
-        .setSubject("test")
-        .setClaims(defaultClaims())
+        .subject("test")
+        .claims(defaultClaims())
         .compact()
     }
 
@@ -72,12 +72,12 @@ object JwtUtils {
     object Secret {
       case object NotPresent extends Secret
       final case class Key(value: java.security.Key) extends Secret
-      final case class KeyWithAlg(alg: SignatureAlgorithm, key: String) extends Secret
+      final case class KeyWithAlg(alg: MacAlgorithm, key: String) extends Secret
     }
 
     def apply(secret: java.security.Key, claims: Iterable[Claim]): Jwt =
       new Jwt(Secret.Key(secret), claims)
-    def apply(algorithm: SignatureAlgorithm, key: String, claims: Iterable[Claim]): Jwt =
+    def apply(algorithm: MacAlgorithm, key: String, claims: Iterable[Claim]): Jwt =
       new Jwt(Secret.KeyWithAlg(algorithm, key), claims)
     def apply(claims: Iterable[Claim]): Jwt =
       new Jwt(Secret.NotPresent, claims)

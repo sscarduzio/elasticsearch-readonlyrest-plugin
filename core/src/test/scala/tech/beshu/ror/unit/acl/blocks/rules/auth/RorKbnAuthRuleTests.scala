@@ -15,8 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.auth
-import io.jsonwebtoken.SignatureAlgorithm
-import io.jsonwebtoken.security.Keys
+import io.jsonwebtoken.Jwts
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -50,7 +49,7 @@ class RorKbnAuthRuleTests
   "A RorKbnAuthRule" should {
     "match" when {
       "token has valid HS256 signature" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -90,7 +89,7 @@ class RorKbnAuthRuleTests
         }
       }
       "groups claim name is defined and no groups field is passed in token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
         ))
@@ -110,7 +109,7 @@ class RorKbnAuthRuleTests
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (no preferred group)" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -137,7 +136,7 @@ class RorKbnAuthRuleTests
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (with preferred group)" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -166,7 +165,7 @@ class RorKbnAuthRuleTests
       }
       "groups OR logic is used" when {
         "at least one allowed group matches the JWT groups (1)" in {
-          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val key: Key = Jwts.SIG.HS256.key().build()
           val jwt = Jwt(key, claims = List(
             "user" := "user1",
             "groups" := List("group1", "group2")
@@ -193,7 +192,7 @@ class RorKbnAuthRuleTests
           }
         }
         "at least one allowed group matches the JWT groups (2)" in {
-          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val key: Key = Jwts.SIG.HS256.key().build()
           val jwt = Jwt(key, claims = List(
             "user" := "user1",
             "groups" := List("group1", "group2")
@@ -222,7 +221,7 @@ class RorKbnAuthRuleTests
       }
       "groups AND logic is used" when {
         "all allowed groups match the JWT groups (1)" in {
-          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val key: Key = Jwts.SIG.HS256.key().build()
           val jwt = Jwt(key, claims = List(
             "user" := "user1",
             "groups" := List("group1", "group2", "group3")
@@ -249,7 +248,7 @@ class RorKbnAuthRuleTests
           }
         }
         "all allowed groups match the JWT groups (2)" in {
-          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val key: Key = Jwts.SIG.HS256.key().build()
           val jwt = Jwt(key, claims = List(
             "user" := "user1",
             "groups" := List("group1", "group2", "group3")
@@ -279,8 +278,8 @@ class RorKbnAuthRuleTests
     }
     "not match" when {
       "token has invalid HS256 signature" in {
-        val key1: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
-        val key2: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key1: Key = Jwts.SIG.HS256.key().build()
+        val key2: Key = Jwts.SIG.HS256.key().build()
         val jwt2 = Jwt(key2, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -309,7 +308,7 @@ class RorKbnAuthRuleTests
         )
       }
       "userId isn't passed in JWT token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "groups" := List("group1", "group2")
@@ -323,7 +322,7 @@ class RorKbnAuthRuleTests
         )
       }
       "groups aren't passed in JWT token claim while some groups are defined in settings" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "userGroups" := List("group1", "group2")
@@ -342,7 +341,7 @@ class RorKbnAuthRuleTests
         )
       }
       "rule groups are defined with 'or' logic and intersection between those groups and ROR Kbn ones is empty" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -361,7 +360,7 @@ class RorKbnAuthRuleTests
         )
       }
       "rule groups are defined with 'and' logic and intersection between those groups and ROR Kbn ones is empty" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -380,7 +379,7 @@ class RorKbnAuthRuleTests
         )
       }
       "preferred group is not on the groups list from JWT" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -395,7 +394,7 @@ class RorKbnAuthRuleTests
         )
       }
       "preferred group is not on the permitted groups list" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group5", "group2")

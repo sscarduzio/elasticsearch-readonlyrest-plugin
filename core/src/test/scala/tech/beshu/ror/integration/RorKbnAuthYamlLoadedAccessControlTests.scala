@@ -98,8 +98,8 @@ class RorKbnAuthYamlLoadedAccessControlTests
           val claims = new DefaultClaims(Map[String, AnyRef]("sub" -> "test", "user" -> "user", "groups" -> "").asJava)
           val jwtBuilder = Jwts.builder
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
-            .setSubject("test")
-            .setClaims(claims)
+            .subject("test")
+            .claims(claims)
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwtBuilder))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -119,8 +119,8 @@ class RorKbnAuthYamlLoadedAccessControlTests
           val claims = new DefaultClaims(Map[String, AnyRef]("sub" -> "test", "user" -> "user", "groups" -> List("viewer_group").asJava).asJava)
           val jwtBuilder = Jwts.builder
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
-            .setSubject("test")
-            .setClaims(claims)
+            .subject("test")
+            .claims(claims)
           val preferredGroup = group("mapped_viewer_group")
 
           val request = MockRequestContext.indices
