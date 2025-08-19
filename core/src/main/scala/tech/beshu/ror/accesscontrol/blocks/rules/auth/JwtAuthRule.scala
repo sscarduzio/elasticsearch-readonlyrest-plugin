@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.security.Keys
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
@@ -53,10 +54,10 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 
   private val parser =
     settings.jwt.checkMethod match {
-      case NoCheck(_) => Jwts.parserBuilder().build()
-      case Hmac(rawKey) => Jwts.parserBuilder().setSigningKey(rawKey).build()
-      case Rsa(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
-      case Ec(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
+      case NoCheck(_) => Jwts.parser().unsecured().build()
+      case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
+      case Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
+      case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
     }
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
@@ -168,7 +169,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
       case NoCheck(_) =>
         token.value.value.split("\\.").toList match {
           case fst :: snd :: _ =>
-            Try(parser.parseClaimsJwt(s"$fst.$snd.").getBody)
+            Try(parser.parseUnsecuredClaims(s"$fst.$snd.").getPayload)
               .toEither
               .map(Jwt.Payload.apply)
               .left.map { ex => logBadToken(ex, token) }
@@ -176,7 +177,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
             Left(())
         }
       case Hmac(_) | Rsa(_) | Ec(_) =>
-        Try(parser.parseClaimsJws(token.value.value).getBody)
+        Try(parser.parseSignedClaims(token.value.value).getPayload)
           .toEither
           .map(Jwt.Payload.apply)
           .left.map { ex => logBadToken(ex, token) }
