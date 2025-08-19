@@ -32,8 +32,6 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
-
-
 sourceSets {
     test {
         resources {
