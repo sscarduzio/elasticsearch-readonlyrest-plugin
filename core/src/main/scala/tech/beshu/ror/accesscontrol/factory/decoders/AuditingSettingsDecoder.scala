@@ -247,7 +247,13 @@ object AuditingSettingsDecoder extends Logging {
   @nowarn("cat=deprecation")
   private def createSerializerInstanceFromClassName(fullClassName: String)
                                                    (using context: AuditEnvironmentContext): Either[AuditingSettingsCreationError, AuditLogSerializer] = {
-    val clazz = Class.forName(fullClassName)
+    val clazz = Try(Class.forName(fullClassName)).fold(
+      {
+        case _: ClassNotFoundException => throw new IllegalStateException(s"Serializer with class name $fullClassName not found.")
+        case other => throw other
+      },
+      identity
+    )
 
     def createInstanceOfEnvironmentAwareSerializer(): Try[Any] =
       Try(clazz.getConstructor(classOf[AuditEnvironmentContext])).map(_.newInstance(context))
@@ -260,7 +266,7 @@ object AuditingSettingsDecoder extends Logging {
         .orElse(createInstanceOfSimpleSerializer())
         .getOrElse(
           throw new IllegalStateException(
-            s"Class ${Class.forName(fullClassName).getName} is required to have either one (AuditEnvironmentContext) parameter constructor or constructor without parameters"
+            s"Class ${clazz.getName} is required to have either one (AuditEnvironmentContext) parameter constructor or constructor without parameters"
           )
         )
 

@@ -84,6 +84,7 @@ object AuditFieldValueDeserializer {
       case "CONTENT_LENGTH_IN_KB" => Some(AuditFieldValue.ContentLengthInKb)
       case "ES_NODE_NAME" => Some(AuditFieldValue.EsNodeName)
       case "ES_CLUSTER_NAME" => Some(AuditFieldValue.EsClusterName)
+      case _ => None
     }
 
   }

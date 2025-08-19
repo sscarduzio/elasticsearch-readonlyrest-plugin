@@ -74,9 +74,13 @@ private[ror] object AuditFieldValue {
 
   case object ContentLengthInKb extends AuditFieldValue
 
+  // ES environment
+
   case object EsNodeName extends AuditFieldValue
 
   case object EsClusterName extends AuditFieldValue
+
+  // Technical
 
   final case class StaticText(value: String) extends AuditFieldValue
 
