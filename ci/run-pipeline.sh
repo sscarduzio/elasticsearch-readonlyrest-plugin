@@ -384,8 +384,8 @@ fi
 
 check_maven_artifacts_exist() {
   local CURRENT_VERSION="$1"
-  
-  local ARTIFACT_URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_3/$CURRENT_VERSION/"
+
+  local ARTIFACT_URL="https://repo1.maven.org/maven2/tech/beshu/ror/audit_3/$CURRENT_VERSION/"
   echo ">>> Checking if Maven artifacts already exist at: $ARTIFACT_URL"
   
   local MVN_STATUS=$(curl -L --write-out '%{http_code}' --silent --output /dev/null "$ARTIFACT_URL" || echo "000")
