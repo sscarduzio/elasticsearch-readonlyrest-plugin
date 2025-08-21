@@ -22,6 +22,7 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -96,7 +97,7 @@ class RorApiManager(client: RestClient,
   }
 
   def invalidateImpersonationMocks(): RorApiResponseWithBusinessStatus = {
-    val payload = ujson.read(
+    val payload = ujsonRead(
       s"""
          | {
          |   "services": []
@@ -109,7 +110,7 @@ class RorApiManager(client: RestClient,
   def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String, config: String): documentManager.JsonResponse = {
     documentManager.createFirstDoc(
       index = rorConfigIndex,
-      content = ujson.read(rorConfigIndexDocumentContentFrom(config))
+      content = ujsonRead(rorConfigIndexDocumentContentFrom(config))
     )
   }
 

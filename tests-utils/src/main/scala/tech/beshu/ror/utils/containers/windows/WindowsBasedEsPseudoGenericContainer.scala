@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.containers.windows
 
 import org.testcontainers.containers.GenericContainer
+import os.SubProcess
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy
 import tech.beshu.ror.utils.containers.images.Elasticsearch
 import tech.beshu.ror.utils.containers.windows.WindowsElasticsearchSetup.prepareAndStartEsForWindows
@@ -24,18 +25,33 @@ import tech.beshu.ror.utils.containers.windows.WindowsElasticsearchSetup.prepare
 class WindowsBasedEsPseudoGenericContainer(elasticsearch: Elasticsearch, waitStrategy: ElasticsearchNodeWaitingStrategy)
   extends GenericContainer[WindowsBasedEsPseudoGenericContainer]("noop:latest") {
 
+  private var processAndPort: Option[(SubProcess, Int)] = None
+    
   override def start(): Unit = {
     doStart()
   }
 
   override def doStart(): Unit = {
-    prepareAndStartEsForWindows(elasticsearch)
-    waitStrategy.waitUntilReady()
+    processAndPort match {
+      case Some(_) =>
+        println("Trying to start already started ES")
+        ()
+      case None =>
+        processAndPort = Some(prepareAndStartEsForWindows(elasticsearch))
+        waitStrategy.waitUntilReady()
+    }
   }
 
   override def stop(): Unit = {
     super.stop()
+    processAndPort.foreach { case (proc, _) =>
+      println(s"ZZZZZZZZZZ stop $processAndPort")
+      os.proc("taskkill", "/PID", proc.wrapped.pid.toString, "/F", "/T").call()
+    }
+    processAndPort = None
   }
+  
+  def getPort: Int = processAndPort.map(_._2).getOrElse(throw new IllegalStateException("The ES is not started, port is not yet defined"))
 
   override def getContainerId: String = "WindowsBasedEsPseudoGenericContainer"
 

@@ -18,6 +18,7 @@ package tech.beshu.ror.es.utils
 
 import org.apache.http.util.EntityUtils
 import org.elasticsearch.client.{Request, Response}
+import tech.beshu.ror.accesscontrol.utils.JsonReader.ujsonRead
 import ujson.Value
 
 import scala.util.Try
@@ -29,7 +30,7 @@ object RestResponseOps {
     def statusCode: Int = response.getStatusLine.getStatusCode
 
     def entityJson: Value = {
-      ujson.read(entityStr)
+      ujsonRead(entityStr)
     }
 
     def entityStr: String = {

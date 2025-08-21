@@ -23,6 +23,7 @@ import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.*
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
+import tech.beshu.ror.accesscontrol.utils.JsonReader.ujsonRead
 import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -127,7 +128,7 @@ object Header {
   private def parseRorMetadataString(rorMetadataString: String) = {
     rorMetadataString.decodeBase64 match {
       case Some(value) =>
-        Try(ujson.read(value).obj("headers").arr.toList.map(_.str))
+        Try(ujsonRead(value).obj("headers").arr.toList.map(_.str))
           .toEither.left.map(_ => RorMetadataInvalidFormat(rorMetadataString, "Parsing JSON failed"))
       case None =>
         Left(RorMetadataInvalidFormat(rorMetadataString, "Decoding Base64 failed"))

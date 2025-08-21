@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -61,10 +62,10 @@ object MSearchTEST3Suite {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
 
     documentManager
-      .createDoc("monit_private_hammercloud_2", "documents", 1, ujson.read("""{"id": "docHC2"}"""))
+      .createDoc("monit_private_hammercloud_2", "documents", 1, ujsonRead("""{"id": "docHC2"}"""))
       .force()
     documentManager
-      .createDoc("monit_private_openshift", "documents", 1, ujson.read("""{"id": "docHC2"}"""))
+      .createDoc("monit_private_openshift", "documents", 1, ujsonRead("""{"id": "docHC2"}"""))
       .force()
   }
 }

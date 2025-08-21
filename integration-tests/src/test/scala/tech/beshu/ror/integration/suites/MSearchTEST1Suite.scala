@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -100,6 +101,6 @@ object MSearchTEST1Suite {
     val indexManager = new IndexManager(adminRestClient, esVersion)
 
     indexManager.createIndex("empty_index").force()
-    documentManager.createDoc(".kibana", "documents", 1, ujson.read("""{"id": "asd123"}""")).force()
+    documentManager.createDoc(".kibana", "documents", 1, ujsonRead("""{"id": "asd123"}""")).force()
   }
 }

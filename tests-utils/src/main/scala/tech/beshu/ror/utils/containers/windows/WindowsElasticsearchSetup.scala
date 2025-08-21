@@ -31,8 +31,13 @@ import scala.sys.process.*
 
 object WindowsElasticsearchSetup extends LazyLogging {
 
-  def downloadUrl(esVersion: String): String =
-    s"https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-$esVersion-windows-x86_64.zip"
+  def downloadUrl(esVersion: String): String = {
+    if (esVersion.startsWith("6")) {
+      s"https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-$esVersion.zip"
+    } else {
+      s"https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-$esVersion-windows-x86_64.zip"
+    }
+  }
 
   def basePath: os.Path =
     os.pwd / "windows-es"
@@ -52,32 +57,71 @@ object WindowsElasticsearchSetup extends LazyLogging {
   def binPath(clusterName: String, nodeName: String): os.Path =
     esPath(clusterName, nodeName) / "bin"
 
-  def prepareAndStartEsForWindows(elasticsearch: Elasticsearch): Unit = {
+  val ports: Map[String, (Int, Int)] = Map(
+    "ROR_SINGLE_1" -> (9200, 9300),
+    "ROR1_1" -> (9201, 9301),
+    "ROR1_2" -> (9202, 9302),
+    "AUDIT_1" -> (9203, 9303),
+    "AUDIT_2" -> (9204, 9304),
+    "testEsCluster_1" -> (9205, 9305),
+    "testEsCluster_2" -> (9206, 9306),
+    "ROR2_1" -> (9207, 9307),
+    "ROR2_2" -> (9208, 9308),
+    "ROR_L1_1" -> (9209, 9309),
+    "ROR_L1_2" -> (9210, 9310),
+    "XPACK_1" -> (9211, 9311),
+    "XPACK_2" -> (9212, 9312),
+    "fips_cluster_1" -> (9213, 9313),
+    "fips_cluster_2" -> (9214, 9314),
+    "ROR_SOURCE_ES_1" -> (9215, 9315),
+    "ROR_SOURCE_ES_2" -> (9216, 9316),
+    "ROR_DEST_ES_1" -> (9217, 9317),
+    "ROR_DEST_ES_2" -> (9218, 9318),
+    "ror_xpack_cluster_1" -> (9219, 9319),
+    "ror_xpack_cluster_2" -> (9220, 9320),
+    "ROR_R1_1" -> (9221, 9321),
+    "ROR_R1_2" -> (9222, 9322),
+    "ROR_R2_1" -> (9223, 9323),
+    "ROR_R2_2" -> (9224, 9324),
+    "ROR_1_1" -> (9225, 9325),
+    "ROR_1_2" -> (9226, 9326),
+    "ROR_2_1" -> (9227, 9327),
+    "ROR_2_2" -> (9228, 9328),
+    "ROR_3_1" -> (9229, 9329),
+    "ROR_3_2" -> (9230, 9330),
+    "ror_xpack_cluster_3" -> (9231, 9331),
+  )
+
+  def prepareAndStartEsForWindows(elasticsearch: Elasticsearch): (SubProcess, Int) = {
+    val (esPort, transportPort) = ports.getOrElse(
+      elasticsearch.config.nodeName,
+      throw new IllegalStateException(s"No predefined ports for node ${elasticsearch.config.nodeName}")
+    )
     downloadEsZipFileWithProgress(elasticsearch.esVersion)
     unzip(elasticsearch.esVersion, elasticsearch.config)
-    replaceConfigFile(elasticsearch)
-    elasticsearch.esUpdateSteps.steps.foreach(runStep(elasticsearch))
-    startElasticsearch(elasticsearch.config)
+    replaceConfigFile(elasticsearch, esPort, transportPort)
+    elasticsearch.esUpdateSteps.steps.zipWithIndex.foreach(runStep(elasticsearch, elasticsearch.esUpdateSteps.steps.size))
+    (startElasticsearch(elasticsearch.config), esPort)
   }
 
-  private def runStep(elasticsearch: Elasticsearch)(step: EsUpdateStep): Unit = step match {
+  private def runStep(elasticsearch: Elasticsearch, numberOfSteps: Int)(step: EsUpdateStep, index: Int): Unit = step match {
     case EsUpdateStep.CopyFile(destination, file) =>
-      println(s"COPY FILE $destination $file")
+      logger.info(s"Step ${index + 1}/$numberOfSteps: copy file $destination $file")
       os.makeDir.all(destination / os.up)
       val destBetterFile = File(destination.toNIO)
       file.copyTo(destBetterFile, overwrite = true)
-      println(s"DONE")
+      logger.info(s"Step ${index + 1}/$numberOfSteps: done")
     case EsUpdateStep.RunCommand(_, windowsCommand) =>
-      println(s"run command $windowsCommand")
+      logger.info(s"Step ${index + 1}/$numberOfSteps: run command $windowsCommand")
       val cmd = os.proc("cmd", "/c", windowsCommand)
       val result = cmd.call(
         cwd = esPath(elasticsearch.config.clusterName, elasticsearch.config.nodeName),
         stdout = os.ProcessOutput.Readlines(line => logger.info(s"[command] $line")),
         stderr = os.ProcessOutput.Readlines(line => logger.error(s"[command] $line")),
       )
-      println(s"DONE $result")
+      logger.info(s"Step ${index + 1}/$numberOfSteps: done with result $result")
     case EsUpdateStep.ChangeUser(user) =>
-      ()
+      logger.info(s"Step ${index + 1}/$numberOfSteps: change user is ignored on Windows")
   }
 
   private def downloadEsZipFileWithProgress(esVersion: String): Unit = {
@@ -133,6 +177,7 @@ object WindowsElasticsearchSetup extends LazyLogging {
     logger.info(s"Unzipping ES")
     val zipFile = zipFilePath(esVersion)
     val targetDir = esPath(config.clusterName, config.nodeName)
+    os.remove.all(targetDir)
     os.makeDir.all(targetDir)
     val zis = new ZipInputStream(Files.newInputStream(zipFile.toNIO))
     try {
@@ -183,15 +228,28 @@ object WindowsElasticsearchSetup extends LazyLogging {
     os.write.over(configFile, withSSL.mkString("\n"))
   }
 
-  private def replaceConfigFile(elasticsearch: Elasticsearch): Unit = {
-    elasticsearch.esConfigFile
+  private def replaceConfigFile(elasticsearch: Elasticsearch, esPort: Int, transportPort: Int): Unit = {
+    val file =
+      elasticsearch
+        .esConfigFile
+        .appendLine(s"http.port: $esPort")
+        .appendLine(s"transport.port: $transportPort")
+
+
+    val updatedContent =
+      ports.foldLeft(file.contentAsString) {
+        case (content, (oldValue, (_, transportPort))) =>
+          content.replace(oldValue, s"localhost:$transportPort")
+      }
+
+    file.overwrite(updatedContent)
       .copyTo(
         File(configFilePath(elasticsearch.config.clusterName, elasticsearch.config.nodeName).toString),
         overwrite = true
       )
   }
 
-  private def startElasticsearch(config: Config): Unit = {
+  private def startElasticsearch(config: Config): SubProcess = {
     val binDir = binPath(config.clusterName, config.nodeName)
     val esBat = binDir / "elasticsearch.bat"
     logger.info(s"Starting Elasticsearch [${config.clusterName}][${config.nodeName}]")
@@ -199,6 +257,7 @@ object WindowsElasticsearchSetup extends LazyLogging {
     val proc = os.proc(esBat)
       .spawn(
         cwd = binDir,
+        env = Map("ES_JAVA_OPTS" -> "-Xms400m -Xmx400m"),
         stdout = os.ProcessOutput.Readlines(line => logger.info(s"[ES][${config.clusterName}][${config.nodeName}] $line")),
         stderr = os.ProcessOutput.Readlines(line => logger.error(s"[ES][${config.clusterName}][${config.nodeName}] $line")),
       )
@@ -206,11 +265,11 @@ object WindowsElasticsearchSetup extends LazyLogging {
     sys.addShutdownHook {
       logger.info(s"JVM shutting down, stopping Elasticsearch [${config.clusterName}][${config.nodeName}] process...")
       try {
-        proc.destroy()
-        proc.join()
+        os.proc("taskkill", "/PID", proc.wrapped.pid.toString, "/F", "/T").call()
       } catch {
         case e: Exception => logger.error(s"Failed to stop Elasticsearch [${config.clusterName}][${config.nodeName}] process: ${e.getMessage}")
       }
     }
+    proc
   }
 }

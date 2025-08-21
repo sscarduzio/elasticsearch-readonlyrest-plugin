@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites.fields.sourcefiltering
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -60,7 +61,7 @@ class FieldRuleMSearchApiSourceFilteringSuite
 
     result should have statusCode 200
     result.responses.size shouldBe 1
-    sourceOfFirstDoc(result) shouldBe Some(ujson.read(
+    sourceOfFirstDoc(result) shouldBe Some(ujsonRead(
       """|{
          | "user1": "user1Value"
          |}""".stripMargin))

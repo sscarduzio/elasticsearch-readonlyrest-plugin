@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.*
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
@@ -149,7 +150,7 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
     val allIndexPattern = indexPatterns.toList
     val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
     if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
-      ujson.read {
+      ujsonRead {
         s"""
            |{
            |  "index_patterns":[$patternsString],
@@ -161,7 +162,7 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
            |}""".stripMargin
       }
     } else if (Version.greaterOrEqualThan(esVersion, 6, 0, 0)) {
-      ujson.read {
+      ujsonRead {
         s"""
            |{
            |  "index_patterns":[$patternsString],
@@ -174,7 +175,7 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
       }
     } else {
       if (allIndexPattern.size == 1) {
-        ujson.read {
+        ujsonRead {
           s"""
              |{
              |  "template":"${allIndexPattern.head}",
@@ -282,7 +283,7 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
                                              priority: Int): JSON = {
     val allIndexPattern = indexPatterns.toList
     val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
-    ujson.read {
+    ujsonRead {
       s"""
          |{
          |  "index_patterns":[$patternsString],
@@ -412,7 +413,7 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
     new HttpDelete(client.from(s"/_component_template/$templateName"))
   }
 
-  private def putComponentTemplateBodyJson(aliases: Set[String]) = ujson.read {
+  private def putComponentTemplateBodyJson(aliases: Set[String]) = ujsonRead {
     s"""
        |{
        |  "template": {

@@ -20,6 +20,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -52,7 +53,7 @@ trait FieldRuleEngineSuite
         "modifiable at ES level query using not allowed field is passed in request" in {
           val result = user1SearchManager.search(
             "test-index",
-            ujson.read(
+            ujsonRead(
               """
                 |{
                 |  "query": {
@@ -72,7 +73,7 @@ trait FieldRuleEngineSuite
         "using not allowed field is passed in request" in {
           val result = user1SearchManager.search(
             "test-index",
-            ujson.read(
+            ujsonRead(
               """
                 |{
                 |  "query": {
@@ -90,7 +91,7 @@ trait FieldRuleEngineSuite
       "properly handle forbidden field in the aggregate" in {
         val result = user1SearchManager.search(
           "test-index",
-          ujson.read(
+          ujsonRead(
             s"""
                |{
                |  "aggs":{
@@ -109,7 +110,7 @@ trait FieldRuleEngineSuite
 
         val aggregateName = "my_aggregate"
         result.aggregations shouldBe Map(
-          aggregateName -> ujson.read(
+          aggregateName -> ujsonRead(
             """{
               |  "doc_count_error_upper_bound": 0,
               |  "sum_other_doc_count": 0,
@@ -146,7 +147,7 @@ trait FieldRuleEngineSuite
 
       result should have statusCode 200
       result.responseJson("_source") should be (
-        ujson.read(s"""{"allowedField":"allowed:3"}""")
+        ujsonRead(s"""{"allowedField":"allowed:3"}""")
       )
     }
     "properly handle forbidden fields" in {
@@ -154,7 +155,7 @@ trait FieldRuleEngineSuite
 
       result should have statusCode 200
       result.responseJson("_source") should be(
-        ujson.read(s"""{"allowedField":"allowed:3","forbiddenField":3}"""),
+        ujsonRead(s"""{"allowedField":"allowed:3","forbiddenField":3}"""),
       )
     }
   }
@@ -164,16 +165,16 @@ trait FieldRuleEngineSuite
   protected def scrollSearchShouldProperlyHandleAllowedFields(searchResult: SearchManager#SearchResult): Unit = {
     searchResult should have statusCode 200
     searchResult.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
-      ujson.read(s"""{"allowedField": "allowed:1"}"""),
-      ujson.read(s"""{"allowedField": "allowed:2"}"""),
-      ujson.read(s"""{"allowedField": "allowed:3"}"""),
+      ujsonRead(s"""{"allowedField": "allowed:1"}"""),
+      ujsonRead(s"""{"allowedField": "allowed:2"}"""),
+      ujsonRead(s"""{"allowedField": "allowed:3"}"""),
     )
 
     val result2 = user1SearchManager.searchScroll(searchResult.scrollId)
     result2 should have statusCode 200
     result2.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
-      ujson.read(s"""{"allowedField": "allowed:4"}"""),
-      ujson.read(s"""{"allowedField": "allowed:5"}"""),
+      ujsonRead(s"""{"allowedField": "allowed:4"}"""),
+      ujsonRead(s"""{"allowedField": "allowed:5"}"""),
     )
 
     val result3 = user1SearchManager.searchScroll(searchResult.scrollId)
@@ -188,16 +189,16 @@ trait FieldRuleEngineSuite
   protected def scrollSearchShouldProperlyHandleForbiddenFields(searchResult: SearchManager#SearchResult): Unit = {
     searchResult should have statusCode 200
     searchResult.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
-      ujson.read(s"""{"allowedField": "allowed:1", "forbiddenField":1}"""),
-      ujson.read(s"""{"allowedField": "allowed:2", "forbiddenField":2}"""),
-      ujson.read(s"""{"allowedField": "allowed:3", "forbiddenField":3}"""),
+      ujsonRead(s"""{"allowedField": "allowed:1", "forbiddenField":1}"""),
+      ujsonRead(s"""{"allowedField": "allowed:2", "forbiddenField":2}"""),
+      ujsonRead(s"""{"allowedField": "allowed:3", "forbiddenField":3}"""),
     )
 
     val result2 = user2SearchManager.searchScroll(searchResult.scrollId)
     result2 should have statusCode 200
     result2.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
-      ujson.read(s"""{"allowedField": "allowed:4", "forbiddenField":4}"""),
-      ujson.read(s"""{"allowedField": "allowed:5", "forbiddenField":5}"""),
+      ujsonRead(s"""{"allowedField": "allowed:4", "forbiddenField":4}"""),
+      ujsonRead(s"""{"allowedField": "allowed:5", "forbiddenField":5}"""),
     )
 
     val result3 = user2SearchManager.searchScroll(searchResult.scrollId)
@@ -214,7 +215,7 @@ object FieldRuleEngineSuite {
 
   def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    def createDocument(id: Int) = ujson.read {
+    def createDocument(id: Int) = ujsonRead {
       s"""
         |{
         | "allowedField": "allowed:$id",

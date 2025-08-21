@@ -1360,7 +1360,7 @@ class ReadonlyRestStartingTests
             val expectedMessage =
               s"""Errors:
                  |Unable to configure audit output using a data stream in local cluster. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if the index lifecycle policy with ID 'readonlyrest_audit-lifecycle-policy' has been created]
-                 |Unable to configure audit output using a data stream in remote cluster 0.0.0.0. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created]""".stripMargin.replaceAll("\r\n", "\n")
+                 |Unable to configure audit output using a data stream in remote cluster 0.0.0.0. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created]""".stripMargin
             message should be(expectedMessage)
         }
       }

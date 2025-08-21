@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites.base
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -576,18 +577,18 @@ object BaseIndexApiSuite {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient, esVersion)
 
-    documentManager.createDoc("index1", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("index1", 1, ujsonRead("""{"hello":"world"}""")).force()
     indexManager.createAliasOf("index1", "index1_alias").force()
 
-    documentManager.createDoc("index2", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("index2", 1, ujsonRead("""{"hello":"world"}""")).force()
     indexManager.createAliasOf("index2", "index2_alias").force()
 
-    documentManager.createDoc("index5-000001", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("index5-000001", 1, ujsonRead("""{"hello":"world"}""")).force()
     indexManager.createAliasOf("index5-000001", "index5").force()
 
-    documentManager.createDoc("index7-000001", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("index7-000001", 1, ujsonRead("""{"hello":"world"}""")).force()
     indexManager.createAliasOf("index7-000001", "index7").force()
     indexManager.createAliasOf("index7-000001", "special_index7").force()
-    documentManager.createDoc("index7-000002", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("index7-000002", 1, ujsonRead("""{"hello":"world"}""")).force()
   }
 }

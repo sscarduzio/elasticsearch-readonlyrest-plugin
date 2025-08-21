@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -83,9 +84,9 @@ class IndicesReverseWildcardSuite
 object IndicesReverseWildcardSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("logstash-a1", "doc-a1", ujson.read(s"""{"title": "logstash-a1"}"""))
-    documentManager.createDoc("logstash-a2", "doc-a2", ujson.read(s"""{"title": "logstash-a2"}"""))
-    documentManager.createDoc("logstash-b1", "doc-b1", ujson.read(s"""{"title": "logstash-b1"}"""))
-    documentManager.createDoc("logstash-b2", "doc-b2", ujson.read(s"""{"title": "logstash-b2"}"""))
+    documentManager.createDoc("logstash-a1", "doc-a1", ujsonRead(s"""{"title": "logstash-a1"}"""))
+    documentManager.createDoc("logstash-a2", "doc-a2", ujsonRead(s"""{"title": "logstash-a2"}"""))
+    documentManager.createDoc("logstash-b1", "doc-b1", ujsonRead(s"""{"title": "logstash-b1"}"""))
+    documentManager.createDoc("logstash-b2", "doc-b2", ujsonRead(s"""{"title": "logstash-b2"}"""))
   }
 }

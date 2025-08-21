@@ -21,6 +21,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
@@ -115,7 +116,7 @@ class ImpersonationSuite
         }
         "when ldap service used in rule is not mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
+            .configureImpersonationMocks(ujsonRead(
               s"""
                  |{
                  |  "services": [
@@ -157,7 +158,7 @@ class ImpersonationSuite
       "is supported" - {
         "when ldap service used in rule is mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
+            .configureImpersonationMocks(ujsonRead(
               s"""
                  |{
                  |  "services": [
@@ -208,7 +209,7 @@ class ImpersonationSuite
         }
         "when external auth service used in rule is not mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
+            .configureImpersonationMocks(ujsonRead(
               s"""
                  |{
                  |  "services": [
@@ -239,7 +240,7 @@ class ImpersonationSuite
       "is supported" - {
         "when external auth service used in rule is mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
+            .configureImpersonationMocks(ujsonRead(
               s"""
                  |{
                  |  "services": [
@@ -279,7 +280,7 @@ class ImpersonationSuite
         }
         "when external auth service used in rule is not mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
+            .configureImpersonationMocks(ujsonRead(
               s"""
                  |{
                  |  "services": [
@@ -334,7 +335,7 @@ class ImpersonationSuite
       "is supported" - {
         "when external auth service used in rule is mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
+            .configureImpersonationMocks(ujsonRead(
               s"""
                  |{
                  |  "services": [
@@ -390,7 +391,7 @@ class ImpersonationSuite
       "is not supported" - {
         "when ldap service used in internal auth rule is not mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
+            .configureImpersonationMocks(ujsonRead(
               s"""
                  |{
                  |  "services": [
@@ -439,7 +440,7 @@ class ImpersonationSuite
         }
         "when ldap service used in internal auth rule is mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
+            .configureImpersonationMocks(ujsonRead(
               s"""
                  |{
                  |  "services": [
@@ -508,7 +509,7 @@ class ImpersonationSuite
     "mocks were invalidated" in {
       impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
         rorApiManager
-          .configureImpersonationMocks(ujson.read(
+          .configureImpersonationMocks(ujsonRead(
             s"""
                |{
                |  "services": [
@@ -557,7 +558,7 @@ class ImpersonationSuite
         loadTestSettings()
 
         rorApiManager
-          .configureImpersonationMocks(ujson.read(
+          .configureImpersonationMocks(ujsonRead(
             s"""
                |{
                |  "services": [
@@ -703,7 +704,7 @@ class ImpersonationSuite
 
   private def configureSomeMocksForAllExternalServices(): Unit = {
     rorApiManager
-      .configureImpersonationMocks(ujson.read(
+      .configureImpersonationMocks(ujsonRead(
         s"""
            |{
            |  "services": [
@@ -842,7 +843,7 @@ class ImpersonationSuite
       .forceOkStatus()
   }
 
-  private lazy val impersonationNotSupportedResponse = ujson.read(
+  private lazy val impersonationNotSupportedResponse = ujsonRead(
     """
       |{
       |  "error":{
@@ -861,7 +862,7 @@ class ImpersonationSuite
       |}
     """.stripMargin)
 
-  private lazy val impersonationNotAllowedResponse = ujson.read(
+  private lazy val impersonationNotAllowedResponse = ujsonRead(
     """
       |{
       |  "error":{
@@ -880,7 +881,7 @@ class ImpersonationSuite
       |}
     """.stripMargin)
 
-  private lazy val testSettingsNotConfiguredResponse = ujson.read(
+  private lazy val testSettingsNotConfiguredResponse = ujsonRead(
     """
       |{
       |  "error":{
@@ -904,9 +905,9 @@ object ImpersonationSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test3_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test4_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test1_index", 1, ujsonRead("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2_index", 1, ujsonRead("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test3_index", 1, ujsonRead("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test4_index", 1, ujsonRead("""{"hello":"world"}""")).force()
   }
 }

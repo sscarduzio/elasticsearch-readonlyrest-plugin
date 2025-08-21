@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
 import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, IndexTemplateManager, LegacyTemplateManager}
@@ -353,7 +354,7 @@ class IndexTemplatesManagementSuite
           "there is an index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminDocumentManager.createFirstDoc("custom_dev1_index_test", ujson.read("""{"hello":"world"}"""))
+                adminDocumentManager.createFirstDoc("custom_dev1_index_test", ujsonRead("""{"hello":"world"}"""))
 
                 val result = dev1TemplateManager.putTemplate(
                   templateName = "new_template",
@@ -366,7 +367,7 @@ class IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminDocumentManager.createFirstDoc("custom_dev1_index_test", ujson.read("""{"hello":"world"}"""))
+                adminDocumentManager.createFirstDoc("custom_dev1_index_test", ujsonRead("""{"hello":"world"}"""))
 
                 val result = dev1TemplateManager.putTemplate(
                   templateName = "new_template",
@@ -377,7 +378,7 @@ class IndexTemplatesManagementSuite
                 result should have statusCode 200
               }
               "rule has index pattern with no wildcard" in {
-                adminDocumentManager.createFirstDoc("dev1_index", ujson.read("""{"hello":"world"}"""))
+                adminDocumentManager.createFirstDoc("dev1_index", ujsonRead("""{"hello":"world"}"""))
 
                 val result = dev1TemplateManager.putTemplate(
                   templateName = "new_template",

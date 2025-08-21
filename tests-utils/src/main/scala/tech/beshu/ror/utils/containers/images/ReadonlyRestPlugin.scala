@@ -135,7 +135,7 @@ class ReadonlyRestPlugin(esVersion: String,
         )
         .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
           linuxCommand = s"$$JAVA_HOME/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
-          windowsCommand = s"$$JAVA_HOME/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+          windowsCommand =  s"""%JAVA_HOME%\\bin\\java -jar "${esConfig.esDir}\\plugins\\readonlyrest\\ror-tools.jar" patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes""",
         )
         .user("elasticsearch")
     }
@@ -151,7 +151,7 @@ class ReadonlyRestPlugin(esVersion: String,
           .copyFile(esConfig.esConfigDir / "elastic-certificates.bcfks", fromResourceBy(name = "elastic-certificates.bcfks"))
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 10, 0),
             linuxCommand = s"cat ${esConfig.esConfigDir.toString()}/additional-permissions.policy >> ${esConfig.esDir.toString()}/jdk/conf/security/java.policy",
-            windowsCommand = s"cat ${esConfig.esConfigDir.toString()}/additional-permissions.policy >> ${esConfig.esDir.toString()}/jdk/conf/security/java.policy",
+            windowsCommand = s"type \"${esConfig.esConfigDir.toString()}\\additional-permissions.policy\" >> \"${esConfig.esDir.toString()}\\jdk\\conf\\security\\java.policy\"",
           )
       }
       else {

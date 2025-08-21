@@ -33,6 +33,7 @@ import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, testAuditEnvironmentContext}
 
 import java.time.{Clock, Instant, ZoneId}
@@ -71,7 +72,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         acl.handleRegularRequest(request).runSyncUnsafe()
 
-        def expectedJson(jsonString: String) = ujson.read(
+        def expectedJson(jsonString: String) = ujsonRead(
           s"""{
              |  "headers":["x-forwarded-for", "custom-one"],
              |  "acl_history":"[CONTAINER ADMIN-> RULES:[auth_key->false]], [User 1-> RULES:[auth_key->false]]",
@@ -100,11 +101,11 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         val (index, jsonStringFromIndex) = Await.result(indexAuditSinkService.result, 5 seconds)
         index.name.value should startWith("readonlyrest_audit-")
-        ujson.read(jsonStringFromIndex) shouldBe expectedJson(jsonStringFromIndex)
+        ujsonRead(jsonStringFromIndex) shouldBe expectedJson(jsonStringFromIndex)
 
         val (dataStream, jsonStringFromDataStream) = Await.result(dataStreamAuditSinkService.result, 5 seconds)
         dataStream shouldBe fullDataStreamName(NonEmptyString.unsafeFrom("readonlyrest_audit"))
-        ujson.read(jsonStringFromDataStream) shouldBe expectedJson(jsonStringFromDataStream)
+        ujsonRead(jsonStringFromDataStream) shouldBe expectedJson(jsonStringFromDataStream)
       }
       "is passed normally" in {
         val indexAuditSinkService = new MockedIndexAuditSinkService()
@@ -116,7 +117,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         acl.handleRegularRequest(request).runSyncUnsafe()
 
-        def expectedJson(jsonString: String) = ujson.read(
+        def expectedJson(jsonString: String) = ujsonRead(
           s"""{
              |  "headers":["X-Forwarded-For", "Custom-One"],
              |  "acl_history":"[CONTAINER ADMIN-> RULES:[auth_key->false]], [User 1-> RULES:[auth_key->false]]",
@@ -145,11 +146,11 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         val (index, jsonStringFromIndex) = Await.result(indexAuditSinkService.result, 5 seconds)
         index.name.value should startWith("readonlyrest_audit-")
-        ujson.read(jsonStringFromIndex) shouldBe expectedJson(jsonStringFromIndex)
+        ujsonRead(jsonStringFromIndex) shouldBe expectedJson(jsonStringFromIndex)
 
         val (dataStream, jsonStringFromDataStream) = Await.result(dataStreamAuditSinkService.result, 5 seconds)
         dataStream shouldBe fullDataStreamName(nes("readonlyrest_audit"))
-        ujson.read(jsonStringFromDataStream) shouldBe expectedJson(jsonStringFromDataStream)
+        ujsonRead(jsonStringFromDataStream) shouldBe expectedJson(jsonStringFromDataStream)
       }
     }
   }

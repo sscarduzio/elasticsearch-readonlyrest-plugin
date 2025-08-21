@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
@@ -75,8 +76,8 @@ object ReindexSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test1_index", 1, ujsonRead("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2_index", 1, ujsonRead("""{"hello":"world"}""")).force()
   }
 
 }

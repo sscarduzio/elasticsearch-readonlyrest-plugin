@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.containers
 
 import monix.eval.Coeval
+import tech.beshu.ror.utils.containers.windows.WireMockServerPseudoContainer
 
 object dependencies {
 
@@ -36,8 +37,8 @@ object dependencies {
 
   def wiremock(name: String, mappings: String*): DependencyDef = {
     DependencyDef(name,
-      containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))),
-      originalPort = WireMockContainer.WIRE_MOCK_PORT)
+      containerCreator = Coeval(new WireMockServerPseudoContainer(mappings.toList)),
+      originalPort = 8080)
   }
 
   def es(name: String, container: EsContainer): DependencyDef = DependencyDef(

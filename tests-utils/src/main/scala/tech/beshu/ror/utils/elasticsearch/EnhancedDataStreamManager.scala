@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import cats.data.NonEmptyList
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -69,7 +70,7 @@ class EnhancedDataStreamManager(dataStreamManager: DataStreamManager,
     indexManager.rollover(name).force()
   }
 
-  private def indexTemplate(dataStreamName: String) = ujson.read(
+  private def indexTemplate(dataStreamName: String) = ujsonRead(
     s"""
        |{
        |  "index_patterns": ["$dataStreamName*"],

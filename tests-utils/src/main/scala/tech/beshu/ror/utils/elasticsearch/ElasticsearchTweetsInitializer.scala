@@ -16,9 +16,10 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import tech.beshu.ror.utils.JsonReader.ujsonRead
+
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneOffset}
-
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -42,7 +43,7 @@ object ElasticsearchTweetsInitializer extends ElasticsearchNodeDataInitializer {
   }
 
   private def jsonFrom(user: String, content: String) = {
-    ujson.read(
+    ujsonRead(
       s"""{
          |  "@timestamp": "${LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)}",
          |  "user": "$user",

@@ -83,13 +83,13 @@ abstract class EsContainer(val esVersion: String,
   }
 
   def port: Integer = containterImplementation match {
-    case EsContainerImplementation.Windows(_) => 9200
+    case EsContainerImplementation.Windows(container) => container.getPort
     case EsContainerImplementation.Linux(_, container) => container.getMappedPort(9200)
   }
 
   def getAddressInInternalNetwork = containterImplementation match {
-    case EsContainerImplementation.Windows(_) =>
-      s"localhost:9200"
+    case EsContainerImplementation.Windows(container) =>
+      s"localhost:${container.getPort}"
     case EsContainerImplementation.Linux(_, container) =>
       s"${containerInfo.getConfig.getHostName}:9200"
   }

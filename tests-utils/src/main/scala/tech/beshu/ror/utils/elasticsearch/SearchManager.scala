@@ -19,6 +19,7 @@ package tech.beshu.ror.utils.elasticsearch
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager.*
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
@@ -50,7 +51,7 @@ class SearchManager(client: RestClient,
   }
 
   def searchAll(indexName: String): SearchResult = {
-    val queryAll = ujson.read(
+    val queryAll = ujsonRead(
       s"""{
          |  "query": {
          |    "match_all": {}
