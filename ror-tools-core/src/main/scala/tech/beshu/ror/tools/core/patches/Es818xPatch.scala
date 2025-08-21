@@ -47,7 +47,7 @@ private[patches] class Es818xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       DeactivateSecurityActionFilter,
       DeactivateAuthenticationServiceInHttpTransport,
       DummyAuthorizeInAuthorizationService,
-      DummyAuthenticationInAuthenticationChain
+      new DummyAuthenticationInAuthenticationChain(esVersion)
     ),
     new XPackIlmJarPatchCreator(
       OpenModule

@@ -51,6 +51,6 @@ private[patches] class Es83xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       DeactivateSecurityActionFilter,
       MockAuthorizationInfoDuringRetrievingUserPrivilegesInAuthorizationService,
       DummyAuthorizeInAuthorizationService,
-      DummyAuthenticationInAuthenticationChain
+      new DummyAuthenticationInAuthenticationChain(esVersion)
     )
   )
