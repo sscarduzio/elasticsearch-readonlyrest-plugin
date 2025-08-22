@@ -42,8 +42,11 @@ object WindowsElasticsearchSetup extends LazyLogging {
   def basePath: os.Path =
     os.pwd / "windows-es"
 
+  def downloadsPath(esVersion: String): os.Path =
+    basePath / "downloads"
+
   def zipFilePath(esVersion: String): os.Path =
-    basePath / "downloads" / s"elasticsearch-$esVersion.zip"
+    downloadsPath(esVersion) / s"elasticsearch-$esVersion.zip"
 
   def esPath(clusterName: String, nodeName: String): os.Path =
     basePath / s"es_${clusterName}_${nodeName}"
@@ -125,6 +128,7 @@ object WindowsElasticsearchSetup extends LazyLogging {
   }
 
   private def downloadEsZipFileWithProgress(esVersion: String): Unit = {
+    os.makeDir.all(downloadsPath(esVersion))
     val dest = zipFilePath(esVersion)
     logger.info(s"Checking if ES $esVersion for Windows is already downloaded")
     if (!dest.toIO.exists()) {

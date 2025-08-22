@@ -60,10 +60,18 @@ class RorPluginGradleProject(val moduleName: String) {
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
   def assemble: Option[JFile] = {
-    runTask(moduleName + ":packageRorPlugin")
+    println(s"Assemble $pluginName")
     val plugin = new JFile(project, "build/distributions/" + pluginName)
-    if (!plugin.exists) None
-    else Some(plugin)
+    if (plugin.exists()) {
+      println(s"Was already assembled, reusing $pluginName")
+      Some(plugin)
+    } else {
+      println(s"Assembling $pluginName")
+      runTask(moduleName + ":packageRorPlugin")
+      println(s"Assembled $pluginName")
+      if (!plugin.exists) None
+      else Some(plugin)
+    }
   }
 
   def getModuleESVersion: String = esProjectProperties.getProperty("latestSupportedEsVersion")
