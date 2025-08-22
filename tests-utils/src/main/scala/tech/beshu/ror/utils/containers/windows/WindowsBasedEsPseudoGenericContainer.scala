@@ -54,5 +54,5 @@ class WindowsBasedEsPseudoGenericContainer(elasticsearch: Elasticsearch, waitStr
   def getPort: Int = processAndPort.map(_._2).getOrElse(throw new IllegalStateException("The ES is not started, port is not yet defined"))
 
   override def getContainerId: String = "WindowsBasedEsPseudoGenericContainer"
-
+  override def getDockerImageName: String = "WindowsBasedEsPseudoGenericContainer"
 }

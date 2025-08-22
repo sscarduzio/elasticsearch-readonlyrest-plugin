@@ -46,24 +46,21 @@ import scala.language.{implicitConversions, postfixOps}
 class LdapPseudoGenericContainer(startable: Startable)
   extends GenericContainer[LdapPseudoGenericContainer]("noop:latest") {
 
-  // Override start to delegate to the service
   override def start(): Unit = {
     doStart()
   }
 
-  // Override doStart to delegate to the service
   override def doStart(): Unit = {
     startable.start()
   }
 
-  // Delegate stop to the service
   override def stop(): Unit = {
     startable.stop()
-    super.stop() // no-op, but safe to call
+    super.stop()
   }
 
-  // Optional override to prevent real Docker interaction
-  override def getContainerId: String = "fake-container"
+  override def getContainerId: String = "LdapPseudoGenericContainer"
+  override def getDockerImageName: String = "LdapPseudoGenericContainer"
 }
 
 class LdapPseudoContainer(service: InMemoryLdapService)

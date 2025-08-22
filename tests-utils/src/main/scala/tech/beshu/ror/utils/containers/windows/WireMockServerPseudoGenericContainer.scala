@@ -55,7 +55,7 @@ class WireMockServerPseudoGenericContainer(mappings: List[String])
   def getWireMockPort: Int = server.map(_.port()).getOrElse(WireMockServerCreator.DefaultPort)
 
   override def getContainerId: String = "WireMockServerPseudoGenericContainer"
-
+  override def getDockerImageName: String = "WireMockServerPseudoGenericContainer"
 }
 
 object WireMockServerCreator {
