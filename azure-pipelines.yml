@@ -318,9 +318,9 @@ stages:
             clean: false
             persistCredentials: true
           - task: JavaToolInstaller@0
-            displayName: Switch to Java 22
+            displayName: Switch to Java 21
             inputs:
-              versionSpec: '22'
+              versionSpec: '21'
               jdkArchitectureOption: 'x64'
               jdkSourceOption: 'PreInstalled'
           - powershell: |
