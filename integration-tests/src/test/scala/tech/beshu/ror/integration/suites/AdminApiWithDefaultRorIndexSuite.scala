@@ -1,17 +1,3 @@
-// Not working at all, crashing:
-// - RemoteClusterAuditingToolsSuite
-// - RemoteReindexSuite - JDK 11 for 6.8.23, perhaps ignore
-// - DynamicVariablesSuite (problem resolving envs)
-// Some tests failing
-// - AdminApiWithDefaultRorIndexSuite (configuration is new and correct, will destruct the engine on demand)
-// - CrossClusterCallsSuite (all tests fail)
-// - DuplicatedResponseHeadersIssueSuite (everySearchCallForEachUserShouldReturnTheSameResult)
-// - ExternalAuithenticationSuite (HTTP 403)
-// - LdapIntegrationSuite (all tests)
-// - RorStartingSuite (some tests)
-// - ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite (some tests)
-// - LocalClusterAuditingToolsSuite (first request uses V1 serializer, then ROR config is reloaded and second request uses V2 serializer)
-
 /*
  *    This file is part of ReadonlyREST.
  *
@@ -28,6 +14,21 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
+// Not working at all, crashing:
+// - RemoteClusterAuditingToolsSuite
+// - RemoteReindexSuite - JDK 11 for 6.8.23, perhaps ignore
+// - DynamicVariablesSuite (problem resolving envs)
+// Some tests failing
+// - AdminApiWithDefaultRorIndexSuite (configuration is new and correct, will destruct the engine on demand)
+// - CrossClusterCallsSuite (all tests fail)
+// - DuplicatedResponseHeadersIssueSuite (everySearchCallForEachUserShouldReturnTheSameResult)
+// - ExternalAuithenticationSuite (HTTP 403)
+// - LdapIntegrationSuite (all tests)
+// - RorStartingSuite (some tests)
+// - ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite (some tests)
+// - LocalClusterAuditingToolsSuite (first request uses V1 serializer, then ROR config is reloaded and second request uses V2 serializer)
+
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite

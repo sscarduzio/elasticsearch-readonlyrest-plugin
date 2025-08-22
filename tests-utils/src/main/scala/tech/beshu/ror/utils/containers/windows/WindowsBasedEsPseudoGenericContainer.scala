@@ -45,7 +45,7 @@ class WindowsBasedEsPseudoGenericContainer(elasticsearch: Elasticsearch, waitStr
   override def stop(): Unit = {
     super.stop()
     processAndPort.foreach { case (proc, _) =>
-      println(s"ZZZZZZZZZZ stop $processAndPort")
+      logger.info(s"Stopping ES process with pid ${proc.wrapped.pid} on port ${processAndPort.map(_._2)}")
       os.proc("taskkill", "/PID", proc.wrapped.pid.toString, "/F", "/T").call()
     }
     processAndPort = None
