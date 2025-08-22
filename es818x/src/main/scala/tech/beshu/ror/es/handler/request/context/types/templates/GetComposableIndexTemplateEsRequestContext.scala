@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.rollover.RolloverConfiguration
 import org.elasticsearch.action.admin.indices.template.get.GetComposableIndexTemplateAction
@@ -94,9 +93,9 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
 
   private def updateResponse(`using`: TemplateRequestBlockContext) = {
     import org.joor.Reflect.*
-    ModificationResult.UpdateResponse {
+    ModificationResult.UpdateResponse.sync {
       case r: GetComposableIndexTemplateAction.Response =>
-        Task.now(new GetComposableIndexTemplateAction.Response(
+        new GetComposableIndexTemplateAction.Response(
           GetComposableIndexTemplateEsRequestContext
             .filter(
               templates = r.indexTemplates().asSafeMap,
@@ -104,9 +103,9 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
             )
             .asJava,
           on(r).get[RolloverConfiguration]("rolloverConfiguration")
-        ))
+        )
       case other =>
-        Task.now(other)
+        other
     }
   }
 

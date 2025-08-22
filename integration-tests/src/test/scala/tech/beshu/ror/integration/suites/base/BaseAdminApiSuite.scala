@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites.base
 
 import java.time.Instant
 import cats.data.NonEmptyList
-import org.apache.commons.lang.StringEscapeUtils.escapeJava
+import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.scalatest.concurrent.Eventually
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}

@@ -19,8 +19,11 @@ pluginManagement {
     includeBuild('build-base')
 }
 plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0'
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
+
+assert JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) :
+        "This project must run on JDK 17+ (found ${JavaVersion.current()})."
 
 rootProject.name = 'readonlyrest'
 include 'ror-shadowed-libs'
@@ -57,6 +60,7 @@ include 'es815x'
 include 'es816x'
 include 'es818x'
 include 'es90x'
+include 'es91x'
 include 'ror-tools-core'
 include 'ror-tools'
 include 'tests-utils'

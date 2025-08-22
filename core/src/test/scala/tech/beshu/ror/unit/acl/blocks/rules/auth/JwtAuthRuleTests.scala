@@ -19,8 +19,7 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 import cats.data.NonEmptyList
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
-import io.jsonwebtoken.SignatureAlgorithm
-import io.jsonwebtoken.security.Keys
+import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -60,7 +59,7 @@ class JwtAuthRuleTests
   "A JwtAuthRule" should {
     "match" when {
       "token has valid HS256 signature" in {
-        val secret: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val secret: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(secret, claims = List.empty)
         assertMatchRule(
           configuredJwtDef = JwtDef(
@@ -148,7 +147,7 @@ class JwtAuthRuleTests
         checkValidToken()
       }
       "user claim name is defined and userId is passed in JWT token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1"
         ))
@@ -170,7 +169,7 @@ class JwtAuthRuleTests
         }
       }
       "group IDs claim name is defined and groups are passed in JWT token claim (no preferred group)" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "groups" := List("group1", "group2")
@@ -193,7 +192,7 @@ class JwtAuthRuleTests
         }
       }
       "group IDs claim name is defined and groups are passed in JWT token claim (with preferred group)" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "groups" := List("group1", "group2")
@@ -218,7 +217,7 @@ class JwtAuthRuleTests
         }
       }
       "group IDs claim name is defined as http address and groups are passed in JWT token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "https://{domain}/claims/roles" := List("group1", "group2")
@@ -241,7 +240,7 @@ class JwtAuthRuleTests
         }
       }
       "group IDs claim name is defined and no groups field is passed in JWT token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1"
         ))
@@ -264,7 +263,7 @@ class JwtAuthRuleTests
         }
       }
       "group IDs claim path is defined and groups are passed in JWT token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "tech" :-> "beshu" :-> "groups" := List("group1", "group2")
@@ -287,7 +286,7 @@ class JwtAuthRuleTests
         }
       }
       "group names claim is defined and group names are passed in JWT token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           Claim(NonEmptyList.one(ClaimKey("groups")), List(
@@ -317,7 +316,7 @@ class JwtAuthRuleTests
       }
       "group names claim is defined and group names passed in JWT token claim are malformed" when {
         "group names count differs from the group ID count" in {
-          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val key: Key = Jwts.SIG.HS256.key().build()
           val jwt = Jwt(key, claims = List(
             "userId" := "user1",
             Claim(NonEmptyList.one(ClaimKey("groups")), List(
@@ -346,7 +345,7 @@ class JwtAuthRuleTests
           }
         }
         "one group does not have a name" in {
-          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val key: Key = Jwts.SIG.HS256.key().build()
           val jwt = Jwt(key, claims = List(
             "userId" := "user1",
             Claim(NonEmptyList.one(ClaimKey("groups")), List(
@@ -374,7 +373,7 @@ class JwtAuthRuleTests
         }
       }
       "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is not empty (1)" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           Claim(NonEmptyList.one(ClaimKey("groups")), List(
@@ -408,7 +407,7 @@ class JwtAuthRuleTests
         }
       }
       "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is not empty (2)" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           Claim(NonEmptyList.one(ClaimKey("groups")), List(
@@ -442,7 +441,7 @@ class JwtAuthRuleTests
         }
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty (1)" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           Claim(NonEmptyList.one(ClaimKey("groups")), List(
@@ -476,7 +475,7 @@ class JwtAuthRuleTests
         }
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty (2)" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           Claim(NonEmptyList.one(ClaimKey("groups")), List(
@@ -510,7 +509,7 @@ class JwtAuthRuleTests
         }
       }
       "custom authorization header is used" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List.empty)
         assertMatchRule(
           configuredJwtDef = JwtDef(
@@ -529,7 +528,7 @@ class JwtAuthRuleTests
         }
       }
       "custom authorization token prefix is used" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List.empty)
         assertMatchRule(
           configuredJwtDef = JwtDef(
@@ -553,8 +552,8 @@ class JwtAuthRuleTests
     }
     "not match" when {
       "token has invalid HS256 signature" in {
-        val key1: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
-        val key2: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key1: Key = Jwts.SIG.HS256.key().build()
+        val key2: Key = Jwts.SIG.HS256.key().build()
         val jwt2 = Jwt(key2, claims = List.empty)
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
@@ -596,7 +595,7 @@ class JwtAuthRuleTests
         )
       }
       "user claim name is defined but userId isn't passed in JWT token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List.empty)
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
@@ -610,7 +609,7 @@ class JwtAuthRuleTests
         )
       }
       "group IDs claim name is defined but groups aren't passed in JWT token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List.empty)
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
@@ -624,7 +623,7 @@ class JwtAuthRuleTests
         )
       }
       "group IDs claim path is wrong" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "groups" := List("group1", "group2")
@@ -644,7 +643,7 @@ class JwtAuthRuleTests
         )
       }
       "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is empty" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "groups" := List("group1", "group2")
@@ -664,7 +663,7 @@ class JwtAuthRuleTests
         )
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is empty" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "groups" := List("group1", "group2")
@@ -684,7 +683,7 @@ class JwtAuthRuleTests
         )
       }
       "preferred group is not on the groups list from JWT" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "groups" := List("group1", "group2")
@@ -702,7 +701,7 @@ class JwtAuthRuleTests
         )
       }
       "preferred group is not on the permitted groups list" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "groups" := List("group1", "group2")

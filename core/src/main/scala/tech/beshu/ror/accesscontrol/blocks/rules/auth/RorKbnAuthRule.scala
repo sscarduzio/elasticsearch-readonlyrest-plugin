@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.security.Keys
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
@@ -51,9 +52,9 @@ final class RorKbnAuthRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   private val parser = settings.rorKbn.checkMethod match {
-    case Hmac(rawKey) => Jwts.parserBuilder().setSigningKey(rawKey).build()
-    case Rsa(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
-    case Ec(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
+    case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
+    case Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
+    case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
   }
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
@@ -116,7 +117,7 @@ final class RorKbnAuthRule(val settings: Settings,
 
   private def claimsFrom(token: Jwt.Token)
                         (implicit requestId: RequestId) = {
-    Try(parser.parseClaimsJws(token.value.value).getBody)
+    Try(parser.parseSignedClaims(token.value.value).getPayload)
       .toEither
       .map(Jwt.Payload.apply)
       .left.map { ex => logger.debug(s"[${requestId.show}] JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }

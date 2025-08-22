@@ -274,7 +274,7 @@ class CurrentUserMetadataAccessControlTests
        |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
        |      unique_member_attribute: "uniqueMember"                 # default "uniqueMember"
        |
-    """.stripMargin
+    """.stripMargin.replace("\r\n", "\n").replace("\r", "\n")
 
   "An ACL" when {
     "handling current user metadata kibana plugin request" should {

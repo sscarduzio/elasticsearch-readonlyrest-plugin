@@ -54,7 +54,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
       .applyFieldLevelSecurity(fieldLevelSecurity)
       .indices(filteredRequestedIndices.stringify: _*)
 
-    ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
+    ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])

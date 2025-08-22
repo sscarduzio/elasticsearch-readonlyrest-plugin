@@ -95,6 +95,8 @@ object KibanaIndexName {
     s"""^${kibanaIndex.stringify}-event-log-\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana-event-log-8.8.0
     s"""^${kibanaIndex.stringify}_security_solution$$""".r, // eg. .kibana_security_solution
     s"""^${kibanaIndex.stringify}_security_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_security_solution_8.8.0
+    s"""^${kibanaIndex.stringify}_search_solution$$""".r, // eg. .kibana_search_solution
+    s"""^${kibanaIndex.stringify}_search_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana__search_solution_9.1.0
     s"""^${kibanaIndex.stringify}_task_manager$$""".r, // eg. .kibana_task_manager
     s"""^${kibanaIndex.stringify}_task_manager_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_task_manager_8.8.0,
     s"""^${kibanaIndex.stringify}_usage_counters$$""".r, // eg. .kibana_usage_counters

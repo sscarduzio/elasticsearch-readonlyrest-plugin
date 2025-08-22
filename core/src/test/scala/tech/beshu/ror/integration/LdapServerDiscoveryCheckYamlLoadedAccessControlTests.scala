@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration
 
-import com.dimafeng.testcontainers.ForAllTestContainer
+import com.dimafeng.testcontainers.{Container, ForAllTestContainer}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
+import tech.beshu.ror.utils.misc.OsUtils
 
 class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
   extends AnyWordSpec
@@ -37,8 +38,13 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
     with ForAllTestContainer
     with Inside {
 
-  override val container: LdapWithDnsContainer = new LdapWithDnsContainer("LDAP1", "test_example.ldif")
+  override val container: Container = if (OsUtils.isWindows) NoOpContainer else new LdapWithDnsContainer("LDAP1", "test_example.ldif")
 
+  private val port = container match {
+    case ldap: LdapWithDnsContainer => ldap.dnsPort
+    case _ => 1234
+  }
+    
   override protected def configYaml: String =
     s"""readonlyrest:
        |
@@ -50,7 +56,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
        |  ldaps:
        |    - name: ldap1
        |      server_discovery:
-       |        dns_url: "dns://localhost:${container.dnsPort}"
+       |        dns_url: "dns://localhost:$port}"
        |      ha: ROUND_ROBIN
        |      ssl_enabled: false                                        # default true
        |      ssl_trust_all_certs: true                                 # default false
@@ -69,6 +75,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
     ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
+  if (!OsUtils.isWindows) {
   "An LDAP connectivity check" should {
     "allow core to start" when {
       "server discovery is used and DNS responds with proper address" in {
@@ -84,4 +91,10 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
       }
     }
   }
+  }
+}
+
+object NoOpContainer extends Container {
+  override def start(): Unit = ()
+  override def stop(): Unit = ()
 }
