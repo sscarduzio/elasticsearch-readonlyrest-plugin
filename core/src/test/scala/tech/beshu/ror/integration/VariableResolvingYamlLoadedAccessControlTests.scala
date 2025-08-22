@@ -37,7 +37,7 @@ import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.*
-import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.containers.LdapSingleContainer
 import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -49,7 +49,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
   with ForAllTestContainer
   with Inside {
 
-  override val container: LdapContainer = SingletonLdapContainers.ldap1
+  override val container: LdapSingleContainer = SingletonLdapContainers.ldap1
 
   override protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 

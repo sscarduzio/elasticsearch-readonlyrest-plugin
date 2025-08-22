@@ -16,13 +16,14 @@
  */
 package tech.beshu.ror.utils.containers
 
+import com.dimafeng.testcontainers.SingleContainer
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.testcontainers.lifecycle.Startable
+import org.testcontainers.containers.GenericContainer as JavaGenericContainer
 
 object DependencyRunner {
 
-  final case class EvaluatedDependency(name: String, container: Startable, originalPort: Int)
+  final case class EvaluatedDependency(name: String, container: SingleContainer[JavaGenericContainer[_]], originalPort: Int)
 
   def startDependencies(definitions: List[DependencyDef]): StartedClusterDependencies = {
     val evaluatedDependencies = evaluate(definitions)

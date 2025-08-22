@@ -235,11 +235,11 @@ class Elasticsearch(val esVersion: String,
           case (currentImage, step) =>
             step match {
               case EsUpdateStep.CopyFile(destination, file) =>
-                image.copyFile(destination, file)
+                currentImage.copyFile(destination, file)
               case EsUpdateStep.RunCommand(linuxCommand, _) =>
-                image.run(linuxCommand)
+                currentImage.run(linuxCommand)
               case EsUpdateStep.ChangeUser(user) =>
-                image.user(user)
+                currentImage.user(user)
             }
         }
     }

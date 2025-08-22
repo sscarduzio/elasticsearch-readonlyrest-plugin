@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.containers
 
 import monix.eval.Coeval
 import tech.beshu.ror.utils.containers.windows.WireMockServerPseudoContainer
+import tech.beshu.ror.utils.misc.OsUtils
 
 object dependencies {
 
@@ -25,20 +26,31 @@ object dependencies {
     val ldap = LdapContainer.create(name, ldapInitScript)
     DependencyDef(
       name = name,
-      Coeval(ldap),
-      originalPort = ldap.ldapPort)
+      containerCreator = Coeval(ldap),
+      originalPort = ldap.originalPort
+    )
   }
 
-  def ldap(name: String, ldap: LdapContainer): DependencyDef = DependencyDef(
+  def ldap(name: String, ldap: LdapSingleContainer): DependencyDef = DependencyDef(
     name = name,
-    Coeval(ldap),
-    originalPort = ldap.ldapPort
+    containerCreator = Coeval(ldap),
+    originalPort = ldap.originalPort
   )
 
   def wiremock(name: String, mappings: String*): DependencyDef = {
-    DependencyDef(name,
-      containerCreator = Coeval(new WireMockServerPseudoContainer(mappings.toList)),
-      originalPort = 8080)
+    if (OsUtils.isWindows) {
+      DependencyDef(
+        name = name,
+        containerCreator = Coeval(new WireMockServerPseudoContainer(mappings.toList)),
+        originalPort = 8080,
+      )
+    } else {
+      DependencyDef(
+        name = name,
+        containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))),
+        originalPort = WireMockContainer.WIRE_MOCK_PORT,
+      )
+    }
   }
 
   def es(name: String, container: EsContainer): DependencyDef = DependencyDef(

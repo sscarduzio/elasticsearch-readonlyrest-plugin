@@ -16,10 +16,12 @@
  */
 package tech.beshu.ror.utils.misc
 
+import com.typesafe.scalalogging.LazyLogging
+
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 
-object OsUtils {
+object OsUtils extends LazyLogging {
 
   def isWindows: Boolean = {
     System.getProperties.stringPropertyNames().asScala
@@ -32,6 +34,15 @@ object OsUtils {
       } match
       case Some(osName) => osName.toLowerCase.contains("win")
       case None => false
+  }
+
+  def doNotExecuteOnWindows[T](messageOnWindows: String, f: () => T): Any = {
+    if (isWindows) {
+      logger.warn(messageOnWindows)
+      None
+    } else {
+      Some(f())
+    }
   }
 
 }

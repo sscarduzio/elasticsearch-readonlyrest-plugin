@@ -38,7 +38,7 @@ import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
-//import tech.beshu.ror.utils.containers.LdapWithDnsContainer
+import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 
 import java.time.Clock
 import scala.annotation.tailrec
@@ -64,10 +64,10 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
     ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
-  //private val ldapWithDnsContainer = new LdapWithDnsContainer("LDAP3", "test_example.ldif")
+  private val ldapWithDnsContainer = new LdapWithDnsContainer("LDAP3", "test_example.ldif")
 
   override val container: MultipleContainers = MultipleContainers(
-    SingletonLdapContainers.ldap1, SingletonLdapContainers.ldap1Backup//, ldapWithDnsContainer
+    SingletonLdapContainers.ldap1, SingletonLdapContainers.ldap1Backup, ldapWithDnsContainer
   )
 
   "An LdapService" should {

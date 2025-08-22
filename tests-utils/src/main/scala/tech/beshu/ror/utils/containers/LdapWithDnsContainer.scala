@@ -14,29 +14,29 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-//package tech.beshu.ror.utils.containers
-//
-//import com.dimafeng.testcontainers.Container
-//import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
-//
-//class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource)
-//  extends Container {
-//
-//  private val ldapContainer = LdapContainer.create(name, ldapInitScript)
-//
-//  private var dnsContainer: Option[DnsServerContainer] = None
-//
-//  def dnsPort: Int = dnsContainer.getOrElse(throw new Exception("DNS container hasn't been started yet")).dnsPort
-//
-//  override def start(): Unit = {
-//    ldapContainer.start()
-//    dnsContainer = Option(new DnsServerContainer(1234))
-//    dnsContainer.foreach(_.start())
-//  }
-//
-//  override def stop(): Unit = {
-//    ldapContainer.stop()
-//    dnsContainer.foreach(_.stop())
-//  }
-//
-//}
+package tech.beshu.ror.utils.containers
+
+import com.dimafeng.testcontainers.Container
+import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
+
+class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource)
+  extends Container {
+
+  private val ldapContainer = LdapContainer.create(name, ldapInitScript)
+
+  private var dnsContainer: Option[DnsServerContainer] = None
+
+  def dnsPort: Int = dnsContainer.getOrElse(throw new Exception("DNS container hasn't been started yet")).dnsPort
+
+  override def start(): Unit = {
+    ldapContainer.start()
+    dnsContainer = Option(new DnsServerContainer(ldapContainer.ldapPort))
+    dnsContainer.foreach(_.start())
+  }
+
+  override def stop(): Unit = {
+    ldapContainer.stop()
+    dnsContainer.foreach(_.stop())
+  }
+
+}

@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.ldap;
  */
 
 import tech.beshu.ror.utils.containers.LdapContainer;
+import tech.beshu.ror.utils.containers.LdapSingleContainer;
 
 /**
  * This is really useful when you want to stand up a LDAP server for manual tests
@@ -26,8 +27,8 @@ public class LDAPServer {
   public static void main(String[] args) throws InterruptedException {
     String ldifFile = "ldap.ldif";
     System.out.println(LDAPServer.class.getSimpleName() + " using config file: " + ldifFile);
-    LdapContainer lc = LdapContainer.create("ldap", ldifFile);
-    lc.start();
+    LdapSingleContainer lc = LdapContainer.create("ldap", ldifFile);
+    lc.doStart();
     System.out.println(lc.ldapHost() + " " + lc.ldapPort());
     while(true){
       Thread.sleep(Long.MAX_VALUE);

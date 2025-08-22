@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.containers
 
 import better.files.File
 import tech.beshu.ror.utils.containers.ContainerOps.*
+import tech.beshu.ror.utils.misc.OsUtils
 
 object RorConfigAdjuster {
 
@@ -50,7 +51,7 @@ object RorConfigAdjuster {
 
   private def resolveReplacementForGivenMode(dependency: StartedDependency): Replacement = {
     Replacement(
-      host = "localhost",
+      host = if (OsUtils.isWindows) "localhost" else dependency.container.ipAddressFromFirstNetwork.getOrElse(throw new IllegalStateException("Could not extract ip address inside docker network")) ,
       port = dependency.originalPort
     )
   }

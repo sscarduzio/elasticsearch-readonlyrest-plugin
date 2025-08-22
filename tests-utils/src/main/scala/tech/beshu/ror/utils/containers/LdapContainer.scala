@@ -16,180 +16,61 @@
  */
 package tech.beshu.ror.utils.containers
 
-import better.files.{File, Resource}
+import better.files.Dispose.FlatMap.Implicits
+import better.files.{Disposable, Dispose, File, Resource}
+import com.dimafeng.testcontainers.{GenericContainer, SingleContainer}
 import com.typesafe.scalalogging.LazyLogging
-import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
-import com.unboundid.ldap.sdk.{LDAPConnection, ResultCode}
+import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, LDAPException, ResultCode}
 import com.unboundid.ldif.LDIFReader
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import org.testcontainers.containers.{Network, GenericContainer as JavaGenericContainer}
+import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 import tech.beshu.ror.utils.containers.LdapContainer.{InitScriptSource, defaults}
+import tech.beshu.ror.utils.containers.windows.{LdapPseudoGenericContainer, NonStoppableLdapPseudoGenericContainer}
+import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 import java.io.{BufferedReader, InputStreamReader}
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
-import com.dimafeng.testcontainers.SingleContainer
-import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
-import org.testcontainers.containers.GenericContainer
-import org.testcontainers.lifecycle.Startable
-import org.testcontainers.shaded.org.bouncycastle.cert.*
-import org.testcontainers.shaded.org.bouncycastle.cert.jcajce.{JcaX509CertificateConverter, JcaX509v3CertificateBuilder}
-import org.testcontainers.shaded.org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.testcontainers.shaded.org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
-import sun.security.x509.*
 
-import java.math.BigInteger
-import java.security.{KeyPairGenerator, KeyStore, Security}
-import java.security.cert.X509Certificate
-import java.util.Date
-import javax.net.ssl.{KeyManager, KeyManagerFactory}
-import javax.security.auth.x500.X500Principal
+trait LdapSingleContainer extends SingleContainer[JavaGenericContainer[_]] {
 
+  def originalPort: Int
 
-class LdapGenericContainer(startable: Startable)
-  extends GenericContainer[LdapGenericContainer]("noop:latest") {
+  def ldapPort: Int
 
-  // Override start to delegate to the service
-  override def start(): Unit = {
-    doStart()
-  }
+  def ldapSSLPort: Int
 
-  // Override doStart to delegate to the service
-  override def doStart(): Unit = {
-    startable.start()
-  }
+  def ldapHost: String
 
-  // Delegate stop to the service
+  def doStart(): Unit = start()
+}
+
+class LdapContainer private[containers](name: String, ldapInitScript: InitScriptSource)
+  extends GenericContainer(
+    dockerImage = "osixia/openldap:1.5.0",
+    env = Map(
+      "LDAP_ORGANISATION" -> defaults.ldap.organisation,
+      "LDAP_DOMAIN" -> defaults.ldap.domain,
+      "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword,
+      "LDAP_TLS_VERIFY_CLIENT" -> "try"
+    ),
+    exposedPorts = Seq(defaults.ldap.port, defaults.ldap.sslPort),
+    waitStrategy = Some(new LdapWaitStrategy(name, ldapInitScript))
+  ) with LdapSingleContainer {
+
+  def originalPort: Int = LdapContainer.defaults.ldap.port
+
+  def ldapPort: Int = this.mappedPort(defaults.ldap.port)
+
+  def ldapSSLPort: Int = this.mappedPort(defaults.ldap.sslPort)
+
+  def ldapHost: String = this.containerIpAddress
+
   override def stop(): Unit = {
-    startable.stop()
-    super.stop() // no-op, but safe to call
-  }
-
-  // Optional override to prevent real Docker interaction
-  override def getContainerId: String = "fake-container"
-}
-
-class LdapContainer(service: InMemoryLdapService)
-  extends SingleContainer[GenericContainer[_]] {
-
-  override val container: GenericContainer[_] =
-    new LdapGenericContainer(service)
-
-  def ldapPort: Int = service.ldapPort
-
-  def ldapSSLPort: Int = service.ldapSSLPort
-
-  def ldapHost: String = service.ldapHost
-
-}
-
-class InMemoryLdapService(name: String, ldapInitScript: InitScriptSource)
-  extends Startable with LazyLogging {
-
-  private val config = new InMemoryDirectoryServerConfig(defaults.ldap.domainDn)
-  config.setSchema(null)
-  config.addAdditionalBindCredentials(defaults.ldap.bindDn.get, defaults.ldap.adminPassword)
-
-  config.setListenerConfigs(
-    InMemoryListenerConfig.createLDAPConfig("ldap", null, 0, null, false, false),
-    createLDAPSListener("ldaps", 0)
-  )
-
-  private val server = new InMemoryDirectoryServer(config)
-
-  def start(): Unit = {
-    server.startListening()
-    logger.info(s"LDAP in-memory server '$name' started on port ${server.getListenPort}")
-    initLdapFromFile()
-  }
-
-  def stop(): Unit = {
-    server.shutDown(true)
-    logger.info(s"LDAP in-memory server '$name' stopped")
-  }
-
-  def ldapPort: Int = server.getListenPort("ldap")
-
-  def ldapSSLPort: Int = server.getListenPort("ldaps")
-
-  def ldapHost: String = "localhost"
-
-  private def initLdapFromFile(): Unit = {
-    val entries = readEntries()
-    val connection = new LDAPConnection(ldapHost, ldapPort, defaults.ldap.bindDn.get, defaults.ldap.adminPassword)
-    entries.foreach { entry =>
-      try {
-        val result = connection.add(entry)
-        if (result.getResultCode != ResultCode.SUCCESS && result.getResultCode != ResultCode.ENTRY_ALREADY_EXISTS) {
-          throw new IllegalStateException(s"Failed to add entry: ${result.getResultCode}")
-        }
-      } catch {
-        case e: Exception =>
-          if (!e.getMessage.contains("ENTRY_ALREADY_EXISTS")) {
-            throw e
-          }
-      }
-    }
-    connection.close()
-  }
-
-  private def readEntries() = {
-    val reader = ldapInitScript match {
-      case InitScriptSource.Resource(resourceName) =>
-        new BufferedReader(new InputStreamReader(Resource.getAsStream(resourceName)))
-      case InitScriptSource.AFile(file) =>
-        file.newBufferedReader
-    }
-    val ldifReader = new LDIFReader(reader)
-    Iterator
-      .continually(Option(ldifReader.readEntry()))
-      .takeWhile(_.isDefined)
-      .flatten
-      .toList
-  }
-
-  def createLDAPSListener(name: String, port: Int): InMemoryListenerConfig = {
-    val keyManager = KeyManagerUtil.createSelfSignedKeyManager()
-    val sslUtil = new SSLUtil(keyManager, new TrustAllTrustManager)
-    val serverSocketFactory = sslUtil.createSSLServerSocketFactory()
-    InMemoryListenerConfig.createLDAPSConfig(name, null, port, serverSocketFactory, null)
-  }
-
-  object KeyManagerUtil {
-
-    Security.addProvider(new BouncyCastleProvider())
-
-    def createSelfSignedKeyManager(dn: String = "CN=localhost"): KeyManager = {
-      val keyPairGen = KeyPairGenerator.getInstance("RSA")
-      keyPairGen.initialize(2048)
-      val keyPair = keyPairGen.generateKeyPair()
-
-      val now = new Date()
-      val notAfter = new Date(now.getTime + 365L * 24 * 60 * 60 * 1000) // 1 year
-      val certBuilder: X509v3CertificateBuilder = new JcaX509v3CertificateBuilder(
-        new X500Principal(dn),
-        BigInteger.valueOf(System.currentTimeMillis()),
-        now,
-        notAfter,
-        new X500Principal(dn),
-        keyPair.getPublic
-      )
-
-      val signer = new JcaContentSignerBuilder("SHA256withRSA").build(keyPair.getPrivate)
-
-      val certHolder = certBuilder.build(signer)
-      val cert: X509Certificate = new JcaX509CertificateConverter()
-        .setProvider("BC")
-        .getCertificate(certHolder)
-
-      val keyStore = KeyStore.getInstance("JKS")
-      keyStore.load(null, null)
-      keyStore.setKeyEntry("alias", keyPair.getPrivate, "changeit".toCharArray, Array(cert))
-
-      val kmf = KeyManagerFactory.getInstance("SunX509")
-      kmf.init(keyStore, "changeit".toCharArray)
-      kmf.getKeyManagers.head
-    }
+    this.container.stop()
   }
 }
 
@@ -207,11 +88,18 @@ object LdapContainer {
     implicit def fromFile(file: File): InitScriptSource = AFile(file)
   }
 
-  def create(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
-    new LdapContainer(new InMemoryLdapService(name, ldapInitScript))
+  def create(name: String, ldapInitScript: InitScriptSource): LdapSingleContainer = {
+    if (OsUtils.isWindows) {
+      LdapPseudoGenericContainer.create(name, ldapInitScript)
+    } else {
+      val ldapContainer = new LdapContainer(name, ldapInitScript)
+      ldapContainer.container
+        .setNetwork(Network.SHARED)
+      ldapContainer
+    }
   }
 
-  def create(name: String, ldapInitScript: String): LdapContainer = {
+  def create(name: String, ldapInitScript: String): LdapSingleContainer = {
     create(name, InitScriptSource.fromString(ldapInitScript))
   }
 
@@ -220,8 +108,9 @@ object LdapContainer {
     val containerStartupTimeout: FiniteDuration = 5 minutes
 
     object ldap {
+      val port = 389
+      val sslPort = 636
       val domain = "example.com"
-      val domainDn = domain.split("\\.").map(dc => s"dc=$dc").mkString(",")
       val organisation = "example"
       val adminName = "admin"
       val adminPassword = "password"
@@ -239,7 +128,7 @@ object LdapContainer {
 }
 
 class NonStoppableLdapContainer private(name: String, ldapInitScript: InitScriptSource)
-  extends InMemoryLdapService(name, ldapInitScript) {
+  extends LdapContainer(name, ldapInitScript) {
 
   override def start(): Unit = ()
 
@@ -249,9 +138,98 @@ class NonStoppableLdapContainer private(name: String, ldapInitScript: InitScript
 }
 
 object NonStoppableLdapContainer {
-  def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
-    val ldap = new NonStoppableLdapContainer(name, ldapInitScript)
-    ldap.privateStart()
-    new LdapContainer(ldap)
+  def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapSingleContainer = {
+    if (OsUtils.isWindows) {
+      NonStoppableLdapPseudoGenericContainer.createAndStart(name, ldapInitScript)
+    } else {
+      val ldap = new NonStoppableLdapContainer(name, ldapInitScript)
+      ldap.container.setNetwork(Network.SHARED)
+      ldap.privateStart()
+      ldap
+    }
   }
+}
+
+private class LdapWaitStrategy(name: String,
+                               ldapInitScript: InitScriptSource)
+  extends HostPortWaitStrategy()
+    with LazyLogging
+    with Implicits {
+
+  override def waitUntilReady(): Unit = {
+    super.waitUntilReady()
+    logger.info(s"Waiting for LDAP container '$name' ...")
+    retryBackoff(ldapInitiate(), 15, 1 second, 1)
+      .onErrorHandle { ex =>
+        logger.error("LDAP container startup failed", ex)
+        throw ex
+      }
+      .runSyncUnsafe(defaults.containerStartupTimeout)
+    logger.info(s"LDAP container '$name' started")
+  }
+
+  private def ldapInitiate() = {
+    runOnBindedLdapConnection { connection =>
+      initLdapFromFile(connection)
+    }
+  }
+
+  private def initLdapFromFile(connection: LDAPConnection) = {
+    Task
+      .sequence {
+        readEntries().map { entry =>
+          Task(connection.add(new AddRequest(entry.toLDIF: _*)))
+            .flatMap {
+              case result if Set(ResultCode.SUCCESS, ResultCode.ENTRY_ALREADY_EXISTS).contains(result.getResultCode) =>
+                Task.now(())
+              case result =>
+                Task.raiseError(new IllegalStateException(s"Adding entry failed, due to: ${result.getResultCode}"))
+            }
+            .onErrorRecover {
+              case ex: LDAPException if ex.getResultCode == ResultCode.ENTRY_ALREADY_EXISTS =>
+                Task.now(())
+            }
+        }
+      }
+      .map(_ => ())
+  }
+
+  private def readEntries() = {
+    val result = for {
+      inputStream <- ldapInitScript match {
+        case InitScriptSource.Resource(resourceName) =>
+          new Dispose(new BufferedReader(new InputStreamReader(Resource.getAsStream(resourceName))))
+        case InitScriptSource.AFile(file) =>
+          file.bufferedReader
+      }
+      reader <- new Dispose(new LDIFReader(inputStream))
+    } yield {
+      Iterator
+        .continually(Option(reader.readEntry()))
+        .takeWhile(_.isDefined)
+        .flatten
+        .toList
+    }
+    result.get()
+  }
+
+  private def runOnBindedLdapConnection(action: LDAPConnection => Task[Unit]): Task[Unit] = {
+    defaults.ldap.bindDn match {
+      case Some(bindDn) =>
+        Task(new LDAPConnection(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(defaults.ldap.port)))
+          .bracket(connection =>
+            Task(connection.bind(bindDn, defaults.ldap.adminPassword))
+              .flatMap {
+                case result if result.getResultCode == ResultCode.SUCCESS => action(connection)
+                case result => Task.raiseError(new IllegalStateException(s"LDAP '$name' bind problem - error ${result.getResultCode.intValue()}"))
+              }
+          )(connection =>
+            Task(connection.close())
+          )
+      case None =>
+        Task.raiseError(new IllegalStateException(s"Cannot create bind DN from LDAP config data"))
+    }
+  }
+
+  private implicit val ldifReaderDisposable: Disposable[LDIFReader] = Disposable(_.close())
 }
