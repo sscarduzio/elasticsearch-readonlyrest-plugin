@@ -40,11 +40,11 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
 
   override val container: Container = if (OsUtils.isWindows) NoOpContainer else new LdapWithDnsContainer("LDAP1", "test_example.ldif")
 
-  private val port = container match {
+  private lazy val port = container match {
     case ldap: LdapWithDnsContainer => ldap.dnsPort
     case _ => 1234
   }
-    
+
   override protected def configYaml: String =
     s"""readonlyrest:
        |

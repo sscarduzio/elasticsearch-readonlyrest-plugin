@@ -56,13 +56,16 @@ class CurrentUserMetadataAccessControlTests
     "/current_user_metadata_access_control_tests/wiremock_service3_user7.json",
   )
 
-  private val (wiremock, host, port) =
-    if (OsUtils.isWindows) {
-      (new WireMockServerPseudoContainer(mappings), "localhost", 8080)
-    } else {
-      val container = new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
-      (container, container.getWireMockHost, container.getWireMockPort)
-    }
+  private val wiremock =
+    if (OsUtils.isWindows) 
+      new WireMockServerPseudoContainer(mappings)
+    else 
+      new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
+    
+  private lazy val (host, port) = wiremock match {
+    case container: WireMockScalaAdapter => (container.getWireMockHost, container.getWireMockPort)
+    case _ => ("localhost", 8080)
+  }
 
   private val ldap1 = LdapContainer.create("LDAP1",
     "current_user_metadata_access_control_tests/ldap_ldap1_user5.ldif"
