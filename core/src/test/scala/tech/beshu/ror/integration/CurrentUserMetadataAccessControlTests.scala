@@ -57,11 +57,11 @@ class CurrentUserMetadataAccessControlTests
   )
 
   private val wiremock =
-    if (OsUtils.isWindows) 
+    if (OsUtils.isWindows)
       new WireMockServerPseudoContainer(mappings)
-    else 
+    else
       new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
-    
+
   private lazy val (host, port) = wiremock match {
     case container: WireMockScalaAdapter => (container.getWireMockHost, container.getWireMockPort)
     case _ => ("localhost", 8080)
