@@ -21,7 +21,7 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.{DummyAuthenticationInAuthenticationChain, *}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
 
