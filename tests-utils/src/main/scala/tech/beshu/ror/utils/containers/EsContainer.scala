@@ -55,10 +55,10 @@ abstract class EsContainer(val esVersion: String,
 
   private val waitStrategy = new ElasticsearchNodeWaitingStrategy(esVersion, esConfig.nodeName, esClient, initializer, awaitingReadyStrategy)
 
-  val containterImplementation: EsContainerImplementation = {
+  val containerImplementation: EsContainerImplementation = {
     if (OsUtils.isWindows) {
       EsContainerImplementation.Windows(
-        container = new WindowsBasedEsPseudoGenericContainer(elasticsearch, waitStrategy)
+        container = new WindowsBasedEsPseudoGenericContainer(elasticsearch, waitStrategy, additionalLogConsumer),
       )
     } else {
       val esImage = DockerImageCreator.create(elasticsearch)
@@ -70,24 +70,24 @@ abstract class EsContainer(val esVersion: String,
     }
   }
 
-  override implicit val container: GenericContainer[_] = containterImplementation match {
+  override implicit val container: GenericContainer[_] = containerImplementation match {
     case EsContainerImplementation.Windows(container) => container
     case EsContainerImplementation.Linux(esImage, container) => container
   }
 
   def sslEnabled: Boolean
 
-  def ip: String = containterImplementation match {
+  def ip: String = containerImplementation match {
     case EsContainerImplementation.Windows(_) => "localhost"
     case EsContainerImplementation.Linux(_, container) => container.getHost
   }
 
-  def port: Integer = containterImplementation match {
+  def port: Integer = containerImplementation match {
     case EsContainerImplementation.Windows(container) => container.getPort
     case EsContainerImplementation.Linux(_, container) => container.getMappedPort(9200)
   }
 
-  def getAddressInInternalNetwork = containterImplementation match {
+  def getAddressInInternalNetwork = containerImplementation match {
     case EsContainerImplementation.Windows(container) =>
       s"localhost:${container.getPort}"
     case EsContainerImplementation.Linux(_, container) =>
@@ -101,7 +101,7 @@ abstract class EsContainer(val esVersion: String,
     case None => new RestClient(sslEnabled, ip, port, Option.empty)
   }
 
-  containterImplementation match {
+  containerImplementation match {
     case EsContainerImplementation.Windows(_) =>
       ()
     case EsContainerImplementation.Linux(_, container) =>

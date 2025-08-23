@@ -326,7 +326,7 @@ stages:
           - powershell: |
                     docker ps
                     Write-Host ">>> $env:ES_MODULE => Running testcontainers.."
-                    .\gradlew integration-tests:test "-PesModule=$env:ES_MODULE"
+                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
                     if ($LASTEXITCODE -ne 0) {
                       Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
                         Get-Content $_.FullName

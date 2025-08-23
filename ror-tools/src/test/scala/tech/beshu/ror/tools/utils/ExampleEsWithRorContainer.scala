@@ -29,7 +29,9 @@ import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.windows.WindowsElasticsearchSetup
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
+import tech.beshu.ror.utils.misc.OsUtils
 
 import java.io.{File, Console as _}
 import scala.concurrent.duration.*
@@ -52,6 +54,11 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
     } finally {
       Task.delay(esContainer.stop()).runSyncUnsafe()
     }
+  }
+
+  def windowsBasedEsPath: Path = {
+    WindowsElasticsearchSetup.prepareEsForWindows(esContainer.elasticsearch)
+    WindowsElasticsearchSetup.esPath(esContainer.esConfig.clusterName, esContainer.esConfig.nodeName)
   }
 
   private def createEsContainer: EsContainer = {
@@ -107,7 +114,11 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
       ),
       initializer = nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
-      customEntrypoint = Some(Path("""/bin/sh -c "while true; do sleep 30; done"""")),
+      customEntrypoint = if (OsUtils.isWindows) {
+        None // On Windows we prepare and configure ES, but we do not start it
+      } else {
+        Some(Path("""/bin/sh -c "while true; do sleep 30; done"""")) // On Linux we need to start the container, but not ES
+      },
       awaitingReadyStrategy = AwaitingReadyStrategy.ImmediatelyTreatAsReady,
       additionalLogConsumer = None,
     )

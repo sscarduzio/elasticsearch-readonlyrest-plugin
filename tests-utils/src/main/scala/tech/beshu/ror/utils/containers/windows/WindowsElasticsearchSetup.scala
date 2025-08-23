@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.containers.windows
 
 import better.files.File
 import com.typesafe.scalalogging.LazyLogging
+import org.testcontainers.containers.output.OutputFrame
 import os.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Config
@@ -25,6 +26,7 @@ import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateStep
 
 import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, StandardCopyOption}
+import java.util.function.Consumer
 import java.util.zip.ZipInputStream
 import scala.language.postfixOps
 
@@ -40,6 +42,9 @@ object WindowsElasticsearchSetup extends LazyLogging {
 
   def basePath: os.Path =
     os.pwd / "windows-es"
+
+  def tempPath: os.Path =
+    os.pwd / "temp"
 
   def downloadsPath: os.Path =
     basePath / "downloads"
@@ -94,7 +99,13 @@ object WindowsElasticsearchSetup extends LazyLogging {
     "ror_xpack_cluster_3" -> (9231, 9331),
   )
 
-  def prepareAndStartEsForWindows(elasticsearch: Elasticsearch): (SubProcess, Int) = {
+  def prepareAndStartEsForWindows(elasticsearch: Elasticsearch,
+                                  additionalLogConsumer: Option[Consumer[OutputFrame]]): (SubProcess, Int) = {
+    val esPort = prepareEsForWindows(elasticsearch)
+    (startElasticsearch(elasticsearch.config, additionalLogConsumer), esPort)
+  }
+
+  def prepareEsForWindows(elasticsearch: Elasticsearch): Int = {
     val (esPort, transportPort) = ports.getOrElse(
       elasticsearch.config.nodeName,
       throw new IllegalStateException(s"No predefined ports for node ${elasticsearch.config.nodeName}")
@@ -103,7 +114,7 @@ object WindowsElasticsearchSetup extends LazyLogging {
     unzip(elasticsearch.esVersion, elasticsearch.config)
     replaceConfigFile(elasticsearch, esPort, transportPort)
     elasticsearch.esUpdateSteps.steps.zipWithIndex.foreach(runStep(elasticsearch, elasticsearch.esUpdateSteps.steps.size))
-    (startElasticsearch(elasticsearch.config), esPort)
+    esPort
   }
 
   private def runStep(elasticsearch: Elasticsearch, numberOfSteps: Int)(step: EsUpdateStep, index: Int): Unit = step match {
@@ -232,7 +243,8 @@ object WindowsElasticsearchSetup extends LazyLogging {
       )
   }
 
-  private def startElasticsearch(config: Config): SubProcess = {
+  private def startElasticsearch(config: Config,
+                                 additionalLogConsumer: Option[Consumer[OutputFrame]]): SubProcess = {
     val binDir = binPath(config.clusterName, config.nodeName)
     val esBat = binDir / "elasticsearch.bat"
     logger.info(s"Starting Elasticsearch [${config.clusterName}][${config.nodeName}]")
@@ -241,8 +253,14 @@ object WindowsElasticsearchSetup extends LazyLogging {
       .spawn(
         cwd = binDir,
         env = Map("ES_JAVA_OPTS" -> "-Xms400m -Xmx400m"),
-        stdout = os.ProcessOutput.Readlines(line => logger.info(s"[ES][${config.clusterName}][${config.nodeName}] $line")),
-        stderr = os.ProcessOutput.Readlines(line => logger.error(s"[ES][${config.clusterName}][${config.nodeName}] $line")),
+        stdout = os.ProcessOutput.Readlines { line =>
+          logger.info(s"[ES][${config.clusterName}][${config.nodeName}] $line")
+          additionalLogConsumer.foreach(_.accept(new OutputFrame(OutputFrame.OutputType.STDOUT, line.getBytes)))
+        },
+        stderr = os.ProcessOutput.Readlines { line =>
+          logger.error(s"[ES][${config.clusterName}][${config.nodeName}] $line")
+          additionalLogConsumer.foreach(_.accept(new OutputFrame(OutputFrame.OutputType.STDERR, line.getBytes)))
+        },
       )
 
     sys.addShutdownHook {
