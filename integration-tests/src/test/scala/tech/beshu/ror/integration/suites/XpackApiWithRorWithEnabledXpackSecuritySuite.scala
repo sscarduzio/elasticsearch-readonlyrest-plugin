@@ -83,7 +83,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
       }
     }
     "API key grant request is called" should {
-      "be allowed" excludeES allEs6x in {
+      "be allowed" excludeES(allEs6x, allEs7xBelowEs77x) in {
         val response = adminXpackApiManager.grantApiKeyPrivilege("admin", "admin")
         response should have statusCode 200
       }

@@ -38,6 +38,7 @@ private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       DeactivateSecurityActionFilter,
       DeactivateSecurityServerTransportInterceptor,
       new MockAuthorizationInfoInAuthorizationService(esVersion),
-      DummyAuthorizeInAuthorizationService
+      DummyAuthorizeInAuthorizationService,
+      new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion)
     )
   )

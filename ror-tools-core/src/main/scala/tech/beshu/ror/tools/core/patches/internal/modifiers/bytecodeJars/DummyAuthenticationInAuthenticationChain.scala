@@ -61,6 +61,8 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
               new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual820(super.visitMethod(access, name, descriptor, signature, exceptions))
             case v if v >= es71713 =>
               new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual71713(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case v if v >= es7160 =>
+              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual71713(super.visitMethod(access, name, descriptor, signature, exceptions))
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }

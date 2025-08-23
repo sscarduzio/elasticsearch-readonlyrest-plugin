@@ -19,6 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
+import tech.beshu.ror.tools.core.utils.EsUtil.{es7160, es770}
 
 import java.io.{File, InputStream}
 
@@ -47,11 +48,18 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
                              descriptor: String,
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
-      name match {
-        case "authenticateAsync" =>
-          new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethod(super.visitMethod(access, name, descriptor, signature, exceptions))
-        case "consumeToken" =>
-          new SetXpackUserAsAuthenticatedUserInConsumeToken(super.visitMethod(access, name, descriptor, signature, exceptions))
+      esVersion match {
+        case v if v >= es7160 =>
+          super.visitMethod(access, name, descriptor, signature, exceptions)
+        case v if v >= es770 =>
+          name match {
+            case "authenticateAsync" =>
+              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethod(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case "consumeToken" =>
+              new SetXpackUserAsAuthenticatedUserInConsumeToken(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case _ =>
+              super.visitMethod(access, name, descriptor, signature, exceptions)
+          }
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
