@@ -56,7 +56,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
        |  ldaps:
        |    - name: ldap1
        |      server_discovery:
-       |        dns_url: "dns://localhost:$port}"
+       |        dns_url: "dns://localhost:$port"
        |      ha: ROUND_ROBIN
        |      ssl_enabled: false                                        # default true
        |      ssl_trust_all_certs: true                                 # default false

@@ -20,7 +20,7 @@ import org.testcontainers.containers.GenericContainer
 import os.SubProcess
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy
 import tech.beshu.ror.utils.containers.images.Elasticsearch
-import tech.beshu.ror.utils.containers.windows.WindowsElasticsearchSetup.prepareAndStartEsForWindows
+import tech.beshu.ror.utils.containers.windows.WindowsElasticsearchSetup.{killEsProcess, prepareAndStartEsForWindows}
 
 class WindowsBasedEsPseudoGenericContainer(elasticsearch: Elasticsearch, waitStrategy: ElasticsearchNodeWaitingStrategy)
   extends GenericContainer[WindowsBasedEsPseudoGenericContainer]("noop:latest") {
@@ -46,7 +46,7 @@ class WindowsBasedEsPseudoGenericContainer(elasticsearch: Elasticsearch, waitStr
     super.stop()
     processAndPort.foreach { case (proc, _) =>
       logger.info(s"Stopping ES process with pid ${proc.wrapped.pid} on port ${processAndPort.map(_._2)}")
-      os.proc("taskkill", "/PID", proc.wrapped.pid.toString, "/F", "/T").call()
+      killEsProcess(elasticsearch.config, proc)
     }
     processAndPort = None
   }

@@ -27,7 +27,6 @@ import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, StandardCopyOption}
 import java.util.zip.ZipInputStream
 import scala.language.postfixOps
-import scala.sys.process.*
 
 object WindowsElasticsearchSetup extends LazyLogging {
 
@@ -42,11 +41,11 @@ object WindowsElasticsearchSetup extends LazyLogging {
   def basePath: os.Path =
     os.pwd / "windows-es"
 
-  def downloadsPath(esVersion: String): os.Path =
+  def downloadsPath: os.Path =
     basePath / "downloads"
 
   def zipFilePath(esVersion: String): os.Path =
-    downloadsPath(esVersion) / s"elasticsearch-$esVersion.zip"
+    downloadsPath / s"elasticsearch-$esVersion.zip"
 
   def esPath(clusterName: String, nodeName: String): os.Path =
     basePath / s"es_${clusterName}_${nodeName}"
@@ -128,7 +127,7 @@ object WindowsElasticsearchSetup extends LazyLogging {
   }
 
   private def downloadEsZipFileWithProgress(esVersion: String): Unit = {
-    os.makeDir.all(downloadsPath(esVersion))
+    os.makeDir.all(downloadsPath)
     val dest = zipFilePath(esVersion)
     logger.info(s"Checking if ES $esVersion for Windows is already downloaded")
     if (!dest.toIO.exists()) {
@@ -212,26 +211,6 @@ object WindowsElasticsearchSetup extends LazyLogging {
     }
   }
 
-  def aaa(config: Config): Unit = {
-    val configFile = configFilePath(config.clusterName, config.nodeName)
-    val lines = os.read.lines(configFile).toVector
-
-    def setOrAdd(key: String, value: String, lines: Vector[String]): Vector[String] = {
-      val keyPrefix = key + ":"
-      val updated = lines.map {
-        case line if line.trim.startsWith(keyPrefix) => s"$key: $value"
-        case line => line
-      }
-      if (updated.exists(_.trim.startsWith(keyPrefix))) updated
-      else updated :+ s"$key: $value"
-    }
-
-    val withSecurity = setOrAdd("xpack.security.enabled", "true", lines)
-    val withSSL = setOrAdd("xpack.security.transport.ssl.enabled", "true", withSecurity)
-
-    os.write.over(configFile, withSSL.mkString("\n"))
-  }
-
   private def replaceConfigFile(elasticsearch: Elasticsearch, esPort: Int, transportPort: Int): Unit = {
     val file =
       elasticsearch
@@ -268,12 +247,16 @@ object WindowsElasticsearchSetup extends LazyLogging {
 
     sys.addShutdownHook {
       logger.info(s"JVM shutting down, stopping Elasticsearch [${config.clusterName}][${config.nodeName}] process...")
-      try {
-        os.proc("taskkill", "/PID", proc.wrapped.pid.toString, "/F", "/T").call()
-      } catch {
-        case e: Exception => logger.error(s"Failed to stop Elasticsearch [${config.clusterName}][${config.nodeName}] process: ${e.getMessage}")
-      }
+      killEsProcess(config, proc)
     }
     proc
+  }
+
+  def killEsProcess(config: Config, proc: SubProcess): Unit = {
+    try {
+      os.proc("taskkill", "/PID", proc.wrapped.pid.toString, "/F", "/T").call()
+    } catch {
+      case e: Exception => logger.error(s"Failed to stop Elasticsearch [${config.clusterName}][${config.nodeName}] process: ${e.getMessage}")
+    }
   }
 }
