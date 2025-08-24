@@ -444,8 +444,10 @@ class RorToolsAppSuite
       )
     }
     "Successfully patch, verify and unpatch" in {
+      // This file is created after patching on Windows for ES 8.x
+      val filesExcludedFromHashCalculation = List("plugin-security.policy.tmp")
       // Patch
-      val hashBeforePatching = FileUtils.calculateHash(esLocalPath)
+      val hashBeforePatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
       val (patchResult, patchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
       }
@@ -457,7 +459,7 @@ class RorToolsAppSuite
           |Elasticsearch is patched! ReadonlyREST is ready to use"""
           .stripMargin.replace("\r\n", "\n")
       )
-      val hashAfterPatching = FileUtils.calculateHash(esLocalPath)
+      val hashAfterPatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
 
       // Verify
       val (verifyResult, verifyOutput) = captureResultAndOutput {
@@ -473,7 +475,7 @@ class RorToolsAppSuite
       patchMetadataFile.exists() should be(true)
 
       // Unpatch
-      val hashBeforeUnpatching = FileUtils.calculateHash(esLocalPath)
+      val hashBeforeUnpatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
       val (unpatchResult, unpatchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_, _)
       }
@@ -484,7 +486,7 @@ class RorToolsAppSuite
           |Elasticsearch is unpatched! ReadonlyREST can be removed now"""
           .stripMargin.replace("\r\n", "\n")
       )
-      val hashAfterUnpatching = FileUtils.calculateHash(esLocalPath)
+      val hashAfterUnpatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
 
       hashBeforePatching should equal(hashAfterUnpatching)
       hashAfterPatching should equal(hashBeforeUnpatching)
