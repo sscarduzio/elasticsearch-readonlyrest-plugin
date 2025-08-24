@@ -46,7 +46,7 @@ objectClass: inetOrgPerson
 cn: Morgan Freeman
 sn: Freeman
 uid: morgan
-userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+userPassword: user1
 
 dn: cn=Eric Cartman,ou=People,dc=example,dc=com
 objectClass: top
@@ -56,7 +56,7 @@ objectClass: inetOrgPerson
 cn: Eric Cartman
 sn: Cartman
 uid: cartman
-userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+userPassword: user2
 
 dn: cn=Chanandler Bong,ou=People,dc=example,dc=com
 objectClass: top
@@ -66,7 +66,7 @@ objectClass: inetOrgPerson
 cn: Chanandler Bong
 sn: Bong
 uid: bong
-userPassword:: e1NIQX1zOXFuZTB3RXFWVWJoNEhRTVpIK0NZOHlYbWM9
+userPassword: user1
 
 dn: cn=Bìlbö Bággįnš,ou=People,dc=example,dc=com
 objectClass: top
@@ -76,7 +76,7 @@ objectClass: inetOrgPerson
 cn: Bìlbö Bággįnš
 sn: Bìlbö Bággįnš
 uid: Bìlbö Bággįnš
-userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+userPassword: user2
 
 dn: cn=Danny DeVito,ou=People,dc=example,dc=com
 objectClass: top
@@ -86,7 +86,7 @@ objectClass: inetOrgPerson
 cn: Danny DeVito
 sn: DeVito
 uid: devito
-userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+userPassword: user2
 
 dn: ou=Groups,dc=example,dc=com
 objectClass: top
@@ -141,7 +141,7 @@ objectClass: inetOrgPerson
 cn: Jesus Christ
 sn: Jesus
 uid: jesus
-userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+userPassword: user1
 title: cn=europe,ou=Regions,dc=example,dc=com
 title: cn=north america,ou=Regions,dc=example,dc=com
 title: cn=south america,ou=Regions,dc=example,dc=com
@@ -155,7 +155,7 @@ objectClass: inetOrgPerson
 cn: Allah
 sn: Allah
 uid: allah
-userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+userPassword: user2
 title: cn=asia,ou=Regions,dc=example,dc=com
 title: cn=africa,ou=Regions,dc=example,dc=com
 
@@ -167,4 +167,4 @@ objectClass: inetOrgPerson
 cn: Spaghetti Monster
 sn: Spaghetti
 uid: spaghetti
-userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+userPassword: user2

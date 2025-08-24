@@ -174,7 +174,7 @@ class Elasticsearch(val esVersion: String,
       .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
       .copyFile(
         destination = config.esConfigDir / "elasticsearch.yml",
-        file = esConfigFile
+        file = esConfigFile(networkHost = "0.0.0.0")
       )
       .copyFile(
         destination = config.esConfigDir / "log4j2.properties",
@@ -205,7 +205,7 @@ class Elasticsearch(val esVersion: String,
       .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
       .copyFile(
         destination = config.esConfigDir / "elasticsearch.yml",
-        file = esConfigFile
+        file = esConfigFile(networkHost = "0.0.0.0")
       )
       .copyFile(
         destination = config.esConfigDir / "log4j2.properties",
@@ -257,20 +257,20 @@ class Elasticsearch(val esVersion: String,
       .foldLeft(builder) { case (currentBuilder, update) => update(currentBuilder) }
   }
 
-  def esConfigFile: File = {
+  def esConfigFile(networkHost: String): File = {
     val file = File
       .newTemporaryFile()
-      .appendLines(updateEsConfigBuilderFromPlugins(baseEsConfigBuilder).entries: _*)
+      .appendLines(updateEsConfigBuilderFromPlugins(baseEsConfigBuilder(networkHost)).entries: _*)
     logger.info(s"elasticsearch.yml content:\n${file.contentAsString}")
     file
   }
 
-  private def baseEsConfigBuilder = {
+  private def baseEsConfigBuilder(networkHost: String) = {
     EsConfigBuilder
       .empty
       .add(s"node.name: ${config.nodeName}")
       .add(s"cluster.name: ${config.clusterName}")
-      .add("network.host: 0.0.0.0")
+      .add(s"network.host: $networkHost")
       .add("path.repo: /tmp")
       .addWhen(Version.lowerThan(esVersion, 8, 0, 0),
         entry = "bootstrap.system_call_filter: false" // because of issues with Rosetta 2 on Mac OS

@@ -26,6 +26,7 @@ import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
+import tech.beshu.ror.utils.misc.OsUtils
 
 import scala.compiletime.error
 
@@ -96,7 +97,9 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
                                         remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
     val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
-      remoteClustersConfig.view.mapValues(_.nodes.map(c => s"${c.esConfig.nodeName}:9300")).toMap
+      remoteClustersConfig.view.mapValues(_.nodes.map { c =>
+        if (OsUtils.isWindows) s"localhost:${c.port + 100}" else s"${c.esConfig.nodeName}:9300"
+      }).toMap
     )
 
     result.responseCode match {

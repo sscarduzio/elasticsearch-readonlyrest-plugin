@@ -28,6 +28,7 @@ import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, StandardCopyOption}
 import java.util.function.Consumer
 import java.util.zip.ZipInputStream
+import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
 object WindowsElasticsearchSetup extends LazyLogging {
@@ -225,15 +226,15 @@ object WindowsElasticsearchSetup extends LazyLogging {
   private def replaceConfigFile(elasticsearch: Elasticsearch, esPort: Int, transportPort: Int): Unit = {
     val file =
       elasticsearch
-        .esConfigFile
+        .esConfigFile(networkHost = "127.0.0.1")
         .appendLine(s"http.port: $esPort")
         .appendLine(s"transport.port: $transportPort")
 
-
-    val updatedContent =
-      ports.foldLeft(file.contentAsString) {
+    val lines = file.contentAsString.linesIterator.toList
+    val updatedContent = lines.head + "\n" +
+      ports.foldLeft(lines.tail.mkString("\n")) {
         case (content, (oldValue, (_, transportPort))) =>
-          content.replace(oldValue, s"localhost:$transportPort")
+          content.replace(oldValue, s"127.0.0.1:$transportPort")
       }
 
     file.overwrite(updatedContent)
@@ -252,7 +253,7 @@ object WindowsElasticsearchSetup extends LazyLogging {
     val proc = os.proc(esBat)
       .spawn(
         cwd = binDir,
-        env = Map("ES_JAVA_OPTS" -> "-Xms400m -Xmx400m"),
+        env = Map("ES_JAVA_OPTS" -> "-Xms400m -Xmx400m", "JAVA_HOME" -> (binDir / ".." / "jdk").toString) ++ config.envs,
         stdout = os.ProcessOutput.Readlines { line =>
           logger.info(s"[ES][${config.clusterName}][${config.nodeName}] $line")
           additionalLogConsumer.foreach(_.accept(new OutputFrame(OutputFrame.OutputType.STDOUT, line.getBytes)))

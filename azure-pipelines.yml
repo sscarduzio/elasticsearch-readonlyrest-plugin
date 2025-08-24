@@ -324,7 +324,6 @@ stages:
               jdkArchitectureOption: 'x64'
               jdkSourceOption: 'PreInstalled'
           - powershell: |
-                    docker ps
                     Write-Host ">>> $env:ES_MODULE => Running testcontainers.."
                     .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
                     if ($LASTEXITCODE -ne 0) {
@@ -342,8 +341,16 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es91x:
+            WIN_IT_es91x:
               ES_MODULE: es91x
+            WIN_IT_es818x:
+              ES_MODULE: es818x
+            WIN_IT_es80x:
+              ES_MODULE: es80x
+            WIN_IT_es79x:
+              ES_MODULE: es79x
+            WIN_IT_es70x:
+              ES_MODULE: es70x
 #       - job:
 #         condition:
 #           and(

@@ -37,11 +37,11 @@ object dependencies {
     originalPort = ldap.originalPort
   )
 
-  def wiremock(name: String, mappings: String*): DependencyDef = {
+  def wiremock(name: String, port: Int, mappings: String*): DependencyDef = {
     if (OsUtils.isWindows) {
       DependencyDef(
         name = name,
-        containerCreator = Coeval(new WireMockServerPseudoContainer(mappings.toList)),
+        containerCreator = Coeval(new WireMockServerPseudoContainer(port, mappings.toList)),
         originalPort = 8080,
       )
     } else {
@@ -53,9 +53,19 @@ object dependencies {
     }
   }
 
-  def es(name: String, container: EsContainer): DependencyDef = DependencyDef(
-    name = name,
-    containerCreator = Coeval(container),
-    originalPort = 9200
-  )
+  def es(name: String, container: EsContainer): DependencyDef = {
+    if (OsUtils.isWindows) {
+      DependencyDef(
+        name = name,
+        containerCreator = Coeval(container),
+        originalPort = container.port
+      )
+    } else {
+      DependencyDef(
+        name = name,
+        containerCreator = Coeval(container),
+        originalPort = 9200
+      )
+    }
+  }
 }

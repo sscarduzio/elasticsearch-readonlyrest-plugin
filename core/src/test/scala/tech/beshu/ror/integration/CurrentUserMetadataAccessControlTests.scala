@@ -58,7 +58,7 @@ class CurrentUserMetadataAccessControlTests
 
   private val wiremock =
     if (OsUtils.isWindows)
-      new WireMockServerPseudoContainer(mappings)
+      new WireMockServerPseudoContainer(8080, mappings)
     else
       new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
 

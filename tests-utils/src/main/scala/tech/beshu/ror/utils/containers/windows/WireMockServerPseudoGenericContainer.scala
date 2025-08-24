@@ -26,15 +26,13 @@ import tech.beshu.ror.utils.containers.ContainerUtils
 
 import java.io.File
 
-class WireMockServerPseudoContainer(mappings: List[String])
+class WireMockServerPseudoContainer(val port: Int, mappings: List[String])
   extends SingleContainer[GenericContainer[_]] {
 
-  override val container: WireMockServerPseudoGenericContainer = new WireMockServerPseudoGenericContainer(mappings)
-
-  def port: Int = container.getWireMockPort
+  override val container: WireMockServerPseudoGenericContainer = new WireMockServerPseudoGenericContainer(port, mappings)
 }
 
-class WireMockServerPseudoGenericContainer(mappings: List[String])
+class WireMockServerPseudoGenericContainer(port: Int, mappings: List[String])
   extends GenericContainer[WireMockServerPseudoGenericContainer]("noop:latest") {
 
   private var server: Option[WireMockServer] = None
@@ -44,7 +42,7 @@ class WireMockServerPseudoGenericContainer(mappings: List[String])
   }
 
   override def doStart(): Unit = {
-    server = Some(WireMockServerCreator.create(mappings))
+    server = Some(WireMockServerCreator.create(port, mappings))
   }
 
   override def stop(): Unit = {
@@ -61,29 +59,20 @@ class WireMockServerPseudoGenericContainer(mappings: List[String])
 object WireMockServerCreator {
   val DefaultPort: Int = 8080
 
-  private var server: Option[WireMockServer] = None
+  def create(port: Int, mappings: List[String]): WireMockServer = synchronized {
+    val mappingFiles: Seq[File] =
+      mappings.map(ContainerUtils.getResourceFile)
 
-  def create(mappings: List[String]): WireMockServer = synchronized {
-    server match {
-      case Some(server) =>
-        server
-      case None =>
-        val mappingFiles: Seq[File] =
-          mappings.map(ContainerUtils.getResourceFile)
+    val config = WireMockConfiguration.wireMockConfig().port(port)
 
-        val config = WireMockConfiguration.wireMockConfig().port(DefaultPort)
-
-        mappingFiles.foreach { mappingFile =>
-          val parentDir = mappingFile.getParentFile
-          val fileSource = new SingleRootFileSource(parentDir.getAbsolutePath)
-          config.mappingSource(new JsonFileMappingsSource(fileSource))
-        }
-
-        val wmServer = new WireMockServer(config)
-        wmServer.start()
-        server = Some(wmServer)
-        wmServer
+    mappingFiles.foreach { mappingFile =>
+      val parentDir = mappingFile.getParentFile
+      val fileSource = new SingleRootFileSource(parentDir.getAbsolutePath)
+      config.mappingSource(new JsonFileMappingsSource(fileSource))
     }
 
+    val wmServer = new WireMockServer(config)
+    wmServer.start()
+    wmServer
   }
 }
