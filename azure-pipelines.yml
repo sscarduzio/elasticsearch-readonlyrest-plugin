@@ -300,6 +300,16 @@ stages:
           matrix:
             IT_es91x:
               ROR_TASK: integration_es91x
+            IT_es818x:
+              ROR_TASK: integration_es818x
+            IT_es80x:
+              ROR_TASK: integration_es80x
+            IT_es79x:
+              ROR_TASK: integration_es79x
+            IT_es70x:
+              ROR_TASK: integration_es70x
+            IT_es67x:
+              ROR_TASK: integration_es67x
       - job:
         condition:
           and(
