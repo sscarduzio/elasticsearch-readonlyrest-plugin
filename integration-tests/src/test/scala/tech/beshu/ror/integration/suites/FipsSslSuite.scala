@@ -57,9 +57,13 @@ class FipsSslSuite
 
   private lazy val rorClusterAdminStateManager = new CatManager(clients.last.adminClient, esVersion = esVersionUsed)
 
-  // todo: The ES with FIPS does not start correctly when running tests on Windows.
+  // todo: The ES with FIPS does not start correctly when running tests on Windows with ES version lower than 8.18.
   //       It needs to be checked further. It is an issue with file and thread operation permissions.
-  if (!(OsUtils.isWindows && (esVersionUsed.startsWith("6.") || esVersionUsed.startsWith("7.")))) {
+  if (!(OsUtils.isWindows && (
+    esVersionUsed.startsWith("6.") ||
+      esVersionUsed.startsWith("7.") ||
+      (esVersionUsed.startsWith("8.") && !esVersionUsed.startsWith("8.18"))
+    ))) {
     "Health check" should {
       "be successful" when {
         "internode ssl is enabled" in {
