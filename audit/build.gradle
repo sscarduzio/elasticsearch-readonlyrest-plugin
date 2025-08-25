@@ -86,7 +86,7 @@ compileScala {
 def ror_pom = { ->
     name.set("ReadonlyREST audit library")
     description.set("A library to writing custom audit log serializer for Elasticsearch ReadonlyREST plugin")
-    url.set("http://www.example.com/library")
+    url.set("https://readonlyrest.com/")
     licenses {
         license {
             name.set("GNU GENERAL PUBLIC LICENSE, Version 3")

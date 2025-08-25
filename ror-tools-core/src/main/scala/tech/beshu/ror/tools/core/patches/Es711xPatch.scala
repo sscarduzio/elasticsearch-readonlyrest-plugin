@@ -24,6 +24,7 @@ import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
+import tech.beshu.ror.tools.core.utils.EsUtil.es7160
 
 import scala.language.postfixOps
 
@@ -49,6 +50,10 @@ private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       DeactivateSecurityActionFilter,
       DeactivateSecurityServerTransportInterceptor,
       new MockAuthorizationInfoInAuthorizationService(esVersion),
-      DummyAuthorizeInAuthorizationService
+      DummyAuthorizeInAuthorizationService,
+      esVersion match {
+        case v if v >= es7160 =>  new DummyAuthenticationInAuthenticationChain(esVersion)
+        case _ => new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion)
+      },
     )
   )
