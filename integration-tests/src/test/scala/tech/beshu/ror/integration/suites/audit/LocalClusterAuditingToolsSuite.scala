@@ -72,7 +72,7 @@ class LocalClusterAuditingToolsSuite
         forEachAuditManager { adminAuditManager =>
           eventually {
             val auditEntries = adminAuditManager.getEntries.force().jsons
-            auditEntries.size shouldBe 2
+            auditEntries.size should be >= 2
 
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&

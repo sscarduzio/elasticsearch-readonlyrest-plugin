@@ -24,7 +24,7 @@ readonlyrest:
       kibana:
         access: ro
         index: "user2_kibana_index"
-        hide_apps: ["user2_app1", "user2_app2", "/^Analytics\\|(?!(Maps)$).*$/"]
+        hide_apps: ["user2_app1", "user2_app2", "^Analytics\\|(?!Maps$).*"]
         allowed_api_paths:
           - "^/api/spaces/.*$"
           - http_method: GET
