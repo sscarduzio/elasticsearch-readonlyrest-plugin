@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites.fields.sourcefiltering
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.{ComposedElasticsearchNodeDataInitializer, ElasticsearchNodeDataInitializer}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
@@ -55,7 +55,7 @@ class FieldRuleSearchApiSourceFilteringSuite
       case None => """{}"""
     }
 
-    searchManager.search(index, ujsonRead(query))
+    searchManager.search(index, ujson.read(query))
   }
 
   override protected def sourceOfFirstDoc(result: SearchManager#SearchResult): Option[JSON] = {
@@ -65,7 +65,7 @@ class FieldRuleSearchApiSourceFilteringSuite
   "docvalue with not-allowed field in search request is used" in {
     val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
-    val query = ujsonRead(
+    val query = ujson.read(
       """
         |{
         |  "docvalue_fields": ["counter"]
@@ -77,7 +77,7 @@ class FieldRuleSearchApiSourceFilteringSuite
 
     result should have statusCode 200
 
-    sourceOfFirstDoc(result) shouldBe Some(ujsonRead(
+    sourceOfFirstDoc(result) shouldBe Some(ujson.read(
       """|{
          | "user1": "user1Value"
          |}""".stripMargin
@@ -90,20 +90,20 @@ class FieldRuleSearchApiSourceFilteringSuite
     "blacklist mode is used" in {
       val searchManager = new SearchManager(basicAuthClient("user5", "pass"), esVersionUsed)
 
-      val result = searchManager.search("manydocs", ujsonRead("""{"query": {"match_all": {}}}"""))
+      val result = searchManager.search("manydocs", ujson.read("""{"query": {"match_all": {}}}"""))
 
       result should have statusCode 200
       val distinctDocs = result.searchHits.map(_.obj("_source")).toSet
-      distinctDocs should be(Set(ujsonRead("""{"user2":"b"}""")))
+      distinctDocs should be(Set(ujson.read("""{"user2":"b"}""")))
     }
     "whitelist mode is used" in {
       val searchManager = new SearchManager(basicAuthClient("user6", "pass"), esVersionUsed)
 
-      val result = searchManager.search("manydocs", ujsonRead("""{"query": {"match_all": {}}}"""))
+      val result = searchManager.search("manydocs", ujson.read("""{"query": {"match_all": {}}}"""))
 
       result should have statusCode 200
       val distinctDocs = result.searchHits.map(_.obj("_source")).toSet
-      distinctDocs should be(Set(ujsonRead("""{"user1":"a"}""")))
+      distinctDocs should be(Set(ujson.read("""{"user1":"a"}""")))
     }
   }
 }
@@ -117,7 +117,7 @@ object FieldRuleSearchApiSourceFilteringSuite {
         .createDoc(
           index = "manydocs",
           id = idx,
-          content = ujsonRead(
+          content = ujson.read(
             s"""
                |{
                |  "user1": "a",

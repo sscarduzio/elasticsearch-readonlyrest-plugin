@@ -24,7 +24,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite.{ExamplePolicies, PolicyGenerator}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
 import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
@@ -114,7 +114,7 @@ class IndexLifecycleManagementApiSuite
 
           val result = dev3IndexLifecycleManager.moveToLifecycleStep(
             index,
-            currentStep = ujsonRead(
+            currentStep = ujson.read(
               s"""
                  |{
                  |  "phase": "new",
@@ -122,7 +122,7 @@ class IndexLifecycleManagementApiSuite
                  |  "name": "complete"
                  |}
                """.stripMargin),
-            nextStep = ujsonRead(
+            nextStep = ujson.read(
               s"""
                  |{
                  |  "phase": "warm",
@@ -141,7 +141,7 @@ class IndexLifecycleManagementApiSuite
 
           val result = dev3IndexLifecycleManager.moveToLifecycleStep(
             index,
-            currentStep = ujsonRead(
+            currentStep = ujson.read(
               s"""
                  |{
                  |  "phase": "new",
@@ -149,7 +149,7 @@ class IndexLifecycleManagementApiSuite
                  |  "name": "complete"
                  |}
                """.stripMargin),
-            nextStep = ujsonRead(
+            nextStep = ujson.read(
               s"""
                  |{
                  |  "phase": "warm",
@@ -168,7 +168,7 @@ class IndexLifecycleManagementApiSuite
 
           val result = adminIndexLifecycleManager.moveToLifecycleStep(
             index = "dynamic_2",
-            currentStep = ujsonRead(
+            currentStep = ujson.read(
               s"""
                  |{
                  |  "phase": "new",
@@ -176,7 +176,7 @@ class IndexLifecycleManagementApiSuite
                  |  "name": "complete"
                  |}
                """.stripMargin),
-            nextStep = ujsonRead(
+            nextStep = ujson.read(
               s"""
                  |{
                  |  "phase": "warm",
@@ -194,7 +194,7 @@ class IndexLifecycleManagementApiSuite
         "user has no access to requested index" in {
           val result = dev3IndexLifecycleManager.moveToLifecycleStep(
             index = "index2",
-            currentStep = ujsonRead(
+            currentStep = ujson.read(
               s"""
                  |{
                  |  "phase": "new",
@@ -202,7 +202,7 @@ class IndexLifecycleManagementApiSuite
                  |  "name": "complete"
                  |}
                """.stripMargin),
-            nextStep = ujsonRead(
+            nextStep = ujson.read(
               s"""
                  |{
                  |  "phase": "warm",
@@ -383,7 +383,7 @@ class IndexLifecycleManagementApiSuite
     adminIndexManager
       .putSettings(
         indexName = index,
-        settings = ujsonRead(
+        settings = ujson.read(
           s"""
              |{
              |  "index": {
@@ -416,7 +416,7 @@ class IndexLifecycleManagementApiSuite
     adminIndexManager
       .createIndex(
         index,
-        settings = Some(ujsonRead {
+        settings = Some(ujson.read {
           s"""
              |{
              |  "settings": {
@@ -451,7 +451,7 @@ class IndexLifecycleManagementApiSuite
 object IndexLifecycleManagementApiSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    val document = ujsonRead(s"""{"test": "abc"}""")
+    val document = ujson.read(s"""{"test": "abc"}""")
     documentManager.createDoc("index1", "1", document).force()
     documentManager.createDoc("index1_1", "1", document).force()
     documentManager.createDoc("index1_2", "1", document).force()
@@ -461,7 +461,7 @@ object IndexLifecycleManagementApiSuite {
     if (Version.greaterOrEqualThan(esVersion, 6, 6, 0)) {
       val clusterManager = new ClusterManager(adminRestClient, esVersion)
       clusterManager
-        .putSettings(ujsonRead {
+        .putSettings(ujson.read {
           s"""
              |{
              |  "persistent" : {
@@ -481,7 +481,7 @@ object IndexLifecycleManagementApiSuite {
   }
 
   private object ExamplePolicies {
-    val forceMergePolicy: JSON = ujsonRead {
+    val forceMergePolicy: JSON = ujson.read {
       """
         |{
         |  "policy": {
@@ -500,7 +500,7 @@ object IndexLifecycleManagementApiSuite {
       """.stripMargin
     }
 
-    val shrinkPolicy: JSON = ujsonRead {
+    val shrinkPolicy: JSON = ujson.read {
       """
         |{
         |  "policy": {
@@ -519,7 +519,7 @@ object IndexLifecycleManagementApiSuite {
       """.stripMargin
     }
 
-    val rolloverPolicy: JSON = ujsonRead {
+    val rolloverPolicy: JSON = ujson.read {
       """{
         |  "policy": {
         |    "phases": {

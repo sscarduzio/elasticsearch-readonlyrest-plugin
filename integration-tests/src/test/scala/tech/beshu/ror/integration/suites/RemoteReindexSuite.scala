@@ -21,7 +21,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
@@ -136,7 +136,7 @@ object RemoteReindexSuite {
   private def sourceEsDataInitializer(): ElasticsearchNodeDataInitializer = {
     (esVersion: String, adminRestClient: RestClient) => {
       val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager.createDoc("test1_index", "Sometype", 1, ujsonRead("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test1_index", "Sometype", 1, ujson.read("""{"hello":"world"}""")).force()
     }
   }
 }

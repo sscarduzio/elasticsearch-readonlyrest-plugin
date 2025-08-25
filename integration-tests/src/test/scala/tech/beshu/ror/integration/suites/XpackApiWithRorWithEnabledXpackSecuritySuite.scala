@@ -17,7 +17,7 @@
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.SecurityType
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.images.domain.Enabled
@@ -38,7 +38,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
       "return ROR artificial user" excludeES (allEs6x) in {
         val response = adminXpackApiManager.hasPrivileges(
           clusterPrivileges = "monitor" :: Nil,
-          applicationPrivileges = ujsonRead(
+          applicationPrivileges = ujson.read(
             s"""
                |{
                |  "application": "kibana",
@@ -47,7 +47,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
                |}
                |""".stripMargin
           ) :: Nil,
-          indexPrivileges = ujsonRead(
+          indexPrivileges = ujson.read(
             s"""
                |{
                |  "names": [".monitoring-*-6-*,.monitoring-*-7-*"],
@@ -57,7 +57,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
           ) :: Nil
         )
         response should have statusCode 200
-        response.responseJson should be(ujsonRead(
+        response.responseJson should be(ujson.read(
           s"""
              |{
              |  "username": "ROR",

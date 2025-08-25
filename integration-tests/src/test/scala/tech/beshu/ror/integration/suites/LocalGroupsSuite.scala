@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, RorApiManager}
@@ -79,7 +79,7 @@ class LocalGroupsSuite
     val response = userMetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
     response should have statusCode 200
-    response.responseJson should be(ujsonRead(
+    response.responseJson should be(ujson.read(
       s"""{
          |  "x-ror-username": "user",
          |  "x-ror-current-group": {
@@ -110,7 +110,7 @@ class LocalGroupsSuite
     val response = userMetadataManager.fetchMetadata(preferredGroupId = Some("foogroup"), correlationId = Some(correlationId))
 
     response should have statusCode 200
-    response.responseJson should be(ujsonRead(
+    response.responseJson should be(ujson.read(
       s"""{
          |  "x-ror-username": "user",
          |  "x-ror-current-group": {

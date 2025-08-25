@@ -20,7 +20,7 @@ import monix.execution.atomic.AtomicInt
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -168,7 +168,7 @@ object FiltersDocLevelSecuritySuite {
         .createDoc(
           s"testfilter$idx",
           docId.incrementAndGet(),
-          ujsonRead(s"""{"$field": "$docName", "dummy": true}""")
+          ujson.read(s"""{"$field": "$docName", "dummy": true}""")
         )
         .force()
     }

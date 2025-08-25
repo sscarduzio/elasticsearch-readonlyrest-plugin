@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, ElasticsearchTweetsInitializer}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
@@ -30,7 +30,7 @@ class DeleteByQuerySuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  private val matchAllQuery = ujsonRead("""{"query" : {"match_all" : {}}}""".stripMargin)
+  private val matchAllQuery = ujson.read("""{"query" : {"match_all" : {}}}""".stripMargin)
 
   override implicit val rorConfigFileName: String = "/delete_by_query/readonlyrest.yml"
 

@@ -24,7 +24,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.SnapshotAndRestoreApiSuite.{RepositoryNameGenerator, SnapshotNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SnapshotManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -1032,7 +1032,7 @@ object SnapshotAndRestoreApiSuite {
   }
 
   private def createIndicesAndExampleDocs(adminDocumentManager: DocumentManager) = {
-    exampleIndices.foreach { index => adminDocumentManager.createFirstDoc(index, ujsonRead("""{"hello":"world"}""")).force() }
+    exampleIndices.foreach { index => adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}""")).force() }
   }
 
   private def deleteRestoredIndices(adminIndexManager: IndexManager) = {

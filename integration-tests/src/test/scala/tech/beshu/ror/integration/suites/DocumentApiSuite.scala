@@ -20,7 +20,7 @@ import better.files.FileExtensions
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction
@@ -45,7 +45,7 @@ class DocumentApiSuite
       "allow to access all requested indices" when {
         "user has access to all of them" in {
           val result = dev1documentManager.mGet(
-            ujsonRead(
+            ujson.read(
               """{
                 |  "docs":[
                 |    {
@@ -72,7 +72,7 @@ class DocumentApiSuite
       "allow to access only one index" when {
         "the second asked one is forbidden" in {
           val result = dev1documentManager.mGet(
-            ujsonRead(
+            ujson.read(
               """{
                 |  "docs":[
                 |    {
@@ -98,7 +98,7 @@ class DocumentApiSuite
       }
       "don't pass through the request if no indices are matched" in {
         val result = dev1documentManager.mGet(
-          ujsonRead(
+          ujson.read(
             """{
               |  "docs":[
               |    {
@@ -121,8 +121,8 @@ class DocumentApiSuite
       "allow to create all requests indices" when {
         "user has access to all of them (application/json mode)" in {
           val result = dev1documentManager.bulk(
-            BulkAction.Insert("index1_2020-01-01", 1, ujsonRead("""{ "message" : "hello" }""")),
-            BulkAction.Insert("index1_2020-01-02", 1, ujsonRead("""{ "message" : "hello" }"""))
+            BulkAction.Insert("index1_2020-01-01", 1, ujson.read("""{ "message" : "hello" }""")),
+            BulkAction.Insert("index1_2020-01-02", 1, ujson.read("""{ "message" : "hello" }"""))
           )
 
           result should have statusCode 200
@@ -153,8 +153,8 @@ class DocumentApiSuite
       "not allow to create indices" when {
         "even one index is forbidden" in {
           val result = dev1documentManager.bulk(
-            BulkAction.Insert("index1_2020-01-01", 1, ujsonRead("""{ "message" : "hello" }""")),
-            BulkAction.Insert("index2_2020-01-01", 1, ujsonRead("""{ "message" : "hello" }"""))
+            BulkAction.Insert("index1_2020-01-01", 1, ujson.read("""{ "message" : "hello" }""")),
+            BulkAction.Insert("index2_2020-01-01", 1, ujson.read("""{ "message" : "hello" }"""))
           )
 
           result should have statusCode 403
@@ -169,9 +169,9 @@ object DocumentApiSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-    documentManager.createFirstDoc("index1_fst", ujsonRead("""{"hello":"world"}"""))
-    documentManager.createFirstDoc("index1_snd", ujsonRead("""{"hello":"world"}"""))
-    documentManager.createFirstDoc("index2_fst", ujsonRead("""{"hello":"world"}"""))
-    documentManager.createFirstDoc("index2_snd", ujsonRead("""{"hello":"world"}"""))
+    documentManager.createFirstDoc("index1_fst", ujson.read("""{"hello":"world"}"""))
+    documentManager.createFirstDoc("index1_snd", ujson.read("""{"hello":"world"}"""))
+    documentManager.createFirstDoc("index2_fst", ujson.read("""{"hello":"world"}"""))
+    documentManager.createFirstDoc("index2_snd", ujson.read("""{"hello":"world"}"""))
   }
 }

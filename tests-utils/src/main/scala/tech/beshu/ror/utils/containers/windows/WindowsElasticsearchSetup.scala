@@ -124,17 +124,14 @@ object WindowsElasticsearchSetup extends LazyLogging {
       os.makeDir.all(destination / os.up)
       val destBetterFile = File(destination.toNIO)
       file.copyTo(destBetterFile, overwrite = true)
-      logger.info(s"Step ${index + 1}/$numberOfSteps: done")
     case EsUpdateStep.RunCommand(_, windowsCommand) =>
       logger.info(s"Step ${index + 1}/$numberOfSteps: run command $windowsCommand")
-      val cmd = os.proc("cmd", "/c", windowsCommand)
-      val result = cmd.call(
+      os.proc("cmd", "/c", windowsCommand).call(
         cwd = esPath(elasticsearch.config.clusterName, elasticsearch.config.nodeName),
-        stdout = os.ProcessOutput.Readlines(line => logger.info(s"[command] $line")),
-        stderr = os.ProcessOutput.Readlines(line => logger.error(s"[command] $line")),
+        stdout = os.ProcessOutput.Readlines(line => logger.info(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
+        stderr = os.ProcessOutput.Readlines(line => logger.error(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
       )
-      logger.info(s"Step ${index + 1}/$numberOfSteps: done with result $result")
-    case EsUpdateStep.ChangeUser(user) =>
+    case EsUpdateStep.ChangeUser(_) =>
       logger.info(s"Step ${index + 1}/$numberOfSteps: change user is ignored on Windows")
   }
 
@@ -255,11 +252,11 @@ object WindowsElasticsearchSetup extends LazyLogging {
         cwd = binDir,
         env = Map("ES_JAVA_OPTS" -> "-Xms400m -Xmx400m", "JAVA_HOME" -> (binDir / ".." / "jdk").toString) ++ config.envs,
         stdout = os.ProcessOutput.Readlines { line =>
-          logger.info(s"[ES][${config.clusterName}][${config.nodeName}] $line")
+          logger.info(s"[${config.nodeName}] $line")
           additionalLogConsumer.foreach(_.accept(new OutputFrame(OutputFrame.OutputType.STDOUT, line.getBytes)))
         },
         stderr = os.ProcessOutput.Readlines { line =>
-          logger.error(s"[ES][${config.clusterName}][${config.nodeName}] $line")
+          logger.error(s"[${config.nodeName}] $line")
           additionalLogConsumer.foreach(_.accept(new OutputFrame(OutputFrame.OutputType.STDERR, line.getBytes)))
         },
       )

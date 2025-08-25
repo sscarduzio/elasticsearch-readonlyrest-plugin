@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonLdapContainers, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.dependencies.ldap
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
@@ -212,11 +212,11 @@ class LdapIntegrationSuite
 object LdapIntegrationSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("test1", 1, ujsonRead("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2", 1, ujsonRead("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test3", 1, ujsonRead("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test4", 1, ujsonRead("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test5", 1, ujsonRead("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test6", 1, ujsonRead("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test1", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test3", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test4", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test5", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test6", 1, ujson.read("""{"hello":"world"}""")).force()
   }
 }

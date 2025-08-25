@@ -21,13 +21,13 @@ import org.apache.http.client.methods.HttpUriRequest
 import org.apache.http.{HttpRequest, HttpResponse}
 import org.testcontainers.shaded.org.yaml.snakeyaml.constructor.SafeConstructor
 import org.testcontainers.shaded.org.yaml.snakeyaml.{LoaderOptions, Yaml}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, SimpleHeader}
 import tech.beshu.ror.utils.httpclient.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.*
 import tech.beshu.ror.utils.misc.Version
-import ujson.Value
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 
 import java.time.Duration
 import java.util
@@ -141,7 +141,7 @@ abstract class BaseManager(client: RestClient,
                      request: Option[HttpRequest] = None)
     extends SimpleResponse(response, request) {
 
-    lazy val responseJson: JSON = ujsonRead(body)
+    lazy val responseJson: JSON = ujson.read(body)
   }
 
   class YamlMapResponse(response: HttpResponse)

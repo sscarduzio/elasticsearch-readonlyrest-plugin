@@ -21,12 +21,12 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import ujson.{Null, Num, Str}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, SecurityType}
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import ujson.{Null, Num, Str}
 
 trait BaseXpackApiSuite
   extends AnyWordSpecLike
@@ -89,7 +89,7 @@ trait BaseXpackApiSuite
         Set("test2_index")
       )
       result.searchHits.map(i => i("_source")).toSet should be(
-        Set(ujsonRead("""{"name":"john"}"""))
+        Set(ujson.read("""{"name":"john"}"""))
       )
     }
     "not be called for closed indices" excludeES(allEs6x, allEs7xBelowEs77x) in {
@@ -115,7 +115,7 @@ trait BaseXpackApiSuite
         val searchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
         val result = searchManager.searchTemplate(
           index = "test1_index*",
-          query = ujsonRead(
+          query = ujson.read(
             s"""
                |{
                |    "id": "template1",
@@ -128,13 +128,13 @@ trait BaseXpackApiSuite
 
         result should have statusCode 200
         result.searchHits.map(_ ("_index").str).distinct should be(List("test1_index_a"))
-        result.searchHits.map(_ ("_source")) should be(List(ujsonRead("""{"hello":"world"}""")))
+        result.searchHits.map(_ ("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
       }
       "return empty response for dev3" in {
         val searchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
         val result = searchManager.searchTemplate(
           index = "test1_index*",
-          query = ujsonRead(
+          query = ujson.read(
             s"""
                |{
                |    "id": "template1",
@@ -153,7 +153,7 @@ trait BaseXpackApiSuite
         val searchManager = new SearchManager(basicAuthClient("dev7", "test"), esVersionUsed)
         val result = searchManager.searchTemplate(
           index = "test7_index",
-          query = ujsonRead(
+          query = ujson.read(
             """
               |{
               |  "source": {
@@ -180,15 +180,15 @@ trait BaseXpackApiSuite
 
         result should have statusCode 200
         result.searchHits.map(_ ("_index").str).distinct should be(List("test7_index"))
-        result.searchHits.map(_ ("_source")) should be(List(ujsonRead("""{"content":{ "app": "a1" }}""")))
+        result.searchHits.map(_ ("_source")) should be(List(ujson.read("""{"content":{ "app": "a1" }}""")))
       }
     }
     "multisearch template is used" should {
       "return only indices which user has an access to" in {
         val searchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
         val result = searchManager.mSearchTemplate(
-          ujsonRead("""{"index":"test1_index*"}"""),
-          ujsonRead(
+          ujson.read("""{"index":"test1_index*"}"""),
+          ujson.read(
             s"""
                |{
                |    "id": "template1",
@@ -203,13 +203,13 @@ trait BaseXpackApiSuite
         result.responseJson("responses").arr.size should be(1)
         val firstQueryResponse = result.responseJson("responses")(0)
         firstQueryResponse("hits")("hits").arr.map(_ ("_index").str).distinct should be(List("test1_index_a"))
-        firstQueryResponse("hits")("hits").arr.map(_ ("_source")) should be(List(ujsonRead("""{"hello":"world"}""")))
+        firstQueryResponse("hits")("hits").arr.map(_ ("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
       }
       "return empty response for dev3" in {
         val searchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
         val result = searchManager.mSearchTemplate(
-          ujsonRead("""{"index":"test1_index*"}"""),
-          ujsonRead(
+          ujson.read("""{"index":"test1_index*"}"""),
+          ujson.read(
             s"""
                |{
                |    "id": "template1",
@@ -229,8 +229,8 @@ trait BaseXpackApiSuite
       "return filtered documents" in {
         val searchManager = new SearchManager(basicAuthClient("dev7", "test"), esVersionUsed)
         val result = searchManager.mSearchTemplate(
-          ujsonRead("""{"index":"test7_index"}"""),
-          ujsonRead(
+          ujson.read("""{"index":"test7_index"}"""),
+          ujson.read(
             """
               |{
               |  "source": {
@@ -259,7 +259,7 @@ trait BaseXpackApiSuite
         result.responseJson("responses").arr.size should be(1)
         val firstQueryResponse = result.responseJson("responses")(0)
         firstQueryResponse("hits")("hits").arr.map(_ ("_index").str).distinct should be(List("test7_index"))
-        firstQueryResponse("hits")("hits").arr.map(_ ("_source")) should be(List(ujsonRead("""{"content":{ "app": "a1" }}""")))
+        firstQueryResponse("hits")("hits").arr.map(_ ("_source")) should be(List(ujson.read("""{"content":{ "app": "a1" }}""")))
       }
     }
     "render template is used" should {
@@ -1097,27 +1097,27 @@ object BaseXpackApiSuite {
   }
 
   private def createDocs(documentManager: DocumentManager): Unit = {
-    documentManager.createDoc("test1_index_a", 1, ujsonRead("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test1_index_b", 1, ujsonRead("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test1_index_a", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test1_index_b", 1, ujson.read("""{"hello":"world"}""")).force()
 
-    documentManager.createDoc("test2_index", 1, ujsonRead("""{"name":"john", "age":33}""")).force()
-    documentManager.createDoc("test2_index", 2, ujsonRead("""{"name":"bill", "age":50}""")).force()
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"name":"john", "age":33}""")).force()
+    documentManager.createDoc("test2_index", 2, ujson.read("""{"name":"bill", "age":50}""")).force()
 
-    documentManager.createDoc("test3_index_a", 1, ujsonRead("""{"timestamp":"2020-01-01", "count": 10}""")).force()
-    documentManager.createDoc("test3_index_b", 1, ujsonRead("""{"timestamp":"2020-02-01", "count": 100}""")).force()
-    documentManager.createDoc("test3_index_c", 1, ujsonRead("""{"timestamp":"2020-03-01", "count": 100}""")).force()
+    documentManager.createDoc("test3_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
+    documentManager.createDoc("test3_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
+    documentManager.createDoc("test3_index_c", 1, ujson.read("""{"timestamp":"2020-03-01", "count": 100}""")).force()
 
-    documentManager.createDoc("test4_index_a", 1, ujsonRead("""{"timestamp":"2020-01-01", "count": 10}""")).force()
-    documentManager.createDoc("test4_index_b", 1, ujsonRead("""{"timestamp":"2020-02-01", "count": 100}""")).force()
+    documentManager.createDoc("test4_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
+    documentManager.createDoc("test4_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
 
-    documentManager.createDoc("test5_index_a", 1, ujsonRead("""{"timestamp":"2020-01-01", "count": 10}""")).force()
-    documentManager.createDoc("test5_index_b", 1, ujsonRead("""{"timestamp":"2020-02-01", "count": 100}""")).force()
+    documentManager.createDoc("test5_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
+    documentManager.createDoc("test5_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
 
-    documentManager.createDoc("test6_index_a", 1, ujsonRead("""{"timestamp":"2020-01-01", "count": 10}""")).force()
-    documentManager.createDoc("test6_index_b", 1, ujsonRead("""{"timestamp":"2020-02-01", "count": 100}""")).force()
+    documentManager.createDoc("test6_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
+    documentManager.createDoc("test6_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
 
-    documentManager.createDoc("test7_index", 1, ujsonRead("""{"content":{ "app": "a1" }}""")).force()
-    documentManager.createDoc("test7_index", 2, ujsonRead("""{"content":{ "app": "a2" }}""")).force()
+    documentManager.createDoc("test7_index", 1, ujson.read("""{"content":{ "app": "a1" }}""")).force()
+    documentManager.createDoc("test7_index", 2, ujson.read("""{"content":{ "app": "a2" }}""")).force()
   }
 
   private def storeScriptTemplate(adminRestClient: RestClient, esVersion: String): Unit = {
@@ -1141,23 +1141,23 @@ object BaseXpackApiSuite {
   }
 
   private def configureBookstore(documentManager: DocumentManager, indexManager: IndexManager): Unit = {
-    documentManager.createDocAndAssert("bookstore", "stock", 1, ujsonRead(
+    documentManager.createDocAndAssert("bookstore", "stock", 1, ujson.read(
       s"""{"name": "Leviathan Wakes", "author": "James S.A. Corey", "release_date": "2011-06-02", "price": 100}"""
     ))
-    documentManager.createDocAndAssert("bookstore", "stock", 2, ujsonRead(
+    documentManager.createDocAndAssert("bookstore", "stock", 2, ujson.read(
       s"""{"name": "Hyperion", "author": "Dan Simmons", "release_date": "1989-05-26", "price": 200}"""
     ))
-    documentManager.createDocAndAssert("bookstore", "stock", 3, ujsonRead(
+    documentManager.createDocAndAssert("bookstore", "stock", 3, ujson.read(
       s"""{"name": "Dune", "author": "Frank Herbert", "release_date": "1965-06-01", "price": 50}"""
     ))
     indexManager.createAliasOf("bookstore", "bookshop").force()
   }
 
   private def configureLibrary(documentManager: DocumentManager): Unit = {
-    documentManager.createDocAndAssert("library", "book", 1, ujsonRead(
+    documentManager.createDocAndAssert("library", "book", 1, ujson.read(
       s"""{"name": "Leviathan Wakes", "author": "James S.A. Corey", "release_date": "2011-06-02", "internal_id": 1}"""
     ))
-    documentManager.createDocAndAssert("library", "book", 2, ujsonRead(
+    documentManager.createDocAndAssert("library", "book", 2, ujson.read(
       s"""{"name": "Hyperion", "author": "Dan Simmons", "release_date": "1989-05-26", "internal_id": 2}"""
     ))
   }

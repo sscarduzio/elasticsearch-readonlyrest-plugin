@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenti
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RequestId, User}
-import tech.beshu.ror.accesscontrol.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.JsonReader.ujsonRead
 import tech.beshu.ror.boot.RorInstance.{IndexConfigUpdateError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RorConfig

@@ -22,7 +22,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.BaseManyEsClustersIntegrationTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport, SingletonLdapContainers}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import ujson.Value.Value
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
@@ -32,7 +33,6 @@ import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecuri
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
-import ujson.Value.Value
 
 import java.time.{Instant, ZoneOffset}
 import java.time.temporal.ChronoUnit
@@ -97,7 +97,7 @@ class AdminApiAuthMockSuite
         }
       }
       "update mocks" in {
-        val payloadServices = ujsonRead(
+        val payloadServices = ujson.read(
           s"""
              |[
              |  {
@@ -143,7 +143,7 @@ class AdminApiAuthMockSuite
             val response = rorApiManager.currentMockedServices()
             response should have statusCode 200
             response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
-            response.responseJson("services") should be(ujsonRead(
+            response.responseJson("services") should be(ujson.read(
               s"""
                  |[
                  |  {
@@ -181,7 +181,7 @@ class AdminApiAuthMockSuite
           }
         }
 
-        assertAuthMocksInIndex(ujsonRead(
+        assertAuthMocksInIndex(ujson.read(
           s"""
              |{
              |  "ldapMocks": {},
@@ -195,7 +195,7 @@ class AdminApiAuthMockSuite
           val testConfigResponse = rorApiManager.currentRorTestConfig
           testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
           testConfigResponse.responseJson("warnings") should be(
-            ujsonRead(
+            ujson.read(
               s"""
                  |[
                  |  {
@@ -231,7 +231,7 @@ class AdminApiAuthMockSuite
       "return info that some of mocks are configured" in {
         setupTestSettingsOnAllNodes()
 
-        val payloadServices = ujsonRead(
+        val payloadServices = ujson.read(
           s"""
              |[
              |  {
@@ -317,7 +317,7 @@ class AdminApiAuthMockSuite
           .configureImpersonationMocks(updateMocksPayload(payloadServices))
           .forceOkStatus()
 
-        assertAuthMocksInIndex(ujsonRead(
+        assertAuthMocksInIndex(ujson.read(
           s"""
              |{
              |  "ldapMocks": {
@@ -401,7 +401,7 @@ class AdminApiAuthMockSuite
       "return info that all mocks are configured" in {
         setupTestSettingsOnAllNodes()
 
-        val payloadServices = ujsonRead(
+        val payloadServices = ujson.read(
           s"""
              |[
              |  {
@@ -527,7 +527,7 @@ class AdminApiAuthMockSuite
           .configureImpersonationMocks(updateMocksPayload(payloadServices))
           .forceOkStatus()
 
-        assertAuthMocksInIndex(ujsonRead(
+        assertAuthMocksInIndex(ujson.read(
           s"""
              |{
              |  "ldapMocks": {
@@ -663,7 +663,7 @@ class AdminApiAuthMockSuite
           val response = rorApiManager.currentRorTestConfig
           response should have statusCode 200
           response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
-          response.responseJson("warnings") should be(ujsonRead(
+          response.responseJson("warnings") should be(ujson.read(
             s"""
                |[
                |  {
@@ -764,7 +764,7 @@ class AdminApiAuthMockSuite
              |""".stripMargin
         )
 
-        val payloadServices = ujsonRead(
+        val payloadServices = ujson.read(
           s"""
              |[
              |  {
@@ -902,7 +902,7 @@ class AdminApiAuthMockSuite
           "all services are passed" in {
             setupTestSettingsOnAllNodes()
 
-            val payloadServices = ujsonRead(
+            val payloadServices = ujson.read(
               s"""
                  |[
                  |  {
@@ -1031,7 +1031,7 @@ class AdminApiAuthMockSuite
           "only some services are passed" in {
             setupTestSettingsOnAllNodes()
 
-            val payloadServices = ujsonRead(
+            val payloadServices = ujson.read(
               s"""
                  |[
                  |  {
@@ -1077,7 +1077,7 @@ class AdminApiAuthMockSuite
             setupTestSettingsOnAllNodes()
 
             rorClients.foreach { rorApiManager =>
-              val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(ujsonRead("[]")))
+              val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(ujson.read("[]")))
               response should have statusCode 200
               response.responseJson should be(authMocksUpdatedJson)
             }
@@ -1089,7 +1089,7 @@ class AdminApiAuthMockSuite
 
         invalidateTestSettingsOnAllNodes()
 
-        val payloadServices = ujsonRead(
+        val payloadServices = ujson.read(
           s"""
              |[
              |  {
@@ -1103,7 +1103,7 @@ class AdminApiAuthMockSuite
         rorClients.foreach { rorApiManager =>
           val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
           response should have statusCode 200
-          response.responseJson should be(ujsonRead(
+          response.responseJson should be(ujson.read(
             s"""
                |{
                |  "status": "TEST_SETTINGS_INVALIDATED",
@@ -1117,7 +1117,7 @@ class AdminApiAuthMockSuite
         "unknown service passed" in {
           setupTestSettingsOnAllNodes()
 
-          val payloadServices = ujsonRead(
+          val payloadServices = ujson.read(
             s"""
                |[
                |  {
@@ -1136,7 +1136,7 @@ class AdminApiAuthMockSuite
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
             response should have statusCode 200
-            response.responseJson should be(ujsonRead(
+            response.responseJson should be(ujson.read(
               s"""
                  |{
                  |  "status": "UNKNOWN_AUTH_SERVICES_DETECTED",
@@ -1151,7 +1151,7 @@ class AdminApiAuthMockSuite
         "unknown service type" in {
           setupTestSettingsOnAllNodes()
 
-          val malformedPayload = ujsonRead(
+          val malformedPayload = ujson.read(
             s"""
                |[
                |  {
@@ -1165,7 +1165,7 @@ class AdminApiAuthMockSuite
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(malformedPayload))
             response should have statusCode 400
-            response.responseJson should be(ujsonRead(
+            response.responseJson should be(ujson.read(
               s"""
                  |{
                  |  "status": "FAILED",
@@ -1181,7 +1181,7 @@ class AdminApiAuthMockSuite
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks("{}")
             response should have statusCode 400
-            response.responseJson should be(ujsonRead(
+            response.responseJson should be(ujson.read(
               s"""
                  |{
                  |  "status": "FAILED",
@@ -1194,7 +1194,7 @@ class AdminApiAuthMockSuite
         "JSON with malformed ldap user objects" in {
           setupTestSettingsOnAllNodes()
 
-          val malformedPayload = ujsonRead(
+          val malformedPayload = ujson.read(
             s"""
                |{
                |  "services": [
@@ -1215,7 +1215,7 @@ class AdminApiAuthMockSuite
              """.stripMargin
           )
 
-          val expectedResponse = ujsonRead(
+          val expectedResponse = ujson.read(
             s"""
                |{
                |  "status": "FAILED",
@@ -1253,7 +1253,7 @@ class AdminApiAuthMockSuite
   }
 
   private def updateMocksPayload(payloadServices: Value) = {
-    ujsonRead(
+    ujson.read(
       s"""
          |{
          |  "services": $payloadServices
@@ -1294,7 +1294,7 @@ class AdminApiAuthMockSuite
     val testSettings = testEngineConfig()
     val expirationTtl = 30 minutes
     val expirationTime = Instant.now().plus(expirationTtl.toMillis, ChronoUnit.MILLIS)
-    val testSettingsJson = ujsonRead(
+    val testSettingsJson = ujson.read(
       s"""
          |{
          |  "settings": ${ujson.write(testSettings)},
@@ -1320,7 +1320,7 @@ class AdminApiAuthMockSuite
       (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
     }.value
 
-    val mocksContent = ujsonRead(testSettingsDocumentHit("_source")("auth_services_mocks").str)
+    val mocksContent = ujson.read(testSettingsDocumentHit("_source")("auth_services_mocks").str)
     mocksContent should be(expectedMocks)
   }
 
@@ -1344,7 +1344,7 @@ class AdminApiAuthMockSuite
   }
 
   private lazy val testSettingsNotConfiguredJson = {
-    ujsonRead(
+    ujson.read(
       s"""
          |{
          |  "status": "TEST_SETTINGS_NOT_CONFIGURED",
@@ -1355,7 +1355,7 @@ class AdminApiAuthMockSuite
   }
 
   private lazy val authMocksUpdatedJson = {
-    ujsonRead(
+    ujson.read(
       s"""
          |{
          |  "status": "OK",

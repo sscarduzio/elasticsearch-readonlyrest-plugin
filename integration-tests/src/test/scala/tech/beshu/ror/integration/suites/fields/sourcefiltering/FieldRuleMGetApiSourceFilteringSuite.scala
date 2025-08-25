@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites.fields.sourcefiltering
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -43,7 +43,7 @@ class FieldRuleMGetApiSourceFilteringSuite
     }
 
     documentManager.mGet(
-      ujsonRead(
+      ujson.read(
         s"""{
            |  "docs":[
            |    {

@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseIndexApiSuite
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 
 class IndexApiWithNonFreeKibanaSupportSuite
   extends BaseIndexApiSuite
@@ -30,7 +30,7 @@ class IndexApiWithNonFreeKibanaSupportSuite
   override val forbiddenStatusReturned: Int = 403
 
   override def forbiddenByBlockResponse(reason: String): ujson.Value = {
-    ujsonRead(
+    ujson.read(
       s"""
          |{
          |  "error":{

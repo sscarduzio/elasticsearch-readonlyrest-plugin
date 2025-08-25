@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -71,7 +71,7 @@ class ResponseFieldRuleSuite
     "filter search response in whitelist mode" in {
       val searchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
       val result = searchManager.search(
-        ujsonRead("""{"query": {"terms":{"user_id": ["alice", "bob"]}}}""")
+        ujson.read("""{"query": {"terms":{"user_id": ["alice", "bob"]}}}""")
       )
       result should have statusCode 200
       result.searchHits.size should be(1)
@@ -84,7 +84,7 @@ class ResponseFieldRuleSuite
 object ResponseFieldRuleSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("index1", 1, ujsonRead("""{"user_id":"ivan"}""")).force()
-    documentManager.createDoc("index1", 2, ujsonRead("""{"user_id":"alice"}""")).force()
+    documentManager.createDoc("index1", 1, ujson.read("""{"user_id":"ivan"}""")).force()
+    documentManager.createDoc("index1", 2, ujson.read("""{"user_id":"alice"}""")).force()
   }
 }

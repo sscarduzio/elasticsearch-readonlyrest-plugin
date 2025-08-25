@@ -23,7 +23,7 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.SecurityType.{RorWithXpackSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
@@ -584,29 +584,29 @@ object CrossClusterCallsSuite extends StrictLogging {
 
   def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createFirstDoc("metrics_2020-03-26", ujsonRead("""{"counter1":"100"}""")).force()
-    documentManager.createFirstDoc("metrics_2020-03-27", ujsonRead("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("metrics_2020-03-26", ujson.read("""{"counter1":"100"}""")).force()
+    documentManager.createFirstDoc("metrics_2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
 
-    documentManager.createFirstDoc("service1-logs-2020-03-27", ujsonRead("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service1-logs-2020-03-28", ujsonRead("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service1-logs-2020-03-29", ujsonRead("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service1-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service1-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service1-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
   }
 
   def privateRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient, esVersion)
 
-    documentManager.createDoc("test1_index", 1, ujsonRead("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test1_index", 2, ujsonRead("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 1, ujsonRead("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 2, ujsonRead("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test1_index", 2, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2_index", 2, ujson.read("""{"hello":"world"}""")).force()
 
-    documentManager.createDoc("audit_2020-03-26", 1, ujsonRead("""{"usage":"ROR"}""")).force()
-    documentManager.createDoc("audit_2020-03-27", 1, ujsonRead("""{"usage":"ROR"}""")).force()
+    documentManager.createDoc("audit_2020-03-26", 1, ujson.read("""{"usage":"ROR"}""")).force()
+    documentManager.createDoc("audit_2020-03-27", 1, ujson.read("""{"usage":"ROR"}""")).force()
 
-    documentManager.createFirstDoc("service2-logs-2020-03-27", ujsonRead("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service2-logs-2020-03-28", ujsonRead("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service2-logs-2020-03-29", ujsonRead("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service2-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service2-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service2-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
 
     indexManager.createAliasOf("service2-logs-*", "service2-logs").force()
 
@@ -642,9 +642,9 @@ object CrossClusterCallsSuite extends StrictLogging {
 
   def publicRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createFirstDoc("service3-logs-2020-03-27", ujsonRead("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service3-logs-2020-03-28", ujsonRead("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service3-logs-2020-03-29", ujsonRead("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service3-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service3-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("service3-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
 
     val indexManager = new IndexManager(adminRestClient, esVersion)
     indexManager.createAliasOf("service3-logs-*", "service3-logs").force()
@@ -652,8 +652,8 @@ object CrossClusterCallsSuite extends StrictLogging {
 
   def xpackRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("xpack_cluster_index", 1, ujsonRead("""{"counter1":"50"}""")).force()
-    documentManager.createDoc("xpack_cluster_index", 2, ujsonRead("""{"counter1":"50"}""")).force()
+    documentManager.createDoc("xpack_cluster_index", 1, ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createDoc("xpack_cluster_index", 2, ujson.read("""{"counter1":"50"}""")).force()
   }
 
   def remoteClusterSetup(): SetupRemoteCluster = (remoteClusters: NonEmptyList[EsClusterContainer]) => {

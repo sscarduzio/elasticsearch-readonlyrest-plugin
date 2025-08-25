@@ -21,7 +21,7 @@ import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, EnhancedDataStreamManager, IndexManager, SearchManager}
@@ -321,38 +321,38 @@ object SearchApiSuite {
 
   private def createSearchEndpointIndicesAndExampleDocs(indexManager: IndexManager,
                                            documentManager: DocumentManager) = {
-    documentManager.createDoc("logs-0001", 1, ujsonRead(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
-    documentManager.createDoc("logs-0001", 2, ujsonRead(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
-    documentManager.createDoc("logs-0002", 1, ujsonRead(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("logs-0002", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
 
     indexManager.createAliasOf("logs-0001", "all-logs")
     indexManager.createAliasOf("logs-0002", "all-logs")
 
-    documentManager.createDoc("sys_logs-0001", 1, ujsonRead(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
-    documentManager.createDoc("sys_logs-0001", 2, ujsonRead(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
-    documentManager.createDoc("sys_logs-0002", 1, ujsonRead(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
-    documentManager.createDoc("sys_logs-old", 1, ujsonRead(s"""{ "message":"test4", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("sys_logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("sys_logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("sys_logs-0002", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("sys_logs-old", 1, ujson.read(s"""{ "message":"test4", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
 
-    documentManager.createDoc("business_logs-0001", 1, ujsonRead(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc("business_logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
   }
 
   private def createRealLifeTestsDocumentsAndAliases(indexManager: IndexManager,
                                                      documentManager: DocumentManager): Unit = {
-    documentManager.createDoc("my_data", "test", 1, ujsonRead("""{"hello":"world"}""")).force()
-    documentManager.createDoc("my_data", "test", 2, ujsonRead("""{"hello":"there", "public":1}""")).force()
+    documentManager.createDoc("my_data", "test", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("my_data", "test", 2, ujson.read("""{"hello":"there", "public":1}""")).force()
 
-    documentManager.createDoc("blabla", 1, ujsonRead("""{"hello":"there", "public":1}""")).force()
+    documentManager.createDoc("blabla", 1, ujson.read("""{"hello":"there", "public":1}""")).force()
 
-    documentManager.createDoc("vuln-ass-all-angola", "test", 1, ujsonRead("""{"country":"angola"}""")).force()
-    documentManager.createDoc("vuln-ass-all-china", "test", 1, ujsonRead("""{"country":"china"}""")).force()
-    documentManager.createDoc("vuln-ass-all-congo", "test", 1, ujsonRead("""{"country":"congo"}""")).force()
-    documentManager.createDoc("vuln-ass-all-myanmar", "test", 1, ujsonRead("""{"country":"myanmar"}""")).force()
-    documentManager.createDoc("vuln-ass-all-norge", "test", 1, ujsonRead("""{"country":"norge"}""")).force()
-    documentManager.createDoc("vuln-ass-all-vietnam", "test", 1, ujsonRead("""{"country":"vietnam"}""")).force()
+    documentManager.createDoc("vuln-ass-all-angola", "test", 1, ujson.read("""{"country":"angola"}""")).force()
+    documentManager.createDoc("vuln-ass-all-china", "test", 1, ujson.read("""{"country":"china"}""")).force()
+    documentManager.createDoc("vuln-ass-all-congo", "test", 1, ujson.read("""{"country":"congo"}""")).force()
+    documentManager.createDoc("vuln-ass-all-myanmar", "test", 1, ujson.read("""{"country":"myanmar"}""")).force()
+    documentManager.createDoc("vuln-ass-all-norge", "test", 1, ujson.read("""{"country":"norge"}""")).force()
+    documentManager.createDoc("vuln-ass-all-vietnam", "test", 1, ujson.read("""{"country":"vietnam"}""")).force()
 
     indexManager
       .updateAliases(
-        AliasAction.Add("my_data", "public_data", Some(ujsonRead("""{"term":{"public":1}}"""))),
+        AliasAction.Add("my_data", "public_data", Some(ujson.read("""{"term":{"public":1}}"""))),
         AliasAction.Add("blabla", "perfmon_my_test_alias"),
         AliasAction.Add("vuln-ass-all-angola", "all-subs-data"),
         AliasAction.Add("vuln-ass-all-china", "all-subs-data"),

@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.IndexManager.*
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -88,7 +88,7 @@ class IndexManager(client: RestClient,
   def putAllSettings(numberOfReplicas: Int): SimpleResponse = {
     putSettings(
       "_all",
-      ujsonRead(
+      ujson.read(
         s"""{
            |  "index":{
            |    "number_of_replicas":$numberOfReplicas
@@ -101,7 +101,7 @@ class IndexManager(client: RestClient,
   def putSettings(indexName: String, allocationNodeNames: String*): SimpleResponse = {
     putSettings(
       indexName = indexName,
-      settings = ujsonRead(
+      settings = ujson.read(
         s"""{
            |  "index.routing.allocation.include._name":"${allocationNodeNames.mkString(",")}"
            |}""".stripMargin)
@@ -111,7 +111,7 @@ class IndexManager(client: RestClient,
   def putSettingsIndexBlocksWrite(indexName: String, indexBlockWrite: Boolean): SimpleResponse = {
     putSettings(
       indexName = indexName,
-      settings = ujsonRead(
+      settings = ujson.read(
         s"""{
            |  "settings":{
            |    "index.blocks.write": $indexBlockWrite

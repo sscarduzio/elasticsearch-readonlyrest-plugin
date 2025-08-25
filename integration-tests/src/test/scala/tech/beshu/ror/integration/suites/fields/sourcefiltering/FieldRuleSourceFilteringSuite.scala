@@ -21,7 +21,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{BaseManager, DocumentManager}
@@ -60,7 +60,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead("""{"user1":"user1Value"}"""))
+        source shouldBe Some(ujson.read("""{"user1":"user1Value"}"""))
       }
       "whitelist mode is used when source should not be fetched" in {
         val result = fetchDocument(
@@ -84,7 +84,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead("""{}"""))
+        source shouldBe Some(ujson.read("""{}"""))
       }
       "whitelist mode is used with excluded whitelisted field" in {
         val result = fetchDocument(
@@ -96,7 +96,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead("""{}"""))
+        source shouldBe Some(ujson.read("""{}"""))
       }
       "whitelist mode with user variable is used " in {
         val result = fetchDocument(
@@ -108,7 +108,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead("""{"user2":"user2Value"}"""))
+        source shouldBe Some(ujson.read("""{"user2":"user2Value"}"""))
       }
       "whitelist mode with user variable is used and called by user with 'negated' value" in {
         val result = fetchDocument(
@@ -120,7 +120,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead("""{"~user":"~userValue"}"""))
+        source shouldBe Some(ujson.read("""{"~user":"~userValue"}"""))
       }
       "whitelist mode with wildcard is used" in {
         val result = fetchDocument(
@@ -132,7 +132,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead("""{"user3":"user3Value"}"""))
+        source shouldBe Some(ujson.read("""{"user3":"user3Value"}"""))
       }
       "whitelist mode is used with wildcard and with included blacklisted field" in {
         val result = fetchDocument(
@@ -144,7 +144,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead("""{}"""))
+        source shouldBe Some(ujson.read("""{}"""))
       }
 
       "blacklist mode is used" in {
@@ -157,7 +157,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead(
+        source shouldBe Some(ujson.read(
           """|{
              | "~user": "~userValue",
              | "user1": "user1Value",
@@ -179,7 +179,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead(
+        source shouldBe Some(ujson.read(
           """|{
              | "~user": "~userValue",
              | "user1": "user1Value",
@@ -202,7 +202,7 @@ trait FieldRuleSourceFilteringSuite
 
         val source = sourceOfFirstDoc(result)
 
-        source shouldBe Some(ujsonRead("""{}"""))
+        source shouldBe Some(ujson.read("""{}"""))
       }
       "blacklist mode is used with excluded all fields" in {
         val result = fetchDocument(
@@ -214,7 +214,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead("""{}"""))
+        source shouldBe Some(ujson.read("""{}"""))
       }
       "blacklist mode with wildcard is used" in {
         val result = fetchDocument(
@@ -226,7 +226,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead(
+        source shouldBe Some(ujson.read(
           """|{
              | "~user": "~userValue",
              | "user1": "user1Value",
@@ -250,7 +250,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead(
+        source shouldBe Some(ujson.read(
           """
             |{
             |  "items":[
@@ -280,7 +280,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead(
+        source shouldBe Some(ujson.read(
           """
             |{
             |  "secrets": [
@@ -301,7 +301,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead(
+        source shouldBe Some(ujson.read(
           s"""
              |{
              |  "items":[
@@ -331,7 +331,7 @@ trait FieldRuleSourceFilteringSuite
         result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujsonRead(
+        source shouldBe Some(ujson.read(
           """
             |{
             |  "id":1,
@@ -381,7 +381,7 @@ trait FieldRuleSourceFilteringSuite
               |}""".stripMargin
           }
 
-        source shouldBe Some(ujsonRead(expectedSource))
+        source shouldBe Some(ujson.read(expectedSource))
       }
     }
   }
@@ -431,7 +431,7 @@ object FieldRuleSourceFilteringSuite {
         |  }
         |}""".stripMargin
 
-    documentManager.createDoc("testfiltera", 1, ujsonRead(simpleDoc)).force()
-    documentManager.createDoc("nestedtest", 1, ujsonRead(nestedDoc)).force()
+    documentManager.createDoc("testfiltera", 1, ujson.read(simpleDoc)).force()
+    documentManager.createDoc("nestedtest", 1, ujson.read(nestedDoc)).force()
   }
 }

@@ -14,11 +14,24 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.utils
+package tech.beshu.ror.utils
 
-import ujson as ujsonReader
-import ujson.Value
+import ujson as originalUjson
+import ujson.{Obj as ujsonObj, Value as ujsonValue}
 
-object JsonReader {
-  def ujsonRead(s: String, trace: Boolean = false): Value.Value = ujsonReader.read(s.replaceAll("\r\n", "\n"), trace)
+object TestUjson {
+
+  object ujson {
+    type Value = ujsonValue
+
+    type Obj = ujsonObj
+
+    def read(s: String, trace: Boolean = false): Value = originalUjson.read(s.replaceAll("\r\n", "\n"), trace)
+
+    def write(t: Value,
+              indent: Int = -1,
+              escapeUnicode: Boolean = false,
+              sortKeys: Boolean = false): String = originalUjson.write(t, indent, escapeUnicode, sortKeys)
+  }
+
 }

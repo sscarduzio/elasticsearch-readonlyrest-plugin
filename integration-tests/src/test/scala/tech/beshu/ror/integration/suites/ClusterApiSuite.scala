@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
 import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
@@ -137,7 +137,7 @@ class ClusterApiSuite
         val otherNode = adminCatManager.nodes().names.find(_ != nodeOfIndex).get
 
         val result = dev1ClusterManager.reroute(
-          ujsonRead(
+          ujson.read(
             s"""{
                |  "move": {
                |    "index": "$indexName",
@@ -165,7 +165,7 @@ class ClusterApiSuite
           val otherNode = adminCatManager.nodes().names.find(_ != nodeOfIndex).get
 
           val result = dev1ClusterManager.reroute(
-            ujsonRead(
+            ujson.read(
               s"""{
                  |  "move": {
                  |    "index": "$indexName",
@@ -179,7 +179,7 @@ class ClusterApiSuite
         }
         "the index doesn't exist" in {
           val result = dev1ClusterManager.reroute(
-            ujsonRead(
+            ujson.read(
               s"""{
                  |  "move": {
                  |    "index": "test1_index_nonexistent",
@@ -229,7 +229,7 @@ class ClusterApiSuite
       val settingsBeforePut = adminClusterManager.getSettings
 
       val response = adminClusterManager.putSettings(
-        ujsonRead(
+        ujson.read(
           s"""{
              |  "persistent": {
              |    "cluster.routing.allocation.cluster_concurrent_rebalance": "30"
@@ -252,8 +252,8 @@ object ClusterApiSuite {
     val indexManager = new IndexManager(adminRestClient, esVersion)
     val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-    documentManager.createFirstDoc("test1_index", ujsonRead("""{"hello":"world"}"""))
-    documentManager.createFirstDoc("test2_index", ujsonRead("""{"hello":"world"}"""))
+    documentManager.createFirstDoc("test1_index", ujson.read("""{"hello":"world"}"""))
+    documentManager.createFirstDoc("test2_index", ujson.read("""{"hello":"world"}"""))
     indexManager.putAllSettings(numberOfReplicas = 0)
   }
 }

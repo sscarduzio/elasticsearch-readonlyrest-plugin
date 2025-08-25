@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
@@ -44,7 +44,7 @@ class CurrentUserMetadataSuite
           val result = user1MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
           result should have statusCode 200
-          result.responseJson should be(ujsonRead(
+          result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user1",
                |  "x-ror-current-group": {
@@ -70,7 +70,7 @@ class CurrentUserMetadataSuite
           )
 
           result should have statusCode 200
-          result.responseJson should be(ujsonRead(
+          result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user4",
                |  "x-ror-current-group": {
@@ -100,7 +100,7 @@ class CurrentUserMetadataSuite
           val result = user2MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
           result should have statusCode 200
-          result.responseJson should be(ujsonRead(
+          result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user2",
                |  "x-ror-current-group": {
@@ -146,7 +146,7 @@ class CurrentUserMetadataSuite
           val result = user3MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
           result should have statusCode 200
-          result.responseJson should be(ujsonRead(
+          result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user3",
                |  "x-ror-correlation-id": "$correlationId",

@@ -22,7 +22,7 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.SingleClientSupport
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.elasticsearch.*
@@ -242,7 +242,7 @@ trait BaseAuditingToolsSuite
         "no JSON key attribute from request body payload is defined in audit serializer" in {
           val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-          val response = rorApiManager.sendAuditEvent(ujsonRead("""{ "event": "logout" }""")).force()
+          val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }""")).force()
 
           response should have statusCode 204
 
@@ -258,7 +258,7 @@ trait BaseAuditingToolsSuite
         "user JSON key attribute from request doesn't override the defined in audit serializer" in {
           val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-          val response = rorApiManager.sendAuditEvent(ujsonRead("""{ "user": "unknown" }"""))
+          val response = rorApiManager.sendAuditEvent(ujson.read("""{ "user": "unknown" }"""))
 
           response should have statusCode 204
 
@@ -274,7 +274,7 @@ trait BaseAuditingToolsSuite
         "new JSON key attribute from request body as a JSON value" in {
           val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-          val response = rorApiManager.sendAuditEvent(ujsonRead("""{ "event_obj": { "field1": 1, "fields2": "f2" } }"""))
+          val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event_obj": { "field1": 1, "fields2": "f2" } }"""))
 
           response should have statusCode 204
 
@@ -282,7 +282,7 @@ trait BaseAuditingToolsSuite
             eventually {
               val auditEntries = adminAuditManager.getEntries.jsons
               auditEntries.size should be(1)
-              auditEntries(0)("event_obj") should be(ujsonRead("""{ "field1": 1, "fields2": "f2" }"""))
+              auditEntries(0)("event_obj") should be(ujson.read("""{ "field1": 1, "fields2": "f2" }"""))
               assertForEveryAuditEntry(auditEntries(0))
             }
           }
@@ -293,7 +293,7 @@ trait BaseAuditingToolsSuite
       "admin rule is matched" in {
         val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
 
-        val response = rorApiManager.sendAuditEvent(ujsonRead("""{ "event": "logout" }"""))
+        val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
         response should have statusCode 204
 
         forEachAuditManager { adminAuditManager =>
@@ -305,9 +305,9 @@ trait BaseAuditingToolsSuite
       "request JSON is malformed" in {
         val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        val response = rorApiManager.sendAuditEvent(ujsonRead("""[]"""))
+        val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
         response should have statusCode 400
-        response.responseJson should be(ujsonRead(
+        response.responseJson should be(ujson.read(
           """
             |{
             |  "error":{
@@ -333,9 +333,9 @@ trait BaseAuditingToolsSuite
       "request JSON is too large (>5KB)" in {
         val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        val response = rorApiManager.sendAuditEvent(ujsonRead(s"""{ "event": "${LazyList.continually("!").take(5000).mkString}" }"""))
+        val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${LazyList.continually("!").take(5000).mkString}" }"""))
         response should have statusCode 413
-        response.responseJson should be(ujsonRead(
+        response.responseJson should be(ujson.read(
           """
             |{
             |  "error":{
@@ -402,7 +402,7 @@ trait BaseAuditingToolsSuite
 
         assertDataStreamNotExists(newDataStream)
 
-        val policy = ujsonRead(
+        val policy = ujson.read(
           """{
             |  "policy": {
             |    "phases": {
@@ -434,7 +434,7 @@ trait BaseAuditingToolsSuite
 
         assertDataStreamNotExists(newDataStream)
 
-        val template = ujsonRead(
+        val template = ujson.read(
           s"""
              |{
              |  "template": {
@@ -468,7 +468,7 @@ trait BaseAuditingToolsSuite
         val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
         assertDataStreamNotExists(newDataStream)
 
-        val template = ujsonRead(
+        val template = ujson.read(
           s"""
              |{
              |  "template": {
@@ -500,7 +500,7 @@ trait BaseAuditingToolsSuite
         templateManager
           .putTemplateAndWaitForIndexing(
             templateName = s"$newDataStream-template",
-            template = ujsonRead(
+            template = ujson.read(
               s"""
                  |{
                  |  "index_patterns": ["$newDataStream"],
@@ -583,7 +583,7 @@ trait BaseAuditingToolsSuite
     val templateManager = new IndexTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
     templateManager.createTemplate(
       templateName = s"$dataStreamName-template",
-      body = ujsonRead(
+      body = ujson.read(
         s"""
            |{
            |  "index_patterns": ["$dataStreamName*"],
@@ -618,7 +618,7 @@ trait BaseAuditingToolsSuite
     val policy = indexLifecycle.policies.get(policyName)
 
     val expectedPolicy = if (Version.greaterOrEqualThan(esVersionUsed, 8, 14, 0)) {
-      ujsonRead(
+      ujson.read(
         s"""
            |{
            |  "policy":{
@@ -659,7 +659,7 @@ trait BaseAuditingToolsSuite
            |""".stripMargin
       )
     } else if (Version.greaterOrEqualThan(esVersionUsed, 7, 14, 0)) {
-      ujsonRead(
+      ujson.read(
         s"""
            |{
            |  "policy":{
@@ -700,7 +700,7 @@ trait BaseAuditingToolsSuite
       )
     }
     else {
-      ujsonRead(
+      ujson.read(
         s"""
            |{
            |  "policy":{

@@ -22,7 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import tech.beshu.ror.integration.suites.DataStreamApiSuite.{DataStreamNameGenerator, IndexTemplateNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.IndexManager.*
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
@@ -859,9 +859,9 @@ class DataStreamApiSuite
       "without indices rule should" - {
         "allow to migrate index alias to data stream" excludeES(allEs6x, allEs7xBelowEs711x) in {
           val dataStream = DataStreamNameGenerator.next("admin")
-          adminDocumentManager.createDoc("logs-0001", 1, ujsonRead(s"""{ "message":"test1", "@timestamp": "${format(Instant.now())}"}""")).force()
-          adminDocumentManager.createDoc("logs-0001", 2, ujsonRead(s"""{ "message":"test2", "@timestamp": "${format(Instant.now())}"}""")).force()
-          adminDocumentManager.createDoc("logs-0001", 1, ujsonRead(s"""{ "message":"test3", "@timestamp": "${format(Instant.now())}"}""")).force()
+          adminDocumentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "${format(Instant.now())}"}""")).force()
+          adminDocumentManager.createDoc("logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "${format(Instant.now())}"}""")).force()
+          adminDocumentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "${format(Instant.now())}"}""")).force()
           adminIndexManager.createAliasOf("logs-0001", dataStream).force()
 
           adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(dataStream)).force()
@@ -879,9 +879,9 @@ class DataStreamApiSuite
         "allow to migrate index alias to data stream when" - {
           "the alias does match the allowed indices" excludeES(allEs6x, allEs7xBelowEs711x) in {
             val dataStream = DataStreamNameGenerator.next("test")
-            adminDocumentManager.createDoc("logs-0001", 1, ujsonRead(s"""{ "message":"test1", "@timestamp": "${format(Instant.now())}"}""")).force()
-            adminDocumentManager.createDoc("logs-0001", 2, ujsonRead(s"""{ "message":"test2", "@timestamp": "${format(Instant.now())}"}""")).force()
-            adminDocumentManager.createDoc("logs-0001", 1, ujsonRead(s"""{ "message":"test3", "@timestamp": "${format(Instant.now())}"}""")).force()
+            adminDocumentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "${format(Instant.now())}"}""")).force()
+            adminDocumentManager.createDoc("logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "${format(Instant.now())}"}""")).force()
+            adminDocumentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "${format(Instant.now())}"}""")).force()
             adminIndexManager.createAliasOf("logs-0001", dataStream).force()
 
             adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(dataStream)).force()
@@ -899,9 +899,9 @@ class DataStreamApiSuite
         "forbid to migrate index alias to data stream when" - {
           "the alias does not match the allowed indices" excludeES(allEs6x, allEs7xBelowEs711x) in {
             val dataStream = DataStreamNameGenerator.next("admin")
-            adminDocumentManager.createDoc("logs-0001", 1, ujsonRead(s"""{ "message":"test1", "@timestamp": "${format(Instant.now())}"}""")).force()
-            adminDocumentManager.createDoc("logs-0001", 2, ujsonRead(s"""{ "message":"test2", "@timestamp": "${format(Instant.now())}"}""")).force()
-            adminDocumentManager.createDoc("logs-0001", 1, ujsonRead(s"""{ "message":"test3", "@timestamp": "${format(Instant.now())}"}""")).force()
+            adminDocumentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "${format(Instant.now())}"}""")).force()
+            adminDocumentManager.createDoc("logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "${format(Instant.now())}"}""")).force()
+            adminDocumentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "${format(Instant.now())}"}""")).force()
             adminIndexManager.createAliasOf("logs-0001", dataStream).force()
 
             adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(dataStream)).force()
@@ -927,7 +927,7 @@ class DataStreamApiSuite
           val dsIndices = dataStreamBackingIndices(dataStream)
           dsIndices.length should be(3)
 
-          val modifyResponse = adminDataStreamManager.modifyDataStreams(ujsonRead(
+          val modifyResponse = adminDataStreamManager.modifyDataStreams(ujson.read(
             s"""
                |{
                |  "actions": [
@@ -957,7 +957,7 @@ class DataStreamApiSuite
             dsIndices.length should be(3)
 
             val dsm = new DataStreamManager(user2Client, esVersionUsed)
-            val modifyResponse = dsm.modifyDataStreams(ujsonRead(
+            val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
                  |  "actions": [
@@ -984,7 +984,7 @@ class DataStreamApiSuite
             dsIndices.length should be(3)
 
             val dsm = new DataStreamManager(user1Client, esVersionUsed)
-            val modifyResponse = dsm.modifyDataStreams(ujsonRead(
+            val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
                  |  "actions": [
@@ -1013,7 +1013,7 @@ class DataStreamApiSuite
 
 
             val dsm = new DataStreamManager(user1Client, esVersionUsed)
-            val modifyResponse = dsm.modifyDataStreams(ujsonRead(
+            val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
                  |  "actions": [
@@ -1039,7 +1039,7 @@ class DataStreamApiSuite
             forbiddenDsIndices.length should be(1)
 
             val dsm = new DataStreamManager(user1Client, esVersionUsed)
-            val modifyResponse = dsm.modifyDataStreams(ujsonRead(
+            val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
                  |  "actions": [
@@ -1076,7 +1076,7 @@ class DataStreamApiSuite
             dsIndices.length should be(3)
 
             val dsm = new DataStreamManager(user3Client, esVersionUsed)
-            val modifyResponse = dsm.modifyDataStreams(ujsonRead(
+            val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
                  |  "actions": [
@@ -1105,7 +1105,7 @@ class DataStreamApiSuite
             dsIndices.length should be(3)
 
             val dsm = new DataStreamManager(user3Client, esVersionUsed)
-            val modifyResponse = dsm.modifyDataStreams(ujsonRead(
+            val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
                  |  "actions": [
@@ -1140,7 +1140,7 @@ class DataStreamApiSuite
   }
 
   private def documentJson: ujson.Value = {
-    ujsonRead(s"""{ "message":"test", "@timestamp": "${format(Instant.now())}"}""")
+    ujson.read(s"""{ "message":"test", "@timestamp": "${format(Instant.now())}"}""")
   }
 
   private def dataStreamBackingIndices(streamName: String): List[String] = {
@@ -1150,7 +1150,7 @@ class DataStreamApiSuite
       .backingIndices
   }
 
-  private def indexTemplate(dataStreamName: String) = ujsonRead(
+  private def indexTemplate(dataStreamName: String) = ujson.read(
     s"""
        |{
        |  "index_patterns": ["$dataStreamName*"],

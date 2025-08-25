@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
@@ -39,10 +39,10 @@ class ClosedIndicesSuite
       val documentManager = new DocumentManager(adminRestClient, esVersion)
 
       documentManager
-        .createDoc("intentp1_a1", "documents", "doc-a1", ujsonRead("""{"title": "a1"}"""))
+        .createDoc("intentp1_a1", "documents", "doc-a1", ujson.read("""{"title": "a1"}"""))
         .force()
       documentManager
-        .createDoc("intentp1_a2", "documents", "doc-a2", ujsonRead("""{"title": "a2"}"""))
+        .createDoc("intentp1_a2", "documents", "doc-a2", ujson.read("""{"title": "a2"}"""))
         .force()
 
       indexManager.closeIndex("intentp1_a2").force()

@@ -20,9 +20,9 @@ import org.apache.http.HttpResponse
 import org.apache.http.entity.StringEntity
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers.shouldBe
-import tech.beshu.ror.utils.JsonReader.ujsonRead
+import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.httpclient.RestClient
-import ujson.Value
 
 class AuditIndexManager(restClient: RestClient,
                         esVersion: String,
@@ -41,7 +41,7 @@ class AuditIndexManager(restClient: RestClient,
   }
 
   def truncate(): Unit = {
-    val matchAllQuery = ujsonRead("""{"query" : {"match_all" : {}}}""".stripMargin)
+    val matchAllQuery = ujson.read("""{"query" : {"match_all" : {}}}""".stripMargin)
     documentManager.deleteByQuery(indexName, matchAllQuery)
     indexManager.refresh(indexName)
   }
