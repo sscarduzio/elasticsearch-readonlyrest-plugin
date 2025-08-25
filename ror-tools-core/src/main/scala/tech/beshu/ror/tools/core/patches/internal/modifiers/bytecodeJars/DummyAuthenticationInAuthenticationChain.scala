@@ -59,10 +59,8 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
               new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual870(super.visitMethod(access, name, descriptor, signature, exceptions))
             case v if v >= es820 =>
               new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual820(super.visitMethod(access, name, descriptor, signature, exceptions))
-            case v if v >= es71713 =>
-              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual71713(super.visitMethod(access, name, descriptor, signature, exceptions))
             case v if v >= es7160 =>
-              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual71713(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual7160(super.visitMethod(access, name, descriptor, signature, exceptions))
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }
@@ -238,7 +236,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
       }
     }
 
-    private class SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual71713(underlying: MethodVisitor)
+    private class SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual7160(underlying: MethodVisitor)
       extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
