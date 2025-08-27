@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
-import tech.beshu.ror.accesscontrol.audit.configurable.{AuditFieldValueDeserializer, ConfigurableAuditLogSerializer}
+import tech.beshu.ror.accesscontrol.audit.configurable.{AuditFieldValueDescriptorDeserializer, ConfigurableAuditLogSerializer}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -33,10 +33,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{AclCreationErrorCoders, DecodingFailureOps}
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
-import tech.beshu.ror.audit.AuditSerializationHelper.AllowedEventSerializationMode.*
-import tech.beshu.ror.audit.AuditSerializationHelper.AuditFieldName
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.adapters.*
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditFieldValue, AuditLogSerializer}
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
@@ -215,12 +215,16 @@ object AuditingSettingsDecoder extends Logging {
           configurable <- c.downField("configurable").as[Option[Boolean]]
           serializer <- if (configurable.contains(true)) {
             for {
-              serializeAllAllowedEvents <- c.downField("serialize_all_allowed_events").as[Boolean]
-                .left.map(withAuditingSettingsCreationErrorMessage("Configurable serializer is used, but the serialize_all_allowed_events setting is missing in configuration"))
-              allowedEventSerializationMode = if (serializeAllAllowedEvents) SerializeAllAllowedEvents else SerializeOnlyAllowedEventsWithInfoLevelVerbose
-              fields <- c.downField("fields").as[Map[AuditFieldName, AuditFieldValue]]
+              allowedEventModeStr <- c.downField("allowed_event_serialization").downField("mode").as[String]
+                .left.map(withAuditingSettingsCreationErrorMessage("Configurable serializer is used, but the allowed_event_serialization.mode setting is missing in configuration"))
+              allowedEventMode <- allowedEventModeStr match {
+                case "INCLUDE_ALL" => Right(AllowedEventMode.IncludeAll)
+                case "INCLUDE_WITH_VERBOSITY_LEVELS" => c.downField("allowed_event_serialization").downField("verbosity_levels").as[Set[Verbosity]].map(AllowedEventMode.Include.apply)
+                case other => Left(DecodingFailure(s"Invalid allowed_event_serialization.mode $other. Allowed values: [INCLUDE_ALL, INCLUDE_WITH_VERBOSITY_LEVELS]", Nil))
+              }
+              fields <- c.downField("fields").as[Map[AuditFieldName, AuditFieldValueDescriptor]]
                 .left.map(withAuditingSettingsCreationErrorMessage("Configurable serializer is used, but the fields setting is missing in configuration"))
-              serializer = new ConfigurableAuditLogSerializer(context, allowedEventSerializationMode, fields)
+              serializer = new ConfigurableAuditLogSerializer(context, allowedEventMode, fields)
             } yield Some(serializer)
           } else {
             for {
@@ -293,10 +297,21 @@ object AuditingSettingsDecoder extends Logging {
     KeyDecoder.decodeKeyString.map(AuditFieldName.apply)
   }
 
-  given auditFieldValueDecoder: Decoder[AuditFieldValue] = {
+  given auditFieldValueDecoder: Decoder[AuditFieldValueDescriptor] = {
     SyncDecoderCreator
       .from(Decoder.decodeString)
-      .emap(AuditFieldValueDeserializer.deserialize)
+      .emap(AuditFieldValueDescriptorDeserializer.deserialize)
+      .decoder
+  }
+
+  given verbosityDecoder: Decoder[Verbosity] = {
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
+      .emap {
+        case "ERROR" => Right(Verbosity.Error: Verbosity)
+        case "INFO" => Right(Verbosity.Info: Verbosity)
+        case other => Left(s"Unknown verbosity level [$other], allowed values are: [ERROR, INFO]")
+      }
       .decoder
   }
 

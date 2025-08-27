@@ -18,7 +18,8 @@ package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
 import tech.beshu.ror.audit._
-import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventSerializationMode, AuditFieldName}
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer.environmentRelatedAuditFields
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2.defaultV2AuditFields
 
@@ -29,12 +30,36 @@ class DefaultAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) e
       responseContext = responseContext,
       environmentContext = Some(environmentContext),
       fields = defaultV2AuditFields,
-      allowedEventSerializationMode = AllowedEventSerializationMode.SerializeOnlyAllowedEventsWithInfoLevelVerbose
+      allowedEventMode = AllowedEventMode.Include(Set(Verbosity.Info)),
     )
 
 }
 
 object DefaultAuditLogSerializerV2 {
-  val defaultV2AuditFields: Map[AuditFieldName, AuditFieldValue] =
-    DefaultAuditLogSerializerV1.defaultV1AuditFields ++ environmentRelatedAuditFields
+  val defaultV2AuditFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
+    AuditFieldName("match") -> AuditFieldValueDescriptor.IsMatched,
+    AuditFieldName("block") -> AuditFieldValueDescriptor.Reason,
+    AuditFieldName("id") -> AuditFieldValueDescriptor.Id,
+    AuditFieldName("final_state") -> AuditFieldValueDescriptor.FinalState,
+    AuditFieldName("@timestamp") -> AuditFieldValueDescriptor.Timestamp,
+    AuditFieldName("correlation_id") -> AuditFieldValueDescriptor.CorrelationId,
+    AuditFieldName("processingMillis") -> AuditFieldValueDescriptor.ProcessingDurationMillis,
+    AuditFieldName("error_type") -> AuditFieldValueDescriptor.ErrorType,
+    AuditFieldName("error_message") -> AuditFieldValueDescriptor.ErrorMessage,
+    AuditFieldName("content_len") -> AuditFieldValueDescriptor.ContentLengthInBytes,
+    AuditFieldName("content_len_kb") -> AuditFieldValueDescriptor.ContentLengthInKb,
+    AuditFieldName("type") -> AuditFieldValueDescriptor.Type,
+    AuditFieldName("origin") -> AuditFieldValueDescriptor.RemoteAddress,
+    AuditFieldName("destination") -> AuditFieldValueDescriptor.LocalAddress,
+    AuditFieldName("xff") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
+    AuditFieldName("task_id") -> AuditFieldValueDescriptor.TaskId,
+    AuditFieldName("req_method") -> AuditFieldValueDescriptor.HttpMethod,
+    AuditFieldName("headers") -> AuditFieldValueDescriptor.HttpHeaderNames,
+    AuditFieldName("path") -> AuditFieldValueDescriptor.HttpPath,
+    AuditFieldName("user") -> AuditFieldValueDescriptor.User,
+    AuditFieldName("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
+    AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
+    AuditFieldName("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
+    AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory
+  ) ++ environmentRelatedAuditFields
 }

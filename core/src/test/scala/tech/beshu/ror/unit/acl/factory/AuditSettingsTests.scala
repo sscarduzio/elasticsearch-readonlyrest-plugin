@@ -34,7 +34,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.*
-import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventSerializationMode, AuditFieldName}
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.adapters.{DeprecatedAuditLogSerializerAdapter, EnvironmentAwareAuditLogSerializerAdapter}
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
@@ -384,7 +385,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    outputs:
                 |    - type: log
                 |      configurable: true
-                |      serialize_all_allowed_events: false
+                |      allowed_event_serialization:
+                |        mode: INCLUDE_WITH_VERBOSITY_LEVELS
+                |        verbosity_levels: [INFO]
                 |      fields:
                 |        node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
                 |        another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
@@ -408,12 +411,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             configuredSerializer.environmentContext.esClusterName shouldBe testAuditEnvironmentContext.esClusterName
             configuredSerializer.environmentContext.esNodeName shouldBe testAuditEnvironmentContext.esNodeName
-            configuredSerializer.allowedEventSerializationMode shouldBe AllowedEventSerializationMode.SerializeOnlyAllowedEventsWithInfoLevelVerbose
+            configuredSerializer.allowedEventMode shouldBe AllowedEventMode.Include(Set(Verbosity.Info))
             configuredSerializer.fields shouldBe Map(
-              AuditFieldName("node_name_with_static_suffix") -> AuditFieldValue.Combined(List(AuditFieldValue.EsNodeName, AuditFieldValue.StaticText(" with suffix"))),
-              AuditFieldName("another_field") -> AuditFieldValue.Combined(List(AuditFieldValue.EsClusterName, AuditFieldValue.StaticText(" "), AuditFieldValue.HttpMethod)),
-              AuditFieldName("tid") -> AuditFieldValue.TaskId,
-              AuditFieldName("bytes") -> AuditFieldValue.ContentLengthInBytes,
+              AuditFieldName("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
+              AuditFieldName("another_field") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsClusterName, AuditFieldValueDescriptor.StaticText(" "), AuditFieldValueDescriptor.HttpMethod)),
+              AuditFieldName("tid") -> AuditFieldValueDescriptor.TaskId,
+              AuditFieldName("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
             )
           }
         }
@@ -1305,7 +1308,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               config,
-              expectedErrorMessage = "Configurable serializer is used, but the serialize_all_allowed_events setting is missing in configuration"
+              expectedErrorMessage = "Configurable serializer is used, but the allowed_event_serialization.mode setting is missing in configuration"
             )
           }
           "configurable serializer is set, but without fields setting" in {
@@ -1317,7 +1320,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    outputs:
                 |    - type: log
                 |      configurable: true
-                |      serialize_all_allowed_events: false
+                |      allowed_event_serialization:
+                |        mode: INCLUDE_WITH_VERBOSITY_LEVELS
+                |        verbosity_levels: [INFO]
                 |  access_control_rules:
                 |
                 |  - name: test_block

@@ -18,23 +18,23 @@
  */
 package tech.beshu.ror.accesscontrol.audit.configurable
 
-import tech.beshu.ror.audit.AuditFieldValue
+import tech.beshu.ror.audit.AuditSerializationHelper.AuditFieldValueDescriptor
 
-object AuditFieldValueDeserializer {
+object AuditFieldValueDescriptorDeserializer {
 
   private val pattern = "\\{([^}]+)\\}".r
 
-  def deserialize(str: String): Either[String, AuditFieldValue] = {
+  def deserialize(str: String): Either[String, AuditFieldValueDescriptor] = {
     val matches = pattern.findAllMatchIn(str).toList
 
     val (parts, missing, lastIndex) =
-      matches.foldLeft((List.empty[AuditFieldValue], List.empty[String], 0)) {
+      matches.foldLeft((List.empty[AuditFieldValueDescriptor], List.empty[String], 0)) {
         case ((partsAcc, missingAcc, lastEnd), m) =>
           val key = m.group(1)
           val before = str.substring(lastEnd, m.start)
-          val partBefore = if (before.nonEmpty) List(AuditFieldValue.StaticText(before)) else Nil
+          val partBefore = if (before.nonEmpty) List(AuditFieldValueDescriptor.StaticText(before)) else Nil
 
-          val (partAfter, newMissing) = deserializerAuditFieldValue(key) match {
+          val (partAfter, newMissing) = deserializerAuditFieldValueDescriptor(key) match {
             case Some(placeholder) => (List(placeholder), Nil)
             case None => (Nil, List(key))
           }
@@ -42,48 +42,48 @@ object AuditFieldValueDeserializer {
           (partsAcc ++ partBefore ++ partAfter, missingAcc ++ newMissing, m.end)
       }
 
-    val trailing = if (lastIndex < str.length) List(AuditFieldValue.StaticText(str.substring(lastIndex))) else Nil
+    val trailing = if (lastIndex < str.length) List(AuditFieldValueDescriptor.StaticText(str.substring(lastIndex))) else Nil
     val allParts = parts ++ trailing
 
     missing match {
       case Nil => allParts match {
-        case Nil => Right(AuditFieldValue.StaticText(""))
+        case Nil => Right(AuditFieldValueDescriptor.StaticText(""))
         case singleElement :: Nil => Right(singleElement)
-        case multipleElements => Right(AuditFieldValue.Combined(multipleElements))
+        case multipleElements => Right(AuditFieldValueDescriptor.Combined(multipleElements))
       }
       case missingList => Left(s"There are invalid placeholder values: ${missingList.mkString(", ")}")
     }
   }
 
-  private def deserializerAuditFieldValue(str: String): Option[AuditFieldValue] = {
+  private def deserializerAuditFieldValueDescriptor(str: String): Option[AuditFieldValueDescriptor] = {
     str match {
-      case "IS_MATCHED" => Some(AuditFieldValue.IsMatched)
-      case "FINAL_STATE" => Some(AuditFieldValue.FinalState)
-      case "REASON" => Some(AuditFieldValue.Reason)
-      case "USER" => Some(AuditFieldValue.User)
-      case "IMPERSONATED_BY_USER" => Some(AuditFieldValue.ImpersonatedByUser)
-      case "ACTION" => Some(AuditFieldValue.Action)
-      case "INVOLVED_INDICES" => Some(AuditFieldValue.InvolvedIndices)
-      case "ACL_HISTORY" => Some(AuditFieldValue.AclHistory)
-      case "PROCESSING_DURATION_MILLIS" => Some(AuditFieldValue.ProcessingDurationMillis)
-      case "TIMESTAMP" => Some(AuditFieldValue.Timestamp)
-      case "ID" => Some(AuditFieldValue.Id)
-      case "CORRELATION_ID" => Some(AuditFieldValue.CorrelationId)
-      case "TASK_ID" => Some(AuditFieldValue.TaskId)
-      case "ERROR_TYPE" => Some(AuditFieldValue.ErrorType)
-      case "ERROR_MESSAGE" => Some(AuditFieldValue.ErrorMessage)
-      case "TYPE" => Some(AuditFieldValue.Type)
-      case "HTTP_METHOD" => Some(AuditFieldValue.HttpMethod)
-      case "HTTP_HEADER_NAMES" => Some(AuditFieldValue.HttpHeaderNames)
-      case "HTTP_PATH" => Some(AuditFieldValue.HttpPath)
-      case "X_FORWARDED_FOR_HTTP_HEADER" => Some(AuditFieldValue.XForwardedForHttpHeader)
-      case "REMOTE_ADDRESS" => Some(AuditFieldValue.RemoteAddress)
-      case "LOCAL_ADDRESS" => Some(AuditFieldValue.LocalAddress)
-      case "CONTENT" => Some(AuditFieldValue.Content)
-      case "CONTENT_LENGTH_IN_BYTES" => Some(AuditFieldValue.ContentLengthInBytes)
-      case "CONTENT_LENGTH_IN_KB" => Some(AuditFieldValue.ContentLengthInKb)
-      case "ES_NODE_NAME" => Some(AuditFieldValue.EsNodeName)
-      case "ES_CLUSTER_NAME" => Some(AuditFieldValue.EsClusterName)
+      case "IS_MATCHED" => Some(AuditFieldValueDescriptor.IsMatched)
+      case "FINAL_STATE" => Some(AuditFieldValueDescriptor.FinalState)
+      case "REASON" => Some(AuditFieldValueDescriptor.Reason)
+      case "USER" => Some(AuditFieldValueDescriptor.User)
+      case "IMPERSONATED_BY_USER" => Some(AuditFieldValueDescriptor.ImpersonatedByUser)
+      case "ACTION" => Some(AuditFieldValueDescriptor.Action)
+      case "INVOLVED_INDICES" => Some(AuditFieldValueDescriptor.InvolvedIndices)
+      case "ACL_HISTORY" => Some(AuditFieldValueDescriptor.AclHistory)
+      case "PROCESSING_DURATION_MILLIS" => Some(AuditFieldValueDescriptor.ProcessingDurationMillis)
+      case "TIMESTAMP" => Some(AuditFieldValueDescriptor.Timestamp)
+      case "ID" => Some(AuditFieldValueDescriptor.Id)
+      case "CORRELATION_ID" => Some(AuditFieldValueDescriptor.CorrelationId)
+      case "TASK_ID" => Some(AuditFieldValueDescriptor.TaskId)
+      case "ERROR_TYPE" => Some(AuditFieldValueDescriptor.ErrorType)
+      case "ERROR_MESSAGE" => Some(AuditFieldValueDescriptor.ErrorMessage)
+      case "TYPE" => Some(AuditFieldValueDescriptor.Type)
+      case "HTTP_METHOD" => Some(AuditFieldValueDescriptor.HttpMethod)
+      case "HTTP_HEADER_NAMES" => Some(AuditFieldValueDescriptor.HttpHeaderNames)
+      case "HTTP_PATH" => Some(AuditFieldValueDescriptor.HttpPath)
+      case "X_FORWARDED_FOR_HTTP_HEADER" => Some(AuditFieldValueDescriptor.XForwardedForHttpHeader)
+      case "REMOTE_ADDRESS" => Some(AuditFieldValueDescriptor.RemoteAddress)
+      case "LOCAL_ADDRESS" => Some(AuditFieldValueDescriptor.LocalAddress)
+      case "CONTENT" => Some(AuditFieldValueDescriptor.Content)
+      case "CONTENT_LENGTH_IN_BYTES" => Some(AuditFieldValueDescriptor.ContentLengthInBytes)
+      case "CONTENT_LENGTH_IN_KB" => Some(AuditFieldValueDescriptor.ContentLengthInKb)
+      case "ES_NODE_NAME" => Some(AuditFieldValueDescriptor.EsNodeName)
+      case "ES_CLUSTER_NAME" => Some(AuditFieldValueDescriptor.EsClusterName)
       case _ => None
     }
 

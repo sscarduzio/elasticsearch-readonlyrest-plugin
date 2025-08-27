@@ -18,7 +18,8 @@ package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
 import tech.beshu.ror.audit._
-import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventSerializationMode, AuditFieldName}
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.instances.QueryAuditLogSerializerV1.queryV1AuditFields
 
 class QueryAuditLogSerializerV1 extends AuditLogSerializer {
@@ -28,14 +29,13 @@ class QueryAuditLogSerializerV1 extends AuditLogSerializer {
       responseContext = responseContext,
       environmentContext = None,
       fields = queryV1AuditFields,
-      allowedEventSerializationMode = AllowedEventSerializationMode.SerializeOnlyAllowedEventsWithInfoLevelVerbose
+      allowedEventMode = AllowedEventMode.Include(Set(Verbosity.Info)),
     )
 
 }
 
 object QueryAuditLogSerializerV1 {
-  val queryV1AuditFields: Map[AuditFieldName, AuditFieldValue] =
-    DefaultAuditLogSerializerV1.defaultV1AuditFields ++ Map(
-      AuditFieldName("content") -> AuditFieldValue.Content
-    )
+  val queryV1AuditFields: Map[AuditFieldName, AuditFieldValueDescriptor] =
+    DefaultAuditLogSerializerV1.defaultV1AuditFields ++
+      Map(AuditFieldName("content") -> AuditFieldValueDescriptor.Content)
 }
