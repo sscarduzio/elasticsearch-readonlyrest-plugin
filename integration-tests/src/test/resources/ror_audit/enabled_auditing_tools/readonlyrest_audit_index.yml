@@ -5,13 +5,15 @@ readonlyrest:
     outputs:
       - type: index
         index_template: "'audit_index'"
-        serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
-        serialize_all_allowed_events: false
-        fields:
-          node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
-          another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
-          tid: "{TASK_ID}"
-          bytes: "{CONTENT_LENGTH_IN_BYTES}"
+        serializer:
+          type: "static"
+          class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
+          verbosity_level_serialization_mode: [INFO]
+          fields:
+            node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
+            another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+            tid: "{TASK_ID}"
+            bytes: "{CONTENT_LENGTH_IN_BYTES}"
 
   access_control_rules:
 

@@ -1,5 +1,3 @@
-
-
 /*
  *    This file is part of ReadonlyREST.
  *
@@ -18,45 +16,46 @@
  */
 package tech.beshu.ror.accesscontrol.audit.configurable
 
-import tech.beshu.ror.audit.AuditSerializationHelper.AuditFieldValueDescriptor
+import cats.parse.{Parser0, Parser as P}
+import cats.syntax.list.*
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldValueDescriptor
 
-object AuditFieldValueDescriptorDeserializer {
+object AuditFieldValueDescriptorParser {
 
-  private val pattern = "\\{([^}]+)\\}".r
+  private val lbrace = P.char('{')
+  private val rbrace = P.char('}')
+  private val key = P.charsWhile(c => c != '{' && c != '}')
 
-  def deserialize(str: String): Either[String, AuditFieldValueDescriptor] = {
-    val matches = pattern.findAllMatchIn(str).toList
+  private val placeholder: P[Either[String, AuditFieldValueDescriptor]] =
+    (lbrace *> key <* rbrace).map(k => deserializerAuditFieldValueDescriptor(k.trim.toUpperCase).toRight(k))
 
-    val (parts, missing, lastIndex) =
-      matches.foldLeft((List.empty[AuditFieldValueDescriptor], List.empty[String], 0)) {
-        case ((partsAcc, missingAcc, lastEnd), m) =>
-          val key = m.group(1)
-          val before = str.substring(lastEnd, m.start)
-          val partBefore = if (before.nonEmpty) List(AuditFieldValueDescriptor.StaticText(before)) else Nil
+  private val text: P[AuditFieldValueDescriptor] =
+    P.charsWhile(_ != '{').map(AuditFieldValueDescriptor.StaticText.apply)
 
-          val (partAfter, newMissing) = deserializerAuditFieldValueDescriptor(key) match {
-            case Some(placeholder) => (List(placeholder), Nil)
-            case None => (Nil, List(key))
+  private val segment: P[Either[String, AuditFieldValueDescriptor]] =
+    placeholder.orElse(text.map(Right(_)))
+
+  private val parser: Parser0[List[Either[String, AuditFieldValueDescriptor]]] =
+    segment.rep0 <* P.end
+
+  def parse(s: String): Either[String, AuditFieldValueDescriptor] =
+    parser.parseAll(s) match {
+      case Left(err) =>
+        Left(err.toString)
+      case Right(segments) =>
+        val (missing, ok) = segments.partitionMap(identity)
+        missing.toNel match {
+          case Some(missing) => Left(s"There are invalid placeholder values: ${missing.toList.distinct.mkString(", ")}")
+          case None => ok match {
+            case Nil => Right(AuditFieldValueDescriptor.StaticText(""))
+            case single :: Nil => Right(single)
+            case many => Right(AuditFieldValueDescriptor.Combined(many))
           }
-
-          (partsAcc ++ partBefore ++ partAfter, missingAcc ++ newMissing, m.end)
-      }
-
-    val trailing = if (lastIndex < str.length) List(AuditFieldValueDescriptor.StaticText(str.substring(lastIndex))) else Nil
-    val allParts = parts ++ trailing
-
-    missing match {
-      case Nil => allParts match {
-        case Nil => Right(AuditFieldValueDescriptor.StaticText(""))
-        case singleElement :: Nil => Right(singleElement)
-        case multipleElements => Right(AuditFieldValueDescriptor.Combined(multipleElements))
-      }
-      case missingList => Left(s"There are invalid placeholder values: ${missingList.mkString(", ")}")
+        }
     }
-  }
 
   private def deserializerAuditFieldValueDescriptor(str: String): Option[AuditFieldValueDescriptor] = {
-    str match {
+    str.toUpperCase match {
       case "IS_MATCHED" => Some(AuditFieldValueDescriptor.IsMatched)
       case "FINAL_STATE" => Some(AuditFieldValueDescriptor.FinalState)
       case "REASON" => Some(AuditFieldValueDescriptor.Reason)

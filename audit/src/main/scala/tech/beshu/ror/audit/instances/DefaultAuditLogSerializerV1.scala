@@ -19,8 +19,10 @@ package tech.beshu.ror.audit.instances
 import org.json.JSONObject
 import tech.beshu.ror.audit._
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
-import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.Include
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AuditFieldName, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1.defaultV1AuditFields
+import tech.beshu.ror.audit.utils.AuditSerializationHelper
 
 class DefaultAuditLogSerializerV1 extends AuditLogSerializer {
 
@@ -29,7 +31,7 @@ class DefaultAuditLogSerializerV1 extends AuditLogSerializer {
       responseContext = responseContext,
       environmentContext = None,
       fields = defaultV1AuditFields,
-      allowedEventMode = AllowedEventMode.Include(Set(Verbosity.Info)),
+      allowedEventMode = Include(Set(Verbosity.Info)),
     )
 
 }

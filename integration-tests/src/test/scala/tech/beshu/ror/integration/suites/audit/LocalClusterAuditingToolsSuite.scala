@@ -94,7 +94,7 @@ class LocalClusterAuditingToolsSuite
       "using ReportingAllEventsAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.ReportingAllTypesOfEventsAuditLogSerializer")
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.FullAuditLogSerializer")
         performAndAssertExampleSearchRequest(indexManager)
 
         forEachAuditManager { adminAuditManager =>
@@ -122,7 +122,7 @@ class LocalClusterAuditingToolsSuite
       "using ReportingAllEventsWithQueryAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.ReportingAllTypesOfEventsWithQueryAuditLogSerializer")
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.FullAuditLogWithQuerySerializer")
         performAndAssertExampleSearchRequest(indexManager)
 
         forEachAuditManager { adminAuditManager =>
@@ -150,8 +150,8 @@ class LocalClusterAuditingToolsSuite
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
         updateRorConfig(
-          originalString = """serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"""",
-          newString = "configurable: true",
+          originalString = """type: "static"""",
+          newString = """type: "configurable"""",
         )
         performAndAssertExampleSearchRequest(indexManager)
 
@@ -179,8 +179,8 @@ class LocalClusterAuditingToolsSuite
   }
 
   private def updateRorConfigToUseSerializer(serializer: String) = updateRorConfig(
-    originalString = """serializer: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"""",
-    newString = s"""serializer: "$serializer""""
+    originalString = """class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"""",
+    newString = s"""class_name: "$serializer""""
   )
 
   private def updateRorConfig(originalString: String, newString: String) = {

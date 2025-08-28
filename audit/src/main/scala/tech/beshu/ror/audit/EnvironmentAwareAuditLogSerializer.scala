@@ -17,16 +17,8 @@
 package tech.beshu.ror.audit
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.AuditSerializationHelper.{AuditFieldName, AuditFieldValueDescriptor}
 
 trait EnvironmentAwareAuditLogSerializer {
   def onResponse(responseContext: AuditResponseContext,
                  environmentContext: AuditEnvironmentContext): Option[JSONObject]
-}
-
-object EnvironmentAwareAuditLogSerializer {
-  val environmentRelatedAuditFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
-    AuditFieldName("es_node_name") -> AuditFieldValueDescriptor.EsNodeName,
-    AuditFieldName("es_cluster_name") -> AuditFieldValueDescriptor.EsClusterName
-  )
 }

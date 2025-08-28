@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.*
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
-import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.adapters.{DeprecatedAuditLogSerializerAdapter, EnvironmentAwareAuditLogSerializerAdapter}
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
@@ -384,15 +384,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    enabled: true
                 |    outputs:
                 |    - type: log
-                |      configurable: true
-                |      allowed_event_serialization:
-                |        mode: INCLUDE_WITH_VERBOSITY_LEVELS
-                |        verbosity_levels: [INFO]
-                |      fields:
-                |        node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
-                |        another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
-                |        tid: "{TASK_ID}"
-                |        bytes: "{CONTENT_LENGTH_IN_BYTES}"
+                |      serializer:
+                |        type: configurable
+                |        verbosity_level_serialization_mode: [INFO]
+                |        fields:
+                |          node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
+                |          another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+                |          tid: "{TASK_ID}"
+                |          bytes: "{CONTENT_LENGTH_IN_BYTES}"
 
                 |  access_control_rules:
                 |
@@ -1288,7 +1287,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedErrorMessage = "The audit 'outputs' array cannot be empty"
             )
           }
-          "configurable serializer is set, but without serialize_all_allowed_events setting" in {
+          "configurable serializer is set with invalid value descriptor" in {
             val config = rorConfigFromUnsafe(
               """
                 |readonlyrest:
@@ -1296,8 +1295,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    enabled: true
                 |    outputs:
                 |    - type: log
-                |      configurable: true
-                |
+                |      serializer:
+                |        type: configurable
+                |        verbosity_level_serialization_mode: [INFO]
+                |        fields:
+                |          node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
+                |          another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD2}"
+                |          tid: "{TASK_ID}"
+                |          bytes: "{CONTENT_LENGTH_IN_BYTES}"
                 |  access_control_rules:
                 |
                 |  - name: test_block
@@ -1308,7 +1313,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               config,
-              expectedErrorMessage = "Configurable serializer is used, but the allowed_event_serialization.mode setting is missing in configuration"
+              expectedErrorMessage = "Configurable serializer is used, but the 'fields' setting is missing or invalid: There are invalid placeholder values: HTTP_METHOD2"
             )
           }
           "configurable serializer is set, but without fields setting" in {
@@ -1319,10 +1324,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    enabled: true
                 |    outputs:
                 |    - type: log
-                |      configurable: true
-                |      allowed_event_serialization:
-                |        mode: INCLUDE_WITH_VERBOSITY_LEVELS
-                |        verbosity_levels: [INFO]
+                |      serializer:
+                |        type: configurable
+                |        verbosity_level_serialization_mode: [INFO]
                 |  access_control_rules:
                 |
                 |  - name: test_block
@@ -1333,7 +1337,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               config,
-              expectedErrorMessage = "Configurable serializer is used, but the fields setting is missing in configuration"
+              expectedErrorMessage = "Configurable serializer is used, but the 'fields' setting is missing or invalid: Missing required field"
             )
           }
         }

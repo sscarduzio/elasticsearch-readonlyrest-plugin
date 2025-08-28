@@ -19,9 +19,10 @@ package tech.beshu.ror.audit.instances
 import org.json.JSONObject
 import tech.beshu.ror.audit._
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
-import tech.beshu.ror.audit.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
-import tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer.environmentRelatedAuditFields
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.Include
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AuditFieldName, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2.defaultV2AuditFields
+import tech.beshu.ror.audit.utils.AuditSerializationHelper
 
 class DefaultAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) extends AuditLogSerializer {
 
@@ -30,7 +31,7 @@ class DefaultAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) e
       responseContext = responseContext,
       environmentContext = Some(environmentContext),
       fields = defaultV2AuditFields,
-      allowedEventMode = AllowedEventMode.Include(Set(Verbosity.Info)),
+      allowedEventMode = Include(Set(Verbosity.Info)),
     )
 
 }
@@ -60,6 +61,8 @@ object DefaultAuditLogSerializerV2 {
     AuditFieldName("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
     AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
     AuditFieldName("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
-    AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory
-  ) ++ environmentRelatedAuditFields
+    AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory,
+    AuditFieldName("es_node_name") -> AuditFieldValueDescriptor.EsNodeName,
+    AuditFieldName("es_cluster_name") -> AuditFieldValueDescriptor.EsClusterName
+  )
 }

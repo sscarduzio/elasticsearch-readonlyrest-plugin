@@ -14,11 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.audit
+package tech.beshu.ror.audit.utils
 
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext.*
 import tech.beshu.ror.audit.instances.SerializeUser
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, AuditResponseContext}
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -62,14 +63,11 @@ private[ror] object AuditSerializationHelper {
 
   private def createEntry(fields: Map[AuditFieldName, AuditFieldValueDescriptor],
                           eventData: EventData) = {
-    val resolvedFields: Map[String, Any] = {
-      Map(
-        "@timestamp" -> timestampFormatter.format(eventData.requestContext.timestamp)
-      ) ++ fields.map {
-        case (fieldName, fieldValue) =>
-          fieldName.value -> resolver(eventData)(fieldValue)
-      }
-    }
+    val resolveAuditFieldValue = resolver(eventData)
+    val resolvedFields: Map[String, Any] =
+      Map("@timestamp" -> timestampFormatter.format(eventData.requestContext.timestamp)) ++
+        fields.map { case (name, valueDescriptor) => name.value -> resolveAuditFieldValue(valueDescriptor) }
+
     resolvedFields
       .foldLeft(new JSONObject()) { case (soFar, (key, value)) => soFar.put(key, value) }
       .mergeWith(eventData.requestContext.generalAuditEvents)
