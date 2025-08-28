@@ -28,7 +28,7 @@ class CatApiSuite
   extends AnyWordSpec
     with BaseTemplatesSuite
     with SingletonPluginTestSupport
-    with ESVersionSupportForAnyWordSpecLike 
+    with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName: String = "/cat_api/readonlyrest.yml"

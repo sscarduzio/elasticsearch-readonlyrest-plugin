@@ -21,6 +21,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
@@ -43,8 +44,8 @@ class ImpersonationSuite
   override def clusterDependencies: List[DependencyDef] = List(
     ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
     ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
-    wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
-    wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
+    wiremock(name = "EXT1", port = 8080, mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
+    wiremock(name = "EXT1", port = 8081, mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
   )
 
   private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)

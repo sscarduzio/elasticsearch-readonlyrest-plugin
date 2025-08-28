@@ -37,8 +37,8 @@ class ExternalAuthenticationSuite
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
   override def clusterDependencies: List[DependencyDef] = List(
-    wiremock(name = "EXT1", mappings = "/external_authentication/wiremock_service1_cartman.json", "/external_authentication/wiremock_service1_morgan.json"),
-    wiremock(name = "EXT2", mappings = "/external_authentication/wiremock_service2_cartman.json")
+    wiremock(name = "EXT1", port = 8080, mappings = "/external_authentication/wiremock_service1_cartman.json", "/external_authentication/wiremock_service1_morgan.json"),
+    wiremock(name = "EXT2", port = 8081, mappings = "/external_authentication/wiremock_service2_cartman.json")
   )
 
   "testAuthenticationSuccessWithService1" in {

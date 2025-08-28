@@ -52,7 +52,7 @@ class UnboundidLdapUsersService private(override val id: LdapService#Id,
         LdapUser(
           id = userId,
           dn = Dn(NonEmptyString.unsafeFrom(
-            s"cn=${Filter.encodeValue(userId.value.value)},${userSearchFiler.searchUserBaseDN.value.value}"
+            s"cn=${userId.value.value},${userSearchFiler.searchUserBaseDN.value.value}"
           )),
           confirmed = false
         )

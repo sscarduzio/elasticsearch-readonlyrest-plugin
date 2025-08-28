@@ -22,7 +22,10 @@ import com.typesafe.scalalogging.LazyLogging
 import os.Path
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.images.Elasticsearch.*
-import tech.beshu.ror.utils.misc.Version
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateSteps.emptyEsUpdateSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{EsUpdateStep, EsUpdateSteps}
+import tech.beshu.ror.utils.containers.windows.WindowsElasticsearchSetup
+import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
 object Elasticsearch {
 
@@ -34,10 +37,36 @@ object Elasticsearch {
                           esInstallationType: EsInstallationType)
 
   extension (config: Config)
-    def esConfigDir: Path = config.esInstallationType match {
-      case EsInstallationType.EsDockerImage => os.root / "usr" / "share" / "elasticsearch" / "config"
-      case EsInstallationType.UbuntuDockerImageWithEsFromApt => os.root / "etc" / "elasticsearch"
-    }
+    def esConfigDir: Path =
+      if (OsUtils.isWindows) {
+        WindowsElasticsearchSetup.configPath(config.clusterName, config.nodeName)
+      } else {
+        config.esInstallationType match {
+          case EsInstallationType.EsDockerImage =>
+            os.root / "usr" / "share" / "elasticsearch" / "config"
+          case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+            os.root / "etc" / "elasticsearch"
+        }
+      }
+
+    def esDir: Path =
+      if (OsUtils.isWindows) {
+        WindowsElasticsearchSetup.esPath(config.clusterName, config.nodeName)
+      } else {
+        config.esInstallationType match {
+          case EsInstallationType.EsDockerImage =>
+            os.root / "usr" / "share" / "elasticsearch"
+          case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+            os.root / "usr" / "share" / "elasticsearch"
+        }
+      }
+
+    def tempFilePath: Path =
+      if (OsUtils.isWindows) {
+        WindowsElasticsearchSetup.esPath(config.clusterName, config.nodeName) / "temp"
+      } else {
+        os.root / "tmp"
+      }  
 
   sealed trait EsInstallationType
 
@@ -47,14 +76,54 @@ object Elasticsearch {
     case object UbuntuDockerImageWithEsFromApt extends EsInstallationType
   }
 
-  lazy val esDir: Path = os.root / "usr" / "share" / "elasticsearch"
-
   trait Plugin {
-    def updateEsImage(image: DockerImageDescription, config: Config): DockerImageDescription
+    def esUpdateSteps(config: Config): EsUpdateSteps
 
     def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder
 
     def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder
+  }
+
+  object Plugin {
+    final case class EsUpdateSteps(steps: List[EsUpdateStep]) {
+
+      def copyFile(destination: Path, file: File): EsUpdateSteps = {
+        EsUpdateSteps(steps ::: EsUpdateStep.CopyFile(destination, file) :: Nil)
+      }
+
+      def when(condition: Boolean, f: EsUpdateSteps => EsUpdateSteps): EsUpdateSteps = {
+        if (condition) f(this)
+        else this
+      }
+
+      def run(linuxCommand: String, windowsCommand: String): EsUpdateSteps = {
+        EsUpdateSteps(steps ::: EsUpdateStep.RunCommand(linuxCommand, windowsCommand) :: Nil)
+      }
+
+      def runWhen(condition: Boolean, linuxCommand: String, windowsCommand: String): EsUpdateSteps = {
+        if (condition) run(linuxCommand, windowsCommand)
+        else this
+      }
+
+      def user(user: String): EsUpdateSteps = {
+        EsUpdateSteps(steps ::: EsUpdateStep.ChangeUser(user) :: Nil)
+      }
+
+    }
+
+    object EsUpdateSteps {
+      val emptyEsUpdateSteps: EsUpdateSteps = EsUpdateSteps(List.empty)
+    }
+
+    sealed trait EsUpdateStep
+
+    object EsUpdateStep {
+      final case class CopyFile(destination: Path, file: File) extends EsUpdateStep
+
+      final case class RunCommand(linuxCommand: String, windowsCommand: String) extends EsUpdateStep
+
+      final case class ChangeUser(user: String) extends EsUpdateStep
+    }
   }
 
   private[images] def fromResourceBy(name: String): File = {
@@ -68,8 +137,8 @@ object Elasticsearch {
   }
 }
 
-class Elasticsearch(esVersion: String,
-                    config: Config,
+class Elasticsearch(val esVersion: String,
+                    val config: Config,
                     plugins: Seq[Plugin],
                     customEntrypoint: Option[Path])
   extends LazyLogging {
@@ -105,7 +174,7 @@ class Elasticsearch(esVersion: String,
       .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
       .copyFile(
         destination = config.esConfigDir / "elasticsearch.yml",
-        file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)
+        file = esConfigFile(networkHost = "0.0.0.0")
       )
       .copyFile(
         destination = config.esConfigDir / "log4j2.properties",
@@ -136,7 +205,7 @@ class Elasticsearch(esVersion: String,
       .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
       .copyFile(
         destination = config.esConfigDir / "elasticsearch.yml",
-        file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)
+        file = esConfigFile(networkHost = "0.0.0.0")
       )
       .copyFile(
         destination = config.esConfigDir / "log4j2.properties",
@@ -145,7 +214,7 @@ class Elasticsearch(esVersion: String,
       .user("root")
       // ES is started as Docker CMD, so elasticsearch user must have permission to read ES files.
       // In standard Ubuntu with ES from apt it is not necessary, because ES is executed from systemd
-      .run(s"chown -R elasticsearch:elasticsearch ${esDir.toString()}")
+      .run(s"chown -R elasticsearch:elasticsearch ${config.esDir.toString()}")
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .run("rm /etc/elasticsearch/elasticsearch.keystore")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
@@ -153,11 +222,25 @@ class Elasticsearch(esVersion: String,
       .user("elasticsearch")
   }
 
+  def esUpdateSteps: EsUpdateSteps = {
+    plugins.map(_.esUpdateSteps(config)).foldLeft(emptyEsUpdateSteps) { case (soFar, next) =>
+      EsUpdateSteps(soFar.steps ++ next.steps)
+    }
+  }
+
   private implicit class InstallPlugins(val image: DockerImageDescription) {
     def installPlugins(): DockerImageDescription = {
-      plugins
+      esUpdateSteps.steps
         .foldLeft(image) {
-          case (currentImage, plugin) => plugin.updateEsImage(currentImage, config)
+          case (currentImage, step) =>
+            step match {
+              case EsUpdateStep.CopyFile(destination, file) =>
+                currentImage.copyFile(destination, file)
+              case EsUpdateStep.RunCommand(linuxCommand, _) =>
+                currentImage.run(linuxCommand)
+              case EsUpdateStep.ChangeUser(user) =>
+                currentImage.user(user)
+            }
         }
     }
   }
@@ -174,23 +257,20 @@ class Elasticsearch(esVersion: String,
       .foldLeft(builder) { case (currentBuilder, update) => update(currentBuilder) }
   }
 
-  private def esConfigFileBasedOn(config: Config,
-                                  withEsConfigBuilder: EsConfigBuilder => EsConfigBuilder) = {
+  def esConfigFile(networkHost: String): File = {
     val file = File
       .newTemporaryFile()
-      .appendLines(
-        withEsConfigBuilder(baseEsConfigBuilder(config)).entries: _*
-      )
+      .appendLines(updateEsConfigBuilderFromPlugins(baseEsConfigBuilder(networkHost)).entries: _*)
     logger.info(s"elasticsearch.yml content:\n${file.contentAsString}")
     file
   }
 
-  private def baseEsConfigBuilder(config: Config) = {
+  private def baseEsConfigBuilder(networkHost: String) = {
     EsConfigBuilder
       .empty
       .add(s"node.name: ${config.nodeName}")
       .add(s"cluster.name: ${config.clusterName}")
-      .add("network.host: 0.0.0.0")
+      .add(s"network.host: $networkHost")
       .add("path.repo: /tmp")
       .addWhen(Version.lowerThan(esVersion, 8, 0, 0),
         entry = "bootstrap.system_call_filter: false" // because of issues with Rosetta 2 on Mac OS

@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.containers
 import better.files.FileExtensions
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
-import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.GenericContainer as JavaGenericContainer
 import org.testcontainers.containers.output.OutputFrame
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
@@ -185,5 +185,5 @@ trait EsContainerCreator {
   }
 }
 
-final case class StartedDependency(name: String, container: SingleContainer[GenericContainer[_]], originalPort: Int)
+final case class StartedDependency(name: String, container: SingleContainer[JavaGenericContainer[_]], originalPort: Int)
 final case class StartedClusterDependencies(values: List[StartedDependency])

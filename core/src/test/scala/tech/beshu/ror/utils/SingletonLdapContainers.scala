@@ -16,16 +16,16 @@
  */
 package tech.beshu.ror.utils
 
-import tech.beshu.ror.utils.containers.NonStoppableLdapContainer
+import tech.beshu.ror.utils.containers.{LdapSingleContainer, NonStoppableLdapContainer}
 
 object SingletonLdapContainers {
 
-  val ldap1: NonStoppableLdapContainer =
+  val ldap1: LdapSingleContainer =
     NonStoppableLdapContainer.createAndStart("LDAP1", "test_example.ldif")
 
-  val ldap1Backup: NonStoppableLdapContainer =
+  val ldap1Backup: LdapSingleContainer =
     NonStoppableLdapContainer.createAndStart("LDAP1_BACKUP", "test_example.ldif")
 
-  val ldap2: NonStoppableLdapContainer =
+  val ldap2: LdapSingleContainer =
     NonStoppableLdapContainer.createAndStart("LDAP2", "test_example2.ldif")
 }

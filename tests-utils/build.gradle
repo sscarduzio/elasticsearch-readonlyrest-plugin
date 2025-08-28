@@ -79,4 +79,5 @@ dependencies {
     api group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                    version: "2.1.7"
     api group: 'com.unboundid',                  name: 'unboundid-ldapsdk',                 version: '6.0.11'
     api group: 'com.lihaoyi',                    name: 'upickle_3',                         version: '4.2.1'
+    api group: 'com.github.tomakehurst',         name: 'wiremock-jre8',                     version: '2.35.0'
 }

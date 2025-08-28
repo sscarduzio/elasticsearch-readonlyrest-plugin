@@ -24,11 +24,12 @@ import scala.jdk.CollectionConverters.*
 
 object FileUtils {
 
-  def calculateHash(dir: Path): String = {
+  def calculateHash(dir: Path, excludedFiles: List[String]): String = {
     val digest = MessageDigest.getInstance("SHA-256")
 
     val fileList = Files.walk(dir)
       .filter(Files.isRegularFile(_))
+      .filter(f => !excludedFiles.exists(excluded => f.toFile.toString.endsWith(excluded)))
       .iterator()
       .asScala
       .toSeq

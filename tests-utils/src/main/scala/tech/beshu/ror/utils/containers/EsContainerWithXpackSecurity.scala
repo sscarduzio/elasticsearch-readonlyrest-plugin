@@ -18,9 +18,9 @@ package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.containers.output.OutputFrame
-import org.testcontainers.images.builder.ImageFromDockerfile
+import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainerWithXpackSecurity.xpackAdminCredentials
-import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, XpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.images.{Elasticsearch, XpackSecurityPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import java.util.function.Consumer
@@ -28,9 +28,12 @@ import java.util.function.Consumer
 class EsContainerWithXpackSecurity private(esVersion: String,
                                            esConfig: Elasticsearch.Config,
                                            startedClusterDependencies: StartedClusterDependencies,
-                                           image: ImageFromDockerfile,
-                                           override val sslEnabled: Boolean)
-  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image) {
+                                           elasticsearch: Elasticsearch,
+                                           override val sslEnabled: Boolean,
+                                           initializer: ElasticsearchNodeDataInitializer,
+                                           additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
+                                           awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, elasticsearch, initializer, additionalLogConsumer, awaitingReadyStrategy) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with X-Pack plugin installed container ...")
 
@@ -47,24 +50,22 @@ object EsContainerWithXpackSecurity extends StrictLogging {
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
              additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
-
-    val rorContainer = new EsContainerWithXpackSecurity(
+    new EsContainerWithXpackSecurity(
       esVersion,
       esConfig,
       startedClusterDependencies,
       esImageWithXpackFromDockerfile(esVersion, esConfig, xpackSecurityConfig),
-      xpackSecurityConfig.attributes.restSslEnabled
+      xpackSecurityConfig.attributes.restSslEnabled,
+      initializer,
+      additionalLogConsumer,
     )
-    EsContainer.init(rorContainer, initializer, logger, additionalLogConsumer)
   }
 
   private def esImageWithXpackFromDockerfile(esVersion: String,
                                              esConfig: Elasticsearch.Config,
                                              xpackSecurityConfig: XpackSecurityPlugin.Config) = {
-    DockerImageCreator.create(
-      Elasticsearch
-        .create(esVersion, esConfig)
-        .install(new XpackSecurityPlugin(esVersion, xpackSecurityConfig))
-    )
+    Elasticsearch
+      .create(esVersion, esConfig)
+      .install(new XpackSecurityPlugin(esVersion, xpackSecurityConfig))
   }
 }

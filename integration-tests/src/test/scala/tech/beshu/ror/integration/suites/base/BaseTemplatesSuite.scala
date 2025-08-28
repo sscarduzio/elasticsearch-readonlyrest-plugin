@@ -21,6 +21,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition

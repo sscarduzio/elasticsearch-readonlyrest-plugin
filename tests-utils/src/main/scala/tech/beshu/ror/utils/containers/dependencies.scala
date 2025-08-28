@@ -17,31 +17,55 @@
 package tech.beshu.ror.utils.containers
 
 import monix.eval.Coeval
+import tech.beshu.ror.utils.containers.windows.WireMockServerPseudoContainer
+import tech.beshu.ror.utils.misc.OsUtils
 
 object dependencies {
 
   def ldap(name: String, ldapInitScript: String): DependencyDef = {
+    val ldap = LdapContainer.create(name, ldapInitScript)
     DependencyDef(
       name = name,
-      Coeval(LdapContainer.create(name, ldapInitScript)),
-      originalPort = LdapContainer.defaults.ldap.port)
+      containerCreator = Coeval(ldap),
+      originalPort = ldap.originalPort
+    )
   }
 
-  def ldap(name: String, ldap: NonStoppableLdapContainer): DependencyDef = DependencyDef(
+  def ldap(name: String, ldap: LdapSingleContainer): DependencyDef = DependencyDef(
     name = name,
-    Coeval(ldap),
-    originalPort = LdapContainer.defaults.ldap.port
+    containerCreator = Coeval(ldap),
+    originalPort = ldap.originalPort
   )
 
-  def wiremock(name: String, mappings: String*): DependencyDef = {
-    DependencyDef(name,
-      containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))),
-      originalPort = WireMockContainer.WIRE_MOCK_PORT)
+  def wiremock(name: String, port: Int, mappings: String*): DependencyDef = {
+    if (OsUtils.isWindows) {
+      DependencyDef(
+        name = name,
+        containerCreator = Coeval(new WireMockServerPseudoContainer(port, mappings.toList)),
+        originalPort = 8080,
+      )
+    } else {
+      DependencyDef(
+        name = name,
+        containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))),
+        originalPort = WireMockContainer.WIRE_MOCK_PORT,
+      )
+    }
   }
 
-  def es(name: String, container: EsContainer): DependencyDef = DependencyDef(
-    name = name,
-    containerCreator = Coeval(container),
-    originalPort = 9200
-  )
+  def es(name: String, container: EsContainer): DependencyDef = {
+    if (OsUtils.isWindows) {
+      DependencyDef(
+        name = name,
+        containerCreator = Coeval(container),
+        originalPort = container.port
+      )
+    } else {
+      DependencyDef(
+        name = name,
+        containerCreator = Coeval(container),
+        originalPort = 9200
+      )
+    }
+  }
 }

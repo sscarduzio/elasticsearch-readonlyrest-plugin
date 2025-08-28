@@ -18,22 +18,37 @@ package tech.beshu.ror.utils.containers
 
 import better.files.Dispose.FlatMap.Implicits
 import better.files.{Disposable, Dispose, File, Resource}
-import com.dimafeng.testcontainers.GenericContainer
+import com.dimafeng.testcontainers.{GenericContainer, SingleContainer}
 import com.typesafe.scalalogging.LazyLogging
 import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, LDAPException, ResultCode}
 import com.unboundid.ldif.LDIFReader
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.testcontainers.containers.Network
+import org.testcontainers.containers.{Network, GenericContainer as JavaGenericContainer}
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 import tech.beshu.ror.utils.containers.LdapContainer.{InitScriptSource, defaults}
+import tech.beshu.ror.utils.containers.windows.{LdapPseudoGenericContainer, NonStoppableLdapPseudoGenericContainer}
+import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 import java.io.{BufferedReader, InputStreamReader}
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 
-class LdapContainer private[containers] (name: String, ldapInitScript: InitScriptSource)
+trait LdapSingleContainer extends SingleContainer[JavaGenericContainer[_]] {
+
+  def originalPort: Int
+
+  def ldapPort: Int
+
+  def ldapSSLPort: Int
+
+  def ldapHost: String
+
+  def doStart(): Unit = start()
+}
+
+class LdapContainer private[containers](name: String, ldapInitScript: InitScriptSource)
   extends GenericContainer(
     dockerImage = "osixia/openldap:1.5.0",
     env = Map(
@@ -44,7 +59,9 @@ class LdapContainer private[containers] (name: String, ldapInitScript: InitScrip
     ),
     exposedPorts = Seq(defaults.ldap.port, defaults.ldap.sslPort),
     waitStrategy = Some(new LdapWaitStrategy(name, ldapInitScript))
-  ) {
+  ) with LdapSingleContainer {
+
+  def originalPort: Int = LdapContainer.defaults.ldap.port
 
   def ldapPort: Int = this.mappedPort(defaults.ldap.port)
 
@@ -60,22 +77,29 @@ class LdapContainer private[containers] (name: String, ldapInitScript: InitScrip
 object LdapContainer {
 
   sealed trait InitScriptSource
+
   object InitScriptSource {
     final case class Resource(name: String) extends InitScriptSource
+
     final case class AFile(file: File) extends InitScriptSource
 
     implicit def fromString(name: String): InitScriptSource = Resource(name)
+
     implicit def fromFile(file: File): InitScriptSource = AFile(file)
   }
 
-  def create(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
-    val ldapContainer = new LdapContainer(name, ldapInitScript)
-    ldapContainer.container
-      .setNetwork(Network.SHARED)
-    ldapContainer
+  def create(name: String, ldapInitScript: InitScriptSource): LdapSingleContainer = {
+    if (OsUtils.isWindows) {
+      LdapPseudoGenericContainer.create(name, ldapInitScript)
+    } else {
+      val ldapContainer = new LdapContainer(name, ldapInitScript)
+      ldapContainer.container
+        .setNetwork(Network.SHARED)
+      ldapContainer
+    }
   }
 
-  def create(name: String, ldapInitScript: String): LdapContainer = {
+  def create(name: String, ldapInitScript: String): LdapSingleContainer = {
     create(name, InitScriptSource.fromString(ldapInitScript))
   }
 
@@ -107,23 +131,29 @@ class NonStoppableLdapContainer private(name: String, ldapInitScript: InitScript
   extends LdapContainer(name, ldapInitScript) {
 
   override def start(): Unit = ()
+
   override def stop(): Unit = ()
 
-  private [NonStoppableLdapContainer] def privateStart(): Unit = super.start()
+  private[NonStoppableLdapContainer] def privateStart(): Unit = super.start()
 }
+
 object NonStoppableLdapContainer {
-  def createAndStart(name: String, ldapInitScript: InitScriptSource): NonStoppableLdapContainer = {
-    val ldap = new NonStoppableLdapContainer(name, ldapInitScript)
-    ldap.container.setNetwork(Network.SHARED)
-    ldap.privateStart()
-    ldap
+  def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapSingleContainer = {
+    if (OsUtils.isWindows) {
+      NonStoppableLdapPseudoGenericContainer.createAndStart(name, ldapInitScript)
+    } else {
+      val ldap = new NonStoppableLdapContainer(name, ldapInitScript)
+      ldap.container.setNetwork(Network.SHARED)
+      ldap.privateStart()
+      ldap
+    }
   }
 }
 
 private class LdapWaitStrategy(name: String,
                                ldapInitScript: InitScriptSource)
   extends HostPortWaitStrategy()
-    with LazyLogging 
+    with LazyLogging
     with Implicits {
 
   override def waitUntilReady(): Unit = {

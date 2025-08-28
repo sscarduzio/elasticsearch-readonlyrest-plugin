@@ -20,8 +20,9 @@ import org.apache.http.HttpResponse
 import org.apache.http.entity.StringEntity
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers.shouldBe
+import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.httpclient.RestClient
-import ujson.Value
 
 class AuditIndexManager(restClient: RestClient,
                         esVersion: String,
