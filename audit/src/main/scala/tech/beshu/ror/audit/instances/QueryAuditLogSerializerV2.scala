@@ -24,12 +24,11 @@ import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AuditFieldName, Audi
 import tech.beshu.ror.audit.instances.QueryAuditLogSerializerV2.queryV2AuditFields
 import tech.beshu.ror.audit.utils.AuditSerializationHelper
 
-class QueryAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) extends AuditLogSerializer {
+class QueryAuditLogSerializerV2 extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
     AuditSerializationHelper.serialize(
       responseContext = responseContext,
-      environmentContext = Some(environmentContext),
       fields = queryV2AuditFields,
       allowedEventMode = Include(Set(Verbosity.Info))
     )

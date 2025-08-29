@@ -16,6 +16,4 @@
  */
 package tech.beshu.ror.audit.instances
 
-import tech.beshu.ror.audit.AuditEnvironmentContext
-
-class QueryAuditLogSerializer(environmentContext: AuditEnvironmentContext) extends QueryAuditLogSerializerV2(environmentContext)
+class QueryAuditLogSerializer extends QueryAuditLogSerializerV2

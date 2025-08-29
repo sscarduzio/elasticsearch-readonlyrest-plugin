@@ -50,7 +50,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory(esVersion, testEsNodeSettings)
+    new RawRorConfigBasedCoreFactory(esVersion)
   }
 
   private val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
@@ -408,8 +408,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             val configuredSerializer = serializer(config).asInstanceOf[ConfigurableAuditLogSerializer]
 
-            configuredSerializer.environmentContext.esClusterName shouldBe testAuditEnvironmentContext.esClusterName
-            configuredSerializer.environmentContext.esNodeName shouldBe testAuditEnvironmentContext.esNodeName
             configuredSerializer.allowedEventMode shouldBe AllowedEventMode.Include(Set(Verbosity.Info))
             configuredSerializer.fields shouldBe Map(
               AuditFieldName("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
@@ -2015,4 +2013,6 @@ private object DummyAuditRequestContext extends AuditRequestContext {
   override def rawAuthHeader: Option[String] = None
 
   override def generalAuditEvents: JSONObject = new JSONObject
+
+  override def auditEnvironmentContext: AuditEnvironmentContext = testAuditEnvironmentContext
 }

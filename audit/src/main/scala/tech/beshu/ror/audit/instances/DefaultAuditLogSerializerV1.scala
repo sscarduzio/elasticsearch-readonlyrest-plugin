@@ -29,7 +29,6 @@ class DefaultAuditLogSerializerV1 extends AuditLogSerializer {
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
     AuditSerializationHelper.serialize(
       responseContext = responseContext,
-      environmentContext = None,
       fields = defaultV1AuditFields,
       allowedEventMode = Include(Set(Verbosity.Info))
     )

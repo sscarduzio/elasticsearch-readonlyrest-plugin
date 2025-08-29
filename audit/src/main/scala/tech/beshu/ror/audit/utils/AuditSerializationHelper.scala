@@ -31,23 +31,22 @@ private[ror] object AuditSerializationHelper {
   private val timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneId.of("GMT"))
 
   def serialize(responseContext: AuditResponseContext,
-                environmentContext: Option[AuditEnvironmentContext],
                 fields: Map[AuditFieldName, AuditFieldValueDescriptor],
                 allowedEventMode: AllowedEventMode): Option[JSONObject] = responseContext match {
     case Allowed(requestContext, verbosity, reason) =>
       allowedEvent(
         allowedEventMode,
         verbosity,
-        createEntry(fields, EventData(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, environmentContext, None))
+        createEntry(fields, EventData(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, None))
       )
     case ForbiddenBy(requestContext, _, reason) =>
-      Some(createEntry(fields, EventData(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, environmentContext, None)))
+      Some(createEntry(fields, EventData(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, None)))
     case Forbidden(requestContext) =>
-      Some(createEntry(fields, EventData(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, environmentContext, None)))
+      Some(createEntry(fields, EventData(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None)))
     case RequestedIndexNotExist(requestContext) =>
-      Some(createEntry(fields, EventData(matched = false, "INDEX NOT EXIST", "Requested index doesn't exist", responseContext.duration, requestContext, environmentContext, None)))
+      Some(createEntry(fields, EventData(matched = false, "INDEX NOT EXIST", "Requested index doesn't exist", responseContext.duration, requestContext, None)))
     case Errored(requestContext, cause) =>
-      Some(createEntry(fields, EventData(matched = false, "ERRORED", "error", responseContext.duration, requestContext, environmentContext, Some(cause))))
+      Some(createEntry(fields, EventData(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause))))
   }
 
   private def allowedEvent(allowedEventMode: AllowedEventMode, verbosity: Verbosity, entry: JSONObject) = {
@@ -101,8 +100,8 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.Content => requestContext.content
       case AuditFieldValueDescriptor.ContentLengthInBytes => requestContext.contentLength
       case AuditFieldValueDescriptor.ContentLengthInKb => requestContext.contentLength / 1024
-      case AuditFieldValueDescriptor.EsNodeName => eventData.environmentContext.map(_.esNodeName).getOrElse("")
-      case AuditFieldValueDescriptor.EsClusterName => eventData.environmentContext.map(_.esClusterName).getOrElse("")
+      case AuditFieldValueDescriptor.EsNodeName => eventData.requestContext.auditEnvironmentContext.esNodeName
+      case AuditFieldValueDescriptor.EsClusterName => eventData.requestContext.auditEnvironmentContext.esClusterName
       case AuditFieldValueDescriptor.StaticText(text) => text
       case AuditFieldValueDescriptor.Combined(values) => values.map(resolver(eventData)).mkString
     }
@@ -128,7 +127,6 @@ private[ror] object AuditSerializationHelper {
                                      reason: String,
                                      duration: FiniteDuration,
                                      requestContext: AuditRequestContext,
-                                     environmentContext: Option[AuditEnvironmentContext],
                                      error: Option[Throwable])
 
   sealed trait AllowedEventMode

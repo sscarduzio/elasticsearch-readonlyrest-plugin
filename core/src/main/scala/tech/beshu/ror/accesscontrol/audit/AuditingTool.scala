@@ -40,8 +40,8 @@ import java.time.Clock
 final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
                                 (implicit loggingContext: LoggingContext) {
 
-  def audit[B <: BlockContext](response: ResponseContext[B]): Task[Unit] = {
-    val auditResponseContext = toAuditResponse(response)
+  def audit[B <: BlockContext](response: ResponseContext[B], auditEnvironmentContext: AuditEnvironmentContext): Task[Unit] = {
+    val auditResponseContext = toAuditResponse(response, auditEnvironmentContext)
     auditSinks
       .parTraverse(_.submit(auditResponseContext))
       .map((_: NonEmptyList[Unit]) => ())
@@ -53,12 +53,13 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
       .map((_: NonEmptyList[Unit]) => ())
   }
 
-  private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B]): AuditResponseContext = {
+  private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B], auditEnvironmentContext: AuditEnvironmentContext): AuditResponseContext = {
     responseContext match {
       case allowedBy: ResponseContext.AllowedBy[B] =>
         AuditResponseContext.Allowed(
           requestContext = toAuditRequestContext(
             requestContext = allowedBy.requestContext,
+            auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(allowedBy.blockContext),
             userMetadata = Some(allowedBy.blockContext.userMetadata),
             historyEntries = allowedBy.history,
@@ -71,6 +72,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
         AuditResponseContext.Allowed(
           requestContext = toAuditRequestContext(
             requestContext = allow.requestContext,
+            auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
             userMetadata = Some(allow.userMetadata),
             historyEntries = allow.history,
@@ -83,6 +85,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
         AuditResponseContext.ForbiddenBy(
           requestContext = toAuditRequestContext(
             requestContext = forbiddenBy.requestContext,
+            auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(forbiddenBy.blockContext),
             userMetadata = Some(forbiddenBy.blockContext.userMetadata),
             historyEntries = forbiddenBy.history),
@@ -92,6 +95,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
       case forbidden: ResponseContext.Forbidden[B] =>
         AuditResponseContext.Forbidden(toAuditRequestContext(
           requestContext = forbidden.requestContext,
+          auditEnvironmentContext = auditEnvironmentContext,
           blockContext = None,
           userMetadata = None,
           historyEntries = forbidden.history))
@@ -99,6 +103,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
         AuditResponseContext.RequestedIndexNotExist(
           toAuditRequestContext(
             requestContext = requestedIndexNotExist.requestContext,
+            auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
             userMetadata = None,
             historyEntries = requestedIndexNotExist.history)
@@ -107,6 +112,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
         AuditResponseContext.Errored(
           requestContext = toAuditRequestContext(
             requestContext = errored.requestContext,
+            auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
             userMetadata = None,
             historyEntries = Vector.empty),
@@ -120,6 +126,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
   }
 
   private def toAuditRequestContext[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                                       auditEnvironmentContext: AuditEnvironmentContext,
                                                        blockContext: Option[B],
                                                        userMetadata: Option[UserMetadata],
                                                        historyEntries: Vector[History[B]],
@@ -129,6 +136,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
       userMetadata,
       historyEntries,
       loggingContext,
+      auditEnvironmentContext,
       generalAuditEvents,
       involvesIndices(blockContext)
     )
@@ -162,8 +170,8 @@ object AuditingTool extends Logging {
                                           auditCluster: AuditCluster) extends Config
 
         object EsIndexBasedSink {
-          def default(implicit auditEnvironmentContext: AuditEnvironmentContext): EsIndexBasedSink = EsIndexBasedSink(
-            logSerializer = new DefaultAuditLogSerializer(auditEnvironmentContext),
+          val default: EsIndexBasedSink = EsIndexBasedSink(
+            logSerializer = new DefaultAuditLogSerializer,
             rorAuditIndexTemplate = RorAuditIndexTemplate.default,
             auditCluster = AuditCluster.LocalAuditCluster,
           )
@@ -174,8 +182,8 @@ object AuditingTool extends Logging {
                                                auditCluster: AuditCluster) extends Config
 
         object EsDataStreamBasedSink {
-          def default(implicit auditEnvironmentContext: AuditEnvironmentContext): EsDataStreamBasedSink = EsDataStreamBasedSink(
-            logSerializer = new DefaultAuditLogSerializer(auditEnvironmentContext),
+          val default: EsDataStreamBasedSink = EsDataStreamBasedSink(
+            logSerializer = new DefaultAuditLogSerializer,
             rorAuditDataStream = RorAuditDataStream.default,
             auditCluster = AuditCluster.LocalAuditCluster,
           )
@@ -185,8 +193,8 @@ object AuditingTool extends Logging {
                                       loggerName: RorAuditLoggerName) extends Config
 
         object LogBasedSink {
-          def default(implicit auditEnvironmentContext: AuditEnvironmentContext): LogBasedSink = LogBasedSink(
-            logSerializer = new DefaultAuditLogSerializer(auditEnvironmentContext),
+          val default: LogBasedSink = LogBasedSink(
+            logSerializer = new DefaultAuditLogSerializer,
             loggerName = RorAuditLoggerName.default
           )
         }
