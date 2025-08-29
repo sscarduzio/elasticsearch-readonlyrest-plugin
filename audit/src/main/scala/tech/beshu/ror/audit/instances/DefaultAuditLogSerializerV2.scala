@@ -31,12 +31,12 @@ class DefaultAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) e
       responseContext = responseContext,
       environmentContext = Some(environmentContext),
       fields = defaultV2AuditFields,
-      allowedEventMode = Include(Set(Verbosity.Info)),
+      allowedEventMode = Include(Set(Verbosity.Info))
     )
 
 }
 
-object DefaultAuditLogSerializerV2 {
+private[ror] object DefaultAuditLogSerializerV2 {
   val defaultV2AuditFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
     AuditFieldName("match") -> AuditFieldValueDescriptor.IsMatched,
     AuditFieldName("block") -> AuditFieldValueDescriptor.Reason,

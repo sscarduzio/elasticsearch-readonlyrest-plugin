@@ -29,7 +29,7 @@ class FullAuditLogSerializer(environmentContext: AuditEnvironmentContext) extend
       responseContext = responseContext,
       environmentContext = Some(environmentContext),
       fields = defaultV2AuditFields,
-      allowedEventMode = IncludeAll,
+      allowedEventMode = IncludeAll
     )
 
 }

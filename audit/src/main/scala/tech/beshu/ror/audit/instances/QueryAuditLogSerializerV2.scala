@@ -31,12 +31,12 @@ class QueryAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) ext
       responseContext = responseContext,
       environmentContext = Some(environmentContext),
       fields = queryV2AuditFields,
-      allowedEventMode = Include(Set(Verbosity.Info)),
+      allowedEventMode = Include(Set(Verbosity.Info))
     )
 
 }
 
-object QueryAuditLogSerializerV2 {
+private[ror] object QueryAuditLogSerializerV2 {
   val queryV2AuditFields: Map[AuditFieldName, AuditFieldValueDescriptor] =
     DefaultAuditLogSerializerV2.defaultV2AuditFields ++
       Map(AuditFieldName("content") -> AuditFieldValueDescriptor.Content)

@@ -17,13 +17,13 @@
 package tech.beshu.ror.audit.utils
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.AuditResponseContext.*
+import tech.beshu.ror.audit.AuditResponseContext._
 import tech.beshu.ror.audit.instances.SerializeUser
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, AuditResponseContext}
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import scala.collection.JavaConverters.*
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 
 private[ror] object AuditSerializationHelper {
@@ -38,7 +38,7 @@ private[ror] object AuditSerializationHelper {
       allowedEvent(
         allowedEventMode,
         verbosity,
-        createEntry(fields, EventData(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, environmentContext, None)),
+        createEntry(fields, EventData(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, environmentContext, None))
       )
     case ForbiddenBy(requestContext, _, reason) =>
       Some(createEntry(fields, EventData(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, environmentContext, None)))
