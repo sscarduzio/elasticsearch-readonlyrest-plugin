@@ -46,7 +46,8 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       OpenModule,
       DeactivateSecurityActionFilter,
       DeactivateAuthenticationServiceInHttpTransport,
-      DummyAuthorizeInAuthorizationService
+      DummyAuthorizeInAuthorizationService,
+      new DummyAuthenticationInAuthenticationChain(esVersion)
     ),
     new XPackIlmJarPatchCreator(
       OpenModule
