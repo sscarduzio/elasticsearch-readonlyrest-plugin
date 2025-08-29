@@ -16,4 +16,19 @@
  */
 package tech.beshu.ror.audit.instances
 
-class QueryAuditLogSerializer extends QueryAuditLogSerializerV2
+import org.json.JSONObject
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.IncludeAll
+import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2.defaultV2AuditFields
+import tech.beshu.ror.audit.utils.AuditSerializationHelper
+import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+
+class FullAuditLogSerializer extends AuditLogSerializer {
+
+  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
+    AuditSerializationHelper.serialize(
+      responseContext = responseContext,
+      fields = defaultV2AuditFields,
+      allowedEventMode = IncludeAll
+    )
+
+}

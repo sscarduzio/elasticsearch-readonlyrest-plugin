@@ -17,12 +17,26 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext}
+import tech.beshu.ror.audit._
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.Include
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AuditFieldName, AuditFieldValueDescriptor}
+import tech.beshu.ror.audit.instances.QueryAuditLogSerializerV2.queryV2AuditFields
+import tech.beshu.ror.audit.utils.AuditSerializationHelper
 
-class QueryAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) extends DefaultAuditLogSerializerV2(environmentContext) {
+class QueryAuditLogSerializerV2 extends AuditLogSerializer {
 
-  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
-    super.onResponse(responseContext)
-      .map(_.put("content", responseContext.requestContext.content))
-  }
+  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
+    AuditSerializationHelper.serialize(
+      responseContext = responseContext,
+      fields = queryV2AuditFields,
+      allowedEventMode = Include(Set(Verbosity.Info))
+    )
+
+}
+
+private[ror] object QueryAuditLogSerializerV2 {
+  val queryV2AuditFields: Map[AuditFieldName, AuditFieldValueDescriptor] =
+    DefaultAuditLogSerializerV2.defaultV2AuditFields ++
+      Map(AuditFieldName("content") -> AuditFieldValueDescriptor.Content)
 }

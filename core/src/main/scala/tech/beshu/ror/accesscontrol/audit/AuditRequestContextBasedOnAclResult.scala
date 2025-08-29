@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, Imper
 import tech.beshu.ror.accesscontrol.domain.{Address, Header}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
-import tech.beshu.ror.audit.{AuditRequestContext, Headers}
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
 
 import java.time.Instant
@@ -36,6 +36,7 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
                                                                             userMetadata: Option[UserMetadata],
                                                                             historyEntries: Vector[History[B]],
                                                                             loggingContext: LoggingContext,
+                                                                            override val auditEnvironmentContext: AuditEnvironmentContext,
                                                                             override val generalAuditEvents: JSONObject,
                                                                             override val involvesIndices: Boolean)
   extends AuditRequestContext {

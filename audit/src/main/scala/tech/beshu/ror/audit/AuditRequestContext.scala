@@ -21,7 +21,6 @@ import java.time.Instant
 import org.json.JSONObject
 
 trait AuditRequestContext {
-
   def timestamp: Instant
   def id: String
   def correlationId: String
@@ -45,4 +44,5 @@ trait AuditRequestContext {
   def attemptedUserName: Option[String]
   def rawAuthHeader: Option[String]
   def generalAuditEvents: JSONObject
+  def auditEnvironmentContext: AuditEnvironmentContext
 }

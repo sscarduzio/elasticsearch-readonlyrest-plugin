@@ -17,16 +17,51 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditResponseContext}
+import tech.beshu.ror.audit._
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.Include
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AuditFieldName, AuditFieldValueDescriptor}
+import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2.defaultV2AuditFields
+import tech.beshu.ror.audit.utils.AuditSerializationHelper
 
-class DefaultAuditLogSerializerV2(environmentContext: AuditEnvironmentContext) extends DefaultAuditLogSerializerV1 {
+class DefaultAuditLogSerializerV2 extends AuditLogSerializer {
 
-  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
-    lazy val additionalFields = Map(
-      "es_node_name" -> environmentContext.esNodeName,
-      "es_cluster_name" -> environmentContext.esClusterName
+  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
+    AuditSerializationHelper.serialize(
+      responseContext = responseContext,
+      fields = defaultV2AuditFields,
+      allowedEventMode = Include(Set(Verbosity.Info))
     )
-    super.onResponse(responseContext)
-      .map(additionalFields.foldLeft(_) { case (soFar, (key, value)) => soFar.put(key, value) })
-  }
+
+}
+
+private[ror] object DefaultAuditLogSerializerV2 {
+  val defaultV2AuditFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
+    AuditFieldName("match") -> AuditFieldValueDescriptor.IsMatched,
+    AuditFieldName("block") -> AuditFieldValueDescriptor.Reason,
+    AuditFieldName("id") -> AuditFieldValueDescriptor.Id,
+    AuditFieldName("final_state") -> AuditFieldValueDescriptor.FinalState,
+    AuditFieldName("@timestamp") -> AuditFieldValueDescriptor.Timestamp,
+    AuditFieldName("correlation_id") -> AuditFieldValueDescriptor.CorrelationId,
+    AuditFieldName("processingMillis") -> AuditFieldValueDescriptor.ProcessingDurationMillis,
+    AuditFieldName("error_type") -> AuditFieldValueDescriptor.ErrorType,
+    AuditFieldName("error_message") -> AuditFieldValueDescriptor.ErrorMessage,
+    AuditFieldName("content_len") -> AuditFieldValueDescriptor.ContentLengthInBytes,
+    AuditFieldName("content_len_kb") -> AuditFieldValueDescriptor.ContentLengthInKb,
+    AuditFieldName("type") -> AuditFieldValueDescriptor.Type,
+    AuditFieldName("origin") -> AuditFieldValueDescriptor.RemoteAddress,
+    AuditFieldName("destination") -> AuditFieldValueDescriptor.LocalAddress,
+    AuditFieldName("xff") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
+    AuditFieldName("task_id") -> AuditFieldValueDescriptor.TaskId,
+    AuditFieldName("req_method") -> AuditFieldValueDescriptor.HttpMethod,
+    AuditFieldName("headers") -> AuditFieldValueDescriptor.HttpHeaderNames,
+    AuditFieldName("path") -> AuditFieldValueDescriptor.HttpPath,
+    AuditFieldName("user") -> AuditFieldValueDescriptor.User,
+    AuditFieldName("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
+    AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
+    AuditFieldName("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
+    AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory,
+    AuditFieldName("es_node_name") -> AuditFieldValueDescriptor.EsNodeName,
+    AuditFieldName("es_cluster_name") -> AuditFieldValueDescriptor.EsClusterName
+  )
 }
