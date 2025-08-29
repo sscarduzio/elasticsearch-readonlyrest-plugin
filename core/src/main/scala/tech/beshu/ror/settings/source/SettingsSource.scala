@@ -14,12 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings
+package tech.beshu.ror.settings.source
 
+import cats.Show
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
-import tech.beshu.ror.settings.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
 
 sealed trait SettingsSource[SETTINGS]
 
@@ -30,8 +31,10 @@ object ReadOnlySettingsSource {
   sealed trait LoadingSettingsError
   object LoadingSettingsError {
     case object FormatError extends LoadingSettingsError
-    final case class SourceSpecificError[ERROR](error: ERROR) extends LoadingSettingsError
+//    final case class SourceSpecificError[ERROR](error: ERROR) extends LoadingSettingsError
   }
+
+  implicit val show: Show[LoadingSettingsError] = ???
 }
 
 trait ReadWriteSettingsSource[SETTINGS : Encoder : Decoder] extends ReadOnlySettingsSource[SETTINGS] {
@@ -40,6 +43,8 @@ trait ReadWriteSettingsSource[SETTINGS : Encoder : Decoder] extends ReadOnlySett
 object ReadWriteSettingsSource {
   sealed trait SavingSettingsError
   object SavingSettingsError {
-    final case class SourceSpecificError[ERROR](error: ERROR) extends SavingSettingsError
+//    final case class SourceSpecificError[ERROR](error: ERROR) extends SavingSettingsError
   }
+
+  implicit val show: Show[SavingSettingsError] = ???
 }

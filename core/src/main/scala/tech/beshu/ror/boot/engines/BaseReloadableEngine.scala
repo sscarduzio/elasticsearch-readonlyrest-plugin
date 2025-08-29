@@ -421,9 +421,11 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
 
 object BaseReloadableEngine {
 
-  private[engines] sealed trait InitialEngine
+  //private[engines] // todo: uncomment
+  sealed trait InitialEngine
 
-  private[engines] object InitialEngine {
+  //private[engines]  // todo: uncomment
+  object InitialEngine {
     case object NotConfigured extends InitialEngine
     final case class Configured(engine: Engine,
                                 settings: RawRorSettings,

@@ -32,10 +32,10 @@ import tech.beshu.ror.api.{AuthMockApi, MainRorSettingsApi, TestRorSettingsApi}
 import tech.beshu.ror.boot.engines.{Engines, MainSettingsBasedReloadableEngine, TestSettingsBasedReloadableEngine}
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
-import tech.beshu.ror.configuration.manager.InIndexSettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
-import tech.beshu.ror.configuration.manager.{RorMainSettingsManager, RorTestSettingsManager}
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser}
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
+import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
@@ -45,10 +45,11 @@ class RorInstance private(boot: ReadonlyRest,
                           esConfig: EsConfigBasedRorSettings,
                           mainInitialEngine: ReadonlyRest.MainEngine,
                           mainReloadInProgress: Semaphore[Task],
-                          mainSettingsManager: RorMainSettingsManager,
+                          mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
+                          mainSettingsFileSource: FileSettingsSource[RawRorSettings],
                           testInitialEngine: ReadonlyRest.TestEngine,
                           testReloadInProgress: Semaphore[Task],
-                          testSettingsManager: RorTestSettingsManager)
+                          testSettingsIndexSource: IndexSettingsSource[TestRorSettings])
                          (implicit systemContext: SystemContext,
                           scheduler: Scheduler)
   extends Logging {
@@ -70,19 +71,19 @@ class RorInstance private(boot: ReadonlyRest,
     esConfig,
     (mainInitialEngine.engine, mainInitialEngine.settings),
     mainReloadInProgress,
-    mainSettingsManager
+    mainSettingsIndexSource
   )
   private val theTestSettingsEngine = TestSettingsBasedReloadableEngine.create(
     boot,
     esConfig,
     testInitialEngine,
     testReloadInProgress,
-    testSettingsManager
+    testSettingsIndexSource
   )
 
   private val rarRorSettingsYamlParser = new RawRorSettingsYamlParser(esConfig.loadingRorCoreStrategy.rorSettingsMaxSize)
 
-  private val mainSettingsRestApi = new MainRorSettingsApi(rorInstance = this, rarRorSettingsYamlParser, mainSettingsManager)
+  private val mainSettingsRestApi = new MainRorSettingsApi(rorInstance = this, rarRorSettingsYamlParser, mainSettingsIndexSource, mainSettingsFileSource)
   private val testSettingsRestApi = new TestRorSettingsApi(rorInstance = this, rarRorSettingsYamlParser)
   private val authMockRestApi = new AuthMockApi(rorInstance = this)
 
@@ -216,8 +217,8 @@ object RorInstance {
              esConfig: EsConfigBasedRorSettings,
              mainEngine: ReadonlyRest.MainEngine,
              testEngine: ReadonlyRest.TestEngine,
-             mainSettingsManager: RorMainSettingsManager,
-             testSettingsManager: RorTestSettingsManager)
+             mainSettingsManager: IndexSettingsSource[RawRorSettings],
+             testSettingsManager: IndexSettingsSource[TestRorSettings])
             (implicit systemContext: SystemContext,
              scheduler: Scheduler): Task[RorInstance] = {
     esConfig.loadingRorCoreStrategy match {
@@ -233,8 +234,8 @@ object RorInstance {
                              mode: RorInstance.Mode,
                              mainEngine: ReadonlyRest.MainEngine,
                              testEngine: ReadonlyRest.TestEngine,
-                             mainSettingsManager: RorMainSettingsManager,
-                             testSettingsManager: RorTestSettingsManager)
+                             mainSettingsManager: IndexSettingsSource[RawRorSettings],
+                             testSettingsManager: IndexSettingsSource[TestRorSettings])
                             (implicit systemContext: SystemContext,
                              scheduler: Scheduler) = {
     for {
@@ -246,10 +247,10 @@ object RorInstance {
       mode = mode,
       mainInitialEngine = mainEngine,
       mainReloadInProgress = isReloadInProgressSemaphore,
-      mainSettingsManager = mainSettingsManager,
+      mainSettingsIndexSource = mainSettingsManager,
       testInitialEngine = testEngine,
       testReloadInProgress = isTestReloadInProgressSemaphore,
-      testSettingsManager = testSettingsManager
+      testSettingsIndexSource = testSettingsManager
     )
   }
 
@@ -263,25 +264,25 @@ object RorInstance {
   sealed trait IndexSettingsReloadWithUpdateError
   object IndexSettingsReloadWithUpdateError {
     final case class ReloadError(undefined: RawSettingsReloadError) extends IndexSettingsReloadWithUpdateError
-    final case class IndexSettingsSavingError(underlying: SavingIndexSettingsError) extends IndexSettingsReloadWithUpdateError
+    final case class IndexSettingsSavingError(underlying: SavingSettingsError) extends IndexSettingsReloadWithUpdateError
   }
 
   sealed trait IndexSettingsReloadError
   object IndexSettingsReloadError {
-    final case class LoadingSettingsError(underlying: LoadingFromIndexError) extends IndexSettingsReloadError
+    final case class LoadingSettingsError(underlying: LoadingSettingsError) extends IndexSettingsReloadError
     final case class ReloadError(underlying: RawSettingsReloadError) extends IndexSettingsReloadError
   }
 
   sealed trait IndexSettingsUpdateError
   object IndexSettingsUpdateError {
-    final case class IndexSettingsSavingError(underlying: SavingIndexSettingsError) extends IndexSettingsUpdateError
+    final case class IndexSettingsSavingError(underlying: SavingSettingsError) extends IndexSettingsUpdateError
     case object TestSettingsNotSet extends IndexSettingsUpdateError
     case object TestSettingsInvalidated extends IndexSettingsUpdateError
   }
 
   sealed trait IndexSettingsInvalidationError
   object IndexSettingsInvalidationError {
-    final case class IndexSettingsSavingError(underlying: SavingIndexSettingsError) extends IndexSettingsInvalidationError
+    final case class IndexSettingsSavingError(underlying: SavingSettingsError) extends IndexSettingsInvalidationError
   }
 
   private sealed trait ScheduledReloadError

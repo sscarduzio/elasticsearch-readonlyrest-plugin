@@ -30,10 +30,11 @@ import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{Index
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpiration, EngineState, InitialEngine}
 import tech.beshu.ror.boot.engines.SettingsHash.*
 import tech.beshu.ror.configuration.TestRorSettings.Present.Expiration
-import tech.beshu.ror.configuration.manager.RorTestSettingsManager
 import tech.beshu.ror.configuration.manager.InIndexSettingsManager.SavingIndexSettingsError
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.source.IndexSettingsSource
+import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
 
@@ -41,7 +42,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
                                                               esConfig: EsConfigBasedRorSettings,
                                                               initialEngine: InitialEngine,
                                                               reloadInProgress: Semaphore[Task],
-                                                              testSettingsManager: RorTestSettingsManager)
+                                                              testSettingsSource: IndexSettingsSource[TestRorSettings])
                                                              (implicit systemContext: SystemContext,
                                                               scheduler: Scheduler)
   extends BaseReloadableEngine("test", boot, esConfig, initialEngine, reloadInProgress) {
@@ -181,8 +182,8 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
   }
 
   private def saveSettingsInIndex[A](newSettings: TestRorSettings.Present,
-                                     onFailure: SavingIndexSettingsError => A): EitherT[Task, A, Unit] = {
-    EitherT(testSettingsManager.saveToIndex(newSettings))
+                                     onFailure: SavingSettingsError => A): EitherT[Task, A, Unit] = {
+    EitherT(testSettingsSource.save(newSettings))
       .leftMap(onFailure)
   }
 
@@ -207,7 +208,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
   }
 
   private def loadRorTestSettingsFromIndex(): EitherT[Task, IndexSettingsReloadError, TestRorSettings] = {
-    EitherT(testSettingsManager.loadFromIndex())
+    EitherT(testSettingsSource.load())
       .leftMap(IndexSettingsReloadError.LoadingSettingsError.apply)
   }
 
@@ -235,7 +236,7 @@ object TestSettingsBasedReloadableEngine {
              esConfig: EsConfigBasedRorSettings,
              initialEngine: ReadonlyRest.TestEngine,
              reloadInProgress: Semaphore[Task],
-             testSettingsManager: RorTestSettingsManager)
+             testSettingsSource: IndexSettingsSource[TestRorSettings])
             (implicit systemContext: SystemContext,
              scheduler: Scheduler): TestSettingsBasedReloadableEngine = {
     val engine = initialEngine match {
@@ -246,7 +247,7 @@ object TestSettingsBasedReloadableEngine {
       case TestEngine.Invalidated(settings, expiration) =>
         InitialEngine.Invalidated(settings, engineExpiration(expiration))
     }
-    new TestSettingsBasedReloadableEngine(boot, esConfig, engine, reloadInProgress, testSettingsManager)
+    new TestSettingsBasedReloadableEngine(boot, esConfig, engine, reloadInProgress, testSettingsSource)
   }
 
   private def engineExpiration(expiration: TestEngine.Expiration) = EngineExpiration(expiration.ttl, expiration.validTo)

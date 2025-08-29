@@ -14,15 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings
+package tech.beshu.ror.settings.source
 
 import better.files.File
 import cats.data.EitherT
 import io.circe.{Decoder, DecodingFailure, ParsingFailure, parser}
 import monix.eval.Task
-import tech.beshu.ror.settings.FileSettingsSource.LoadingError.FileNotExist
-import tech.beshu.ror.settings.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
+import tech.beshu.ror.settings.source.FileSettingsSource.LoadingError.FileNotExist
+import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
 
 class FileSettingsSource[SETTINGS: Decoder](rorSettingsFile: File)
   extends ReadOnlySettingsSource[SETTINGS] {

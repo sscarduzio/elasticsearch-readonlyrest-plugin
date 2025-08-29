@@ -29,17 +29,16 @@ import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{Index
 import tech.beshu.ror.boot.RorInstance.RawSettingsReloadError.{ReloadingFailed, RorInstanceStopped, SettingsUpToDate}
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
 import tech.beshu.ror.boot.engines.SettingsHash.*
-import tech.beshu.ror.configuration.manager.RorMainSettingsManager
-import tech.beshu.ror.configuration.manager.InIndexSettingsManager.SavingIndexSettingsError
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.source.IndexSettingsSource
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
                                                       esConfig: EsConfigBasedRorSettings,
                                                       initialEngine: (Engine, RawRorSettings),
                                                       reloadInProgress: Semaphore[Task],
-                                                      settingsManager: RorMainSettingsManager)
+                                                      settingsSource: IndexSettingsSource[RawRorSettings])
                                                      (implicit systemContext: SystemContext,
                                                       scheduler: Scheduler)
   extends BaseReloadableEngine(
@@ -120,14 +119,14 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
     result.value
   }
 
-  private def saveSettings(settings: RawRorSettings): EitherT[Task, IndexSettingsReloadWithUpdateError, Unit] = {
-    EitherT(settingsManager.saveToIndex(settings))
-      .leftMap(IndexSettingsReloadWithUpdateError.IndexSettingsSavingError.apply)
+  private def loadRorSettingFromIndex() = {
+    EitherT(settingsSource.load())
+      .leftMap(IndexSettingsReloadError.LoadingSettingsError.apply)
   }
 
-  private def loadRorSettingFromIndex() = {
-    EitherT(settingsManager.loadFromIndex())
-      .leftMap(IndexSettingsReloadError.LoadingSettingsError.apply)
+  private def saveSettings(settings: RawRorSettings): EitherT[Task, IndexSettingsReloadWithUpdateError, Unit] = {
+    EitherT(settingsSource.save(settings))
+      .leftMap(IndexSettingsReloadWithUpdateError.IndexSettingsSavingError.apply)
   }
 
 }

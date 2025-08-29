@@ -14,16 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings
+package tech.beshu.ror.settings.strategy
 
-import io.circe.{Decoder, Encoder}
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
+import tech.beshu.ror.configuration.RawRorSettings
+import tech.beshu.ror.settings.source.FileSettingsSource
+import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 
-class IndexSettingsSource[SETTINGS : Encoder : Decoder](settingsIndex: RorSettingsIndex)
-  extends ReadWriteSettingsSource[SETTINGS] {
+class RorMainSettingsFileOnlyLoadingStrategy(fileSettingsSource: FileSettingsSource[RawRorSettings])
+  extends SettingsLoadingStrategy[LoadingSettingsError, RawRorSettings] {
 
-  override def save(config: SETTINGS): Task[Either[ReadWriteSettingsSource.SavingSettingsError, Unit]] = ???
-
-  override def load(): Task[Either[ReadOnlySettingsSource.LoadingSettingsError, SETTINGS]] = ???
+  override def load(): Task[Either[LoadingSettingsError, RawRorSettings]] = ???
 }

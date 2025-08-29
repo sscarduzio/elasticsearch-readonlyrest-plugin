@@ -29,15 +29,15 @@ import tech.beshu.ror.api.MainRorSettingsApi.MainSettingsResponse.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.manager.RorMainSettingsManager
-import tech.beshu.ror.configuration.manager.InIndexSettingsManager.LoadingFromIndexError
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
 class MainRorSettingsApi(rorInstance: RorInstance,
                          settingsYamlParser: RawRorSettingsYamlParser,
-                         settingsManager: RorMainSettingsManager)
+                         mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
+                         mainSettingsFileSource: FileSettingsSource[RawRorSettings])
   extends Logging {
 
   import MainRorSettingsApi.Utils.*
@@ -85,8 +85,8 @@ class MainRorSettingsApi(rorInstance: RorInstance,
   }
 
   private def provideRorFileSettings(): Task[MainSettingsResponse] = {
-    settingsManager
-      .loadFromFile()
+    mainSettingsFileSource
+      .load()
       .map {
         case Right(settings) => ProvideFileMainSettings.MainSettings(settings.raw)
         case Left(error) => ProvideFileMainSettings.Failure(error.show)
@@ -94,13 +94,14 @@ class MainRorSettingsApi(rorInstance: RorInstance,
   }
 
   private def provideRorIndexSettings(): Task[MainSettingsResponse] = {
-    settingsManager
-      .loadFromIndex()
+    mainSettingsIndexSource
+      .load()
       .map {
         case Right(settings) =>
           ProvideIndexMainSettings.MainSettings(settings.raw)
-        case Left(error@LoadingFromIndexError.IndexNotExist) =>
-          ProvideIndexMainSettings.MainSettingsNotFound(Show[LoadingFromIndexError].show(error))
+          // todo: ???
+//        case Left(error@LoadingFromIndexError.IndexNotExist) =>
+//          ProvideIndexMainSettings.MainSettingsNotFound(Show[LoadingFromIndexError].show(error))
         case Left(error) => ProvideIndexMainSettings.Failure(error.show)
       }
   }
