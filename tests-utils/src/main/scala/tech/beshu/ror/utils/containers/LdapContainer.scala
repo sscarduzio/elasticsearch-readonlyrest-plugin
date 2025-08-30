@@ -17,36 +17,22 @@
 package tech.beshu.ror.utils.containers
 
 import better.files.Dispose.FlatMap.Implicits
-import better.files.{Disposable, Dispose, File, Resource}
-import com.dimafeng.testcontainers.{GenericContainer, SingleContainer}
+import better.files.{Disposable, Dispose, Resource}
+import com.dimafeng.testcontainers.GenericContainer
 import com.typesafe.scalalogging.LazyLogging
 import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, LDAPException, ResultCode}
 import com.unboundid.ldif.LDIFReader
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.testcontainers.containers.{Network, GenericContainer as JavaGenericContainer}
+import org.testcontainers.containers.Network
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
-import tech.beshu.ror.utils.containers.LdapContainer.{InitScriptSource, defaults}
-import tech.beshu.ror.utils.containers.windows.{LdapPseudoGenericContainer, NonStoppableLdapPseudoGenericContainer}
-import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.containers.LdapSingleContainer.{InitScriptSource, defaults}
+import tech.beshu.ror.utils.containers.LdapWaitStrategy.*
 import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 import java.io.{BufferedReader, InputStreamReader}
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
-
-trait LdapSingleContainer extends SingleContainer[JavaGenericContainer[_]] {
-
-  def originalPort: Int
-
-  def ldapPort: Int
-
-  def ldapSSLPort: Int
-
-  def ldapHost: String
-
-  def doStart(): Unit = start()
-}
 
 class LdapContainer private[containers](name: String, ldapInitScript: InitScriptSource)
   extends GenericContainer(
@@ -57,15 +43,15 @@ class LdapContainer private[containers](name: String, ldapInitScript: InitScript
       "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword,
       "LDAP_TLS_VERIFY_CLIENT" -> "try"
     ),
-    exposedPorts = Seq(defaults.ldap.port, defaults.ldap.sslPort),
+    exposedPorts = Seq(LdapContainer.port, LdapContainer.sslPort),
     waitStrategy = Some(new LdapWaitStrategy(name, ldapInitScript))
   ) with LdapSingleContainer {
 
-  def originalPort: Int = LdapContainer.defaults.ldap.port
+  def originalPort: Int = LdapContainer.port
 
-  def ldapPort: Int = this.mappedPort(defaults.ldap.port)
+  def ldapPort: Int = this.mappedPort(LdapContainer.port)
 
-  def ldapSSLPort: Int = this.mappedPort(defaults.ldap.sslPort)
+  def ldapSSLPort: Int = this.mappedPort(LdapContainer.sslPort)
 
   def ldapHost: String = this.containerIpAddress
 
@@ -76,58 +62,22 @@ class LdapContainer private[containers](name: String, ldapInitScript: InitScript
 
 object LdapContainer {
 
-  sealed trait InitScriptSource
-
-  object InitScriptSource {
-    final case class Resource(name: String) extends InitScriptSource
-
-    final case class AFile(file: File) extends InitScriptSource
-
-    implicit def fromString(name: String): InitScriptSource = Resource(name)
-
-    implicit def fromFile(file: File): InitScriptSource = AFile(file)
-  }
+  val port = 389
+  val sslPort = 636
 
   def create(name: String, ldapInitScript: InitScriptSource): LdapSingleContainer = {
-    if (OsUtils.isWindows) {
-      LdapPseudoGenericContainer.create(name, ldapInitScript)
-    } else {
-      val ldapContainer = new LdapContainer(name, ldapInitScript)
-      ldapContainer.container
-        .setNetwork(Network.SHARED)
-      ldapContainer
-    }
+    val ldapContainer = new LdapContainer(name, ldapInitScript)
+    ldapContainer.container.setNetwork(Network.SHARED)
+    ldapContainer
   }
 
   def create(name: String, ldapInitScript: String): LdapSingleContainer = {
     create(name, InitScriptSource.fromString(ldapInitScript))
   }
 
-  object defaults {
-    val connectionTimeout: FiniteDuration = 5 seconds
-    val containerStartupTimeout: FiniteDuration = 5 minutes
-
-    object ldap {
-      val port = 389
-      val sslPort = 636
-      val domain = "example.com"
-      val organisation = "example"
-      val adminName = "admin"
-      val adminPassword = "password"
-      val bindDn: Option[String] = {
-        Option(
-          defaults.ldap.domain
-            .split("\\.").toList
-            .map(part => s"dc=$part")
-            .mkString(","))
-          .filter(_.trim.nonEmpty)
-          .map(dc => s"cn=${defaults.ldap.adminName},$dc")
-      }
-    }
-  }
 }
 
-class NonStoppableLdapContainer private(name: String, ldapInitScript: InitScriptSource)
+class NonStoppableLdapContainer(name: String, ldapInitScript: InitScriptSource)
   extends LdapContainer(name, ldapInitScript) {
 
   override def start(): Unit = ()
@@ -139,14 +89,10 @@ class NonStoppableLdapContainer private(name: String, ldapInitScript: InitScript
 
 object NonStoppableLdapContainer {
   def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapSingleContainer = {
-    if (OsUtils.isWindows) {
-      NonStoppableLdapPseudoGenericContainer.createAndStart(name, ldapInitScript)
-    } else {
-      val ldap = new NonStoppableLdapContainer(name, ldapInitScript)
-      ldap.container.setNetwork(Network.SHARED)
-      ldap.privateStart()
-      ldap
-    }
+    val ldap = new NonStoppableLdapContainer(name, ldapInitScript)
+    ldap.container.setNetwork(Network.SHARED)
+    ldap.privateStart()
+    ldap
   }
 }
 
@@ -164,7 +110,7 @@ private class LdapWaitStrategy(name: String,
         logger.error("LDAP container startup failed", ex)
         throw ex
       }
-      .runSyncUnsafe(defaults.containerStartupTimeout)
+      .runSyncUnsafe(containerStartupTimeout)
     logger.info(s"LDAP container '$name' started")
   }
 
@@ -216,7 +162,7 @@ private class LdapWaitStrategy(name: String,
   private def runOnBindedLdapConnection(action: LDAPConnection => Task[Unit]): Task[Unit] = {
     defaults.ldap.bindDn match {
       case Some(bindDn) =>
-        Task(new LDAPConnection(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(defaults.ldap.port)))
+        Task(new LDAPConnection(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(LdapContainer.port)))
           .bracket(connection =>
             Task(connection.bind(bindDn, defaults.ldap.adminPassword))
               .flatMap {
@@ -232,4 +178,8 @@ private class LdapWaitStrategy(name: String,
   }
 
   private implicit val ldifReaderDisposable: Disposable[LDIFReader] = Disposable(_.close())
+}
+
+object LdapWaitStrategy {
+  private val containerStartupTimeout: FiniteDuration = 5 minutes
 }

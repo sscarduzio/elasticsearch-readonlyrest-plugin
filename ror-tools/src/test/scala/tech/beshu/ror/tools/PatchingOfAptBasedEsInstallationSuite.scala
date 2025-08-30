@@ -63,7 +63,7 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
         // `permission java.io.FilePermission "/usr/share/elasticsearch", "read";`
         // It is not a valid Windows path, so ror-tools patcher cannot read the ES directory and prints warning.
         "ES {7.x, 8.0.x - 8.17.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs9x, allEs818x) in {
-          val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
+          val dockerLogs = withTestEsContainerManager(EsInstallationType.NativeWindowsProcess) { esContainer =>
             testRorStartup(usingManager = esContainer)
           }
           dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
@@ -78,7 +78,7 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
         //      - relative_path: ../
         // It is valid on Windows, so ror-tools patcher can read the ES directory and does not print the warning.
         "ES {8.18.x, 9.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs7x, allEs8xBelowEs818x) in {
-          val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
+          val dockerLogs = withTestEsContainerManager(EsInstallationType.NativeWindowsProcess) { esContainer =>
             testRorStartup(usingManager = esContainer)
           }
           dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
@@ -182,12 +182,7 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
 
     def stop(): Task[Unit] = for {
       _ <- Task.delay(esContainer.stop())
-      _ <- esContainer.containerImplementation match {
-        case EsContainerImplementation.Windows(_) =>
-          Task.unit
-        case EsContainerImplementation.Linux(esImage, _) =>
-          Task.delay(dockerClient.removeImageCmd(esImage.get()).withForce(true).exec())
-      }
+      _ <- Task.delay(esContainer.removeImage())
     } yield ()
 
     def getLogs: String = dockerLogsCollector.getLogs

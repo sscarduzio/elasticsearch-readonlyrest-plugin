@@ -98,7 +98,13 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
     val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
       remoteClustersConfig.view.mapValues(_.nodes.map { c =>
-        if (OsUtils.isWindows) s"localhost:${c.port + 100}" else s"${c.esConfig.nodeName}:9300"
+        if (OsUtils.isWindows) {
+          // We only have access to ES port in 92XX range here. 
+          // On Windows, the ES transport port is configured to be exactly 100 higher than ES port
+          s"localhost:${c.port + 100}" 
+        } else {
+          s"${c.esConfig.nodeName}:9300"
+        }
       }).toMap
     )
 

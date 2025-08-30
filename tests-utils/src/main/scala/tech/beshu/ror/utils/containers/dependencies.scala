@@ -17,13 +17,13 @@
 package tech.beshu.ror.utils.containers
 
 import monix.eval.Coeval
-import tech.beshu.ror.utils.containers.windows.WireMockServerPseudoContainer
+import tech.beshu.ror.utils.containers.windows.WindowsPseudoSingleContainerWiremock
 import tech.beshu.ror.utils.misc.OsUtils
 
 object dependencies {
 
   def ldap(name: String, ldapInitScript: String): DependencyDef = {
-    val ldap = LdapContainer.create(name, ldapInitScript)
+    val ldap = LdapSingleContainer.create(name, ldapInitScript)
     DependencyDef(
       name = name,
       containerCreator = Coeval(ldap),
@@ -41,8 +41,8 @@ object dependencies {
     if (OsUtils.isWindows) {
       DependencyDef(
         name = name,
-        containerCreator = Coeval(new WireMockServerPseudoContainer(port, mappings.toList)),
-        originalPort = 8080,
+        containerCreator = Coeval(new WindowsPseudoSingleContainerWiremock(port, mappings.toList)),
+        originalPort = port,
       )
     } else {
       DependencyDef(

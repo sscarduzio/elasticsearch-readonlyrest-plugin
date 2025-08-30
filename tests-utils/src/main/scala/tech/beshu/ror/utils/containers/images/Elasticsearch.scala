@@ -24,8 +24,8 @@ import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.images.Elasticsearch.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateSteps.emptyEsUpdateSteps
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{EsUpdateStep, EsUpdateSteps}
-import tech.beshu.ror.utils.containers.windows.WindowsElasticsearchSetup
-import tech.beshu.ror.utils.misc.{OsUtils, Version}
+import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager
+import tech.beshu.ror.utils.misc.Version
 
 object Elasticsearch {
 
@@ -37,40 +37,38 @@ object Elasticsearch {
                           esInstallationType: EsInstallationType)
 
   extension (config: Config)
-    def esConfigDir: Path =
-      if (OsUtils.isWindows) {
-        WindowsElasticsearchSetup.configPath(config.clusterName, config.nodeName)
-      } else {
-        config.esInstallationType match {
-          case EsInstallationType.EsDockerImage =>
-            os.root / "usr" / "share" / "elasticsearch" / "config"
-          case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
-            os.root / "etc" / "elasticsearch"
-        }
-      }
+    def esConfigDir: Path = config.esInstallationType match {
+      case EsInstallationType.EsDockerImage =>
+        os.root / "usr" / "share" / "elasticsearch" / "config"
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        os.root / "etc" / "elasticsearch"
+      case EsInstallationType.NativeWindowsProcess =>
+        WindowsEsDirectoryManager.configPath(config.clusterName, config.nodeName)
+    }
 
-    def esDir: Path =
-      if (OsUtils.isWindows) {
-        WindowsElasticsearchSetup.esPath(config.clusterName, config.nodeName)
-      } else {
-        config.esInstallationType match {
-          case EsInstallationType.EsDockerImage =>
-            os.root / "usr" / "share" / "elasticsearch"
-          case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
-            os.root / "usr" / "share" / "elasticsearch"
-        }
-      }
+    def esDir: Path = config.esInstallationType match {
+      case EsInstallationType.EsDockerImage =>
+        os.root / "usr" / "share" / "elasticsearch"
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        os.root / "usr" / "share" / "elasticsearch"
+      case EsInstallationType.NativeWindowsProcess =>
+        WindowsEsDirectoryManager.esPath(config.clusterName, config.nodeName)
+    }
 
-    def tempFilePath: Path =
-      if (OsUtils.isWindows) {
-        WindowsElasticsearchSetup.esPath(config.clusterName, config.nodeName) / "temp"
-      } else {
+    def tempFilePath: Path = config.esInstallationType match {
+      case EsInstallationType.EsDockerImage =>
         os.root / "tmp"
-      }  
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        os.root / "tmp"
+      case EsInstallationType.NativeWindowsProcess =>
+        WindowsEsDirectoryManager.esPath(config.clusterName, config.nodeName) / "temp"
+    }
 
   sealed trait EsInstallationType
 
   object EsInstallationType {
+    case object NativeWindowsProcess extends EsInstallationType
+
     case object EsDockerImage extends EsInstallationType
 
     case object UbuntuDockerImageWithEsFromApt extends EsInstallationType
@@ -167,6 +165,8 @@ class Elasticsearch(val esVersion: String,
       toOfficialEsImageBasedDockerImageDescription
     case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
       toUbuntuWithAptEsDockerImageDescription
+    case EsInstallationType.NativeWindowsProcess =>
+      throw new IllegalStateException("The ES installation type is native Windows process. It is not possible to create docker image description")
   }
 
   private def toOfficialEsImageBasedDockerImageDescription: DockerImageDescription = {

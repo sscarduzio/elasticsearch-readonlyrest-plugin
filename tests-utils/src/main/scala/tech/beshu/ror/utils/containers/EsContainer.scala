@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.containers.EsContainer.{Credentials, EsContainerImpl
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
 import tech.beshu.ror.utils.containers.logs.CompositeLogConsumer
 import tech.beshu.ror.utils.containers.providers.ClientProvider
-import tech.beshu.ror.utils.containers.windows.WindowsBasedEsPseudoGenericContainer
+import tech.beshu.ror.utils.containers.windows.WindowsPseudoGenericContainerEs
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
@@ -50,19 +50,30 @@ abstract class EsContainer(val esVersion: String,
     with ClientProvider
     with StrictLogging {
 
-
   private val esClient = Coeval(adminClient)
 
   private val waitStrategy = new ElasticsearchNodeWaitingStrategy(esVersion, esConfig.nodeName, esClient, initializer, awaitingReadyStrategy)
 
-  val containerImplementation: EsContainerImplementation = {
+  private val containerImplementation: EsContainerImplementation = {
     if (OsUtils.isWindows) {
       EsContainerImplementation.Windows(
-        container = new WindowsBasedEsPseudoGenericContainer(elasticsearch, waitStrategy, additionalLogConsumer),
+        container = new WindowsPseudoGenericContainerEs(elasticsearch, waitStrategy, additionalLogConsumer),
       )
     } else {
       val esImage = DockerImageCreator.create(elasticsearch)
       val container = new org.testcontainers.containers.GenericContainer(esImage)
+      val slf4jConsumer = new Slf4jLogConsumer(logger.underlying)
+      val logConsumer: Consumer[OutputFrame] = additionalLogConsumer match {
+        case Some(additional) => new CompositeLogConsumer(slf4jConsumer, additional)
+        case scala.None => slf4jConsumer
+      }
+      container.setLogConsumers((logConsumer :: Nil).asJava)
+      container.addExposedPort(9200)
+      container.addExposedPort(9300)
+      container.addExposedPort(8000)
+      container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
+      container.setNetwork(Network.SHARED)
+      container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
       EsContainerImplementation.Linux(
         esImage = esImage,
         container = container
@@ -73,6 +84,15 @@ abstract class EsContainer(val esVersion: String,
   override implicit val container: GenericContainer[_] = containerImplementation match {
     case EsContainerImplementation.Windows(container) => container
     case EsContainerImplementation.Linux(esImage, container) => container
+  }
+
+  def removeImage(): Unit = {
+    containerImplementation match {
+      case EsContainerImplementation.Windows(_) =>
+        ()
+      case EsContainerImplementation.Linux(esImage, _) =>
+        dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
+    }
   }
 
   def sslEnabled: Boolean
@@ -87,7 +107,7 @@ abstract class EsContainer(val esVersion: String,
     case EsContainerImplementation.Linux(_, container) => container.getMappedPort(9200)
   }
 
-  def getAddressInInternalNetwork = containerImplementation match {
+  def getAddressInInternalNetwork: String = containerImplementation match {
     case EsContainerImplementation.Windows(container) =>
       s"localhost:${container.getPort}"
     case EsContainerImplementation.Linux(_, container) =>
@@ -99,24 +119,6 @@ abstract class EsContainer(val esVersion: String,
     case Token(token) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader("Authorization", token))
     case Header(name, value) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader(name, value))
     case None => new RestClient(sslEnabled, ip, port, Option.empty)
-  }
-
-  containerImplementation match {
-    case EsContainerImplementation.Windows(_) =>
-      ()
-    case EsContainerImplementation.Linux(_, container) =>
-      val slf4jConsumer = new Slf4jLogConsumer(logger.underlying)
-      val logConsumer: Consumer[OutputFrame] = additionalLogConsumer match {
-        case Some(additional) => new CompositeLogConsumer(slf4jConsumer, additional)
-        case scala.None => slf4jConsumer
-      }
-      container.setLogConsumers((logConsumer :: Nil).asJava)
-      container.addExposedPort(9200)
-      container.addExposedPort(9300)
-      container.addExposedPort(8000)
-      container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
-      container.setNetwork(Network.SHARED)
-      container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
   }
 
 }
@@ -137,7 +139,7 @@ object EsContainer {
   sealed trait EsContainerImplementation
 
   object EsContainerImplementation {
-    final case class Windows(container: WindowsBasedEsPseudoGenericContainer) extends EsContainerImplementation
+    final case class Windows(container: WindowsPseudoGenericContainerEs) extends EsContainerImplementation
 
     final case class Linux(esImage: ImageFromDockerfile, container: GenericContainer[_]) extends EsContainerImplementation
   }

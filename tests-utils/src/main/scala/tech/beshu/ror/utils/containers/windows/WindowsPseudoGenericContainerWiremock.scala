@@ -23,42 +23,45 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import com.github.tomakehurst.wiremock.standalone.JsonFileMappingsSource
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.ContainerUtils
+import tech.beshu.ror.utils.containers.windows.WindowsPseudoSingleContainerWiremock.WindowsPseudoGenericContainerWiremock
 
 import java.io.File
 
-class WireMockServerPseudoContainer(val port: Int, mappings: List[String])
+class WindowsPseudoSingleContainerWiremock(val port: Int, mappings: List[String])
   extends SingleContainer[GenericContainer[_]] {
-
-  override val container: WireMockServerPseudoGenericContainer = new WireMockServerPseudoGenericContainer(port, mappings)
+  override val container: WindowsPseudoGenericContainerWiremock = new WindowsPseudoGenericContainerWiremock(port, mappings)
 }
 
-class WireMockServerPseudoGenericContainer(port: Int, mappings: List[String])
-  extends GenericContainer[WireMockServerPseudoGenericContainer]("noop:latest") {
+object WindowsPseudoSingleContainerWiremock {
+  class WindowsPseudoGenericContainerWiremock(port: Int, mappings: List[String])
+    extends GenericContainer[WindowsPseudoGenericContainerWiremock]("noop:latest") {
 
-  private var server: Option[WireMockServer] = None
+    private var server: Option[WireMockServer] = None
 
-  override def start(): Unit = {
-    doStart()
+    override def start(): Unit = {
+      doStart()
+    }
+
+    override def doStart(): Unit = {
+      server = Some(WireMockServerCreator.create(port, mappings))
+    }
+
+    override def stop(): Unit = {
+      server.foreach(_.stop())
+      super.stop()
+    }
+
+    def getWireMockPort: Int = server.map(_.port()).getOrElse(
+      throw new IllegalStateException("The Wiremock is not started, port is not yet defined")
+    )
+
+    override def getContainerId: String = "WireMockServerPseudoGenericContainer"
+
+    override def getDockerImageName: String = "WireMockServerPseudoGenericContainer"
   }
-
-  override def doStart(): Unit = {
-    server = Some(WireMockServerCreator.create(port, mappings))
-  }
-
-  override def stop(): Unit = {
-    server.foreach(_.stop())
-    super.stop()
-  }
-
-  def getWireMockPort: Int = server.map(_.port()).getOrElse(WireMockServerCreator.DefaultPort)
-
-  override def getContainerId: String = "WireMockServerPseudoGenericContainer"
-  override def getDockerImageName: String = "WireMockServerPseudoGenericContainer"
 }
 
 object WireMockServerCreator {
-  val DefaultPort: Int = 8080
-
   def create(port: Int, mappings: List[String]): WireMockServer = synchronized {
     val mappingFiles: Seq[File] =
       mappings.map(ContainerUtils.getResourceFile)

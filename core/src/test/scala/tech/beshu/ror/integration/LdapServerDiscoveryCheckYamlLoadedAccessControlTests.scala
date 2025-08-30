@@ -75,6 +75,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
     ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
+  // This test suite does not execute on Windows: there is currently no Windows version of LdapWithDnsContainer
   if (!OsUtils.isWindows) {
   "An LDAP connectivity check" should {
     "allow core to start" when {

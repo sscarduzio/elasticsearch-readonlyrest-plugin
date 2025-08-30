@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
-import tech.beshu.ror.utils.containers.{LdapContainer, ToxiproxyContainer}
+import tech.beshu.ror.utils.containers.{LdapContainer, LdapSingleContainer, ToxiproxyContainer}
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 
@@ -55,9 +55,9 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
 
   private lazy val ldap1ContainerWithToxiproxy = new ToxiproxyContainer(
     SingletonLdapContainers.ldap1,
-    LdapContainer.defaults.ldap.port
+    LdapContainer.port
   )
-  private lazy val ldapContainerToStop = LdapContainer.create("LDAP3", "test_example.ldif")
+  private lazy val ldapContainerToStop = LdapSingleContainer.create("LDAP3", "test_example.ldif")
   private lazy val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   override val container: Container = MultipleContainers(ldap1ContainerWithToxiproxy, ldapContainerToStop)
@@ -73,6 +73,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
     ldap1ContainerWithToxiproxy.disableNetworkTimeout()
   }
 
+  // This test suite does not execute on Windows: there is currently no Windows version of ToxiproxyContainer
   if (!OsUtils.isWindows) {
     "An LdapAuthenticationService should" - {
       "allow to authenticate user" - {

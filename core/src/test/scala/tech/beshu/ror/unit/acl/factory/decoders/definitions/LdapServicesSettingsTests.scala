@@ -1110,8 +1110,9 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
-      "server discovery is enabled with custom dns and custom ttl" in {
-        if (!OsUtils.isWindows) {
+      // This test does not execute on Windows: there is currently no Windows version of LdapWithDnsContainer
+      if (!OsUtils.isWindows) {
+        "server discovery is enabled with custom dns and custom ttl" in {
           assertDecodingSuccess(
             yaml =
               s"""

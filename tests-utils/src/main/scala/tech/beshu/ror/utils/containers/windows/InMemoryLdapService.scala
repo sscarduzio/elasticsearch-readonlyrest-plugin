@@ -17,21 +17,18 @@
 package tech.beshu.ror.utils.containers.windows
 
 import better.files.Resource
-import com.dimafeng.testcontainers.SingleContainer
 import com.typesafe.scalalogging.LazyLogging
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
 import com.unboundid.ldap.sdk.{LDAPConnection, ResultCode}
 import com.unboundid.ldif.LDIFReader
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
-import org.testcontainers.containers.GenericContainer
 import org.testcontainers.lifecycle.Startable
 import org.testcontainers.shaded.org.bouncycastle.cert.*
 import org.testcontainers.shaded.org.bouncycastle.cert.jcajce.{JcaX509CertificateConverter, JcaX509v3CertificateBuilder}
 import org.testcontainers.shaded.org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.testcontainers.shaded.org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
-import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
 import tech.beshu.ror.utils.containers.LdapSingleContainer
-import tech.beshu.ror.utils.containers.windows.LdapPseudoGenericContainer.defaults
+import tech.beshu.ror.utils.containers.LdapSingleContainer.{InitScriptSource, defaults}
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.math.BigInteger
@@ -42,41 +39,6 @@ import javax.net.ssl.{KeyManager, KeyManagerFactory}
 import javax.security.auth.x500.X500Principal
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
-
-class LdapPseudoGenericContainer(startable: Startable)
-  extends GenericContainer[LdapPseudoGenericContainer]("noop:latest") {
-
-  override def start(): Unit = {
-    doStart()
-  }
-
-  override def doStart(): Unit = {
-    startable.start()
-  }
-
-  override def stop(): Unit = {
-    startable.stop()
-    super.stop()
-  }
-
-  override def getContainerId: String = "LdapPseudoGenericContainer"
-  override def getDockerImageName: String = "LdapPseudoGenericContainer"
-}
-
-class LdapPseudoContainer(service: InMemoryLdapService)
-  extends SingleContainer[GenericContainer[_]] with LdapSingleContainer {
-
-  override val container: GenericContainer[_] =
-    new LdapPseudoGenericContainer(service)
-
-  def originalPort: Int = service.ldapPort
-
-  def ldapPort: Int = service.ldapPort
-
-  def ldapSSLPort: Int = service.ldapSSLPort
-
-  def ldapHost: String = service.ldapHost
-}
 
 class InMemoryLdapService(name: String, ldapInitScript: InitScriptSource)
   extends Startable with LazyLogging {
@@ -143,14 +105,14 @@ class InMemoryLdapService(name: String, ldapInitScript: InitScriptSource)
       .toList
   }
 
-  def createLDAPSListener(name: String, port: Int): InMemoryListenerConfig = {
+  private def createLDAPSListener(name: String, port: Int): InMemoryListenerConfig = {
     val keyManager = KeyManagerUtil.createSelfSignedKeyManager()
     val sslUtil = new SSLUtil(keyManager, new TrustAllTrustManager)
     val serverSocketFactory = sslUtil.createSSLServerSocketFactory()
     InMemoryListenerConfig.createLDAPSConfig(name, null, port, serverSocketFactory, null)
   }
 
-  object KeyManagerUtil {
+  private object KeyManagerUtil {
 
     Security.addProvider(new BouncyCastleProvider())
 
@@ -179,62 +141,29 @@ class InMemoryLdapService(name: String, ldapInitScript: InitScriptSource)
 
       val keyStore = KeyStore.getInstance("JKS")
       keyStore.load(null, null)
-      keyStore.setKeyEntry("alias", keyPair.getPrivate, "changeit".toCharArray, Array(cert))
+      keyStore.setKeyEntry("alias", keyPair.getPrivate, "pass".toCharArray, Array(cert))
 
       val kmf = KeyManagerFactory.getInstance("SunX509")
-      kmf.init(keyStore, "changeit".toCharArray)
+      kmf.init(keyStore, "pass".toCharArray)
       kmf.getKeyManagers.head
     }
   }
 }
 
-object LdapPseudoGenericContainer {
-
-  def create(name: String, ldapInitScript: InitScriptSource): LdapSingleContainer = {
-    new LdapPseudoContainer(new InMemoryLdapService(name, ldapInitScript))
-  }
-
-  def create(name: String, ldapInitScript: String): LdapSingleContainer = {
-    create(name, InitScriptSource.fromString(ldapInitScript))
-  }
-
-  object defaults {
-    val connectionTimeout: FiniteDuration = 5 seconds
-    val containerStartupTimeout: FiniteDuration = 5 minutes
-
-    object ldap {
-      val domain = "example.com"
-      val domainDn = domain.split("\\.").map(dc => s"dc=$dc").mkString(",")
-      val organisation = "example"
-      val adminName = "admin"
-      val adminPassword = "password"
-      val bindDn: Option[String] = {
-        Option(
-          defaults.ldap.domain
-            .split("\\.").toList
-            .map(part => s"dc=$part")
-            .mkString(","))
-          .filter(_.trim.nonEmpty)
-          .map(dc => s"cn=${defaults.ldap.adminName},$dc")
-      }
-    }
-  }
-}
-
-class NonStoppableLdapPseudoGenericContainer private(name: String, ldapInitScript: InitScriptSource)
+private class NonStoppableInMemoryLdapService private(name: String, ldapInitScript: InitScriptSource)
   extends InMemoryLdapService(name, ldapInitScript) {
 
   override def start(): Unit = ()
 
   override def stop(): Unit = ()
 
-  private[NonStoppableLdapPseudoGenericContainer] def privateStart(): Unit = super.start()
+  private[NonStoppableInMemoryLdapService] def privateStart(): Unit = super.start()
 }
 
-object NonStoppableLdapPseudoGenericContainer {
+object NonStoppableInMemoryLdapService {
   def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapSingleContainer = {
-    val ldap = new NonStoppableLdapPseudoGenericContainer(name, ldapInitScript)
+    val ldap = new NonStoppableInMemoryLdapService(name, ldapInitScript)
     ldap.privateStart()
-    new LdapPseudoContainer(ldap)
+    new WindowsPseudoSingleContainerLdap(ldap)
   }
 }

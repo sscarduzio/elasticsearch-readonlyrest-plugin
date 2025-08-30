@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
-import tech.beshu.ror.utils.containers.windows.WindowsElasticsearchSetup
+import tech.beshu.ror.utils.containers.windows.{WindowsEsDirectoryManager, WindowsEsSetup}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.misc.OsUtils
 
@@ -57,8 +57,8 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
   }
 
   def windowsBasedEsPath: Path = {
-    WindowsElasticsearchSetup.prepareEsForWindows(esContainer.elasticsearch)
-    WindowsElasticsearchSetup.esPath(esContainer.esConfig.clusterName, esContainer.esConfig.nodeName)
+    WindowsEsSetup.prepareEs(esContainer.elasticsearch)
+    WindowsEsDirectoryManager.esPath(esContainer.esConfig.clusterName, esContainer.esConfig.nodeName)
   }
 
   private def createEsContainer: EsContainer = {
@@ -105,7 +105,7 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
         masterNodes = allNodeNames,
         additionalElasticsearchYamlEntries = nodeSettings.containerSpecification.additionalElasticsearchYamlEntries,
         envs = nodeSettings.containerSpecification.environmentVariables,
-        esInstallationType = EsInstallationType.EsDockerImage,
+        esInstallationType = EsContainerCreator.defaultEsInstallationType,
       ),
       securityConfig = ReadonlyRestWithEnabledXpackSecurityPlugin.Config(
         rorPlugin = pluginFile.toScala,

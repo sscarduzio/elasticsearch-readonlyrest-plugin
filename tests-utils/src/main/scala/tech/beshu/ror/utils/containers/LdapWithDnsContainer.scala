@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils.containers
 
 import com.dimafeng.testcontainers.Container
-import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
+import tech.beshu.ror.utils.containers.LdapSingleContainer.InitScriptSource
 
 class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource)
   extends Container {

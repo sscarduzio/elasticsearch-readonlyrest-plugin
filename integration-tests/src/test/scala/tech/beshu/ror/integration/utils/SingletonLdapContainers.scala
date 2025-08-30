@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.integration.utils
 
-import tech.beshu.ror.utils.containers.{LdapContainer, LdapSingleContainer, NonStoppableLdapContainer}
+import tech.beshu.ror.utils.containers.{LdapSingleContainer, NonStoppableLdapSingleContainer}
 
 object SingletonLdapContainers {
 
   lazy val ldap1: LdapSingleContainer =
-    NonStoppableLdapContainer.createAndStart("LDAP1", "ldap.ldif")
+    NonStoppableLdapSingleContainer.createAndStart("LDAP1", "ldap.ldif")
 
   lazy val ldap2: LdapSingleContainer =
-    NonStoppableLdapContainer.createAndStart("LDAP2", "ldap.ldif")
+    NonStoppableLdapSingleContainer.createAndStart("LDAP2", "ldap.ldif")
 
 }
