@@ -691,7 +691,7 @@ class ImpersonationSuite
          |    ${headersToEncode.map { case (name, value) => s""""$name:$value"""" }.mkString(",\n")}
          |  ]
          |}
-         |""".stripMargin
+         |""".stripMargin.replace("\r\n", "\n")
     val (user, pass) = userCredentials
     "Authorization" -> s"Basic ${encodeBase64(s"$user:$pass")}, ror_metadata=${encodeBase64(rorMetadata)}"
   }
