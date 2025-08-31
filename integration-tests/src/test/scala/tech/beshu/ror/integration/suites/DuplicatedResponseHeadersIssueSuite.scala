@@ -39,7 +39,7 @@ class DuplicatedResponseHeadersIssueSuite
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
   override def clusterDependencies: List[DependencyDef] = List(
-    wiremock(name = "EXT1", port = 8080, mappings =
+    wiremock(name = "EXT1", portWhenRunningOnWindows = 8080, mappings =
       "/duplicated_response_headers_issue/auth.json",
       "/duplicated_response_headers_issue/brian_groups.json",
       "/duplicated_response_headers_issue/freddie_groups.json")

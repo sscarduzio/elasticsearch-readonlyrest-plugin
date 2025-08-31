@@ -23,6 +23,8 @@ import scala.language.implicitConversions
 
 object OsUtils extends LazyLogging {
 
+  // The same method is present in ror-tools-core module.
+  // It is copied instead of reused, because there is no common module between integration tests and the ror-tools production code.
   def isWindows: Boolean = {
     System.getProperties.stringPropertyNames().asScala
       .find { name =>
@@ -34,15 +36,6 @@ object OsUtils extends LazyLogging {
       } match
       case Some(osName) => osName.toLowerCase.contains("win")
       case None => false
-  }
-
-  def doNotExecuteOnWindows[T](messageOnWindows: String, f: () => T): Any = {
-    if (isWindows) {
-      logger.warn(messageOnWindows)
-      None
-    } else {
-      Some(f())
-    }
   }
 
 }

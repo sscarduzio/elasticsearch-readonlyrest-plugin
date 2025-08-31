@@ -37,12 +37,12 @@ object dependencies {
     originalPort = ldap.originalPort
   )
 
-  def wiremock(name: String, port: Int, mappings: String*): DependencyDef = {
+  def wiremock(name: String, portWhenRunningOnWindows: Int, mappings: String*): DependencyDef = {
     if (OsUtils.isWindows) {
       DependencyDef(
         name = name,
-        containerCreator = Coeval(new WindowsPseudoSingleContainerWiremock(port, mappings.toList)),
-        originalPort = port,
+        containerCreator = Coeval(new WindowsPseudoSingleContainerWiremock(portWhenRunningOnWindows, mappings.toList)),
+        originalPort = portWhenRunningOnWindows,
       )
     } else {
       DependencyDef(

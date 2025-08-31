@@ -39,7 +39,7 @@ class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
   override def clusterDependencies: List[DependencyDef] = List(
     wiremock(
       name = "GROUPS1",
-      port = 8080,
+      portWhenRunningOnWindows = 8080,
       mappings =
         "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
       "/rev_proxy_groups_provider/wiremock_service1_morgan.json",
@@ -47,7 +47,7 @@ class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
     ),
     wiremock(
       name = "GROUPS2",
-      port = 8081,
+      portWhenRunningOnWindows = 8081,
       mappings =
         "/rev_proxy_groups_provider/wiremock_service2_token.json",
       "/rev_proxy_groups_provider/wiremock_service2_anytoken.json",
