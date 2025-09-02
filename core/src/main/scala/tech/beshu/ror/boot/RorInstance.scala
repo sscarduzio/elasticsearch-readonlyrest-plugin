@@ -217,15 +217,15 @@ object RorInstance {
              esConfig: EsConfigBasedRorSettings,
              mainEngine: ReadonlyRest.MainEngine,
              testEngine: ReadonlyRest.TestEngine,
-             mainSettingsManager: IndexSettingsSource[RawRorSettings],
-             testSettingsManager: IndexSettingsSource[TestRorSettings])
+             mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
+             testSettingsIndexSource: IndexSettingsSource[TestRorSettings])
             (implicit systemContext: SystemContext,
              scheduler: Scheduler): Task[RorInstance] = {
     esConfig.loadingRorCoreStrategy match {
       case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
-        createInstance(boot, esConfig, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, mainSettingsManager, testSettingsManager)
+        createInstance(boot, esConfig, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, mainSettingsIndexSource, testSettingsIndexSource)
       case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
-        createInstance(boot, esConfig, Mode.WithPeriodicIndexCheck(settings.refreshInterval), mainEngine, testEngine, mainSettingsManager, testSettingsManager)
+        createInstance(boot, esConfig, Mode.WithPeriodicIndexCheck(settings.refreshInterval), mainEngine, testEngine, mainSettingsIndexSource, testSettingsIndexSource)
     }
   }
 
@@ -234,8 +234,8 @@ object RorInstance {
                              mode: RorInstance.Mode,
                              mainEngine: ReadonlyRest.MainEngine,
                              testEngine: ReadonlyRest.TestEngine,
-                             mainSettingsManager: IndexSettingsSource[RawRorSettings],
-                             testSettingsManager: IndexSettingsSource[TestRorSettings])
+                             mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
+                             testSettingsIndexSource: IndexSettingsSource[TestRorSettings])
                             (implicit systemContext: SystemContext,
                              scheduler: Scheduler) = {
     for {
@@ -247,10 +247,10 @@ object RorInstance {
       mode = mode,
       mainInitialEngine = mainEngine,
       mainReloadInProgress = isReloadInProgressSemaphore,
-      mainSettingsIndexSource = mainSettingsManager,
+      mainSettingsIndexSource = mainSettingsIndexSource,
       testInitialEngine = testEngine,
       testReloadInProgress = isTestReloadInProgressSemaphore,
-      testSettingsIndexSource = testSettingsManager
+      testSettingsIndexSource = testSettingsIndexSource,
     )
   }
 

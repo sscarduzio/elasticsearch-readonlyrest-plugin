@@ -35,10 +35,13 @@ import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.manager.*
+import tech.beshu.ror.configuration.manager.FileSettingsManager.LoadingFromFileError
 import tech.beshu.ror.configuration.manager.InIndexSettingsManager.LoadingFromIndexError
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.source.IndexSettingsSource
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.strategy.RorMainSettingsIndexWithFileFallbackLoadingStrategy.LoadingError
 import tech.beshu.ror.settings.strategy.{RorMainSettingsIndexWithFileFallbackLoadingStrategy, RorTestSettingsIndexOnlyLoadingStrategy}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -60,7 +63,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
       rorTestSettingsLoader <- lift(new RorTestSettingsIndexOnlyLoadingStrategy(???))
       loadedMainRorSettings <- loadMainSettings(rorMainSettingsLoader)
       loadedTestRorSettings <- loadTestSettings(esConfig, rorTestSettingsLoader)
-      instance <- startRor(esConfig, loadedMainRorSettings, rorMainSettingsLoader, loadedTestRorSettings, rorTestSettingsLoader)
+      instance <- startRor(esConfig, loadedMainRorSettings, ???, loadedTestRorSettings, ???)
     } yield instance).value
   }
 
@@ -99,8 +102,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
     error match {
       case Left(LoadingFromFileError.FileParsingError(message)) =>
         StartingFailure(message)
-      case Left(LoadingFromFileError.FileNotExist(path)) =>
-        StartingFailure(s"Cannot find settings file: ${path.show}")
+      case Left(LoadingFromFileError.FileNotExist(file)) =>
+        StartingFailure(s"Cannot find settings file: ${file.show}")
       case Right(LoadingFromIndexError.IndexParsingError(message)) =>
         StartingFailure(message)
       case Right(LoadingFromIndexError.IndexUnknownStructure) =>
@@ -112,13 +115,13 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def startRor(esConfig: EsConfigBasedRorSettings,
                        loadedMainRorSettings: RawRorSettings,
-                       mainSettingsManager: RorMainSettingsManager,
+                       mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
                        loadedTestRorSettings: TestRorSettings,
-                       testSettingsManager: RorTestSettingsManager) = {
+                       testSettingsIndexSource: IndexSettingsSource[TestRorSettings]) = {
     for {
       mainEngine <- EitherT(loadRorEngine(loadedMainRorSettings, esConfig))
       testEngine <- EitherT.right(loadTestEngine(esConfig, loadedTestRorSettings))
-      rorInstance <- createRorInstance(esConfig, mainEngine, mainSettingsManager, testEngine, testSettingsManager, loadedMainRorSettings)
+      rorInstance <- createRorInstance(esConfig, mainEngine, mainSettingsIndexSource, testEngine, testSettingsIndexSource, loadedMainRorSettings)
     } yield rorInstance
   }
 
@@ -166,12 +169,12 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def createRorInstance(esConfig: EsConfigBasedRorSettings,
                                 mainEngine: Engine,
-                                mainSettingsManager: RorMainSettingsManager,
+                                mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
                                 testEngine: TestEngine,
-                                testSettingsManager: RorTestSettingsManager,
+                                testSettingsIndexSource: IndexSettingsSource[TestRorSettings],
                                 alreadyLoadedSettings: RawRorSettings) = {
     EitherT.right[StartingFailure] {
-      RorInstance.create(this, esConfig, MainEngine(mainEngine, alreadyLoadedSettings), testEngine, mainSettingsManager, testSettingsManager)
+      RorInstance.create(this, esConfig, MainEngine(mainEngine, alreadyLoadedSettings), testEngine, mainSettingsIndexSource, testSettingsIndexSource)
     }
   }
 

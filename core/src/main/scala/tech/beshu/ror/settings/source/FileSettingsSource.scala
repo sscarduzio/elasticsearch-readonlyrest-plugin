@@ -20,9 +20,7 @@ import better.files.File
 import cats.data.EitherT
 import io.circe.{Decoder, DecodingFailure, ParsingFailure, parser}
 import monix.eval.Task
-import tech.beshu.ror.settings.source.FileSettingsSource.LoadingError.FileNotExist
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
 
 class FileSettingsSource[SETTINGS: Decoder](rorSettingsFile: File)
   extends ReadOnlySettingsSource[SETTINGS] {
@@ -35,7 +33,8 @@ class FileSettingsSource[SETTINGS: Decoder](rorSettingsFile: File)
   }
 
   private def checkIfFileExist(file: File): EitherT[Task, LoadingSettingsError, File] =
-    EitherT.cond(file.exists, file, SourceSpecificError(FileNotExist(file)))
+    ???
+    // todo: EitherT.cond(file.exists, file, SourceSpecificError(FileNotExist(file)))
 
   private def loadSettingsFromFile(file: File): EitherT[Task, LoadingSettingsError, SETTINGS] = {
     EitherT
