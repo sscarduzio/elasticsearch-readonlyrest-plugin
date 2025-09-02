@@ -17,15 +17,24 @@
 package tech.beshu.ror.settings.strategy
 
 import monix.eval.Task
-import tech.beshu.ror.configuration.TestRorSettings
-import tech.beshu.ror.settings.source.IndexSettingsSource
+import tech.beshu.ror.configuration.RawRorSettings
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
+import tech.beshu.ror.settings.strategy.RorMainSettingsIndexWithFileFallbackLoadingStrategy.LoadingError
 
-class RorTestSettingsIndexOnlyLoadingStrategy(indexSettingsSource: IndexSettingsSource[TestRorSettings])
-  extends SettingsLoadingStrategy[LoadingSettingsError, TestRorSettings] {
+class RorMainSettingsIndexWithFileFallbackLoadingStrategy(indexSettingsSource: IndexSettingsSource[RawRorSettings],
+                                                          fileSettingsSource: FileSettingsSource[RawRorSettings],
+                                                          /* todo: retry strategy*/) {
 
-  override def load(): Task[Either[LoadingSettingsError, TestRorSettings]] = {
+  def load(): Task[Either[LoadingError, RawRorSettings]] = {
     indexSettingsSource.toString
+    fileSettingsSource.toString
     ???
   }
+
+}
+object RorMainSettingsIndexWithFileFallbackLoadingStrategy {
+
+  type LoadingError = Either[LoadingSettingsError, LoadingSettingsError]
+
 }

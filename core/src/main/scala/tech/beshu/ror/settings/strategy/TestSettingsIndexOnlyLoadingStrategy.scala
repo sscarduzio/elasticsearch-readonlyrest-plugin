@@ -17,15 +17,14 @@
 package tech.beshu.ror.settings.strategy
 
 import monix.eval.Task
-import tech.beshu.ror.configuration.RawRorSettings
-import tech.beshu.ror.settings.source.FileSettingsSource
+import tech.beshu.ror.configuration.TestRorSettings
+import tech.beshu.ror.settings.source.IndexSettingsSource
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 
-class RorMainSettingsFileOnlyLoadingStrategy(fileSettingsSource: FileSettingsSource[RawRorSettings])
-  extends SettingsLoadingStrategy[LoadingSettingsError, RawRorSettings] {
+class TestSettingsIndexOnlyLoadingStrategy(indexSettingsSource: IndexSettingsSource[TestRorSettings]) {
 
-  override def load(): Task[Either[LoadingSettingsError, RawRorSettings]] = {
-    fileSettingsSource.toString
+  def load(): Task[Either[LoadingSettingsError, TestRorSettings]] = {
+    indexSettingsSource.toString
     ???
   }
 }

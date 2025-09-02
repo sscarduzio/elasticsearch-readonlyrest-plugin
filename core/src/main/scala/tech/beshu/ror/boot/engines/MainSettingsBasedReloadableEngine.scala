@@ -101,8 +101,8 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
     } yield reloadResult.map(_ => ())
   }
 
-  def reloadEngineUsingIndexSettings()
-                                    (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, RawRorSettings]] = {
+  private def reloadEngineUsingIndexSettings()
+                                            (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, RawRorSettings]] = {
     reloadInProgress.withPermit {
       reloadEngineUsingIndexSettingsWithoutPermit()
     }

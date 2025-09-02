@@ -39,7 +39,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.settings.strategy.RorMainSettingsIndexWithFileFallbackLoadingStrategy.LoadingError
-import tech.beshu.ror.settings.strategy.{RorMainSettingsIndexWithFileFallbackLoadingStrategy, RorTestSettingsIndexOnlyLoadingStrategy}
+import tech.beshu.ror.settings.strategy.{RorMainSettingsIndexWithFileFallbackLoadingStrategy, TestSettingsIndexOnlyLoadingStrategy}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
@@ -82,7 +82,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
       case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
         EitherT.rightT[Task, StartingFailure](TestRorSettings.NotSet)
       case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(parameters, _) =>
-        EitherT(new RorTestSettingsIndexOnlyLoadingStrategy(indexSettingsSource).load())
+        EitherT(new TestSettingsIndexOnlyLoadingStrategy(indexSettingsSource).load())
           .leftFlatMap {
             case LoadingSettingsError.FormatError => ???
             // todo:

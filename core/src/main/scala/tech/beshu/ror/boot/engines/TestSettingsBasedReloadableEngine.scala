@@ -190,7 +190,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
                                                                (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, Unit]] = {
     value {
       for {
-        loadedSettings <- loadRorTestSettingsFromIndex()
+        loadedSettings <- loadTestSettings()
         result <- loadedSettings match {
           case TestRorSettings.NotSet =>
             invalidateTestSettingsByIndex[IndexSettingsReloadError]()
@@ -206,7 +206,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     }
   }
 
-  private def loadRorTestSettingsFromIndex(): EitherT[Task, IndexSettingsReloadError, TestRorSettings] = {
+  private def loadTestSettings(): EitherT[Task, IndexSettingsReloadError, TestRorSettings] = {
     EitherT(testSettingsSource.load())
       .leftMap(IndexSettingsReloadError.IndexLoadingSettingsError.apply)
   }
