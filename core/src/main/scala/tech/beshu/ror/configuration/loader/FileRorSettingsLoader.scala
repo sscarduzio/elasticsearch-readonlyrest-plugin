@@ -14,47 +14,49 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader
+//package tech.beshu.ror.configuration.loader
+//
+//import better.files.File
+//import cats.Show
+//import cats.data.EitherT
+//import monix.eval.Task
+//import tech.beshu.ror.configuration.loader.FileRorSettingsLoader.Error.FileNotExist
+//import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error
+//import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
+//import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
+//
+//class FileRorSettingsLoader(rorSettingsFile: File,
+//                            rawRorSettingsYamlParser: RawRorSettingsYamlParser)
+//  extends RorSettingsLoader[FileRorSettingsLoader.Error] {
+//
+//  def settingsFile: File = rorSettingsFile
+//
+//  override def load(): Task[Either[Error[FileRorSettingsLoader.Error], RawRorSettings]] = {
+//    val file = rorSettingsFile
+//    (for {
+//      _ <- checkIfFileExist(file)
+//      settings <- loadSettingsFromFile(file)
+//    } yield settings).value
+//  }
+//
+//  private def checkIfFileExist(file: File): EitherT[Task, Error[FileRorSettingsLoader.Error], File] =
+//    EitherT.cond(file.exists, file, SpecializedError(FileNotExist(file)))
+//
+//  private def loadSettingsFromFile(file: File): EitherT[Task, Error[FileRorSettingsLoader.Error], RawRorSettings] = {
+//    EitherT(rawRorSettingsYamlParser.fromFile(file).map(_.left.map(ParsingError.apply)))
+//  }
+//}
+//
+//object FileRorSettingsLoader {
+//
+//  sealed trait Error
+//  object Error {
+//    final case class FileNotExist(file: File) extends Error
+//
+//    implicit val show: Show[Error] = Show.show {
+//      case FileNotExist(file) => s"Cannot find settings file: ${file.pathAsString}"
+//    }
+//  }
+//}
 
-import better.files.File
-import cats.Show
-import cats.data.EitherT
-import monix.eval.Task
-import tech.beshu.ror.configuration.loader.FileRorSettingsLoader.Error.FileNotExist
-import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error
-import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
-
-class FileRorSettingsLoader(rorSettingsFile: File,
-                            rawRorSettingsYamlParser: RawRorSettingsYamlParser)
-  extends RorSettingsLoader[FileRorSettingsLoader.Error] {
-
-  def settingsFile: File = rorSettingsFile
-
-  override def load(): Task[Either[Error[FileRorSettingsLoader.Error], RawRorSettings]] = {
-    val file = rorSettingsFile
-    (for {
-      _ <- checkIfFileExist(file)
-      settings <- loadSettingsFromFile(file)
-    } yield settings).value
-  }
-
-  private def checkIfFileExist(file: File): EitherT[Task, Error[FileRorSettingsLoader.Error], File] =
-    EitherT.cond(file.exists, file, SpecializedError(FileNotExist(file)))
-
-  private def loadSettingsFromFile(file: File): EitherT[Task, Error[FileRorSettingsLoader.Error], RawRorSettings] = {
-    EitherT(rawRorSettingsYamlParser.fromFile(file).map(_.left.map(ParsingError.apply)))
-  }
-}
-
-object FileRorSettingsLoader {
-
-  sealed trait Error
-  object Error {
-    final case class FileNotExist(file: File) extends Error
-
-    implicit val show: Show[Error] = Show.show {
-      case FileNotExist(file) => s"Cannot find settings file: ${file.pathAsString}"
-    }
-  }
-}
+// todo: remove

@@ -58,8 +58,6 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingError
-import tech.beshu.ror.configuration.manager.FileSettingsManager.LoadingFromFileError
-import tech.beshu.ror.configuration.manager.InIndexSettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.ScalaOps.*
@@ -403,19 +401,19 @@ trait LogsShowInstances
     case LoadingError.MalformedContent(file, message) => s"Settings file is malformed: [${file.show}], ${message.show}"
     case LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled => s"Cannot use ROR SSL when XPack Security is enabled"
   }
+// todo: fixme
+//  implicit val loadingFromIndexErrorShow: Show[LoadingFromIndexError] = Show.show {
+//    case LoadingFromIndexError.IndexNotExist => "Cannot find ReadonlyREST settings index"
+//    case LoadingFromIndexError.IndexUnknownStructure => "Unknown structure of ReadonlyREST index settings document"
+//    case LoadingFromIndexError.IndexParsingError(message) => s"Cannot parse in-index ReadonlyREST settings. Cause: $message"
+//  }
 
-  implicit val loadingFromIndexErrorShow: Show[LoadingFromIndexError] = Show.show {
-    case LoadingFromIndexError.IndexNotExist => "Cannot find ReadonlyREST settings index"
-    case LoadingFromIndexError.IndexUnknownStructure => "Unknown structure of ReadonlyREST index settings document"
-    case LoadingFromIndexError.IndexParsingError(message) => s"Cannot parse in-index ReadonlyREST settings. Cause: $message"
-  }
-
-  implicit val loadingFromFileErrorShow: Show[LoadingFromFileError] = Show.show {
-    case LoadingFromFileError.FileParsingError(message) => s"Cannot parse file ReadonlyREST settings. Cause: $message"
-    case LoadingFromFileError.FileNotExist(file) => s"Cannot find ReadonlyREST settings file: ${file.pathAsString}"
-  }
-
-  implicit val savingIndexSettingsErrorShow: Show[SavingIndexSettingsError] = Show.show {
-    case SavingIndexSettingsError.CannotSaveSettings => "Cannot save settings in the ReadonlyREST index"
-  }
+//  implicit val loadingFromFileErrorShow: Show[LoadingFromFileError] = Show.show {
+//    case LoadingFromFileError.FileParsingError(message) => s"Cannot parse file ReadonlyREST settings. Cause: $message"
+//    case LoadingFromFileError.FileNotExist(file) => s"Cannot find ReadonlyREST settings file: ${file.pathAsString}"
+//  }
+//
+//  implicit val savingIndexSettingsErrorShow: Show[SavingIndexSettingsError] = Show.show {
+//    case SavingIndexSettingsError.CannotSaveSettings => "Cannot save settings in the ReadonlyREST index"
+//  }
 }

@@ -14,28 +14,30 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.manager
+//package tech.beshu.ror.configuration.manager
+//
+//import monix.eval.Task
+//import tech.beshu.ror.configuration.manager.InIndexSettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
+//
+//trait InIndexSettingsManager[SETTINGS] {
+//
+//  def loadFromIndex(): Task[Either[LoadingFromIndexError, SETTINGS]]
+//
+//  def saveToIndex(settings: SETTINGS): Task[Either[SavingIndexSettingsError, Unit]]
+//}
+//object InIndexSettingsManager {
+//
+//  sealed trait LoadingFromIndexError
+//  object LoadingFromIndexError {
+//    final case class IndexParsingError(message: String) extends LoadingFromIndexError
+//    case object IndexUnknownStructure extends LoadingFromIndexError
+//    case object IndexNotExist extends LoadingFromIndexError
+//  }
+//
+//  sealed trait SavingIndexSettingsError
+//  object SavingIndexSettingsError {
+//    case object CannotSaveSettings extends SavingIndexSettingsError
+//  }
+//}
 
-import monix.eval.Task
-import tech.beshu.ror.configuration.manager.InIndexSettingsManager.{LoadingFromIndexError, SavingIndexSettingsError}
-
-trait InIndexSettingsManager[SETTINGS] {
-
-  def loadFromIndex(): Task[Either[LoadingFromIndexError, SETTINGS]]
-
-  def saveToIndex(settings: SETTINGS): Task[Either[SavingIndexSettingsError, Unit]]
-}
-object InIndexSettingsManager {
-
-  sealed trait LoadingFromIndexError
-  object LoadingFromIndexError {
-    final case class IndexParsingError(message: String) extends LoadingFromIndexError
-    case object IndexUnknownStructure extends LoadingFromIndexError
-    case object IndexNotExist extends LoadingFromIndexError
-  }
-
-  sealed trait SavingIndexSettingsError
-  object SavingIndexSettingsError {
-    case object CannotSaveSettings extends SavingIndexSettingsError
-  }
-}
+// todo: remove

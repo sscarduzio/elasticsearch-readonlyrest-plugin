@@ -33,13 +33,10 @@ import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, Core
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
-import tech.beshu.ror.settings.strategy.RorMainSettingsIndexWithFileFallbackLoadingStrategy.LoadingError
-import tech.beshu.ror.settings.strategy.{RorMainSettingsIndexWithFileFallbackLoadingStrategy, TestSettingsIndexOnlyLoadingStrategy}
+import tech.beshu.ror.settings.strategy.StartingRorSettingsLoadingStrategy
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
@@ -63,59 +60,17 @@ class ReadonlyRest(coreFactory: CoreFactory,
       }
       mainFileSettingsSource <- lift(??? : FileSettingsSource[RawRorSettings])
       testIndexSettingsSource <- lift(??? : IndexSettingsSource[TestRorSettings])
-      loadedMainRorSettings <- loadMainSettings(mainIndexSettingsSource, mainFileSettingsSource)
-      loadedTestRorSettings <- loadTestSettings(esConfig, testIndexSettingsSource)
+      loadedSettings <- loadStartupSettings(mainIndexSettingsSource, mainFileSettingsSource, testIndexSettingsSource)
+      (loadedMainRorSettings, loadedTestRorSettings) = loadedSettings
       instance <- startRor(esConfig, loadedMainRorSettings, mainIndexSettingsSource, mainFileSettingsSource, loadedTestRorSettings, testIndexSettingsSource)
     } yield instance).value
   }
 
-  private def loadMainSettings(indexSettingsSource: IndexSettingsSource[RawRorSettings],
-                               fileSettingsSource: FileSettingsSource[RawRorSettings]): EitherT[Task, StartingFailure, RawRorSettings] = {
-    val settingsLoader = new RorMainSettingsIndexWithFileFallbackLoadingStrategy(indexSettingsSource, fileSettingsSource)
+  private def loadStartupSettings(mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
+                                  mainSettingsFileSource: FileSettingsSource[RawRorSettings],
+                                  testSettingsIndexSource: IndexSettingsSource[TestRorSettings]): EitherT[Task, StartingFailure, (RawRorSettings, TestRorSettings)] = {
+    val settingsLoader = new StartingRorSettingsLoadingStrategy(mainSettingsIndexSource, mainSettingsFileSource, testSettingsIndexSource)
     EitherT(settingsLoader.load())
-      .leftMap(toStartingFailure)
-  }
-
-  private def loadTestSettings(esConfig: EsConfigBasedRorSettings,
-                               indexSettingsSource: IndexSettingsSource[TestRorSettings]): EitherT[Task, StartingFailure, TestRorSettings] = {
-    esConfig.loadingRorCoreStrategy match {
-      case LoadingRorCoreStrategy.ForceLoadingFromFile(_) =>
-        EitherT.rightT[Task, StartingFailure](TestRorSettings.NotSet)
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(parameters, _) =>
-        EitherT(new TestSettingsIndexOnlyLoadingStrategy(indexSettingsSource).load())
-          .leftFlatMap {
-            case LoadingSettingsError.FormatError => ???
-            // todo:
-            //          case LoadingFromIndexError.IndexParsingError(message) =>
-            //            logger.error(s"Loading ReadonlyREST test settings from index failed: ${message.show}. No test settings will be loaded.")
-            //            EitherT.rightT[Task, StartingFailure](notSetTestRorSettings)
-            //          case LoadingFromIndexError.IndexUnknownStructure =>
-            //            logger.error("Loading ReadonlyREST test settings from index failed: index content malformed. No test settings will be loaded.")
-            //            EitherT.rightT[Task, StartingFailure](notSetTestRorSettings)
-            //          case LoadingFromIndexError.IndexNotExist =>
-            //            logger.info("Loading ReadonlyREST test settings from index failed: cannot find index. No test settings will be loaded.")
-            //            EitherT.rightT[Task, StartingFailure](notSetTestRorSettings)
-          }
-    }
-  }
-
-  private def toStartingFailure(error: LoadingError) = {
-    error match {
-      case Left(LoadingSettingsError.FormatError) =>
-        StartingFailure(???)
-      case Right(LoadingSettingsError.FormatError) =>
-        StartingFailure(???)
-//      case Left(LoadingSettingsError.FileParsingError(message)) =>
-//        StartingFailure(message)
-//      case Left(LoadingFromFileError.FileNotExist(file)) =>
-//        StartingFailure(s"Cannot find settings file: ${file.show}")
-//      case Right(LoadingFromIndexError.IndexParsingError(message)) =>
-//        StartingFailure(message)
-//      case Right(LoadingFromIndexError.IndexUnknownStructure) =>
-//        StartingFailure(s"Settings index is malformed")
-//      case Right(LoadingFromIndexError.IndexNotExist) =>
-//        StartingFailure(s"Settings index doesn't exist")
-    }
   }
 
   private def startRor(esConfig: EsConfigBasedRorSettings,

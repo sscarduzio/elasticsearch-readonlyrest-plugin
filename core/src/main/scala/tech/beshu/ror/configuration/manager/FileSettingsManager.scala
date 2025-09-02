@@ -14,21 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.manager
+//package tech.beshu.ror.configuration.manager
+//
+//import better.files.File
+//import monix.eval.Task
+//import tech.beshu.ror.configuration.manager.FileSettingsManager.LoadingFromFileError
+//
+//trait FileSettingsManager[SETTINGS] {
+//
+//  def loadFromFile(): Task[Either[LoadingFromFileError, SETTINGS]]
+//}
+//object FileSettingsManager {
+//
+//  sealed trait LoadingFromFileError
+//  object LoadingFromFileError {
+//    final case class FileParsingError(message: String) extends LoadingFromFileError
+//    final case class FileNotExist(file: File) extends LoadingFromFileError
+//  }
+//}
 
-import better.files.File
-import monix.eval.Task
-import tech.beshu.ror.configuration.manager.FileSettingsManager.LoadingFromFileError
-
-trait FileSettingsManager[SETTINGS] {
-
-  def loadFromFile(): Task[Either[LoadingFromFileError, SETTINGS]]
-}
-object FileSettingsManager {
-
-  sealed trait LoadingFromFileError
-  object LoadingFromFileError {
-    final case class FileParsingError(message: String) extends LoadingFromFileError
-    final case class FileNotExist(file: File) extends LoadingFromFileError
-  }
-}
+// todo: remove
