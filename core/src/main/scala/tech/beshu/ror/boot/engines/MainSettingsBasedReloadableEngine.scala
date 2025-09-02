@@ -72,7 +72,7 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
           logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${message.show}")
         case Left(ReloadError(RorInstanceStopped)) =>
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
-        case Left(IndexSettingsSavingError(SavingIndexSettingsError.CannotSaveSettings)) =>
+        case Left(IndexSettingsSavingError(_)) => // todo: SavingIndexSettingsError.CannotSaveSettings)) =>
           // todo: invalidate created core?
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
       })
@@ -95,7 +95,7 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
           logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${message.show}")
         case Left(IndexSettingsReloadError.ReloadError(RorInstanceStopped)) =>
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
-        case Left(IndexSettingsReloadError.LoadingSettingsError(error)) =>
+        case Left(IndexSettingsReloadError.IndexLoadingSettingsError(error)) =>
           logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${error.show}")
       })
     } yield reloadResult.map(_ => ())
@@ -121,7 +121,7 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
 
   private def loadRorSettingFromIndex() = {
     EitherT(settingsSource.load())
-      .leftMap(IndexSettingsReloadError.LoadingSettingsError.apply)
+      .leftMap(IndexSettingsReloadError.IndexLoadingSettingsError.apply)
   }
 
   private def saveSettings(settings: RawRorSettings): EitherT[Task, IndexSettingsReloadWithUpdateError, Unit] = {

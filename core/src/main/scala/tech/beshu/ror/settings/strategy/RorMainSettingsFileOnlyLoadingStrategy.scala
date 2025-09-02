@@ -24,5 +24,8 @@ import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsErro
 class RorMainSettingsFileOnlyLoadingStrategy(fileSettingsSource: FileSettingsSource[RawRorSettings])
   extends SettingsLoadingStrategy[LoadingSettingsError, RawRorSettings] {
 
-  override def load(): Task[Either[LoadingSettingsError, RawRorSettings]] = ???
+  override def load(): Task[Either[LoadingSettingsError, RawRorSettings]] = {
+    fileSettingsSource.toString
+    ???
+  }
 }

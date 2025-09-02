@@ -30,7 +30,6 @@ import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{Index
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpiration, EngineState, InitialEngine}
 import tech.beshu.ror.boot.engines.SettingsHash.*
 import tech.beshu.ror.configuration.TestRorSettings.Present.Expiration
-import tech.beshu.ror.configuration.manager.InIndexSettingsManager.SavingIndexSettingsError
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.source.IndexSettingsSource
@@ -104,7 +103,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
           logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: ${message.show}")
         case Left(ReloadError(RawSettingsReloadError.RorInstanceStopped)) =>
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
-        case Left(IndexSettingsSavingError(SavingIndexSettingsError.CannotSaveSettings)) =>
+        case Left(IndexSettingsSavingError(_)) => // todo: SavingIndexSettingsError.CannotSaveSettings)) =>
           logger.error(s"[${requestId.show}] Saving ROR test settings in index failed")
       })
     } yield reloadResult
@@ -209,7 +208,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
 
   private def loadRorTestSettingsFromIndex(): EitherT[Task, IndexSettingsReloadError, TestRorSettings] = {
     EitherT(testSettingsSource.load())
-      .leftMap(IndexSettingsReloadError.LoadingSettingsError.apply)
+      .leftMap(IndexSettingsReloadError.IndexLoadingSettingsError.apply)
   }
 
   private def invalidateTestSettingsByIndex[A]()

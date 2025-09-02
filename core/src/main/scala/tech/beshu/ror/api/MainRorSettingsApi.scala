@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.api
 
-import cats.Show
 import cats.data.EitherT
 import cats.implicits.*
 import io.circe.Decoder
@@ -60,9 +59,9 @@ class MainRorSettingsApi(rorInstance: RorInstance,
     rorInstance
       .forceReloadFromIndex()
       .map {
-        case Right(_) =>
+        case Right(()) =>
           ForceReloadMainSettings.Success("ReadonlyREST settings were reloaded with success!")
-        case Left(IndexSettingsReloadError.LoadingSettingsError(error)) =>
+        case Left(IndexSettingsReloadError.IndexLoadingSettingsError(error)) =>
           ForceReloadMainSettings.Failure(error.show)
         case Left(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.SettingsUpToDate(_))) =>
           ForceReloadMainSettings.Failure("Current settings are already loaded")

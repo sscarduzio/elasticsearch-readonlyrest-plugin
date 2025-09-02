@@ -25,7 +25,10 @@ import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsErro
 class IndexSettingsSource[SETTINGS : Encoder : Decoder](settingsIndex: RorSettingsIndex)
   extends ReadWriteSettingsSource[SETTINGS] {
 
-  override def load(): Task[Either[LoadingSettingsError, SETTINGS]] = ???
+  override def load(): Task[Either[LoadingSettingsError, SETTINGS]] = {
+    settingsIndex.toString
+    ???
+  }
 
   override def save(config: SETTINGS): Task[Either[SavingSettingsError, Unit]] = ???
 }

@@ -24,5 +24,8 @@ import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsErro
 class RorTestSettingsIndexOnlyLoadingStrategy(indexSettingsSource: IndexSettingsSource[TestRorSettings])
   extends SettingsLoadingStrategy[LoadingSettingsError, TestRorSettings] {
 
-  override def load(): Task[Either[LoadingSettingsError, TestRorSettings]] = ???
+  override def load(): Task[Either[LoadingSettingsError, TestRorSettings]] = {
+    indexSettingsSource.toString
+    ???
+  }
 }

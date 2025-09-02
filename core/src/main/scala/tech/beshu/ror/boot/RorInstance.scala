@@ -34,6 +34,7 @@ import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrat
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -176,7 +177,7 @@ class RorInstance private(boot: ReadonlyRest,
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Stopping periodic ${name.show} settings check - application is being stopped")
     case (name, Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.ReloadingFailed(startingFailure))))) =>
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ReadonlyREST ${name.show} engine starting failed: ${startingFailure.message.show}")
-    case (name, Left(EngineReloadError(IndexSettingsReloadError.LoadingSettingsError(error)))) =>
+    case (name, Left(EngineReloadError(IndexSettingsReloadError.IndexLoadingSettingsError(error)))) =>
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ${name.show} settings from index failed: ${error.show}")
   }
 
@@ -218,15 +219,15 @@ object RorInstance {
              mainEngine: ReadonlyRest.MainEngine,
              testEngine: ReadonlyRest.TestEngine,
              mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
+             mainSettingsFileSource: FileSettingsSource[RawRorSettings],
              testSettingsIndexSource: IndexSettingsSource[TestRorSettings])
             (implicit systemContext: SystemContext,
              scheduler: Scheduler): Task[RorInstance] = {
-    esConfig.loadingRorCoreStrategy match {
-      case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) =>
-        createInstance(boot, esConfig, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, mainSettingsIndexSource, testSettingsIndexSource)
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) =>
-        createInstance(boot, esConfig, Mode.WithPeriodicIndexCheck(settings.refreshInterval), mainEngine, testEngine, mainSettingsIndexSource, testSettingsIndexSource)
+    val mode = esConfig.loadingRorCoreStrategy match {
+      case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) => Mode.NoPeriodicIndexCheck
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) => Mode.WithPeriodicIndexCheck(settings.refreshInterval)
     }
+    createInstance(boot, esConfig, mode, mainEngine, testEngine, mainSettingsIndexSource, mainSettingsFileSource, testSettingsIndexSource)
   }
 
   private def createInstance(boot: ReadonlyRest,
@@ -235,6 +236,7 @@ object RorInstance {
                              mainEngine: ReadonlyRest.MainEngine,
                              testEngine: ReadonlyRest.TestEngine,
                              mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
+                             mainSettingsFileSource: FileSettingsSource[RawRorSettings],
                              testSettingsIndexSource: IndexSettingsSource[TestRorSettings])
                             (implicit systemContext: SystemContext,
                              scheduler: Scheduler) = {
@@ -248,9 +250,10 @@ object RorInstance {
       mainInitialEngine = mainEngine,
       mainReloadInProgress = isReloadInProgressSemaphore,
       mainSettingsIndexSource = mainSettingsIndexSource,
+      mainSettingsFileSource = mainSettingsFileSource,
+      testSettingsIndexSource = testSettingsIndexSource,
       testInitialEngine = testEngine,
       testReloadInProgress = isTestReloadInProgressSemaphore,
-      testSettingsIndexSource = testSettingsIndexSource,
     )
   }
 
@@ -269,7 +272,7 @@ object RorInstance {
 
   sealed trait IndexSettingsReloadError
   object IndexSettingsReloadError {
-    final case class LoadingSettingsError(underlying: LoadingSettingsError) extends IndexSettingsReloadError
+    final case class IndexLoadingSettingsError(underlying: LoadingSettingsError) extends IndexSettingsReloadError
     final case class ReloadError(underlying: RawSettingsReloadError) extends IndexSettingsReloadError
   }
 
