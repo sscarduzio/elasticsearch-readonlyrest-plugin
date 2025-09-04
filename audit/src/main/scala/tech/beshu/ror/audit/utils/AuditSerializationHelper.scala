@@ -18,8 +18,7 @@ package tech.beshu.ror.audit.utils
 
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext._
-import tech.beshu.ror.audit.instances.SerializeUser
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, AuditResponseContext}
+import tech.beshu.ror.audit.{AuditRequestContext, AuditResponseContext}
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -31,22 +30,39 @@ private[ror] object AuditSerializationHelper {
   private val timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneId.of("GMT"))
 
   def serialize(responseContext: AuditResponseContext,
+                fieldGroups: Set[AuditFieldGroup],
+                allowedEventMode: AllowedEventMode): Option[JSONObject] = {
+    val fields = fieldGroups.flatMap {
+      case AuditFieldGroup.CommonFields => commonFields
+      case AuditFieldGroup.EsEnvironmentFields => esEnvironmentFields
+      case AuditFieldGroup.FullRequestContentFields => requestContentFields
+    }.toMap
+    serialize(
+      responseContext = responseContext,
+      fields = fields,
+      allowedEventMode = allowedEventMode
+    )
+  }
+
+  def serialize(responseContext: AuditResponseContext,
                 fields: Map[AuditFieldName, AuditFieldValueDescriptor],
-                allowedEventMode: AllowedEventMode): Option[JSONObject] = responseContext match {
-    case Allowed(requestContext, verbosity, reason) =>
-      allowedEvent(
-        allowedEventMode,
-        verbosity,
-        createEntry(fields, EventData(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, None))
-      )
-    case ForbiddenBy(requestContext, _, reason) =>
-      Some(createEntry(fields, EventData(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, None)))
-    case Forbidden(requestContext) =>
-      Some(createEntry(fields, EventData(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None)))
-    case RequestedIndexNotExist(requestContext) =>
-      Some(createEntry(fields, EventData(matched = false, "INDEX NOT EXIST", "Requested index doesn't exist", responseContext.duration, requestContext, None)))
-    case Errored(requestContext, cause) =>
-      Some(createEntry(fields, EventData(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause))))
+                allowedEventMode: AllowedEventMode): Option[JSONObject] = {
+    responseContext match {
+      case Allowed(requestContext, verbosity, reason) =>
+        allowedEvent(
+          allowedEventMode,
+          verbosity,
+          createEntry(fields, EventData(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, None))
+        )
+      case ForbiddenBy(requestContext, _, reason) =>
+        Some(createEntry(fields, EventData(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, None)))
+      case Forbidden(requestContext) =>
+        Some(createEntry(fields, EventData(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None)))
+      case RequestedIndexNotExist(requestContext) =>
+        Some(createEntry(fields, EventData(matched = false, "INDEX NOT EXIST", "Requested index doesn't exist", responseContext.duration, requestContext, None)))
+      case Errored(requestContext, cause) =>
+        Some(createEntry(fields, EventData(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause))))
+    }
   }
 
   private def allowedEvent(allowedEventMode: AllowedEventMode, verbosity: Verbosity, entry: JSONObject) = {
@@ -210,5 +226,51 @@ private[ror] object AuditSerializationHelper {
     final case class Combined(values: List[AuditFieldValueDescriptor]) extends AuditFieldValueDescriptor
 
   }
+
+  sealed trait AuditFieldGroup
+
+  object AuditFieldGroup {
+    case object CommonFields extends AuditFieldGroup
+
+    case object EsEnvironmentFields extends AuditFieldGroup
+
+    case object FullRequestContentFields extends AuditFieldGroup
+  }
+
+  private val commonFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
+    AuditFieldName("match") -> AuditFieldValueDescriptor.IsMatched,
+    AuditFieldName("block") -> AuditFieldValueDescriptor.Reason,
+    AuditFieldName("id") -> AuditFieldValueDescriptor.Id,
+    AuditFieldName("final_state") -> AuditFieldValueDescriptor.FinalState,
+    AuditFieldName("@timestamp") -> AuditFieldValueDescriptor.Timestamp,
+    AuditFieldName("correlation_id") -> AuditFieldValueDescriptor.CorrelationId,
+    AuditFieldName("processingMillis") -> AuditFieldValueDescriptor.ProcessingDurationMillis,
+    AuditFieldName("error_type") -> AuditFieldValueDescriptor.ErrorType,
+    AuditFieldName("error_message") -> AuditFieldValueDescriptor.ErrorMessage,
+    AuditFieldName("content_len") -> AuditFieldValueDescriptor.ContentLengthInBytes,
+    AuditFieldName("content_len_kb") -> AuditFieldValueDescriptor.ContentLengthInKb,
+    AuditFieldName("type") -> AuditFieldValueDescriptor.Type,
+    AuditFieldName("origin") -> AuditFieldValueDescriptor.RemoteAddress,
+    AuditFieldName("destination") -> AuditFieldValueDescriptor.LocalAddress,
+    AuditFieldName("xff") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
+    AuditFieldName("task_id") -> AuditFieldValueDescriptor.TaskId,
+    AuditFieldName("req_method") -> AuditFieldValueDescriptor.HttpMethod,
+    AuditFieldName("headers") -> AuditFieldValueDescriptor.HttpHeaderNames,
+    AuditFieldName("path") -> AuditFieldValueDescriptor.HttpPath,
+    AuditFieldName("user") -> AuditFieldValueDescriptor.User,
+    AuditFieldName("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
+    AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
+    AuditFieldName("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
+    AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory
+  )
+
+  private val esEnvironmentFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
+    AuditFieldName("es_node_name") -> AuditFieldValueDescriptor.EsNodeName,
+    AuditFieldName("es_cluster_name") -> AuditFieldValueDescriptor.EsClusterName
+  )
+
+  private val requestContentFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
+    AuditFieldName("content") -> AuditFieldValueDescriptor.Content
+  )
 
 }

@@ -19,47 +19,33 @@ package tech.beshu.ror.audit.instances
 import org.json.JSONObject
 import tech.beshu.ror.audit._
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.Include
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AuditFieldName, AuditFieldValueDescriptor}
-import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1.defaultV1AuditFields
 import tech.beshu.ror.audit.utils.AuditSerializationHelper
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.Include
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldGroup.CommonFields
 
+/**
+ * Serializer for audit events (V1) that is aware of **rule-defined verbosity**.
+ *
+ * - Includes only `CommonFields` (request metadata, user, action, etc.).
+ * - Serializes all non-Allowed events.
+ * - Serializes `Allowed` events only if the corresponding rule
+ * specifies that they should be logged at `Verbosity.Info`.
+ *
+ * Recommended when a minimal, compact audit log is sufficient.
+ */
+class BlockVerbosityAwareAuditLogSerializerV1 extends DefaultAuditLogSerializerV1
+
+/**
+ * Base implementation for [[BlockVerbosityAwareAuditLogSerializerV1]].
+ * Not intended for direct external use.
+ */
 class DefaultAuditLogSerializerV1 extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
     AuditSerializationHelper.serialize(
       responseContext = responseContext,
-      fields = defaultV1AuditFields,
+      fieldGroups = Set(CommonFields),
       allowedEventMode = Include(Set(Verbosity.Info))
     )
 
-}
-
-private[ror] object DefaultAuditLogSerializerV1 {
-  val defaultV1AuditFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
-    AuditFieldName("match") -> AuditFieldValueDescriptor.IsMatched,
-    AuditFieldName("block") -> AuditFieldValueDescriptor.Reason,
-    AuditFieldName("id") -> AuditFieldValueDescriptor.Id,
-    AuditFieldName("final_state") -> AuditFieldValueDescriptor.FinalState,
-    AuditFieldName("@timestamp") -> AuditFieldValueDescriptor.Timestamp,
-    AuditFieldName("correlation_id") -> AuditFieldValueDescriptor.CorrelationId,
-    AuditFieldName("processingMillis") -> AuditFieldValueDescriptor.ProcessingDurationMillis,
-    AuditFieldName("error_type") -> AuditFieldValueDescriptor.ErrorType,
-    AuditFieldName("error_message") -> AuditFieldValueDescriptor.ErrorMessage,
-    AuditFieldName("content_len") -> AuditFieldValueDescriptor.ContentLengthInBytes,
-    AuditFieldName("content_len_kb") -> AuditFieldValueDescriptor.ContentLengthInKb,
-    AuditFieldName("type") -> AuditFieldValueDescriptor.Type,
-    AuditFieldName("origin") -> AuditFieldValueDescriptor.RemoteAddress,
-    AuditFieldName("destination") -> AuditFieldValueDescriptor.LocalAddress,
-    AuditFieldName("xff") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
-    AuditFieldName("task_id") -> AuditFieldValueDescriptor.TaskId,
-    AuditFieldName("req_method") -> AuditFieldValueDescriptor.HttpMethod,
-    AuditFieldName("headers") -> AuditFieldValueDescriptor.HttpHeaderNames,
-    AuditFieldName("path") -> AuditFieldValueDescriptor.HttpPath,
-    AuditFieldName("user") -> AuditFieldValueDescriptor.User,
-    AuditFieldName("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
-    AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
-    AuditFieldName("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
-    AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory
-  )
 }

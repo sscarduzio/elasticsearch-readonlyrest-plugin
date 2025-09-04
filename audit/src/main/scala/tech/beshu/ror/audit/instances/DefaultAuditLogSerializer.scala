@@ -16,4 +16,22 @@
  */
 package tech.beshu.ror.audit.instances
 
+/**
+ * Serializer for audit events that is aware of **rule-defined verbosity**.
+ *
+ * - Includes `CommonFields` and `EsEnvironmentFields`.
+ * - Serializes all non-Allowed events.
+ * - Serializes `Allowed` events only if the corresponding rule
+ * specifies that they should be logged at `Verbosity.Info`.
+ *
+ * This is the recommended serializer for standard audit logging.
+ */
+class BlockVerbosityAwareAuditLogSerializer extends DefaultAuditLogSerializer
+
+/**
+ * Base implementation delegating to [[DefaultAuditLogSerializerV2]].
+ *
+ * - Not intended for direct external use.
+ * - Provides the underlying logic for [[BlockVerbosityAwareAuditLogSerializer]].
+ */
 class DefaultAuditLogSerializer extends DefaultAuditLogSerializerV2

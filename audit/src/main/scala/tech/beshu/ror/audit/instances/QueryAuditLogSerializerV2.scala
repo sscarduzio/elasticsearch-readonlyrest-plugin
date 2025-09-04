@@ -20,23 +20,28 @@ import org.json.JSONObject
 import tech.beshu.ror.audit._
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.Include
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AuditFieldName, AuditFieldValueDescriptor}
-import tech.beshu.ror.audit.instances.QueryAuditLogSerializerV2.queryV2AuditFields
 import tech.beshu.ror.audit.utils.AuditSerializationHelper
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldGroup._
 
+/**
+ * Serializer for audit events (V2) that is aware of **rule-defined verbosity**
+ * and includes **full request content**.
+ *
+ * - Includes `CommonFields`, `EsEnvironmentFields`, and `FullRequestContentFields`.
+ * - Serializes all non-Allowed events.
+ * - Serializes `Allowed` events only if the corresponding rule
+ * specifies that they should be logged at `Verbosity.Info`.
+ *
+ * Recommended when capturing the full request content along with
+ * cluster and node context is needed.
+ */
 class QueryAuditLogSerializerV2 extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
     AuditSerializationHelper.serialize(
       responseContext = responseContext,
-      fields = queryV2AuditFields,
+      fieldGroups = Set(CommonFields, EsEnvironmentFields, FullRequestContentFields),
       allowedEventMode = Include(Set(Verbosity.Info))
     )
 
-}
-
-private[ror] object QueryAuditLogSerializerV2 {
-  val queryV2AuditFields: Map[AuditFieldName, AuditFieldValueDescriptor] =
-    DefaultAuditLogSerializerV2.defaultV2AuditFields ++
-      Map(AuditFieldName("content") -> AuditFieldValueDescriptor.Content)
 }

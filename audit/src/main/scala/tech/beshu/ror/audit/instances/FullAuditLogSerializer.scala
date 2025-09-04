@@ -17,17 +17,26 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.IncludeAll
-import tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2.defaultV2AuditFields
 import tech.beshu.ror.audit.utils.AuditSerializationHelper
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.IncludeAll
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldGroup._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
+/**
+ * Serializer for **full audit events**.
+ *
+ * - Includes `CommonFields` and `EsEnvironmentFields`.
+ * - Serializes all events, including every `Allowed` request,
+ * regardless of rule verbosity.
+ *
+ * Use this when you need complete coverage of all audit events.
+ */
 class FullAuditLogSerializer extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
     AuditSerializationHelper.serialize(
       responseContext = responseContext,
-      fields = defaultV2AuditFields,
+      fieldGroups = Set(CommonFields, EsEnvironmentFields),
       allowedEventMode = IncludeAll
     )
 

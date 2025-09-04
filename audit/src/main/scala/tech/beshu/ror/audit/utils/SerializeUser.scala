@@ -14,11 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.audit.instances
+package tech.beshu.ror.audit.utils
 
 import tech.beshu.ror.audit.AuditRequestContext
 
-object SerializeUser {
+private[ror] object SerializeUser {
 
   def serialize(requestContext: AuditRequestContext): Option[String] = {
     requestContext.loggedInUserName.orElse(requestContext.attemptedUserName).orElse(requestContext.rawAuthHeader)

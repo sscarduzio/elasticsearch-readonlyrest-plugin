@@ -16,4 +16,13 @@
  */
 package tech.beshu.ror.audit.instances
 
+/**
+ * Public alias for [[QueryAuditLogSerializerV2]].
+ *
+ * - Captures full request content along with common and ES environment fields.
+ * - Respects rule-defined verbosity for `Allowed` events:
+ *   only serializes them if the corresponding rule allows logging at `Verbosity.Info`.
+ *
+ * Prefer this class name in configurations and client code for full-content auditing.
+ */
 class QueryAuditLogSerializer extends QueryAuditLogSerializerV2

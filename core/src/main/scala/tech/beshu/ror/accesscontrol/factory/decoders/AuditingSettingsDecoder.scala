@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
 import io.circe.Decoder.*
-import io.circe.{Decoder, DecodingFailure, HCursor, Json, KeyDecoder}
+import io.circe.{Decoder, DecodingFailure, Json, HCursor, KeyDecoder}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
@@ -207,24 +207,21 @@ object AuditingSettingsDecoder extends Logging {
       }
       .decoder
 
-  given auditLogSerializerDecoder: Decoder[Option[AuditLogSerializer]] = SyncDecoderCreator.from(
-      Decoder.instance[Option[AuditLogSerializer]] { c =>
-        for {
-          serializerType <- c.as[SerializerType]
-          serializer <- serializerType match {
-            case SerializerType.StaticSerializerInOutputSection =>
-              c.as[Option[AuditLogSerializer]](classNameBasedSerializerDecoder)
-            case SerializerType.StaticSerializerInSerializerSection =>
-              c.downField("serializer").as[Option[AuditLogSerializer]](classNameBasedSerializerDecoder)
-            case SerializerType.ConfigurableSerializer =>
-              c.downField("serializer").as[Option[AuditLogSerializer]](configurableSerializerDecoder)
-          }
-        } yield serializer
+  given auditLogSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
+    for {
+      serializerTypeStr <- c.downField("serializer").downField("type").as[SerializerType]
+      result <- serializerTypeStr match {
+        case SerializerType.SimpleSyntaxStaticSerializer =>
+          c.as[Option[AuditLogSerializer]](simpleSyntaxSerializerDecoder)
+        case SerializerType.ExtendedSyntaxStaticSerializer =>
+          c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxStaticSerializerDecoder)
+        case SerializerType.ExtendedSyntaxConfigurableSerializer =>
+          c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxConfigurableSerializerDecoder)
       }
-    )
-    .decoder
+    } yield result
+  }
 
-  private def configurableSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
+  private def extendedSyntaxConfigurableSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
     for {
       allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
@@ -234,19 +231,58 @@ object AuditingSettingsDecoder extends Logging {
     } yield Some(serializer)
   }
 
-  private def classNameBasedSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
+  private def extendedSyntaxStaticSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
     for {
-      classNameOpt <- c.downField("class_name").as[Option[String]]
-      fullClassNameOpt <- c.downField("serializer").as[Option[String]]
-      legacyFullClassNameOpt <- c.downField("audit_serializer").as[Option[String]]
-      serializerOpt <- classNameOpt.orElse(fullClassNameOpt).orElse(legacyFullClassNameOpt) match {
-        case Some(fullClassName) =>
-          createSerializerInstanceFromClassName(fullClassName).map(Some(_))
-            .left.map(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
-        case None =>
-          Right(None)
+      fullClassNameOpt <- c.downField("class_name").as[Option[String]]
+      serializerOpt <- fullClassNameOpt match {
+        case Some(fullClassName) => serializerByClassName(fullClassName)
+        case None => Right(None)
       }
     } yield serializerOpt
+  }
+
+  private def simpleSyntaxSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
+    for {
+      fullClassNameOpt <- c.downField("serializer").as[Option[String]]
+      legacyFullClassNameOpt <- c.downField("audit_serializer").as[Option[String]]
+      serializerOpt <- fullClassNameOpt.orElse(legacyFullClassNameOpt) match {
+        case Some(fullClassName) => serializerByClassName(fullClassName)
+        case None => Right(None)
+      }
+    } yield serializerOpt
+  }
+
+  private def serializerByClassName(className: String): Either[DecodingFailure, Some[AuditLogSerializer]] = {
+    createSerializerInstanceFromClassName(className).map(Some(_))
+      .left.map(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
+  }
+
+  private given serializerTypeDecoder: Decoder[SerializerType] = Decoder.instance { c =>
+    c.downField("serializer").as[Option[Json]].flatMap {
+      case Some(json) if json.isObject =>
+        json.hcursor.downField("type").as[String].map(_.toLowerCase).flatMap {
+          case "static" =>
+            Right(SerializerType.ExtendedSyntaxStaticSerializer)
+          case "configurable" =>
+            Right(SerializerType.ExtendedSyntaxConfigurableSerializer)
+          case other =>
+            Left(DecodingFailure(AclCreationErrorCoders.stringify(
+              AuditingSettingsCreationError(Message(s"Invalid serializer type '$other', allowed values [static, configurable]"))
+            ), Nil))
+        }
+      case Some(_) | None =>
+        Right(SerializerType.SimpleSyntaxStaticSerializer)
+    }
+  }
+
+  private sealed trait SerializerType
+
+  private object SerializerType {
+    case object SimpleSyntaxStaticSerializer extends SerializerType
+
+    case object ExtendedSyntaxStaticSerializer extends SerializerType
+
+    case object ExtendedSyntaxConfigurableSerializer extends SerializerType
   }
 
   private def withAuditingSettingsCreationErrorMessage(message: String => String)(decodingFailure: DecodingFailure) = {
@@ -420,29 +456,4 @@ object AuditingSettingsDecoder extends Logging {
     }
   }
 
-  private given serializerTypeDecoder: Decoder[SerializerType] = Decoder.instance { c =>
-    c.downField("serializer").as[Option[Json]].flatMap {
-      case Some(json) if json.isObject =>
-        json.hcursor.downField("type").as[String].map(_.toLowerCase).flatMap {
-          case "static" =>
-            Right(SerializerType.StaticSerializerInSerializerSection)
-          case "configurable" =>
-            Right(SerializerType.ConfigurableSerializer)
-          case other =>
-            Left(DecodingFailure(AclCreationErrorCoders.stringify(
-              AuditingSettingsCreationError(Message(s"Invalid serializer type '$other', allowed values [static, configurable]"))
-            ), Nil))
-        }
-      case Some(_) | None =>
-        Right(SerializerType.StaticSerializerInOutputSection)
-    }
-  }
-
-  private sealed trait SerializerType
-
-  private object SerializerType {
-    case object StaticSerializerInOutputSection extends SerializerType
-    case object StaticSerializerInSerializerSection extends SerializerType
-    case object ConfigurableSerializer extends SerializerType
-  }
 }
