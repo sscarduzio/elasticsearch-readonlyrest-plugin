@@ -20,25 +20,26 @@ import better.files.File
 import cats.data.EitherT
 import io.circe.{Decoder, DecodingFailure, ParsingFailure, parser}
 import monix.eval.Task
+import tech.beshu.ror.settings.source.FileSettingsSource.LoadingError.FileNotExist
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
 
 class FileSettingsSource[SETTINGS: Decoder](rorSettingsFile: File)
-  extends ReadOnlySettingsSource[SETTINGS] {
+  extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
 
-  override def load(): Task[Either[LoadingSettingsError, SETTINGS]] = {
+  override def load(): Task[Either[LoadingSettingsError[FileSettingsSource.LoadingError], SETTINGS]] = {
     (for {
       _ <- checkIfFileExist(rorSettingsFile)
       settings <- loadSettingsFromFile(rorSettingsFile)
     } yield settings).value
   }
 
-  private def checkIfFileExist(file: File): EitherT[Task, LoadingSettingsError, File] =
-    ???
-    // todo: EitherT.cond(file.exists, file, SourceSpecificError(FileNotExist(file)))
+  private def checkIfFileExist(file: File): EitherT[Task, LoadingSettingsError[FileSettingsSource.LoadingError], File] =
+    EitherT.cond(file.exists, file, SourceSpecificError(FileNotExist(file)))
 
-  private def loadSettingsFromFile(file: File): EitherT[Task, LoadingSettingsError, SETTINGS] = {
+  private def loadSettingsFromFile(file: File): EitherT[Task, LoadingSettingsError[FileSettingsSource.LoadingError], SETTINGS] = {
     EitherT
-      .pure[Task, LoadingSettingsError](file.contentAsString)
+      .pure[Task, LoadingSettingsError[FileSettingsSource.LoadingError]](file.contentAsString)
       .subflatMap { raw =>
         parser
           .decode(raw)

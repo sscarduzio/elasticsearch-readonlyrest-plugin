@@ -16,14 +16,17 @@
  */
 package tech.beshu.ror.es
 
+import io.circe.Json
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.IndexJsonContentService.{ReadError, WriteError}
 
 trait IndexJsonContentService {
-
+  // todo:
   def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, Map[String, String]]]
+  def sourceOfAsString(index: IndexName.Full, id: String): Task[Either[ReadError, Json]] = ???
   def saveContent(index: IndexName.Full, id: String, content: Map[String, String]): Task[Either[WriteError, Unit]]
+  def saveContentJson(index: IndexName.Full, id: String, content: Json): Task[Either[WriteError, Unit]] = ???
 }
 
 object IndexJsonContentService {

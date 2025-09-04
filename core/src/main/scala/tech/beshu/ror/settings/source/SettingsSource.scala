@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.settings.source
 
-import cats.Show
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
@@ -24,27 +23,29 @@ import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsErro
 
 sealed trait SettingsSource[SETTINGS]
 
-trait ReadOnlySettingsSource[SETTINGS : Decoder] extends SettingsSource[SETTINGS] {
-  def load(): Task[Either[LoadingSettingsError, SETTINGS]]
+trait ReadOnlySettingsSource[SETTINGS : Decoder, ERROR] extends SettingsSource[SETTINGS] {
+  def load(): Task[Either[LoadingSettingsError[ERROR], SETTINGS]]
 }
 object ReadOnlySettingsSource {
-  sealed trait LoadingSettingsError
+  sealed trait LoadingSettingsError[+ERROR]
   object LoadingSettingsError {
-    case object FormatError extends LoadingSettingsError
-//    final case class SourceSpecificError[ERROR](error: ERROR) extends LoadingSettingsError
+    case object FormatError extends LoadingSettingsError[Nothing]
+    final case class SourceSpecificError[ERROR](error: ERROR) extends LoadingSettingsError[ERROR]
   }
 
-  implicit val show: Show[LoadingSettingsError] = ???
+  //implicit val show: Show[LoadingSettingsError[_]] = ???
 }
 
-trait ReadWriteSettingsSource[SETTINGS : Encoder : Decoder] extends ReadOnlySettingsSource[SETTINGS] {
-  def save(config: SETTINGS): Task[Either[SavingSettingsError, Unit]]
+trait ReadWriteSettingsSource[SETTINGS : Encoder : Decoder, READ_SPECIFIC_ERROR, WRITE_SPECIFIC_ERROR]
+  extends ReadOnlySettingsSource[SETTINGS, READ_SPECIFIC_ERROR] {
+
+  def save(settings: SETTINGS): Task[Either[SavingSettingsError[WRITE_SPECIFIC_ERROR], Unit]]
 }
 object ReadWriteSettingsSource {
-  sealed trait SavingSettingsError
+  sealed trait SavingSettingsError[+ERROR]
   object SavingSettingsError {
-//    final case class SourceSpecificError[ERROR](error: ERROR) extends SavingSettingsError
+    final case class SourceSpecificError[ERROR](error: ERROR) extends SavingSettingsError[ERROR]
   }
 
-  implicit val show: Show[SavingSettingsError] = ???
+  // implicit val show: Show[SavingSettingsError] = ???
 }

@@ -29,7 +29,6 @@ import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{Index
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
@@ -62,7 +61,8 @@ class MainRorSettingsApi(rorInstance: RorInstance,
         case Right(()) =>
           ForceReloadMainSettings.Success("ReadonlyREST settings were reloaded with success!")
         case Left(IndexSettingsReloadError.IndexLoadingSettingsError(error)) =>
-          ForceReloadMainSettings.Failure(error.show)
+          ???
+          //ForceReloadMainSettings.Failure(error.show)
         case Left(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.SettingsUpToDate(_))) =>
           ForceReloadMainSettings.Failure("Current settings are already loaded")
         case Left(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.RorInstanceStopped)) =>
@@ -88,7 +88,8 @@ class MainRorSettingsApi(rorInstance: RorInstance,
       .load()
       .map {
         case Right(settings) => ProvideFileMainSettings.MainSettings(settings.raw)
-        case Left(error) => ProvideFileMainSettings.Failure(error.show)
+        case Left(error) => ???
+          // ProvideFileMainSettings.Failure(error.show)
       }
   }
 
@@ -101,7 +102,9 @@ class MainRorSettingsApi(rorInstance: RorInstance,
           // todo: ???
 //        case Left(error@LoadingFromIndexError.IndexNotExist) =>
 //          ProvideIndexMainSettings.MainSettingsNotFound(Show[LoadingFromIndexError].show(error))
-        case Left(error) => ProvideIndexMainSettings.Failure(error.show)
+        case Left(error) =>
+          ???
+        //ProvideIndexMainSettings.Failure(error.show)
       }
   }
 
@@ -110,10 +113,11 @@ class MainRorSettingsApi(rorInstance: RorInstance,
       .left.map(error => MainSettingsResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage.show}]"))
   }
 
-  private def rorMainSettingsFrom(settingsString: String): EitherT[Task, MainSettingsResponse, RawRorSettings] = EitherT {
+  private def rorMainSettingsFrom(settingsString: String): EitherT[Task, MainSettingsResponse, RawRorSettings] = {
     settingsYamlParser
       .fromString(settingsString)
-      .map(_.left.map(error => UpdateIndexMainSettings.Failure(error.show)))
+      .left.map(error => UpdateIndexMainSettings.Failure(error.show): MainSettingsResponse)
+      .toEitherT[Task]
   }
 
   private def forceReloadAndSaveNewSettings(settings: RawRorSettings)
@@ -121,7 +125,8 @@ class MainRorSettingsApi(rorInstance: RorInstance,
     EitherT(rorInstance.forceReloadAndSave(settings))
       .leftMap {
         case IndexSettingsSavingError(error) =>
-          UpdateIndexMainSettings.Failure(s"Cannot save new settings: ${error.show}")
+          ???
+          //UpdateIndexMainSettings.Failure(s"Cannot save new settings: ${error.show}")
         case ReloadError(RawSettingsReloadError.SettingsUpToDate(_)) =>
           UpdateIndexMainSettings.Failure(s"Current settings are already loaded")
         case ReloadError(RawSettingsReloadError.RorInstanceStopped) =>

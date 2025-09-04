@@ -96,7 +96,7 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
         case Left(IndexSettingsReloadError.ReloadError(RorInstanceStopped)) =>
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
         case Left(IndexSettingsReloadError.IndexLoadingSettingsError(error)) =>
-          logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${error.show}")
+          logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ") // ${error.show}") // todo:
       })
     } yield reloadResult.map(_ => ())
   }

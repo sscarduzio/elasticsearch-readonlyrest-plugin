@@ -178,7 +178,7 @@ class RorInstance private(boot: ReadonlyRest,
     case (name, Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.ReloadingFailed(startingFailure))))) =>
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ReadonlyREST ${name.show} engine starting failed: ${startingFailure.message.show}")
     case (name, Left(EngineReloadError(IndexSettingsReloadError.IndexLoadingSettingsError(error)))) =>
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ${name.show} settings from index failed: ${error.show}")
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ${name.show} settings from index failed:") // todo: ${error.show}")
   }
 
   private def tryMainEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
@@ -267,25 +267,25 @@ object RorInstance {
   sealed trait IndexSettingsReloadWithUpdateError
   object IndexSettingsReloadWithUpdateError {
     final case class ReloadError(undefined: RawSettingsReloadError) extends IndexSettingsReloadWithUpdateError
-    final case class IndexSettingsSavingError(underlying: SavingSettingsError) extends IndexSettingsReloadWithUpdateError
+    final case class IndexSettingsSavingError(underlying: SavingSettingsError[IndexSettingsSource.SavingError]) extends IndexSettingsReloadWithUpdateError
   }
 
   sealed trait IndexSettingsReloadError
   object IndexSettingsReloadError {
-    final case class IndexLoadingSettingsError(underlying: LoadingSettingsError) extends IndexSettingsReloadError
+    final case class IndexLoadingSettingsError(underlying: LoadingSettingsError[IndexSettingsSource.LoadingError]) extends IndexSettingsReloadError
     final case class ReloadError(underlying: RawSettingsReloadError) extends IndexSettingsReloadError
   }
 
   sealed trait IndexSettingsUpdateError
   object IndexSettingsUpdateError {
-    final case class IndexSettingsSavingError(underlying: SavingSettingsError) extends IndexSettingsUpdateError
+    final case class IndexSettingsSavingError(underlying: SavingSettingsError[IndexSettingsSource.SavingError]) extends IndexSettingsUpdateError
     case object TestSettingsNotSet extends IndexSettingsUpdateError
     case object TestSettingsInvalidated extends IndexSettingsUpdateError
   }
 
   sealed trait IndexSettingsInvalidationError
   object IndexSettingsInvalidationError {
-    final case class IndexSettingsSavingError(underlying: SavingSettingsError) extends IndexSettingsInvalidationError
+    final case class IndexSettingsSavingError(underlying: SavingSettingsError[IndexSettingsSource.SavingError]) extends IndexSettingsInvalidationError
   }
 
   private sealed trait ScheduledReloadError

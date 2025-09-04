@@ -14,22 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.settings.source
 
-import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
-import tech.beshu.ror.configuration.TestRorSettings.Expiration
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import io.circe.Codec
+import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
+import tech.beshu.ror.configuration.RawRorSettings
+import tech.beshu.ror.es.IndexJsonContentService
+import tech.beshu.ror.settings.source.MainSettingsIndexSource.{Const, codec}
 
-import java.time.{Clock, Instant}
+class MainSettingsIndexSource(indexJsonContentService: IndexJsonContentService,
+                              settingsIndex: RorSettingsIndex)
+  extends IndexSettingsSource[RawRorSettings](indexJsonContentService, settingsIndex, documentId = Const.id)
 
-final case class TestRorSettings(rawSettings: RawRorSettings,
-                                 mocks: AuthServicesMocks,
-                                 expiration: Expiration) {
-  def isExpired(clock: Clock): Boolean = {
-    expiration.validTo.isBefore(clock.instant())
+object MainSettingsIndexSource {
+  private object Const {
+    val id = "1"
+    val settingsKey = "settings"
   }
-}
 
-object TestRorSettings {
-  final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
+  implicit val codec: Codec[RawRorSettings] = ???
 }

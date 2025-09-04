@@ -29,7 +29,6 @@ import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{Index
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, RawSettingsReloadError, TestSettings}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 import tech.beshu.ror.utils.DurationOps.*
@@ -72,10 +71,11 @@ class TestRorSettingsApi(rorInstance: RorInstance,
       .left.map(error => TestSettingsResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage}]"))
   }
 
-  private def rorTestSettingsFrom(settingsString: String): EitherT[Task, TestSettingsResponse, RawRorSettings] = EitherT {
+  private def rorTestSettingsFrom(settingsString: String): EitherT[Task, TestSettingsResponse, RawRorSettings] = {
     settingsYamlParser
       .fromString(settingsString)
-      .map(_.left.map(error => TestSettingsResponse.UpdateTestSettings.FailedResponse(error.show)))
+      .left.map(error => TestSettingsResponse.UpdateTestSettings.FailedResponse(error.show): TestSettingsResponse)
+      .toEitherT[Task]
   }
 
   private def invalidateTestSettings()
@@ -86,7 +86,7 @@ class TestRorSettingsApi(rorInstance: RorInstance,
         case Right(()) =>
           TestSettingsResponse.InvalidateTestSettings.SuccessResponse("ROR Test settings are invalidated")
         case Left(IndexSettingsInvalidationError.IndexSettingsSavingError(error)) =>
-          TestSettingsResponse.InvalidateTestSettings.FailedResponse(s"Cannot invalidate test settings: ${error.show}")
+          TestSettingsResponse.InvalidateTestSettings.FailedResponse(s"Cannot invalidate test settings: ") // todo: ${error.show}")
       }
   }
 
@@ -144,7 +144,7 @@ class TestRorSettingsApi(rorInstance: RorInstance,
             }
             .leftMap {
               case IndexSettingsSavingError(error) =>
-                TestSettingsResponse.UpdateTestSettings.FailedResponse(s"Cannot reload new settings: ${error.show}")
+                TestSettingsResponse.UpdateTestSettings.FailedResponse(s"Cannot reload new settings: ") // todo: ${error.show}")
               case ReloadError(RawSettingsReloadError.SettingsUpToDate(_)) =>
                 TestSettingsResponse.UpdateTestSettings.FailedResponse(s"Current settings are already loaded")
               case ReloadError(RawSettingsReloadError.RorInstanceStopped) =>

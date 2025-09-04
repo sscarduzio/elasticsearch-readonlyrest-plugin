@@ -17,34 +17,25 @@
 package tech.beshu.ror.configuration
 
 import better.files.File
-import cats.effect.Resource
 import cats.Show
 import io.circe.{Json, ParsingFailure}
-import monix.eval.Task
 import squants.information.Information
 import tech.beshu.ror.configuration.RawRorSettingsYamlParser.ParsingRorSettingsError
 import tech.beshu.ror.configuration.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlParser
 
-import java.io.StringReader
-
 class RawRorSettingsYamlParser(maxSize: Information) {
 
   private val yamlParser: YamlParser = new YamlParser(Some(maxSize))
 
-  def fromFile(file: File): Task[Either[ParsingRorSettingsError, RawRorSettings]] = {
+  def fromFile(file: File): Either[ParsingRorSettingsError, RawRorSettings] = {
     fromString(file.contentAsString)
   }
 
-  def fromString(content: String): Task[Either[ParsingRorSettingsError, RawRorSettings]] = {
-    val contentResource = Resource.make(Task(new StringReader(content))) { reader => Task(reader.close()) }
-    contentResource.use { reader =>
-      Task {
-        handleParseResult(yamlParser.parse(reader))
-          .map(RawRorSettings(_, content))
-      }
-    }
+  def fromString(content: String): Either[ParsingRorSettingsError, RawRorSettings] = {
+    handleParseResult(yamlParser.parse(content))
+      .map(RawRorSettings(_, content))
   }
 
   private def handleParseResult(result: Either[ParsingFailure, Json]) = {

@@ -35,7 +35,7 @@ import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
 import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
+import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource, MainSettingsFileSource, MainSettingsIndexSource, TestSettingsIndexSource}
 import tech.beshu.ror.settings.strategy.StartingRorSettingsLoadingStrategy
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -53,13 +53,9 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   def start(esConfig: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
     (for {
-      // todo: refactor?
-      mainIndexSettingsSource <- lift {
-        indexContentService.toString
-        ??? : IndexSettingsSource[RawRorSettings]
-      }
-      mainFileSettingsSource <- lift(??? : FileSettingsSource[RawRorSettings])
-      testIndexSettingsSource <- lift(??? : IndexSettingsSource[TestRorSettings])
+      mainIndexSettingsSource <- lift(new MainSettingsIndexSource(indexContentService, esConfig.rorSettingsIndex))
+      mainFileSettingsSource <- lift(new MainSettingsFileSource(???))
+      testIndexSettingsSource <- lift(TestSettingsIndexSource.create(indexContentService, esConfig.rorSettingsIndex, ???))
       loadedSettings <- loadStartupSettings(mainIndexSettingsSource, mainFileSettingsSource, testIndexSettingsSource)
       (loadedMainRorSettings, loadedTestRorSettings) = loadedSettings
       instance <- startRor(esConfig, loadedMainRorSettings, mainIndexSettingsSource, mainFileSettingsSource, loadedTestRorSettings, testIndexSettingsSource)
@@ -68,7 +64,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def loadStartupSettings(mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
                                   mainSettingsFileSource: FileSettingsSource[RawRorSettings],
-                                  testSettingsIndexSource: IndexSettingsSource[TestRorSettings]): EitherT[Task, StartingFailure, (RawRorSettings, TestRorSettings)] = {
+                                  testSettingsIndexSource: IndexSettingsSource[TestRorSettings]): EitherT[Task, StartingFailure, (RawRorSettings, Option[TestRorSettings])] = {
     val settingsLoader = new StartingRorSettingsLoadingStrategy(mainSettingsIndexSource, mainSettingsFileSource, testSettingsIndexSource)
     EitherT(settingsLoader.load())
   }
@@ -77,7 +73,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                        loadedMainRorSettings: RawRorSettings,
                        mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
                        mainSettingsFileSource: FileSettingsSource[RawRorSettings],
-                       loadedTestRorSettings: TestRorSettings,
+                       loadedTestRorSettings: Option[TestRorSettings],
                        testSettingsIndexSource: IndexSettingsSource[TestRorSettings]) = {
     for {
       mainEngine <- EitherT(loadRorEngine(loadedMainRorSettings, esConfig))
@@ -87,18 +83,18 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def loadTestEngine(esConfig: EsConfigBasedRorSettings,
-                             loadedTestRorSettings: TestRorSettings) = {
+                             loadedTestRorSettings: Option[TestRorSettings]) = {
     loadedTestRorSettings match {
-      case TestRorSettings.NotSet =>
+      case None =>
         Task.now(TestEngine.NotConfigured)
-      case settings: TestRorSettings.Present if !settings.isExpired(systemContext.clock) =>
+      case Some(settings) if !settings.isExpired(systemContext.clock) =>
         loadActiveTestEngine(esConfig, settings)
-      case settings: TestRorSettings.Present =>
+      case Some(settings) =>
         loadInvalidatedTestEngine(settings)
     }
   }
 
-  private def loadActiveTestEngine(esConfig: EsConfigBasedRorSettings, testSettings: TestRorSettings.Present) = {
+  private def loadActiveTestEngine(esConfig: EsConfigBasedRorSettings, testSettings: TestRorSettings) = {
     for {
       _ <- Task.delay(authServicesMocksProvider.update(testSettings.mocks))
       testEngine <- loadRorEngine(testSettings.rawSettings, esConfig)
@@ -116,7 +112,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     } yield testEngine
   }
 
-  private def loadInvalidatedTestEngine(testSettings: TestRorSettings.Present) = {
+  private def loadInvalidatedTestEngine(testSettings: TestRorSettings) = {
     Task
       .delay(authServicesMocksProvider.update(testSettings.mocks))
       .map { _ =>
@@ -124,7 +120,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
       }
   }
 
-  private def expirationFrom(expiration: TestRorSettings.Present.Expiration): TestEngine.Expiration = {
+  private def expirationFrom(expiration: TestRorSettings.Expiration): TestEngine.Expiration = {
     TestEngine.Expiration(expiration.ttl, expiration.validTo)
   }
 

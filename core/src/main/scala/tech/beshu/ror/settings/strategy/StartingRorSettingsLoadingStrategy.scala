@@ -19,7 +19,6 @@ package tech.beshu.ror.settings.strategy
 import monix.eval.Task
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.configuration.{RawRorSettings, TestRorSettings}
-import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
 
 class StartingRorSettingsLoadingStrategy(mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
@@ -27,7 +26,7 @@ class StartingRorSettingsLoadingStrategy(mainSettingsIndexSource: IndexSettingsS
                                          testSettingsIndexSource: IndexSettingsSource[TestRorSettings],
                                          /* todo: retry strategy*/) {
 
-  def load(): Task[Either[StartingFailure, (RawRorSettings, TestRorSettings)]] = {
+  def load(): Task[Either[StartingFailure, (RawRorSettings, Option[TestRorSettings])]] = {
     mainSettingsIndexSource.toString
     mainSettingsFileSource.toString
     testSettingsIndexSource.toString
@@ -75,10 +74,5 @@ class StartingRorSettingsLoadingStrategy(mainSettingsIndexSource: IndexSettingsS
 //          }
 //    }
 //  }
-
-}
-object StartingRorSettingsLoadingStrategy {
-
-  type LoadingError = Either[LoadingSettingsError, LoadingSettingsError]
 
 }

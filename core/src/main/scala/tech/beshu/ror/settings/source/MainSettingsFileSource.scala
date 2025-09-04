@@ -14,22 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.settings.source
 
-import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
-import tech.beshu.ror.configuration.TestRorSettings.Expiration
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import io.circe.Decoder
+import tech.beshu.ror.configuration.RawRorSettings
+import MainSettingsFileSource.decoder
+import better.files.File
 
-import java.time.{Clock, Instant}
+class MainSettingsFileSource(rorSettingsFile: File)
+  extends FileSettingsSource[RawRorSettings](rorSettingsFile)
 
-final case class TestRorSettings(rawSettings: RawRorSettings,
-                                 mocks: AuthServicesMocks,
-                                 expiration: Expiration) {
-  def isExpired(clock: Clock): Boolean = {
-    expiration.validTo.isBefore(clock.instant())
-  }
-}
-
-object TestRorSettings {
-  final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
+object MainSettingsFileSource {
+  implicit val decoder: Decoder[RawRorSettings] = ???
 }

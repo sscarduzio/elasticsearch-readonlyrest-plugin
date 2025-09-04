@@ -163,7 +163,7 @@ class AuthMockApi(rorInstance: RorInstance)
         case Left(IndexSettingsUpdateError.TestSettingsInvalidated) =>
           Left(AuthMockResponse.UpdateAuthMock.Invalidated(testSettingsInvalidatedMessage))
         case Left(IndexSettingsUpdateError.IndexSettingsSavingError(error)) =>
-          Left(AuthMockResponse.UpdateAuthMock.Failed(s"Cannot save auth services mocks: ${error.show}"))
+          Left(AuthMockResponse.UpdateAuthMock.Failed(s"Cannot save auth services mocks: ")) // todo: ${error.show}"))
       }
   }
 

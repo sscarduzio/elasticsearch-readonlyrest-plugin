@@ -16,19 +16,60 @@
  */
 package tech.beshu.ror.settings.source
 
+import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
+import tech.beshu.ror.es.IndexJsonContentService
+import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
+import tech.beshu.ror.settings.source.IndexSettingsSource.LoadingError.IndexNotFound
+import tech.beshu.ror.settings.source.IndexSettingsSource.SavingError.CannotSaveSettings
+import tech.beshu.ror.settings.source.IndexSettingsSource.{LoadingError, SavingError}
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
 
-class IndexSettingsSource[SETTINGS : Encoder : Decoder](settingsIndex: RorSettingsIndex)
-  extends ReadWriteSettingsSource[SETTINGS] {
+class IndexSettingsSource[SETTINGS : Encoder : Decoder](indexJsonContentService: IndexJsonContentService,
+                                                        settingsIndex: RorSettingsIndex,
+                                                        documentId: String)
+  extends ReadWriteSettingsSource[SETTINGS, LoadingError, SavingError] {
 
-  override def load(): Task[Either[LoadingSettingsError, SETTINGS]] = {
-    settingsIndex.toString
-    ???
+  override def load(): Task[Either[LoadingSettingsError[LoadingError], SETTINGS]] = {
+    indexJsonContentService
+      .sourceOfAsString(settingsIndex.index, documentId)
+      .map {
+        case Right(document) =>
+          document
+            .as[SETTINGS]
+            .left.flatMap { _ =>
+              settingsLoaderError(IndexNotFound) // todo: wrong type
+            }
+        case Left(CannotReachContentSource) =>
+          settingsLoaderError(IndexNotFound)
+        case Left(ContentNotFound) =>
+          settingsLoaderError(IndexNotFound)
+      }
   }
 
-  override def save(config: SETTINGS): Task[Either[SavingSettingsError, Unit]] = ???
+  override def save(settings: SETTINGS): Task[Either[SavingSettingsError[SavingError], Unit]] = {
+    indexJsonContentService
+      .saveContentJson(settingsIndex.index, documentId, settings.asJson)
+      .map {
+        _.left.map { case CannotWriteToIndex => SavingSettingsError.SourceSpecificError(CannotSaveSettings) }
+      }
+  }
+
+  private def settingsLoaderError(error: LoadingError) =
+    Left(LoadingSettingsError.SourceSpecificError(error))
+
+}
+object IndexSettingsSource {
+  sealed trait LoadingError
+  object LoadingError {
+    case object IndexNotFound extends LoadingError
+  }
+
+  sealed trait SavingError
+  object SavingError {
+    case object CannotSaveSettings extends SavingError
+  }
 }
