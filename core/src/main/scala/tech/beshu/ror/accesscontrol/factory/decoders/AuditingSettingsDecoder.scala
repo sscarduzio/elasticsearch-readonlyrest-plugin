@@ -209,7 +209,7 @@ object AuditingSettingsDecoder extends Logging {
 
   given auditLogSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
     for {
-      serializerTypeStr <- c.downField("serializer").downField("type").as[SerializerType]
+      serializerTypeStr <- c.as[SerializerType]
       result <- serializerTypeStr match {
         case SerializerType.SimpleSyntaxStaticSerializer =>
           c.as[Option[AuditLogSerializer]](simpleSyntaxSerializerDecoder)
