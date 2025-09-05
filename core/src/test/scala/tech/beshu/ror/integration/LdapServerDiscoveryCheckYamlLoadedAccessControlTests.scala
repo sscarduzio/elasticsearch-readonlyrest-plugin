@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.integration.utils.OsSupportForAnyWordSpecLike
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
@@ -33,6 +34,7 @@ import tech.beshu.ror.utils.misc.OsUtils
 
 class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
   extends AnyWordSpec
+    with OsSupportForAnyWordSpecLike
     with BaseYamlLoadedAccessControlTest
     with BeforeAndAfterAll
     with ForAllTestContainer
@@ -76,8 +78,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
   }
 
   // This test suite does not execute on Windows: there is currently no Windows version of LdapWithDnsContainer
-  if (!OsUtils.isWindows) {
-  "An LDAP connectivity check" should {
+  "An LDAP connectivity check" taggedAs IgnoreOnWindows should {
     "allow core to start" when {
       "server discovery is used and DNS responds with proper address" in {
         val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
@@ -92,10 +93,10 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
       }
     }
   }
-  }
 }
 
 object NoOpContainer extends Container {
   override def start(): Unit = ()
+
   override def stop(): Unit = ()
 }

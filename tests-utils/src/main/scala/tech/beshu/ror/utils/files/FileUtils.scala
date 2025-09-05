@@ -24,7 +24,7 @@ import scala.jdk.CollectionConverters.*
 
 object FileUtils {
 
-  def calculateHash(dir: Path, excludedFiles: List[String]): String = {
+  def calculateHash(dir: Path, excludedFiles: List[String] = Nil): String = {
     val digest = MessageDigest.getInstance("SHA-256")
 
     val fileList = Files.walk(dir)
