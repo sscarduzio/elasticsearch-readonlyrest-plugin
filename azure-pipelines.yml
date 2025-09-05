@@ -576,7 +576,7 @@ stages:
             WIN_IT_es70x:
               ES_MODULE: es70x
 #######################################################
-##### Integration tests on Windows on master/develop
+##### Integration tests on Windows for manual job 'run_all_tests_on_windows'
 #######################################################
       - job:
         condition:
@@ -652,8 +652,6 @@ stages:
               ES_MODULE: es72x
             WIN_IT_es70x:
               ES_MODULE: es70x
-            WIN_IT_es67x:
-              ES_MODULE: es67x
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'
     dependsOn:
