@@ -23,16 +23,16 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import com.github.tomakehurst.wiremock.standalone.JsonFileMappingsSource
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.ContainerUtils
-import tech.beshu.ror.utils.containers.windows.WindowsPseudoSingleContainerWiremock.WindowsPseudoGenericContainerWiremock
+import tech.beshu.ror.utils.containers.windows.WindowsPseudoWiremockContainer.WindowsPseudoGenericContainerWiremock
 
 import java.io.File
 
-class WindowsPseudoSingleContainerWiremock(val port: Int, mappings: List[String])
+class WindowsPseudoWiremockContainer(val port: Int, mappings: List[String])
   extends SingleContainer[GenericContainer[_]] {
   override val container: WindowsPseudoGenericContainerWiremock = new WindowsPseudoGenericContainerWiremock(port, mappings)
 }
 
-object WindowsPseudoSingleContainerWiremock {
+object WindowsPseudoWiremockContainer {
   class WindowsPseudoGenericContainerWiremock(port: Int, mappings: List[String])
     extends GenericContainer[WindowsPseudoGenericContainerWiremock]("noop:latest") {
 

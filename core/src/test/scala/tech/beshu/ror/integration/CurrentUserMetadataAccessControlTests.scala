@@ -38,8 +38,8 @@ import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
-import tech.beshu.ror.utils.containers.windows.WindowsPseudoSingleContainerWiremock
-import tech.beshu.ror.utils.containers.{LdapSingleContainer, WireMockContainer, WireMockScalaAdapter}
+import tech.beshu.ror.utils.containers.windows.WindowsPseudoWiremockContainer
+import tech.beshu.ror.utils.containers.{LdapContainer, WireMockContainer, WireMockScalaAdapter}
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
@@ -59,7 +59,7 @@ class CurrentUserMetadataAccessControlTests
   )
 
   private val wiremock = OsUtils.currentOs match {
-    case CurrentOs.Windows => new WindowsPseudoSingleContainerWiremock(8080, mappings)
+    case CurrentOs.Windows => new WindowsPseudoWiremockContainer(8080, mappings)
     case CurrentOs.OtherThanWindows => new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
   }
 
@@ -68,10 +68,10 @@ class CurrentUserMetadataAccessControlTests
     case _ => ("localhost", 8080)
   }
 
-  private val ldap1 = LdapSingleContainer.create("LDAP1",
+  private val ldap1 = LdapContainer.create("LDAP1",
     "current_user_metadata_access_control_tests/ldap_ldap1_user5.ldif"
   )
-  private val ldap2 = LdapSingleContainer.create("LDAP2",
+  private val ldap2 = LdapContainer.create("LDAP2",
     "current_user_metadata_access_control_tests/ldap_ldap2_user6.ldif"
   )
 

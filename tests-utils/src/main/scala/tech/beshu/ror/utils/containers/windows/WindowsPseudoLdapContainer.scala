@@ -20,15 +20,15 @@ import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.lifecycle.Startable
 import org.testcontainers.shaded.org.bouncycastle.cert.*
-import tech.beshu.ror.utils.containers.LdapSingleContainer
-import tech.beshu.ror.utils.containers.LdapSingleContainer.InitScriptSource
-import tech.beshu.ror.utils.containers.windows.WindowsPseudoSingleContainerLdap.WindowsPseudoGenericContainerLdap
+import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
+import tech.beshu.ror.utils.containers.windows.WindowsPseudoLdapContainer.WindowsPseudoGenericContainerLdap
 
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 
-class WindowsPseudoSingleContainerLdap(service: InMemoryLdapService)
-  extends SingleContainer[GenericContainer[_]] with LdapSingleContainer {
+class WindowsPseudoLdapContainer(service: InMemoryLdapService)
+  extends SingleContainer[GenericContainer[_]] with LdapContainer {
 
   override val container: GenericContainer[_] =
     new WindowsPseudoGenericContainerLdap(service)
@@ -42,13 +42,13 @@ class WindowsPseudoSingleContainerLdap(service: InMemoryLdapService)
   def ldapHost: String = service.ldapHost
 }
 
-object WindowsPseudoSingleContainerLdap {
+object WindowsPseudoLdapContainer {
 
-  def create(name: String, ldapInitScript: InitScriptSource): LdapSingleContainer = {
-    new WindowsPseudoSingleContainerLdap(new InMemoryLdapService(name, ldapInitScript))
+  def create(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
+    new WindowsPseudoLdapContainer(new InMemoryLdapService(name, ldapInitScript))
   }
 
-  def create(name: String, ldapInitScript: String): LdapSingleContainer = {
+  def create(name: String, ldapInitScript: String): LdapContainer = {
     create(name, InitScriptSource.fromString(ldapInitScript))
   }
 

@@ -25,8 +25,8 @@ import org.testcontainers.shaded.org.bouncycastle.cert.*
 import org.testcontainers.shaded.org.bouncycastle.cert.jcajce.{JcaX509CertificateConverter, JcaX509v3CertificateBuilder}
 import org.testcontainers.shaded.org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.testcontainers.shaded.org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
-import tech.beshu.ror.utils.containers.LdapSingleContainer
-import tech.beshu.ror.utils.containers.LdapSingleContainer.{InitScriptSource, defaults, initLdap}
+import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.containers.LdapContainer.{InitScriptSource, defaults, initLdap}
 
 import java.math.BigInteger
 import java.security.cert.X509Certificate
@@ -129,9 +129,9 @@ private class NonStoppableInMemoryLdapService private(name: String, ldapInitScri
 }
 
 object NonStoppableInMemoryLdapService {
-  def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapSingleContainer = {
+  def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
     val ldap = new NonStoppableInMemoryLdapService(name, ldapInitScript)
     ldap.privateStart()
-    new WindowsPseudoSingleContainerLdap(ldap)
+    new WindowsPseudoLdapContainer(ldap)
   }
 }

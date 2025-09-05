@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService, Ld
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
-import tech.beshu.ror.utils.containers.LdapSingleContainer
+import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 
 import scala.concurrent.duration.*
@@ -46,7 +46,7 @@ class UnboundIdLdapUsersServiceTests
     with Inside
     with WithDummyRequestIdSupport {
 
-  private val ldapContainer = LdapSingleContainer.create("LDAP4", "test_example.ldif")
+  private val ldapContainer = LdapContainer.create("LDAP4", "test_example.ldif")
   private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   override val container: Container = MultipleContainers(ldapContainer)

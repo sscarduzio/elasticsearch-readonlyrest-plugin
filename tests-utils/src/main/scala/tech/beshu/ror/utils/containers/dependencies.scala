@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.utils.containers
 
-import tech.beshu.ror.utils.containers.windows.WindowsPseudoSingleContainerWiremock
+import tech.beshu.ror.utils.containers.windows.WindowsPseudoWiremockContainer
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 object dependencies {
 
   def ldap(name: String, ldapInitScript: String): DependencyDef = {
-    val ldap = LdapSingleContainer.create(name, ldapInitScript)
+    val ldap = LdapContainer.create(name, ldapInitScript)
     DependencyDef(
       name = name,
       container = ldap,
@@ -31,7 +31,7 @@ object dependencies {
     )
   }
 
-  def ldap(name: String, ldap: LdapSingleContainer): DependencyDef = DependencyDef(
+  def ldap(name: String, ldap: LdapContainer): DependencyDef = DependencyDef(
     name = name,
     container = ldap,
     originalPort = ldap.originalPort
@@ -42,7 +42,7 @@ object dependencies {
       case CurrentOs.Windows =>
         DependencyDef(
           name = name,
-          container = new WindowsPseudoSingleContainerWiremock(portWhenRunningOnWindows, mappings.toList),
+          container = new WindowsPseudoWiremockContainer(portWhenRunningOnWindows, mappings.toList),
           originalPort = portWhenRunningOnWindows,
         )
       case CurrentOs.OtherThanWindows =>

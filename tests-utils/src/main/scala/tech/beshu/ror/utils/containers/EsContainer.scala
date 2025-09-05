@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.containers.EsContainer.{Credentials, EsContainerImpl
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
 import tech.beshu.ror.utils.containers.logs.CompositeLogConsumer
 import tech.beshu.ror.utils.containers.providers.ClientProvider
-import tech.beshu.ror.utils.containers.windows.WindowsPseudoGenericContainerEs
+import tech.beshu.ror.utils.containers.windows.WindowsPseudoEsContainer
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
@@ -59,7 +59,7 @@ abstract class EsContainer(val esVersion: String,
     OsUtils.currentOs match {
       case CurrentOs.Windows =>
         EsContainerImplementation.Windows(
-          container = new WindowsPseudoGenericContainerEs(elasticsearch, waitStrategy, additionalLogConsumer),
+          container = new WindowsPseudoEsContainer(elasticsearch, waitStrategy, additionalLogConsumer),
         )
       case CurrentOs.OtherThanWindows =>
         val esImage = DockerImageCreator.create(elasticsearch)
@@ -141,7 +141,7 @@ object EsContainer {
   sealed trait EsContainerImplementation
 
   object EsContainerImplementation {
-    final case class Windows(container: WindowsPseudoGenericContainerEs) extends EsContainerImplementation
+    final case class Windows(container: WindowsPseudoEsContainer) extends EsContainerImplementation
 
     final case class Linux(esImage: ImageFromDockerfile, container: GenericContainer[_]) extends EsContainerImplementation
   }

@@ -25,10 +25,10 @@ import tech.beshu.ror.utils.containers.windows.WindowsEsSetup.prepareAndStartEs
 
 import java.util.function.Consumer
 
-class WindowsPseudoGenericContainerEs(elasticsearch: Elasticsearch,
-                                      waitStrategy: ElasticsearchNodeWaitingStrategy,
-                                      additionalLogConsumer: Option[Consumer[OutputFrame]])
-  extends GenericContainer[WindowsPseudoGenericContainerEs]("noop:latest") {
+class WindowsPseudoEsContainer(elasticsearch: Elasticsearch,
+                               waitStrategy: ElasticsearchNodeWaitingStrategy,
+                               additionalLogConsumer: Option[Consumer[OutputFrame]])
+  extends GenericContainer[WindowsPseudoEsContainer]("noop:latest") {
 
   private var windowsEsProcess: Option[WindowsEsProcess] = None
 
