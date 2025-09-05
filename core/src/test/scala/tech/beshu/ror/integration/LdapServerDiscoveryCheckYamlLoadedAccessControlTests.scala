@@ -26,23 +26,21 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.integration.utils.OsSupportForAnyWordSpecLike
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
-import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.{doNotCreateOnWindows, ignoreOnWindows}
 
 class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
   extends AnyWordSpec
-    with OsSupportForAnyWordSpecLike
     with BaseYamlLoadedAccessControlTest
     with BeforeAndAfterAll
     with ForAllTestContainer
     with Inside {
 
-  override val container: Container = if (OsUtils.isWindows) NoOpContainer else new LdapWithDnsContainer("LDAP1", "test_example.ldif")
+  override val container: Container = doNotCreateOnWindows(new LdapWithDnsContainer("LDAP1", "test_example.ldif"))
 
-  private lazy val port = container match {
+  private lazy val ldapPort = container match {
     case ldap: LdapWithDnsContainer => ldap.dnsPort
     case _ => 1234
   }
@@ -58,7 +56,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
        |  ldaps:
        |    - name: ldap1
        |      server_discovery:
-       |        dns_url: "dns://localhost:$port"
+       |        dns_url: "dns://localhost:$ldapPort"
        |      ha: ROUND_ROBIN
        |      ssl_enabled: false                                        # default true
        |      ssl_trust_all_certs: true                                 # default false
@@ -78,16 +76,18 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
   }
 
   // This test suite does not execute on Windows: there is currently no Windows version of LdapWithDnsContainer
-  "An LDAP connectivity check" taggedAs IgnoreOnWindows should {
-    "allow core to start" when {
-      "server discovery is used and DNS responds with proper address" in {
-        val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
-        val result = acl.handleRegularRequest(request).runSyncUnsafe()
-        result.history should have size 1
-        inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-          block.name should be(Block.Name("LDAP test"))
-          assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))) {
-            blockContext
+  ignoreOnWindows {
+    "An LDAP connectivity check" should {
+      "allow core to start" when {
+        "server discovery is used and DNS responds with proper address" in {
+          val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          result.history should have size 1
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("LDAP test"))
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))) {
+              blockContext
+            }
           }
         }
       }

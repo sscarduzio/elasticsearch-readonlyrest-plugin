@@ -39,7 +39,7 @@ import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
-import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.{doNotCreateOnWindows, ignoreOnWindows}
 
 import java.time.Clock
 import scala.annotation.tailrec
@@ -67,13 +67,11 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
   private val ldapWithDnsContainer = new LdapWithDnsContainer("LDAP3", "test_example.ldif")
 
-  override val container: MultipleContainers = {
-    if (OsUtils.isWindows) {
-      MultipleContainers(SingletonLdapContainers.ldap1, SingletonLdapContainers.ldap1Backup)
-    } else {
-      MultipleContainers(SingletonLdapContainers.ldap1, SingletonLdapContainers.ldap1Backup, ldapWithDnsContainer)
-    }
-  }
+  override val container: MultipleContainers = MultipleContainers(
+    SingletonLdapContainers.ldap1,
+    SingletonLdapContainers.ldap1Backup,
+    doNotCreateOnWindows(ldapWithDnsContainer),
+  )
 
   "An LdapService" should {
     "be able to be loaded from config" when {
@@ -1111,7 +1109,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
         )
       }
       // This test does not execute on Windows: there is currently no Windows version of LdapWithDnsContainer
-      if (!OsUtils.isWindows) {
+      ignoreOnWindows {
         "server discovery is enabled with custom dns and custom ttl" in {
           assertDecodingSuccess(
             yaml =

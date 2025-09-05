@@ -41,6 +41,8 @@ import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.windows.WindowsPseudoSingleContainerWiremock
 import tech.beshu.ror.utils.containers.{LdapSingleContainer, WireMockContainer, WireMockScalaAdapter}
 import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
+import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class CurrentUserMetadataAccessControlTests
@@ -56,13 +58,12 @@ class CurrentUserMetadataAccessControlTests
     "/current_user_metadata_access_control_tests/wiremock_service3_user7.json",
   )
 
-  private val wiremock =
-    if (OsUtils.isWindows)
-      new WindowsPseudoSingleContainerWiremock(8080, mappings)
-    else
-      new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
+  private val wiremock = OsUtils.currentOs match {
+    case CurrentOs.Windows => new WindowsPseudoSingleContainerWiremock(8080, mappings)
+    case CurrentOs.OtherThanWindows => new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
+  }
 
-  private lazy val (host, port) = wiremock match {
+  private lazy val (wiremockHost, wiremockPort) = wiremock match {
     case container: WireMockScalaAdapter => (container.getWireMockHost, container.getWireMockPort)
     case _ => ("localhost", 8080)
   }
@@ -222,19 +223,19 @@ class CurrentUserMetadataAccessControlTests
        |  user_groups_providers:
        |
        |  - name: Service1
-       |    groups_endpoint: "http://${host}:${port}/groups"
+       |    groups_endpoint: "http://${wiremockHost}:${wiremockPort}/groups"
        |    auth_token_name: "user"
        |    auth_token_passed_as: QUERY_PARAM
        |    response_groups_json_path: "$$..groups[?(@.name)].name"
        |
        |  - name: Service2
-       |    groups_endpoint: "http://${host}:${port}/groups"
+       |    groups_endpoint: "http://${wiremockHost}:${wiremockPort}/groups"
        |    auth_token_name: "user"
        |    auth_token_passed_as: QUERY_PARAM
        |    response_groups_json_path: "$$..groups[?(@.name)].name"
        |
        |  - name: Service3
-       |    groups_endpoint: "http://${host}:${port}/groups"
+       |    groups_endpoint: "http://${wiremockHost}:${wiremockPort}/groups"
        |    auth_token_name: "user"
        |    auth_token_passed_as: QUERY_PARAM
        |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
@@ -277,7 +278,7 @@ class CurrentUserMetadataAccessControlTests
        |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
        |      unique_member_attribute: "uniqueMember"                 # default "uniqueMember"
        |
-    """.stripMargin.replace("\r\n", "\n").replace("\r", "\n")
+    """.stripMarginAndReplaceWindowsLineBreak
 
   "An ACL" when {
     "handling current user metadata kibana plugin request" should {

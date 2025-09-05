@@ -32,6 +32,7 @@ import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEn
 import tech.beshu.ror.utils.containers.windows.{WindowsEsDirectoryManager, WindowsEsSetup}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import java.io.{File, Console as _}
 import scala.concurrent.duration.*
@@ -114,10 +115,11 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
       ),
       initializer = nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
-      customEntrypoint = if (OsUtils.isWindows) {
-        None // On Windows we prepare and configure ES, but we do not start it
-      } else {
-        Some(Path("""/bin/sh -c "while true; do sleep 30; done"""")) // On Linux we need to start the container, but not ES
+      customEntrypoint = OsUtils.currentOs match {
+        case CurrentOs.Windows =>
+          None // On Windows we prepare and configure ES, but we do not start it
+        case CurrentOs.OtherThanWindows =>
+          Some(Path("""/bin/sh -c "while true; do sleep 30; done"""")) // On Linux we need to start the container, but not ES
       },
       awaitingReadyStrategy = AwaitingReadyStrategy.ImmediatelyTreatAsReady,
       additionalLogConsumer = None,

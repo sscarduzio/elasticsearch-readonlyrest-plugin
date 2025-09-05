@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.misc
 
+import com.dimafeng.testcontainers.Container
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.jdk.CollectionConverters.*
@@ -36,6 +37,30 @@ object OsUtils extends LazyLogging {
       } match
       case Some(osName) => osName.toLowerCase.contains("win")
       case None => false
+  }
+
+  def ignoreOnWindows[T](f: => T): Any = {
+    if (!isWindows) f
+  }
+
+  def doNotCreateOnWindows(creator: => Container): Container = {
+    if (!isWindows) creator else NoOpContainer
+  }
+
+  private object NoOpContainer extends Container {
+    override def start(): Unit = ()
+
+    override def stop(): Unit = ()
+  }
+
+  def currentOs: CurrentOs = if (isWindows) CurrentOs.Windows else CurrentOs.OtherThanWindows
+
+  sealed trait CurrentOs
+
+  object CurrentOs {
+    case object Windows extends CurrentOs
+
+    case object OtherThanWindows extends CurrentOs
   }
 
 }

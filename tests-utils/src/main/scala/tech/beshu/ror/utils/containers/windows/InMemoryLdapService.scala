@@ -16,11 +16,9 @@
  */
 package tech.beshu.ror.utils.containers.windows
 
-import better.files.Resource
 import com.typesafe.scalalogging.LazyLogging
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
-import com.unboundid.ldap.sdk.{LDAPConnection, ResultCode}
-import com.unboundid.ldif.LDIFReader
+import com.unboundid.ldap.sdk.LDAPConnection
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import org.testcontainers.lifecycle.Startable
 import org.testcontainers.shaded.org.bouncycastle.cert.*
@@ -28,9 +26,8 @@ import org.testcontainers.shaded.org.bouncycastle.cert.jcajce.{JcaX509Certificat
 import org.testcontainers.shaded.org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.testcontainers.shaded.org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import tech.beshu.ror.utils.containers.LdapSingleContainer
-import tech.beshu.ror.utils.containers.LdapSingleContainer.{InitScriptSource, defaults}
+import tech.beshu.ror.utils.containers.LdapSingleContainer.{InitScriptSource, defaults, initLdap}
 
-import java.io.{BufferedReader, InputStreamReader}
 import java.math.BigInteger
 import java.security.cert.X509Certificate
 import java.security.{KeyPairGenerator, KeyStore, Security}
@@ -39,25 +36,30 @@ import javax.net.ssl.{KeyManager, KeyManagerFactory}
 import javax.security.auth.x500.X500Principal
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
+import scala.util.Using
 
 class InMemoryLdapService(name: String, ldapInitScript: InitScriptSource)
   extends Startable with LazyLogging {
 
-  private val config = new InMemoryDirectoryServerConfig(defaults.ldap.domainDn)
-  config.setSchema(null)
-  config.addAdditionalBindCredentials(defaults.ldap.bindDn.get, defaults.ldap.adminPassword)
-
-  config.setListenerConfigs(
-    InMemoryListenerConfig.createLDAPConfig("ldap", null, 0, null, false, false),
-    createLDAPSListener("ldaps", 0)
-  )
+  private val config: InMemoryDirectoryServerConfig = {
+    val c = new InMemoryDirectoryServerConfig(defaults.ldap.domainDn)
+    c.setSchema(null)
+    c.addAdditionalBindCredentials(defaults.ldap.bindDn.get, defaults.ldap.adminPassword)
+    c.setListenerConfigs(
+      InMemoryListenerConfig.createLDAPConfig("ldap", null, 0, null, false, false),
+      createLDAPSListener("ldaps", 0)
+    )
+    c
+  }
 
   private val server = new InMemoryDirectoryServer(config)
 
   def start(): Unit = {
     server.startListening()
     logger.info(s"LDAP in-memory server '$name' started on port ${server.getListenPort}")
-    initLdapFromFile()
+    Using(new LDAPConnection(ldapHost, ldapPort, defaults.ldap.bindDn.get, defaults.ldap.adminPassword)) { connection =>
+      initLdap(connection, ldapInitScript)
+    }
   }
 
   def stop(): Unit = {
@@ -70,40 +72,6 @@ class InMemoryLdapService(name: String, ldapInitScript: InitScriptSource)
   def ldapSSLPort: Int = server.getListenPort("ldaps")
 
   def ldapHost: String = "localhost"
-
-  private def initLdapFromFile(): Unit = {
-    val entries = readEntries()
-    val connection = new LDAPConnection(ldapHost, ldapPort, defaults.ldap.bindDn.get, defaults.ldap.adminPassword)
-    entries.foreach { entry =>
-      try {
-        val result = connection.add(entry)
-        if (result.getResultCode != ResultCode.SUCCESS && result.getResultCode != ResultCode.ENTRY_ALREADY_EXISTS) {
-          throw new IllegalStateException(s"Failed to add entry: ${result.getResultCode}")
-        }
-      } catch {
-        case e: Exception =>
-          if (!e.getMessage.contains("ENTRY_ALREADY_EXISTS")) {
-            throw e
-          }
-      }
-    }
-    connection.close()
-  }
-
-  private def readEntries() = {
-    val reader = ldapInitScript match {
-      case InitScriptSource.Resource(resourceName) =>
-        new BufferedReader(new InputStreamReader(Resource.getAsStream(resourceName)))
-      case InitScriptSource.AFile(file) =>
-        file.newBufferedReader
-    }
-    val ldifReader = new LDIFReader(reader)
-    Iterator
-      .continually(Option(ldifReader.readEntry()))
-      .takeWhile(_.isDefined)
-      .flatten
-      .toList
-  }
 
   private def createLDAPSListener(name: String, port: Int): InMemoryListenerConfig = {
     val keyManager = KeyManagerUtil.createSelfSignedKeyManager()

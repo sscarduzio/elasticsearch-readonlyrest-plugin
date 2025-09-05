@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.utils.containers
 
-import monix.eval.Coeval
 import tech.beshu.ror.utils.containers.windows.WindowsPseudoSingleContainerWiremock
 import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 object dependencies {
 
@@ -26,46 +26,48 @@ object dependencies {
     val ldap = LdapSingleContainer.create(name, ldapInitScript)
     DependencyDef(
       name = name,
-      containerCreator = Coeval(ldap),
+      container = ldap,
       originalPort = ldap.originalPort
     )
   }
 
   def ldap(name: String, ldap: LdapSingleContainer): DependencyDef = DependencyDef(
     name = name,
-    containerCreator = Coeval(ldap),
+    container = ldap,
     originalPort = ldap.originalPort
   )
 
   def wiremock(name: String, portWhenRunningOnWindows: Int, mappings: String*): DependencyDef = {
-    if (OsUtils.isWindows) {
-      DependencyDef(
-        name = name,
-        containerCreator = Coeval(new WindowsPseudoSingleContainerWiremock(portWhenRunningOnWindows, mappings.toList)),
-        originalPort = portWhenRunningOnWindows,
-      )
-    } else {
-      DependencyDef(
-        name = name,
-        containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))),
-        originalPort = WireMockContainer.WIRE_MOCK_PORT,
-      )
+    OsUtils.currentOs match {
+      case CurrentOs.Windows =>
+        DependencyDef(
+          name = name,
+          container = new WindowsPseudoSingleContainerWiremock(portWhenRunningOnWindows, mappings.toList),
+          originalPort = portWhenRunningOnWindows,
+        )
+      case CurrentOs.OtherThanWindows =>
+        DependencyDef(
+          name = name,
+          container = new WireMockScalaAdapter(WireMockContainer.create(mappings: _*)),
+          originalPort = WireMockContainer.WIRE_MOCK_PORT,
+        )
     }
   }
 
   def es(name: String, container: EsContainer): DependencyDef = {
-    if (OsUtils.isWindows) {
-      DependencyDef(
-        name = name,
-        containerCreator = Coeval(container),
-        originalPort = container.port
-      )
-    } else {
-      DependencyDef(
-        name = name,
-        containerCreator = Coeval(container),
-        originalPort = 9200
-      )
+    OsUtils.currentOs match {
+      case CurrentOs.Windows =>
+        DependencyDef(
+          name = name,
+          container = container,
+          originalPort = container.port
+        )
+      case CurrentOs.OtherThanWindows =>
+        DependencyDef(
+          name = name,
+          container = container,
+          originalPort = 9200
+        )
     }
   }
 }

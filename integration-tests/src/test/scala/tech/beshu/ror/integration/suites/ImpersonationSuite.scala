@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInit
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 class ImpersonationSuite
   extends AnyFreeSpec
@@ -691,7 +692,7 @@ class ImpersonationSuite
          |    ${headersToEncode.map { case (name, value) => s""""$name:$value"""" }.mkString(",\n")}
          |  ]
          |}
-         |""".stripMargin.replace("\r\n", "\n")
+         |""".stripMarginAndReplaceWindowsLineBreak
     val (user, pass) = userCredentials
     "Authorization" -> s"Basic ${encodeBase64(s"$user:$pass")}, ror_metadata=${encodeBase64(rorMetadata)}"
   }

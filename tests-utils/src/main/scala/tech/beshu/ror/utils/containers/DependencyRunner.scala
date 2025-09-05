@@ -16,26 +16,17 @@
  */
 package tech.beshu.ror.utils.containers
 
-import com.dimafeng.testcontainers.SingleContainer
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.testcontainers.containers.GenericContainer as JavaGenericContainer
 
 object DependencyRunner {
 
-  final case class EvaluatedDependency(name: String, container: SingleContainer[JavaGenericContainer[_]], originalPort: Int)
-
   def startDependencies(definitions: List[DependencyDef]): StartedClusterDependencies = {
-    val evaluatedDependencies = evaluate(definitions)
-    startContainersAsynchronously(evaluatedDependencies)
-    convertToStartedDependencies(evaluatedDependencies)
+    startContainersAsynchronously(definitions)
+    convertToStartedDependencies(definitions)
   }
 
-  private def evaluate(definitions: List[DependencyDef]): List[EvaluatedDependency] = {
-    definitions.map(d => EvaluatedDependency(d.name, d.containerCreator.apply(), d.originalPort))
-  }
-
-  private def startContainersAsynchronously(dependencies: List[EvaluatedDependency]): Unit = {
+  private def startContainersAsynchronously(dependencies: List[DependencyDef]): Unit = {
     Task
       .parSequenceUnordered {
         dependencies.map(dependency => Task(dependency.container.start()))
@@ -43,7 +34,7 @@ object DependencyRunner {
       .runSyncUnsafe()
   }
 
-  private def convertToStartedDependencies(dependencies: List[EvaluatedDependency]) = {
+  private def convertToStartedDependencies(dependencies: List[DependencyDef]) = {
     StartedClusterDependencies {
       dependencies
         .map { dependency =>

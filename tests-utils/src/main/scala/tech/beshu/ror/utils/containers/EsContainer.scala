@@ -32,6 +32,7 @@ import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.containers.windows.WindowsPseudoGenericContainerEs
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
 
 import java.util.function.Consumer
@@ -55,29 +56,30 @@ abstract class EsContainer(val esVersion: String,
   private val waitStrategy = new ElasticsearchNodeWaitingStrategy(esVersion, esConfig.nodeName, esClient, initializer, awaitingReadyStrategy)
 
   private val containerImplementation: EsContainerImplementation = {
-    if (OsUtils.isWindows) {
-      EsContainerImplementation.Windows(
-        container = new WindowsPseudoGenericContainerEs(elasticsearch, waitStrategy, additionalLogConsumer),
-      )
-    } else {
-      val esImage = DockerImageCreator.create(elasticsearch)
-      val container = new org.testcontainers.containers.GenericContainer(esImage)
-      val slf4jConsumer = new Slf4jLogConsumer(logger.underlying)
-      val logConsumer: Consumer[OutputFrame] = additionalLogConsumer match {
-        case Some(additional) => new CompositeLogConsumer(slf4jConsumer, additional)
-        case scala.None => slf4jConsumer
-      }
-      container.setLogConsumers((logConsumer :: Nil).asJava)
-      container.addExposedPort(9200)
-      container.addExposedPort(9300)
-      container.addExposedPort(8000)
-      container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
-      container.setNetwork(Network.SHARED)
-      container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
-      EsContainerImplementation.Linux(
-        esImage = esImage,
-        container = container
-      )
+    OsUtils.currentOs match {
+      case CurrentOs.Windows =>
+        EsContainerImplementation.Windows(
+          container = new WindowsPseudoGenericContainerEs(elasticsearch, waitStrategy, additionalLogConsumer),
+        )
+      case CurrentOs.OtherThanWindows =>
+        val esImage = DockerImageCreator.create(elasticsearch)
+        val container = new org.testcontainers.containers.GenericContainer(esImage)
+        val slf4jConsumer = new Slf4jLogConsumer(logger.underlying)
+        val logConsumer: Consumer[OutputFrame] = additionalLogConsumer match {
+          case Some(additional) => new CompositeLogConsumer(slf4jConsumer, additional)
+          case scala.None => slf4jConsumer
+        }
+        container.setLogConsumers((logConsumer :: Nil).asJava)
+        container.addExposedPort(9200)
+        container.addExposedPort(9300)
+        container.addExposedPort(8000)
+        container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
+        container.setNetwork(Network.SHARED)
+        container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
+        EsContainerImplementation.Linux(
+          esImage = esImage,
+          container = container
+        )
     }
   }
 

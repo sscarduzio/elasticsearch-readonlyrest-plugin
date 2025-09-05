@@ -36,7 +36,7 @@ import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
 import tech.beshu.ror.utils.containers.{LdapContainer, LdapSingleContainer, ToxiproxyContainer}
-import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 
 import java.time.Clock
@@ -74,7 +74,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
   }
 
   // This test suite does not execute on Windows: there is currently no Windows version of ToxiproxyContainer
-  if (!OsUtils.isWindows) {
+  ignoreOnWindows {
     "An LdapAuthenticationService should" - {
       "allow to authenticate user" - {
         "after connection timeout and retry" in {

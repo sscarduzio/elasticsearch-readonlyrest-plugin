@@ -16,21 +16,19 @@
  */
 package tech.beshu.ror.utils.containers
 
+import better.files.Dispose
 import better.files.Dispose.FlatMap.Implicits
-import better.files.{Disposable, Dispose, Resource}
 import com.dimafeng.testcontainers.GenericContainer
 import com.typesafe.scalalogging.LazyLogging
-import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, LDAPException, ResultCode}
-import com.unboundid.ldif.LDIFReader
+import com.unboundid.ldap.sdk.{LDAPConnection, ResultCode}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
-import tech.beshu.ror.utils.containers.LdapSingleContainer.{InitScriptSource, defaults}
+import tech.beshu.ror.utils.containers.LdapSingleContainer.{InitScriptSource, defaults, initLdap}
 import tech.beshu.ror.utils.containers.LdapWaitStrategy.*
 import tech.beshu.ror.utils.misc.ScalaUtils.*
 
-import java.io.{BufferedReader, InputStreamReader}
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 
@@ -116,57 +114,18 @@ private class LdapWaitStrategy(name: String,
 
   private def ldapInitiate() = {
     runOnBindedLdapConnection { connection =>
-      initLdapFromFile(connection)
+      initLdap(connection, ldapInitScript)
     }
   }
 
-  private def initLdapFromFile(connection: LDAPConnection) = {
-    Task
-      .sequence {
-        readEntries().map { entry =>
-          Task(connection.add(new AddRequest(entry.toLDIF: _*)))
-            .flatMap {
-              case result if Set(ResultCode.SUCCESS, ResultCode.ENTRY_ALREADY_EXISTS).contains(result.getResultCode) =>
-                Task.now(())
-              case result =>
-                Task.raiseError(new IllegalStateException(s"Adding entry failed, due to: ${result.getResultCode}"))
-            }
-            .onErrorRecover {
-              case ex: LDAPException if ex.getResultCode == ResultCode.ENTRY_ALREADY_EXISTS =>
-                Task.now(())
-            }
-        }
-      }
-      .map(_ => ())
-  }
-
-  private def readEntries() = {
-    val result = for {
-      inputStream <- ldapInitScript match {
-        case InitScriptSource.Resource(resourceName) =>
-          new Dispose(new BufferedReader(new InputStreamReader(Resource.getAsStream(resourceName))))
-        case InitScriptSource.AFile(file) =>
-          file.bufferedReader
-      }
-      reader <- new Dispose(new LDIFReader(inputStream))
-    } yield {
-      Iterator
-        .continually(Option(reader.readEntry()))
-        .takeWhile(_.isDefined)
-        .flatten
-        .toList
-    }
-    result.get()
-  }
-
-  private def runOnBindedLdapConnection(action: LDAPConnection => Task[Unit]): Task[Unit] = {
+  private def runOnBindedLdapConnection(action: LDAPConnection => Unit): Task[Unit] = {
     defaults.ldap.bindDn match {
       case Some(bindDn) =>
         Task(new LDAPConnection(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(LdapContainer.port)))
           .bracket(connection =>
             Task(connection.bind(bindDn, defaults.ldap.adminPassword))
               .flatMap {
-                case result if result.getResultCode == ResultCode.SUCCESS => action(connection)
+                case result if result.getResultCode == ResultCode.SUCCESS => Task.delay(action(connection))
                 case result => Task.raiseError(new IllegalStateException(s"LDAP '$name' bind problem - error ${result.getResultCode.intValue()}"))
               }
           )(connection =>
@@ -176,8 +135,6 @@ private class LdapWaitStrategy(name: String,
         Task.raiseError(new IllegalStateException(s"Cannot create bind DN from LDAP config data"))
     }
   }
-
-  private implicit val ldifReaderDisposable: Disposable[LDIFReader] = Disposable(_.close())
 }
 
 object LdapWaitStrategy {

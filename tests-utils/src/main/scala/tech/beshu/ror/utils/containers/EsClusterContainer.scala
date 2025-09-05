@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{Container, SingleContainer}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
-import monix.eval.{Coeval, Task}
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
@@ -194,4 +194,4 @@ object SecurityType {
   case object NoSecurityCluster extends SecurityType
 }
 
-final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]], originalPort: Int)
+final case class DependencyDef(name: String, container: SingleContainer[GenericContainer[_]], originalPort: Int)

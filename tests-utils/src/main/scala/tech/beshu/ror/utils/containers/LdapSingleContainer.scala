@@ -16,15 +16,19 @@
  */
 package tech.beshu.ror.utils.containers
 
-import better.files.File
+import better.files.{Disposable, Dispose, File, Resource, disposeFlatMap}
 import com.dimafeng.testcontainers.SingleContainer
+import com.unboundid.ldap.sdk.{LDAPConnection, LDAPException, ResultCode}
+import com.unboundid.ldif.LDIFReader
 import monix.execution.Scheduler.Implicits.global
-import org.testcontainers.containers.{GenericContainer as JavaGenericContainer}
+import org.testcontainers.containers.GenericContainer as JavaGenericContainer
 import tech.beshu.ror.utils.containers.LdapSingleContainer.InitScriptSource
+import tech.beshu.ror.utils.containers.LdapWaitStrategy.*
 import tech.beshu.ror.utils.containers.windows.{NonStoppableInMemoryLdapService, WindowsPseudoSingleContainerLdap}
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.ScalaUtils.*
 
+import java.io.{BufferedReader, InputStreamReader}
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 
@@ -88,6 +92,48 @@ object LdapSingleContainer {
       }
     }
   }
+
+  def initLdap(connection: LDAPConnection, ldapInitScript: InitScriptSource): Unit = {
+    val entries = readEntries(ldapInitScript)
+
+    entries.foreach { entry =>
+      try {
+        val result = connection.add(entry) // or AddRequest(entry.toLDIF: _*) if needed
+        if (result.getResultCode != ResultCode.SUCCESS &&
+          result.getResultCode != ResultCode.ENTRY_ALREADY_EXISTS) {
+          throw new IllegalStateException(s"Failed to add entry: ${result.getResultCode}")
+        }
+      } catch {
+        case ex: LDAPException if ex.getResultCode == ResultCode.ENTRY_ALREADY_EXISTS =>
+        // Ignore, already exists
+        case ex: Exception =>
+          // Re-throw other exceptions
+          throw ex
+      }
+    }
+  }
+
+  private def readEntries(ldapInitScript: InitScriptSource) = {
+    val result = for {
+      inputStream <- ldapInitScript match {
+        case InitScriptSource.Resource(resourceName) =>
+          new Dispose(new BufferedReader(new InputStreamReader(Resource.getAsStream(resourceName))))
+        case InitScriptSource.AFile(file) =>
+          file.bufferedReader
+      }
+      reader <- new Dispose(new LDIFReader(inputStream))
+    } yield {
+      Iterator
+        .continually(Option(reader.readEntry()))
+        .takeWhile(_.isDefined)
+        .flatten
+        .toList
+    }
+    result.get()
+  }
+
+
+  private implicit val ldifReaderDisposable: Disposable[LDIFReader] = Disposable(_.close())
 }
 
 object NonStoppableLdapSingleContainer {

@@ -27,7 +27,6 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.testcontainers.DockerClientFactory
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.*
-import tech.beshu.ror.utils.containers.EsContainer.EsContainerImplementation
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
@@ -35,6 +34,7 @@ import tech.beshu.ror.utils.containers.logs.DockerLogsToStringConsumer
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.{EsModulePatterns, OsUtils}
 
 import scala.concurrent.duration.*
@@ -56,75 +56,78 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
 
   private val validRorConfigFile = "/basic/readonlyrest.yml"
 
-  "ES" when {
-    if (OsUtils.isWindows) {
-      "using native Windows ES" should {
-        // In ES versions 7.x, 8.0.x - 8.17.x the ROR security policy grants permission:
-        // `permission java.io.FilePermission "/usr/share/elasticsearch", "read";`
-        // It is not a valid Windows path, so ror-tools patcher cannot read the ES directory and prints warning.
-        "ES {7.x, 8.0.x - 8.17.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs9x, allEs818x) in {
-          val dockerLogs = withTestEsContainerManager(EsInstallationType.NativeWindowsProcess) { esContainer =>
-            testRorStartup(usingManager = esContainer)
+  OsUtils.currentOs match {
+    case CurrentOs.Windows =>
+      "ES" when {
+        "using native Windows ES" should {
+          // In ES versions 7.x, 8.0.x - 8.17.x the ROR security policy grants permission:
+          // `permission java.io.FilePermission "/usr/share/elasticsearch", "read";`
+          // It is not a valid Windows path, so ror-tools patcher cannot read the ES directory and prints warning.
+          "ES {7.x, 8.0.x - 8.17.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs9x, allEs818x) in {
+            val dockerLogs = withTestEsContainerManager(EsInstallationType.NativeWindowsProcess) { esContainer =>
+              testRorStartup(usingManager = esContainer)
+            }
+            dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
+            dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
+            dockerLogs should include("Loading Elasticsearch settings from file:")
+            dockerLogs should include("Cannot verify if the ES was patched")
+            dockerLogs should include("ReadonlyREST was loaded")
           }
-          dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
-          dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
-          dockerLogs should include("Loading Elasticsearch settings from file:")
-          dockerLogs should include("Cannot verify if the ES was patched")
-          dockerLogs should include("ReadonlyREST was loaded")
-        }
-        // In ES versions 8.18.x, 9.x the ROR security policy grants permission in the newer syntax:
-        // ALL-UNNAMED:
-        //  - files:
-        //      - relative_path: ../
-        // It is valid on Windows, so ror-tools patcher can read the ES directory and does not print the warning.
-        "ES {8.18.x, 9.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs7x, allEs8xBelowEs818x) in {
-          val dockerLogs = withTestEsContainerManager(EsInstallationType.NativeWindowsProcess) { esContainer =>
-            testRorStartup(usingManager = esContainer)
+          // In ES versions 8.18.x, 9.x the ROR security policy grants permission in the newer syntax:
+          // ALL-UNNAMED:
+          //  - files:
+          //      - relative_path: ../
+          // It is valid on Windows, so ror-tools patcher can read the ES directory and does not print the warning.
+          "ES {8.18.x, 9.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs7x, allEs8xBelowEs818x) in {
+            val dockerLogs = withTestEsContainerManager(EsInstallationType.NativeWindowsProcess) { esContainer =>
+              testRorStartup(usingManager = esContainer)
+            }
+            dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
+            dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
+            dockerLogs should include("Loading Elasticsearch settings from file:")
+            dockerLogs shouldNot include("Cannot verify if the ES was patched")
+            dockerLogs should include("ReadonlyREST was loaded")
           }
-          dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
-          dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
-          dockerLogs should include("Loading Elasticsearch settings from file:")
-          dockerLogs shouldNot include("Cannot verify if the ES was patched")
-          dockerLogs should include("ReadonlyREST was loaded")
-        }
-      }
-    } else {
-      "using official ES image" should {
-        "successfully load ROR plugin and start (patch verification without warning)" in {
-          val dockerLogs = withTestEsContainerManager(EsInstallationType.EsDockerImage) { esContainer =>
-            testRorStartup(usingManager = esContainer)
-          }
-          dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
-          dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
-          dockerLogs should include("Loading Elasticsearch settings from file:")
-          dockerLogs shouldNot include("Cannot verify if the ES was patched")
-          dockerLogs should include("ReadonlyREST was loaded")
         }
       }
-      "installed on Ubuntu using apt" should {
-        // ES 6.x is not available as apt package, so we do not test it
-        "ES {7.x, 8.0.x - 8.17.x} successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES(allEs6x, allEs9x, allEs818x) in {
-          val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
-            testRorStartup(usingManager = esContainer)
+    case CurrentOs.OtherThanWindows =>
+      "ES" when {
+        "using official ES image" should {
+          "successfully load ROR plugin and start (patch verification without warning)" in {
+            val dockerLogs = withTestEsContainerManager(EsInstallationType.EsDockerImage) { esContainer =>
+              testRorStartup(usingManager = esContainer)
+            }
+            dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
+            dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
+            dockerLogs should include("Loading Elasticsearch settings from file:")
+            dockerLogs shouldNot include("Cannot verify if the ES was patched")
+            dockerLogs should include("ReadonlyREST was loaded")
           }
-          dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
-          dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
-          dockerLogs should include("Loading Elasticsearch settings from file:")
-          dockerLogs shouldNot include("Cannot verify if the ES was patched")
-          dockerLogs should include("ReadonlyREST was loaded")
         }
-        "ES {8.18.x, 9.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs7x, allEs8xBelowEs818x) in {
-          val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
-            testRorStartup(usingManager = esContainer)
+        "installed on Ubuntu using apt" should {
+          // ES 6.x is not available as apt package, so we do not test it
+          "ES {7.x, 8.0.x - 8.17.x} successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES(allEs6x, allEs9x, allEs818x) in {
+            val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
+              testRorStartup(usingManager = esContainer)
+            }
+            dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
+            dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
+            dockerLogs should include("Loading Elasticsearch settings from file:")
+            dockerLogs shouldNot include("Cannot verify if the ES was patched")
+            dockerLogs should include("ReadonlyREST was loaded")
           }
-          dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
-          dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
-          dockerLogs should include("Loading Elasticsearch settings from file:")
-          dockerLogs should include("Cannot verify if the ES was patched. component [readonlyrest], module [ALL-UNNAMED], class [class tech.beshu.ror.tools.core.utils.EsDirectory$], entitlement [file], operation [read], path [/usr/share/elasticsearch]")
-          dockerLogs should include("ReadonlyREST was loaded")
+          "ES {8.18.x, 9.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs7x, allEs8xBelowEs818x) in {
+            val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
+              testRorStartup(usingManager = esContainer)
+            }
+            dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
+            dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
+            dockerLogs should include("Loading Elasticsearch settings from file:")
+            dockerLogs should include("Cannot verify if the ES was patched. component [readonlyrest], module [ALL-UNNAMED], class [class tech.beshu.ror.tools.core.utils.EsDirectory$], entitlement [file], operation [read], path [/usr/share/elasticsearch]")
+            dockerLogs should include("ReadonlyREST was loaded")
+          }
         }
       }
-    }
   }
 
   private def withTestEsContainerManager(esInstallationType: EsInstallationType)
