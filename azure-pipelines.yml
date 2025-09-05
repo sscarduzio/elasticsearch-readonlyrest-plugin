@@ -527,7 +527,7 @@ stages:
             or(
               eq(variables.isEpic, true),
               eq(variables.isDevelop, true),
-              eq(variables.isMaster, true),
+              eq(variables.isMaster, true)
             ),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
