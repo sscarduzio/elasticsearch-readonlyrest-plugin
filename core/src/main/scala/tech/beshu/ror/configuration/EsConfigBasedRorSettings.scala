@@ -23,11 +23,10 @@ import io.circe.Decoder
 import monix.eval.Task
 import squants.information.Information
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsFile, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingError.{FileNotFound, MalformedContent, CannotUseRorSslWhenXPackSecurityIsEnabled}
+import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingError.{CannotUseRorSslWhenXPackSecurityIsEnabled, FileNotFound, MalformedContent}
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy.{ForceLoadingFromFile, LoadFromIndexWithFileFallback}
 import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay, RefreshInterval}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.providers.PropertiesProvider
@@ -37,7 +36,9 @@ import scala.language.implicitConversions
 
 final case class EsConfigBasedRorSettings(boot: RorBootSettings,
                                           ssl: Option[RorSslSettings],
-                                          rorSettingsIndex: RorSettingsIndex,
+                                          settingsIndex: RorSettingsIndex,
+                                          settingsFile: RorSettingsFile,
+                                          settingsMaxSize: Information,
                                           loadingRorCoreStrategy: LoadingRorCoreStrategy)
 
 object EsConfigBasedRorSettings {
@@ -48,15 +49,13 @@ object EsConfigBasedRorSettings {
     val result = for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
       bootSettings <- loadRorBootSettings(esEnv)
-      loadingRorCoreStrategyAndIndex <- loadLoadingRorCoreStrategyAndRorIndex(esEnv)
-      (loadingRorCoreStrategy, rorIndex) = loadingRorCoreStrategyAndIndex
+      loadingRorCoreStrategy <- loadLoadingRorCoreStrategy(esEnv)
+      settingsFile <- loadRorSettingsFile(esEnv)
+      settingsIndex <- loadRorSettingsIndex(esEnv)
+      settingsMaxSize <- loadMaxSizeInformation(esEnv)
       xpackSettings <- loadXpackSecuritySettings(esEnv, esEnv.isOssDistribution)
-      rorFileSettings = loadingRorCoreStrategy match {
-        case ForceLoadingFromFile(settings) => settings
-        case LoadFromIndexWithFileFallback(_, fallbackSettings) => fallbackSettings
-      }
-      sslSettings <- loadRorSslSettings(esEnv, rorFileSettings, xpackSettings)
-    } yield EsConfigBasedRorSettings(bootSettings, sslSettings, rorIndex, loadingRorCoreStrategy)
+      sslSettings <- loadRorSslSettings(esEnv, settingsFile, xpackSettings)
+    } yield EsConfigBasedRorSettings(bootSettings, sslSettings, settingsIndex, settingsFile, settingsMaxSize, loadingRorCoreStrategy)
     result.value
   }
 
@@ -79,10 +78,10 @@ object EsConfigBasedRorSettings {
   }
 
   private def loadRorSslSettings(esEnv: EsEnv,
-                                 rorSettingsFromFileParameters: LoadFromFileParameters,
+                                 rorSettingsFile: RorSettingsFile,
                                  xpackSecurity: XpackSecurity)
                                 (implicit systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
-    EitherT(RorSslSettings.load(rorSettingsFromFileParameters.rorSettingsFile, esEnv.elasticsearchYmlFile))
+    EitherT(RorSslSettings.load(rorSettingsFile, esEnv.elasticsearchYmlFile))
       .leftMap(error => MalformedContent(esEnv.elasticsearchYmlFile, error.message))
       .subflatMap {
         case Some(ssl) if xpackSecurity.enabled =>
@@ -92,51 +91,53 @@ object EsConfigBasedRorSettings {
       }
   }
 
-  private def loadLoadingRorCoreStrategyAndRorIndex(esEnv: EsEnv)
-                                                   (implicit systemContext: SystemContext) = {
+  private def loadRorSettingsFile(esEnv: EsEnv)
+                                 (implicit systemContext: SystemContext) = {
+    implicit val decoder: Decoder[RorSettingsFile] = decoders.rorSettingsFileDecoder(esEnv)
+    load[RorSettingsFile](esEnv, "ROR configuration file name")
+  }
+
+  private def loadRorSettingsIndex(esEnv: EsEnv)
+                                  (implicit systemContext: SystemContext) = {
+    import decoders.rorSettingsIndexDecoder
+    load[RorSettingsIndex](esEnv, "ROR configuration index settings")
+  }
+
+  private def loadLoadingRorCoreStrategy(esEnv: EsEnv)
+                                        (implicit systemContext: SystemContext) = {
+    implicit val decoder: Decoder[LoadingRorCoreStrategy] = decoders.loadRorCoreStrategyDecoder(esEnv)
+    load[LoadingRorCoreStrategy](esEnv, "ROR loading core settings")
+  }
+
+  private def loadMaxSizeInformation(esEnv: EsEnv)
+                                    (implicit systemContext: SystemContext) = {
+    implicit val decoder: Decoder[Information] = decoders.settingsMaxSizeDecoder()
+    load[Information](esEnv, "ROR settings max size")
+  }
+
+  private def load[T: Decoder](esEnv: EsEnv, settingsName: String)
+                              (implicit systemContext: SystemContext): EitherT[Task, MalformedContent, T] = {
     EitherT.fromEither[Task] {
-      implicit val loadRorCoreStrategyDecoder: Decoder[LoadingRorCoreStrategy] = decoders.loadRorCoreStrategyDecoder(esEnv)
-      import decoders.rorSettingsIndexDecoder
       val loader = new YamlFileBasedSettingsLoader(esEnv.elasticsearchYmlFile)
       for {
         strategy <- loader
-          .loadSettings[LoadingRorCoreStrategy](settingsName = "ROR loading core settings")
+          .loadSettings[T](settingsName)
           .left.map(error => MalformedContent(esEnv.elasticsearchYmlFile, error.message))
-        rorIndex <- loader
-          .loadSettings[RorSettingsIndex](settingsName = "ROR configuration index settings")
-          .left.map(error => MalformedContent(esEnv.elasticsearchYmlFile, error.message))
-      } yield (strategy, rorIndex)
+      } yield strategy
     }
   }
 
   sealed trait LoadingRorCoreStrategy
   object LoadingRorCoreStrategy {
-    final case class ForceLoadingFromFile(parameters: LoadFromFileParameters) extends LoadingRorCoreStrategy
-    final case class LoadFromIndexWithFileFallback(parameters: LoadFromIndexParameters,
-                                                   fallbackParameters: LoadFromFileParameters)
+    case object ForceLoadingFromFile extends LoadingRorCoreStrategy
+    final case class LoadFromIndexWithFileFallback(parameters: LoadFromIndexParameters) // todo: what about retries?
       extends LoadingRorCoreStrategy
   }
 
-  implicit class ExtractFromLoadingRorSettingsStrategy(val strategy: LoadingRorCoreStrategy) extends AnyVal {
-    def rorSettingsFile: File = strategy match {
-      case ForceLoadingFromFile(parameters) => parameters.rorSettingsFile
-      case LoadFromIndexWithFileFallback(_, fallbackParameters) => fallbackParameters.rorSettingsFile
-    }
-
-    def rorSettingsMaxSize: Information = strategy match {
-      case ForceLoadingFromFile(parameters) => parameters.settingsMaxSize
-      case LoadFromIndexWithFileFallback(parameters, _) => parameters.settingsMaxSize
-    }
-  }
-
-  final case class LoadFromFileParameters(rorSettingsFile: File,
-                                          settingsMaxSize: Information)
-  final case class LoadFromIndexParameters(rorSettingsIndex: RorSettingsIndex,
-                                           refreshInterval: RefreshInterval,
+  final case class LoadFromIndexParameters(refreshInterval: RefreshInterval,
                                            loadingAttemptsInterval: LoadingAttemptsInterval,
                                            loadingAttemptsCount: LoadingAttemptsCount,
-                                           loadingDelay: LoadingDelay,
-                                           settingsMaxSize: Information)
+                                           loadingDelay: LoadingDelay) // todo: rename to reload or sth?
 
   private final case class XpackSecurity(enabled: Boolean)
 
@@ -155,13 +156,11 @@ object EsConfigBasedRorSettings {
         default = false
       ) flatMap {
         case true =>
-          loadFromFileParametersDecoder(esEnv, systemContext.propertiesProvider)
-            .map(LoadingRorCoreStrategy.ForceLoadingFromFile.apply)
+          Decoder.const(LoadingRorCoreStrategy.ForceLoadingFromFile)
         case false =>
           for {
             loadFromIndexSettings <- loadFromIndexSettingsDecoder(systemContext.propertiesProvider)
-            loadFromFileSettings <- loadFromFileParametersDecoder(esEnv, systemContext.propertiesProvider)
-          } yield LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(loadFromIndexSettings, loadFromFileSettings)
+          } yield LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(loadFromIndexSettings)
       }
     }
 
@@ -174,6 +173,21 @@ object EsConfigBasedRorSettings {
         path = NonEmptyList.of("readonlyrest", "settings_index"),
         default = RorSettingsIndex.default
       )
+    }
+
+    implicit def rorSettingsFileDecoder(esEnv: EsEnv)
+                                       (implicit systemContext: SystemContext): Decoder[RorSettingsFile] =
+      Decoder.instance(_ => Right(
+        RorProperties
+          .rorSettingsCustomFile(systemContext.propertiesProvider)
+          .getOrElse(RorSettingsFile.default(esEnv))
+      ))
+
+    implicit def settingsMaxSizeDecoder()
+                                       (implicit systemContext: SystemContext): Decoder[Information] = {
+      Decoder.instance(_ => Right(
+        RorProperties.rorSettingsMaxSize(systemContext.propertiesProvider)
+      ))
     }
 
     def xpackSettingsDecoder(isOssDistribution: Boolean): Decoder[XpackSecurity] = {
@@ -194,33 +208,17 @@ object EsConfigBasedRorSettings {
       }
     }
 
-    private implicit def loadFromFileParametersDecoder(esEnv: EsEnv,
-                                                       propertiesProvider: PropertiesProvider): Decoder[LoadFromFileParameters] = {
-      for {
-        settingsFile <- Decoder.instance(_ => Right(
-          RorProperties.rorSettingsCustomFile(propertiesProvider).getOrElse(esEnv.configDir / "readonlyrest.yml")
-        ))
-        settingsMaxSize <- Decoder.instance(_ => Right(
-          RorProperties.rorSettingsMaxSize(propertiesProvider)
-        ))
-      } yield LoadFromFileParameters(settingsFile, settingsMaxSize)
-    }
-
     private implicit def loadFromIndexSettingsDecoder(propertiesProvider: PropertiesProvider): Decoder[LoadFromIndexParameters] = {
       for {
-        settingsIndex <- rorSettingsIndexDecoder
         refreshInterval <- Decoder.instance(_ => Right(RorProperties.rorIndexSettingsReloadInterval(propertiesProvider)))
         loadingAttemptsInterval <- Decoder.instance(_ => Right(RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(propertiesProvider)))
         loadingAttemptsCount <- Decoder.instance(_ => Right(RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(propertiesProvider)))
         loadingDelay <- Decoder.instance(_ => Right(RorProperties.atStartupRorIndexSettingLoadingDelay(propertiesProvider)))
-        settingsMaxSize <- Decoder.instance(_ => Right(RorProperties.rorSettingsMaxSize(propertiesProvider)))
       } yield LoadFromIndexParameters(
-        settingsIndex,
         refreshInterval,
         loadingAttemptsInterval,
         loadingAttemptsCount,
-        loadingDelay,
-        settingsMaxSize
+        loadingDelay
       )
     }
   }

@@ -14,21 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.source
+package tech.beshu.ror.settings.strategy
 
-import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
-import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
+import monix.eval.Task
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.configuration.{RawRorSettings, TestRorSettings}
 
-class MainSettingsFileSource private (settingsFile: RorSettingsFile)
-                                     (implicit decoder: Decoder[RawRorSettings])
-  extends FileSettingsSource[RawRorSettings](settingsFile.file)
+trait StartingRorSettingsLoader {
 
-object MainSettingsFileSource {
-
-  def create(settingsFile: RorSettingsFile,
-             settingsYamlParser: RawRorSettingsYamlParser): MainSettingsFileSource = {
-    implicit val decoder: Decoder[RawRorSettings] = new RawRorSettingsCodec(settingsYamlParser)
-    new MainSettingsFileSource(settingsFile)
-  }
+  def load(): Task[Either[StartingFailure, (RawRorSettings, Option[TestRorSettings])]]
 }

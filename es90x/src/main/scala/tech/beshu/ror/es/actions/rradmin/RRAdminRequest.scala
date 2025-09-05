@@ -20,15 +20,15 @@ import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.api.MainRorSettingsApi
+import tech.beshu.ror.api.MainSettingsApi
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps.*
 
-class RRAdminRequest(adminApiRequest: MainRorSettingsApi.MainSettingsRequest,
+class RRAdminRequest(adminApiRequest: MainSettingsApi.MainSettingsRequest,
                      esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
 
-  val getAdminRequest: MainRorSettingsApi.MainSettingsRequest = adminApiRequest
+  val getAdminRequest: MainSettingsApi.MainSettingsRequest = adminApiRequest
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
   override def validate(): ActionRequestValidationException = null
@@ -39,18 +39,18 @@ object RRAdminRequest {
   def createFrom(request: RestRequest): RRAdminRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
       case (constants.FORCE_RELOAD_CONFIG_PATH, POST) =>
-        MainRorSettingsApi.MainSettingsRequest.Type.ForceReload
+        MainSettingsApi.MainSettingsRequest.Type.ForceReload
       case (constants.PROVIDE_FILE_CONFIG_PATH, GET) =>
-        MainRorSettingsApi.MainSettingsRequest.Type.ProvideFileSettings
+        MainSettingsApi.MainSettingsRequest.Type.ProvideFileSettings
       case (constants.PROVIDE_INDEX_CONFIG_PATH, GET) =>
-        MainRorSettingsApi.MainSettingsRequest.Type.ProvideIndexSettings
+        MainSettingsApi.MainSettingsRequest.Type.ProvideIndexSettings
       case (constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
-        MainRorSettingsApi.MainSettingsRequest.Type.UpdateIndexSettings
+        MainSettingsApi.MainSettingsRequest.Type.UpdateIndexSettings
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRAdminRequest(
-      new MainRorSettingsApi.MainSettingsRequest(requestType, request.content.utf8ToString),
+      new MainSettingsApi.MainSettingsRequest(requestType, request.content.utf8ToString),
       request
     )
   }

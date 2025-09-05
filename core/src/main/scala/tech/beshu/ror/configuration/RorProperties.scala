@@ -23,6 +23,7 @@ import eu.timepit.refined.numeric.NonNegative
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Information, Megabytes}
+import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
@@ -53,10 +54,10 @@ object RorProperties extends Logging {
     val rorSettingsMaxSize: NonEmptyString = nes("com.readonlyrest.settings.maxSize")
   }
 
-  def rorSettingsCustomFile(implicit propertiesProvider: PropertiesProvider): Option[File] =
+  def rorSettingsCustomFile(implicit propertiesProvider: PropertiesProvider): Option[RorSettingsFile] =
     propertiesProvider
       .getProperty(PropName(keys.rorSettingsFilePath))
-      .map(File(_))
+      .map(f => RorSettingsFile(File(f)))
 
   def rorIndexSettingsReloadInterval(implicit propertiesProvider: PropertiesProvider): RefreshInterval =
     getProperty(

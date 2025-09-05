@@ -16,19 +16,23 @@
  */
 package tech.beshu.ror.settings.source
 
-import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
+import io.circe.Decoder.Result
+import io.circe.{Codec, Decoder, HCursor, Json}
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 
-class MainSettingsFileSource private (settingsFile: RorSettingsFile)
-                                     (implicit decoder: Decoder[RawRorSettings])
-  extends FileSettingsSource[RawRorSettings](settingsFile.file)
+private [source] class RawRorSettingsCodec(yamlParser: RawRorSettingsYamlParser)
+  extends Codec[RawRorSettings] {
 
-object MainSettingsFileSource {
+  override def apply(c: HCursor): Result[RawRorSettings] =
+    Decoder
+      .decodeString
+      .emap { str =>
+        yamlParser
+          .fromString(str)
+          .left.map { _ => ??? }
+      }
+      .apply(c)
 
-  def create(settingsFile: RorSettingsFile,
-             settingsYamlParser: RawRorSettingsYamlParser): MainSettingsFileSource = {
-    implicit val decoder: Decoder[RawRorSettings] = new RawRorSettingsCodec(settingsYamlParser)
-    new MainSettingsFileSource(settingsFile)
-  }
+  override def apply(a: RawRorSettings): Json =
+    Json.fromString(a.raw)
 }

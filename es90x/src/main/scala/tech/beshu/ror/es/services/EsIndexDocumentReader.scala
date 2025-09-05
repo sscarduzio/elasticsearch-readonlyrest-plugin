@@ -17,26 +17,27 @@
 package tech.beshu.ror.es.services
 
 import cats.implicits.*
+import io.circe.Json
+import io.circe.parser.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.ResourceNotFoundException
 import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.index.IndexNotFoundException
 import org.elasticsearch.injection.guice.Inject
 import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.boot.RorSchedulers
-import tech.beshu.ror.es.IndexJsonContentService
-import tech.beshu.ror.es.IndexJsonContentService.*
+import tech.beshu.ror.es.IndexDocumentReader
+import tech.beshu.ror.es.IndexDocumentReader.*
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.annotation.unused
-import scala.jdk.CollectionConverters.*
 
-class EsIndexJsonContentService(client: NodeClient,
-                                @unused constructorDiscriminator: Unit)
-  extends IndexJsonContentService
+class EsIndexDocumentReader(client: NodeClient,
+                            @unused constructorDiscriminator: Unit)
+  extends IndexDocumentReader
     with Logging {
 
   @Inject
@@ -44,8 +45,7 @@ class EsIndexJsonContentService(client: NodeClient,
     this(client, ())
   }
 
-  override def sourceOf(index: IndexName.Full,
-                        id: String): Task[Either[ReadError, Map[String, String]]] = {
+  override def documentAsJson(index: IndexName.Full, id: String): Task[Either[ReadError, Json]] = {
     Task {
       client
         .get(
@@ -59,32 +59,33 @@ class EsIndexJsonContentService(client: NodeClient,
     }
       .map { response =>
         if (response.isExists) {
-          Option(response.getSourceAsMap) match {
-            case Some(map) =>
-              val source = map.asScala.toMap.asStringMap
-              logger.debug(s"Document [${index.show} ID=$id] _source: ${showSource(source)}")
-              Right(source)
+          Option(response.getSourceAsString) match {
+            case Some(source) =>
+              logger.debug(s"Document [${index.show} ID=$id] _source: $source")
+              parse(source) match {
+                case Right(value) => Right(value)
+                case Left(failure) => throw new IllegalStateException(s"Cannot parse document source to JSON: ${failure.toString}")
+              }
             case None =>
               logger.warn(s"Document [${index.show} ID=$id] _source is not available. Assuming it's empty")
-              Right(Map.empty[String, String])
+              Right(Json.Null)
           }
         } else {
           logger.debug(s"Document [${index.show} ID=$id] not exist")
-          Left(ContentNotFound)
+          Left(DocumentNotFound)
         }
       }
       .executeOn(RorSchedulers.blockingScheduler)
       .onErrorRecover {
-        case _: ResourceNotFoundException => Left(ContentNotFound)
+        case _: ResourceNotFoundException => Left(DocumentNotFound)
+        case _: IndexNotFoundException => Left(IndexNotFound)
         case ex =>
           logger.error(s"Cannot get source of document [${index.show} ID=$id]", ex)
-          Left(CannotReachContentSource)
+          Left(DocumentUnreachable)
       }
   }
 
-  override def saveContent(index: IndexName.Full,
-                           id: String,
-                           content: Map[String, String]): Task[Either[WriteError, Unit]] = {
+  override def saveDocumentJson(index: IndexName.Full, id: String, document: Json): Task[Either[WriteError, Unit]] = {
     Task {
       client
         .index(
@@ -92,7 +93,7 @@ class EsIndexJsonContentService(client: NodeClient,
             .prepareIndex()
             .setIndex(index.name.value)
             .setId(id)
-            .setSource(content.asJava, XContentType.JSON)
+            .setSource(document.noSpaces, XContentType.JSON)
             .setRefreshPolicy(RefreshPolicy.WAIT_UNTIL)
             .request()
         )

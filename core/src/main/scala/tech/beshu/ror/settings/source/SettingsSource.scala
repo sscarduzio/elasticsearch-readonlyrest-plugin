@@ -29,7 +29,7 @@ trait ReadOnlySettingsSource[SETTINGS : Decoder, ERROR] extends SettingsSource[S
 object ReadOnlySettingsSource {
   sealed trait LoadingSettingsError[+ERROR]
   object LoadingSettingsError {
-    case object FormatError extends LoadingSettingsError[Nothing]
+    final case class SettingsMalformed(cause: String) extends LoadingSettingsError[Nothing]
     final case class SourceSpecificError[ERROR](error: ERROR) extends LoadingSettingsError[ERROR]
   }
 

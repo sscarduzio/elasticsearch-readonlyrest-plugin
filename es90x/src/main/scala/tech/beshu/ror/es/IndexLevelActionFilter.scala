@@ -39,7 +39,7 @@ import tech.beshu.ror.configuration.EsConfigBasedRorSettings
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
-import tech.beshu.ror.es.services.{EsIndexJsonContentService, EsServerBasedRorClusterService, NodeClientBasedAuditSinkService, RestClientAuditSinkService}
+import tech.beshu.ror.es.services.{EsIndexDocumentReader, EsServerBasedRorClusterService, NodeClientBasedAuditSinkService, RestClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.exceptions.StartingFailureException
@@ -59,7 +59,7 @@ class IndexLevelActionFilter(nodeName: String,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
                              esInitListener: EsInitListener,
-                             esConfig: EsConfigBasedRorSettings)
+                             esConfigBasedRorSettings: EsConfigBasedRorSettings)
                             (implicit systemContext: SystemContext)
   extends ActionFilter with Logging {
 
@@ -69,7 +69,7 @@ class IndexLevelActionFilter(nodeName: String,
     new RorNotAvailableRequestHandler(esConfig.boot)
 
   private val ror = ReadonlyRest.create(
-    new EsIndexJsonContentService(client),
+    new EsIndexDocumentReader(client),
     auditSinkServiceCreator,
     EsEnvProvider.create(env)
   )

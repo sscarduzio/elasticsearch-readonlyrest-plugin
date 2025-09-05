@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorSettingsIndex, User}
 import tech.beshu.ror.configuration.TestRorSettings.Expiration
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
-import tech.beshu.ror.es.IndexJsonContentService
+import tech.beshu.ror.es.IndexDocumentReader
 import tech.beshu.ror.settings.source.TestSettingsIndexSource.Const
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
@@ -40,17 +40,17 @@ import java.time.format.DateTimeFormatter
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
-class TestSettingsIndexSource private(indexJsonContentService: IndexJsonContentService,
+class TestSettingsIndexSource private(indexJsonContentService: IndexDocumentReader,
                                       settingsIndex: RorSettingsIndex)
                                      (implicit codec: Codec[TestRorSettings])
-  extends IndexSettingsSource[TestRorSettings](indexJsonContentService, settingsIndex, documentId = Const.id)
+  extends IndexSettingsSource[TestRorSettings](indexJsonContentService, settingsIndex.index, documentId = Const.id)
 
 object TestSettingsIndexSource {
 
-  def create(indexJsonContentService: IndexJsonContentService,
+  def create(indexJsonContentService: IndexDocumentReader,
              settingsIndex: RorSettingsIndex,
-             rorSettingsYamlParser: RawRorSettingsYamlParser): TestSettingsIndexSource = {
-    implicit val codec: Codec[TestRorSettings] = createTestRorSettingsCodec(rorSettingsYamlParser)
+             settingsYamlParser: RawRorSettingsYamlParser): TestSettingsIndexSource = {
+    implicit val codec: Codec[TestRorSettings] = createTestRorSettingsCodec(settingsYamlParser)
     new TestSettingsIndexSource(indexJsonContentService, settingsIndex)
   }
 
@@ -88,15 +88,8 @@ object TestSettingsIndexSource {
     } yield TestRorSettings(settings, mocks, Expiration(expirationTtl, expirationTime))
   }
 
-  private implicit def settingsCodec(implicit yamlParser: RawRorSettingsYamlParser): Codec[RawRorSettings] = {
-    val decoder = Decoder.decodeString.emap { str =>
-      yamlParser
-        .fromString(str)
-        .left.map { _ => ??? }
-    }
-    val encoder: Encoder[RawRorSettings] = Encoder.encodeString.contramap(_.raw)
-    Codec.from(decoder, encoder)
-  }
+  private implicit def settingsCodec(implicit yamlParser: RawRorSettingsYamlParser): Codec[RawRorSettings] =
+    new RawRorSettingsCodec(yamlParser)
 
   private implicit val mocksCodec: Codec[AuthServicesMocks] = {
     implicit val nonEmptyStringCodec: Codec[NonEmptyString] =

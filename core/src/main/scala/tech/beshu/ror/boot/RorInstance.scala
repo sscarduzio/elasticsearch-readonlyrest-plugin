@@ -28,14 +28,14 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.RorDependencies
-import tech.beshu.ror.api.{AuthMockApi, MainRorSettingsApi, TestRorSettingsApi}
-import tech.beshu.ror.boot.engines.{Engines, MainSettingsBasedReloadableEngine, TestSettingsBasedReloadableEngine}
+import tech.beshu.ror.api.{AuthMockApi, MainSettingsApi, TestSettingsApi}
+import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.source.IndexSettingsSource
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -43,18 +43,17 @@ import java.time.Instant
 
 class RorInstance private(boot: ReadonlyRest,
                           mode: RorInstance.Mode,
-                          esConfig: EsConfigBasedRorSettings,
+                          esConfigBasedRorSettings: EsConfigBasedRorSettings,
+                          creators: SettingsRelatedCreators,
                           mainInitialEngine: ReadonlyRest.MainEngine,
                           mainReloadInProgress: Semaphore[Task],
-                          mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
-                          mainSettingsFileSource: FileSettingsSource[RawRorSettings],
                           testInitialEngine: ReadonlyRest.TestEngine,
-                          testReloadInProgress: Semaphore[Task],
-                          testSettingsIndexSource: IndexSettingsSource[TestRorSettings])
+                          testReloadInProgress: Semaphore[Task])
                          (implicit systemContext: SystemContext,
                           scheduler: Scheduler)
   extends Logging {
 
+  import creators.*
   import RorInstance.*
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
 
@@ -67,34 +66,30 @@ class RorInstance private(boot: ReadonlyRest,
       Cancelable.empty
   }
 
-  private val theMainSettingsEngine = new MainSettingsBasedReloadableEngine(
+  private val theMainSettingsEngine = mainSettingsBasedReloadableEngineCreator.create(
     boot,
-    esConfig,
+    esConfigBasedRorSettings,
     (mainInitialEngine.engine, mainInitialEngine.settings),
-    mainReloadInProgress,
-    mainSettingsIndexSource
+    mainReloadInProgress
   )
-  private val theTestSettingsEngine = TestSettingsBasedReloadableEngine.create(
+  private val theTestSettingsEngine = testSettingsBasedReloadableEngineCreator.create(
     boot,
-    esConfig,
+    esConfigBasedRorSettings,
     testInitialEngine,
-    testReloadInProgress,
-    testSettingsIndexSource
+    testReloadInProgress
   )
 
-  private val rarRorSettingsYamlParser = new RawRorSettingsYamlParser(esConfig.loadingRorCoreStrategy.rorSettingsMaxSize)
-
-  private val mainSettingsRestApi = new MainRorSettingsApi(rorInstance = this, rarRorSettingsYamlParser, mainSettingsIndexSource, mainSettingsFileSource)
-  private val testSettingsRestApi = new TestRorSettingsApi(rorInstance = this, rarRorSettingsYamlParser)
+  private val mainSettingsRestApi = mainSettingsApiCreator.create(this)
+  private val testSettingsRestApi = testSettingsApiCreator.create(this)
   private val authMockRestApi = new AuthMockApi(rorInstance = this)
 
   def engines: Option[Engines] = theMainSettingsEngine.engine.map(Engines(_, theTestSettingsEngine.engine))
 
-  def mainSettingsApi: MainRorSettingsApi = mainSettingsRestApi
+  def mainSettingsApi: MainSettingsApi = mainSettingsRestApi
 
   def authMockApi: AuthMockApi = authMockRestApi
 
-  def testSettingsApi: TestRorSettingsApi = testSettingsRestApi
+  def testSettingsApi: TestSettingsApi = testSettingsRestApi
 
   def mocksProvider: MocksProvider = boot.authServicesMocksProvider
 
@@ -215,29 +210,25 @@ class RorInstance private(boot: ReadonlyRest,
 object RorInstance {
 
   def create(boot: ReadonlyRest,
-             esConfig: EsConfigBasedRorSettings,
+             esConfigBasedRorSettings: EsConfigBasedRorSettings,
+             creators: SettingsRelatedCreators,
              mainEngine: ReadonlyRest.MainEngine,
-             testEngine: ReadonlyRest.TestEngine,
-             mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
-             mainSettingsFileSource: FileSettingsSource[RawRorSettings],
-             testSettingsIndexSource: IndexSettingsSource[TestRorSettings])
+             testEngine: ReadonlyRest.TestEngine)
             (implicit systemContext: SystemContext,
              scheduler: Scheduler): Task[RorInstance] = {
-    val mode = esConfig.loadingRorCoreStrategy match {
-      case LoadingRorCoreStrategy.ForceLoadingFromFile(settings) => Mode.NoPeriodicIndexCheck
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(settings, _) => Mode.WithPeriodicIndexCheck(settings.refreshInterval)
+    val mode = esConfigBasedRorSettings.loadingRorCoreStrategy match {
+      case LoadingRorCoreStrategy.ForceLoadingFromFile => Mode.NoPeriodicIndexCheck
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(parameters) => Mode.WithPeriodicIndexCheck(parameters.refreshInterval)
     }
-    createInstance(boot, esConfig, mode, mainEngine, testEngine, mainSettingsIndexSource, mainSettingsFileSource, testSettingsIndexSource)
+    createInstance(boot, esConfigBasedRorSettings, creators, mode, mainEngine, testEngine)
   }
 
   private def createInstance(boot: ReadonlyRest,
-                             esConfig: EsConfigBasedRorSettings,
+                             esConfigBasedRorSettings: EsConfigBasedRorSettings,
+                             creators: SettingsRelatedCreators,
                              mode: RorInstance.Mode,
                              mainEngine: ReadonlyRest.MainEngine,
-                             testEngine: ReadonlyRest.TestEngine,
-                             mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
-                             mainSettingsFileSource: FileSettingsSource[RawRorSettings],
-                             testSettingsIndexSource: IndexSettingsSource[TestRorSettings])
+                             testEngine: ReadonlyRest.TestEngine)
                             (implicit systemContext: SystemContext,
                              scheduler: Scheduler) = {
     for {
@@ -245,15 +236,13 @@ object RorInstance {
       isTestReloadInProgressSemaphore <- Semaphore[Task](1)
     } yield new RorInstance(
       boot = boot,
-      esConfig = esConfig,
+      esConfigBasedRorSettings = esConfigBasedRorSettings,
+      creators = creators,
       mode = mode,
       mainInitialEngine = mainEngine,
       mainReloadInProgress = isReloadInProgressSemaphore,
-      mainSettingsIndexSource = mainSettingsIndexSource,
-      mainSettingsFileSource = mainSettingsFileSource,
-      testSettingsIndexSource = testSettingsIndexSource,
       testInitialEngine = testEngine,
-      testReloadInProgress = isTestReloadInProgressSemaphore,
+      testReloadInProgress = isTestReloadInProgressSemaphore
     )
   }
 

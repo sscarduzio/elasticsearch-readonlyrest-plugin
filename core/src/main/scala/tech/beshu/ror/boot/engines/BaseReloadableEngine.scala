@@ -41,7 +41,7 @@ import scala.language.postfixOps
 
 private[engines] abstract class BaseReloadableEngine(val name: String,
                                                      boot: ReadonlyRest,
-                                                     esConfig: EsConfigBasedRorSettings,
+                                                     esConfigBasedRorSettings: EsConfigBasedRorSettings,
                                                      initialEngine: InitialEngine,
                                                      reloadInProgress: Semaphore[Task])
                                                     (implicit systemContext: SystemContext,
@@ -252,18 +252,16 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   private def reloadWith(rorSettings: RawRorSettings,
-                         expiration: Option[UpdatedExpiration]): EitherT[Task, RawSettingsReloadError, EngineWithSettings] = EitherT {
-    tryToLoadRorCore(rorSettings)
-      .map(_
-        .map { engine =>
-          EngineWithSettings(
-            engine = engine,
-            settings = rorSettings,
-            expiration = expiration.map(engineExpiration)
-          )
-        }
-        .leftMap(RawSettingsReloadError.ReloadingFailed.apply)
-      )
+                         expiration: Option[UpdatedExpiration]): EitherT[Task, RawSettingsReloadError, EngineWithSettings] = {
+    EitherT(boot.loadRorEngine(rorSettings, esConfigBasedRorSettings.settingsIndex))
+      .map { engine =>
+        EngineWithSettings(
+          engine = engine,
+          settings = rorSettings,
+          expiration = expiration.map(engineExpiration)
+        )
+      }
+      .leftMap(RawSettingsReloadError.ReloadingFailed.apply)
   }
 
   private def engineExpiration(expiration: UpdatedExpiration) = {
@@ -274,9 +272,6 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
         EngineExpiration(ttl = configuredTtl, validTo = validTo)
     }
   }
-
-  private def tryToLoadRorCore(rorSettings: RawRorSettings) =
-    boot.loadRorEngine(rorSettings, esConfig)
 
   private def replaceCurrentEngine(newEngineWithSettings: EngineWithSettings)
                                   (implicit requestId: RequestId): EitherT[Task, RawSettingsReloadError, Unit] = {

@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.boot.RorInstance.TestSettings
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.RawRorSettings
-import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
+import tech.beshu.ror.es.{EsEnv, IndexDocumentReader}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -59,7 +59,7 @@ class RorIndexTest extends AnyWordSpec
       "no index is defined in config" should {
         "start ROR with default index name" in {
           val resourcesPath = "/boot_tests/index_config/no_index_defined/"
-          val indexJsonContentService = mock[IndexJsonContentService]
+          val indexJsonContentService = mock[IndexDocumentReader]
           mockMainRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
           mockTestRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
 
@@ -78,7 +78,7 @@ class RorIndexTest extends AnyWordSpec
         }
         "save ROR config in default index" in {
           val resourcesPath = "/boot_tests/index_config/no_index_defined/"
-          val indexJsonContentService = mock[IndexJsonContentService]
+          val indexJsonContentService = mock[IndexDocumentReader]
           mockMainRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
           mockTestRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
 
@@ -108,7 +108,7 @@ class RorIndexTest extends AnyWordSpec
         }
         "save ROR test config in default index" in {
           val resourcesPath = "/boot_tests/index_config/no_index_defined/"
-          val indexJsonContentService = mock[IndexJsonContentService]
+          val indexJsonContentService = mock[IndexDocumentReader]
           mockMainRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
           mockTestRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
 
@@ -140,7 +140,7 @@ class RorIndexTest extends AnyWordSpec
       "custom index is defined in config" should {
         "start ROR with custom index name" in {
           val resourcesPath = "/boot_tests/index_config/custom_index_defined/"
-          val indexJsonContentService = mock[IndexJsonContentService]
+          val indexJsonContentService = mock[IndexDocumentReader]
           mockMainRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
           mockTestRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
 
@@ -158,7 +158,7 @@ class RorIndexTest extends AnyWordSpec
         }
         "save ROR config in custom index" in {
           val resourcesPath = "/boot_tests/index_config/custom_index_defined/"
-          val indexJsonContentService = mock[IndexJsonContentService]
+          val indexJsonContentService = mock[IndexDocumentReader]
           mockMainRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
           mockTestRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
 
@@ -186,7 +186,7 @@ class RorIndexTest extends AnyWordSpec
         }
         "save ROR test config in custom index" in {
           val resourcesPath = "/boot_tests/index_config/custom_index_defined/"
-          val indexJsonContentService = mock[IndexJsonContentService]
+          val indexJsonContentService = mock[IndexDocumentReader]
           mockMainRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
           mockTestRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
 
@@ -217,7 +217,7 @@ class RorIndexTest extends AnyWordSpec
   }
 
   private def readonlyRestBoot(factory: CoreFactory,
-                               indexJsonContentService: IndexJsonContentService,
+                               indexJsonContentService: IndexDocumentReader,
                                configPath: String) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(
@@ -246,7 +246,7 @@ class RorIndexTest extends AnyWordSpec
     mockedCoreFactory
   }
 
-  private def mockMainRorConfigFromIndexLoading(indexJsonContentService: IndexJsonContentService,
+  private def mockMainRorConfigFromIndexLoading(indexJsonContentService: IndexDocumentReader,
                                                 indexName: NonEmptyString) = {
     (indexJsonContentService.sourceOf _)
       .expects(fullIndexName(indexName), mainRorConfigDocumentId)
@@ -254,15 +254,15 @@ class RorIndexTest extends AnyWordSpec
       .returns(Task.now(Right(Map("settings" -> indexRorConfig.raw))))
   }
 
-  private def mockTestRorConfigFromIndexLoading(indexJsonContentService: IndexJsonContentService,
+  private def mockTestRorConfigFromIndexLoading(indexJsonContentService: IndexDocumentReader,
                                                 indexName: NonEmptyString) = {
     (indexJsonContentService.sourceOf _)
       .expects(fullIndexName(indexName), testRorConfigDocumentId)
       .once()
-      .returns(Task.now(Left(IndexJsonContentService.ContentNotFound)))
+      .returns(Task.now(Left(IndexDocumentReader.DocumentNotFound)))
   }
 
-  private def mockMainRorConfigInIndexSaving(indexJsonContentService: IndexJsonContentService,
+  private def mockMainRorConfigInIndexSaving(indexJsonContentService: IndexDocumentReader,
                                              indexName: NonEmptyString) = {
     (indexJsonContentService.saveContent _)
       .expects(fullIndexName(indexName), mainRorConfigDocumentId, Map("settings" -> rorConfig.raw))
@@ -270,7 +270,7 @@ class RorIndexTest extends AnyWordSpec
       .returns(Task.now(Right(())))
   }
 
-  private def mockTestRorConfigInIndexSaving(indexJsonContentService: IndexJsonContentService,
+  private def mockTestRorConfigInIndexSaving(indexJsonContentService: IndexDocumentReader,
                                              indexName: NonEmptyString) = {
     (indexJsonContentService.saveContent _)
       .expects(

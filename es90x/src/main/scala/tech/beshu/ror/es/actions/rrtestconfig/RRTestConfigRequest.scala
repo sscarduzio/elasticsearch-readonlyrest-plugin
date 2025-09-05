@@ -20,15 +20,15 @@ import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.api.{RorApiRequest, TestRorSettingsApi}
+import tech.beshu.ror.api.{RorApiRequest, TestSettingsApi}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps.*
 
-class RRTestConfigRequest(testConfigApiRequest: TestRorSettingsApi.TestSettingsRequest,
+class RRTestConfigRequest(testConfigApiRequest: TestSettingsApi.TestSettingsRequest,
                           esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
 
-  def getTestConfigRequest: RorApiRequest[TestRorSettingsApi.TestSettingsRequest] =
+  def getTestConfigRequest: RorApiRequest[TestSettingsApi.TestSettingsRequest] =
     RorApiRequest(testConfigApiRequest, loggerUser)
 
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
@@ -41,18 +41,18 @@ object RRTestConfigRequest {
   def createFrom(request: RestRequest): RRTestConfigRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
       case (constants.PROVIDE_TEST_CONFIG_PATH, GET) =>
-        TestRorSettingsApi.TestSettingsRequest.Type.ProvideTestSettings
+        TestSettingsApi.TestSettingsRequest.Type.ProvideTestSettings
       case (constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
-        TestRorSettingsApi.TestSettingsRequest.Type.InvalidateTestSettings
+        TestSettingsApi.TestSettingsRequest.Type.InvalidateTestSettings
       case (constants.UPDATE_TEST_CONFIG_PATH, POST) =>
-        TestRorSettingsApi.TestSettingsRequest.Type.UpdateTestSettings
+        TestSettingsApi.TestSettingsRequest.Type.UpdateTestSettings
       case (constants.PROVIDE_LOCAL_USERS_PATH, GET) =>
-        TestRorSettingsApi.TestSettingsRequest.Type.ProvideLocalUsers
+        TestSettingsApi.TestSettingsRequest.Type.ProvideLocalUsers
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRTestConfigRequest(
-      TestRorSettingsApi.TestSettingsRequest(requestType, request.content.utf8ToString),
+      TestSettingsApi.TestSettingsRequest(requestType, request.content.utf8ToString),
       request
     )
   }

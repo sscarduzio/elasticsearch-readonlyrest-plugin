@@ -22,9 +22,9 @@ import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, RequestId}
-import tech.beshu.ror.api.TestRorSettingsApi.TestSettingsRequest.Type
-import tech.beshu.ror.api.TestRorSettingsApi.TestSettingsResponse.*
-import tech.beshu.ror.api.TestRorSettingsApi.{TestSettingsRequest, TestSettingsResponse}
+import tech.beshu.ror.api.TestSettingsApi.TestSettingsRequest.Type
+import tech.beshu.ror.api.TestSettingsApi.TestSettingsResponse.*
+import tech.beshu.ror.api.TestSettingsApi.{TestSettingsRequest, TestSettingsResponse}
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, RawSettingsReloadError, TestSettings}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -37,11 +37,11 @@ import java.time.Instant
 import scala.concurrent.duration.*
 import scala.util.Try
 
-class TestRorSettingsApi(rorInstance: RorInstance,
-                         settingsYamlParser: RawRorSettingsYamlParser) {
+class TestSettingsApi(rorInstance: RorInstance,
+                      settingsYamlParser: RawRorSettingsYamlParser) {
 
-  import tech.beshu.ror.api.TestRorSettingsApi.Utils.*
-  import tech.beshu.ror.api.TestRorSettingsApi.Utils.decoders.*
+  import tech.beshu.ror.api.TestSettingsApi.Utils.*
+  import tech.beshu.ror.api.TestSettingsApi.Utils.decoders.*
 
   def call(request: RorApiRequest[TestSettingsRequest])
           (implicit requestId: RequestId): Task[TestSettingsResponse] = {
@@ -166,7 +166,14 @@ class TestRorSettingsApi(rorInstance: RorInstance,
   }
 }
 
-object TestRorSettingsApi {
+object TestSettingsApi {
+
+  final class Creator(settingsYamlParser: RawRorSettingsYamlParser) {
+
+    def create(rorInstance: RorInstance): TestSettingsApi = {
+      new TestSettingsApi(rorInstance, settingsYamlParser)
+    }
+  }
 
   final case class TestSettingsRequest(aType: TestSettingsRequest.Type,
                                        body: String)

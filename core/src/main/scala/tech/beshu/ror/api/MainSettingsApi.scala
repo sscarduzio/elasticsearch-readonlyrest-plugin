@@ -22,9 +22,9 @@ import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.api.MainRorSettingsApi.*
-import tech.beshu.ror.api.MainRorSettingsApi.MainSettingsRequest.Type
-import tech.beshu.ror.api.MainRorSettingsApi.MainSettingsResponse.*
+import tech.beshu.ror.api.MainSettingsApi.*
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest.Type
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -32,14 +32,14 @@ import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
-class MainRorSettingsApi(rorInstance: RorInstance,
-                         settingsYamlParser: RawRorSettingsYamlParser,
-                         mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
-                         mainSettingsFileSource: FileSettingsSource[RawRorSettings])
+class MainSettingsApi(rorInstance: RorInstance,
+                      settingsYamlParser: RawRorSettingsYamlParser,
+                      mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
+                      mainSettingsFileSource: FileSettingsSource[RawRorSettings])
   extends Logging {
 
-  import MainRorSettingsApi.Utils.*
-  import MainRorSettingsApi.Utils.decoders.*
+  import MainSettingsApi.Utils.*
+  import MainSettingsApi.Utils.decoders.*
 
   def call(request: MainSettingsRequest)
           (implicit requestId: RequestId): Task[MainSettingsResponse] = {
@@ -62,7 +62,7 @@ class MainRorSettingsApi(rorInstance: RorInstance,
           ForceReloadMainSettings.Success("ReadonlyREST settings were reloaded with success!")
         case Left(IndexSettingsReloadError.IndexLoadingSettingsError(error)) =>
           ???
-          //ForceReloadMainSettings.Failure(error.show)
+        //ForceReloadMainSettings.Failure(error.show)
         case Left(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.SettingsUpToDate(_))) =>
           ForceReloadMainSettings.Failure("Current settings are already loaded")
         case Left(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.RorInstanceStopped)) =>
@@ -89,7 +89,7 @@ class MainRorSettingsApi(rorInstance: RorInstance,
       .map {
         case Right(settings) => ProvideFileMainSettings.MainSettings(settings.raw)
         case Left(error) => ???
-          // ProvideFileMainSettings.Failure(error.show)
+        // ProvideFileMainSettings.Failure(error.show)
       }
   }
 
@@ -99,9 +99,9 @@ class MainRorSettingsApi(rorInstance: RorInstance,
       .map {
         case Right(settings) =>
           ProvideIndexMainSettings.MainSettings(settings.raw)
-          // todo: ???
-//        case Left(error@LoadingFromIndexError.IndexNotExist) =>
-//          ProvideIndexMainSettings.MainSettingsNotFound(Show[LoadingFromIndexError].show(error))
+        // todo: ???
+        //        case Left(error@LoadingFromIndexError.IndexNotExist) =>
+        //          ProvideIndexMainSettings.MainSettingsNotFound(Show[LoadingFromIndexError].show(error))
         case Left(error) =>
           ???
         //ProvideIndexMainSettings.Failure(error.show)
@@ -126,7 +126,7 @@ class MainRorSettingsApi(rorInstance: RorInstance,
       .leftMap {
         case IndexSettingsSavingError(error) =>
           ???
-          //UpdateIndexMainSettings.Failure(s"Cannot save new settings: ${error.show}")
+        //UpdateIndexMainSettings.Failure(s"Cannot save new settings: ${error.show}")
         case ReloadError(RawSettingsReloadError.SettingsUpToDate(_)) =>
           UpdateIndexMainSettings.Failure(s"Current settings are already loaded")
         case ReloadError(RawSettingsReloadError.RorInstanceStopped) =>
@@ -137,7 +137,16 @@ class MainRorSettingsApi(rorInstance: RorInstance,
   }
 }
 
-object MainRorSettingsApi {
+object MainSettingsApi {
+
+  final class Creator(settingsYamlParser: RawRorSettingsYamlParser,
+                      mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
+                      mainSettingsFileSource: FileSettingsSource[RawRorSettings]) {
+
+    def create(rorInstance: RorInstance): MainSettingsApi = {
+      new MainSettingsApi(rorInstance, settingsYamlParser, mainSettingsIndexSource, mainSettingsFileSource)
+    }
+  }
 
   final case class MainSettingsRequest(aType: MainSettingsRequest.Type,
                                        body: String)

@@ -32,7 +32,7 @@ import tech.beshu.ror.boot.engines.SettingsHash.*
 import tech.beshu.ror.configuration.TestRorSettings.Expiration
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.source.IndexSettingsSource
+import tech.beshu.ror.settings.source.{IndexSettingsSource, TestSettingsIndexSource}
 import tech.beshu.ror.settings.source.IndexSettingsSource.{LoadingError, SavingError}
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
@@ -40,13 +40,19 @@ import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest,
-                                                              esConfig: EsConfigBasedRorSettings,
+                                                              esConfigBasedRorSettings: EsConfigBasedRorSettings,
                                                               initialEngine: InitialEngine,
                                                               reloadInProgress: Semaphore[Task],
                                                               testSettingsSource: IndexSettingsSource[TestRorSettings])
                                                              (implicit systemContext: SystemContext,
                                                               scheduler: Scheduler)
-  extends BaseReloadableEngine("test", boot, esConfig, initialEngine, reloadInProgress) {
+  extends BaseReloadableEngine(
+    name = "test",
+    boot = boot,
+    esConfigBasedRorSettings = esConfigBasedRorSettings,
+    initialEngine = initialEngine,
+    reloadInProgress = reloadInProgress
+  ) {
 
   def currentTestSettings()
                          (implicit requestId: RequestId): Task[TestSettings] = {
@@ -213,8 +219,9 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
       .map(Some(_))
       .leftFlatMap {
         // IndexSettingsReloadError.IndexLoadingSettingsError.apply // todo:
-        case LoadingSettingsError.FormatError => ???
+        case LoadingSettingsError.SettingsMalformed(_) => ???
         case LoadingSettingsError.SourceSpecificError(LoadingError.IndexNotFound) => ???
+        case LoadingSettingsError.SourceSpecificError(LoadingError.DocumentNotFound) => ???
       }
   }
 
@@ -238,23 +245,26 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
 }
 
 object TestSettingsBasedReloadableEngine {
-  def create(boot: ReadonlyRest,
-             esConfig: EsConfigBasedRorSettings,
-             initialEngine: ReadonlyRest.TestEngine,
-             reloadInProgress: Semaphore[Task],
-             testSettingsSource: IndexSettingsSource[TestRorSettings])
-            (implicit systemContext: SystemContext,
-             scheduler: Scheduler): TestSettingsBasedReloadableEngine = {
-    val engine = initialEngine match {
-      case TestEngine.NotConfigured =>
-        InitialEngine.NotConfigured
-      case TestEngine.Configured(engine, settings, expiration) =>
-        InitialEngine.Configured(engine, settings, Some(engineExpiration(expiration)))
-      case TestEngine.Invalidated(settings, expiration) =>
-        InitialEngine.Invalidated(settings, engineExpiration(expiration))
-    }
-    new TestSettingsBasedReloadableEngine(boot, esConfig, engine, reloadInProgress, testSettingsSource)
-  }
 
-  private def engineExpiration(expiration: TestEngine.Expiration) = EngineExpiration(expiration.ttl, expiration.validTo)
+  final class Creator(testSettingsSource: TestSettingsIndexSource) {
+
+    def create(boot: ReadonlyRest,
+               esConfigBasedRorSettings: EsConfigBasedRorSettings,
+               initialEngine: ReadonlyRest.TestEngine,
+               reloadInProgress: Semaphore[Task])
+              (implicit systemContext: SystemContext,
+               scheduler: Scheduler): TestSettingsBasedReloadableEngine = {
+      val engine = initialEngine match {
+        case TestEngine.NotConfigured =>
+          InitialEngine.NotConfigured
+        case TestEngine.Configured(engine, settings, expiration) =>
+          InitialEngine.Configured(engine, settings, Some(engineExpiration(expiration)))
+        case TestEngine.Invalidated(settings, expiration) =>
+          InitialEngine.Invalidated(settings, engineExpiration(expiration))
+      }
+      new TestSettingsBasedReloadableEngine(boot, esConfigBasedRorSettings, engine, reloadInProgress, testSettingsSource)
+    }
+
+    private def engineExpiration(expiration: TestEngine.Expiration) = EngineExpiration(expiration.ttl, expiration.validTo)
+  }
 }

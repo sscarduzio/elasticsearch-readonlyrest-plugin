@@ -21,12 +21,12 @@ import org.elasticsearch.common.io.stream.StreamOutput
 import tech.beshu.ror.es.utils.StatusToXContentObject
 import org.elasticsearch.rest.RestStatus
 import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
-import tech.beshu.ror.api.TestRorSettingsApi
-import tech.beshu.ror.api.TestRorSettingsApi.TestSettingsResponse.*
+import tech.beshu.ror.api.TestSettingsApi
+import tech.beshu.ror.api.TestSettingsApi.TestSettingsResponse.*
 
 import java.time.ZoneOffset
 
-class RRTestConfigResponse(response: TestRorSettingsApi.TestSettingsResponse)
+class RRTestConfigResponse(response: TestSettingsApi.TestSettingsResponse)
   extends ActionResponse with StatusToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {

@@ -19,21 +19,19 @@ package tech.beshu.ror.es
 import io.circe.Json
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.es.IndexJsonContentService.{ReadError, WriteError}
+import tech.beshu.ror.es.IndexDocumentReader.{ReadError, WriteError}
 
-trait IndexJsonContentService {
-  // todo:
-  def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, Map[String, String]]]
-  def sourceOfAsString(index: IndexName.Full, id: String): Task[Either[ReadError, Json]] = ???
-  def saveContent(index: IndexName.Full, id: String, content: Map[String, String]): Task[Either[WriteError, Unit]]
-  def saveContentJson(index: IndexName.Full, id: String, content: Json): Task[Either[WriteError, Unit]] = ???
+trait IndexDocumentReader {
+  def documentAsJson(index: IndexName.Full, id: String): Task[Either[ReadError, Json]]
+  def saveDocumentJson(index: IndexName.Full, id: String, document: Json): Task[Either[WriteError, Unit]]
 }
 
-object IndexJsonContentService {
+object IndexDocumentReader {
 
   sealed trait ReadError
-  case object ContentNotFound extends ReadError
-  case object CannotReachContentSource extends ReadError
+  case object IndexNotFound extends ReadError
+  case object DocumentNotFound extends ReadError
+  case object DocumentUnreachable extends ReadError
 
   sealed trait WriteError
   case object CannotWriteToIndex extends WriteError

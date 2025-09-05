@@ -31,20 +31,20 @@ import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
 import tech.beshu.ror.boot.engines.SettingsHash.*
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.source.IndexSettingsSource
+import tech.beshu.ror.settings.source.{IndexSettingsSource, MainSettingsIndexSource}
 import tech.beshu.ror.utils.ScalaOps.value
 
-private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
-                                                      esConfig: EsConfigBasedRorSettings,
-                                                      initialEngine: (Engine, RawRorSettings),
-                                                      reloadInProgress: Semaphore[Task],
-                                                      settingsSource: IndexSettingsSource[RawRorSettings])
-                                                     (implicit systemContext: SystemContext,
-                                                      scheduler: Scheduler)
+private[boot] class MainSettingsBasedReloadableEngine private(boot: ReadonlyRest,
+                                                              esConfigBasedRorSettings: EsConfigBasedRorSettings,
+                                                              initialEngine: (Engine, RawRorSettings),
+                                                              reloadInProgress: Semaphore[Task],
+                                                              settingsSource: IndexSettingsSource[RawRorSettings])
+                                                             (implicit systemContext: SystemContext,
+                                                              scheduler: Scheduler)
   extends BaseReloadableEngine(
     name = "main",
     boot = boot,
-    esConfig = esConfig,
+    esConfigBasedRorSettings = esConfigBasedRorSettings,
     initialEngine = InitialEngine.Configured(engine = initialEngine._1, settings = initialEngine._2, expiration = None),
     reloadInProgress = reloadInProgress
   ) {
@@ -129,4 +129,18 @@ private[boot] class MainSettingsBasedReloadableEngine(boot: ReadonlyRest,
       .leftMap(IndexSettingsReloadWithUpdateError.IndexSettingsSavingError.apply)
   }
 
+}
+object MainSettingsBasedReloadableEngine {
+
+  final class Creator(settingsSource: MainSettingsIndexSource) {
+
+    def create(boot: ReadonlyRest,
+               esConfigBasedRorSettings: EsConfigBasedRorSettings,
+               initialEngine: (Engine, RawRorSettings),
+               reloadInProgress: Semaphore[Task])
+              (implicit systemContext: SystemContext,
+               scheduler: Scheduler): MainSettingsBasedReloadableEngine = {
+      new MainSettingsBasedReloadableEngine(boot, esConfigBasedRorSettings, initialEngine, reloadInProgress, settingsSource)
+    }
+  }
 }

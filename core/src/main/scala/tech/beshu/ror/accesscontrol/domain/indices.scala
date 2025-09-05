@@ -22,11 +22,13 @@ import cats.implicits.*
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
+import better.files.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -532,3 +534,9 @@ final case class RorSettingsIndex(index: IndexName.Full) extends AnyVal {
 object RorSettingsIndex {
   val default: RorSettingsIndex = RorSettingsIndex(IndexName.Full(nes(".readonlyrest")))
 }
+
+final case class RorSettingsFile(file: File) extends AnyVal
+object RorSettingsFile {
+  def default(esEnv: EsEnv): RorSettingsFile = RorSettingsFile(esEnv.configDir / "readonlyrest.yml")
+}
+

@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
+import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason
@@ -33,16 +34,14 @@ import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, Core
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
-import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
+import tech.beshu.ror.es.{EsEnv, IndexDocumentReader}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource, MainSettingsFileSource, MainSettingsIndexSource, TestSettingsIndexSource}
-import tech.beshu.ror.settings.strategy.StartingRorSettingsLoadingStrategy
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
 
 class ReadonlyRest(coreFactory: CoreFactory,
-                   indexContentService: IndexJsonContentService,
+                   indexContentService: IndexDocumentReader,
                    auditSinkServiceCreator: AuditSinkServiceCreator,
                    val esEnv: EsEnv)
                   (implicit systemContext: SystemContext,
@@ -51,53 +50,42 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private[boot] val authServicesMocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
-  def start(esConfig: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
+  def start(esConfigBasedRorSettings: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
     (for {
-      mainIndexSettingsSource <- lift(new MainSettingsIndexSource(indexContentService, esConfig.rorSettingsIndex))
-      mainFileSettingsSource <- lift(new MainSettingsFileSource(???))
-      testIndexSettingsSource <- lift(TestSettingsIndexSource.create(indexContentService, esConfig.rorSettingsIndex, ???))
-      loadedSettings <- loadStartupSettings(mainIndexSettingsSource, mainFileSettingsSource, testIndexSettingsSource)
+      creatorsAndLoaders <- lift(SettingsRelatedCreatorsAndLoaders.create(esConfigBasedRorSettings, indexContentService))
+      loadedSettings <- EitherT(creatorsAndLoaders.startingRorSettingsLoader.load())
       (loadedMainRorSettings, loadedTestRorSettings) = loadedSettings
-      instance <- startRor(esConfig, loadedMainRorSettings, mainIndexSettingsSource, mainFileSettingsSource, loadedTestRorSettings, testIndexSettingsSource)
+      instance <- startRor(esConfigBasedRorSettings, creatorsAndLoaders.creators, loadedMainRorSettings, loadedTestRorSettings)
     } yield instance).value
   }
 
-  private def loadStartupSettings(mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
-                                  mainSettingsFileSource: FileSettingsSource[RawRorSettings],
-                                  testSettingsIndexSource: IndexSettingsSource[TestRorSettings]): EitherT[Task, StartingFailure, (RawRorSettings, Option[TestRorSettings])] = {
-    val settingsLoader = new StartingRorSettingsLoadingStrategy(mainSettingsIndexSource, mainSettingsFileSource, testSettingsIndexSource)
-    EitherT(settingsLoader.load())
-  }
-
-  private def startRor(esConfig: EsConfigBasedRorSettings,
+  private def startRor(esConfigBasedRorSettings: EsConfigBasedRorSettings,
+                       creators: SettingsRelatedCreators,
                        loadedMainRorSettings: RawRorSettings,
-                       mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
-                       mainSettingsFileSource: FileSettingsSource[RawRorSettings],
-                       loadedTestRorSettings: Option[TestRorSettings],
-                       testSettingsIndexSource: IndexSettingsSource[TestRorSettings]) = {
+                       loadedTestRorSettings: Option[TestRorSettings]) = {
     for {
-      mainEngine <- EitherT(loadRorEngine(loadedMainRorSettings, esConfig))
-      testEngine <- EitherT.right(loadTestEngine(esConfig, loadedTestRorSettings))
-      rorInstance <- createRorInstance(esConfig, mainEngine, mainSettingsIndexSource, mainSettingsFileSource, testEngine, testSettingsIndexSource, loadedMainRorSettings)
+      mainEngine <- EitherT(loadRorEngine(loadedMainRorSettings, esConfigBasedRorSettings.settingsIndex))
+      testEngine <- EitherT.right(loadTestEngine(loadedTestRorSettings, esConfigBasedRorSettings.settingsIndex))
+      rorInstance <- createRorInstance(esConfigBasedRorSettings, creators, mainEngine, testEngine, loadedMainRorSettings)
     } yield rorInstance
   }
 
-  private def loadTestEngine(esConfig: EsConfigBasedRorSettings,
-                             loadedTestRorSettings: Option[TestRorSettings]) = {
+  private def loadTestEngine(loadedTestRorSettings: Option[TestRorSettings],
+                             settingsIndex: RorSettingsIndex) = {
     loadedTestRorSettings match {
       case None =>
         Task.now(TestEngine.NotConfigured)
       case Some(settings) if !settings.isExpired(systemContext.clock) =>
-        loadActiveTestEngine(esConfig, settings)
+        loadActiveTestEngine(settingsIndex, settings)
       case Some(settings) =>
         loadInvalidatedTestEngine(settings)
     }
   }
 
-  private def loadActiveTestEngine(esConfig: EsConfigBasedRorSettings, testSettings: TestRorSettings) = {
+  private def loadActiveTestEngine(settingsIndex: RorSettingsIndex, testSettings: TestRorSettings) = {
     for {
       _ <- Task.delay(authServicesMocksProvider.update(testSettings.mocks))
-      testEngine <- loadRorEngine(testSettings.rawSettings, esConfig)
+      testEngine <- loadRorEngine(testSettings.rawSettings, settingsIndex)
         .map {
           case Right(loadedEngine) =>
             TestEngine.Configured(
@@ -124,26 +112,24 @@ class ReadonlyRest(coreFactory: CoreFactory,
     TestEngine.Expiration(expiration.ttl, expiration.validTo)
   }
 
-  private def createRorInstance(esConfig: EsConfigBasedRorSettings,
+  private def createRorInstance(esConfigBasedRorSettings: EsConfigBasedRorSettings,
+                                creators: SettingsRelatedCreators,
                                 mainEngine: Engine,
-                                mainSettingsIndexSource: IndexSettingsSource[RawRorSettings],
-                                mainSettingsFileSource: FileSettingsSource[RawRorSettings],
                                 testEngine: TestEngine,
-                                testSettingsIndexSource: IndexSettingsSource[TestRorSettings],
                                 alreadyLoadedSettings: RawRorSettings) = {
     EitherT.right[StartingFailure] {
-      RorInstance.create(this, esConfig, MainEngine(mainEngine, alreadyLoadedSettings), testEngine, mainSettingsIndexSource, mainSettingsFileSource, testSettingsIndexSource)
+      RorInstance.create(this, esConfigBasedRorSettings, creators, MainEngine(mainEngine, alreadyLoadedSettings), testEngine)
     }
   }
 
-  private[ror] def loadRorEngine(rorSettings: RawRorSettings,
-                                 esConfig: EsConfigBasedRorSettings): Task[Either[StartingFailure, Engine]] = {
+  private[ror] def loadRorEngine(settings: RawRorSettings,
+                                 settingsIndex: RorSettingsIndex): Task[Either[StartingFailure, Engine]] = {
     val httpClientsFactory = new AsyncHttpClientsFactory
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
     EitherT(
       coreFactory
-        .createCoreFrom(rorSettings, esConfig.rorSettingsIndex, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
+        .createCoreFrom(settings, settingsIndex, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
     )
       .flatMap(core => createEngine(httpClientsFactory, ldapConnectionPoolProvider, core))
       .semiflatTap { engine =>
@@ -220,6 +206,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
 object ReadonlyRest {
 
+  // todo: move somewhere else
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
   final case class MainEngine(engine: Engine,
@@ -253,7 +240,7 @@ object ReadonlyRest {
     }
   }
 
-  def create(indexContentService: IndexJsonContentService,
+  def create(indexContentService: IndexDocumentReader,
              auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)
             (implicit scheduler: Scheduler,
@@ -263,7 +250,7 @@ object ReadonlyRest {
   }
 
   def create(coreFactory: CoreFactory,
-             indexContentService: IndexJsonContentService,
+             indexContentService: IndexDocumentReader,
              auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)
             (implicit scheduler: Scheduler,

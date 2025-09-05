@@ -21,6 +21,7 @@ import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslSettings, FipsMode, InternodeSslSettings}
 import tech.beshu.ror.implicits.*
@@ -56,7 +57,7 @@ object RorSslSettings extends Logging {
     }
   }
 
-  def load(rorSettingsFile: File, esConfigFile: File)
+  def load(rorSettingsFile: RorSettingsFile, esConfigFile: File)
           (implicit systemContext: SystemContext): Task[Either[MalformedSettings, Option[RorSslSettings]]] = Task {
     implicit val rorSslSettingsDecoder: Decoder[Option[RorSslSettings]] = SslDecoders.rorSslDecoder(esConfigFile.parent)
     loadSslSettingsFrom(esConfigFile)
@@ -72,12 +73,13 @@ object RorSslSettings extends Logging {
       )
   }
 
-  private def fallbackToRorSettingsFile(rorSettingsFile: File)
+  private def fallbackToRorSettingsFile(rorSettingsFile: RorSettingsFile)
                                        (implicit decoder: Decoder[Option[RorSslSettings]],
                                         systemContext: SystemContext) = {
-    logger.info(s"... trying: ${rorSettingsFile.show}")
-    if (rorSettingsFile.exists) {
-      loadSslSettingsFrom(rorSettingsFile)
+    val settingsFile = rorSettingsFile.file
+    logger.info(s"... trying: ${settingsFile.show}")
+    if (settingsFile.exists) {
+      loadSslSettingsFrom(settingsFile)
     } else {
       Right(None)
     }

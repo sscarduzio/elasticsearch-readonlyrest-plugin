@@ -20,37 +20,41 @@ import better.files.File
 import cats.data.EitherT
 import io.circe.{Decoder, DecodingFailure, ParsingFailure, parser}
 import monix.eval.Task
+import tech.beshu.ror.settings.source.FileSettingsSource.FileSettingsLoadingError
 import tech.beshu.ror.settings.source.FileSettingsSource.LoadingError.FileNotExist
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
 
-class FileSettingsSource[SETTINGS: Decoder](rorSettingsFile: File)
+class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
   extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
 
-  override def load(): Task[Either[LoadingSettingsError[FileSettingsSource.LoadingError], SETTINGS]] = {
+  override def load(): Task[Either[FileSettingsLoadingError, SETTINGS]] = {
     (for {
-      _ <- checkIfFileExist(rorSettingsFile)
-      settings <- loadSettingsFromFile(rorSettingsFile)
+      _ <- checkIfFileExist(settingsFile)
+      settings <- loadSettingsFromFile(settingsFile)
     } yield settings).value
   }
 
-  private def checkIfFileExist(file: File): EitherT[Task, LoadingSettingsError[FileSettingsSource.LoadingError], File] =
+  private def checkIfFileExist(file: File): EitherT[Task, FileSettingsLoadingError, File] =
     EitherT.cond(file.exists, file, SourceSpecificError(FileNotExist(file)))
 
-  private def loadSettingsFromFile(file: File): EitherT[Task, LoadingSettingsError[FileSettingsSource.LoadingError], SETTINGS] = {
+  private def loadSettingsFromFile(file: File): EitherT[Task, FileSettingsLoadingError, SETTINGS] = {
     EitherT
-      .pure[Task, LoadingSettingsError[FileSettingsSource.LoadingError]](file.contentAsString)
+      .pure[Task, FileSettingsLoadingError](file.contentAsString)
       .subflatMap { raw =>
         parser
           .decode(raw)
           .left.map {
-            case ParsingFailure(_, _) => LoadingSettingsError.FormatError
-            case _: DecodingFailure => LoadingSettingsError.FormatError
+            case ParsingFailure(message, _) => LoadingSettingsError.SettingsMalformed(message)
+            case failure: DecodingFailure => LoadingSettingsError.SettingsMalformed(failure.message)
           }
       }
   }
 }
 object FileSettingsSource {
+
+  type FileSettingsLoadingError = LoadingSettingsError[LoadingError]
+
   sealed trait LoadingError
   object LoadingError {
     final case class FileNotExist(file: File) extends LoadingError
