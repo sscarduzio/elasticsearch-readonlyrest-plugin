@@ -24,9 +24,21 @@ import scala.language.implicitConversions
 
 object OsUtils extends LazyLogging {
 
+  def currentOs: CurrentOs =
+    if (isWindows) CurrentOs.Windows
+    else CurrentOs.OtherThanWindows
+
+  def ignoreOnWindows[T](f: => T): Any = {
+    if (!isWindows) f
+  }
+
+  def doNotCreateOnWindows(creator: => Container): Container = {
+    if (!isWindows) creator else NoOpContainer
+  }
+
   // The same method is present in ror-tools-core module.
   // It is copied instead of reused, because there is no common module between integration tests and the ror-tools production code.
-  def isWindows: Boolean = {
+  private def isWindows: Boolean = {
     System.getProperties.stringPropertyNames().asScala
       .find { name =>
         // I have no idea why name == "os.name" doesn't work!
@@ -39,28 +51,18 @@ object OsUtils extends LazyLogging {
       case None => false
   }
 
-  def ignoreOnWindows[T](f: => T): Any = {
-    if (!isWindows) f
-  }
-
-  def doNotCreateOnWindows(creator: => Container): Container = {
-    if (!isWindows) creator else NoOpContainer
-  }
-
-  private object NoOpContainer extends Container {
-    override def start(): Unit = ()
-
-    override def stop(): Unit = ()
-  }
-
-  def currentOs: CurrentOs = if (isWindows) CurrentOs.Windows else CurrentOs.OtherThanWindows
-
   sealed trait CurrentOs
 
   object CurrentOs {
     case object Windows extends CurrentOs
 
     case object OtherThanWindows extends CurrentOs
+  }
+
+  private object NoOpContainer extends Container {
+    override def start(): Unit = ()
+
+    override def stop(): Unit = ()
   }
 
 }

@@ -20,13 +20,11 @@ import better.files.{Disposable, Dispose, File, Resource, disposeFlatMap}
 import com.dimafeng.testcontainers.SingleContainer
 import com.unboundid.ldap.sdk.{LDAPConnection, LDAPException, ResultCode}
 import com.unboundid.ldif.LDIFReader
-import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer as JavaGenericContainer
 import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
-import tech.beshu.ror.utils.containers.LdapWaitStrategy.*
 import tech.beshu.ror.utils.containers.windows.{NonStoppableInMemoryLdapService, WindowsPseudoLdapContainer}
 import tech.beshu.ror.utils.misc.OsUtils
-import tech.beshu.ror.utils.misc.ScalaUtils.*
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import java.io.{BufferedReader, InputStreamReader}
 import scala.concurrent.duration.*
@@ -60,10 +58,11 @@ object LdapContainer {
   }
 
   def create(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
-    if (OsUtils.isWindows) {
-      WindowsPseudoLdapContainer.create(name, ldapInitScript)
-    } else {
-      OpenLdapContainer.create(name, ldapInitScript)
+    OsUtils.currentOs match {
+      case CurrentOs.Windows =>
+        WindowsPseudoLdapContainer.create(name, ldapInitScript)
+      case CurrentOs.OtherThanWindows =>
+        OpenLdapContainer.create(name, ldapInitScript)
     }
   }
 
@@ -137,11 +136,11 @@ object LdapContainer {
 }
 
 object NonStoppableLdapSingleContainer {
-  def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
-    if (OsUtils.isWindows) {
-      NonStoppableInMemoryLdapService.createAndStart(name, ldapInitScript)
-    } else {
-      NonStoppableOpenLdapContainer.createAndStart(name, ldapInitScript)
+  def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapContainer =
+    OsUtils.currentOs match {
+      case CurrentOs.Windows =>
+        NonStoppableInMemoryLdapService.createAndStart(name, ldapInitScript)
+      case CurrentOs.OtherThanWindows =>
+        NonStoppableOpenLdapContainer.createAndStart(name, ldapInitScript)
     }
-  }
 }

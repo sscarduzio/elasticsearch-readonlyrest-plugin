@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import scala.compiletime.error
 
@@ -98,12 +99,13 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
     val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
       remoteClustersConfig.view.mapValues(_.nodes.map { c =>
-        if (OsUtils.isWindows) {
-          // We only have access to ES port in 92XX range here. 
-          // On Windows, the ES transport port is configured to be exactly 100 higher than ES port
-          s"localhost:${c.port + 100}" 
-        } else {
-          s"${c.esConfig.nodeName}:9300"
+        OsUtils.currentOs match {
+          case CurrentOs.Windows =>
+            // We only have access to ES port in 92XX range here.
+            // On Windows, the ES transport port is configured to be exactly 100 higher than ES port
+            s"localhost:${c.port + 100}"
+          case CurrentOs.OtherThanWindows =>
+            s"${c.esConfig.nodeName}:9300"
         }
       }).toMap
     )

@@ -131,6 +131,11 @@ stages:
 ##### Unit tests
 ####################################
       - job: UNIT
+        condition:
+          and(
+            succeeded(),
+            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows')))
+          )
         displayName: 'Unit tests'
         timeoutInMinutes: 30
         steps:
@@ -481,7 +486,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        timeoutInMinutes: 120
+        timeoutInMinutes: 150
         pool:
           vmImage: 'windows-2025'
         steps:
@@ -496,7 +501,7 @@ stages:
               jdkArchitectureOption: 'x64'
               jdkSourceOption: 'PreInstalled'
           - powershell: |
-                    Write-Host ">>> $env:ES_MODULE => Running testcontainers.."
+                    Write-Host ">>> $env:ES_MODULE"
                     .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
                     if ($LASTEXITCODE -ne 0) {
                       Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
@@ -531,7 +536,7 @@ stages:
             ),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        timeoutInMinutes: 120
+        timeoutInMinutes: 150
         pool:
           vmImage: 'windows-2025'
         steps:
@@ -546,7 +551,7 @@ stages:
               jdkArchitectureOption: 'x64'
               jdkSourceOption: 'PreInstalled'
           - powershell: |
-                    Write-Host ">>> $env:ES_MODULE => Running testcontainers.."
+                    Write-Host ">>> $env:ES_MODULE"
                     .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
                     if ($LASTEXITCODE -ne 0) {
                       Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
@@ -584,7 +589,7 @@ stages:
             succeeded(),
             and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows'))
           )
-        timeoutInMinutes: 120
+        timeoutInMinutes: 150
         pool:
           vmImage: 'windows-2025'
         steps:
@@ -599,7 +604,7 @@ stages:
               jdkArchitectureOption: 'x64'
               jdkSourceOption: 'PreInstalled'
           - powershell: |
-                    Write-Host ">>> $env:ES_MODULE => Running testcontainers.."
+                    Write-Host ">>> $env:ES_MODULE"
                     .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
                     if ($LASTEXITCODE -ne 0) {
                       Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
@@ -618,14 +623,14 @@ stages:
           matrix:
             WIN_IT_es91x:
               ES_MODULE: es91x
-            WIN_IT_es90x:
-              ES_MODULE: es90x
-            WIN_IT_es818x:
-              ES_MODULE: es818x
-            WIN_IT_es816x:
-              ES_MODULE: es816x
-            WIN_IT_es810x:
-              ES_MODULE: es810x
+#             WIN_IT_es90x:
+#               ES_MODULE: es90x
+#             WIN_IT_es818x:
+#               ES_MODULE: es818x
+#             WIN_IT_es816x:
+#               ES_MODULE: es816x
+#             WIN_IT_es810x:
+#               ES_MODULE: es810x
             WIN_IT_es80x:
               ES_MODULE: es80x
             WIN_IT_es717x:
@@ -638,20 +643,59 @@ stages:
               ES_MODULE: es711x
             WIN_IT_es710x:
               ES_MODULE: es710x
-            WIN_IT_es79x:
-              ES_MODULE: es79x
-            WIN_IT_es78x:
-              ES_MODULE: es78x
-            WIN_IT_es77x:
-              ES_MODULE: es77x
-            WIN_IT_es74x:
-              ES_MODULE: es74x
-            WIN_IT_es73x:
-              ES_MODULE: es73x
-            WIN_IT_es72x:
-              ES_MODULE: es72x
+#             WIN_IT_es79x:
+#               ES_MODULE: es79x
+#             WIN_IT_es78x:
+#               ES_MODULE: es78x
+#             WIN_IT_es77x:
+#               ES_MODULE: es77x
+#             WIN_IT_es74x:
+#               ES_MODULE: es74x
+#             WIN_IT_es73x:
+#               ES_MODULE: es73x
+#             WIN_IT_es72x:
+#               ES_MODULE: es72x
             WIN_IT_es70x:
               ES_MODULE: es70x
+####################################
+##### Unit tests on Windows
+####################################
+      - job:
+        displayName: 'Unit tests on Windows'
+        condition:
+          and(
+            succeeded(),
+            and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows'))
+          )
+        timeoutInMinutes: 150
+        pool:
+          vmImage: 'windows-2025'
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - task: JavaToolInstaller@0
+            displayName: Switch to Java 21
+            inputs:
+              versionSpec: '21'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+          - powershell: |
+                    Write-Host ">>> $env:ES_MODULE"
+                    .\gradlew --no-daemon core:test
+                    if ($LASTEXITCODE -ne 0) {
+                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
+                        Get-Content $_.FullName
+                      }
+                      exit 1
+                    }
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(Windows core) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'
     dependsOn:

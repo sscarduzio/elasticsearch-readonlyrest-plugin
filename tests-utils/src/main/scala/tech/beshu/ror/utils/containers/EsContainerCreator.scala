@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
 import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import java.io.File
 import java.util.function.Consumer
@@ -42,9 +43,10 @@ object EsContainerCreator extends EsContainerCreator {
 
 trait EsContainerCreator {
 
-  val defaultEsInstallationType: EsInstallationType =
-    if (OsUtils.isWindows) EsInstallationType.NativeWindowsProcess
-    else EsInstallationType.EsDockerImage
+  val defaultEsInstallationType: EsInstallationType = OsUtils.currentOs match {
+    case CurrentOs.Windows => EsInstallationType.NativeWindowsProcess
+    case CurrentOs.OtherThanWindows => EsInstallationType.EsDockerImage
+  }
 
   def create(nodeSettings: EsNodeSettings,
              allNodeNames: NonEmptyList[String],
