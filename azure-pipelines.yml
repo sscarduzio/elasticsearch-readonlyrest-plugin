@@ -623,14 +623,14 @@ stages:
           matrix:
             WIN_IT_es91x:
               ES_MODULE: es91x
-#             WIN_IT_es90x:
-#               ES_MODULE: es90x
-#             WIN_IT_es818x:
-#               ES_MODULE: es818x
-#             WIN_IT_es816x:
-#               ES_MODULE: es816x
-#             WIN_IT_es810x:
-#               ES_MODULE: es810x
+            WIN_IT_es90x:
+              ES_MODULE: es90x
+            WIN_IT_es818x:
+              ES_MODULE: es818x
+            WIN_IT_es816x:
+              ES_MODULE: es816x
+            WIN_IT_es810x:
+              ES_MODULE: es810x
             WIN_IT_es80x:
               ES_MODULE: es80x
             WIN_IT_es717x:
@@ -643,18 +643,18 @@ stages:
               ES_MODULE: es711x
             WIN_IT_es710x:
               ES_MODULE: es710x
-#             WIN_IT_es79x:
-#               ES_MODULE: es79x
-#             WIN_IT_es78x:
-#               ES_MODULE: es78x
-#             WIN_IT_es77x:
-#               ES_MODULE: es77x
-#             WIN_IT_es74x:
-#               ES_MODULE: es74x
-#             WIN_IT_es73x:
-#               ES_MODULE: es73x
-#             WIN_IT_es72x:
-#               ES_MODULE: es72x
+            WIN_IT_es79x:
+              ES_MODULE: es79x
+            WIN_IT_es78x:
+              ES_MODULE: es78x
+            WIN_IT_es77x:
+              ES_MODULE: es77x
+            WIN_IT_es74x:
+              ES_MODULE: es74x
+            WIN_IT_es73x:
+              ES_MODULE: es73x
+            WIN_IT_es72x:
+              ES_MODULE: es72x
             WIN_IT_es70x:
               ES_MODULE: es70x
 ####################################
