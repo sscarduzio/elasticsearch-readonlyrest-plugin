@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SnapshotManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
+import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, OsUtils}
 
 class SnapshotAndRestoreApiSuite
@@ -654,13 +654,7 @@ class SnapshotAndRestoreApiSuite
             val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
             verification.snapshots.map(_("snapshot").str) should be(List.empty)
           }
-          val excludedEs7VersionsForTestBelow = OsUtils.currentOs match {
-            // The `x-elastic-product` header is missing in HTTP request in ES versions below 7.8
-            // Additionally in ES for Windows, the header seems to be absent in versions 7.14-7.17, so this test is just ignored for all 7x on Windows
-            case CurrentOs.Windows => allEs7x
-            case CurrentOs.OtherThanWindows => allEs7xBelowEs78x
-          }
-          "many snapshots are being removed" excludeES(allEs6x, excludedEs7VersionsForTestBelow) in {
+          "many snapshots are being removed" excludeES(allEs6x, allEs7xBelowEs78x) in {
             val repositoryName = RepositoryNameGenerator.next("dev3-repo")
             adminSnapshotManager.putRepository(repositoryName).force()
 
@@ -679,18 +673,20 @@ class SnapshotAndRestoreApiSuite
         }
         "user has access to repository name" when {
           "user has access to all requested snapshots" when {
-            "one snapshot is being removed" in {
-              val repositoryName = RepositoryNameGenerator.next("dev2-repo")
-              adminSnapshotManager.putRepository(repositoryName).force()
+            ignoreOnWindows { // The `x-elastic-product` header is missing in HTTP request in ES 7.14-7.17
+              "one snapshot is being removed" in {
+                val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+                adminSnapshotManager.putRepository(repositoryName).force()
 
-              val snapshotName = SnapshotNameGenerator.next("dev2-snap")
-              adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index2").force()
+                val snapshotName = SnapshotNameGenerator.next("dev2-snap")
+                adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index2").force()
 
-              val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName)
+                val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName)
 
-              result should have statusCode 200
-              val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
-              verification.snapshots.map(_("snapshot").str) should be(List.empty)
+                result should have statusCode 200
+                val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+                verification.snapshots.map(_("snapshot").str) should be(List.empty)
+              }
             }
             "many snapshots are being removed" excludeES(allEs6x, allEs7xBelowEs78x) in {
               val repositoryName = RepositoryNameGenerator.next("dev2-repo")
