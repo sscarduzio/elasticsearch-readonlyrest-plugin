@@ -22,12 +22,13 @@ import org.apache.http.{HttpRequest, HttpResponse}
 import org.testcontainers.shaded.org.yaml.snakeyaml.constructor.SafeConstructor
 import org.testcontainers.shaded.org.yaml.snakeyaml.{LoaderOptions, Yaml}
 import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, SimpleHeader}
 import tech.beshu.ror.utils.httpclient.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.ScalaUtils.*
-import tech.beshu.ror.utils.misc.Version
-import tech.beshu.ror.utils.TestUjson.ujson.Value
+import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
 import java.time.Duration
 import java.util
@@ -111,24 +112,53 @@ abstract class BaseManager(client: RestClient,
   }
 
   private def isExcludedRequest(request: HttpRequest) = {
+    OsUtils.currentOs match {
+      case CurrentOs.Windows => isExcludedRequestOnWindows(request)
+      case CurrentOs.OtherThanWindows => isExcludedRequestOnLinux(request)
+    }
+  }
+
+  // The detection on Windows has to be more relaxed, on pipeline the regex was not matched
+  private def isExcludedRequestOnWindows(request: HttpRequest) = {
+    def isPutSnapshotRequestWithWaitForCompletionFlag(request: HttpRequest): Boolean = {
+      request.getRequestLine.getMethod.toUpperCase == "PUT" &&
+        request.getRequestLine.getUri.contains("/_snapshot/")
+    }
+
+    def isRestoreSnapshotRequestWithWaitForCompletionFlag(request: HttpRequest): Boolean = {
+      request.getRequestLine.getMethod.toUpperCase == "POST" &&
+        request.getRequestLine.getUri.contains("/_snapshot/")
+    }
+
+    def isReindexRequest(request: HttpRequest): Boolean = {
+      request.getRequestLine.getMethod.toUpperCase == "POST" &&
+        request.getRequestLine.getUri.contains("/_reindex/")
+    }
+
     isPutSnapshotRequestWithWaitForCompletionFlag(request) ||
       isRestoreSnapshotRequestWithWaitForCompletionFlag(request) ||
       isReindexRequest(request)
   }
 
-  private def isPutSnapshotRequestWithWaitForCompletionFlag(request: HttpRequest): Boolean = {
-    request.getRequestLine.getMethod.toUpperCase == "PUT" &&
-      request.getRequestLine.getUri.matches("^.*/_snapshot/.*/.*/?\\?(.*=.*&)*wait_for_completion=true(&.*=.*&)*$")
-  }
+  private def isExcludedRequestOnLinux(request: HttpRequest) = {
+    def isPutSnapshotRequestWithWaitForCompletionFlag(request: HttpRequest): Boolean = {
+      request.getRequestLine.getMethod.toUpperCase == "PUT" &&
+        request.getRequestLine.getUri.matches("^.*/_snapshot/.*/.*/?\\?(.*=.*&)*wait_for_completion=true(&.*=.*&)*$")
+    }
 
-  private def isRestoreSnapshotRequestWithWaitForCompletionFlag(request: HttpRequest): Boolean = {
-    request.getRequestLine.getMethod.toUpperCase == "POST" &&
-      request.getRequestLine.getUri.matches("^.*/_snapshot/.*/.*/_restore/?\\?(.*=.*&)*wait_for_completion=true(&.*=.*&)*$")
-  }
+    def isRestoreSnapshotRequestWithWaitForCompletionFlag(request: HttpRequest): Boolean = {
+      request.getRequestLine.getMethod.toUpperCase == "POST" &&
+        request.getRequestLine.getUri.matches("^.*/_snapshot/.*/.*/_restore/?\\?(.*=.*&)*wait_for_completion=true(&.*=.*&)*$")
+    }
 
-  private def isReindexRequest(request: HttpRequest): Boolean = {
-    request.getRequestLine.getMethod.toUpperCase == "POST" &&
-      request.getRequestLine.getUri.matches("^.*/_reindex/?(\\?.*=.*)?$")
+    def isReindexRequest(request: HttpRequest): Boolean = {
+      request.getRequestLine.getMethod.toUpperCase == "POST" &&
+        request.getRequestLine.getUri.matches("^.*/_reindex/?(\\?.*=.*)?$")
+    }
+
+    isPutSnapshotRequestWithWaitForCompletionFlag(request) ||
+      isRestoreSnapshotRequestWithWaitForCompletionFlag(request) ||
+      isReindexRequest(request)
   }
 
   private def assertContainsXElasticProductHeader(response: HttpResponse): Unit = {

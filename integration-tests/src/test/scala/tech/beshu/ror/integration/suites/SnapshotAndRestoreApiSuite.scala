@@ -28,8 +28,7 @@ import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SnapshotManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
-import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, OsUtils}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class SnapshotAndRestoreApiSuite
   extends AnyWordSpec
@@ -673,20 +672,18 @@ class SnapshotAndRestoreApiSuite
         }
         "user has access to repository name" when {
           "user has access to all requested snapshots" when {
-            ignoreOnWindows { // The `x-elastic-product` header is missing in HTTP request in ES 7.14-7.17
-              "one snapshot is being removed" in {
-                val repositoryName = RepositoryNameGenerator.next("dev2-repo")
-                adminSnapshotManager.putRepository(repositoryName).force()
+            "one snapshot is being removed" in {
+              val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+              adminSnapshotManager.putRepository(repositoryName).force()
 
-                val snapshotName = SnapshotNameGenerator.next("dev2-snap")
-                adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index2").force()
+              val snapshotName = SnapshotNameGenerator.next("dev2-snap")
+              adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index2").force()
 
-                val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName)
+              val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName)
 
-                result should have statusCode 200
-                val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
-                verification.snapshots.map(_("snapshot").str) should be(List.empty)
-              }
+              result should have statusCode 200
+              val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+              verification.snapshots.map(_("snapshot").str) should be(List.empty)
             }
             "many snapshots are being removed" excludeES(allEs6x, allEs7xBelowEs78x) in {
               val repositoryName = RepositoryNameGenerator.next("dev2-repo")
