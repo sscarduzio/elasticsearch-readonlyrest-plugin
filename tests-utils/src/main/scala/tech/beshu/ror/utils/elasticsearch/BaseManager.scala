@@ -96,23 +96,26 @@ abstract class BaseManager(client: RestClient,
     override def toString: String = response.toString
 
     private def checkResponseAssertions(): Unit = {
-      if (!isForbidden && esNativeApi) {
-        if (Version.greaterOrEqualThan(esVersion, 7, 14, 0) && Version.lowerThan(esVersion, 7, 16, 0)) {
-          OsUtils.currentOs match {
-            case CurrentOs.Windows =>
-            // On Windows the excluded request detection is not working correctly on Azure pipeline,
-            // the assertion is omitted on ES [7.14.0,7.16.0)
-            case CurrentOs.OtherThanWindows =>
+      OsUtils.currentOs match {
+        case CurrentOs.Windows =>
+          // On Windows the header is not added to some requests in versions <7.14-8.0)
+          // Assertion is applied since ES 8.0
+          if (!isForbidden && esNativeApi && Version.greaterOrEqualThan(esVersion, 8, 0, 0)) {
+            assertContainsXElasticProductHeader(response)
+          }
+        case CurrentOs.OtherThanWindows =>
+          if (!isForbidden && esNativeApi) {
+            if (Version.greaterOrEqualThan(esVersion, 7, 14, 0) && Version.lowerThan(esVersion, 7, 16, 0)) {
               request match {
                 case Some(req) if isExcludedRequest(req) =>
                 // ES [7.14.0,7.16.0) doesn't add the X-elastic-product header to some responses (under some conditions)
                 case Some(_) | None =>
                   assertContainsXElasticProductHeader(response)
               }
+            } else if (Version.greaterOrEqualThan(esVersion, 7, 16, 0)) {
+              assertContainsXElasticProductHeader(response)
+            }
           }
-        } else if (Version.greaterOrEqualThan(esVersion, 7, 16, 0)) {
-          assertContainsXElasticProductHeader(response)
-        }
       }
     }
   }
