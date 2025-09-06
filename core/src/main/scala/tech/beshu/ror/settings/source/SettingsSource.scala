@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.settings.source
 
+import cats.Show
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
@@ -23,7 +24,7 @@ import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsErro
 
 sealed trait SettingsSource[SETTINGS]
 
-trait ReadOnlySettingsSource[SETTINGS : Decoder, ERROR] extends SettingsSource[SETTINGS] {
+trait ReadOnlySettingsSource[SETTINGS: Decoder, ERROR] extends SettingsSource[SETTINGS] {
   def load(): Task[Either[LoadingSettingsError[ERROR], SETTINGS]]
 }
 object ReadOnlySettingsSource {
@@ -33,10 +34,13 @@ object ReadOnlySettingsSource {
     final case class SourceSpecificError[ERROR](error: ERROR) extends LoadingSettingsError[ERROR]
   }
 
-  //implicit val show: Show[LoadingSettingsError[_]] = ???
+  implicit def show[ERROR: Show]: Show[LoadingSettingsError[ERROR]] = Show.show {
+    case LoadingSettingsError.SettingsMalformed(cause) => "settings taken from index's document is malformed"
+    case LoadingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
+  }
 }
 
-trait ReadWriteSettingsSource[SETTINGS : Encoder : Decoder, READ_SPECIFIC_ERROR, WRITE_SPECIFIC_ERROR]
+trait ReadWriteSettingsSource[SETTINGS: Encoder : Decoder, READ_SPECIFIC_ERROR, WRITE_SPECIFIC_ERROR]
   extends ReadOnlySettingsSource[SETTINGS, READ_SPECIFIC_ERROR] {
 
   def save(settings: SETTINGS): Task[Either[SavingSettingsError[WRITE_SPECIFIC_ERROR], Unit]]
@@ -47,5 +51,7 @@ object ReadWriteSettingsSource {
     final case class SourceSpecificError[ERROR](error: ERROR) extends SavingSettingsError[ERROR]
   }
 
-  // implicit val show: Show[SavingSettingsError] = ???
+  implicit def show[ERROR: Show]: Show[SavingSettingsError[ERROR]] = Show.show {
+    case SavingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
+  }
 }

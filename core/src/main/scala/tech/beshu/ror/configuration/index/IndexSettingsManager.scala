@@ -14,41 +14,40 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.index
+//package tech.beshu.ror.configuration.index
+//
+//import monix.eval.Task
+//import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
+//import tech.beshu.ror.configuration.RawRorSettingsYamlParser
+//import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
+//import tech.beshu.ror.configuration.loader.RorSettingsLoader
+//import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.SpecializedError
+//
+//trait IndexSettingsManager[SETTINGS] {
+//
+//  def settingsIndex: RorSettingsIndex
+//
+//  def rorSettingsYamlParser: RawRorSettingsYamlParser
+//
+//  def load(): Task[Either[RorSettingsLoader.Error[LoadingIndexSettingsError], SETTINGS]]
+//
+//  def save(settings: SETTINGS): Task[Either[SavingIndexSettingsError, Unit]]
+//
+//  protected final def settingsLoaderError(error: LoadingIndexSettingsError): Task[Either[SpecializedError[LoadingIndexSettingsError], SETTINGS]] =
+//    Task.now(Left(SpecializedError[LoadingIndexSettingsError](error)))
+//}
+//object IndexSettingsManager {
+//
+//  sealed trait LoadingIndexSettingsError
+//  object LoadingIndexSettingsError {
+//    case object IndexNotExist extends LoadingIndexSettingsError
+//    case object UnknownStructureOfIndexDocument extends LoadingIndexSettingsError
+//  }
+//
+//  sealed trait SavingIndexSettingsError
+//  object SavingIndexSettingsError {
+//    case object CannotSaveSettings extends SavingIndexSettingsError
+//  }
+//}
 
-import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
-import tech.beshu.ror.configuration.RawRorSettingsYamlParser
-import tech.beshu.ror.configuration.index.IndexSettingsManager.{LoadingIndexSettingsError, SavingIndexSettingsError}
-import tech.beshu.ror.configuration.loader.RorSettingsLoader
-import tech.beshu.ror.configuration.loader.RorSettingsLoader.Error.SpecializedError
-
-// todo: maybe we need settings manager to encapsulate file and index loading/saving logic?
-// todo: it looks like this manager should extend RorConfigLoader
-trait IndexSettingsManager[SETTINGS] {
-
-  def settingsIndex: RorSettingsIndex
-
-  def rorSettingsYamlParser: RawRorSettingsYamlParser
-
-  def load(): Task[Either[RorSettingsLoader.Error[LoadingIndexSettingsError], SETTINGS]]
-
-  def save(settings: SETTINGS): Task[Either[SavingIndexSettingsError, Unit]]
-
-  // todo: is this ok?
-  protected final def settingsLoaderError(error: LoadingIndexSettingsError): Task[Either[SpecializedError[LoadingIndexSettingsError], SETTINGS]] =
-    Task.now(Left(SpecializedError[LoadingIndexSettingsError](error)))
-}
-object IndexSettingsManager {
-
-  sealed trait LoadingIndexSettingsError
-  object LoadingIndexSettingsError {
-    case object IndexNotExist extends LoadingIndexSettingsError
-    case object UnknownStructureOfIndexDocument extends LoadingIndexSettingsError
-  }
-
-  sealed trait SavingIndexSettingsError
-  object SavingIndexSettingsError {
-    case object CannotSaveSettings extends SavingIndexSettingsError
-  }
-}
+// todo: remove

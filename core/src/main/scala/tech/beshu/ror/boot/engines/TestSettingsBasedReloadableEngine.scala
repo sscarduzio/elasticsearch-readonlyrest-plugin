@@ -32,10 +32,12 @@ import tech.beshu.ror.boot.engines.SettingsHash.*
 import tech.beshu.ror.configuration.TestRorSettings.Expiration
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.source.IndexSettingsSource.SavingError.CannotSaveSettings
 import tech.beshu.ror.settings.source.{IndexSettingsSource, TestSettingsIndexSource}
 import tech.beshu.ror.settings.source.IndexSettingsSource.{LoadingError, SavingError}
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError.SourceSpecificError
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
 
@@ -111,7 +113,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
           logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: ${message.show}")
         case Left(ReloadError(RawSettingsReloadError.RorInstanceStopped)) =>
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
-        case Left(IndexSettingsSavingError(_)) => // todo: SavingIndexSettingsError.CannotSaveSettings)) =>
+        case Left(IndexSettingsSavingError(SourceSpecificError(CannotSaveSettings))) =>
           logger.error(s"[${requestId.show}] Saving ROR test settings in index failed")
       })
     } yield reloadResult
@@ -170,7 +172,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
   }
 
   private def readCurrentTestSettingsForUpdate()
-                                            (implicit requestId: RequestId): EitherT[Task, IndexSettingsUpdateError, TestSettings.Present] = {
+                                              (implicit requestId: RequestId): EitherT[Task, IndexSettingsUpdateError, TestSettings.Present] = {
     EitherT {
       currentTestSettings()
         .map {
@@ -218,15 +220,15 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     EitherT(testSettingsSource.load())
       .map(Some(_))
       .leftFlatMap {
-        // IndexSettingsReloadError.IndexLoadingSettingsError.apply // todo:
-        case LoadingSettingsError.SettingsMalformed(_) => ???
-        case LoadingSettingsError.SourceSpecificError(LoadingError.IndexNotFound) => ???
-        case LoadingSettingsError.SourceSpecificError(LoadingError.DocumentNotFound) => ???
+        case LoadingSettingsError.SourceSpecificError(LoadingError.DocumentNotFound) =>
+          EitherT.rightT(None)
+        case error =>
+          EitherT.leftT(IndexSettingsReloadError.IndexLoadingSettingsError(error): IndexSettingsReloadError)
       }
   }
 
   private def invalidateTestSettingsByIndex[A]()
-                                            (implicit requestId: RequestId): EitherT[Task, A, Unit] = {
+                                              (implicit requestId: RequestId): EitherT[Task, A, Unit] = {
     EitherT.right[A] {
       for {
         _ <-

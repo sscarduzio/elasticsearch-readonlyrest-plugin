@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.settings.source
 
+import cats.Show
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
@@ -47,7 +48,7 @@ class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexJsonContentService: 
         case Left(IndexDocumentReader.DocumentNotFound) =>
           settingsLoaderError(DocumentNotFound)
         case Left(IndexDocumentReader.DocumentUnreachable) =>
-          settingsLoaderError(IndexNotFound) // todo: ???
+          settingsLoaderError(IndexNotFound) // todo: throw ex?
       }
   }
 
@@ -71,6 +72,11 @@ object IndexSettingsSource {
   object LoadingError {
     case object IndexNotFound extends LoadingError
     case object DocumentNotFound extends LoadingError
+
+    implicit val show: Show[LoadingError] = Show.show {
+      case IndexNotFound => "cannot find ReadonlyREST settings index"
+      case DocumentNotFound => "cannot found document with ReadonlyREST settings"
+    }
   }
 
   type IndexSettingsSavingError = SavingSettingsError[SavingError]
@@ -78,5 +84,9 @@ object IndexSettingsSource {
   sealed trait SavingError
   object SavingError {
     case object CannotSaveSettings extends SavingError
+
+    implicit val show: Show[SavingError] = Show.show {
+      case CannotSaveSettings => "Cannot save settings in the ReadonlyREST index"
+    }
   }
 }

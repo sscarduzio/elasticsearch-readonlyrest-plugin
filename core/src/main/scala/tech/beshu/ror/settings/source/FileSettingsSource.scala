@@ -17,6 +17,7 @@
 package tech.beshu.ror.settings.source
 
 import better.files.File
+import cats.Show
 import cats.data.EitherT
 import io.circe.{Decoder, DecodingFailure, ParsingFailure, parser}
 import monix.eval.Task
@@ -58,5 +59,9 @@ object FileSettingsSource {
   sealed trait LoadingError
   object LoadingError {
     final case class FileNotExist(file: File) extends LoadingError
+
+    implicit val show: Show[LoadingError] = Show.show {
+      case FileNotExist(file) => s"Cannot find settings file: ${file.pathAsString}"
+    }
   }
 }

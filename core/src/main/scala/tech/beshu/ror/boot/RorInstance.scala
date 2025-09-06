@@ -32,7 +32,7 @@ import tech.beshu.ror.api.{AuthMockApi, MainSettingsApi, TestSettingsApi}
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, MainRorSettings, RawRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.source.IndexSettingsSource
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
@@ -69,7 +69,7 @@ class RorInstance private(boot: ReadonlyRest,
   private val theMainSettingsEngine = mainSettingsBasedReloadableEngineCreator.create(
     boot,
     esConfigBasedRorSettings,
-    (mainInitialEngine.engine, mainInitialEngine.settings),
+    mainInitialEngine,
     mainReloadInProgress
   )
   private val theTestSettingsEngine = testSettingsBasedReloadableEngineCreator.create(
@@ -99,7 +99,7 @@ class RorInstance private(boot: ReadonlyRest,
 
   def forceReloadAndSave(settings: RawRorSettings)
                         (implicit requestId: RequestId): Task[Either[IndexSettingsReloadWithUpdateError, Unit]] =
-    theMainSettingsEngine.forceReloadAndSave(settings)
+    theMainSettingsEngine.forceReloadAndSave(MainRorSettings(settings))
 
   def currentTestSettings()
                          (implicit requestId: RequestId): Task[TestSettings] = {
@@ -143,6 +143,7 @@ class RorInstance private(boot: ReadonlyRest,
     scheduleIndexSettingsChecking(interval, reloadTask)
   }
 
+  // todo: check messages
   private def scheduleIndexSettingsChecking(interval: PositiveFiniteDuration,
                                             reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]]): Cancelable = {
     logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within ${interval.show}")
@@ -173,7 +174,7 @@ class RorInstance private(boot: ReadonlyRest,
     case (name, Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.ReloadingFailed(startingFailure))))) =>
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ReadonlyREST ${name.show} engine starting failed: ${startingFailure.message.show}")
     case (name, Left(EngineReloadError(IndexSettingsReloadError.IndexLoadingSettingsError(error)))) =>
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ${name.show} settings from index failed:") // todo: ${error.show}")
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ${name.show} settings from index failed: ${error.show}")
   }
 
   private def tryMainEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {

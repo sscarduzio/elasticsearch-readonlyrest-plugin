@@ -14,13 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.strategy
+package tech.beshu.ror.configuration
 
-import monix.eval.Task
-import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.configuration.{MainRorSettings, TestRorSettings}
+final case class MainRorSettings(rawSettings: RawRorSettings)
 
-trait StartingRorSettingsLoader {
-
-  def load(): Task[Either[StartingFailure, (MainRorSettings, Option[TestRorSettings])]]
-}

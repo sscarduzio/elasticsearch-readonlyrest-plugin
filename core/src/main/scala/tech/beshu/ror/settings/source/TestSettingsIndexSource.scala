@@ -35,10 +35,10 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.json.KeyCodec
 
-import java.time.{Instant, ZoneOffset}
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.Duration
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 class TestSettingsIndexSource private(indexJsonContentService: IndexDocumentReader,
                                       settingsIndex: RorSettingsIndex)
@@ -170,27 +170,22 @@ object TestSettingsIndexSource {
   }
 
   private implicit lazy val expirationTtlDecoder: Codec[PositiveFiniteDuration] = {
-    val decoder = Decoder.decodeString.map { str =>
-      Try {
-        Duration(str.toLong, "ms").toRefinedPositive match {
-          case Right(value) => value
-          case Left(errorMsg) => ???
-        }
-      } match {
-        case Success(value) => value
-        case Failure(exception) => ???
-      }
+    val decoder = Decoder.decodeString.emap { str =>
+      for {
+        duration <- Try(Duration(str.toLong, "ms")).toEither.left.map(_ => s"Cannot create decode string '$str' to duration")
+        positiveFiniteDuration <- duration.toRefinedPositive
+      } yield positiveFiniteDuration
     }
     val encoder: Encoder[PositiveFiniteDuration] = Encoder.encodeString.contramap(_.value.toMillis.toString)
     Codec.from(decoder, encoder)
   }
 
   private implicit lazy val expirationTimeDecoder: Decoder[Instant] = {
-    val decoder = Decoder.decodeString.map { str =>
-      Try(DateTimeFormatter.ISO_DATE_TIME.parse(str)).map(Instant.from) match {
-        case Success(value) => value
-        case Failure(exception) => ???
-      }
+    val decoder = Decoder.decodeString.emap { str =>
+      Try(DateTimeFormatter.ISO_DATE_TIME.parse(str))
+        .map(Instant.from)
+        .toEither
+        .left.map(_ => s"Cannot decode string 'str' to date")
     }
     val encoder: Encoder[Instant] = Encoder.encodeString.contramap(_.atOffset(ZoneOffset.UTC).toString)
     Codec.from(decoder, encoder)

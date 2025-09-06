@@ -86,7 +86,7 @@ class TestSettingsApi(rorInstance: RorInstance,
         case Right(()) =>
           TestSettingsResponse.InvalidateTestSettings.SuccessResponse("ROR Test settings are invalidated")
         case Left(IndexSettingsInvalidationError.IndexSettingsSavingError(error)) =>
-          TestSettingsResponse.InvalidateTestSettings.FailedResponse(s"Cannot invalidate test settings: ") // todo: ${error.show}")
+          TestSettingsResponse.InvalidateTestSettings.FailedResponse(s"Cannot invalidate test settings: ${error.show}")
       }
   }
 
@@ -144,7 +144,7 @@ class TestSettingsApi(rorInstance: RorInstance,
             }
             .leftMap {
               case IndexSettingsSavingError(error) =>
-                TestSettingsResponse.UpdateTestSettings.FailedResponse(s"Cannot reload new settings: ") // todo: ${error.show}")
+                TestSettingsResponse.UpdateTestSettings.FailedResponse(s"Cannot reload new settings: ${error.show}")
               case ReloadError(RawSettingsReloadError.SettingsUpToDate(_)) =>
                 TestSettingsResponse.UpdateTestSettings.FailedResponse(s"Current settings are already loaded")
               case ReloadError(RawSettingsReloadError.RorInstanceStopped) =>

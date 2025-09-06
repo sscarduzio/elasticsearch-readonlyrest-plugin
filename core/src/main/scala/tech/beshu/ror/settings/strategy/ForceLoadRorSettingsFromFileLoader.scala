@@ -20,33 +20,25 @@ import cats.data.EitherT
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.configuration.{RawRorSettings, TestRorSettings}
+import tech.beshu.ror.configuration.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.source.FileSettingsSource
-import tech.beshu.ror.settings.source.FileSettingsSource.FileSettingsLoadingError
 import tech.beshu.ror.utils.ScalaOps.*
 
-class ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource: FileSettingsSource[RawRorSettings])
+class ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource: FileSettingsSource[MainRorSettings])
   extends StartingRorSettingsLoader with Logging {
 
-  override def load(): Task[Either[StartingFailure, (RawRorSettings, Option[TestRorSettings])]] = {
+  override def load(): Task[Either[StartingFailure, (MainRorSettings, Option[TestRorSettings])]] = {
     val result = for {
-      _ <- lift(logger.info(s"Loading ReadonlyREST settings from file: ${mainSettingsFileSource.settingsFile.show}"))
+      _ <- lift(logger.info(s"Loading ReadonlyREST main settings from file: ${mainSettingsFileSource.settingsFile.show}"))
       settings <- EitherT(mainSettingsFileSource.load())
-        .leftMap(convertFileError)
-        .leftSemiflatTap { error =>
-          logger.dError(s"Loading ReadonlyREST settings from file failed: ${error.toString}")
-        }
+        .biSemiflatTap(
+          error => logger.dError(s"Loading ReadonlyREST main settings from file failed: ${error.toString}"),
+          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from file: ${settings.rawSettings.raw.show}")
+        )
+        .leftMap(error => StartingFailure(error.show))
     } yield (settings, None)
     result.value
-  }
-
-  private def convertFileError(error: FileSettingsLoadingError): StartingFailure = {
-    ???
-    //        error match {
-    //          case ParsingError(error) => LoadingFromFileError.FileParsingError(error.show)
-    //          case SpecializedError(FileRorSettingsLoader.Error.FileNotExist(file)) => LoadingFromFileError.FileNotExist(file.path)
-    //        }
   }
 
   private def lift[A](value: => A): EitherT[Task, Nothing, A] = EitherT(Task.delay(Right(value)))

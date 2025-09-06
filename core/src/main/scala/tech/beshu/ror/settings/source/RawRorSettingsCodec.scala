@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.settings.source
 
+import cats.implicits.*
 import io.circe.Decoder.Result
 import io.circe.{Codec, Decoder, HCursor, Json}
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
@@ -29,7 +30,7 @@ private [source] class RawRorSettingsCodec(yamlParser: RawRorSettingsYamlParser)
       .emap { str =>
         yamlParser
           .fromString(str)
-          .left.map { _ => ??? }
+          .left.map(_.show)
       }
       .apply(c)
 

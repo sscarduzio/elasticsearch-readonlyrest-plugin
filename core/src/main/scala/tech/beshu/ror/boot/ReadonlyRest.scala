@@ -61,10 +61,10 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def startRor(esConfigBasedRorSettings: EsConfigBasedRorSettings,
                        creators: SettingsRelatedCreators,
-                       loadedMainRorSettings: RawRorSettings,
+                       loadedMainRorSettings: MainRorSettings,
                        loadedTestRorSettings: Option[TestRorSettings]) = {
     for {
-      mainEngine <- EitherT(loadRorEngine(loadedMainRorSettings, esConfigBasedRorSettings.settingsIndex))
+      mainEngine <- EitherT(loadRorEngine(loadedMainRorSettings.rawSettings, esConfigBasedRorSettings.settingsIndex))
       testEngine <- EitherT.right(loadTestEngine(loadedTestRorSettings, esConfigBasedRorSettings.settingsIndex))
       rorInstance <- createRorInstance(esConfigBasedRorSettings, creators, mainEngine, testEngine, loadedMainRorSettings)
     } yield rorInstance
@@ -116,9 +116,9 @@ class ReadonlyRest(coreFactory: CoreFactory,
                                 creators: SettingsRelatedCreators,
                                 mainEngine: Engine,
                                 testEngine: TestEngine,
-                                alreadyLoadedSettings: RawRorSettings) = {
+                                alreadyLoadedSettings: MainRorSettings) = {
     EitherT.right[StartingFailure] {
-      RorInstance.create(this, esConfigBasedRorSettings, creators, MainEngine(mainEngine, alreadyLoadedSettings), testEngine)
+      RorInstance.create(this, esConfigBasedRorSettings, creators, MainEngine(mainEngine, alreadyLoadedSettings.rawSettings), testEngine)
     }
   }
 
@@ -196,8 +196,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .mkString("Errors:\n", "\n", "")
     StartingFailure(errorsMessage)
   }
-
-  //todo: private def notSetTestRorSettings: TestRorSettings = TestRorSettings.NotSet
 
   private def lift[A](value: => A) = {
     EitherT.liftF(Task.delay(value))
