@@ -252,14 +252,15 @@ class GroupsRuleAccessControlTests
         val result1 = metadataRequest("user_root")
         val result2 = metadataRequest("user_local_groups")
 
-        inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1, _) =>
-          inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2, _) =>
+        inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1, a) =>
+          inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2, b) =>
             userMetadata1.currentGroupId should be(userMetadata2.currentGroupId)
             userMetadata1.kibanaIndex should be(userMetadata2.kibanaIndex)
             userMetadata1.hiddenKibanaApps should be(userMetadata2.hiddenKibanaApps)
             userMetadata1.allowedKibanaApiPaths should be(userMetadata2.allowedKibanaApiPaths)
             userMetadata1.kibanaAccess should be(userMetadata2.kibanaAccess)
             userMetadata1.userOrigin should be(userMetadata2.userOrigin)
+            userMetadata1.jwtToken.isDefined should be(userMetadata2.jwtToken.isDefined)
           }
         }
       }
