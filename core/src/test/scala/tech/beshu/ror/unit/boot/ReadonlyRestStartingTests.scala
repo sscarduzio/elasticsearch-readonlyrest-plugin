@@ -48,10 +48,9 @@ import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, TestSettings}
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.RawRorSettings
-import tech.beshu.ror.configuration.manager.InIndexSettingsManager.SavingIndexSettingsError
 import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
-import tech.beshu.ror.es.IndexDocumentReader.{CannotReachContentSource, CannotWriteToIndex, DocumentNotFound, WriteError}
+import tech.beshu.ror.es.IndexDocumentReader.{CannotWriteToIndex, DocumentNotFound, IndexNotFound, WriteError}
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, EsEnv, IndexDocumentReader}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
@@ -77,27 +76,27 @@ class ReadonlyRestStartingTests
     "support the main engine" should {
       "be loaded from file" when {
         "index is not available but file config is provided" in withReadonlyRest({
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          (mockedIndexJsonContentManager.sourceOf _)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "1")
             .repeated(1)
-            .returns(Task.now(Left(CannotReachContentSource)))
+            .returns(Task.now(Left(IndexNotFound)))
 
-          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
 
           val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/no_index_config_file_config_provided/readonlyrest.yml")
-          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/no_index_config_file_config_provided/")
+          readonlyRestBoot(coreFactory, mockedIndexDocumentReader, "/boot_tests/no_index_config_file_config_provided/")
         }) { rorInstance =>
           val acl = rorInstance.engines.value.mainEngine.core.accessControl
           acl shouldBe a[AccessControlListLoggingDecorator]
           acl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
         "file loading is forced in elasticsearch.yml" in withReadonlyRest({
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
 
           val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading/readonlyrest.yml")
-          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/forced_file_loading/")
+          readonlyRestBoot(coreFactory, mockedIndexDocumentReader, "/boot_tests/forced_file_loading/")
         }) { rorInstance =>
           val acl = rorInstance.engines.value.mainEngine.core.accessControl
           acl shouldBe a[AccessControlListLoggingDecorator]
@@ -109,12 +108,12 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
-          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
+          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
 
           val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
-          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
+          readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath)
         }) { rorInstance =>
           val acl = rorInstance.engines.value.mainEngine.core.accessControl
           acl shouldBe a[AccessControlListLoggingDecorator]
@@ -124,13 +123,13 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
-          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
+          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
 
           val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
 
-          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
+          readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath)
         }) { rorInstance =>
           val acl = rorInstance.engines.value.mainEngine.core.accessControl
           acl shouldBe a[AccessControlListLoggingDecorator]
@@ -143,16 +142,16 @@ class ReadonlyRestStartingTests
           val initialIndexConfigFile = "readonlyrest_initial.yml"
           val newIndexConfigFile = "readonlyrest_first.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + initialIndexConfigFile)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + initialIndexConfigFile)
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + initialIndexConfigFile)
           mockCoreFactory(coreFactory, resourcesPath + newIndexConfigFile)
-          mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + newIndexConfigFile)
-          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+          mockIndexJsonContentManagerSaveCall(mockedIndexDocumentReader, resourcesPath + newIndexConfigFile)
+          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
 
-          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+          readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(0 seconds))
         }) { rorInstance =>
           val mainEngine = rorInstance.engines.value.mainEngine
           mainEngine.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
@@ -171,9 +170,9 @@ class ReadonlyRestStartingTests
           val firstNewIndexConfigFile = "readonlyrest_first.yml"
           val secondNewIndexConfigFile = "readonlyrest_second.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + initialIndexConfigFile)
-          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + initialIndexConfigFile)
+          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + initialIndexConfigFile)
@@ -185,14 +184,14 @@ class ReadonlyRestStartingTests
                 .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp, None))) // very long creation
           )
           mockIndexJsonContentManagerSaveCall(
-            mockedIndexJsonContentManager,
+            mockedIndexDocumentReader,
             resourcesPath + firstNewIndexConfigFile,
             Task.sleep(500 millis).map(_ => Right(())) // very long saving
           )
 
-          val readonlyrest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
-          (readonlyrest, mockedIndexJsonContentManager)
-        }) { case (rorInstance, mockedIndexJsonContentManager) =>
+          val readonlyrest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(0 seconds))
+          (readonlyrest, mockedIndexDocumentReader)
+        }) { case (rorInstance, mockedIndexDocumentReader) =>
           val resourcesPath = "/boot_tests/config_reloading/"
           val firstNewIndexConfigFile = "readonlyrest_first.yml"
           val secondNewIndexConfigFile = "readonlyrest_second.yml"
@@ -207,7 +206,7 @@ class ReadonlyRestStartingTests
                 .forceReloadAndSave(rorConfigFromResource(resourcesPath + firstNewIndexConfigFile))(newRequestId())
                 .map { result =>
                   // schedule after first finish
-                  mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + secondNewIndexConfigFile)
+                  mockIndexJsonContentManagerSaveCall(mockedIndexDocumentReader, resourcesPath + secondNewIndexConfigFile)
                   result
                 },
               Task
@@ -227,17 +226,17 @@ class ReadonlyRestStartingTests
         val originIndexConfigFile = "readonlyrest.yml"
         val updatedIndexConfigFile = "updated_readonlyrest.yml"
 
-        val mockedIndexJsonContentManager = mock[IndexDocumentReader]
+        val mockedIndexDocumentReader = mock[IndexDocumentReader]
         val coreFactory = mock[CoreFactory]
 
-        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + originIndexConfigFile, repeatedCount = 1)
-        mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + originIndexConfigFile, repeatedCount = 1)
+        mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
         mockCoreFactory(coreFactory, resourcesPath + originIndexConfigFile, mockDisabledAccessControl)
 
-        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + updatedIndexConfigFile)
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + updatedIndexConfigFile)
         mockCoreFactory(coreFactory, resourcesPath + updatedIndexConfigFile)
 
-        readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
+        readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(2 seconds))
       }) { rorInstance =>
         val acl = rorInstance.engines.value.mainEngine.core.accessControl
         acl shouldBe a[AccessControlListLoggingDecorator]
@@ -276,13 +275,13 @@ class ReadonlyRestStartingTests
           }
         }
         "index config doesn't exist and file config is malformed" in {
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          (mockedIndexJsonContentManager.sourceOf _)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "1")
             .repeated(1)
             .returns(Task.now(Left(DocumentNotFound)))
 
-          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexJsonContentManager, "/boot_tests/index_config_not_exists_malformed_file_config/")
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexDocumentReader, "/boot_tests/index_config_not_exists_malformed_file_config/")
 
           val result = readonlyRest.start().runSyncUnsafe()
 
@@ -291,15 +290,15 @@ class ReadonlyRestStartingTests
           }
         }
         "index config doesn't exist and file config cannot be loaded" in {
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          (mockedIndexJsonContentManager.sourceOf _)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "1")
             .repeated(1)
             .returns(Task.now(Left(DocumentNotFound)))
-          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
 
           val coreFactory = mockFailedCoreFactory(mock[CoreFactory], "/boot_tests/index_config_not_exists_bad_file_config/readonlyrest.yml")
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/index_config_not_exists_bad_file_config/")
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, "/boot_tests/index_config_not_exists_bad_file_config/")
 
           val result = readonlyRest.start().runSyncUnsafe()
 
@@ -311,11 +310,11 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/malformed_index_config/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
-          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
+          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
 
-          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexJsonContentManager, resourcesPath)
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexDocumentReader, resourcesPath)
 
           val result = readonlyRest.start().runSyncUnsafe()
 
@@ -327,12 +326,12 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/bad_index_config/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
-          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
+          mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
 
           val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath)
 
           val result = readonlyRest.start().runSyncUnsafe()
 
@@ -375,10 +374,10 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Left(DocumentNotFound)))
@@ -386,7 +385,7 @@ class ReadonlyRestStartingTests
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
 
-          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
+          readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(5 seconds))
         }) { rorInstance =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
@@ -398,11 +397,11 @@ class ReadonlyRestStartingTests
               val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
               val indexConfigFile = "readonlyrest_index.yml"
 
-              val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-              mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+              val mockedIndexDocumentReader = mock[IndexDocumentReader]
+              mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
               lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
-              (mockedIndexJsonContentManager.sourceOf _)
+              (mockedIndexDocumentReader.documentAsJson _)
                 .expects(fullIndexName(".readonlyrest"), "2")
                 .repeated(1)
                 .returns(Task.now(Right(
@@ -418,7 +417,7 @@ class ReadonlyRestStartingTests
               mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
               mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig, None)
 
-              val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
+              val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(10 seconds))
               (readonlyRest, expirationTimestamp)
             }) { case (rorInstance, expirationTimestamp) =>
               rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
@@ -461,11 +460,11 @@ class ReadonlyRestStartingTests
               val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
               val indexConfigFile = "readonlyrest_index.yml"
 
-              val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-              mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+              val mockedIndexDocumentReader = mock[IndexDocumentReader]
+              mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
               lazy val expirationTimestamp = testClock.instant().minusSeconds(100)
-              (mockedIndexJsonContentManager.sourceOf _)
+              (mockedIndexDocumentReader.documentAsJson _)
                 .expects(fullIndexName(".readonlyrest"), "2")
                 .repeated(1)
                 .returns(Task.now(Right(
@@ -480,7 +479,7 @@ class ReadonlyRestStartingTests
               val coreFactory = mock[CoreFactory]
               mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
 
-              readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
+              readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(10 seconds))
             }) { rorInstance =>
               rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
@@ -498,10 +497,10 @@ class ReadonlyRestStartingTests
             val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
             val indexConfigFile = "readonlyrest_index.yml"
 
-            val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-            mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+            val mockedIndexDocumentReader = mock[IndexDocumentReader]
+            mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
-            (mockedIndexJsonContentManager.sourceOf _)
+            (mockedIndexDocumentReader.documentAsJson _)
               .expects(fullIndexName(".readonlyrest"), "2")
               .repeated(1)
               .returns(Task.now(Left(CannotReachContentSource)))
@@ -509,7 +508,7 @@ class ReadonlyRestStartingTests
             val coreFactory = mock[CoreFactory]
             mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
 
-            readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
+            readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(5 seconds))
           }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
@@ -521,11 +520,11 @@ class ReadonlyRestStartingTests
             val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
             val indexConfigFile = "readonlyrest_index.yml"
 
-            val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-            mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+            val mockedIndexDocumentReader = mock[IndexDocumentReader]
+            mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
             lazy val expirationTimestamp = testClock.instant().minusSeconds(100)
-            (mockedIndexJsonContentManager.sourceOf _)
+            (mockedIndexDocumentReader.documentAsJson _)
               .expects(fullIndexName(".readonlyrest"), "2")
               .repeated(1)
               .returns(Task.now(Right(
@@ -540,7 +539,7 @@ class ReadonlyRestStartingTests
             val coreFactory = mock[CoreFactory]
             mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
 
-            readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
+            readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(5 seconds))
           }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
@@ -552,10 +551,10 @@ class ReadonlyRestStartingTests
             val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
             val indexConfigFile = "readonlyrest_index.yml"
 
-            val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-            mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+            val mockedIndexDocumentReader = mock[IndexDocumentReader]
+            mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
-            (mockedIndexJsonContentManager.sourceOf _)
+            (mockedIndexDocumentReader.documentAsJson _)
               .expects(fullIndexName(".readonlyrest"), "2")
               .repeated(1)
               .returns(Task.now(Right(
@@ -571,7 +570,7 @@ class ReadonlyRestStartingTests
             mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
             mockFailedCoreFactory(coreFactory, testConfigMalformed)
 
-            readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
+            readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(5 seconds))
           }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
             rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
@@ -588,10 +587,10 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Left(DocumentNotFound)))
@@ -600,14 +599,14 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig, None)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-          (readonlyRest, mockedIndexJsonContentManager)
-        }) { case (rorInstance, mockedIndexJsonContentManager) =>
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(10 seconds))
+          (readonlyRest, mockedIndexDocumentReader)
+        }) { case (rorInstance, mockedIndexDocumentReader) =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
           rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
 
-          (mockedIndexJsonContentManager.saveContent _)
+          (mockedIndexDocumentReader.saveDocumentJson _)
             .expects(
               where {
                 (config: IndexName.Full, id: String, content: Map[String, String]) =>
@@ -640,10 +639,10 @@ class ReadonlyRestStartingTests
             val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
             val indexConfigFile = "readonlyrest_index.yml"
 
-            val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-            mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+            val mockedIndexDocumentReader = mock[IndexDocumentReader]
+            mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
-            (mockedIndexJsonContentManager.sourceOf _)
+            (mockedIndexDocumentReader.documentAsJson _)
               .expects(fullIndexName(".readonlyrest"), "2")
               .repeated(1)
               .returns(Task.now(Left(DocumentNotFound)))
@@ -652,13 +651,13 @@ class ReadonlyRestStartingTests
             mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
             mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
-            val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-            (readonlyRest, mockedIndexJsonContentManager)
-          }) { case (rorInstance, mockedIndexJsonContentManager) =>
+            val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(10 seconds))
+            (readonlyRest, mockedIndexDocumentReader)
+          }) { case (rorInstance, mockedIndexDocumentReader) =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
             rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
 
-            (mockedIndexJsonContentManager.saveContent _)
+            (mockedIndexDocumentReader.saveDocumentJson _)
               .expects(
                 where {
                   (config: IndexName.Full, id: String, content: Map[String, String]) =>
@@ -709,10 +708,10 @@ class ReadonlyRestStartingTests
             val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
             val indexConfigFile = "readonlyrest_index.yml"
 
-            val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-            mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+            val mockedIndexDocumentReader = mock[IndexDocumentReader]
+            mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
-            (mockedIndexJsonContentManager.sourceOf _)
+            (mockedIndexDocumentReader.documentAsJson _)
               .expects(fullIndexName(".readonlyrest"), "2")
               .repeated(1)
               .returns(Task.now(Left(DocumentNotFound)))
@@ -721,13 +720,13 @@ class ReadonlyRestStartingTests
             mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
             mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
-            val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-            (readonlyRest, mockedIndexJsonContentManager)
-          }) { case (rorInstance, mockedIndexJsonContentManager) =>
+            val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(10 seconds))
+            (readonlyRest, mockedIndexDocumentReader)
+          }) { case (rorInstance, mockedIndexDocumentReader) =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
             rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
 
-            (mockedIndexJsonContentManager.saveContent _)
+            (mockedIndexDocumentReader.saveDocumentJson _)
               .expects(
                 where {
                   (config: IndexName.Full, id: String, content: Map[String, String]) =>
@@ -756,7 +755,7 @@ class ReadonlyRestStartingTests
 
             val testEngine1Expiration = testEngineConfig.asInstanceOf[TestSettings.Present].validTo
 
-            (mockedIndexJsonContentManager.saveContent _)
+            (mockedIndexDocumentReader.saveDocumentJson _)
               .expects(
                 where {
                   (config: IndexName.Full, id: String, content: Map[String, String]) =>
@@ -792,10 +791,10 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Left(DocumentNotFound)))
@@ -805,13 +804,13 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
           mockCoreFactory(coreFactory, testConfig2, mockEnabledAccessControl, disabledRorConfig)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-          (readonlyRest, mockedIndexJsonContentManager)
-        }) { case (rorInstance, mockedIndexJsonContentManager) =>
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(10 seconds))
+          (readonlyRest, mockedIndexDocumentReader)
+        }) { case (rorInstance, mockedIndexDocumentReader) =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
           rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
 
-          (mockedIndexJsonContentManager.saveContent _)
+          (mockedIndexDocumentReader.saveDocumentJson _)
             .expects(
               where {
                 (config: IndexName.Full, id: String, content: Map[String, String]) =>
@@ -841,7 +840,7 @@ class ReadonlyRestStartingTests
 
           val testEngine1Expiration = testEngineConfig.asInstanceOf[TestSettings.Present].validTo
 
-          (mockedIndexJsonContentManager.saveContent _)
+          (mockedIndexDocumentReader.saveDocumentJson _)
             .expects(
               where {
                 (config: IndexName.Full, id: String, content: Map[String, String]) =>
@@ -878,10 +877,10 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile, 2)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile, 2)
 
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Left(DocumentNotFound)))
@@ -890,12 +889,12 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
-          (readonlyRest, mockedIndexJsonContentManager)
-        }) { case (rorInstance, mockedIndexJsonContentManager) =>
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(2 seconds))
+          (readonlyRest, mockedIndexDocumentReader)
+        }) { case (rorInstance, mockedIndexDocumentReader) =>
 
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Right(
@@ -927,12 +926,12 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile, 2)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile, 2)
 
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
 
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Right(
@@ -948,9 +947,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
-          (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
-        }) { case (rorInstance, (mockedIndexJsonContentManager, expirationTimestamp)) =>
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(2 seconds))
+          (readonlyRest, (mockedIndexDocumentReader, expirationTimestamp))
+        }) { case (rorInstance, (mockedIndexDocumentReader, expirationTimestamp)) =>
           rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
@@ -961,7 +960,7 @@ class ReadonlyRestStartingTests
           )
 
           val expirationTimestamp2 = testClock.instant().plusSeconds(200)
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Right(
@@ -990,12 +989,12 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile, 2)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile, 2)
 
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
 
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Right(
@@ -1011,9 +1010,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
-          (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
-        }) { case (rorInstance, (mockedIndexJsonContentManager, expirationTimestamp)) =>
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(2 seconds))
+          (readonlyRest, (mockedIndexDocumentReader, expirationTimestamp))
+        }) { case (rorInstance, (mockedIndexDocumentReader, expirationTimestamp)) =>
 
           rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
             TestSettings.Present(
@@ -1025,7 +1024,7 @@ class ReadonlyRestStartingTests
           )
 
           val expirationTimestamp2 = testClock.instant().plusSeconds(100)
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Right(
@@ -1054,12 +1053,12 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile, 2)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile, 2)
 
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
 
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Right(
@@ -1075,9 +1074,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
-          (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
-        }) { case (rorInstance, (mockedIndexJsonContentManager, expirationTimestamp)) =>
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(2 seconds))
+          (readonlyRest, (mockedIndexDocumentReader, expirationTimestamp))
+        }) { case (rorInstance, (mockedIndexDocumentReader, expirationTimestamp)) =>
 
           rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
             TestSettings.Present(
@@ -1089,7 +1088,7 @@ class ReadonlyRestStartingTests
           )
 
           val expirationTimestamp2 = testClock.instant().minusSeconds(1)
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Right(
@@ -1118,9 +1117,9 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
-          (mockedIndexJsonContentManager.sourceOf _)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Left(DocumentNotFound)))
@@ -1129,14 +1128,14 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
-          (readonlyRest, mockedIndexJsonContentManager)
-        }) { case (rorInstance, mockedIndexJsonContentManager) =>
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(0 seconds))
+          (readonlyRest, mockedIndexDocumentReader)
+        }) { case (rorInstance, mockedIndexDocumentReader) =>
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
           rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
 
-          (mockedIndexJsonContentManager.saveContent _)
+          (mockedIndexDocumentReader.saveDocumentJson _)
             .expects(
               where {
                 (config: IndexName.Full, id: String, content: Map[String, String]) =>
@@ -1170,10 +1169,10 @@ class ReadonlyRestStartingTests
         val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
         val indexConfigFile = "readonlyrest_index.yml"
 
-        val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+        val mockedIndexDocumentReader = mock[IndexDocumentReader]
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
-        (mockedIndexJsonContentManager.sourceOf _)
+        (mockedIndexDocumentReader.documentAsJson _)
           .expects(fullIndexName(".readonlyrest"), "2")
           .repeated(1)
           .returns(Task.now(Left(DocumentNotFound)))
@@ -1182,13 +1181,13 @@ class ReadonlyRestStartingTests
         mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
         mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
-        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-        (readonlyRest, mockedIndexJsonContentManager)
-      }) { case (rorInstance, mockedIndexJsonContentManager) =>
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(10 seconds))
+        (readonlyRest, mockedIndexDocumentReader)
+      }) { case (rorInstance, mockedIndexDocumentReader) =>
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
         rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
 
-        (mockedIndexJsonContentManager.saveContent _)
+        (mockedIndexDocumentReader.saveDocumentJson _)
           .expects(
             where {
               (config: IndexName.Full, id: String, content: Map[String, String]) =>
@@ -1211,7 +1210,7 @@ class ReadonlyRestStartingTests
         rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
         rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() shouldBe a[TestSettings.Present]
 
-        (mockedIndexJsonContentManager.saveContent _)
+        (mockedIndexDocumentReader.saveDocumentJson _)
           .expects(
             where {
               (config: IndexName.Full, id: String, content: Map[String, String]) =>
@@ -1238,11 +1237,11 @@ class ReadonlyRestStartingTests
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+          val mockedIndexDocumentReader = mock[IndexDocumentReader]
+          mockIndexJsonContentManagerSourceOfCall(mockedIndexDocumentReader, resourcesPath + indexConfigFile)
 
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
-          (mockedIndexJsonContentManager.sourceOf _)
+          (mockedIndexDocumentReader.documentAsJson _)
             .expects(fullIndexName(".readonlyrest"), "2")
             .repeated(1)
             .returns(Task.now(Right(
@@ -1258,9 +1257,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-          (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
-        }) { case (rorInstance, (mockedIndexJsonContentManager, expirationTimestamp)) =>
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentReader, resourcesPath, refreshInterval = Some(10 seconds))
+          (readonlyRest, (mockedIndexDocumentReader, expirationTimestamp))
+        }) { case (rorInstance, (mockedIndexDocumentReader, expirationTimestamp)) =>
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
           rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
             TestSettings.Present(
@@ -1271,7 +1270,7 @@ class ReadonlyRestStartingTests
             )
           )
 
-          (mockedIndexJsonContentManager.saveContent _)
+          (mockedIndexDocumentReader.saveDocumentJson _)
             .expects(
               where {
                 (config: IndexName.Full, id: String, content: Map[String, String]) =>
@@ -1313,8 +1312,8 @@ class ReadonlyRestStartingTests
         }
       }
       "unable to setup data stream audit output" in {
-        val mockedIndexJsonContentManager = mock[IndexDocumentReader]
-        mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+        val mockedIndexDocumentReader = mock[IndexDocumentReader]
+        mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexDocumentReader)
 
         val dataStreamSinkConfig1 = AuditSink.Config.EsDataStreamBasedSink.default
         val dataStreamSinkConfig2 = dataStreamSinkConfig1.copy(
@@ -1351,7 +1350,7 @@ class ReadonlyRestStartingTests
 
         val readonlyRest = readonlyRestBoot(
           coreFactory,
-          mockedIndexJsonContentManager,
+          mockedIndexDocumentReader,
           "/boot_tests/forced_file_loading_with_audit/",
           auditSinkServiceCreator
         )
@@ -1433,7 +1432,7 @@ class ReadonlyRestStartingTests
   private def mockIndexJsonContentManagerSourceOfCall(mockedManager: IndexDocumentReader,
                                                       resourceFileName: String,
                                                       repeatedCount: Int = 1) = {
-    (mockedManager.sourceOf _)
+    (mockedManager.documentAsJson _)
       .expects(fullIndexName(".readonlyrest"), "1")
       .repeated(repeatedCount)
       .returns(Task.now(Right(
@@ -1443,7 +1442,7 @@ class ReadonlyRestStartingTests
   }
 
   private def mockIndexJsonContentManagerSourceOfCallTestConfig(mockedManager: IndexDocumentReader) = {
-    (mockedManager.sourceOf _)
+    (mockedManager.documentAsJson _)
       .expects(fullIndexName(".readonlyrest"), "2")
       .anyNumberOfTimes()
       .returns(Task.now(Left(DocumentNotFound)))
@@ -1453,7 +1452,7 @@ class ReadonlyRestStartingTests
   private def mockIndexJsonContentManagerSaveCall(mockedManager: IndexDocumentReader,
                                                   resourceFileName: String,
                                                   saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(()))) = {
-    (mockedManager.saveContent _)
+    (mockedManager.saveDocumentJson _)
       .expects(fullIndexName(".readonlyrest"), "1", Map("settings" -> getResourceContent(resourceFileName)))
       .once()
       .returns(saveResult)
