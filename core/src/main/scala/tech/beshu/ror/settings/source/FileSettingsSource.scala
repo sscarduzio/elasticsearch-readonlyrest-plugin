@@ -19,7 +19,7 @@ package tech.beshu.ror.settings.source
 import better.files.File
 import cats.Show
 import cats.data.EitherT
-import io.circe.{Decoder, DecodingFailure, ParsingFailure, parser}
+import io.circe.{Decoder, Json}
 import monix.eval.Task
 import tech.beshu.ror.settings.source.FileSettingsSource.FileSettingsLoadingError
 import tech.beshu.ror.settings.source.FileSettingsSource.LoadingError.FileNotExist
@@ -43,12 +43,9 @@ class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
     EitherT
       .pure[Task, FileSettingsLoadingError](file.contentAsString)
       .subflatMap { raw =>
-        parser
-          .decode(raw)
-          .left.map {
-            case ParsingFailure(message, _) => LoadingSettingsError.SettingsMalformed(message)
-            case failure: DecodingFailure => LoadingSettingsError.SettingsMalformed(failure.message)
-          }
+        Json
+          .fromString(raw).as[SETTINGS]
+          .left.map { failure => LoadingSettingsError.SettingsMalformed(failure.message) }
       }
   }
 }

@@ -38,7 +38,7 @@ class CurrentGroupHandlingAccessControlTests
   private val kbn1SignatureKey = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
   private val jwt1SignatureKey = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     s"""
        |readonlyrest:
        |

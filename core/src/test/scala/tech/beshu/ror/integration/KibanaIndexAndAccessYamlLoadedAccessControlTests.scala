@@ -36,7 +36,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest
   with Inside {
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     """
       |readonlyrest:
       |

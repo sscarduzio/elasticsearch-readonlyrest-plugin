@@ -19,7 +19,7 @@ package tech.beshu.ror.utils
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.ParsingFailure
+import io.circe.{Json, ParsingFailure, parser}
 import io.jsonwebtoken.JwtBuilder
 import io.lemonlabs.uri.Url
 import monix.eval.Task
@@ -69,7 +69,7 @@ import scala.util.{Failure, Success}
 object TestsUtils {
 
   implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-  val rorYamlParser = new YamlParser(Megabytes(3))
+  val rorYamlParser = new YamlParser(Some(Megabytes(3)))
 
   val defaultEsVersionForTests: EsVersion = EsVersion(8, 17, 0)
 
@@ -379,18 +379,18 @@ object TestsUtils {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)
   }
 
-  def rorConfigFromUnsafe(yamlContent: String): RawRorSettings = {
-    rorConfigFrom(yamlContent).toOption.get
+  def rorSettingsFromUnsafe(yamlContent: String): RawRorSettings = {
+    rorSettingFrom(yamlContent).toOption.get
   }
 
-  def rorConfigFrom(yamlContent: String): Either[ParsingFailure, RawRorSettings] = {
+  def rorSettingFrom(yamlContent: String): Either[ParsingFailure, RawRorSettings] = {
     rorYamlParser
       .parse(yamlContent)
       .map(json => RawRorSettings(json, yamlContent))
   }
 
-  def rorConfigFromResource(resource: String): RawRorSettings = {
-    rorConfigFromUnsafe {
+  def rorSettingsFromResource(resource: String): RawRorSettings = {
+    rorSettingsFromUnsafe {
       getResourceContent(resource)
     }
   }
@@ -401,6 +401,10 @@ object TestsUtils {
 
   def getResourceContent(resource: String): String = {
     File(getResourcePath(resource)).contentAsString
+  }
+
+  def circeJsonFrom(jsonString: String): Json = {
+    parser.parse(jsonString).toTry.get
   }
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {

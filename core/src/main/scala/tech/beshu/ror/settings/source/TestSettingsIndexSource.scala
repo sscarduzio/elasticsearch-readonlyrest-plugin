@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorSettingsIndex, User}
 import tech.beshu.ror.configuration.TestRorSettings.Expiration
 import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
-import tech.beshu.ror.es.IndexDocumentReader
+import tech.beshu.ror.es.IndexDocumentManager
 import tech.beshu.ror.settings.source.TestSettingsIndexSource.Const
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
@@ -40,18 +40,18 @@ import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-class TestSettingsIndexSource private(indexJsonContentService: IndexDocumentReader,
+class TestSettingsIndexSource private(indexDocumentManager: IndexDocumentManager,
                                       settingsIndex: RorSettingsIndex)
                                      (implicit codec: Codec[TestRorSettings])
-  extends IndexSettingsSource[TestRorSettings](indexJsonContentService, settingsIndex.index, documentId = Const.id)
+  extends IndexSettingsSource[TestRorSettings](indexDocumentManager, settingsIndex.index, documentId = Const.id)
 
 object TestSettingsIndexSource {
 
-  def create(indexJsonContentService: IndexDocumentReader,
+  def create(indexDocumentManager: IndexDocumentManager,
              settingsIndex: RorSettingsIndex,
              settingsYamlParser: RawRorSettingsYamlParser): TestSettingsIndexSource = {
     implicit val codec: Codec[TestRorSettings] = createTestRorSettingsCodec(settingsYamlParser)
-    new TestSettingsIndexSource(indexJsonContentService, settingsIndex)
+    new TestSettingsIndexSource(indexDocumentManager, settingsIndex)
   }
 
   private object Const {

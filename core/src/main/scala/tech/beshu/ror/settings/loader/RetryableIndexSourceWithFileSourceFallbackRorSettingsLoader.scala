@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.strategy
+package tech.beshu.ror.settings.loader
 
 import cats.data.EitherT
 import monix.eval.Task
@@ -26,29 +26,29 @@ import tech.beshu.ror.settings.source.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIndexSource: MainSettingsIndexSource,
+                                                                  mainSettingsIndexLadingRetryStrategy: RetryStrategy,
                                                                   mainSettingsFileSource: MainSettingsFileSource,
-                                                                  testSettingsIndexSource: TestSettingsIndexSource,
-                                                                  /* todo: retry strategy*/)
+                                                                  testSettingsIndexSource: TestSettingsIndexSource)
   extends StartingRorSettingsLoader with Logging {
 
   override def load(): Task[Either[StartingFailure, (MainRorSettings, Option[TestRorSettings])]] = {
     loadMainSettingsFromIndex().orElse(loadMainSettingsFromFile()).value
     val result = for {
-      mainSettings <- loadMainSettingsFromIndex().orElse(loadMainSettingsFromFile())
+      mainSettings <- mainSettingsIndexLadingRetryStrategy
+        .withRetryT(loadMainSettingsFromIndex())
+        .orElse(loadMainSettingsFromFile())
       testSettings <- loadTestSettingsFromIndex().recover { case failure => Option.empty[TestRorSettings] }
     } yield (mainSettings, testSettings)
     result.value
   }
 
-  // todo: don't forget about porting this part of code:
-  //          _ <- wait(parameters.loadingDelay.value.value)
   private def loadMainSettingsFromIndex() = {
     for {
-      _ <- lift(logger.info(s"Loading ReadonlyREST main settings from index (${mainSettingsIndexSource.settingsIndex.show}) ..."))
+      _ <- lift(logger.info(s"Loading ReadonlyREST main settings from index: ${mainSettingsIndexSource.settingsIndex.show} ..."))
       loadedSettings <- EitherT(mainSettingsIndexSource.load())
         .biSemiflatTap(
           error => logger.dInfo(s"Loading ReadonlyREST main settings from index failed: ${error.show}"),
-          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from index: ${settings.rawSettings.raw.show}")
+          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from index:\n${settings.rawSettings.raw.show}")
         )
         .leftMap(error => StartingFailure(error.show))
     } yield loadedSettings
@@ -60,7 +60,7 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
       loadedSettings <- EitherT(mainSettingsFileSource.load())
         .biSemiflatTap(
           error => logger.dError(s"Loading ReadonlyREST main settings from file failed: ${error.show}"),
-          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from index: ${settings.rawSettings.raw.show}")
+          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from file:\n${settings.rawSettings.raw.show}")
         )
         .leftMap(error => StartingFailure(error.show))
     } yield loadedSettings

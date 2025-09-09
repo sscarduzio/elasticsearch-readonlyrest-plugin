@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.utils
 
-import io.circe.{Json, ParsingFailure}
+import io.circe.Json
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -29,7 +29,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
   "Yaml parser" should {
     "return parsing failure error" when {
       "readonlyrest config has duplicated 'readonlyrest' section" in {
-        val result = rorConfigFrom(
+        val result = rorSettingFrom(
           """
             |readonlyrest:
             |
@@ -57,7 +57,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
         }
       }
       "readonlyrest config has duplicated 'access_control_rules' section" in {
-        val result = rorConfigFrom(
+        val result = rorSettingFrom(
           """
             |readonlyrest:
             |
@@ -83,7 +83,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
         }
       }
       "readonlyrest config has duplicated definition" in {
-        val result = rorConfigFrom(
+        val result = rorSettingFrom(
           """
             |readonlyrest:
             |
@@ -112,7 +112,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
         }
       }
       "block has duplicated rule" in {
-        val result = rorConfigFrom(
+        val result = rorSettingFrom(
           """
             |readonlyrest:
             |
@@ -160,7 +160,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             |
             |""".stripMargin
 
-        val result = rorConfigFrom(rawConfig)
+        val result = rorSettingFrom(rawConfig)
 
         inside(result) {
           case Right(config) => config.raw shouldBe rawConfig
@@ -196,7 +196,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
           |      auth_key: "admin:container"
           |""".stripMargin
 
-      val result = new YamlParser(Bytes(10)).parse(yamlContent)
+      val result = new YamlParser(Some(Bytes(10))).parse(yamlContent)
       inside(result) {
         case Left(parsingFailure) =>
           parsingFailure.message should be("The incoming YAML document exceeds the limit: 10 code points.")
@@ -205,5 +205,5 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
   }
 
   private def parseYaml(yamlContent: String): Json =
-    new YamlParser(Kilobytes(100)).parse(yamlContent).toTry.get
+    new YamlParser(Some(Kilobytes(100))).parse(yamlContent).toTry.get
 }

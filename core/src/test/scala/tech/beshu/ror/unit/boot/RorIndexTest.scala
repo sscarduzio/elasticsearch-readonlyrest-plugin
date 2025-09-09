@@ -16,9 +16,13 @@
  */
 package tech.beshu.ror.unit.boot
 
+import better.files.File
+import cats.implicits.toShow
 import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers.*
@@ -28,15 +32,15 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsFile}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.boot.RorInstance.TestSettings
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.configuration.RawRorSettings
-import tech.beshu.ror.es.{EsEnv, IndexDocumentReader}
+import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
+import tech.beshu.ror.es.{EsEnv, IndexDocumentManager}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
-import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
 
 import java.util.UUID
@@ -51,163 +55,133 @@ class RorIndexTest extends AnyWordSpec
   private val defaultRorIndexName: NonEmptyString = ".readonlyrest"
   private val customRorIndexName: NonEmptyString = "custom_ror_index"
 
-  private val mainRorConfigDocumentId = "1"
-  private val testRorConfigDocumentId = "2"
+  private val mainInIndexRorSettingsDocumentId = "1"
+  private val testInIndexRorSettingsDocumentId = "2"
 
   "A ReadonlyREST core" should {
     "load ROR index name" when {
-      "no index is defined in config" should {
+      "no index is defined in settings" should {
         "start ROR with default index name" in {
-          val resourcesPath = "/boot_tests/index_config/no_index_defined/"
-          val indexJsonContentService = mock[IndexDocumentReader]
-          mockMainRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
-          mockTestRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
+          val indexDocumentManager = mock[IndexDocumentManager]
+          mockInIndexMainSettingsLoading(indexDocumentManager, defaultRorIndexName)
+          mockInIndexTestSettingsLoading(indexDocumentManager, defaultRorIndexName)
 
           val coreFactory = mock[CoreFactory]
-          mockCoreFactory(coreFactory, indexRorConfig)
+          mockCoreFactory(coreFactory, indexRorSettings)
 
-          val result = readonlyRestBoot(
-            coreFactory,
-            indexJsonContentService,
-            resourcesPath
-          )
-            .start()
+          val result = readonlyRestBoot(coreFactory, indexDocumentManager)
+            .start(createEsConfigBasedRorSettings("/boot_tests/index_config/no_index_defined/"))
             .runSyncUnsafe()
 
           result shouldBe a[Right[_, RorInstance]]
         }
-        "save ROR config in default index" in {
-          val resourcesPath = "/boot_tests/index_config/no_index_defined/"
-          val indexJsonContentService = mock[IndexDocumentReader]
-          mockMainRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
-          mockTestRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
+        "save ROR settings in default index" in {
+          val indexDocumentManager = mock[IndexDocumentManager]
+          mockInIndexMainSettingsLoading(indexDocumentManager, defaultRorIndexName)
+          mockInIndexTestSettingsLoading(indexDocumentManager, defaultRorIndexName)
 
           val coreFactory = mock[CoreFactory]
-          mockCoreFactory(coreFactory, indexRorConfig)
+          mockCoreFactory(coreFactory, indexRorSettings)
 
-          val result = readonlyRestBoot(
-            coreFactory,
-            indexJsonContentService,
-            resourcesPath
-          )
-            .start()
+          val result = readonlyRestBoot(coreFactory, indexDocumentManager)
+            .start(createEsConfigBasedRorSettings("/boot_tests/index_config/no_index_defined/"))
             .runSyncUnsafe()
 
           result shouldBe a[Right[_, RorInstance]]
 
-          mockCoreFactory(coreFactory, rorConfig)
-          mockMainRorConfigInIndexSaving(indexJsonContentService, defaultRorIndexName)
+          mockCoreFactory(coreFactory, rorSettings)
+          mockInIndexMainSettingsSaving(indexDocumentManager, defaultRorIndexName)
 
           val rorInstance = result.value
           val forceReloadingResult =
             rorInstance
-              .forceReloadAndSave(rorConfig)(newRequestId())
+              .forceReloadAndSave(rorSettings)(newRequestId())
               .runSyncUnsafe()
 
           forceReloadingResult should be(Right(()))
         }
-        "save ROR test config in default index" in {
-          val resourcesPath = "/boot_tests/index_config/no_index_defined/"
-          val indexJsonContentService = mock[IndexDocumentReader]
-          mockMainRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
-          mockTestRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
+        "save ROR test settings in default index" in {
+          val indexDocumentManager = mock[IndexDocumentManager]
+          mockInIndexMainSettingsLoading(indexDocumentManager, defaultRorIndexName)
+          mockInIndexTestSettingsLoading(indexDocumentManager, defaultRorIndexName)
 
           val coreFactory = mock[CoreFactory]
-          mockCoreFactory(coreFactory, indexRorConfig)
+          mockCoreFactory(coreFactory, indexRorSettings)
 
-          val result = readonlyRestBoot(
-            coreFactory,
-            indexJsonContentService,
-            resourcesPath
-          )
-            .start()
+          val result = readonlyRestBoot(coreFactory, indexDocumentManager)
+            .start(createEsConfigBasedRorSettings("/boot_tests/index_config/no_index_defined/"))
             .runSyncUnsafe()
 
           result shouldBe a[Right[_, RorInstance]]
 
-          mockCoreFactory(coreFactory, rorConfig)
-          mockTestRorConfigInIndexSaving(indexJsonContentService, defaultRorIndexName)
+          mockCoreFactory(coreFactory, rorSettings)
+          mockInIndexTestSettingsSaving(indexDocumentManager, defaultRorIndexName)
 
           val rorInstance = result.value
           val forceReloadingResult =
             rorInstance
-              .forceReloadTestSettingsEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
+              .forceReloadTestSettingsEngine(rorSettings, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
           forceReloadingResult.value shouldBe a[TestSettings.Present]
         }
       }
-      "custom index is defined in config" should {
+      "custom index is defined in settings" should {
         "start ROR with custom index name" in {
-          val resourcesPath = "/boot_tests/index_config/custom_index_defined/"
-          val indexJsonContentService = mock[IndexDocumentReader]
-          mockMainRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
-          mockTestRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
+          val indexDocumentManager = mock[IndexDocumentManager]
+          mockInIndexMainSettingsLoading(indexDocumentManager, customRorIndexName)
+          mockInIndexTestSettingsLoading(indexDocumentManager, customRorIndexName)
 
           val coreFactory = mock[CoreFactory]
-          mockCoreFactory(coreFactory, indexRorConfig)
+          mockCoreFactory(coreFactory, indexRorSettings)
 
-          val result = readonlyRestBoot(
-            coreFactory,
-            indexJsonContentService,
-            resourcesPath
-          )
-            .start()
+          val result = readonlyRestBoot(coreFactory, indexDocumentManager)
+            .start(createEsConfigBasedRorSettings("/boot_tests/index_config/custom_index_defined/"))
             .runSyncUnsafe()
           result shouldBe a[Right[_, RorInstance]]
         }
-        "save ROR config in custom index" in {
-          val resourcesPath = "/boot_tests/index_config/custom_index_defined/"
-          val indexJsonContentService = mock[IndexDocumentReader]
-          mockMainRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
-          mockTestRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
+        "save ROR settings in custom index" in {
+          val indexDocumentManager = mock[IndexDocumentManager]
+          mockInIndexMainSettingsLoading(indexDocumentManager, customRorIndexName)
+          mockInIndexTestSettingsLoading(indexDocumentManager, customRorIndexName)
 
           val coreFactory = mock[CoreFactory]
-          mockCoreFactory(coreFactory, indexRorConfig)
+          mockCoreFactory(coreFactory, indexRorSettings)
 
-          val result = readonlyRestBoot(
-            coreFactory,
-            indexJsonContentService,
-            resourcesPath
-          )
-            .start()
+          val result = readonlyRestBoot(coreFactory, indexDocumentManager)
+            .start(createEsConfigBasedRorSettings("/boot_tests/index_config/custom_index_defined/"))
             .runSyncUnsafe()
 
-          mockCoreFactory(coreFactory, rorConfig)
-          mockMainRorConfigInIndexSaving(indexJsonContentService, customRorIndexName)
+          mockCoreFactory(coreFactory, rorSettings)
+          mockInIndexMainSettingsSaving(indexDocumentManager, customRorIndexName)
 
           val rorInstance = result.value
           val forceReloadingResult =
             rorInstance
-              .forceReloadAndSave(rorConfig)(newRequestId())
+              .forceReloadAndSave(rorSettings)(newRequestId())
               .runSyncUnsafe()
 
           forceReloadingResult should be(Right(()))
         }
-        "save ROR test config in custom index" in {
-          val resourcesPath = "/boot_tests/index_config/custom_index_defined/"
-          val indexJsonContentService = mock[IndexDocumentReader]
-          mockMainRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
-          mockTestRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
+        "save ROR test settings in custom index" in {
+          val indexDocumentManager = mock[IndexDocumentManager]
+          mockInIndexMainSettingsLoading(indexDocumentManager, customRorIndexName)
+          mockInIndexTestSettingsLoading(indexDocumentManager, customRorIndexName)
 
           val coreFactory = mock[CoreFactory]
-          mockCoreFactory(coreFactory, indexRorConfig)
+          mockCoreFactory(coreFactory, indexRorSettings)
 
-          val result = readonlyRestBoot(
-            coreFactory,
-            indexJsonContentService,
-            resourcesPath
-          )
-            .start()
+          val result = readonlyRestBoot(coreFactory, indexDocumentManager)
+            .start(createEsConfigBasedRorSettings("/boot_tests/index_config/custom_index_defined/"))
             .runSyncUnsafe()
 
-          mockCoreFactory(coreFactory, rorConfig)
-          mockTestRorConfigInIndexSaving(indexJsonContentService, customRorIndexName)
+          mockCoreFactory(coreFactory, rorSettings)
+          mockInIndexTestSettingsSaving(indexDocumentManager, customRorIndexName)
 
           val rorInstance = result.value
           val forceReloadingResult =
             rorInstance
-              .forceReloadTestSettingsEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
+              .forceReloadTestSettingsEngine(rorSettings, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
           forceReloadingResult.value shouldBe a[TestSettings.Present]
@@ -217,71 +191,58 @@ class RorIndexTest extends AnyWordSpec
   }
 
   private def readonlyRestBoot(factory: CoreFactory,
-                               indexJsonContentService: IndexDocumentReader,
-                               configPath: String) = {
-    implicit val systemContext: SystemContext = new SystemContext(
-      propertiesProvider = TestsPropertiesProvider.usingMap(
-        Map(
-          "com.readonlyrest.settings.loading.delay" -> "1"
-        )
-      )
-    )
-
-    ReadonlyRest.create(
-      factory,
-      indexJsonContentService,
-      mock[AuditSinkServiceCreator],
-      EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests)
-    )
+                               indexDocumentManager: IndexDocumentManager) = {
+    implicit val systemContext: SystemContext = SystemContext.default
+    ReadonlyRest.create(factory, indexDocumentManager, mock[AuditSinkServiceCreator])
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
-                              rawRorConfig: RawRorSettings): CoreFactory = {
+                              rawRorSettings: RawRorSettings): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorSettings, _, _, _, _) => config == rawRorConfig
+        (settings: RawRorSettings, _, _, _, _) => settings == rawRorSettings
       })
       .once()
       .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp, None))))
     mockedCoreFactory
   }
 
-  private def mockMainRorConfigFromIndexLoading(indexJsonContentService: IndexDocumentReader,
-                                                indexName: NonEmptyString) = {
-    (indexJsonContentService.sourceOf _)
-      .expects(fullIndexName(indexName), mainRorConfigDocumentId)
-      .once()
-      .returns(Task.now(Right(Map("settings" -> indexRorConfig.raw))))
-  }
-
-  private def mockTestRorConfigFromIndexLoading(indexJsonContentService: IndexDocumentReader,
-                                                indexName: NonEmptyString) = {
-    (indexJsonContentService.sourceOf _)
-      .expects(fullIndexName(indexName), testRorConfigDocumentId)
-      .once()
-      .returns(Task.now(Left(IndexDocumentReader.DocumentNotFound)))
-  }
-
-  private def mockMainRorConfigInIndexSaving(indexJsonContentService: IndexDocumentReader,
+  private def mockInIndexMainSettingsLoading(indexDocumentManager: IndexDocumentManager,
                                              indexName: NonEmptyString) = {
-    (indexJsonContentService.saveContent _)
-      .expects(fullIndexName(indexName), mainRorConfigDocumentId, Map("settings" -> rorConfig.raw))
+    (indexDocumentManager.documentAsJson _)
+      .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId)
+      .once()
+      .returns(Task.now(Right(circeJsonFrom(s"""{ "settings": "${escapeJava(indexRorSettings.raw)}" }"""))))
+  }
+
+  private def mockInIndexTestSettingsLoading(indexDocumentManager: IndexDocumentManager,
+                                             indexName: NonEmptyString) = {
+    (indexDocumentManager.documentAsJson _)
+      .expects(fullIndexName(indexName), testInIndexRorSettingsDocumentId)
+      .once()
+      .returns(Task.now(Left(IndexDocumentManager.DocumentNotFound)))
+  }
+
+  private def mockInIndexMainSettingsSaving(indexDocumentManager: IndexDocumentManager,
+                                            indexName: NonEmptyString) = {
+    (indexDocumentManager.saveDocumentJson _)
+      .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId, circeJsonFrom(s"""{ "settings": "${escapeJava(rorSettings.raw)}"}"""))
       .once()
       .returns(Task.now(Right(())))
   }
 
-  private def mockTestRorConfigInIndexSaving(indexJsonContentService: IndexDocumentReader,
-                                             indexName: NonEmptyString) = {
-    (indexJsonContentService.saveContent _)
+  private def mockInIndexTestSettingsSaving(indexDocumentManager: IndexDocumentManager,
+                                            indexName: NonEmptyString) = {
+    (indexDocumentManager.saveDocumentJson _)
       .expects(
         where {
-          (config: IndexName.Full, id: String, content: Map[String, String]) =>
-            config == fullIndexName(indexName) &&
-              id == testRorConfigDocumentId &&
-              content.get("settings").contains(rorConfig.raw) &&
-              content.get("expiration_ttl_millis").contains("300000") &&
-              content.contains("expiration_timestamp") &&
-              content.contains("auth_services_mocks")
+          (index: IndexName.Full, id: String, document: Json) =>
+            index == fullIndexName(indexName) &&
+              id == testInIndexRorSettingsDocumentId &&
+              document.hcursor.get[String]("settings").toOption.contains(rorSettings.raw) &&
+              document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("300000") &&
+              document.hcursor.downField("expiration_timestamp").succeeded &&
+              document.hcursor.downField("auth_services_mocks").succeeded
         }
       )
       .once()
@@ -317,7 +278,17 @@ class RorIndexTest extends AnyWordSpec
 
   private def newRequestId() = RequestId(UUID.randomUUID().toString)
 
-  private lazy val rorConfig = rorConfigFromUnsafe(
+  private def createEsConfigBasedRorSettings(resourceEsConfigDir: String) = {
+    implicit val systemContext: SystemContext = SystemContext.default
+    val esConfig = File(getResourcePath(resourceEsConfigDir))
+    val esEnv = EsEnv(esConfig, esConfig, defaultEsVersionForTests)
+    EsConfigBasedRorSettings.from(esEnv).runSyncUnsafe() match {
+      case Right(settings) => settings.copy(settingsFile = RorSettingsFile(esConfig / "readonlyrest.yml"))
+      case Left(error) => throw new IllegalStateException(s"Cannot create EsConfigBasedRorSettings: ${error.show}")
+    }
+  }
+
+  private lazy val rorSettings = rorSettingsFromUnsafe(
     """
       |readonlyrest:
       |  access_control_rules:
@@ -333,7 +304,7 @@ class RorIndexTest extends AnyWordSpec
       |""".stripMargin
   )
 
-  private lazy val indexRorConfig = rorConfigFromUnsafe(
+  private lazy val indexRorSettings = rorSettingsFromUnsafe(
     """
       |readonlyrest:
       |  access_control_rules:

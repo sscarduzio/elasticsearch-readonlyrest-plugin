@@ -23,6 +23,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
@@ -46,7 +47,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
   "A RorAclFactory" should {
     "return headers list" when {
       "the section is not defined" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -57,12 +58,12 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    auth_key: admin:container
             |
             |""".stripMargin)
-        val acl = createCore(config)
+        val acl = createCore(settings)
         val obfuscatedHeaders = acl.toOption.get.accessControl.staticContext.obfuscatedHeaders
         obfuscatedHeaders shouldEqual Set(Header.Name.authorization)
       }
       "the section exists, and obfuscated header is not defined" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -74,12 +75,12 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |
             |  obfuscated_headers: []
             |""".stripMargin)
-        val acl = createCore(config)
+        val acl = createCore(settings)
         val headers = acl.toOption.get.accessControl.staticContext.obfuscatedHeaders
         headers shouldBe empty
       }
       "the section exists, and obfuscated header is defined" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -92,7 +93,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  obfuscated_headers:
             |  - CorpoAuth
             |""".stripMargin)
-        val acl = createCore(config)
+        val acl = createCore(settings)
         val headers = acl.toOption.get.accessControl.staticContext.obfuscatedHeaders
         headers should have size 1
         headers.head should be(Header.Name(NonEmptyString.unsafeFrom("CorpoAuth")))
@@ -100,7 +101,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
     }
     "check policy" when {
       "allow policy set" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -116,8 +117,8 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    auth_key: test:test
             |
             |""".stripMargin)
-        inside(createCore(config)) {
-          case Right(Core(acl: EnabledAccessControlList, _)) =>
+        inside(createCore(settings)) {
+          case Right(Core(acl: EnabledAccessControlList, _, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))
             firstBlock.policy should be(Block.Policy.Allow)
@@ -132,7 +133,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
         }
       }
       "forbid policy set" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -154,8 +155,8 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    auth_key: test:test
             |
             |""".stripMargin)
-        inside(createCore(config)) {
-          case Right(Core(acl: EnabledAccessControlList, _)) =>
+        inside(createCore(settings)) {
+          case Right(Core(acl: EnabledAccessControlList, _, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))
             firstBlock.policy should be(Block.Policy.Forbid(None))
@@ -178,7 +179,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
     }
     "return blocks level error" when {
       "there is no `access_control_rules` section" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -191,11 +192,11 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    user_id_header: "X-Auth-Token1"
             |
             |""".stripMargin)
-        val acl = createCore(config)
+        val acl = createCore(settings)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"No access_control_rules section found")))))
       }
       "there is `access_control_rules` section defined, but without any block" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -210,11 +211,11 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    user_id_header: "X-Auth-Token1"
             |
             |""".stripMargin)
-        val acl = createCore(config)
+        val acl = createCore(settings)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"access_control_rules defined, but no block found")))))
       }
       "two blocks has the same names" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -235,11 +236,11 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    auth_key: admin:container
             |
             |""".stripMargin)
-        val acl = createCore(config)
+        val acl = createCore(settings)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: test_block, test_block2")))))
       }
       "block has no name" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -249,7 +250,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    auth_key: admin:container
             |
             |""".stripMargin)
-        val acl = createCore(config)
+        val acl = createCore(settings)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(MalformedValue.fromString(
           """type: "allow"
             |auth_key: "admin:container"
@@ -258,7 +259,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
       }
       "block has unknown policy type" when {
         "simple policy format" in {
-          val config = rorConfigFromUnsafe(
+          val settings = rorSettingsFromUnsafe(
             """
               |readonlyrest:
               |
@@ -269,11 +270,11 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
               |    auth_key: admin:container
               |
               |""".stripMargin)
-          val acl = createCore(config)
+          val acl = createCore(settings)
           acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown block policy type: unknown. Supported types: 'allow'(default), 'forbid'.")))))
         }
         "extended policy format" in {
-          val config = rorConfigFromUnsafe(
+          val settings = rorSettingsFromUnsafe(
             """
               |readonlyrest:
               |
@@ -285,13 +286,13 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
               |    auth_key: admin:container
               |
               |""".stripMargin)
-          val acl = createCore(config)
+          val acl = createCore(settings)
           acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown block policy type: unknown. Supported types: 'allow'(default), 'forbid'.")))))
 
         }
       }
       "block has unknown verbosity" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -302,11 +303,11 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    auth_key: admin:container
             |
             |""".stripMargin)
-        val acl = createCore(config)
+        val acl = createCore(settings)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown verbosity value: unknown. Supported types: 'info'(default), 'error'.")))))
       }
       "block has authorization rule, but no authentication rule" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -327,11 +328,11 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    response_group_ids_json_path: "$..groups[?(@.id)].id"
             |
             |""".stripMargin)
-        val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        val acl = createCore(settings, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule.")))))
       }
       "block has many authentication rules" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -350,11 +351,11 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    user_id_header: "X-Auth-Token"
             |
     """.stripMargin)
-        val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        val acl = createCore(settings,  new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block should contain only one authentication rule, but contains: [auth_key, proxy_auth]")))))
       }
       "block uses user variable without defining authentication rule beforehand" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -363,11 +364,11 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  - name: test_block
             |    uri_re: "some_@{user}"
             |""".stripMargin)
-        val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        val acl = createCore(settings,  new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. Variable used to extract user requires one of the rules defined in block to be authentication rule")))))
       }
       "'groups' rule uses jwt variable without defining `jwt_auth` rule beforehand" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -383,13 +384,13 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    auth_key: "user2:pass"
             |
             |""".stripMargin)
-        val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        val acl = createCore(settings,  new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. JWT variables are not allowed to be used in Groups rule")))))
       }
     }
     "return rule level error" when {
       "no rules are defined in block" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -399,11 +400,11 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    type: allow
             |
             |""".stripMargin)
-        val acl = createCore(config)
+        val acl = createCore(settings)
         acl should be(Left(NonEmptyList.one(RulesLevelCreationError(Message("No rules defined in block")))))
       }
       "block has unknown rules" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -414,12 +415,12 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    unknown_rule2: value1
             |
             |""".stripMargin)
-        val acl = createCore(config)
+        val acl = createCore(settings)
         acl should be(Left(NonEmptyList.one(RulesLevelCreationError(Message("Unknown rules: unknown_rule1, unknown_rule2")))))
       }
     }
-    "return ACL with blocks defined in config" in {
-      val config = rorConfigFromUnsafe(
+    "return ACL with blocks defined in settings" in {
+      val settings = rorSettingsFromUnsafe(
         """
           |readonlyrest:
           |
@@ -437,8 +438,8 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
           |
           |""".stripMargin)
 
-      inside(createCore(config)) {
-        case Right(Core(acl: EnabledAccessControlList, _)) =>
+      inside(createCore(settings)) {
+        case Right(Core(acl: EnabledAccessControlList, _, _)) =>
           val firstBlock = acl.blocks.head
           firstBlock.name should be(Block.Name("test_block1"))
           firstBlock.policy should be(Block.Policy.Forbid(None))
@@ -452,9 +453,9 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
           secondBlock.rules should have size 1
       }
     }
-    "return ACL with blocks defined in config" when {
+    "return ACL with blocks defined in settings" when {
       "each block meets requirements for variables" in {
-        val config = rorConfigFromUnsafe(
+        val settings = rorSettingsFromUnsafe(
           """
             |readonlyrest:
             |
@@ -468,8 +469,8 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    uri_re: "/endpoint_@{acl:current_group}"
             |""".stripMargin)
 
-        inside(createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))) {
-          case Right(Core(acl: EnabledAccessControlList, _)) =>
+        inside(createCore(settings, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))) {
+          case Right(Core(acl: EnabledAccessControlList, _, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))
             firstBlock.rules should have size 2
@@ -482,11 +483,11 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
     }
   }
 
-  private def createCore(config: RawRorSettings,
+  private def createCore(settings: RawRorSettings,
                          clientsFactory: HttpClientsFactory = MockHttpClientsFactory) = {
     factory
       .createCoreFrom(
-        config,
+        settings,
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
         MockLdapConnectionPoolProvider,

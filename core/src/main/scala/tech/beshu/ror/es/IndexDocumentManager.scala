@@ -19,14 +19,14 @@ package tech.beshu.ror.es
 import io.circe.Json
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.es.IndexDocumentReader.{ReadError, WriteError}
+import tech.beshu.ror.es.IndexDocumentManager.{ReadError, WriteError}
 
-trait IndexDocumentReader {
+trait IndexDocumentManager {
   def documentAsJson(index: IndexName.Full, id: String): Task[Either[ReadError, Json]]
   def saveDocumentJson(index: IndexName.Full, id: String, document: Json): Task[Either[WriteError, Unit]]
 }
 
-object IndexDocumentReader {
+object IndexDocumentManager {
 
   sealed trait ReadError
   case object IndexNotFound extends ReadError

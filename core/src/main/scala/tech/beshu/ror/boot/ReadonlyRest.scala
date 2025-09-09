@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.boot
 
+import cats.Show
 import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -34,16 +35,15 @@ import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, Core
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.configuration.*
-import tech.beshu.ror.es.{EsEnv, IndexDocumentReader}
+import tech.beshu.ror.es.{EsEnv, IndexDocumentManager}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
 
 class ReadonlyRest(coreFactory: CoreFactory,
-                   indexContentService: IndexDocumentReader,
-                   auditSinkServiceCreator: AuditSinkServiceCreator,
-                   val esEnv: EsEnv)
+                   indexDocumentManager: IndexDocumentManager,
+                   auditSinkServiceCreator: AuditSinkServiceCreator)
                   (implicit systemContext: SystemContext,
                    scheduler: Scheduler)
   extends Logging {
@@ -52,7 +52,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   def start(esConfigBasedRorSettings: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
     (for {
-      creatorsAndLoaders <- lift(SettingsRelatedCreatorsAndLoaders.create(esConfigBasedRorSettings, indexContentService))
+      creatorsAndLoaders <- lift(SettingsRelatedCreatorsAndLoaders.create(esConfigBasedRorSettings, indexDocumentManager))
       loadedSettings <- EitherT(creatorsAndLoaders.startingRorSettingsLoader.load())
       (loadedMainRorSettings, loadedTestRorSettings) = loadedSettings
       instance <- startRor(esConfigBasedRorSettings, creatorsAndLoaders.creators, loadedMainRorSettings, loadedTestRorSettings)
@@ -206,6 +206,10 @@ object ReadonlyRest {
 
   // todo: move somewhere else
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
+  object StartingFailure {
+    // todo: move?
+    implicit val show: Show[StartingFailure] = Show.show(_.message)
+  }
 
   final case class MainEngine(engine: Engine,
                               settings: RawRorSettings)
@@ -238,21 +242,21 @@ object ReadonlyRest {
     }
   }
 
-  def create(indexContentService: IndexDocumentReader,
+  // todo: do we need both?
+  def create(indexContentService: IndexDocumentManager,
              auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)
             (implicit scheduler: Scheduler,
              systemContext: SystemContext): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env.esVersion)
-    create(coreFactory, indexContentService, auditSinkServiceCreator, env)
+    create(coreFactory, indexContentService, auditSinkServiceCreator)
   }
 
   def create(coreFactory: CoreFactory,
-             indexContentService: IndexDocumentReader,
-             auditSinkServiceCreator: AuditSinkServiceCreator,
-             env: EsEnv)
+             indexDocumentManager: IndexDocumentManager,
+             auditSinkServiceCreator: AuditSinkServiceCreator)
             (implicit scheduler: Scheduler,
              systemContext: SystemContext): ReadonlyRest = {
-    new ReadonlyRest(coreFactory, indexContentService, auditSinkServiceCreator, env)
+    new ReadonlyRest(coreFactory, indexDocumentManager, auditSinkServiceCreator)
   }
 }

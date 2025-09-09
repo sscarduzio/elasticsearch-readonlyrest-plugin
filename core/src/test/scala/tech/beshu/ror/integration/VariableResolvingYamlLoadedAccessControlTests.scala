@@ -55,7 +55,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
   private lazy val (pub, secret) = Random.generateRsaRandomKeys
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     s"""
        |readonlyrest:
        |

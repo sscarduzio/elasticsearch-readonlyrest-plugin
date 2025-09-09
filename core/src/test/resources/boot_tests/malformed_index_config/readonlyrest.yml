@@ -5,4 +5,4 @@ readonlyrest:
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow
-      auth_key: admin:container
+      auth_key: "admin:container"

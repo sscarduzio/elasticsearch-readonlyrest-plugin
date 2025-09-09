@@ -49,7 +49,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   protected def factory: RawRorSettingsBasedCoreFactory = {
-    implicit val systemContext: SystemContext = new Environment(envVarsProvider = envVarsProvider)
+    implicit val systemContext: SystemContext = new SystemContext(envVarsProvider = envVarsProvider)
     new RawRorSettingsBasedCoreFactory(defaultEsVersionForTests)
   }
 
@@ -61,14 +61,14 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
     inside(
       aFactory
         .createCoreFrom(
-          rorConfigFromUnsafe(yaml),
+          rorSettingsFromUnsafe(yaml),
           RorSettingsIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider,
           mocksProvider
         )
         .runSyncUnsafe()
-    ) { case Right(Core(acl: EnabledAccessControlList, _)) =>
+    ) { case Right(Core(acl: EnabledAccessControlList, _, _)) =>
       val rule = acl.blocks.head.rules.collect { case r: T => r }.headOption
         .getOrElse(throw new IllegalStateException("There was no expected rule in decoding result"))
       rule shouldBe a[T]
@@ -84,7 +84,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
     inside(
       aFactory
         .createCoreFrom(
-          rorConfigFromUnsafe(yaml),
+          rorSettingsFromUnsafe(yaml),
           RorSettingsIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider,

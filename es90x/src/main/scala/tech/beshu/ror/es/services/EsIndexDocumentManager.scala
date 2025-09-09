@@ -29,15 +29,15 @@ import org.elasticsearch.injection.guice.Inject
 import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.boot.RorSchedulers
-import tech.beshu.ror.es.IndexDocumentReader
-import tech.beshu.ror.es.IndexDocumentReader.*
+import tech.beshu.ror.es.IndexDocumentManager
+import tech.beshu.ror.es.IndexDocumentManager.*
 import tech.beshu.ror.implicits.*
 
 import scala.annotation.unused
 
-class EsIndexDocumentReader(client: NodeClient,
-                            @unused constructorDiscriminator: Unit)
-  extends IndexDocumentReader
+class EsIndexDocumentManager(client: NodeClient,
+                             @unused constructorDiscriminator: Unit)
+  extends IndexDocumentManager
     with Logging {
 
   @Inject

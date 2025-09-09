@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.strategy
+package tech.beshu.ror.settings.loader
 
 import cats.data.EitherT
 import monix.eval.Task
@@ -33,7 +33,7 @@ class ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource: FileSettingsSou
       _ <- lift(logger.info(s"Loading ReadonlyREST main settings from file: ${mainSettingsFileSource.settingsFile.show}"))
       settings <- EitherT(mainSettingsFileSource.load())
         .biSemiflatTap(
-          error => logger.dError(s"Loading ReadonlyREST main settings from file failed: ${error.toString}"),
+          error => logger.dError(s"Loading ReadonlyREST main settings from file failed: ${error.show}"),
           settings => logger.dDebug(s"Loaded ReadonlyREST main settings from file: ${settings.rawSettings.raw.show}")
         )
         .leftMap(error => StartingFailure(error.show))

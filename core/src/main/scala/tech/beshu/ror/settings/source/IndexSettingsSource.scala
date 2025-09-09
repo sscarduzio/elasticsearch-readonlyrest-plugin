@@ -21,21 +21,21 @@ import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.es.IndexDocumentReader
-import tech.beshu.ror.es.IndexDocumentReader.CannotWriteToIndex
+import tech.beshu.ror.es.IndexDocumentManager
+import tech.beshu.ror.es.IndexDocumentManager.CannotWriteToIndex
 import tech.beshu.ror.settings.source.IndexSettingsSource.LoadingError.{DocumentNotFound, IndexNotFound}
 import tech.beshu.ror.settings.source.IndexSettingsSource.SavingError.CannotSaveSettings
 import tech.beshu.ror.settings.source.IndexSettingsSource.{IndexSettingsLoadingError, IndexSettingsSavingError, LoadingError, SavingError}
 import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
 
-class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexJsonContentService: IndexDocumentReader,
+class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: IndexDocumentManager,
                                                        val settingsIndex: IndexName.Full,
                                                        documentId: String)
   extends ReadWriteSettingsSource[SETTINGS, LoadingError, SavingError] {
 
   override def load(): Task[Either[IndexSettingsLoadingError, SETTINGS]] = {
-    indexJsonContentService
+    indexDocumentManager
       .documentAsJson(settingsIndex, documentId)
       .map {
         case Right(document) =>
@@ -43,17 +43,17 @@ class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexJsonContentService: 
             .left.map { decodingFailure =>
               LoadingSettingsError.SettingsMalformed(decodingFailure.message)
             }
-        case Left(IndexDocumentReader.IndexNotFound) =>
+        case Left(IndexDocumentManager.IndexNotFound) =>
           settingsLoaderError(IndexNotFound)
-        case Left(IndexDocumentReader.DocumentNotFound) =>
+        case Left(IndexDocumentManager.DocumentNotFound) =>
           settingsLoaderError(DocumentNotFound)
-        case Left(IndexDocumentReader.DocumentUnreachable) =>
+        case Left(IndexDocumentManager.DocumentUnreachable) =>
           settingsLoaderError(IndexNotFound) // todo: throw ex?
       }
   }
 
   override def save(settings: SETTINGS): Task[Either[IndexSettingsSavingError, Unit]] = {
-    indexJsonContentService
+    indexDocumentManager
       .saveDocumentJson(settingsIndex, documentId, settings.asJson)
       .map {
         _.left.map { case CannotWriteToIndex => SavingSettingsError.SourceSpecificError(CannotSaveSettings) }

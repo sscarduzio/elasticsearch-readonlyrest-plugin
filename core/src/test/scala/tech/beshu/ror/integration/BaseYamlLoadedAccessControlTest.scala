@@ -18,12 +18,14 @@ package tech.beshu.ror.integration
 
 import cats.implicits.*
 import monix.execution.Scheduler.Implicits.global
+import squants.information.Megabytes
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorSettingsBasedCoreFactory}
-import tech.beshu.ror.configuration.RawRorSettings
+import tech.beshu.ror.configuration.RawRorSettingsYamlParser
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -31,13 +33,13 @@ import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, defaultEsVersionF
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
-  protected def configYaml: String
+  protected def settingsYaml: String
 
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   protected implicit def propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default
 
-  private implicit val systemContext: SystemContext = new Environment(
+  private implicit val systemContext: SystemContext = new SystemContext(
     envVarsProvider = envVarsProvider,
     propertiesProvider = propertiesProvider
   )
@@ -47,20 +49,20 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
   protected val mockProvider: MocksProvider = NoOpMocksProvider
 
   lazy val acl: AccessControlList = {
-    val aclEngineT = for {
-      config <- RawRorSettings
-        .fromString(configYaml)
-        .map(_.fold(err => throw new IllegalStateException(err.show), identity))
-      core <- factory
-        .createCoreFrom(
-          config,
-          RorSettingsIndex(IndexName.Full(".readonlyrest")),
-          httpClientsFactory,
-          ldapConnectionPoolProvider,
-          mockProvider
-        )
-        .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), identity))
-    } yield core.accessControl
-    aclEngineT.runSyncUnsafe()
+    val yamlParser = new RawRorSettingsYamlParser(Megabytes(3))
+    val rorSettings = yamlParser.fromString(settingsYaml) match {
+      case Right(value) => value
+      case Left(error) => throw new IllegalStateException(error.show)
+    }
+    factory
+      .createCoreFrom(
+        rorSettings,
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
+        httpClientsFactory,
+        ldapConnectionPoolProvider,
+        mockProvider
+      )
+      .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), _.accessControl))
+      .runSyncUnsafe()
   }
 }

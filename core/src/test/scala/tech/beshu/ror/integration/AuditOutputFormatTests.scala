@@ -42,7 +42,7 @@ import scala.language.postfixOps
 
 class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory {
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     """
       |readonlyrest:
       |

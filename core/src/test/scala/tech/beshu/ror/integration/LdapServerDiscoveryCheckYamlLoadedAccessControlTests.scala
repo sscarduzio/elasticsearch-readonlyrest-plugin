@@ -39,7 +39,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
 
   override val container: LdapWithDnsContainer = new LdapWithDnsContainer("LDAP1", "test_example.ldif")
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     s"""readonlyrest:
        |
        |  access_control_rules:
