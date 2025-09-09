@@ -233,7 +233,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       availableLocalGroups <- availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups, potentiallyAvailableGroups)
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
     } yield {
-      def requiredData: UserMetadata => UserMetadata = { metadata =>
+      def requiredAuthenticationData: UserMetadata => UserMetadata = { metadata =>
         metadata.withLoggedUser(loggedUser)
           .withAvailableGroups(UniqueList.from(availableLocalGroups))
       }
@@ -246,7 +246,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
 
       destinationBlockContext
         .withUserMetadata { metadata =>
-          (requiredData :: optionalUserOrigin :: optionalJwtToken :: Nil)
+          (requiredAuthenticationData :: optionalUserOrigin :: optionalJwtToken :: Nil)
             .foldLeft(metadata) { case (acc, func) => func(acc) }
         }
     }
