@@ -55,6 +55,15 @@ private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJa
     }
   }
 
+  /**
+   * Method visitor that replaces the authorize method implementation with a dummy version.
+   * The dummy implementation:
+   * 1. Checks if "_indices_permissions" is already set in the thread context
+   * 2. If not set, grants full access by calling IndicesAccessControl.allowAll()
+   * 3. Always calls the listener with a null response to indicate successful authorization
+   * 
+   * This effectively bypasses Elasticsearch's authorization checks for ReadonlyREST integration.
+   */
   private class DummyAuthorizationMethod(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
