@@ -89,7 +89,7 @@ class MainSettingsApi(rorInstance: RorInstance,
     mainSettingsFileSource
       .load()
       .map {
-        case Right(settings) => ProvideFileMainSettings.MainSettings(settings.rawSettings.raw)
+        case Right(settings) => ProvideFileMainSettings.MainSettings(settings.rawSettings.rawYaml)
         case Left(error) => ProvideFileMainSettings.Failure(error.show)
       }
   }
@@ -99,7 +99,7 @@ class MainSettingsApi(rorInstance: RorInstance,
       .load()
       .map {
         case Right(settings) =>
-          ProvideIndexMainSettings.MainSettings(settings.rawSettings.raw)
+          ProvideIndexMainSettings.MainSettings(settings.rawSettings.rawYaml)
         case Left(SourceSpecificError(error@IndexNotFound)) =>
           ProvideIndexMainSettings.MainSettingsNotFound(Show[IndexSettingsSource.LoadingError].show(error))
         case Left(error) =>

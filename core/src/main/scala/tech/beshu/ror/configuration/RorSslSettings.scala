@@ -288,11 +288,13 @@ private object SslDecoders extends Logging {
     for {
       fipsMode <- c.downField(consts.rorSection).downField(consts.fipsMode).as[Option[FipsMode]]
       interNodeSsl <- {
-        implicit val internodeSslConfigDecoder = sslInternodeConfigurationDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
+        implicit val internodeSslConfigDecoder: Decoder[Option[InternodeSslSettings]] =
+          sslInternodeConfigurationDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
         c.downField(consts.rorSection).downField(consts.internodeSsl).as[Option[Option[InternodeSslSettings]]]
       }
       externalSsl <- {
-        implicit val externalSslConfigDecoder = sslExternalConfigurationDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
+        implicit val externalSslConfigDecoder: Decoder[Option[ExternalSslSettings]] =
+          sslExternalConfigurationDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
         c.downField(consts.rorSection).downField(consts.externalSsl).as[Option[Option[ExternalSslSettings]]]
       }
     } yield {

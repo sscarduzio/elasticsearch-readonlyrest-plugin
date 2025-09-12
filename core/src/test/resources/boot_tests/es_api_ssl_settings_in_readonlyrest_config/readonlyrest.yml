@@ -9,8 +9,5 @@ readonlyrest:
     truststore_pass: readonlyrest3
 
   access_control_rules:
-
-    - name: "CONTAINER ADMIN"
-      verbosity: error
-      type: allow
-      auth_key: admin:container
+    - name: "ADMIN"
+      auth_key: admin:admin

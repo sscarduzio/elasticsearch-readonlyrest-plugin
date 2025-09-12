@@ -35,5 +35,5 @@ private [source] class RawRorSettingsCodec(yamlParser: RawRorSettingsYamlParser)
       .apply(c)
 
   override def apply(a: RawRorSettings): Json =
-    Json.fromString(a.raw)
+    Json.fromString(a.rawYaml)
 }

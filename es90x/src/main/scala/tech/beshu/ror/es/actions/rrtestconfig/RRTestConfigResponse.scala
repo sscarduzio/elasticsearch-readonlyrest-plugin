@@ -79,7 +79,7 @@ class RRTestConfigResponse(response: TestSettingsApi.TestSettingsResponse)
     builder.startObject
     builder.field("status", response.status)
     builder.field("ttl", response.ttl.toString())
-    builder.field("settings", response.settings.raw)
+    builder.field("settings", response.settings.rawYaml)
     builder.field("valid_to", response.validTo.atOffset(ZoneOffset.UTC).toString)
     warningsJson(builder, response.warnings)
     builder.endObject
@@ -89,7 +89,7 @@ class RRTestConfigResponse(response: TestSettingsApi.TestSettingsResponse)
     builder.startObject
     builder.field("status", response.status)
     builder.field("message", response.message)
-    builder.field("settings", response.settings.raw)
+    builder.field("settings", response.settings.rawYaml)
     builder.field("ttl", response.ttl.toString())
     builder.endObject
   }

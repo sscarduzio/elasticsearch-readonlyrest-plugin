@@ -34,7 +34,7 @@ class ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource: FileSettingsSou
       settings <- EitherT(mainSettingsFileSource.load())
         .biSemiflatTap(
           error => logger.dError(s"Loading ReadonlyREST main settings from file failed: ${error.show}"),
-          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from file: ${settings.rawSettings.raw.show}")
+          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from file: ${settings.rawSettings.rawYaml.show}")
         )
         .leftMap(error => StartingFailure(error.show))
     } yield (settings, None)

@@ -163,7 +163,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
         val result = rorSettingFrom(rawConfig)
 
         inside(result) {
-          case Right(config) => config.raw shouldBe rawConfig
+          case Right(config) => config.rawYaml shouldBe rawConfig
         }
       }
     }

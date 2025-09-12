@@ -212,7 +212,7 @@ class RorIndexTest extends AnyWordSpec
     (indexDocumentManager.documentAsJson _)
       .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId)
       .once()
-      .returns(Task.now(Right(circeJsonFrom(s"""{ "settings": "${escapeJava(indexRorSettings.raw)}" }"""))))
+      .returns(Task.now(Right(circeJsonFrom(s"""{ "settings": "${escapeJava(indexRorSettings.rawYaml)}" }"""))))
   }
 
   private def mockInIndexTestSettingsLoading(indexDocumentManager: IndexDocumentManager,
@@ -226,7 +226,7 @@ class RorIndexTest extends AnyWordSpec
   private def mockInIndexMainSettingsSaving(indexDocumentManager: IndexDocumentManager,
                                             indexName: NonEmptyString) = {
     (indexDocumentManager.saveDocumentJson _)
-      .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId, circeJsonFrom(s"""{ "settings": "${escapeJava(rorSettings.raw)}"}"""))
+      .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId, circeJsonFrom(s"""{ "settings": "${escapeJava(rorSettings.rawYaml)}"}"""))
       .once()
       .returns(Task.now(Right(())))
   }
@@ -239,7 +239,7 @@ class RorIndexTest extends AnyWordSpec
           (index: IndexName.Full, id: String, document: Json) =>
             index == fullIndexName(indexName) &&
               id == testInIndexRorSettingsDocumentId &&
-              document.hcursor.get[String]("settings").toOption.contains(rorSettings.raw) &&
+              document.hcursor.get[String]("settings").toOption.contains(rorSettings.rawYaml) &&
               document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("300000") &&
               document.hcursor.downField("expiration_timestamp").succeeded &&
               document.hcursor.downField("auth_services_mocks").succeeded

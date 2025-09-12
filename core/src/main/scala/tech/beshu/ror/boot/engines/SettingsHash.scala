@@ -23,7 +23,7 @@ import scala.language.implicitConversions
 
 private[engines] class SettingsHash(val settings: RawRorSettings) extends AnyVal {
 
-  def hashString(): String = Hasher.Sha1.hashString(settings.raw)
+  def hashString(): String = Hasher.Sha1.hashString(settings.rawYaml)
 }
 
 private[engines] object SettingsHash {

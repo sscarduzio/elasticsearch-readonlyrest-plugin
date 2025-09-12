@@ -19,7 +19,7 @@ package tech.beshu.ror.configuration
 import cats.Eq
 import io.circe.Json
 
-final case class RawRorSettings(settingsJson: Json, raw: String)
+final case class RawRorSettings(settingsJson: Json, rawYaml: String)
 object RawRorSettings {
   implicit val eq: Eq[RawRorSettings] = Eq.fromUniversalEquals
 }

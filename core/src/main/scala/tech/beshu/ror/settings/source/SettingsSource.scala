@@ -35,7 +35,7 @@ object ReadOnlySettingsSource {
   }
 
   implicit def show[ERROR: Show]: Show[LoadingSettingsError[ERROR]] = Show.show {
-    case LoadingSettingsError.SettingsMalformed(cause) => "ROR settings are malformed"
+    case LoadingSettingsError.SettingsMalformed(cause) => s"ROR settings are malformed: $cause"
     case LoadingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
   }
 }

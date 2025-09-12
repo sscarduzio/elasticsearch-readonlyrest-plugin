@@ -23,6 +23,8 @@ import cats.syntax.either.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
+
+import java.util.concurrent.atomic.AtomicReference
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
@@ -58,12 +60,13 @@ class RorInstance private(boot: ReadonlyRest,
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
 
   logger.info("ReadonlyREST was loaded ...")
-  private val enginesReloadTask = mode match {
+  private val reloadTaskState: AtomicReference[ReloadTaskState] = new AtomicReference(ReloadTaskState.NotInitiated)
+
+  mode match {
     case Mode.WithPeriodicIndexCheck(RefreshInterval.Enabled(interval)) =>
       scheduleEnginesReload(interval)
     case Mode.WithPeriodicIndexCheck(RefreshInterval.Disabled) | Mode.NoPeriodicIndexCheck =>
       logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
-      Cancelable.empty
   }
 
   private val theMainSettingsEngine = mainSettingsBasedReloadableEngineCreator.create(
@@ -125,13 +128,20 @@ class RorInstance private(boot: ReadonlyRest,
   def stop(): Task[Unit] = {
     implicit val requestId: RequestId = RequestId("ES sigterm")
     for {
-      _ <- Task.delay(enginesReloadTask.cancel())
+      _ <- Task.delay(logger.info("ReadonlyREST is stopping ..."))
+      currentState <- Task.delay(reloadTaskState.getAndSet(ReloadTaskState.Stopped))
+      _ <- Task.delay(currentState match {
+        case ReloadTaskState.NotInitiated => // do nothing
+        case ReloadTaskState.Running(cancelable) => cancelable.cancel()
+        case ReloadTaskState.Stopped => // do nothing
+      })
       _ <- theTestSettingsEngine.stop()
       _ <- theMainSettingsEngine.stop()
+      _ <- Task.delay(logger.info("ReadonlyREST is stopped!"))
     } yield ()
   }
 
-  private def scheduleEnginesReload(interval: PositiveFiniteDuration): Cancelable = {
+  private def scheduleEnginesReload(interval: PositiveFiniteDuration): Unit = {
     val reloadTask = { (requestId: RequestId) =>
       Task.sequence {
         Seq(
@@ -140,25 +150,46 @@ class RorInstance private(boot: ReadonlyRest,
         )
       }
     }
-    scheduleIndexSettingsChecking(interval, reloadTask)
+    scheduleNextIfNotStopping(interval, reloadTask)
+  }
+
+  private def scheduleNextIfNotStopping(interval: PositiveFiniteDuration,
+                                        reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]]): Unit = {
+    implicit val requestId: RequestId = RequestId(systemContext.uuidProvider.random.toString)
+    val nextTask = scheduleIndexSettingsChecking(interval, reloadTask)
+    trySetNextReloadTask(nextTask) match {
+      case ReloadTaskState.NotInitiated => // nothing to do
+      case ReloadTaskState.Running(_) => // nothing to do
+      case ReloadTaskState.Stopped => nextTask.cancel()
+    }
   }
 
   // todo: check messages
   private def scheduleIndexSettingsChecking(interval: PositiveFiniteDuration,
-                                            reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]]): Cancelable = {
-    logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within ${interval.show}")
-    scheduler.scheduleOnce(interval.value) {
-      implicit val requestId: RequestId = RequestId(systemContext.uuidProvider.random.toString)
+                                            reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]])
+                                           (implicit requestId: RequestId): CancelableWithRequestId = {
+    logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Scheduling next in-index settings check within ${interval.show}")
+    val cancellable = scheduler.scheduleOnce(interval.value) {
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ReadonlyREST settings from index ...")
       reloadTask(requestId)
         .runAsync {
           case Right(reloadResults) =>
             reloadResults.foreach(logSettingsReloadResult)
-            scheduleIndexSettingsChecking(interval, reloadTask)
+            scheduleNextIfNotStopping(interval, reloadTask)
           case Left(ex) =>
             logger.error(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Checking index settings failed: error", ex)
-            scheduleIndexSettingsChecking(interval, reloadTask)
+            scheduleNextIfNotStopping(interval, reloadTask)
         }
+    }
+    new CancelableWithRequestId(cancellable, requestId)
+  }
+
+  private def trySetNextReloadTask(nextTask: CancelableWithRequestId) = {
+    reloadTaskState.updateAndGet {
+      case ReloadTaskState.NotInitiated | ReloadTaskState.Running(_) =>
+        ReloadTaskState.Running(nextTask)
+      case ReloadTaskState.Stopped =>
+        ReloadTaskState.Stopped
     }
   }
 
@@ -309,6 +340,22 @@ object RorInstance {
     implicit val show: Show[SettingsType] = Show.show {
       case Main => "main"
       case Test => "test"
+    }
+  }
+
+  private sealed trait ReloadTaskState
+  private object ReloadTaskState {
+    case object NotInitiated extends ReloadTaskState
+    final case class Running(cancelable: CancelableWithRequestId) extends ReloadTaskState
+    case object Stopped extends ReloadTaskState
+  }
+
+  private final class CancelableWithRequestId(cancelable: Cancelable, requestId: RequestId)
+    extends Logging {
+
+    def cancel(): Unit = {
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Scheduling next in-index settings check cancelled!")
+      cancelable.cancel()
     }
   }
 }

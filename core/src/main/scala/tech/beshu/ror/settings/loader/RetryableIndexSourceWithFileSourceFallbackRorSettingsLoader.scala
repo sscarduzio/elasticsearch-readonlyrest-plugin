@@ -48,7 +48,7 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
       loadedSettings <- EitherT(mainSettingsIndexSource.load())
         .biSemiflatTap(
           error => logger.dInfo(s"Loading ReadonlyREST main settings from index failed: ${error.show}"),
-          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from index:\n${settings.rawSettings.raw.show}")
+          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from index:\n${settings.rawSettings.rawYaml.show}")
         )
         .leftMap(error => StartingFailure(error.show))
     } yield loadedSettings
@@ -60,7 +60,7 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
       loadedSettings <- EitherT(mainSettingsFileSource.load())
         .biSemiflatTap(
           error => logger.dError(s"Loading ReadonlyREST main settings from file failed: ${error.show}"),
-          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from file:\n${settings.rawSettings.raw.show}")
+          settings => logger.dDebug(s"Loaded ReadonlyREST main settings from file:\n${settings.rawSettings.rawYaml.show}")
         )
         .leftMap(error => StartingFailure(error.show))
     } yield loadedSettings
@@ -68,11 +68,11 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
 
   private def loadTestSettingsFromIndex() = {
     for {
-      _ <- lift(logger.info(s"Loading ReadonlyREST test settings from index (${testSettingsIndexSource.settingsIndex.show}) ..."))
+      _ <- lift(logger.info(s"Loading ReadonlyREST test settings from index: ${testSettingsIndexSource.settingsIndex.show} ..."))
       loadedSettings <- EitherT(testSettingsIndexSource.load())
         .biSemiflatTap(
           error => logger.dInfo(s"Loading ReadonlyREST test settings from index failed: ${error.show}"),
-          settings => logger.dDebug(s"Loaded ReadonlyREST test settings from index: ${settings.rawSettings.raw.show}")
+          settings => logger.dDebug(s"Loaded ReadonlyREST test settings from index: ${settings.rawSettings.rawYaml.show}")
         )
         .leftMap(error => StartingFailure(error.show))
         .map(Option(_))

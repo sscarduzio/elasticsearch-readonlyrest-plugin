@@ -55,6 +55,7 @@ import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingError
 import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
 import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.es.IndexDocumentManager.*
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, EsEnv, IndexDocumentManager}
 import tech.beshu.ror.settings.source.IndexSettingsSource.SavingError.CannotSaveSettings
 import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
@@ -67,7 +68,6 @@ import java.time.Clock
 import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.es.IndexDocumentManager.{CannotWriteToIndex, DocumentNotFound, IndexNotFound, ReadError, WriteError}
 
 class ReadonlyRestStartingTests
   extends AnyWordSpec
@@ -279,10 +279,18 @@ class ReadonlyRestStartingTests
         acl2.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
       }
       "failed to load" when {
-        "force load from file is set and settings is malformed" in {
+        "force load from file is set and settings file is malformed yaml" in {
           val resourcesPath = "/boot_tests/forced_file_loading_malformed_config/"
-          val coreFactory = mock[CoreFactory]
-          mockCoreFactory(coreFactory, resourcesPath + "readonlyrest.yml", mockEnabledAccessControl)
+          implicit val systemContext: SystemContext = createSystemContext()
+          val result = createEsConfigBasedRorSettings(resourcesPath)
+
+          inside(result) { case Left(LoadingError.MalformedContent(_, message)) =>
+            message should startWith("Cannot parse file")
+          }
+        }
+        "force load from file is set and core cannot be loaded" in {
+          val resourcesPath = "/boot_tests/forced_file_loading_bad_config/"
+          val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + "readonlyrest.yml")
 
           implicit val systemContext: SystemContext = createSystemContext()
           val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager])
@@ -291,15 +299,20 @@ class ReadonlyRestStartingTests
           val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
-            failure.message should startWith("Settings file is malformed:")
+            failure.message shouldBe "Errors:\nfailed"
           }
         }
-        "force load from file is set and settings cannot be loaded" in {
-          val coreFactory = mockFailedCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading_bad_config/readonlyrest.yml")
+        "index settings don't exist and settings file is malformed yaml" in {
+          val resourcesPath = "/boot_tests/index_config_not_exists_malformed_file_config/"
+          val mockedIndexDocumentManager = mock[IndexDocumentManager]
+          mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, error = IndexNotFound)
+          mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, error = IndexNotFound)
+          val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + "readonlyrest.yml")
 
           implicit val systemContext: SystemContext = createSystemContext()
-          val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager])
-          val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_bad_config/")
+
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
+          val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
           val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
@@ -307,28 +320,13 @@ class ReadonlyRestStartingTests
             failure.message shouldBe "Errors:\nfailed"
           }
         }
-        "index settings don't exist and file settings are malformed" in {
-          val mockedIndexDocumentManager = mock[IndexDocumentManager]
-          mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, error = IndexNotFound)
-
-          implicit val systemContext: SystemContext = createSystemContext()
-
-          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexDocumentManager)
-          val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings("/boot_tests/index_config_not_exists_malformed_file_config/")
-
-          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
-
-          inside(result) { case Left(failure) =>
-            failure.message should startWith("ROR settings are malformed")
-          }
-        }
-        "index settings don't exist and file settings cannot be loaded" in {
+        "index settings don't exist and core cannot be loaded" in {
           val resourcePath = "/boot_tests/index_config_not_exists_bad_file_config/"
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
           mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
           mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
 
-          val coreFactory = mockFailedCoreFactory(mock[CoreFactory], s"${resourcePath}readonlyrest.yml")
+          val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcePath + "readonlyrest.yml")
           implicit val systemContext: SystemContext = createSystemContext()
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
@@ -348,15 +346,17 @@ class ReadonlyRestStartingTests
           mockGettingMainSettings(mockedIndexDocumentManager, resourcesPath + indexSettingsFile)
           mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
 
+          val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + "readonlyrest.yml")
+
           implicit val systemContext: SystemContext = createSystemContext()
 
-          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexDocumentManager)
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
           val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
-            failure.message should startWith("Settings content is malformed.")
+            failure.message shouldBe "Errors:\nfailed"
           }
         }
         "index settings cannot be loaded" in {
@@ -380,36 +380,21 @@ class ReadonlyRestStartingTests
         }
         "ROR SSL (in elasticsearch.yml) is tried to be used when XPack Security is enabled" in {
           implicit val systemContext: SystemContext = createSystemContext()
-          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexDocumentManager])
-          val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings("/boot_tests/ror_ssl_declared_in_es_file_xpack_security_enabled/")
+          val result = createEsConfigBasedRorSettings("/boot_tests/ror_ssl_declared_in_es_file_xpack_security_enabled/")
 
-          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
-
-          inside(result) { case Left(failure) =>
-            failure.message should be("Cannot use ROR SSL settings when XPack Security is enabled")
-          }
+          result should be (Left(LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled))
         }
         "ROR SSL (in readonlyrest.yml) is tried to be used when XPack Security is enabled" in {
           implicit val systemContext: SystemContext = createSystemContext()
-          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexDocumentManager])
-          val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings("/boot_tests/ror_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
+          val result = createEsConfigBasedRorSettings("/boot_tests/ror_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
 
-          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
-
-          inside(result) { case Left(failure) =>
-            failure.message should be("Cannot use ROR SSL settings when XPack Security is enabled")
-          }
+          result should be (Left(LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled))
         }
         "ROR FIPS SSL is tried to be used when XPack Security is enabled" in {
           implicit val systemContext: SystemContext = createSystemContext()
-          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexDocumentManager])
-          val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings("/boot_tests/ror_fisb_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
+          val result = createEsConfigBasedRorSettings("/boot_tests/ror_fisb_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
 
-          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
-
-          inside(result) { case Left(failure) =>
-            failure.message should be("Cannot use ROR FIBS settings when XPack Security is enabled")
-          }
+          result should be(Left(LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled))
         }
       }
     }
@@ -450,10 +435,10 @@ class ReadonlyRestStartingTests
                 mockedIndexDocumentManager,
                 circeJsonFrom(
                   s"""{
-                     |  "settings": "${escapeJava(testSettings1.raw)}",
+                     |  "settings": "${escapeJava(testSettings1.rawYaml)}",
                      |  "expiration_ttl_millis": "100000",
                      |  "expiration_timestamp": "${expirationTimestamp.toString}",
-                     |  "auth_services_mocks": "${escapeJava(configuredAuthServicesMocksJson)}"
+                     |  "auth_services_mocks": $configuredAuthServicesMocksJson
                      |}""".stripMargin
                 )
               )
@@ -517,10 +502,10 @@ class ReadonlyRestStartingTests
                 mockedIndexDocumentManager,
                 circeJsonFrom(
                   s"""{
-                     |  "settings": "${escapeJava(testSettings1.raw)}",
+                     |  "settings": "${escapeJava(testSettings1.rawYaml)}",
                      |  "expiration_ttl_millis": "100000",
                      |  "expiration_timestamp": "${expirationTimestamp.toString}",
-                     |  "auth_services_mocks": "${escapeJava(configuredAuthServicesMocksJson)}"
+                     |  "auth_services_mocks": $configuredAuthServicesMocksJson
                      |}""".stripMargin
                 )
               )
@@ -583,7 +568,7 @@ class ReadonlyRestStartingTests
                    |  "settings": "malformed_settings",
                    |  "expiration_ttl_millis": "100000",
                    |  "expiration_timestamp": "${expirationTimestamp.toString}",
-                   |  "auth_services_mocks": "${escapeJava(configuredAuthServicesMocksJson)}"
+                   |  "auth_services_mocks": $configuredAuthServicesMocksJson
                    |}""".stripMargin
               )
             )
@@ -613,10 +598,10 @@ class ReadonlyRestStartingTests
               mockedIndexDocumentManager,
               circeJsonFrom(
                 s"""{
-                   |  "settings": "${testSettingsMalformed.raw}",
+                   |  "settings": "${escapeJava(testSettingsMalformed.rawYaml)}",
                    |  "expiration_ttl_millis": "100000",
                    |  "expiration_timestamp": "${testClock.instant().plusSeconds(100).toString}",
-                   |  "auth_services_mocks": "${escapeJava(configuredAuthServicesMocksJson)}"
+                   |  "auth_services_mocks": $configuredAuthServicesMocksJson
                    |}""".stripMargin
               )
             )
@@ -671,8 +656,8 @@ class ReadonlyRestStartingTests
                 (index: IndexName.Full, id: String, document: Json) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
-                    document.hcursor.get[String]("settings").toOption.contains(testSettings1.raw) &&
-                    document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("600000") &&
+                    document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
+                    document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("60000") &&
                     document.hcursor.downField("expiration_timestamp").succeeded &&
                     document.hcursor.downField("auth_services_mocks").succeeded
               }
@@ -722,7 +707,7 @@ class ReadonlyRestStartingTests
                   (index: IndexName.Full, id: String, document: Json) =>
                     index == fullIndexName(".readonlyrest") &&
                       id == "2" &&
-                      document.hcursor.get[String]("settings").toOption.contains(testSettings1.raw) &&
+                      document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
                       document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("60000") &&
                       document.hcursor.downField("expiration_timestamp").succeeded &&
                       document.hcursor.downField("auth_services_mocks").succeeded
@@ -791,7 +776,7 @@ class ReadonlyRestStartingTests
                   (index: IndexName.Full, id: String, document: Json) =>
                     index == fullIndexName(".readonlyrest") &&
                       id == "2" &&
-                      document.hcursor.get[String]("settings").toOption.contains(testSettings1.raw) &&
+                      document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
                       document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("600000") &&
                       document.hcursor.downField("expiration_timestamp").succeeded &&
                       document.hcursor.downField("auth_services_mocks").succeeded
@@ -820,7 +805,7 @@ class ReadonlyRestStartingTests
                   (config: IndexName.Full, id: String, document: Json) =>
                     config == fullIndexName(".readonlyrest") &&
                       id == "2" &&
-                      document.hcursor.get[String]("settings").toOption.contains(testSettings1.raw) &&
+                      document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
                       document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("300000") &&
                       document.hcursor.downField("expiration_timestamp").succeeded &&
                       document.hcursor.downField("auth_services_mocks").succeeded
@@ -875,7 +860,7 @@ class ReadonlyRestStartingTests
                 (index: IndexName.Full, id: String, document: Json) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
-                    document.hcursor.get[String]("settings").toOption.contains(testSettings1.raw) &&
+                    document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
                     document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("60000") &&
                     document.hcursor.downField("expiration_timestamp").succeeded &&
                     document.hcursor.downField("auth_services_mocks").succeeded
@@ -905,7 +890,7 @@ class ReadonlyRestStartingTests
                 (index: IndexName.Full, id: String, document: Json) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
-                    document.hcursor.get[String]("settings").toOption.contains(testSettings2.raw) &&
+                    document.hcursor.get[String]("settings").toOption.contains(testSettings2.rawYaml) &&
                     document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("120000") &&
                     document.hcursor.downField("expiration_timestamp").succeeded &&
                     document.hcursor.downField("auth_services_mocks").succeeded
@@ -958,10 +943,10 @@ class ReadonlyRestStartingTests
             .repeated(1)
             .returns(Task.now(Right(circeJsonFrom(
               s"""{
-                 |  "settings": "${escapeJava(testSettings1.raw)}",
+                 |  "settings": "${escapeJava(testSettings1.rawYaml)}",
                  |  "expiration_ttl_millis": "100000",
                  |  "expiration_timestamp": "${expirationTimestamp.toString}",
-                 |  "auth_services_mocks": "${escapeJava(notConfiguredAuthServicesMocksJson)}"
+                 |  "auth_services_mocks": $notConfiguredAuthServicesMocksJson
                  |}""".stripMargin
             ))))
 
@@ -992,10 +977,10 @@ class ReadonlyRestStartingTests
             mockedIndexDocumentManager,
             circeJsonFrom(
               s"""{
-                 |  "settings": "${escapeJava(testSettings1.raw)}",
+                 |  "settings": "${escapeJava(testSettings1.rawYaml)}",
                  |  "expiration_ttl_millis": "100000",
                  |  "expiration_timestamp": "${expirationTimestamp.toString}",
-                 |  "auth_services_mocks": "${escapeJava(notConfiguredAuthServicesMocksJson)}"
+                 |  "auth_services_mocks": $notConfiguredAuthServicesMocksJson
                  |}""".stripMargin
             )
           )
@@ -1025,10 +1010,10 @@ class ReadonlyRestStartingTests
             .repeated(1)
             .returns(Task.now(Right(circeJsonFrom(
               s"""{
-                 |  "settings": "${escapeJava(testSettings1.raw)}",
+                 |  "settings": "${escapeJava(testSettings1.rawYaml)}",
                  |  "expiration_ttl_millis": "200000",
                  |  "expiration_timestamp": "${expirationTimestamp2.toString}",
-                 |  "auth_services_mocks": "${escapeJava(notConfiguredAuthServicesMocksJson)}"
+                 |  "auth_services_mocks": $notConfiguredAuthServicesMocksJson
                  |}""".stripMargin
             ))))
 
@@ -1056,10 +1041,10 @@ class ReadonlyRestStartingTests
             mockedIndexDocumentManager,
             circeJsonFrom(
               s"""{
-                 |  "settings": "${escapeJava(testSettings1.raw)}",
+                 |  "settings": "${escapeJava(testSettings1.rawYaml)}",
                  |  "expiration_ttl_millis": "100000",
                  |  "expiration_timestamp": "${expirationTimestamp.toString}",
-                 |  "auth_services_mocks": "${escapeJava(notConfiguredAuthServicesMocksJson)}"
+                 |  "auth_services_mocks": $notConfiguredAuthServicesMocksJson
                  |}""".stripMargin
             )
           )
@@ -1091,10 +1076,10 @@ class ReadonlyRestStartingTests
             .repeated(1)
             .returns(Task.now(Right(circeJsonFrom(
               s"""{
-                 |  "settings": "${escapeJava(testSettings1.raw)}",
+                 |  "settings": "${escapeJava(testSettings1.rawYaml)}",
                  |  "expiration_ttl_millis": "100000",
                  |  "expiration_timestamp": "${expirationTimestamp2.toString}",
-                 |  "auth_services_mocks": "${escapeJava(notConfiguredAuthServicesMocksJson)}"
+                 |  "auth_services_mocks": $notConfiguredAuthServicesMocksJson
                  |}""".stripMargin
             ))))
 
@@ -1122,10 +1107,10 @@ class ReadonlyRestStartingTests
             mockedIndexDocumentManager,
             circeJsonFrom(
               s"""{
-                 |  "settings": "${escapeJava(testSettings2.raw)}",
+                 |  "settings": "${escapeJava(testSettings1.rawYaml)}",
                  |  "expiration_ttl_millis": "100000",
                  |  "expiration_timestamp": "${expirationTimestamp.toString}",
-                 |  "auth_services_mocks": "${escapeJava(notConfiguredAuthServicesMocksJson)}"
+                 |  "auth_services_mocks": $notConfiguredAuthServicesMocksJson
                  |}""".stripMargin
             )
           )
@@ -1157,10 +1142,10 @@ class ReadonlyRestStartingTests
             .repeated(1)
             .returns(Task.delay(Right(circeJsonFrom(
               s"""{
-                 |  "settings": "${escapeJava(testSettings2.raw)}",
+                 |  "settings": "${escapeJava(testSettings2.rawYaml)}",
                  |  "expiration_ttl_millis": "200000",
                  |  "expiration_timestamp": "${expirationTimestamp2.toString}",
-                 |  "auth_services_mocks": "${escapeJava(notConfiguredAuthServicesMocksJson)}"
+                 |  "auth_services_mocks": $notConfiguredAuthServicesMocksJson
                  |}""".stripMargin
             ))))
 
@@ -1206,8 +1191,8 @@ class ReadonlyRestStartingTests
                 (index: IndexName.Full, id: String, document: Json) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
-                    document.hcursor.get[String]("settings").toOption.contains(testSettings1.raw) &&
-                    document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("60000") &&
+                    document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
+                    document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("3000") &&
                     document.hcursor.downField("expiration_timestamp").succeeded &&
                     document.hcursor.downField("auth_services_mocks").succeeded
               }
@@ -1257,7 +1242,7 @@ class ReadonlyRestStartingTests
               (index: IndexName.Full, id: String, document: Json) =>
                 index == fullIndexName(".readonlyrest") &&
                   id == "2" &&
-                  document.hcursor.get[String]("settings").toOption.contains(testSettings1.raw) &&
+                  document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
                   document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("60000") &&
                   document.hcursor.downField("expiration_timestamp").succeeded &&
                   document.hcursor.downField("auth_services_mocks").succeeded
@@ -1280,7 +1265,7 @@ class ReadonlyRestStartingTests
               (config: IndexName.Full, id: String, document: Json) =>
                 config == fullIndexName(".readonlyrest") &&
                   id == "2" &&
-                  document.hcursor.get[String]("settings").toOption.contains(testSettings1.raw) &&
+                  document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
                   document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("60000") &&
                   document.hcursor.downField("expiration_timestamp").succeeded &&
                   document.hcursor.downField("auth_services_mocks").succeeded
@@ -1310,10 +1295,10 @@ class ReadonlyRestStartingTests
               circeJsonFrom(
                 s"""
                    |{
-                   |  "settings": "${escapeJava(testSettings1.raw)}",
+                   |  "settings": "${escapeJava(testSettings1.rawYaml)}",
                    |  "expiration_ttl_millis": "100000",
                    |  "expiration_timestamp": "${expirationTimestamp.toString}",
-                   |  "auth_services_mocks": "${escapeJava(notConfiguredAuthServicesMocksJson)}"
+                   |  "auth_services_mocks": $notConfiguredAuthServicesMocksJson
                    |}
                    |""".stripMargin
               )
@@ -1347,7 +1332,7 @@ class ReadonlyRestStartingTests
                 (index: IndexName.Full, id: String, document: Json) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
-                    document.hcursor.get[String]("settings").toOption.contains(testSettings1.raw) &&
+                    document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
                     document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("100000") &&
                     document.hcursor.get[String]("expiration_timestamp").toOption.exists(_ != expirationTimestamp.toString)
               }
@@ -1510,13 +1495,13 @@ class ReadonlyRestStartingTests
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
-                              loaededMainSettingsResourceFileName: String,
+                              loadedMainSettingsResourceFileName: String,
                               accessControlMock: AccessControlList = mockEnabledAccessControl,
                               dependencies: RorDependencies = RorDependencies.noOp,
                               auditingSettings: Option[AuditingTool.Settings] = None): CoreFactory = {
     mockCoreFactory(
       mockedCoreFactory,
-      rorSettingsFromResource(loaededMainSettingsResourceFileName),
+      rorSettingsFromResource(loadedMainSettingsResourceFileName),
       accessControlMock,
       dependencies,
       auditingSettings
