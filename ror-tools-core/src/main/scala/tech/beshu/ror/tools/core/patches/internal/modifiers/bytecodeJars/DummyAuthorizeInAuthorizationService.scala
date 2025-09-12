@@ -16,12 +16,14 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
+import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
+import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es850}
 
 import java.io.{File, InputStream}
 
-private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJarModifier {
+private [patches] class DummyAuthorizeInAuthorizationService(esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -48,58 +50,105 @@ private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJa
                              exceptions: Array[String]): MethodVisitor = {
       name match {
         case "authorize" =>
-          new DummyAuthorizationMethod(super.visitMethod(access, name, descriptor, signature, exceptions))
+          esVersion match {
+            case v if v >= es850 =>
+              new DummyAuthorizationMethodForEsGreaterOrEqualEs850(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case v if v >= es670 =>
+              new DummyAuthorizationMethodForEsGreaterOrEqualEs670(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case _ =>
+              super.visitMethod(access, name, descriptor, signature, exceptions)
+          }
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
-  }
 
-  /**
-   * Method visitor that replaces the authorize method implementation with a dummy version.
-   * The dummy implementation:
-   * 1. Checks if "_indices_permissions" is already set in the thread context
-   * 2. If not set, grants full access by calling IndicesAccessControl.allowAll()
-   * 3. Always calls the listener with a null response to indicate successful authorization
-   * 
-   * This effectively bypasses Elasticsearch's authorization checks for ReadonlyREST integration.
-   */
-  private class DummyAuthorizationMethod(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+    /**
+     * Method visitor that replaces the authorize method implementation with a dummy version.
+     * The dummy implementation:
+     * 1. Checks if "_indices_permissions" is already set in the thread context
+     * 2. If not set, it grants full access by calling IndicesAccessControl.allowAll()
+     * 3. It always calls the listener with a null response to indicate successful authorization
+     *
+     * This effectively bypasses Elasticsearch's authorization checks for ReadonlyREST integration.
+     */
+    private class DummyAuthorizationMethodForEsGreaterOrEqualEs850(underlying: MethodVisitor)
+      extends MethodVisitor(Opcodes.ASM9) {
 
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      val label0 = new Label()
-      underlying.visitLabel(label0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authz/AuthorizationService", "threadContext", "Lorg/elasticsearch/common/util/concurrent/ThreadContext;")
-      underlying.visitLdcInsn("_indices_permissions")
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/common/util/concurrent/ThreadContext", "getTransient", "(Ljava/lang/String;)Ljava/lang/Object;", false)
-      val label1 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFNONNULL, label1)
-      val label2 = new Label()
-      underlying.visitLabel(label2)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authz/AuthorizationService", "securityContext", "Lorg/elasticsearch/xpack/core/security/SecurityContext;")
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/core/security/authz/accesscontrol/IndicesAccessControl", "allowAll", "()Lorg/elasticsearch/xpack/core/security/authz/accesscontrol/IndicesAccessControl;", false)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/core/security/SecurityContext", "putIndicesAccessControl", "(Lorg/elasticsearch/xpack/core/security/authz/accesscontrol/IndicesAccessControl;)V", false)
-      underlying.visitLabel(label1)
-      underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitInsn(Opcodes.ACONST_NULL)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/action/ActionListener", "onResponse", "(Ljava/lang/Object;)V", true)
-      val label3 = new Label()
-      underlying.visitLabel(label3)
-      underlying.visitInsn(Opcodes.RETURN)
-      val label4 = new Label()
-      underlying.visitLabel(label4)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authz/AuthorizationService;", null, label0, label4, 0)
-      underlying.visitLocalVariable("authentication", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label0, label4, 1)
-      underlying.visitLocalVariable("action", "Ljava/lang/String;", null, label0, label4, 2)
-      underlying.visitLocalVariable("originalRequest", "Lorg/elasticsearch/transport/TransportRequest;", null, label0, label4, 3)
-      underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Ljava/lang/Void;>;", label0, label4, 4)
-      underlying.visitMaxs(2, 5)
-      underlying.visitEnd()
+      override def visitCode(): Unit = {
+        underlying.visitCode()
+        val label0 = new Label()
+        underlying.visitLabel(label0)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authz/AuthorizationService", "threadContext", "Lorg/elasticsearch/common/util/concurrent/ThreadContext;")
+        underlying.visitLdcInsn("_indices_permissions")
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/common/util/concurrent/ThreadContext", "getTransient", "(Ljava/lang/String;)Ljava/lang/Object;", false)
+        val label1 = new Label()
+        underlying.visitJumpInsn(Opcodes.IFNONNULL, label1)
+        val label2 = new Label()
+        underlying.visitLabel(label2)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authz/AuthorizationService", "securityContext", "Lorg/elasticsearch/xpack/core/security/SecurityContext;")
+        underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/core/security/authz/accesscontrol/IndicesAccessControl", "allowAll", "()Lorg/elasticsearch/xpack/core/security/authz/accesscontrol/IndicesAccessControl;", false)
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/core/security/SecurityContext", "putIndicesAccessControl", "(Lorg/elasticsearch/xpack/core/security/authz/accesscontrol/IndicesAccessControl;)V", false)
+        underlying.visitLabel(label1)
+        underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
+        underlying.visitVarInsn(Opcodes.ALOAD, 4)
+        underlying.visitInsn(Opcodes.ACONST_NULL)
+        underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/action/ActionListener", "onResponse", "(Ljava/lang/Object;)V", true)
+        val label3 = new Label()
+        underlying.visitLabel(label3)
+        underlying.visitInsn(Opcodes.RETURN)
+        val label4 = new Label()
+        underlying.visitLabel(label4)
+        underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authz/AuthorizationService;", null, label0, label4, 0)
+        underlying.visitLocalVariable("authentication", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label0, label4, 1)
+        underlying.visitLocalVariable("action", "Ljava/lang/String;", null, label0, label4, 2)
+        underlying.visitLocalVariable("originalRequest", "Lorg/elasticsearch/transport/TransportRequest;", null, label0, label4, 3)
+        underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Ljava/lang/Void;>;", label0, label4, 4)
+        underlying.visitMaxs(2, 5)
+        underlying.visitEnd()
+      }
+    }
+
+    private class DummyAuthorizationMethodForEsGreaterOrEqualEs670(underlying: MethodVisitor)
+      extends MethodVisitor(Opcodes.ASM9) {
+
+      override def visitCode(): Unit = {
+        underlying.visitCode()
+        val label0 = new Label()
+        underlying.visitLabel(label0)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authz/AuthorizationService", "threadContext", "Lorg/elasticsearch/common/util/concurrent/ThreadContext;")
+        underlying.visitLdcInsn("_indices_permissions")
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/common/util/concurrent/ThreadContext", "getTransient", "(Ljava/lang/String;)Ljava/lang/Object;", false)
+        val label1 = new Label()
+        underlying.visitJumpInsn(Opcodes.IFNONNULL, label1)
+        val label2 = new Label()
+        underlying.visitLabel(label2)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authz/AuthorizationService", "threadContext", "Lorg/elasticsearch/common/util/concurrent/ThreadContext;")
+        underlying.visitLdcInsn("_indices_permissions")
+        underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/core/security/authz/accesscontrol/IndicesAccessControl", "allowAll", "()Lorg/elasticsearch/xpack/core/security/authz/accesscontrol/IndicesAccessControl;", false)
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/common/util/concurrent/ThreadContext", "putTransient", "(Ljava/lang/String;Ljava/lang/Object;)V", false)
+        underlying.visitLabel(label1)
+        underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
+        underlying.visitVarInsn(Opcodes.ALOAD, 4)
+        underlying.visitInsn(Opcodes.ACONST_NULL)
+        underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/action/ActionListener", "onResponse", "(Ljava/lang/Object;)V", true)
+        val label3 = new Label()
+        underlying.visitLabel(label3)
+        underlying.visitInsn(Opcodes.RETURN)
+        val label4 = new Label()
+        underlying.visitLabel(label4)
+        underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authz/AuthorizationService;", null, label0, label4, 0)
+        underlying.visitLocalVariable("authentication", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label0, label4, 1)
+        underlying.visitLocalVariable("action", "Ljava/lang/String;", null, label0, label4, 2)
+        underlying.visitLocalVariable("originalRequest", "Lorg/elasticsearch/transport/TransportRequest;", null, label0, label4, 3)
+        underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Ljava/lang/Void;>;", label0, label4, 4)
+        underlying.visitMaxs(3, 5)
+        underlying.visitEnd()
+      }
     }
   }
 }

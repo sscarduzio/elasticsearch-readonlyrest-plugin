@@ -50,7 +50,7 @@ private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       DeactivateSecurityActionFilter,
       DeactivateSecurityServerTransportInterceptor,
       new MockAuthorizationInfoInAuthorizationService(esVersion),
-      DummyAuthorizeInAuthorizationService,
+      new DummyAuthorizeInAuthorizationService(esVersion),
       esVersion match {
         case v if v >= es7160 =>  new DummyAuthenticationInAuthenticationChain(esVersion)
         case _ => new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion)

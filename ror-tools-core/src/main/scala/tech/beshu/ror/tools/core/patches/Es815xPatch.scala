@@ -50,7 +50,7 @@ private[patches] class Es815xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       OpenModule,
       DeactivateSecurityActionFilter,
       DeactivateAuthenticationServiceInHttpTransport,
-      DummyAuthorizeInAuthorizationService,
+      new DummyAuthorizeInAuthorizationService(esVersion),
       new DummyAuthenticationInAuthenticationChain(esVersion)
     ),
     new XPackIlmJarPatchCreator(
