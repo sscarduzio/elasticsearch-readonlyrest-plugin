@@ -479,8 +479,11 @@ object RawRorConfigBasedCoreFactory {
       final case class Message(value: String) extends Reason
       final case class MalformedValue private(value: String) extends Reason
       object MalformedValue {
-        def fromString(str: String): MalformedValue = MalformedValue(str)
-        
+        def fromString(raw: String): MalformedValue = {
+          val normalized = raw.replaceAll("\r\n?", "\n")
+          MalformedValue(normalized)
+        }
+
         def apply(json: Json): MalformedValue = from(json)
 
         def from(json: Json): MalformedValue = MalformedValue {

@@ -50,6 +50,7 @@ test {
         systemProperty "esModule", module
         tags {
             exclude 'tech.beshu.tags.ExcludeESModule.' + module
+            exclude 'tech.beshu.tags.IgnoreOnWindows'
         }
         suite 'tech.beshu.ror.tools.*'
     }

@@ -246,7 +246,7 @@ trait RorTools {
 
   private lazy val esPathOption =
     opt[String]("es-path")
-      .text(s"Path to elasticsearch directory; default=${EsDirectory.defaultPath}")
+      .text(s"Path to elasticsearch directory; default=/usr/share/elasticsearch")
       .validate { path =>
         Try(os.Path(path))
           .toEither

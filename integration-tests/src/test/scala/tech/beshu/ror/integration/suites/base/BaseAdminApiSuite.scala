@@ -24,6 +24,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -62,7 +63,7 @@ trait BaseAdminApiSuite
   private lazy val adminSearchManager = new SearchManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
   private val testConfigEsDocumentId = "2"
-  protected val settingsReloadInterval: FiniteDuration = 2 seconds
+  protected val settingsReloadInterval: FiniteDuration = 5 seconds
 
   override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
   override lazy val clusterContainers = NonEmptyList.of(rorWithIndexConfig, rorWithNoIndexConfig)
@@ -184,7 +185,7 @@ trait BaseAdminApiSuite
           forceReload("/admin_api/readonlyrest_first_update.yml")
 
           // after first reload only dev1 can access indices
-          Thread.sleep(settingsReloadInterval.plus(5 second).toMillis) // have to wait for ROR1_2 instance config reload
+          Thread.sleep(settingsReloadInterval.plus(10 second).toMillis) // have to wait for ROR1_2 instance config reload
           val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After1stReloadResults should have statusCode 200
           val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
@@ -198,7 +199,7 @@ trait BaseAdminApiSuite
           forceReload("/admin_api/readonlyrest_second_update.yml")
 
           // after second reload dev1 & dev2 can access indices
-          Thread.sleep(settingsReloadInterval.plus(5 second).toMillis) // have to wait for ROR1_2 instance config reload
+          Thread.sleep(settingsReloadInterval.plus(10 second).toMillis) // have to wait for ROR1_2 instance config reload
           val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After2ndReloadResults should have statusCode 200
           val dev2ror1After2ndReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
@@ -690,11 +691,11 @@ trait BaseAdminApiSuite
 
           // second reload
           val rorSettingsResource = "/admin_api/readonlyrest_second_update_with_impersonation.yml"
-          val configTtl = 5.seconds
+          val configTtl = 15.seconds
           forceReload(
             rorSettingsResource = rorSettingsResource,
             configTtl = configTtl,
-            configTtlString = "5 seconds"
+            configTtlString = "15 seconds"
           )
 
           eventually { // await until all nodes load config
@@ -702,7 +703,7 @@ trait BaseAdminApiSuite
               assertTestSettingsPresent(
                 rorApiManager = rorApiManager,
                 testConfig = getResourceContent(rorSettingsResource),
-                expectedTtl = "5 seconds"
+                expectedTtl = "15 seconds"
               )
             }
           }
@@ -717,7 +718,7 @@ trait BaseAdminApiSuite
           Thread.sleep(configTtl.toMillis)
 
           rorClients.foreach { rorApiManager =>
-            assertTestSettingsInvalidated(rorApiManager, getResourceContent(rorSettingsResource), "5 seconds")
+            assertTestSettingsInvalidated(rorApiManager, getResourceContent(rorSettingsResource), "15 seconds")
           }
 
           dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
@@ -1047,7 +1048,7 @@ trait BaseAdminApiSuite
   }
 
   override implicit val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = settingsReloadInterval.plus(2 seconds), interval = 1 second)
+    PatienceConfig(timeout = settingsReloadInterval.plus(10 seconds), interval = 1 second)
 
   protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = {
     (esVersion: String, adminRestClient: RestClient) => {

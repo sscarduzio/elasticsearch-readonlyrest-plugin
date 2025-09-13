@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
 import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, IndexTemplateManager, LegacyTemplateManager}

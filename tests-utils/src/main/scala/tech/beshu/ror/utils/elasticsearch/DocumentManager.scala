@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
-import ujson.Value
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 
 class DocumentManager(restClient: RestClient, esVersion: String)
   extends BaseManager(restClient, esVersion, esNativeApi = true) {

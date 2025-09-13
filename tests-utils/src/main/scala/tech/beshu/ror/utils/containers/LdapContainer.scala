@@ -16,63 +16,54 @@
  */
 package tech.beshu.ror.utils.containers
 
-import better.files.Dispose.FlatMap.Implicits
-import better.files.{Disposable, Dispose, File, Resource}
-import com.dimafeng.testcontainers.GenericContainer
-import com.typesafe.scalalogging.LazyLogging
-import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, LDAPException, ResultCode}
+import better.files.{Disposable, Dispose, File, Resource, disposeFlatMap}
+import com.dimafeng.testcontainers.SingleContainer
+import com.unboundid.ldap.sdk.{LDAPConnection, LDAPException, ResultCode}
 import com.unboundid.ldif.LDIFReader
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
-import org.testcontainers.containers.Network
-import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
-import tech.beshu.ror.utils.containers.LdapContainer.{InitScriptSource, defaults}
-import tech.beshu.ror.utils.misc.ScalaUtils.*
+import org.testcontainers.containers.GenericContainer as JavaGenericContainer
+import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
+import tech.beshu.ror.utils.containers.windows.{NonStoppableInMemoryLdapService, WindowsPseudoLdapContainer}
+import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import java.io.{BufferedReader, InputStreamReader}
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 
-class LdapContainer private[containers] (name: String, ldapInitScript: InitScriptSource)
-  extends GenericContainer(
-    dockerImage = "osixia/openldap:1.5.0",
-    env = Map(
-      "LDAP_ORGANISATION" -> defaults.ldap.organisation,
-      "LDAP_DOMAIN" -> defaults.ldap.domain,
-      "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword,
-      "LDAP_TLS_VERIFY_CLIENT" -> "try"
-    ),
-    exposedPorts = Seq(defaults.ldap.port, defaults.ldap.sslPort),
-    waitStrategy = Some(new LdapWaitStrategy(name, ldapInitScript))
-  ) {
+trait LdapContainer extends SingleContainer[JavaGenericContainer[_]] {
 
-  def ldapPort: Int = this.mappedPort(defaults.ldap.port)
+  def originalPort: Int
 
-  def ldapSSLPort: Int = this.mappedPort(defaults.ldap.sslPort)
+  def ldapPort: Int
 
-  def ldapHost: String = this.containerIpAddress
+  def ldapSSLPort: Int
 
-  override def stop(): Unit = {
-    this.container.stop()
-  }
+  def ldapHost: String
+
+  def doStart(): Unit = start()
 }
 
 object LdapContainer {
 
   sealed trait InitScriptSource
+
   object InitScriptSource {
     final case class Resource(name: String) extends InitScriptSource
+
     final case class AFile(file: File) extends InitScriptSource
 
     implicit def fromString(name: String): InitScriptSource = Resource(name)
+
     implicit def fromFile(file: File): InitScriptSource = AFile(file)
   }
 
   def create(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
-    val ldapContainer = new LdapContainer(name, ldapInitScript)
-    ldapContainer.container
-      .setNetwork(Network.SHARED)
-    ldapContainer
+    OsUtils.currentOs match {
+      case CurrentOs.Windows =>
+        WindowsPseudoLdapContainer.create(name, ldapInitScript)
+      case CurrentOs.OtherThanWindows =>
+        OpenLdapContainer.create(name, ldapInitScript)
+    }
   }
 
   def create(name: String, ldapInitScript: String): LdapContainer = {
@@ -84,9 +75,8 @@ object LdapContainer {
     val containerStartupTimeout: FiniteDuration = 5 minutes
 
     object ldap {
-      val port = 389
-      val sslPort = 636
       val domain = "example.com"
+      val domainDn: String = domain.split("\\.").map(dc => s"dc=$dc").mkString(",")
       val organisation = "example"
       val adminName = "admin"
       val adminPassword = "password"
@@ -101,70 +91,28 @@ object LdapContainer {
       }
     }
   }
-}
 
-class NonStoppableLdapContainer private(name: String, ldapInitScript: InitScriptSource)
-  extends LdapContainer(name, ldapInitScript) {
+  def initLdap(connection: LDAPConnection, ldapInitScript: InitScriptSource): Unit = {
+    val entries = readEntries(ldapInitScript)
 
-  override def start(): Unit = ()
-  override def stop(): Unit = ()
-
-  private [NonStoppableLdapContainer] def privateStart(): Unit = super.start()
-}
-object NonStoppableLdapContainer {
-  def createAndStart(name: String, ldapInitScript: InitScriptSource): NonStoppableLdapContainer = {
-    val ldap = new NonStoppableLdapContainer(name, ldapInitScript)
-    ldap.container.setNetwork(Network.SHARED)
-    ldap.privateStart()
-    ldap
-  }
-}
-
-private class LdapWaitStrategy(name: String,
-                               ldapInitScript: InitScriptSource)
-  extends HostPortWaitStrategy()
-    with LazyLogging 
-    with Implicits {
-
-  override def waitUntilReady(): Unit = {
-    super.waitUntilReady()
-    logger.info(s"Waiting for LDAP container '$name' ...")
-    retryBackoff(ldapInitiate(), 15, 1 second, 1)
-      .onErrorHandle { ex =>
-        logger.error("LDAP container startup failed", ex)
-        throw ex
+    entries.foreach { entry =>
+      try {
+        val result = connection.add(entry) // or AddRequest(entry.toLDIF: _*) if needed
+        if (result.getResultCode != ResultCode.SUCCESS &&
+          result.getResultCode != ResultCode.ENTRY_ALREADY_EXISTS) {
+          throw new IllegalStateException(s"Failed to add entry: ${result.getResultCode}")
+        }
+      } catch {
+        case ex: LDAPException if ex.getResultCode == ResultCode.ENTRY_ALREADY_EXISTS =>
+        // Ignore, already exists
+        case ex: Exception =>
+          // Re-throw other exceptions
+          throw ex
       }
-      .runSyncUnsafe(defaults.containerStartupTimeout)
-    logger.info(s"LDAP container '$name' started")
-  }
-
-  private def ldapInitiate() = {
-    runOnBindedLdapConnection { connection =>
-      initLdapFromFile(connection)
     }
   }
 
-  private def initLdapFromFile(connection: LDAPConnection) = {
-    Task
-      .sequence {
-        readEntries().map { entry =>
-          Task(connection.add(new AddRequest(entry.toLDIF: _*)))
-            .flatMap {
-              case result if Set(ResultCode.SUCCESS, ResultCode.ENTRY_ALREADY_EXISTS).contains(result.getResultCode) =>
-                Task.now(())
-              case result =>
-                Task.raiseError(new IllegalStateException(s"Adding entry failed, due to: ${result.getResultCode}"))
-            }
-            .onErrorRecover {
-              case ex: LDAPException if ex.getResultCode == ResultCode.ENTRY_ALREADY_EXISTS =>
-                Task.now(())
-            }
-        }
-      }
-      .map(_ => ())
-  }
-
-  private def readEntries() = {
+  private def readEntries(ldapInitScript: InitScriptSource) = {
     val result = for {
       inputStream <- ldapInitScript match {
         case InitScriptSource.Resource(resourceName) =>
@@ -183,23 +131,16 @@ private class LdapWaitStrategy(name: String,
     result.get()
   }
 
-  private def runOnBindedLdapConnection(action: LDAPConnection => Task[Unit]): Task[Unit] = {
-    defaults.ldap.bindDn match {
-      case Some(bindDn) =>
-        Task(new LDAPConnection(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(defaults.ldap.port)))
-          .bracket(connection =>
-            Task(connection.bind(bindDn, defaults.ldap.adminPassword))
-              .flatMap {
-                case result if result.getResultCode == ResultCode.SUCCESS => action(connection)
-                case result => Task.raiseError(new IllegalStateException(s"LDAP '$name' bind problem - error ${result.getResultCode.intValue()}"))
-              }
-          )(connection =>
-            Task(connection.close())
-          )
-      case None =>
-        Task.raiseError(new IllegalStateException(s"Cannot create bind DN from LDAP config data"))
-    }
-  }
 
   private implicit val ldifReaderDisposable: Disposable[LDIFReader] = Disposable(_.close())
+}
+
+object NonStoppableLdapSingleContainer {
+  def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapContainer =
+    OsUtils.currentOs match {
+      case CurrentOs.Windows =>
+        NonStoppableInMemoryLdapService.createAndStart(name, ldapInitScript)
+      case CurrentOs.OtherThanWindows =>
+        NonStoppableOpenLdapContainer.createAndStart(name, ldapInitScript)
+    }
 }

@@ -1,3 +1,14 @@
+dn: dc=example,dc=com
+objectClass: top
+objectClass: domain
+dc: example
+
+dn: cn=admin,dc=example,dc=com
+objectClass: simpleSecurityObject
+objectClass: organizationalRole
+cn: admin
+userPassword: password
+
 version: 1
 
 dn: ou=People,dc=example,dc=com
@@ -13,5 +24,5 @@ objectClass: inetOrgPerson
 cn: Kyle Broflovski
 sn: Kyle
 uid: kyle
-userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+userPassword: user2
 

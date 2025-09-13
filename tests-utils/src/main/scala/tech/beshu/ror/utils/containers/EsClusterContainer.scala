@@ -20,12 +20,14 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{Container, SingleContainer}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
-import monix.eval.{Coeval, Task}
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
+import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import scala.compiletime.error
 
@@ -96,7 +98,16 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
                                         remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
     val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
-      remoteClustersConfig.view.mapValues(_.nodes.map(c => s"${c.esConfig.nodeName}:9300")).toMap
+      remoteClustersConfig.view.mapValues(_.nodes.map { c =>
+        OsUtils.currentOs match {
+          case CurrentOs.Windows =>
+            // We only have access to ES port in 92XX range here.
+            // On Windows, the ES transport port is configured to be exactly 100 higher than ES port
+            s"localhost:${c.port + 100}"
+          case CurrentOs.OtherThanWindows =>
+            s"${c.esConfig.nodeName}:9300"
+        }
+      }).toMap
     )
 
     result.responseCode match {
@@ -185,4 +196,4 @@ object SecurityType {
   case object NoSecurityCluster extends SecurityType
 }
 
-final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]], originalPort: Int)
+final case class DependencyDef(name: String, container: SingleContainer[GenericContainer[_]], originalPort: Int)

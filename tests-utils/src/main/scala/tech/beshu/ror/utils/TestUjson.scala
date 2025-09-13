@@ -14,22 +14,24 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.misc;
+package tech.beshu.ror.utils
 
-import better.files.File;
-import better.files.package$;
-import scala.collection.immutable.Seq$;
+import ujson as originalUjson
+import ujson.{Obj as ujsonObj, Value as ujsonValue}
 
-import java.nio.file.Path;
+object TestUjson {
 
-public class Resources {
+  object ujson {
+    type Value = ujsonValue
 
-  public static Path getResourcePath(String resource) {
-    return File.apply(Resources.class.getResource(resource).getPath(), Seq$.MODULE$.<String>newBuilder().result()).path();
-  }
+    type Obj = ujsonObj
 
-  public static String getResourceContent(String resource) {
-    return File.apply(getResourcePath(resource)).contentAsString(package$.MODULE$.DefaultCharset());
+    def read(s: String, trace: Boolean = false): Value = originalUjson.read(s.replaceAll("\r\n", "\n"), trace)
+
+    def write(t: Value,
+              indent: Int = -1,
+              escapeUnicode: Boolean = false,
+              sortKeys: Boolean = false): String = originalUjson.write(t, indent, escapeUnicode, sortKeys)
   }
 
 }

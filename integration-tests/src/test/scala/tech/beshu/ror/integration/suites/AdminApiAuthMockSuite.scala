@@ -22,6 +22,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.BaseManyEsClustersIntegrationTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport, SingletonLdapContainers}
+import ujson.Value.Value
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
@@ -31,7 +33,6 @@ import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecuri
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
-import ujson.Value.Value
 
 import java.time.{Instant, ZoneOffset}
 import java.time.temporal.ChronoUnit
@@ -79,8 +80,8 @@ class AdminApiAuthMockSuite
   private def clusterDependencies: List[DependencyDef] = List(
     ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
     ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
-    wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
-    wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
+    wiremock(name = "EXT1", portWhenRunningOnWindows = 8080, mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
+    wiremock(name = "EXT1", portWhenRunningOnWindows = 8081, mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
   )
 
   private val testEngineReloadInterval = 2 seconds
@@ -1265,7 +1266,7 @@ class AdminApiAuthMockSuite
   private def testEngineConfig(): String = esCluster.resolvedRorConfig(getResourceContent(rorConfigFileName))
 
   override implicit val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = testEngineReloadInterval.plus(2 second), interval = 1 second)
+    PatienceConfig(timeout = testEngineReloadInterval.plus(10 second), interval = 500 millis)
 
   override protected def beforeEach(): Unit = {
     rorClients.foreach {

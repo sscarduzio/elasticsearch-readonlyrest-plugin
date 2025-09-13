@@ -66,6 +66,7 @@ test {
 
         tags {
             exclude 'tech.beshu.tags.ExcludeESModule.' + module
+            exclude 'tech.beshu.tags.IgnoreOnWindows'
         }
 
         suite 'tech.beshu.ror.integration.suites.*'

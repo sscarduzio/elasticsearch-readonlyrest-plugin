@@ -28,6 +28,12 @@ import scala.util.{Success, Try}
 
 object ScalaUtils {
 
+  implicit class StringOps(val value: String) extends AnyVal {
+    def stripMarginAndReplaceWindowsLineBreak: String = {
+      value.stripMargin.replace("\r\n", "\n")
+    }
+  }
+  
   implicit class StringDateTimeOps(val value: String) extends AnyVal {
     def isInIsoDateTimeFormat: Boolean = {
       isInDateTimeFormat(DateTimeFormatter.ISO_DATE_TIME)

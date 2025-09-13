@@ -26,7 +26,8 @@ import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.elasticsearch.CatManager
-import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, OsUtils}
 
 class FipsSslSuite
   extends AnyWordSpec
@@ -57,12 +58,16 @@ class FipsSslSuite
 
   private lazy val rorClusterAdminStateManager = new CatManager(clients.last.adminClient, esVersion = esVersionUsed)
 
-  "Health check" should {
-    "be successful" when {
-      "internode ssl is enabled" in {
-        val response = rorClusterAdminStateManager.healthCheck()
+  // todo: The ES with FIPS does not start correctly when running tests on Windows with ES version lower than 8.18.
+  //       It needs to be checked further. It is an issue with file and thread operation permissions.
+  ignoreOnWindows {
+    "Health check" should {
+      "be successful" when {
+        "internode ssl is enabled" in {
+          val response = rorClusterAdminStateManager.healthCheck()
 
-        response should have statusCode 200
+          response should have statusCode 200
+        }
       }
     }
   }

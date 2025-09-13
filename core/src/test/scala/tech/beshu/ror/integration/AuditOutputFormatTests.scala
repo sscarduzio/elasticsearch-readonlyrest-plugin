@@ -33,6 +33,7 @@ import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, testAuditEnvironmentContext}
 
 import java.time.{Clock, Instant, ZoneId}

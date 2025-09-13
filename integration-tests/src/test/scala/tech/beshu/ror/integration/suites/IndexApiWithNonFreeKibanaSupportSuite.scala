@@ -18,6 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseIndexApiSuite
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import tech.beshu.ror.utils.TestUjson.ujson
 
 class IndexApiWithNonFreeKibanaSupportSuite
   extends BaseIndexApiSuite
