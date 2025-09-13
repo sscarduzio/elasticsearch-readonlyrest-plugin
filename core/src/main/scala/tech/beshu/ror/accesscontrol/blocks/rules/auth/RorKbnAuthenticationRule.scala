@@ -23,15 +23,17 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthenticationImpersonationCustomSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.RorKbnOperation.Authenticate
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.utils.json.JsonPath
 
 final class RorKbnAuthenticationRule(val settings: Settings,
                                      override val userIdCaseSensitivity: CaseSensitivity)
   extends AuthenticationRule
     with AuthenticationImpersonationCustomSupport
+    with AuthorizationImpersonationCustomSupport
     with Logging {
 
   override val name: Rule.Name = RorKbnAuthenticationRule.Name.name
@@ -39,7 +41,7 @@ final class RorKbnAuthenticationRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    Task.now(RuleResult.Fulfilled(blockContext))
+    Task.delay(BaseRorKbnRule.processUsingJwtToken(blockContext, Authenticate(settings.rorKbn)))
 
 }
 
@@ -50,5 +52,4 @@ object RorKbnAuthenticationRule {
   }
 
   final case class Settings(rorKbn: RorKbnDef)
-
 }

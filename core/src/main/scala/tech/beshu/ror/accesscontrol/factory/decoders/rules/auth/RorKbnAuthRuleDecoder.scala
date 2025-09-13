@@ -19,8 +19,8 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -40,14 +40,15 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
     RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(RorKbnAuthRuleDecoder.nameAndGroupsExtendedDecoder)
       .toSyncDecoder
-      .emapE { case (name, groupsLogic) =>
+      .emapE { case (name, groupsLogicOpt) =>
         rorKbnDefinitions.items.find(_.id === name) match {
-          case Some(rorKbnDef) => Right(RorKbnAuthRule.Settings(rorKbnDef, groupsLogic))
-          case None => Left(RulesLevelCreationError(Message(s"Cannot find ROR Kibana definition with name: ${name.show}")))
+          case Some(rorKbnDef) =>
+            val settings = RorKbnAuthRule.Settings(rorKbnDef, groupsLogicOpt)
+            val ruleDefinition = RuleDefinition.create(new RorKbnAuthRule(settings, globalSettings.userIdCaseSensitivity))
+            Right(ruleDefinition)
+          case None =>
+            Left(RulesLevelCreationError(Message(s"Cannot find ROR Kibana definition with name: ${name.show}")))
         }
-      }
-      .map { settings =>
-        RuleDefinition.create(new RorKbnAuthRule(settings, globalSettings.userIdCaseSensitivity))
       }
       .decoder
   }
@@ -55,13 +56,13 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
 
 private object RorKbnAuthRuleDecoder {
 
-  private val nameAndGroupsSimpleDecoder: Decoder[(RorKbnDef.Name, Groups)] =
+  private val nameAndGroupsSimpleDecoder: Decoder[(RorKbnDef.Name, Option[GroupsLogic])] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .map(RorKbnDef.Name.apply)
-      .map((_, Groups.NotDefined))
+      .map((_, None))
 
-  private val nameAndGroupsExtendedDecoder: Decoder[(RorKbnDef.Name, Groups)] =
+  private val nameAndGroupsExtendedDecoder: Decoder[(RorKbnDef.Name, Option[GroupsLogic])] =
     Decoder
       .instance { c =>
         for {
@@ -74,9 +75,9 @@ private object RorKbnAuthRuleDecoder {
         case (name, groupsLogicDecodingResult) =>
           groupsLogicDecodingResult match {
             case GroupsLogicDecodingResult.Success(groupsLogic) =>
-              Right((name, Groups.Defined(groupsLogic)))
+              Right((name, Some(groupsLogic)))
             case GroupsLogicDecodingResult.GroupsLogicNotDefined(_) =>
-              Right((name, Groups.NotDefined: Groups))
+              Right((name, None))
             case GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(_, fields) =>
               val fieldsStr = fields.map(f => s"'$f'").mkString(" or ")
               Left(RulesLevelCreationError(Message(
