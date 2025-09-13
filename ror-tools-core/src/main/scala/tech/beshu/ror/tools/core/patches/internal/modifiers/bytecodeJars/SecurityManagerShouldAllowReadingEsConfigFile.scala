@@ -62,7 +62,7 @@ private class ModifyPermissionsForElasticsearchYmlInEsPolicyClass
     extends ClassVisitor(Opcodes.ASM9, writer) {
 
     override def visit(version: Int, access: Int, name: String, signature: String, superName: String, interfaces: Array[String]): Unit = {
-      super.visit(Opcodes.V22, access, name, signature, superName, interfaces)
+      super.visit(version, access, name, signature, superName, interfaces)
       new CreateSecuredFilesForRorMethod(this)
     }
 
