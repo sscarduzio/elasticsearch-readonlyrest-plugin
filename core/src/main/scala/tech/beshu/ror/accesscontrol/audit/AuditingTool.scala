@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
+import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.implicits.*
 
@@ -171,7 +171,7 @@ object AuditingTool extends Logging {
 
         object EsIndexBasedSink {
           val default: EsIndexBasedSink = EsIndexBasedSink(
-            logSerializer = new DefaultAuditLogSerializer,
+            logSerializer = new BlockVerbosityAwareAuditLogSerializer,
             rorAuditIndexTemplate = RorAuditIndexTemplate.default,
             auditCluster = AuditCluster.LocalAuditCluster,
           )
@@ -183,7 +183,7 @@ object AuditingTool extends Logging {
 
         object EsDataStreamBasedSink {
           val default: EsDataStreamBasedSink = EsDataStreamBasedSink(
-            logSerializer = new DefaultAuditLogSerializer,
+            logSerializer = new BlockVerbosityAwareAuditLogSerializer,
             rorAuditDataStream = RorAuditDataStream.default,
             auditCluster = AuditCluster.LocalAuditCluster,
           )
@@ -194,7 +194,7 @@ object AuditingTool extends Logging {
 
         object LogBasedSink {
           val default: LogBasedSink = LogBasedSink(
-            logSerializer = new DefaultAuditLogSerializer,
+            logSerializer = new BlockVerbosityAwareAuditLogSerializer,
             loggerName = RorAuditLoggerName.default
           )
         }

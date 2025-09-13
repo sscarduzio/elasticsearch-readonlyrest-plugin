@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.AuditEnvironmentContext
-import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
+import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
@@ -162,12 +162,12 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     val settings = AuditingTool.AuditSettings(
       NonEmptyList.of(
         AuditSink.Enabled(Config.EsIndexBasedSink(
-          new DefaultAuditLogSerializer,
+          new BlockVerbosityAwareAuditLogSerializer,
           RorAuditIndexTemplate.default,
           AuditCluster.LocalAuditCluster
         )),
         AuditSink.Enabled(Config.EsDataStreamBasedSink(
-          new DefaultAuditLogSerializer,
+          new BlockVerbosityAwareAuditLogSerializer,
           RorAuditDataStream.default,
           AuditCluster.LocalAuditCluster
         ))

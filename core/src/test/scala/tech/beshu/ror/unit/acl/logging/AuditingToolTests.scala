@@ -49,6 +49,7 @@ import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, fullIndexName, nes, 
 
 import java.time.*
 import java.util.UUID
+import scala.annotation.nowarn
 
 class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfterAll {
 
@@ -61,6 +62,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       "es index sink is used" should {
         "not submit any audit entry" when {
           "request was allowed and verbosity level was ERROR" in {
+            @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
@@ -93,7 +95,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
-
+            @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
@@ -109,7 +111,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
-
+            @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
@@ -139,7 +141,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
-
+            @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
@@ -159,7 +161,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
-
+            @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
@@ -178,6 +180,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       }
       "log sink is used" should {
         "saved audit log to file defined in log4j config" in {
+          @nowarn("cat=deprecation")
           val auditingTool = AuditingTool.create(
             settings = AuditSettings(
               NonEmptyList.of(

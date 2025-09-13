@@ -17,16 +17,17 @@
 package tech.beshu.ror.audit.instances
 
 import org.json.JSONObject
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.utils.AuditSerializationHelper
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.IncludeAll
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldGroup._
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.Include
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldGroup.{CommonFields, EsEnvironmentFields}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
 /**
  * Serializer for **full audit events including request content**.
  * - Serializes all events, including every `Allowed` request,
  *   regardless of rule verbosity.
- * - Use this serializer, when request body capture is required.
+ * - Use this when request body capture is required.
  * - Fields included:
  *   - `match` — whether the request matched a rule (boolean)
  *   - `block` — reason for blocking, if blocked (string)
@@ -54,15 +55,32 @@ import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
  *   - `acl_history` — access control evaluation history (string)
  *   - `es_node_name` — Elasticsearch node name (string)
  *   - `es_cluster_name` — Elasticsearch cluster name (string)
- *   - `content` — full request body (string)
  */
-class FullAuditLogWithQuerySerializer extends AuditLogSerializer {
+class BlockVerbosityAwareAuditLogSerializer extends DefaultAuditLogSerializer
+
+@deprecated("Use tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer instead", "1.67.0")
+class DefaultAuditLogSerializer extends DefaultAuditLogSerializerV2
+
+@deprecated("Use tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer instead", "1.67.0")
+class DefaultAuditLogSerializerV2 extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
     AuditSerializationHelper.serialize(
       responseContext = responseContext,
-      fieldGroups = Set(CommonFields, EsEnvironmentFields, FullRequestContentFields),
-      allowedEventMode = IncludeAll
+      fieldGroups = Set(CommonFields, EsEnvironmentFields),
+      allowedEventMode = Include(Set(Verbosity.Info))
+    )
+
+}
+
+@deprecated("Use tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer instead", "1.67.0")
+class DefaultAuditLogSerializerV1 extends AuditLogSerializer {
+
+  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
+    AuditSerializationHelper.serialize(
+      responseContext = responseContext,
+      fieldGroups = Set(CommonFields),
+      allowedEventMode = Include(Set(Verbosity.Info))
     )
 
 }
