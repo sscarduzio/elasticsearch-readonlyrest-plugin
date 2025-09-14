@@ -24,10 +24,15 @@ import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldGroup.{Comm
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
 /**
- * Serializer for **full audit events including request content**.
- * - Serializes all events, including every `Allowed` request,
- *   regardless of rule verbosity.
- * - Use this when request body capture is required.
+ * Serializer for audit events that is aware of **rule-defined verbosity**.
+ *
+ * - Serializes all non-`Allowed` events.
+ * - Serializes `Allowed` events only if the corresponding rule
+ *   specifies that they should be logged at `Verbosity.Info`.
+ *
+ * Recommended for standard audit logging where request body capture
+ * is not required, but cluster and node context are desired.
+ *
  * - Fields included:
  *   - `match` — whether the request matched a rule (boolean)
  *   - `block` — reason for blocking, if blocked (string)
