@@ -35,15 +35,17 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.*
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.adapters.{DeprecatedAuditLogSerializerAdapter, EnvironmentAwareAuditLogSerializerAdapter}
-import tech.beshu.ror.audit.instances.{BlockVerbosityAwareAuditLogSerializer, QueryAuditLogSerializer}
+import tech.beshu.ror.audit.instances.*
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.utils.TestsUtils.*
 
 import java.time.{Instant, ZoneId, ZonedDateTime}
+import scala.annotation.nowarn
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.reflect.ClassTag
 
 class AuditSettingsTests extends AnyWordSpec with Inside {
@@ -1340,6 +1342,240 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           }
         }
       }
+      "serialized event contains only expected fields" when {
+        "QueryAuditLogSerializer" in {
+          testSerializerFieldsWithTypes[QueryAuditLogSerializer](
+            serializerClassName = "tech.beshu.ror.audit.instances.QueryAuditLogSerializer",
+            expectedFieldsWithTypes = Map(
+              "match" -> "boolean",
+              "block" -> "string",
+              "id" -> "string",
+              "final_state" -> "string",
+              "@timestamp" -> "string",
+              "correlation_id" -> "string",
+              "processingMillis" -> "number",
+              "content_len" -> "number",
+              "content_len_kb" -> "number",
+              "type" -> "string",
+              "origin" -> "string",
+              "destination" -> "string",
+              "task_id" -> "number",
+              "req_method" -> "string",
+              "headers" -> "array",
+              "path" -> "string",
+              "user" -> "string",
+              "action" -> "string",
+              "indices" -> "array",
+              "acl_history" -> "string",
+              "es_node_name" -> "string",
+              "es_cluster_name" -> "string",
+              "content" -> "string",
+            )
+          )
+        }
+        "QueryAuditLogSerializerV2" in {
+          testSerializerFieldsWithTypes[QueryAuditLogSerializerV2](
+            serializerClassName = "tech.beshu.ror.audit.instances.QueryAuditLogSerializerV2",
+            expectedFieldsWithTypes = Map(
+              "match" -> "boolean",
+              "block" -> "string",
+              "id" -> "string",
+              "final_state" -> "string",
+              "@timestamp" -> "string",
+              "correlation_id" -> "string",
+              "processingMillis" -> "number",
+              "content_len" -> "number",
+              "content_len_kb" -> "number",
+              "type" -> "string",
+              "origin" -> "string",
+              "destination" -> "string",
+              "task_id" -> "number",
+              "req_method" -> "string",
+              "headers" -> "array",
+              "path" -> "string",
+              "user" -> "string",
+              "action" -> "string",
+              "indices" -> "array",
+              "acl_history" -> "string",
+              "es_node_name" -> "string",
+              "es_cluster_name" -> "string",
+              "content" -> "string",
+            )
+          )
+        }
+        "QueryAuditLogSerializerV1" in {
+          testSerializerFieldsWithTypes[QueryAuditLogSerializerV1](
+            serializerClassName = "tech.beshu.ror.audit.instances.QueryAuditLogSerializerV1",
+            expectedFieldsWithTypes = Map(
+              "match" -> "boolean",
+              "block" -> "string",
+              "id" -> "string",
+              "final_state" -> "string",
+              "@timestamp" -> "string",
+              "correlation_id" -> "string",
+              "processingMillis" -> "number",
+              "content_len" -> "number",
+              "content_len_kb" -> "number",
+              "type" -> "string",
+              "origin" -> "string",
+              "destination" -> "string",
+              "task_id" -> "number",
+              "req_method" -> "string",
+              "headers" -> "array",
+              "path" -> "string",
+              "user" -> "string",
+              "action" -> "string",
+              "indices" -> "array",
+              "acl_history" -> "string",
+              "content" -> "string",
+            )
+          )
+        }
+        "FullAuditLogWithQuerySerializer" in {
+          testSerializerFieldsWithTypes[FullAuditLogWithQuerySerializer](
+            serializerClassName = "tech.beshu.ror.audit.instances.FullAuditLogWithQuerySerializer",
+            expectedFieldsWithTypes = Map(
+              "match" -> "boolean",
+              "block" -> "string",
+              "id" -> "string",
+              "final_state" -> "string",
+              "@timestamp" -> "string",
+              "correlation_id" -> "string",
+              "processingMillis" -> "number",
+              "content_len" -> "number",
+              "content_len_kb" -> "number",
+              "type" -> "string",
+              "origin" -> "string",
+              "destination" -> "string",
+              "task_id" -> "number",
+              "req_method" -> "string",
+              "headers" -> "array",
+              "path" -> "string",
+              "user" -> "string",
+              "action" -> "string",
+              "indices" -> "array",
+              "acl_history" -> "string",
+              "es_node_name" -> "string",
+              "es_cluster_name" -> "string",
+              "content" -> "string",
+            )
+          )
+        }
+        "FullAuditLogSerializer" in {
+          testSerializerFieldsWithTypes[FullAuditLogSerializer](
+            serializerClassName = "tech.beshu.ror.audit.instances.FullAuditLogSerializer",
+            expectedFieldsWithTypes = Map(
+              "match" -> "boolean",
+              "block" -> "string",
+              "id" -> "string",
+              "final_state" -> "string",
+              "@timestamp" -> "string",
+              "correlation_id" -> "string",
+              "processingMillis" -> "number",
+              "content_len" -> "number",
+              "content_len_kb" -> "number",
+              "type" -> "string",
+              "origin" -> "string",
+              "destination" -> "string",
+              "task_id" -> "number",
+              "req_method" -> "string",
+              "headers" -> "array",
+              "path" -> "string",
+              "user" -> "string",
+              "action" -> "string",
+              "indices" -> "array",
+              "acl_history" -> "string",
+              "es_node_name" -> "string",
+              "es_cluster_name" -> "string",
+            )
+          )
+        }
+        "BlockVerbosityAwareAuditLogSerializer" in {
+          testSerializerFieldsWithTypes[BlockVerbosityAwareAuditLogSerializer](
+            serializerClassName = "tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer",
+            expectedFieldsWithTypes = Map(
+              "match" -> "boolean",
+              "block" -> "string",
+              "id" -> "string",
+              "final_state" -> "string",
+              "@timestamp" -> "string",
+              "correlation_id" -> "string",
+              "processingMillis" -> "number",
+              "content_len" -> "number",
+              "content_len_kb" -> "number",
+              "type" -> "string",
+              "origin" -> "string",
+              "destination" -> "string",
+              "task_id" -> "number",
+              "req_method" -> "string",
+              "headers" -> "array",
+              "path" -> "string",
+              "user" -> "string",
+              "action" -> "string",
+              "indices" -> "array",
+              "acl_history" -> "string",
+              "es_node_name" -> "string",
+              "es_cluster_name" -> "string",
+            )
+          )
+        }
+        "DefaultAuditLogSerializerV2" in {
+          testSerializerFieldsWithTypes[DefaultAuditLogSerializerV2 @nowarn("cat=deprecation")](
+            serializerClassName = "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2",
+            expectedFieldsWithTypes = Map(
+              "match" -> "boolean",
+              "block" -> "string",
+              "id" -> "string",
+              "final_state" -> "string",
+              "@timestamp" -> "string",
+              "correlation_id" -> "string",
+              "processingMillis" -> "number",
+              "content_len" -> "number",
+              "content_len_kb" -> "number",
+              "type" -> "string",
+              "origin" -> "string",
+              "destination" -> "string",
+              "task_id" -> "number",
+              "req_method" -> "string",
+              "headers" -> "array",
+              "path" -> "string",
+              "user" -> "string",
+              "action" -> "string",
+              "indices" -> "array",
+              "acl_history" -> "string",
+              "es_node_name" -> "string",
+              "es_cluster_name" -> "string",
+            )
+          )
+        }
+        "DefaultAuditLogSerializerV1" in {
+          testSerializerFieldsWithTypes[DefaultAuditLogSerializerV1 @nowarn("cat=deprecation")](
+            serializerClassName = "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1",
+            expectedFieldsWithTypes = Map(
+              "match" -> "boolean",
+              "block" -> "string",
+              "id" -> "string",
+              "final_state" -> "string",
+              "@timestamp" -> "string",
+              "correlation_id" -> "string",
+              "processingMillis" -> "number",
+              "content_len" -> "number",
+              "content_len_kb" -> "number",
+              "type" -> "string",
+              "origin" -> "string",
+              "destination" -> "string",
+              "task_id" -> "number",
+              "req_method" -> "string",
+              "headers" -> "array",
+              "path" -> "string",
+              "user" -> "string",
+              "action" -> "string",
+              "indices" -> "array",
+              "acl_history" -> "string",
+            ),
+          )
+        }
+      }
       "deprecated format is used" should {
         "ignore deprecated fields when both formats are used at once" in {
           val config = rorConfigFromUnsafe(
@@ -1804,6 +2040,54 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
+  private def testSerializerFieldsWithTypes[SERIALIZER: ClassTag](serializerClassName: String,
+                                                                  expectedFieldsWithTypes: Map[String, String]): Unit = {
+    val config = rorConfigFromUnsafe(
+      s"""
+         |readonlyrest:
+         |  audit:
+         |    enabled: true
+         |    outputs:
+         |    - type: log
+         |      serializer:
+         |        type: static
+         |        class_name: "$serializerClassName"
+         |
+         |  access_control_rules:
+         |  - name: test_block
+         |    type: allow
+         |    auth_key: admin:container
+      """.stripMargin)
+
+    assertLogBasedAuditSinkSettingsPresent[SERIALIZER](
+      config,
+      expectedLoggerName = "readonlyrest_audit"
+    )
+
+    val serialized = serializer(config).onResponse(AuditResponseContext.Forbidden(DummyAuditRequestContext)).get
+    val entryFields = serialized.keySet.asScala.toSet
+
+    if (entryFields != expectedFieldsWithTypes.keySet) {
+      fail(s"Serialized event does not contains exactly fields that were expected")
+    } else {
+      expectedFieldsWithTypes.foreach { case (fieldName, expectedType) =>
+        expectedType match {
+          case "string" => noException should be thrownBy serialized.getString(fieldName)
+          case "boolean" => noException should be thrownBy serialized.getBoolean(fieldName)
+          case "number" => noException should be thrownBy serialized.getDouble(fieldName)
+          case "array" =>
+            val value = serialized.get(fieldName)
+            value match {
+              case _: org.json.JSONArray => succeed
+              case s: java.util.Collection[_] => noException should be thrownBy new org.json.JSONArray(s)
+              case other => fail(s"Expected '$fieldName' to be JSONArray, but got ${other.getClass.getName}: $other")
+            }
+          case other => fail(s"Unknown expected type: $other")
+        }
+      }
+    }
+  }
+
   private def assertSettingsNoPresent(config: RawRorConfig): Unit = {
     val core = factory()
       .createCoreFrom(
@@ -2002,7 +2286,7 @@ private object DummyAuditRequestContext extends AuditRequestContext {
 
   override def httpMethod: String = ""
 
-  override def loggedInUserName: Option[String] = None
+  override def loggedInUserName: Option[String] = Some("logged_user")
 
   override def impersonatedByUserName: Option[String] = None
 
