@@ -207,6 +207,58 @@ class LocalUsersTest extends AnyWordSpec with Inside {
               )))
           }
         }
+        "ror_kbn_auth rule used" in {
+          val config =
+            s"""
+               |readonlyrest:
+               |  access_control_rules:
+               |  - name: test_block1
+               |    auth_key: admin:container
+               |
+               |  users:
+               |    - username: cartman
+               |      groups:
+               |      - id: "kib_tracy_default_padm"
+               |        name: "default tenant"
+               |      - id: "kib_tracy_tenant1_padm"
+               |        name: "default tenant2"
+               |      ror_kbn_auth:
+               |        name: "kbn1"
+               |
+               |    - username: Bìlbö Bággįnš
+               |      groups: ["local_group1"]
+               |      ror_kbn_auth:
+               |        name: "kbn1"
+               |
+               |    - username: bong
+               |      groups: ["local_group2"]
+               |      ror_kbn_auth:
+               |        name: "kbn2"
+               |
+               |    - username: morgan
+               |      groups: ["local_group2", "local_group3"]
+               |      ror_kbn_auth:
+               |        name: "kbn3"
+               |
+               |  ror_kbn:
+               |    - name: kbn1
+               |      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+               |    - name: kbn2
+               |      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+               |    - name: kbn3
+               |      signature_key: "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
+               |""".stripMargin
+
+          val rorConfig = rorConfigFromUnsafe(config)
+          inside(createCore(rorConfig, new UnboundidLdapConnectionPoolProvider())) {
+            case Right(core) =>
+              core.rorConfig.localUsers should be(allUsersResolved(Set(
+                User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
+              )))
+            case Left(error) =>
+              println(error)
+          }
+        }
       }
       "impersonators section defined with users" in {
         val config =

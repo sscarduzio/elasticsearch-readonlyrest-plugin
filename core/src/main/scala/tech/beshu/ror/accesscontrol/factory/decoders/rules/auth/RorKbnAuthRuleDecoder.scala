@@ -19,7 +19,8 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{RorKbnAuthRule, RorKbnAuthenticationRule}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -34,18 +35,25 @@ import tech.beshu.ror.implicits.*
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                             globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[Rule] {
 
-  override protected def decoder: Decoder[RuleDefinition[RorKbnAuthRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[Rule]] = {
     RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(RorKbnAuthRuleDecoder.nameAndGroupsExtendedDecoder)
       .toSyncDecoder
       .emapE { case (name, groupsLogicOpt) =>
         rorKbnDefinitions.items.find(_.id === name) match {
           case Some(rorKbnDef) =>
-            val settings = RorKbnAuthRule.Settings(rorKbnDef, groupsLogicOpt)
-            val ruleDefinition = RuleDefinition.create(new RorKbnAuthRule(settings, globalSettings.userIdCaseSensitivity))
-            Right(ruleDefinition)
+            groupsLogicOpt match {
+              case Some(groupsLogic) =>
+                val settings = RorKbnAuthRule.Settings(rorKbnDef, groupsLogic)
+                val ruleDefinition = RuleDefinition.create[Rule](new RorKbnAuthRule(settings, globalSettings.userIdCaseSensitivity))
+                Right(ruleDefinition)
+              case None =>
+                val settings = RorKbnAuthenticationRule.Settings(rorKbnDef)
+                val ruleDefinition = RuleDefinition.create(new RorKbnAuthenticationRule(settings, globalSettings.userIdCaseSensitivity))
+                Right(ruleDefinition)
+            }
           case None =>
             Left(RulesLevelCreationError(Message(s"Cannot find ROR Kibana definition with name: ${name.show}")))
         }

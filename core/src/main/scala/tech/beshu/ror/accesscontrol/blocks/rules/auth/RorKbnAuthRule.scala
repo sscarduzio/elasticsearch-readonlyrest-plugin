@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.Eligibl
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.RorKbnOperation.{Authenticate, AuthenticateAndAuthorize}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.RorKbnOperation.AuthenticateAndAuthorize
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -46,9 +46,7 @@ final class RorKbnAuthRule(val settings: Settings,
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
     Task {
       settings.groupsLogic match {
-        case None =>
-          BaseRorKbnRule.processUsingJwtToken(blockContext, Authenticate(settings.rorKbn))
-        case Some(groupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
+        case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
           BaseRorKbnRule.processUsingJwtToken(blockContext, AuthenticateAndAuthorize(settings.rorKbn, groupsLogic))
         case _ =>
           RuleResult.Rejected()
@@ -58,9 +56,9 @@ final class RorKbnAuthRule(val settings: Settings,
 
 object RorKbnAuthRule {
 
-  implicit case object Name extends RuleName[RorKbnAuthRule] {
+  implicit case object Name extends RuleName[RorKbnAuthRule | RorKbnAuthenticationRule] {
     override val name = Rule.Name("ror_kbn_auth")
   }
 
-  final case class Settings(rorKbn: RorKbnDef, groupsLogic: Option[GroupsLogic])
+  final case class Settings(rorKbn: RorKbnDef, groupsLogic: GroupsLogic)
 }

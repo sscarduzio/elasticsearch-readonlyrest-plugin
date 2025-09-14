@@ -119,7 +119,7 @@ object BaseRorKbnRule extends Logging {
                                                                result: ClaimSearchResult[UniqueList[Group]]) = {
     result match {
       case NotFound =>
-        Left(())
+        Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case Found(groups) =>
         UniqueNonEmptyList.from(groups) match {
           case None =>
