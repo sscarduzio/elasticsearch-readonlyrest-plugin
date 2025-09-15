@@ -23,6 +23,7 @@ plugins {
     id "java-library"
     id "maven-publish"
     id "signing"
+    id "com.github.maiflai.scalatest" version "0.33"
 }
 
 
@@ -58,6 +59,7 @@ dependencies {
     crossBuildV213Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.13'
     crossBuildV3Implementation     group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.3'
     compileOnly                    group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.3'
+    testImplementation             group: 'org.scalatest',      name: 'scalatest_3',         version: '3.2.16'
 }
 
 test {
