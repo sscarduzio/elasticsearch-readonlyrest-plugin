@@ -42,7 +42,7 @@ fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "core_tests" ]]; then
   echo ">>> Running unit tests.."
-  ./gradlew --no-daemon --stacktrace core:test
+  ./gradlew --no-daemon --stacktrace core:test audit:test
 fi
 
 run_integration_tests() {
