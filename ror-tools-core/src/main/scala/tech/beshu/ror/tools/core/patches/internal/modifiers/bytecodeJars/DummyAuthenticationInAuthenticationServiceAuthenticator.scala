@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es7160, es770}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es7150, es7160, es770}
 
 import java.io.{File, InputStream}
 
@@ -48,14 +48,21 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
                              descriptor: String,
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
-      esVersion match {
-        case v if v >= es7160 =>
-          super.visitMethod(access, name, descriptor, signature, exceptions)
-        case v if v >= es770 =>
-          name match {
-            case "authenticateAsync" =>
-              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethod(super.visitMethod(access, name, descriptor, signature, exceptions))
-            case "consumeToken" =>
+      name match {
+        case "authenticateAsync" =>
+          esVersion match {
+            case v if v >= es7160 =>
+              super.visitMethod(access, name, descriptor, signature, exceptions)
+            case v if v >= es7150 =>
+              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEs7150AndAbove(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case v if v >= es770 =>
+              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEs770AndAbove(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case _ =>
+              super.visitMethod(access, name, descriptor, signature, exceptions)
+          }
+        case "consumeToken" =>
+          esVersion match {
+            case v if v >= es770 =>
               new SetXpackUserAsAuthenticatedUserInConsumeToken(super.visitMethod(access, name, descriptor, signature, exceptions))
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
@@ -65,7 +72,7 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
       }
     }
 
-    private class SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethod(underlying: MethodVisitor)
+    private class SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEs7150AndAbove(underlying: MethodVisitor)
       extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
@@ -148,6 +155,14 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
         underlying.visitLocalVariable("authentication", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label4, label12, 1)
         underlying.visitMaxs(6, 3)
         underlying.visitEnd()
+      }
+    }
+
+    private class SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEs770AndAbove(underlying: MethodVisitor)
+      extends MethodVisitor(Opcodes.ASM9) {
+
+      override def visitCode(): Unit = {
+        ???
       }
     }
 
