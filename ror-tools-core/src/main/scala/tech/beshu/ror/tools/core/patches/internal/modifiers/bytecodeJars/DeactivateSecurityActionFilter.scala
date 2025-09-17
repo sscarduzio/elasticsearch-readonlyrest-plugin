@@ -48,9 +48,9 @@ private [patches] object DeactivateSecurityActionFilter extends BytecodeJarModif
                              exceptions: Array[String]): MethodVisitor = {
       name match {
         case "getActionFilters" =>
-          new GetActionFiltersMethodReturningEmptyList(
+//          new GetActionFiltersMethodReturningEmptyList(
             super.visitMethod(access, name, descriptor, signature, exceptions)
-          )
+//          )
         case "onIndexModule" =>
           // removing the onIndexModule method
           null

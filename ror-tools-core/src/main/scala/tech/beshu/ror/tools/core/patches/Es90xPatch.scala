@@ -21,7 +21,7 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.{DeactivateAuthenticationServiceInHttpTransport, DummyAuthenticationInAuthenticationChain}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.{ModifyEntitlementInitializationClass, ModifyEntitlementRuntimePolicyParserClass, ModifyFilesEntitlementsValidationClass}
 import tech.beshu.ror.tools.core.utils.EsUtil.es902
@@ -48,9 +48,9 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new XPackSecurityJarPatchCreator(
       OpenModule,
       DeactivateSecurityActionFilter,
-      DeactivateAuthenticationServiceInHttpTransport,
-      DummyAuthorizeInAuthorizationService,
-      new DummyAuthenticationInAuthenticationChain(esVersion)
+//      DeactivateAuthenticationServiceInHttpTransport,
+      new DummyAuthenticationInAuthenticationChain(esVersion),
+      DummyAuthorizeInAuthorizationService
     ),
     new XPackIlmJarPatchCreator(
       OpenModule

@@ -59,7 +59,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         response.responseJson should be(ujson.read(
           s"""
              |{
-             |  "username": "ROR",
+             |  "username": "_xpack",
              |  "has_all_requested": true,
              |  "cluster": {
              |    "monitor": true
