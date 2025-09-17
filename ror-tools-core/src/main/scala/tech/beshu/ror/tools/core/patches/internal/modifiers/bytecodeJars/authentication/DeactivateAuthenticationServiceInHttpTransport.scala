@@ -14,10 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication
 
-import org.objectweb.asm.Opcodes.*
 import org.objectweb.asm.*
+import org.objectweb.asm.Opcodes.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}

@@ -22,6 +22,9 @@ import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.{DummyAuthenticationInAuthenticationChain, DummyAuthenticationInAuthenticationServiceAuthenticator, GetAuthenticationFromHeaderWhenMissingInTransient}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{DummyAuthorizeInAuthorizationService, MockAuthorizationInfoInAuthorizationService}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{AlwaysGrantApplicationPermission, ModifyBootstrapPolicyUtilClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
 import tech.beshu.ror.tools.core.utils.EsUtil.es7160
@@ -52,7 +55,7 @@ private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       new MockAuthorizationInfoInAuthorizationService(esVersion),
       DummyAuthorizeInAuthorizationService,
       esVersion match {
-        case v if v >= es7160 =>  new DummyAuthenticationInAuthenticationChain(esVersion)
+        case v if v >= es7160 => new DummyAuthenticationInAuthenticationChain(esVersion)
         case _ => new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion)
       },
     )

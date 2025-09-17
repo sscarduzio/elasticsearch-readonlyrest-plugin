@@ -22,6 +22,9 @@ import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, RorSecurityPolicyPatchCreator, XPackCoreJarPatchCreator, XPackSecurityJarPatchCreator}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.{DeactivateAuthenticationServiceInHttpTransport, DummyAuthenticationInAuthenticationChain}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{DummyAuthorizeInAuthorizationService, MockAuthorizationInfoInAuthorizationService}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{AlwaysGrantApplicationPermission, ModifyBootstrapPolicyUtilClass, SecurityManagerShouldAllowReadingEsConfigFile}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
 

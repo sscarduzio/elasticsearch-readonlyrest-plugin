@@ -14,24 +14,24 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions
 
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 
-private [patches] object MockAuthorizationInfoInSecurityContext extends BytecodeJarModifier {
+private [patches] object AlwaysGrantApplicationPermission extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
-      filePathString = "org/elasticsearch/xpack/core/security/SecurityContext.class",
-      processFileContent = doMockAuthorizationInfo
+      filePathString = "org/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission.class",
+      processFileContent = doAlwaysGrantApplicationPermission
     )
   }
 
-  private def doMockAuthorizationInfo(moduleInputStream: InputStream) = {
+  private def doAlwaysGrantApplicationPermission(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
@@ -47,27 +47,29 @@ private [patches] object MockAuthorizationInfoInSecurityContext extends Bytecode
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
       name match {
-        case "getAuthorizationInfoFromContext" =>
-          new GetAuthorizationInfoFromContextReturningMockAuthorizationInfo(super.visitMethod(access, name, descriptor, signature, exceptions))
+        case "grants" =>
+          new GrantsMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
   }
 
-  private class GetAuthorizationInfoFromContextReturningMockAuthorizationInfo(underlying: MethodVisitor)
+  private class GrantsMethodReturningTrue(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
       val label0 = new Label
       underlying.visitLabel(label0)
-      underlying.visitFieldInsn(Opcodes.GETSTATIC, "org/elasticsearch/xpack/core/security/authz/AuthorizationEngine$EmptyAuthorizationInfo", "INSTANCE", "Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$EmptyAuthorizationInfo;")
-      underlying.visitInsn(Opcodes.ARETURN)
+      underlying.visitInsn(Opcodes.ICONST_1)
+      underlying.visitInsn(Opcodes.IRETURN)
       val label1 = new Label
       underlying.visitLabel(label1)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/SecurityContext;", null, label0, label1, 0)
-      underlying.visitMaxs(1, 1)
+      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission;", null, label0, label1, 0)
+      underlying.visitLocalVariable("other", "Lorg/elasticsearch/xpack/core/security/authz/privilege/ApplicationPrivilege;", null, label0, label1, 1)
+      underlying.visitLocalVariable("resource", "Ljava/lang/String;", null, label0, label1, 2)
+      underlying.visitMaxs(1, 3)
       underlying.visitEnd()
     }
   }

@@ -19,8 +19,9 @@ package tech.beshu.ror.tools.core.patches
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
-import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, OptionalXPackSecurityJarPatchCreator, XPackSecurityJarPatchCreator}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.{DeactivateSecurityActionFilter, DeactivateSecurityServerTransportInterceptor, DummyAuthorizeInAuthorizationService, RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode, SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode}
+import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, OptionalXPackSecurityJarPatchCreator}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.{DeactivateSecurityActionFilter, DeactivateSecurityServerTransportInterceptor, RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode, SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode}
 
 import scala.language.postfixOps
 
