@@ -55,7 +55,9 @@ class RegularRequestHandler(engine: Engine,
     engine.core.accessControl
       .handleRegularRequest(request)
       .map { r =>
-        commitResult(r.result, request)
+        threadPool.getThreadContext.stashPreservingSomeHeaders(esContext).bracket { _ =>
+          commitResult(r.result, request)
+        }
       }
   }
 

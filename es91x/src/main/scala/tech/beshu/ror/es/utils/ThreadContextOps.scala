@@ -21,24 +21,18 @@ import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.JavaConverters
 
+import scala.jdk.CollectionConverters.MapHasAsScala
 import scala.language.implicitConversions
 
 final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
 
-  def stashAndMergeResponseHeaders(esContext: EsContext): ThreadContext.StoredContext = {
-    val responseHeaders =
-      JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet ++ esContext.threadContextResponseHeaders
+  def stashPreservingSomeHeaders(esContext: EsContext): ThreadContext.StoredContext = {
+    val responseHeaders = JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet ++ esContext.threadContextResponseHeaders
+    val transientHeaders = threadContext.getTransientHeaders.asScala
     val storedContext = threadContext.stashContext()
     responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
+    transientHeaders.foreach { case (k, v) => threadContext.putTransient(k, v) }
     storedContext
-  }
-
-  def putHeaderIfNotPresent(header: Header): ThreadContext = {
-    Option(threadContext.getHeader(header.name.value.value)) match {
-      case Some(_) =>
-      case None => threadContext.putHeader(header.name.value.value, header.value.value)
-    }
-    threadContext
   }
 
   def addRorUserAuthenticationHeader(nodeName: String): ThreadContext = {
@@ -51,6 +45,14 @@ final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
 
   def addSystemAuthenticationHeader(nodeName: String): ThreadContext = {
     putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createSystemAuthenticationHeader(nodeName))
+  }
+
+  private def putHeaderIfNotPresent(header: Header): ThreadContext = {
+    Option(threadContext.getHeader(header.name.value.value)) match {
+      case Some(_) =>
+      case None => threadContext.putHeader(header.name.value.value, header.value.value)
+    }
+    threadContext
   }
 }
 

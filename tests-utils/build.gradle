@@ -75,7 +75,7 @@ dependencies {
     api group: 'com.typesafe.scala-logging',     name: 'scala-logging_3',                   version: '3.9.5'
     api group: 'org.scalatest',                  name: 'scalatest_3',                       version: '3.2.19'
     api group: 'com.dimafeng',                   name: 'testcontainers-scala-scalatest_3',  version: '0.43.0'
-    api group: 'org.testcontainers',             name: 'testcontainers',                    version: "1.20.6"
+    api group: 'org.testcontainers',             name: 'testcontainers',                    version: "1.21.3"
     api group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                    version: "2.1.7"
     api group: 'com.unboundid',                  name: 'unboundid-ldapsdk',                 version: '6.0.11'
     api group: 'com.lihaoyi',                    name: 'upickle_3',                         version: '4.2.1'

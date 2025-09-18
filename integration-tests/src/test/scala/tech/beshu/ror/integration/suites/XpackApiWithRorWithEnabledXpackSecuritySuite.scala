@@ -82,6 +82,29 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         ))
       }
     }
+    "user/_privileges endpoint is called" should {
+      "return ROR artificial user's privileges" excludeES allEs6x in {
+        val response = adminXpackApiManager.userPrivileges()
+        response should have statusCode 200
+        response.responseJson should be(ujson.read(
+          s"""
+             |{
+             |  "cluster":["all"],
+             |  "global":[],
+             |  "indices":[
+             |    {
+             |      "names":[],
+             |      "privileges":["all"],
+             |      "allow_restricted_indices":false
+             |    }
+             |  ],
+             |  "applications":[],
+             |  "run_as":[]
+             |}
+             |""".stripMargin
+        ))
+      }
+    }
     "API key grant request is called" should {
       "be allowed" excludeES(allEs6x, allEs7xBelowEs77x) in {
         val response = adminXpackApiManager.grantApiKeyPrivilege("admin", "admin")
