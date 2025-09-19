@@ -50,7 +50,7 @@ private[patches] class Es83xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      DeactivateGetRequestCacheKeyDifferentiator,
+      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       new DummyAuthorizeInAuthorizationService(esVersion),
       new DummyAuthenticationInAuthenticationChain(esVersion)
     )

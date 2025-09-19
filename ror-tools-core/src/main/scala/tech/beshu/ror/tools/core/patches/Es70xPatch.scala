@@ -38,7 +38,7 @@ private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       GetAuthenticationFromHeaderWhenMissingInTransient
     ),
     new OptionalXPackSecurityJarPatchCreator(
-      DeactivateGetRequestCacheKeyDifferentiator,
+      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       DeactivateSecurityServerTransportInterceptor,
       new MockAuthorizationInfoInAuthorizationService(esVersion),
       new DummyAuthorizeInAuthorizationService(esVersion),

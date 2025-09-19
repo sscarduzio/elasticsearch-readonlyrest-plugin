@@ -23,7 +23,7 @@ import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, RorSecurityPolicyPatchCreator, XPackCoreJarPatchCreator, XPackSecurityJarPatchCreator}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{DummyAuthorizeInAuthorizationService, MockAuthorizationInfoInAuthorizationService}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{AlwaysGrantApplicationPermission, ModifyBootstrapPolicyUtilClass, SecurityManagerShouldAllowReadingEsConfigFile}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
@@ -48,9 +48,8 @@ private[patches] class Es717xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       AlwaysGrantApplicationPermission
     ),
     new XPackSecurityJarPatchCreator(
-      DeactivateGetRequestCacheKeyDifferentiator,
+      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       DeactivateSecurityServerTransportInterceptor,
-      new MockAuthorizationInfoInAuthorizationService(esVersion),
       new DummyAuthorizeInAuthorizationService(esVersion),
       new DummyAuthenticationInAuthenticationChain(esVersion)
     )

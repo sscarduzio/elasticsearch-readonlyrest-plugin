@@ -51,7 +51,7 @@ private[patches] class Es815xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      DeactivateGetRequestCacheKeyDifferentiator,
+      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       new DummyAuthorizeInAuthorizationService(esVersion),
       new DummyAuthenticationInAuthenticationChain(esVersion)
     ),

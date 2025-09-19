@@ -47,7 +47,7 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      DeactivateGetRequestCacheKeyDifferentiator,
+      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       new DummyAuthorizeInAuthorizationService(esVersion),
       new DummyAuthenticationInAuthenticationChain(esVersion)
     ),
