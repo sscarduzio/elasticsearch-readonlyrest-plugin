@@ -16,12 +16,14 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization
 
+import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
+import tech.beshu.ror.tools.core.utils.EsUtil.{es800, es810, es820}
 
 import java.io.{File, InputStream}
 
-private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJarModifier {
+private [patches] class DummyAuthorizeInAuthorizationService(esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -43,7 +45,7 @@ private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJa
 
     override def visit(version: Int, access: Int, name: String, signature: String, superName: String, interfaces: Array[String]): Unit = {
       super.visit(version, access, name, signature, superName, interfaces)
-      RorGetAuthorizationInfoFromContextMethod.create(this)
+      RorCreateArtificialAuthorizationInfoMethod.create(this)
     }
 
     override def visitMethod(access: Int,
@@ -54,18 +56,25 @@ private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJa
       name match {
         case "authorize" =>
           new DummyAuthorizationMethod(super.visitMethod(access, name, descriptor, signature, exceptions))
-        case "retrieveUserPrivileges" =>
-          new RetrieveUserPrivilegesUsingRorGetAuthorizationInfoFromContextMethod(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
   }
 
-  private object RorGetAuthorizationInfoFromContextMethod {
+  private object RorCreateArtificialAuthorizationInfoMethod {
 
     def create(classVisitor: ClassVisitor): Unit = {
-      val methodVisitor = classVisitor.visitMethod(Opcodes.ACC_PRIVATE, "rorGetAuthorizationInfoFromContext", "()Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;", null, null)
+      esVersion match {
+        case v if v >= es820 => createForEsGreaterOrEqual820(classVisitor)
+        case v if v >= es810 => createForEsGreaterOrEqual811(classVisitor)
+        case v if v >= es800 => createForEsGreaterOrEqual810(classVisitor)
+        case _ => createForEsGreaterOrEqual810(classVisitor) // todo:
+      }
+    }
+
+    private def createForEsGreaterOrEqual820(classVisitor: ClassVisitor): Unit = {
+      val methodVisitor = classVisitor.visitMethod(Opcodes.ACC_PRIVATE, "rorCreateArtificialAuthorizationInfo", "()Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;", null, null)
       methodVisitor.visitCode()
       val label0 = new Label()
       methodVisitor.visitLabel(label0)
@@ -118,6 +127,101 @@ private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJa
       methodVisitor.visitMaxs(5, 3)
       methodVisitor.visitEnd()
     }
+
+    private def createForEsGreaterOrEqual811(classVisitor: ClassVisitor): Unit = {
+      val methodVisitor = classVisitor.visitMethod(Opcodes.ACC_PRIVATE, "rorCreateArtificialAuthorizationInfo", "()Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;", null, null)
+      methodVisitor.visitCode()
+      val label0 = new Label()
+      methodVisitor.visitLabel(label0)
+      methodVisitor.visitFieldInsn(Opcodes.GETSTATIC, "org/elasticsearch/xpack/core/security/support/Automatons", "EMPTY", "Lorg/apache/lucene/util/automaton/Automaton;")
+      methodVisitor.visitInsn(Opcodes.ICONST_1)
+      methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitInsn(Opcodes.ICONST_0)
+      methodVisitor.visitLdcInsn("superuser")
+      methodVisitor.visitInsn(Opcodes.AASTORE)
+      val label1 = new Label()
+      methodVisitor.visitLabel(label1)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/core/security/authz/permission/Role", "builder", "(Lorg/apache/lucene/util/automaton/Automaton;[Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authz/permission/Role$Builder;", true)
+      methodVisitor.visitLdcInsn("all")
+      val label2 = new Label()
+      methodVisitor.visitLabel(label2)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "emptyList", "()Ljava/util/List;", false)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/core/security/authz/permission/Role$Builder", "cluster", "(Ljava/util/Set;Ljava/lang/Iterable;)Lorg/elasticsearch/xpack/core/security/authz/permission/Role$Builder;", false)
+      methodVisitor.visitFieldInsn(Opcodes.GETSTATIC, "org/elasticsearch/xpack/core/security/authz/privilege/IndexPrivilege", "ALL", "Lorg/elasticsearch/xpack/core/security/authz/privilege/IndexPrivilege;")
+      methodVisitor.visitInsn(Opcodes.ICONST_0)
+      methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
+      val label3 = new Label()
+      methodVisitor.visitLabel(label3)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/core/security/authz/permission/Role$Builder", "add", "(Lorg/elasticsearch/xpack/core/security/authz/privilege/IndexPrivilege;[Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authz/permission/Role$Builder;", false)
+      val label4 = new Label()
+      methodVisitor.visitLabel(label4)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/core/security/authz/permission/Role$Builder", "build", "()Lorg/elasticsearch/xpack/core/security/authz/permission/SimpleRole;", false)
+      methodVisitor.visitVarInsn(Opcodes.ASTORE, 1)
+      val label5 = new Label()
+      methodVisitor.visitLabel(label5)
+      methodVisitor.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/xpack/security/authz/RBACEngine$RBACAuthorizationInfo")
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 1)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 1)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, "org/elasticsearch/xpack/security/authz/RBACEngine$RBACAuthorizationInfo", "<init>", "(Lorg/elasticsearch/xpack/core/security/authz/permission/Role;Lorg/elasticsearch/xpack/core/security/authz/permission/Role;)V", false)
+      methodVisitor.visitInsn(Opcodes.ARETURN)
+      val label6 = new Label()
+      methodVisitor.visitLabel(label6)
+      methodVisitor.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authz/AuthorizationService;", null, label0, label6, 0)
+      methodVisitor.visitLocalVariable("role", "Lorg/elasticsearch/xpack/core/security/authz/permission/Role;", null, label5, label6, 1)
+      methodVisitor.visitMaxs(5, 2)
+      methodVisitor.visitEnd()
+    }
+
+    private def createForEsGreaterOrEqual810(classVisitor: ClassVisitor): Unit = {
+      val methodVisitor = classVisitor.visitMethod(Opcodes.ACC_PRIVATE, "rorCreateArtificialAuthorizationInfo", "()Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;", null, null)
+      methodVisitor.visitCode()
+      val label0 = new Label()
+      methodVisitor.visitLabel(label0)
+      methodVisitor.visitFieldInsn(Opcodes.GETSTATIC, "org/elasticsearch/xpack/core/security/support/Automatons", "EMPTY", "Lorg/apache/lucene/util/automaton/Automaton;")
+      methodVisitor.visitInsn(Opcodes.ICONST_1)
+      methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitInsn(Opcodes.ICONST_0)
+      methodVisitor.visitLdcInsn("superuser")
+      methodVisitor.visitInsn(Opcodes.AASTORE)
+      val label1 = new Label()
+      methodVisitor.visitLabel(label1)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/core/security/authz/permission/Role", "builder", "(Lorg/apache/lucene/util/automaton/Automaton;[Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authz/permission/Role$Builder;", false)
+      methodVisitor.visitLdcInsn("all")
+      val label2 = new Label()
+      methodVisitor.visitLabel(label2)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "emptyList", "()Ljava/util/List;", false)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/core/security/authz/permission/Role$Builder", "cluster", "(Ljava/util/Set;Ljava/lang/Iterable;)Lorg/elasticsearch/xpack/core/security/authz/permission/Role$Builder;", false)
+      methodVisitor.visitFieldInsn(Opcodes.GETSTATIC, "org/elasticsearch/xpack/core/security/authz/privilege/IndexPrivilege", "ALL", "Lorg/elasticsearch/xpack/core/security/authz/privilege/IndexPrivilege;")
+      methodVisitor.visitInsn(Opcodes.ICONST_0)
+      methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
+      val label3 = new Label()
+      methodVisitor.visitLabel(label3)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/core/security/authz/permission/Role$Builder", "add", "(Lorg/elasticsearch/xpack/core/security/authz/privilege/IndexPrivilege;[Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authz/permission/Role$Builder;", false)
+      val label4 = new Label()
+      methodVisitor.visitLabel(label4)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/core/security/authz/permission/Role$Builder", "build", "()Lorg/elasticsearch/xpack/core/security/authz/permission/Role;", false)
+      methodVisitor.visitVarInsn(Opcodes.ASTORE, 1)
+      val label5 = new Label()
+      methodVisitor.visitLabel(label5)
+      methodVisitor.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/xpack/security/authz/RBACEngine$RBACAuthorizationInfo")
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 1)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 1)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, "org/elasticsearch/xpack/security/authz/RBACEngine$RBACAuthorizationInfo", "<init>", "(Lorg/elasticsearch/xpack/core/security/authz/permission/Role;Lorg/elasticsearch/xpack/core/security/authz/permission/Role;)V", false)
+      methodVisitor.visitInsn(Opcodes.ARETURN)
+      val label6 = new Label()
+      methodVisitor.visitLabel(label6)
+      methodVisitor.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authz/AuthorizationService;", null, label0, label6, 0)
+      methodVisitor.visitLocalVariable("role", "Lorg/elasticsearch/xpack/core/security/authz/permission/Role;", null, label5, label6, 1)
+      methodVisitor.visitMaxs(5, 2)
+      methodVisitor.visitEnd()
+    }
+
   }
 
   private class DummyAuthorizationMethod(underlying: MethodVisitor)
@@ -139,7 +243,7 @@ private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJa
       underlying.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authz/AuthorizationService", "threadContext", "Lorg/elasticsearch/common/util/concurrent/ThreadContext;")
       underlying.visitLdcInsn("_authz_info")
       underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/authz/AuthorizationService", "rorGetAuthorizationInfoFromContext", "()Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;", false)
+      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/authz/AuthorizationService", "rorCreateArtificialAuthorizationInfo", "()Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;", false)
       underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/common/util/concurrent/ThreadContext", "putTransient", "(Ljava/lang/String;Ljava/lang/Object;)V", false)
       underlying.visitLabel(label1)
       underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
@@ -161,39 +265,4 @@ private [patches] object DummyAuthorizeInAuthorizationService extends BytecodeJa
     }
   }
 
-  private class RetrieveUserPrivilegesUsingRorGetAuthorizationInfoFromContextMethod(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
-
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      val label0 = new Label()
-      underlying.visitLabel(label0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/authz/AuthorizationService", "getAuthorizationEngineForSubject", "(Lorg/elasticsearch/xpack/core/security/authc/Subject;)Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine;", false)
-      underlying.visitVarInsn(Opcodes.ASTORE, 4)
-      val label1 = new Label()
-      underlying.visitLabel(label1)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/authz/AuthorizationService", "rorGetAuthorizationInfoFromContext", "()Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;", false)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authz/AuthorizationService", "threadContext", "Lorg/elasticsearch/common/util/concurrent/ThreadContext;")
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/action/support/ContextPreservingActionListener", "wrapPreservingContext", "(Lorg/elasticsearch/action/ActionListener;Lorg/elasticsearch/common/util/concurrent/ThreadContext;)Lorg/elasticsearch/action/support/ContextPreservingActionListener;", false)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/xpack/core/security/authz/AuthorizationEngine", "getUserPrivileges", "(Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;Lorg/elasticsearch/action/ActionListener;)V", true)
-      val label2 = new Label()
-      underlying.visitLabel(label2)
-      underlying.visitInsn(Opcodes.RETURN)
-      val label3 = new Label()
-      underlying.visitLabel(label3)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authz/AuthorizationService;", null, label0, label3, 0)
-      underlying.visitLocalVariable("subject", "Lorg/elasticsearch/xpack/core/security/authc/Subject;", null, label0, label3, 1)
-      underlying.visitLocalVariable("authorizationInfo", "Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;", null, label0, label3, 2)
-      underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/action/user/GetUserPrivilegesResponse;>;", label0, label3, 3)
-      underlying.visitLocalVariable("authorizationEngine", "Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine;", null, label1, label3, 4)
-      underlying.visitMaxs(4, 5)
-      underlying.visitEnd()
-    }
-  }
 }

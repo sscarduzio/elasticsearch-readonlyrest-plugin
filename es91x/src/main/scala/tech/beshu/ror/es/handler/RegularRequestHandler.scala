@@ -237,7 +237,7 @@ class RegularRequestHandler(engine: Engine,
     if (esContext.action.isFieldCapsAction || esContext.action.isRollupAction || esContext.action.isGetSettingsAction)
       threadPool.getThreadContext.addSystemAuthenticationHeader(esContext.nodeName)
     else if (esContext.action.isXpackSecurityAction)
-      threadPool.getThreadContext.addRorUserAuthenticationHeader(esContext.nodeName)
+      threadPool.getThreadContext.addXpackUserAuthenticationHeader(esContext.nodeName)
     else
       threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(esContext.nodeName)
   }

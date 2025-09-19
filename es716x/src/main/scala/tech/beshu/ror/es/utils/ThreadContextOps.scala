@@ -25,7 +25,7 @@ import scala.language.implicitConversions
 
 final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
 
-  def stashAndMergeResponseHeaders(esContext: EsContext): ThreadContext.StoredContext = {
+  def stashPreservingSomeHeaders(esContext: EsContext): ThreadContext.StoredContext = {
     val responseHeaders =
       JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet ++ esContext.threadContextResponseHeaders
     val storedContext = threadContext.stashContext()
@@ -41,8 +41,8 @@ final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
     threadContext
   }
 
-  def addRorUserAuthenticationHeader(nodeName: String): ThreadContext = {
-    putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createRorUserAuthenticationHeader(nodeName))
+  def addXpackUserAuthenticationHeader(nodeName: String): ThreadContext = {
+    putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createXpackUserAuthenticationHeader(nodeName))
   }
 
   def addXpackSecurityAuthenticationHeader(nodeName: String): ThreadContext = {

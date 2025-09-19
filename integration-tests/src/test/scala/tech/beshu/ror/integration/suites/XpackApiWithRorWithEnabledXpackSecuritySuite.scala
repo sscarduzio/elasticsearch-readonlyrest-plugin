@@ -59,21 +59,21 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         response.responseJson should be(ujson.read(
           s"""
              |{
-             |  "username": "_xpack",
-             |  "has_all_requested": true,
-             |  "cluster": {
-             |    "monitor": true
+             |  "username":"_xpack",
+             |  "has_all_requested":false,
+             |  "cluster":{
+             |    "monitor":true
              |  },
-             |  "index": {
-             |    ".monitoring-*-6-*,.monitoring-*-7-*": {
-             |      "read": true
+             |  "index":{
+             |    ".monitoring-*-6-*,.monitoring-*-7-*":{
+             |      "read":true
              |    }
              |  },
              |  "application":{
              |    "kibana":{
              |      "space:default":{
-             |        "login:":true,
-             |        "version:$esVersionUsed":true
+             |        "login:":false,
+             |        "version:$esVersionUsed":false
              |      }
              |    }
              |  }

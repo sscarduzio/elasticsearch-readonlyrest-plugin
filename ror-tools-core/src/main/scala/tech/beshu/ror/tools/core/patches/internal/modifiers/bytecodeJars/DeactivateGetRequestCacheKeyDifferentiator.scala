@@ -21,7 +21,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 
-private [patches] object DeactivateSecurityActionFilter extends BytecodeJarModifier {
+private [patches] object DeactivateGetRequestCacheKeyDifferentiator extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -47,10 +47,6 @@ private [patches] object DeactivateSecurityActionFilter extends BytecodeJarModif
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
       name match {
-        case "getActionFilters" =>
-//          new GetActionFiltersMethodReturningEmptyList(
-            super.visitMethod(access, name, descriptor, signature, exceptions)
-//          )
         case "onIndexModule" =>
           // removing the onIndexModule method
           null
@@ -61,24 +57,6 @@ private [patches] object DeactivateSecurityActionFilter extends BytecodeJarModif
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
-    }
-  }
-
-  private class GetActionFiltersMethodReturningEmptyList(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
-
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      underlying.visitMethodInsn(
-        Opcodes.INVOKESTATIC,
-        "java/util/Collections",
-        "emptyList",
-        "()Ljava/util/List;",
-        false
-      )
-      underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitMaxs(1, 1)
-      underlying.visitEnd()
     }
   }
 

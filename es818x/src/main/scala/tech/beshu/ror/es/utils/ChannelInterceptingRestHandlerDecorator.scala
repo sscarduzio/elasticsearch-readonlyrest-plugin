@@ -40,7 +40,7 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
     val rorRestChannel = new RorRestChannel(channel)
     ThreadRepo.setRestChannel(rorRestChannel)
-    addRorUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
+    addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
     wrapped.handleRequest(request, rorRestChannel, client)
   }
 
@@ -74,12 +74,12 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
     }
   }
 
-  private def addRorUserAuthenticationHeaderForInCaseOfSecurityRequest(request: RestRequest,
+  private def addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request: RestRequest,
                                                                        client: NodeClient): Unit = {
     if (request.path().contains("/_security") || request.path().contains("/_xpack/security")) {
       client
         .threadPool().getThreadContext
-        .addRorUserAuthenticationHeader(client.getLocalNodeId)
+        .addXpackUserAuthenticationHeader(client.getLocalNodeId)
     }
   }
 

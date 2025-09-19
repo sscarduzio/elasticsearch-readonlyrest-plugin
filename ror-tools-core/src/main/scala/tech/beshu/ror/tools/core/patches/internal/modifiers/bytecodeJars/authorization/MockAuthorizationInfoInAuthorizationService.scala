@@ -23,6 +23,7 @@ import tech.beshu.ror.tools.core.utils.EsUtil.*
 
 import java.io.{File, InputStream}
 
+// todo: remove?
 private [patches] class MockAuthorizationInfoInAuthorizationService(esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
