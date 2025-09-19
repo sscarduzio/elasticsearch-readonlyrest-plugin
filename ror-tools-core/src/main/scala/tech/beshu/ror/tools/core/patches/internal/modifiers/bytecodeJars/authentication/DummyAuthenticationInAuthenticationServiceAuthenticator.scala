@@ -55,8 +55,8 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
           name match {
             case "authenticateAsync" =>
               new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethod(super.visitMethod(access, name, descriptor, signature, exceptions))
-            case "consumeToken" =>
-              new SetXpackUserAsAuthenticatedUserInConsumeToken(super.visitMethod(access, name, descriptor, signature, exceptions))
+//            case "consumeToken" =>
+//              new SetXpackUserAsAuthenticatedUserInConsumeToken(super.visitMethod(access, name, descriptor, signature, exceptions))
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }
