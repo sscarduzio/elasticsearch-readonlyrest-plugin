@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{RorKbnAuthRule, RorKbnAuthenticationRule}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -433,7 +433,12 @@ class RorKbnAuthRuleTests
                          tokenHeader: Header,
                          preferredGroupId: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), CaseSensitivity.Enabled)
+    val rule = configuredGroups match {
+      case Some(groupsLogic) =>
+        new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, groupsLogic), CaseSensitivity.Enabled)
+      case None =>
+        new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(configuredRorKbnDef), CaseSensitivity.Enabled)
+    }
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )

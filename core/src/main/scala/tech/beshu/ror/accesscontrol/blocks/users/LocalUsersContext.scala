@@ -74,7 +74,7 @@ object LocalUsersContext {
     implicit val methodsRule: LocalUsersSupport[MethodsRule] = NotAvailableLocalUsers()
     implicit val repositoriesRule: LocalUsersSupport[RepositoriesRule] = NotAvailableLocalUsers()
     implicit val responseFieldsRule: LocalUsersSupport[ResponseFieldsRule] = NotAvailableLocalUsers()
-    implicit val rorKbnAuthRule: LocalUsersSupport[RorKbnAuthRule] = NotAvailableLocalUsers()
+    implicit val rorKbnAuthRule: LocalUsersSupport[RorKbnAuthRule | RorKbnAuthenticationRule] = NotAvailableLocalUsers()
     implicit val rorKbnAuthenticationRule: LocalUsersSupport[RorKbnAuthenticationRule] = NotAvailableLocalUsers()
     implicit val rorKbnAuthorizationRule: LocalUsersSupport[RorKbnAuthorizationRule] = NotAvailableLocalUsers()
     implicit val sessionMaxIdleRule: LocalUsersSupport[SessionMaxIdleRule] = NotAvailableLocalUsers()
