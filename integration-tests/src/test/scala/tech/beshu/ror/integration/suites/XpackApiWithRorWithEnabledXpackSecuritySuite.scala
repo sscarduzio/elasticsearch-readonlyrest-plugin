@@ -59,24 +59,47 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         response.responseJson should be(ujson.read(
           s"""
              |{
-             |  "username": "ROR",
-             |  "has_all_requested": true,
-             |  "cluster": {
-             |    "monitor": true
+             |  "username":"_xpack",
+             |  "has_all_requested":false,
+             |  "cluster":{
+             |    "monitor":true
              |  },
-             |  "index": {
-             |    ".monitoring-*-6-*,.monitoring-*-7-*": {
-             |      "read": true
+             |  "index":{
+             |    ".monitoring-*-6-*,.monitoring-*-7-*":{
+             |      "read":true
              |    }
              |  },
              |  "application":{
              |    "kibana":{
              |      "space:default":{
-             |        "login:":true,
-             |        "version:$esVersionUsed":true
+             |        "login:":false,
+             |        "version:$esVersionUsed":false
              |      }
              |    }
              |  }
+             |}
+             |""".stripMargin
+        ))
+      }
+    }
+    "user/_privileges endpoint is called" should {
+      "return ROR artificial user's privileges" excludeES allEs6x in {
+        val response = adminXpackApiManager.userPrivileges()
+        response should have statusCode 200
+        response.responseJson should be(ujson.read(
+          s"""
+             |{
+             |  "cluster":["all"],
+             |  "global":[],
+             |  "indices":[
+             |    {
+             |      "names":[],
+             |      "privileges":["all"],
+             |      "allow_restricted_indices":false
+             |    }
+             |  ],
+             |  "applications":[],
+             |  "run_as":[]
              |}
              |""".stripMargin
         ))

@@ -84,6 +84,10 @@ class XpackApiManager(client: RestClient,
     call(createHasPrivilegesRequest(clusterPrivileges, indexPrivileges, applicationPrivileges), new JsonResponse(_))
   }
 
+  def userPrivileges(): JsonResponse = {
+    call(createUserPrivilegesRequest(), new JsonResponse(_))
+  }
+
   def grantApiKeyPrivilege(username: String, password: String): JsonResponse = {
     call(createGrantApiKeyPrivilegeRequest(username, password), new JsonResponse(_))
   }
@@ -226,6 +230,11 @@ class XpackApiManager(client: RestClient,
     request
   }
 
+  private def createUserPrivilegesRequest() = {
+    new HttpGet(client.from("/_security/user/_privileges"))
+  }
+
+
   private def createGrantApiKeyPrivilegeRequest(username: String, password: String) = {
     val request = new HttpPost(client.from("/_security/api_key/grant"))
     request.setHeader("Content-Type", "application/json")
@@ -239,7 +248,6 @@ class XpackApiManager(client: RestClient,
     ))
     request
   }
-
 
   class RollupJobsResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val jobs: List[JSON] = responseJson("jobs").arr.toList

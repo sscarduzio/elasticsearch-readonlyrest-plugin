@@ -1,11 +1,10 @@
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12)
-[![Codacy Badge](https://api.codacy.com/project/badge/grade/9ef51ae1e6e34deba913f22e2e4cbd56)](https://www.codacy.com/app/scarduzio/elasticsearch-readonlyrest-plugin)
-[![Twitter URL](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/readonlyrest)
+[![ReadonlyREST](https://img.shields.io/badge/readonlyrest.com-visit-444?style=flat&logo=safari)](https://readonlyrest.com/)
+[![Maven Central](https://maven-badges.sml.io/sonatype-central/tech.beshu.ror/audit_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12)
 
+| Master branch | Develop branch                                                                                                                                                                                                                |
+|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [![Build Status Master](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_apis/build/status/ror?branchName=master)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=master) | [![Build Status Develop](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_apis/build/status/ror?branchName=develop)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=develop) |
 
-| Develop branch | Master branch |
-|---|---|
-| [![Build Status Develop](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_apis/build/status/ror?branchName=develop)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=develop) | [![Build Status Master](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_apis/build/status/ror?branchName=master)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=master) |
 ## Supporters 
 Thanks **Jeff Saxe** for donating!
 

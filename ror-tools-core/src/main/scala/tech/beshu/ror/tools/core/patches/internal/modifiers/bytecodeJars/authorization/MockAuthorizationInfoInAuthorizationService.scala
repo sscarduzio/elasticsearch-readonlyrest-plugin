@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization
 
 import just.semver.SemVer
 import org.objectweb.asm.*
@@ -23,6 +23,7 @@ import tech.beshu.ror.tools.core.utils.EsUtil.*
 
 import java.io.{File, InputStream}
 
+// todo: remove?
 private [patches] class MockAuthorizationInfoInAuthorizationService(esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {

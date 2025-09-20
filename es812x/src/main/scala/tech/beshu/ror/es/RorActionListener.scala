@@ -60,7 +60,7 @@ final class AtEsLevelUpdateActionResponseListener(esContext: EsContext,
   extends RorActionListener[ActionResponse](esContext.listener.underlying) {
 
   override def onResponse(response: ActionResponse): Unit = {
-    val stashedContext = threadPool.getThreadContext.stashAndMergeResponseHeaders(esContext)
+    val stashedContext = threadPool.getThreadContext.stashPreservingSomeHeaders(esContext)
     update(response) runAsync {
       case Right(updatedResponse) =>
         stashedContext.restore()
