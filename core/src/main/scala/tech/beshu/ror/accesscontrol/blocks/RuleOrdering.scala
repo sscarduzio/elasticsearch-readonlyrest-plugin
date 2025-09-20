@@ -61,6 +61,8 @@ object RuleOrdering {
     classOf[ProxyAuthRule],
     classOf[JwtAuthRule],
     classOf[RorKbnAuthRule],
+    classOf[RorKbnAuthenticationRule],
+    classOf[RorKbnAuthorizationRule],
     classOf[TokenAuthenticationRule],
     // then we could check potentially slow async rules
     classOf[LdapAuthRule],
