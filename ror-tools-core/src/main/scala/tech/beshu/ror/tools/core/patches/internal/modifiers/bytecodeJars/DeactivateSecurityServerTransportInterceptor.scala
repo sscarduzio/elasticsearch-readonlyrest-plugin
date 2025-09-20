@@ -49,8 +49,8 @@ private [patches] object DeactivateSecurityServerTransportInterceptor extends By
       name match {
         case "interceptSender" =>
           new InterceptSenderReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
-        case "interceptHandler" =>
-          new InterceptHandlerReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
+//        case "interceptHandler" =>
+//          new InterceptHandlerReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }

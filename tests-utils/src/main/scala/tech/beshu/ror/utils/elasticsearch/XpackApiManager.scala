@@ -88,6 +88,10 @@ class XpackApiManager(client: RestClient,
     call(createGrantApiKeyPrivilegeRequest(username, password), new JsonResponse(_))
   }
 
+  def getTerms(index: String, field: String): GetTermsResponse = {
+    call(createGetTermsRequest(index, field), new GetTermsResponse(_))
+  }
+
   private def createRollupRequest(jobId: String,
                                   indexPattern: String,
                                   rollupIndex: String,
@@ -240,6 +244,16 @@ class XpackApiManager(client: RestClient,
     request
   }
 
+  private def createGetTermsRequest(index: String, field: String) = {
+    val request = new HttpPost(client.from(s"/$index/_terms_enum"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{
+         |  "field": "$field"
+         |}""".stripMargin
+    ))
+    request
+  }
 
   class RollupJobsResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val jobs: List[JSON] = responseJson("jobs").arr.toList
@@ -249,5 +263,9 @@ class XpackApiManager(client: RestClient,
     lazy val capabilities: Map[String, List[JSON]] = {
       responseJson.obj.toMap.view.mapValues(_("rollup_jobs").arr.toList).toMap
     }
+  }
+
+  class GetTermsResponse(response: HttpResponse) extends JsonResponse(response) {
+    lazy val terms: Set[String] = responseJson.obj("terms").arr.map(_.str).toSet
   }
 }

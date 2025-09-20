@@ -49,7 +49,7 @@ private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       OpenModule,
       DeactivateSecurityActionFilter,
       DeactivateAuthenticationServiceInHttpTransport,
-      DummyAuthorizeInAuthorizationService,
+      new DummyAuthorizeInAuthorizationService(esVersion),
       new DummyAuthenticationInAuthenticationChain(esVersion)
     ),
     new XPackIlmJarPatchCreator(
