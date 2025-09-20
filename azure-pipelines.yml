@@ -629,8 +629,34 @@ stages:
               ES_MODULE: es818x
             WIN_IT_es816x:
               ES_MODULE: es816x
+            WIN_IT_es815x:
+              ES_MODULE: es815x
+            WIN_IT_es814x:
+              ES_MODULE: es814x
+            WIN_IT_es813x:
+              ES_MODULE: es813x
+            WIN_IT_es812x:
+              ES_MODULE: es812x
+            WIN_IT_es811x:
+              ES_MODULE: es811x
             WIN_IT_es810x:
               ES_MODULE: es810x
+            WIN_IT_es89x:
+              ES_MODULE: es89x
+            WIN_IT_es88x:
+              ES_MODULE: es88x
+            WIN_IT_es87x:
+              ES_MODULE: es87x
+            WIN_IT_es85x:
+              ES_MODULE: es85x
+            WIN_IT_es84x:
+              ES_MODULE: es84x
+            WIN_IT_es83x:
+              ES_MODULE: es83x
+            WIN_IT_es82x:
+              ES_MODULE: es82x
+            WIN_IT_es81x:
+              ES_MODULE: es81x
             WIN_IT_es80x:
               ES_MODULE: es80x
             WIN_IT_es717x:
