@@ -36,7 +36,7 @@ import java.util.Base64
 class RorKbnAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[RorKbnAuthorizationRule] {
 
-  "A RorKbnAuthRule" should {
+  "A RorKbnAuthorizationRule" should {
     "be able to be loaded from config" when {
       "rule is defined using extended version with groups or logic and minimal request set of fields in ROR kbn definition" in {
         val rolesKeys = List("roles", "groups", "groups_or")

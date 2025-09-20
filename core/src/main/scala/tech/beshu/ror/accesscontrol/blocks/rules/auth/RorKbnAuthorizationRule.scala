@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthorizationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.RorKbnOperation.Authorize
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.RorKbnRuleHelper
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.RorKbnRuleHelper.RorKbnOperation.Authorize
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic
@@ -40,7 +40,7 @@ final class RorKbnAuthorizationRule(val settings: Settings)
     Task {
       settings.groupsLogic match {
         case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
-          BaseRorKbnRule.processUsingJwtToken(blockContext, Authorize(settings.rorKbn, groupsLogic))
+          RorKbnRuleHelper.processUsingJwtToken(blockContext, Authorize(settings.rorKbn, groupsLogic))
         case _ =>
           RuleResult.Rejected()
       }

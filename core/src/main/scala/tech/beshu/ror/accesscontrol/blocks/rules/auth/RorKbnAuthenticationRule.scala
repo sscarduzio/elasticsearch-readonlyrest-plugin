@@ -23,8 +23,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.RorKbnOperation.Authenticate
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.RorKbnRuleHelper
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.RorKbnRuleHelper.RorKbnOperation.Authenticate
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -41,7 +41,7 @@ final class RorKbnAuthenticationRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    Task.delay(BaseRorKbnRule.processUsingJwtToken(blockContext, Authenticate(settings.rorKbn)))
+    Task.delay(RorKbnRuleHelper.processUsingJwtToken(blockContext, Authenticate(settings.rorKbn)))
 
 }
 
