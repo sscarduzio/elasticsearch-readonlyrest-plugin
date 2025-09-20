@@ -60,7 +60,11 @@ dependencyCheck {
     suppressionFiles = ["${project.rootDir}/suppressions_cve.xml"]
     
     analyzers {
-        assemblyEnabled = false // We don't need 'exe' or 'dll' files scanning
+        // We don't need 'exe' or 'dll' files scanning
+        assemblyEnabled = false
+        // Disable Maven Central checksum lookups (we already have Maven coords from Gradle).
+        // Avoids flaky network calls to Central search.
+        centralEnabled = false
     }
     data {
         if (System.getenv('DEPENDENCY_CHECK_DATA_DIR')) {  // We want to fall back to the default path for local builds

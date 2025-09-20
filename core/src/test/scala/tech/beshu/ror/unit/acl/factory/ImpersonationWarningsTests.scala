@@ -387,6 +387,6 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
   private val factory: CoreFactory = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests, testEsNodeSettings)
+    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
   }
 }

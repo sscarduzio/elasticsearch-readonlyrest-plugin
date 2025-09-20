@@ -1316,7 +1316,7 @@ class ReadonlyRestStartingTests
         val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
 
-        val dataStreamSinkConfig1 = AuditSink.Config.EsDataStreamBasedSink.default(testAuditEnvironmentContext)
+        val dataStreamSinkConfig1 = AuditSink.Config.EsDataStreamBasedSink.default
         val dataStreamSinkConfig2 = dataStreamSinkConfig1.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(NonEmptyList.one(Uri.parse("0.0.0.0")))
         )

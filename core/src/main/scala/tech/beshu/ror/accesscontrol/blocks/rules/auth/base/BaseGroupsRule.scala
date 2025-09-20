@@ -22,6 +22,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -231,10 +232,24 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
       availableLocalGroups <- availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups, potentiallyAvailableGroups)
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
-    } yield destinationBlockContext.withUserMetadata(_
-      .withLoggedUser(loggedUser)
-      .withAvailableGroups(UniqueList.from(availableLocalGroups))
-    )
+    } yield {
+      def requiredAuthenticationData: UserMetadata => UserMetadata = { metadata =>
+        metadata.withLoggedUser(loggedUser)
+          .withAvailableGroups(UniqueList.from(availableLocalGroups))
+      }
+      def optionalUserOrigin: UserMetadata => UserMetadata = { metadata =>
+        sourceBlockContext.userMetadata.userOrigin.map(metadata.withUserOrigin).getOrElse(metadata)
+      }
+      def optionalJwtToken: UserMetadata => UserMetadata = { metadata =>
+        sourceBlockContext.userMetadata.jwtToken.map(metadata.withJwtToken).getOrElse(metadata)
+      }
+
+      destinationBlockContext
+        .withUserMetadata { metadata =>
+          (requiredAuthenticationData :: optionalUserOrigin :: optionalJwtToken :: Nil)
+            .foldLeft(metadata) { case (acc, func) => func(acc) }
+        }
+    }
   }
 
   private def availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups: UniqueNonEmptyList[GroupIdLike],

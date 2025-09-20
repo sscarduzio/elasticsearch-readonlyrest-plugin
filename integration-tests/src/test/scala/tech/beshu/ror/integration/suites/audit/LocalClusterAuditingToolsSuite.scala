@@ -77,7 +77,6 @@ class LocalClusterAuditingToolsSuite
             // On Windows reloading config sometimes takes a little longer,
             // and there are 3 or more messages (from before reload, so not important)
             auditEntries.size should be >= 2
-
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
@@ -85,7 +84,6 @@ class LocalClusterAuditingToolsSuite
                 entry.obj.get("es_node_name").isEmpty &&
                 entry.obj.get("es_cluster_name").isEmpty
             ) shouldBe true
-
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
@@ -95,6 +93,86 @@ class LocalClusterAuditingToolsSuite
             ) shouldBe true
           }
         }
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+      }
+      "using ReportingAllEventsAuditLogSerializer" in {
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
+
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.FullAuditLogSerializer")
+        performAndAssertExampleSearchRequest(indexManager)
+
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.force().jsons
+            assert(auditEntries.size >= 3)
+
+            auditEntries.exists(entry =>
+              entry("final_state").str == "ALLOWED" &&
+                entry("user").str == "username" &&
+                entry("block").str.contains("name: 'Rule 1'") &&
+                Try(entry("es_node_name")).map(_.str) == Success("ROR_SINGLE_1") &&
+                Try(entry("es_cluster_name")).map(_.str) == Success("ROR_SINGLE") &&
+                entry.obj.get("content").isEmpty
+            ) shouldBe true
+
+            auditEntries.exists(entry => entry("path").str == "/_readonlyrest/admin/refreshconfig/") shouldBe true
+            auditEntries.exists(entry => entry("path").str == "/audit_index/_search/") shouldBe true
+          }
+        }
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+        // This test uses serializer, that reports all events. We need to wait a moment, to ensure that there will be no more events using that serializer
+        Thread.sleep(3000)
+      }
+      "using ReportingAllEventsWithQueryAuditLogSerializer" in {
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
+
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.FullAuditLogWithQuerySerializer")
+        performAndAssertExampleSearchRequest(indexManager)
+
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.force().jsons
+            assert(auditEntries.size >= 3)
+            auditEntries.exists(entry =>
+              entry("final_state").str == "ALLOWED" &&
+                entry("user").str == "username" &&
+                entry("block").str.contains("name: 'Rule 1'") &&
+                Try(entry("es_node_name")).map(_.str) == Success("ROR_SINGLE_1") &&
+                Try(entry("es_cluster_name")).map(_.str) == Success("ROR_SINGLE") &&
+                Try(entry("content")).map(_.str) == Success("")
+            ) shouldBe true
+
+            auditEntries.exists(entry => entry("path").str == "/_readonlyrest/admin/refreshconfig/") shouldBe true
+            auditEntries.exists(entry => entry("path").str == "/audit_index/_search/") shouldBe true
+          }
+        }
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+        // This test uses serializer, that reports all events. We need to wait a moment, to ensure that there will be no more events using that serializer
+        Thread.sleep(3000)
+      }
+      "using ConfigurableQueryAuditLogSerializer" in {
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
+
+        updateRorConfig(
+          originalString = """type: "static"""",
+          newString = """type: "configurable"""",
+        )
+        performAndAssertExampleSearchRequest(indexManager)
+
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.force().jsons
+            auditEntries.size shouldBe 1
+
+            auditEntries.exists(entry =>
+              entry("node_name_with_static_suffix").str == "ROR_SINGLE_1 with suffix" &&
+                entry("another_field").str == "ROR_SINGLE GET" &&
+                entry("tid").numOpt.isDefined &&
+                entry("bytes").num == 0
+            ) shouldBe true
+          }
+        }
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
       }
     }
   }
@@ -104,11 +182,15 @@ class LocalClusterAuditingToolsSuite
     response should have statusCode 200
   }
 
-  private def updateRorConfigToUseSerializer(serializer: String) = {
+  private def updateRorConfigToUseSerializer(serializer: String) = updateRorConfig(
+    originalString = """class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"""",
+    newString = s"""class_name: "$serializer""""
+  )
+
+  private def updateRorConfig(originalString: String, newString: String) = {
     val initialConfig = getResourceContent(rorConfigFileName)
-    val serializerUsedInOriginalConfigFile = "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
-    val firstModifiedConfig = initialConfig.replace(serializerUsedInOriginalConfigFile, serializer)
-    rorApiManager.updateRorInIndexConfig(firstModifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
+    val modifiedConfig = initialConfig.replace(originalString, newString)
+    rorApiManager.updateRorInIndexConfig(modifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
     rorApiManager.reloadRorConfig().force()
   }
 }

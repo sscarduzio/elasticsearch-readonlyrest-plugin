@@ -26,12 +26,12 @@ import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
-import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
+import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.jdk.CollectionConverters.*
-import tech.beshu.ror.syntax.*
 
 class RorKbnAuthYamlLoadedAccessControlTests
   extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
@@ -139,7 +139,8 @@ class RorKbnAuthYamlLoadedAccessControlTests
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               currentGroup = Some(preferredGroup.id),
               availableGroups = UniqueList.of(preferredGroup),
-              indices = Set(requestedIndex("index2"))
+              indices = Set(requestedIndex("index2")),
+              jwt = Some(Jwt.Payload(claims))
             ) {
               blockContext
             }
