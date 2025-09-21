@@ -155,7 +155,7 @@ objectClass: inetOrgPerson
 cn: Jesus Christ
 sn: Jesus
 uid: jesus
-userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+userPassword: user1
 title: cn=europe,ou=Regions,dc=example,dc=com
 title: cn=north america,ou=Regions,dc=example,dc=com
 title: cn=south america,ou=Regions,dc=example,dc=com
