@@ -26,7 +26,7 @@ import java.io.{File, InputStream}
 /*
   RepositoriesService is not updated with cluster events for certain type of nodes. ROR needs the up-to-date
   RepositoriesService to handle repositories and snapshots. In this bytecode modifier we remove the conditional check
-  which was responsible of disabling cluster events update on RepositoriesService instance.
+  which was responsible for disabling cluster events update on RepositoriesService instance.
  */
 private [patches] class RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion: SemVer)
   extends BytecodeJarModifier {
