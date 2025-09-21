@@ -47,15 +47,14 @@ private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new XPackCoreJarPatchCreator(
       AlwaysGrantApplicationPermission,
-//      GetAuthenticationFromHeaderWhenMissingInTransient
     ),
     new XPackSecurityJarPatchCreator(
       DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       DeactivateSecurityServerTransportInterceptor,
-      new DummyAuthorizeInAuthorizationService(esVersion),
       esVersion match {
         case v if v >= es7160 => new DummyAuthenticationInAuthenticationChain(esVersion)
         case _ => new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion)
       },
+      new DummyAuthorizeInAuthorizationService(esVersion),
     )
   )

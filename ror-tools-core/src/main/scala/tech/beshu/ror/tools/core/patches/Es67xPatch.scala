@@ -20,6 +20,7 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, OptionalXPackSecurityJarPatchCreator}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationServiceAuthenticator
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.{DeactivateGetRequestCacheKeyDifferentiatorInSecurity, DeactivateSecurityServerTransportInterceptor, RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode, SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode}
 
@@ -34,6 +35,7 @@ private[patches] class Es67xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new OptionalXPackSecurityJarPatchCreator(
       DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       DeactivateSecurityServerTransportInterceptor,
+      new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion),
       new DummyAuthorizeInAuthorizationService(esVersion),
     )
   )

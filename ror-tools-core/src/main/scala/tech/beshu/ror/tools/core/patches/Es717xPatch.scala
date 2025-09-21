@@ -50,7 +50,7 @@ private[patches] class Es717xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     new XPackSecurityJarPatchCreator(
       DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       DeactivateSecurityServerTransportInterceptor,
+      new DummyAuthenticationInAuthenticationChain(esVersion),
       new DummyAuthorizeInAuthorizationService(esVersion),
-      new DummyAuthenticationInAuthenticationChain(esVersion)
     )
   )

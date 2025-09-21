@@ -21,6 +21,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 
+// todo: remove
 private [patches] object GetAuthenticationFromHeaderWhenMissingInTransient extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
