@@ -145,7 +145,7 @@ private object RorKbnAuthRuleDecoder {
             case GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(_, fields) =>
               val fieldsStr = fields.map(f => s"'$f'").mkString(" or ")
               Left(RulesLevelCreationError(Message(
-                s"Please specify either $fieldsStr for ROR Kibana authorization rule '${name.show}'"
+                s"Please specify either $fieldsStr for ROR Kibana rule '${name.show}'"
               )))
           }
       }
