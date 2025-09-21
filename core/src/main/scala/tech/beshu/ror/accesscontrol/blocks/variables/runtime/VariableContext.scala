@@ -143,6 +143,8 @@ object VariableContext {
           .collect {
             case rule: JwtAuthRule => rule
             case rule: RorKbnAuthRule => rule
+            case rule: RorKbnAuthenticationRule => rule
+            case rule: RorKbnAuthorizationRule => rule
           }
           .nonEmpty
     }
