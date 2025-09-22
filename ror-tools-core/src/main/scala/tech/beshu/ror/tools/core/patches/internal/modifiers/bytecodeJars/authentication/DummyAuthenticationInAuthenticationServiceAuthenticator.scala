@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authen
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es7150, es7160}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es7150, es7160, es740}
 
 import java.io.{File, InputStream}
 
@@ -47,7 +47,8 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
       super.visit(version, access, name, signature, superName, interfaces)
       esVersion match {
         case v if v >= es7150 => // nothing
-        case v if v >= es670 => RorAuthenticateXPackUserMethod.create(this)
+        case v if v >= es740 => RorAuthenticateXPackUserMethod.createForEsGreaterOrEqual740(this)
+        case v if v >= es670 => RorAuthenticateXPackUserMethod.createForEsGreaterOrEqual670(this)
         case _ => // nothing
       }
     }
@@ -64,6 +65,8 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
               super.visitMethod(access, name, descriptor, signature, exceptions)
             case v if v >= es7150 =>
               new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual7150(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case v if v >= es740 =>
+              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual740(super.visitMethod(access, name, descriptor, signature, exceptions))
             case v if v >= es670 =>
               new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual670(super.visitMethod(access, name, descriptor, signature, exceptions))
             case _ =>
@@ -76,7 +79,7 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
 
     private object RorAuthenticateXPackUserMethod {
 
-      def create(classVisitor: ClassVisitor): Unit = {
+      def createForEsGreaterOrEqual740(classVisitor: ClassVisitor): Unit = {
         val methodVisitor = classVisitor.visitMethod(Opcodes.ACC_PRIVATE, "rorAuthenticateXPackUser", "(Lorg/elasticsearch/xpack/core/security/authc/Authentication;)V", null, null)
         methodVisitor.visitCode()
         val label0 = new Label()
@@ -130,6 +133,56 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
         methodVisitor.visitLabel(label7)
         methodVisitor.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator;", null, label0, label7, 0)
         methodVisitor.visitLocalVariable("authentication", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label0, label7, 1)
+        methodVisitor.visitMaxs(6, 2)
+        methodVisitor.visitEnd()
+      }
+
+      def createForEsGreaterOrEqual670(classVisitor: ClassVisitor): Unit = {
+        val methodVisitor = classVisitor.visitMethod(Opcodes.ACC_PRIVATE, "rorAuthenticateXPackUser", "(Lorg/elasticsearch/xpack/core/security/authc/Authentication;)V", null, null)
+        methodVisitor.visitCode()
+        val label0 = new Label()
+        methodVisitor.visitLabel(label0)
+        methodVisitor.visitVarInsn(Opcodes.ALOAD, 1)
+        val label1 = new Label()
+        methodVisitor.visitJumpInsn(Opcodes.IFNULL, label1)
+        val label2 = new Label()
+        methodVisitor.visitLabel(label2)
+        methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
+        methodVisitor.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator", "listener", "Lorg/elasticsearch/action/ActionListener;")
+        methodVisitor.visitVarInsn(Opcodes.ALOAD, 1)
+        methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/action/ActionListener", "onResponse", "(Ljava/lang/Object;)V", true)
+        val label3 = new Label()
+        methodVisitor.visitJumpInsn(Opcodes.GOTO, label3)
+        methodVisitor.visitLabel(label1)
+        methodVisitor.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
+        methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
+        methodVisitor.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator", "request", "Lorg/elasticsearch/xpack/security/authc/AuthenticationService$AuditableRequest;")
+        methodVisitor.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authc/AuthenticationService$AuditableRequest", "threadContext", "Lorg/elasticsearch/common/util/concurrent/ThreadContext;")
+        methodVisitor.visitLdcInsn("X-elastic-product")
+        methodVisitor.visitLdcInsn("Elasticsearch")
+        methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/common/util/concurrent/ThreadContext", "addResponseHeader", "(Ljava/lang/String;Ljava/lang/String;)V", false)
+        val label4 = new Label()
+        methodVisitor.visitLabel(label4)
+        methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
+        methodVisitor.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/xpack/core/security/authc/Authentication$RealmRef")
+        methodVisitor.visitInsn(Opcodes.DUP)
+        methodVisitor.visitLdcInsn("__attach")
+        methodVisitor.visitLdcInsn("__attach")
+        methodVisitor.visitLdcInsn("any")
+        methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, "org/elasticsearch/xpack/core/security/authc/Authentication$RealmRef", "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", false)
+        methodVisitor.visitFieldInsn(Opcodes.PUTFIELD, "org/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator", "authenticatedBy", "Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;")
+        val label5 = new Label()
+        methodVisitor.visitLabel(label5)
+        methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
+        methodVisitor.visitFieldInsn(Opcodes.GETSTATIC, "org/elasticsearch/xpack/core/security/user/XPackUser", "INSTANCE", "Lorg/elasticsearch/xpack/core/security/user/XPackUser;")
+        methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator", "finishAuthentication", "(Lorg/elasticsearch/xpack/core/security/user/User;)V", false)
+        methodVisitor.visitLabel(label3)
+        methodVisitor.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
+        methodVisitor.visitInsn(Opcodes.RETURN)
+        val label6 = new Label()
+        methodVisitor.visitLabel(label6)
+        methodVisitor.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator;", null, label0, label6, 0)
+        methodVisitor.visitLocalVariable("authentication", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label0, label6, 1)
         methodVisitor.visitMaxs(6, 2)
         methodVisitor.visitEnd()
       }
@@ -236,6 +289,57 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
         underlying.visitLocalVariable("authentication", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label7, label6, 1)
         underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator;", null, label3, label15, 0)
         underlying.visitMaxs(6, 3)
+        underlying.visitEnd()
+      }
+    }
+
+    private class SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual740(underlying: MethodVisitor)
+      extends MethodVisitor(Opcodes.ASM9) {
+
+      override def visitCode(): Unit = {
+        underlying.visitCode()
+        val label0 = new Label()
+        underlying.visitLabel(label0)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator", "defaultOrderedRealmList", "Ljava/util/List;")
+        underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List", "isEmpty", "()Z", true)
+        val label1 = new Label()
+        underlying.visitJumpInsn(Opcodes.IFEQ, label1)
+        val label2 = new Label()
+        underlying.visitLabel(label2)
+        underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/security/authc/AuthenticationService", "access$600", "()Lorg/apache/logging/log4j/Logger;", false)
+        underlying.visitLdcInsn("No realms available, failing authentication")
+        underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/apache/logging/log4j/Logger", "debug", "(Ljava/lang/String;)V", true)
+        val label3 = new Label()
+        underlying.visitLabel(label3)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitFieldInsn(Opcodes.GETFIELD, "org/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator", "listener", "Lorg/elasticsearch/action/ActionListener;")
+        underlying.visitInsn(Opcodes.ACONST_NULL)
+        underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/action/ActionListener", "onResponse", "(Ljava/lang/Object;)V", true)
+        val label4 = new Label()
+        underlying.visitJumpInsn(Opcodes.GOTO, label4)
+        underlying.visitLabel(label1)
+        underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitInvokeDynamicInsn(
+          "accept",
+          "(Lorg/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator;)Ljava/util/function/Consumer;",
+          new Handle(Opcodes.H_INVOKESTATIC, "java/lang/invoke/LambdaMetafactory", "metafactory", "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;", false),
+          Array[Object](
+            Type.getType("(Ljava/lang/Object;)V"),
+            new Handle(Opcodes.H_INVOKESPECIAL, "org/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator", "rorAuthenticateXPackUser", "(Lorg/elasticsearch/xpack/core/security/authc/Authentication;)V", false),
+            Type.getType("(Lorg/elasticsearch/xpack/core/security/authc/Authentication;)V")
+          ): _*
+        )
+        underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "org/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator", "lookForExistingAuthentication", "(Ljava/util/function/Consumer;)V", false)
+        underlying.visitLabel(label4)
+        underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
+        underlying.visitInsn(Opcodes.RETURN)
+        val label5 = new Label()
+        underlying.visitLabel(label5)
+        underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator;", null, label0, label5, 0)
+        underlying.visitMaxs(2, 1)
         underlying.visitEnd()
       }
     }
