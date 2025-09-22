@@ -217,8 +217,20 @@ object AuditingSettingsDecoder extends Logging {
           c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxStaticSerializerDecoder)
         case SerializerType.ExtendedSyntaxConfigurableSerializer =>
           c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxConfigurableSerializerDecoder)
+        case SerializerType.EcsSerializer =>
+          c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxConfigurableSerializerDecoder)
       }
     } yield result
+  }
+
+  private def ecsSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
+    for {
+      allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
+        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
+      fields <- c.downField("fields").as[Map[AuditFieldName, AuditFieldValueDescriptor]]
+        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'fields' setting is missing or invalid: $msg"))
+      serializer = new ConfigurableAuditLogSerializer(allowedEventMode, fields)
+    } yield Some(serializer)
   }
 
   private def extendedSyntaxConfigurableSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
@@ -265,6 +277,8 @@ object AuditingSettingsDecoder extends Logging {
             Right(SerializerType.ExtendedSyntaxStaticSerializer)
           case "configurable" =>
             Right(SerializerType.ExtendedSyntaxConfigurableSerializer)
+          case "ecs" =>
+            Right(SerializerType.EcsSerializer)
           case other =>
             Left(DecodingFailure(AclCreationErrorCoders.stringify(
               AuditingSettingsCreationError(Message(s"Invalid serializer type '$other', allowed values [static, configurable]"))
@@ -283,6 +297,8 @@ object AuditingSettingsDecoder extends Logging {
     case object ExtendedSyntaxStaticSerializer extends SerializerType
 
     case object ExtendedSyntaxConfigurableSerializer extends SerializerType
+
+    case object EcsSerializer extends SerializerType
   }
 
   private def withAuditingSettingsCreationErrorMessage(message: String => String)(decodingFailure: DecodingFailure) = {
