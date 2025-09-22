@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.author
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es700, es800, es810, es820}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es800, es810, es820}
 
 import java.io.{File, InputStream}
 
@@ -69,7 +69,7 @@ private [patches] class DummyAuthorizeInAuthorizationService(esVersion: SemVer) 
         case v if v >= es820 => createForEsGreaterOrEqual820(classVisitor)
         case v if v >= es810 => createForEsGreaterOrEqual811(classVisitor)
         case v if v >= es800 => createForEsGreaterOrEqual810(classVisitor)
-        case v if v >= es700 => createForEsGreaterOrEqual700(classVisitor)
+        case v if v >= es670 => createForEsGreaterOrEqual670(classVisitor)
         case _ => // nothing
       }
     }
@@ -223,7 +223,7 @@ private [patches] class DummyAuthorizeInAuthorizationService(esVersion: SemVer) 
       methodVisitor.visitEnd()
     }
 
-    private def createForEsGreaterOrEqual700(classVisitor: ClassVisitor): Unit = {
+    private def createForEsGreaterOrEqual670(classVisitor: ClassVisitor): Unit = {
       val methodVisitor = classVisitor.visitMethod(Opcodes.ACC_PRIVATE, "rorCreateArtificialAuthorizationInfo", "()Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;", null, null)
       methodVisitor.visitCode()
       val label0 = new Label()

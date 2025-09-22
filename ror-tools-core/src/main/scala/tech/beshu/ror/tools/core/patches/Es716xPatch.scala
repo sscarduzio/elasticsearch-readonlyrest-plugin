@@ -22,7 +22,7 @@ import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationServiceAuthenticator
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{AlwaysGrantApplicationPermission, ModifyBootstrapPolicyUtilClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
@@ -30,7 +30,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.
 
 import scala.language.postfixOps
 
-private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
+private[patches] class Es716xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
@@ -50,7 +50,7 @@ private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     new XPackSecurityJarPatchCreator(
       DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       DeactivateSecurityServerTransportInterceptor,
-      new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion),
+      new DummyAuthenticationInAuthenticationChain(esVersion),
       new DummyAuthorizeInAuthorizationService(esVersion),
     )
   )
