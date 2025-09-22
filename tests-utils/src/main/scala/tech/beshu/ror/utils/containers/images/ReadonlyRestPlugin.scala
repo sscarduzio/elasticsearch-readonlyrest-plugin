@@ -17,8 +17,8 @@
 package tech.beshu.ror.utils.containers.images
 
 import better.files.*
-import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateSteps
-import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateSteps.emptyEsUpdateSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps.emptyPluginInstallationSteps
 import tech.beshu.ror.utils.containers.images.Elasticsearch.fromResourceBy
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
@@ -68,8 +68,8 @@ class ReadonlyRestPlugin(esVersion: String,
                          performPatching: Boolean)
   extends Elasticsearch.Plugin {
 
-  override def esUpdateSteps(esConfig: Elasticsearch.Config): EsUpdateSteps = {
-    emptyEsUpdateSteps
+  override def installationSteps(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
+    emptyPluginInstallationSteps
       .copyFile(esConfig.tempFilePath / config.rorPlugin.name, config.rorPlugin)
       .copyFile(esConfig.esConfigDir / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
       .copyFile(esConfig.esConfigDir / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
@@ -117,17 +117,17 @@ class ReadonlyRestPlugin(esVersion: String,
     )
   }
 
-  private implicit class InstallRorPlugin(val esUpdateSteps: EsUpdateSteps) {
-    def installRorPlugin(esConfig: Elasticsearch.Config): EsUpdateSteps = {
-      esUpdateSteps
+  private implicit class InstallRorPlugin(val pluginInstallationSteps: PluginInstallationSteps) {
+    def installRorPlugin(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
+      pluginInstallationSteps
         .run(
           linuxCommand = s"${esConfig.esDir.toString()}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
           windowsCommand = s"${esConfig.esDir.toString()}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
         )
     }
 
-    def patchES(esConfig: Elasticsearch.Config): EsUpdateSteps = {
-      esUpdateSteps
+    def patchES(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
+      pluginInstallationSteps
         .user("root")
         .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
           linuxCommand = s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
@@ -141,10 +141,10 @@ class ReadonlyRestPlugin(esVersion: String,
     }
   }
 
-  private implicit class UpdateFipsDependencies(val esUpdateSteps: EsUpdateSteps) {
-    def updateFipsDependencies(esConfig: Elasticsearch.Config): EsUpdateSteps = {
+  private implicit class UpdateFipsDependencies(val pluginInstallationSteps: PluginInstallationSteps) {
+    def updateFipsDependencies(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
       if (isFibsEnabled) {
-        esUpdateSteps
+        pluginInstallationSteps
           .copyFile(esConfig.esConfigDir / "additional-permissions.policy", fromResourceBy(name = "additional-permissions.policy"))
           .copyFile(esConfig.esConfigDir / "ror-keystore.bcfks", fromResourceBy(name = "ror-keystore.bcfks"))
           .copyFile(esConfig.esConfigDir / "ror-truststore.bcfks", fromResourceBy(name = "ror-truststore.bcfks"))
@@ -155,7 +155,7 @@ class ReadonlyRestPlugin(esVersion: String,
           )
       }
       else {
-        esUpdateSteps
+        pluginInstallationSteps
       }
     }
 

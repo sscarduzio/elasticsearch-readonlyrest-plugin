@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.utils.containers.images
 
-import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateSteps
-import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateSteps.emptyEsUpdateSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps.emptyPluginInstallationSteps
 import tech.beshu.ror.utils.containers.images.Elasticsearch.{esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config.Attributes
@@ -41,8 +41,8 @@ class XpackSecurityPlugin(esVersion: String,
                           config: Config)
   extends Elasticsearch.Plugin {
 
-  override def esUpdateSteps(esConfig: Elasticsearch.Config): EsUpdateSteps = {
-    emptyEsUpdateSteps
+  override def installationSteps(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
+    emptyPluginInstallationSteps
       .copyFile(esConfig.esConfigDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
       .copyFile(esConfig.esConfigDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
       .copyFile(esConfig.esConfigDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
@@ -91,10 +91,10 @@ class XpackSecurityPlugin(esVersion: String,
     }
   }
 
-  private implicit class ConfigureKeystore(val esUpdateSteps: EsUpdateSteps) {
+  private implicit class ConfigureKeystore(val pluginInstallationSteps: PluginInstallationSteps) {
 
-    def configureKeystore(esConfig: Elasticsearch.Config): EsUpdateSteps = {
-      esUpdateSteps
+    def configureKeystore(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
+      pluginInstallationSteps
         .run(
           linuxCommand = createKeystoreCommand(esConfig),
           windowsCommand = createKeystoreCommand(esConfig),

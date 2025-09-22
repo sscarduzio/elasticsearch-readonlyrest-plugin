@@ -42,7 +42,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
 
   private lazy val ldapPort = container match {
     case ldap: LdapWithDnsContainer => ldap.dnsPort
-    case _ => 1234
+    case _ => 1234 // Just some random value - this test suite is ignored on Windows and the container is not started. But we still have to define port - required by configuration below.
   }
 
   override protected def configYaml: String =
@@ -93,10 +93,4 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
       }
     }
   }
-}
-
-object NoOpContainer extends Container {
-  override def start(): Unit = ()
-
-  override def stop(): Unit = ()
 }

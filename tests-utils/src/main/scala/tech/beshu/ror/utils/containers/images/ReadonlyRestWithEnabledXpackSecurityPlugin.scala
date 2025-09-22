@@ -17,8 +17,8 @@
 package tech.beshu.ror.utils.containers.images
 
 import better.files.File
-import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateSteps
-import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateSteps.emptyEsUpdateSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps.emptyPluginInstallationSteps
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
@@ -69,10 +69,10 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
   private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig(), performPatching)
   private val xpackSecurityPlugin = new XpackSecurityPlugin(esVersion, createXpackSecurityConfig())
 
-  override def esUpdateSteps(esConfig: Elasticsearch.Config): EsUpdateSteps = {
+  override def installationSteps(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
     (readonlyRestPlugin :: xpackSecurityPlugin :: Nil)
-      .foldLeft(emptyEsUpdateSteps) { case (esUpdateSteps, plugin) =>
-        EsUpdateSteps(esUpdateSteps.steps ++ plugin.esUpdateSteps(esConfig).steps)
+      .foldLeft(emptyPluginInstallationSteps) { case (pluginInstallationSteps, plugin) =>
+        PluginInstallationSteps(pluginInstallationSteps.steps ++ plugin.installationSteps(esConfig).steps)
       }
   }
 

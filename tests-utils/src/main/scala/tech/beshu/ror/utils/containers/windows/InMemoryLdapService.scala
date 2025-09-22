@@ -34,11 +34,10 @@ import java.security.{KeyPairGenerator, KeyStore, Security}
 import java.util.Date
 import javax.net.ssl.{KeyManager, KeyManagerFactory}
 import javax.security.auth.x500.X500Principal
-import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Using
 
-class InMemoryLdapService(name: String, ldapInitScript: InitScriptSource)
+private[windows] class InMemoryLdapService(name: String, ldapInitScript: InitScriptSource)
   extends Startable with LazyLogging {
 
   private val config: InMemoryDirectoryServerConfig = {

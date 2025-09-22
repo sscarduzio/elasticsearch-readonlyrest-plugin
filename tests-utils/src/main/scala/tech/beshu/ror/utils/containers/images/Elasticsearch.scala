@@ -22,8 +22,7 @@ import com.typesafe.scalalogging.LazyLogging
 import os.Path
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.images.Elasticsearch.*
-import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateSteps.emptyEsUpdateSteps
-import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{EsUpdateStep, EsUpdateSteps}
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{PluginInstallationStep, PluginInstallationSteps}
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager
 import tech.beshu.ror.utils.misc.Version
 
@@ -75,7 +74,7 @@ object Elasticsearch {
   }
 
   trait Plugin {
-    def esUpdateSteps(config: Config): EsUpdateSteps
+    def installationSteps(config: Config): PluginInstallationSteps
 
     def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder
 
@@ -83,44 +82,44 @@ object Elasticsearch {
   }
 
   object Plugin {
-    final case class EsUpdateSteps(steps: List[EsUpdateStep]) {
+    final case class PluginInstallationSteps(steps: List[PluginInstallationStep]) {
 
-      def copyFile(destination: Path, file: File): EsUpdateSteps = {
-        EsUpdateSteps(steps ::: EsUpdateStep.CopyFile(destination, file) :: Nil)
+      def copyFile(destination: Path, file: File): PluginInstallationSteps = {
+        PluginInstallationSteps(steps ::: PluginInstallationStep.CopyFile(destination, file) :: Nil)
       }
 
-      def when(condition: Boolean, f: EsUpdateSteps => EsUpdateSteps): EsUpdateSteps = {
+      def when(condition: Boolean, f: PluginInstallationSteps => PluginInstallationSteps): PluginInstallationSteps = {
         if (condition) f(this)
         else this
       }
 
-      def run(linuxCommand: String, windowsCommand: String): EsUpdateSteps = {
-        EsUpdateSteps(steps ::: EsUpdateStep.RunCommand(linuxCommand, windowsCommand) :: Nil)
+      def run(linuxCommand: String, windowsCommand: String): PluginInstallationSteps = {
+        PluginInstallationSteps(steps ::: PluginInstallationStep.RunCommand(linuxCommand, windowsCommand) :: Nil)
       }
 
-      def runWhen(condition: Boolean, linuxCommand: String, windowsCommand: String): EsUpdateSteps = {
+      def runWhen(condition: Boolean, linuxCommand: String, windowsCommand: String): PluginInstallationSteps = {
         if (condition) run(linuxCommand, windowsCommand)
         else this
       }
 
-      def user(user: String): EsUpdateSteps = {
-        EsUpdateSteps(steps ::: EsUpdateStep.ChangeUser(user) :: Nil)
+      def user(user: String): PluginInstallationSteps = {
+        PluginInstallationSteps(steps ::: PluginInstallationStep.ChangeUser(user) :: Nil)
       }
 
     }
 
-    object EsUpdateSteps {
-      val emptyEsUpdateSteps: EsUpdateSteps = EsUpdateSteps(List.empty)
+    object PluginInstallationSteps {
+      val emptyPluginInstallationSteps: PluginInstallationSteps = PluginInstallationSteps(List.empty)
     }
 
-    sealed trait EsUpdateStep
+    sealed trait PluginInstallationStep
 
-    object EsUpdateStep {
-      final case class CopyFile(destination: Path, file: File) extends EsUpdateStep
+    object PluginInstallationStep {
+      final case class CopyFile(destination: Path, file: File) extends PluginInstallationStep
 
-      final case class RunCommand(linuxCommand: String, windowsCommand: String) extends EsUpdateStep
+      final case class RunCommand(linuxCommand: String, windowsCommand: String) extends PluginInstallationStep
 
-      final case class ChangeUser(user: String) extends EsUpdateStep
+      final case class ChangeUser(user: String) extends PluginInstallationStep
     }
   }
 
@@ -137,7 +136,7 @@ object Elasticsearch {
 
 class Elasticsearch(val esVersion: String,
                     val config: Config,
-                    plugins: Seq[Plugin],
+                    val plugins: Seq[Plugin],
                     customEntrypoint: Option[Path])
   extends LazyLogging {
 
@@ -174,7 +173,7 @@ class Elasticsearch(val esVersion: String,
       .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
       .copyFile(
         destination = config.esConfigDir / "elasticsearch.yml",
-        file = esConfigFile(networkHost = "0.0.0.0")
+        file = esConfigFile
       )
       .copyFile(
         destination = config.esConfigDir / "log4j2.properties",
@@ -205,7 +204,7 @@ class Elasticsearch(val esVersion: String,
       .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
       .copyFile(
         destination = config.esConfigDir / "elasticsearch.yml",
-        file = esConfigFile(networkHost = "0.0.0.0")
+        file = esConfigFile
       )
       .copyFile(
         destination = config.esConfigDir / "log4j2.properties",
@@ -222,26 +221,22 @@ class Elasticsearch(val esVersion: String,
       .user("elasticsearch")
   }
 
-  def esUpdateSteps: EsUpdateSteps = {
-    plugins.map(_.esUpdateSteps(config)).foldLeft(emptyEsUpdateSteps) { case (soFar, next) =>
-      EsUpdateSteps(soFar.steps ++ next.steps)
-    }
-  }
-
   private implicit class InstallPlugins(val image: DockerImageDescription) {
     def installPlugins(): DockerImageDescription = {
-      esUpdateSteps.steps
-        .foldLeft(image) {
-          case (currentImage, step) =>
-            step match {
-              case EsUpdateStep.CopyFile(destination, file) =>
-                currentImage.copyFile(destination, file)
-              case EsUpdateStep.RunCommand(linuxCommand, _) =>
-                currentImage.run(linuxCommand)
-              case EsUpdateStep.ChangeUser(user) =>
-                currentImage.user(user)
-            }
-        }
+      plugins.foldLeft(image) {
+        case (currentImage, plugin) =>
+          plugin.installationSteps(config).steps.foldLeft(currentImage) {
+            case (img, step) =>
+              step match {
+                case PluginInstallationStep.CopyFile(destination, file) =>
+                  img.copyFile(destination, file)
+                case PluginInstallationStep.RunCommand(linuxCommand, _) =>
+                  img.run(linuxCommand)
+                case PluginInstallationStep.ChangeUser(user) =>
+                  img.user(user)
+              }
+          }
+      }
     }
   }
 
@@ -257,20 +252,20 @@ class Elasticsearch(val esVersion: String,
       .foldLeft(builder) { case (currentBuilder, update) => update(currentBuilder) }
   }
 
-  def esConfigFile(networkHost: String): File = {
+  def esConfigFile: File = {
     val file = File
       .newTemporaryFile()
-      .appendLines(updateEsConfigBuilderFromPlugins(baseEsConfigBuilder(networkHost)).entries: _*)
+      .appendLines(updateEsConfigBuilderFromPlugins(baseEsConfigBuilder).entries: _*)
     logger.info(s"elasticsearch.yml content:\n${file.contentAsString}")
     file
   }
 
-  private def baseEsConfigBuilder(networkHost: String) = {
+  private def baseEsConfigBuilder = {
     EsConfigBuilder
       .empty
       .add(s"node.name: ${config.nodeName}")
       .add(s"cluster.name: ${config.clusterName}")
-      .add(s"network.host: $networkHost")
+      .add("network.host: 0.0.0.0")
       .add("path.repo: /tmp")
       .addWhen(Version.lowerThan(esVersion, 8, 0, 0),
         entry = "bootstrap.system_call_filter: false" // because of issues with Rosetta 2 on Mac OS

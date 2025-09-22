@@ -34,30 +34,20 @@ class WindowsPseudoWiremockContainer(val port: Int, mappings: List[String])
 
 object WindowsPseudoWiremockContainer {
   class WindowsPseudoGenericContainerWiremock(port: Int, mappings: List[String])
-    extends GenericContainer[WindowsPseudoGenericContainerWiremock]("noop:latest") {
+    extends WindowsPseudoContainer[WindowsPseudoGenericContainerWiremock, WireMockServer] {
 
-    private var server: Option[WireMockServer] = None
+    override protected def name: String =
+      "WireMockServerPseudoGenericContainer"
 
-    override def start(): Unit = {
-      doStart()
-    }
+    override protected def prepare(): WireMockServer =
+      WireMockServerCreator.create(port, mappings)
 
-    override def doStart(): Unit = {
-      server = Some(WireMockServerCreator.create(port, mappings))
-    }
+    override protected def destroy(service: WireMockServer): Unit =
+      service.stop()
 
-    override def stop(): Unit = {
-      server.foreach(_.stop())
-      super.stop()
-    }
+    override protected def getPort(service: WireMockServer): Int =
+      service.port()
 
-    def getWireMockPort: Int = server.map(_.port()).getOrElse(
-      throw new IllegalStateException("The Wiremock is not started, port is not yet defined")
-    )
-
-    override def getContainerId: String = "WireMockServerPseudoGenericContainer"
-
-    override def getDockerImageName: String = "WireMockServerPseudoGenericContainer"
   }
 }
 

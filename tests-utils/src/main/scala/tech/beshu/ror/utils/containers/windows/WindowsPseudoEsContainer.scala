@@ -16,11 +16,10 @@
  */
 package tech.beshu.ror.utils.containers.windows
 
-import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.OutputFrame
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy
 import tech.beshu.ror.utils.containers.images.Elasticsearch
-import tech.beshu.ror.utils.containers.windows.WindowsEsRunner.{WindowsEsProcess, killEs}
+import tech.beshu.ror.utils.containers.windows.WindowsEsRunner.WindowsEsProcess
 import tech.beshu.ror.utils.containers.windows.WindowsEsSetup.prepareAndStartEs
 
 import java.util.function.Consumer
@@ -28,33 +27,22 @@ import java.util.function.Consumer
 class WindowsPseudoEsContainer(elasticsearch: Elasticsearch,
                                waitStrategy: ElasticsearchNodeWaitingStrategy,
                                additionalLogConsumer: Option[Consumer[OutputFrame]])
-  extends GenericContainer[WindowsPseudoEsContainer]("noop:latest") {
+  extends WindowsPseudoContainer[WindowsPseudoEsContainer, WindowsEsProcess] {
 
-  private var windowsEsProcess: Option[WindowsEsProcess] = None
+  override protected def name: String = "WindowsPseudoEsContainer"
 
-  override def start(): Unit = doStart()
-
-  override def doStart(): Unit = {
-    windowsEsProcess match {
-      case Some(_) =>
-        ()
-      case None =>
-        windowsEsProcess = Some(prepareAndStartEs(elasticsearch, additionalLogConsumer))
-        waitStrategy.waitUntilReady()
-    }
+  override protected def prepare(): WindowsEsProcess = {
+    val service = prepareAndStartEs(elasticsearch, additionalLogConsumer)
+    waitStrategy.waitUntilReady()
+    service
   }
 
-  override def stop(): Unit = {
-    super.stop()
-    windowsEsProcess.foreach(killEs)
+  override protected def destroy(service: WindowsEsProcess): Unit = {
+    service.kill()
   }
 
-  def getPort: Int = windowsEsProcess match {
-    case Some(windowsEsProcess) => WindowsEsPortProvider.get(windowsEsProcess.nodeName).esPort
-    case None => throw new IllegalStateException("The ES is not started, port is not yet defined")
+  override protected def getPort(service: WindowsEsProcess): Int = {
+    WindowsEsPortProvider.get(service.nodeName).esPort
   }
 
-  override def getContainerId: String = "WindowsPseudoGenericContainerEs"
-
-  override def getDockerImageName: String = "WindowsPseudoGenericContainerEs"
 }

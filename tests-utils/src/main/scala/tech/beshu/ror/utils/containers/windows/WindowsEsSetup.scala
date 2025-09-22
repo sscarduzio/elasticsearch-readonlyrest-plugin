@@ -19,15 +19,14 @@ package tech.beshu.ror.utils.containers.windows
 import better.files.File
 import com.typesafe.scalalogging.LazyLogging
 import org.testcontainers.containers.output.OutputFrame
-import os.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch
-import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.EsUpdateStep
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationStep
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager.*
 import tech.beshu.ror.utils.containers.windows.WindowsEsPortProvider.*
 import tech.beshu.ror.utils.containers.windows.WindowsEsRunner.{WindowsEsProcess, startEs}
 
 import java.util.function.Consumer
-import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
 object WindowsEsSetup extends LazyLogging {
@@ -42,29 +41,38 @@ object WindowsEsSetup extends LazyLogging {
     downloadEsZipFileWithProgress(elasticsearch.esVersion)
     unzipEs(elasticsearch.esVersion, elasticsearch.config)
     replaceConfigFile(elasticsearch)
-    runUpdateSteps(elasticsearch)
+    installPlugins(elasticsearch)
   }
 
-  private def runUpdateSteps(elasticsearch: Elasticsearch): Unit = {
-    val numberOfSteps = elasticsearch.esUpdateSteps.steps.size
-    elasticsearch.esUpdateSteps.steps.zipWithIndex.foreach(runUpdateStep(elasticsearch, numberOfSteps))
+  private def installPlugins(elasticsearch: Elasticsearch): Unit = {
+    val plugins = elasticsearch.plugins
+    val numberOfPlugins = plugins.size
+    plugins.zipWithIndex.foreach(installPlugin(elasticsearch, numberOfPlugins))
   }
 
-  private def runUpdateStep(elasticsearch: Elasticsearch, numberOfSteps: Int)
-                           (step: EsUpdateStep, index: Int): Unit = step match {
-    case EsUpdateStep.CopyFile(destination, file) =>
+  private def installPlugin(elasticsearch: Elasticsearch, numberOfPlugins: Int)
+                           (plugin: Plugin, index: Int): Unit = {
+    logger.info(s"Installing plugin ${index + 1}/$numberOfPlugins")
+    val steps = plugin.installationSteps(elasticsearch.config).steps
+    val numberOfSteps = steps.size
+    steps.zipWithIndex.foreach(runInstallationStep(elasticsearch, numberOfSteps))
+  }
+
+  private def runInstallationStep(elasticsearch: Elasticsearch, numberOfSteps: Int)
+                                 (step: PluginInstallationStep, index: Int): Unit = step match {
+    case PluginInstallationStep.CopyFile(destination, file) =>
       logger.info(s"Step ${index + 1}/$numberOfSteps: copy file $destination $file")
       os.makeDir.all(destination / os.up)
       val destBetterFile = File(destination.toNIO)
       file.copyTo(destBetterFile, overwrite = true)
-    case EsUpdateStep.RunCommand(_, windowsCommand) =>
+    case PluginInstallationStep.RunCommand(_, windowsCommand) =>
       logger.info(s"Step ${index + 1}/$numberOfSteps: run command $windowsCommand")
       os.proc("cmd", "/c", windowsCommand).call(
         cwd = esPath(elasticsearch.config.clusterName, elasticsearch.config.nodeName),
         stdout = os.ProcessOutput.Readlines(line => logger.info(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
         stderr = os.ProcessOutput.Readlines(line => logger.error(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
       )
-    case EsUpdateStep.ChangeUser(_) =>
+    case PluginInstallationStep.ChangeUser(_) =>
       logger.info(s"Step ${index + 1}/$numberOfSteps: change user is ignored on Windows")
   }
 
@@ -73,9 +81,10 @@ object WindowsEsSetup extends LazyLogging {
     val esPorts = WindowsEsPortProvider.get(elasticsearch.config.nodeName)
     val file =
       elasticsearch
-        .esConfigFile(networkHost = "127.0.0.1")
+        .esConfigFile
         .appendLine(s"http.port: ${esPorts.esPort}")
         .appendLine(s"transport.port: ${esPorts.transportPort}")
+        .replaceLineWithPrefix("network.host:", "network.host: 127.0.0.1")
 
     // Replace all names of other ES hosts with 127.0.0.1 address with correct transport port
     val lines = file.contentAsString.linesIterator.toList
@@ -91,4 +100,10 @@ object WindowsEsSetup extends LazyLogging {
         overwrite = true
       )
   }
+
+  extension (file: File)
+    private def replaceLineWithPrefix(prefix: String, newLine: String): File =
+      val updated = file.lines.map(line => if (line.startsWith(prefix)) newLine else line)
+      file.overwrite(updated.mkString("\n"))
+
 }
