@@ -151,118 +151,118 @@ stages:
               testRunTitle: "$(ROR_TASK) results"
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
-#      - job:
-#        condition:
-#          and(
-#            succeeded(),
-#            or(
-#              eq(variables.isEpic, true),
-#              eq(variables.isDevelop, true),
-#              eq(variables.isMaster, true),
-#              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
-#            )
-#          )
-#        container: openjdk:22-slim
-#        timeoutInMinutes: 120
-#        steps:
-#          - checkout: self
-#            fetchDepth: 1
-#            clean: false
-#            persistCredentials: true
-#          - script: |
-#              # Translate back env vars to avoid cyclical reference :/
-#              export aws_access_key_id=$var_aws_access_key_id
-#              export aws_secret_access_key=$var_aws_secret_access_key
-#
-#              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-#              ci/run-pipeline.sh
-#            env:
-#              var_aws_access_key_id: $(aws_access_key_id)
-#              var_aws_secret_access_key: $(aws_secret_access_key)
-#          - task: PublishTestResults@2
-#            condition: failed()
-#            inputs:
-#              testRunTitle: "$(ROR_TASK) results"
-#              testResultsFiles: "**/TEST*xml"
-#              mergeTestResults: true
-#        strategy:
-#          maxParallel: 99
-#          matrix:
-#            IT_es91x:
-#              ROR_TASK: integration_es91x
-#            IT_es90x:
-#              ROR_TASK: integration_es90x
-#      - job:
-#        condition:
-#          and(
-#            succeeded(),
-#            or(
-#              eq(variables.isEpic, true),
-#              eq(variables.isDevelop, true),
-#              eq(variables.isMaster, true),
-#              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
-#            )
-#          )
-#        container: openjdk:22-slim
-#        timeoutInMinutes: 120
-#        steps:
-#          - checkout: self
-#            fetchDepth: 1
-#            clean: false
-#            persistCredentials: true
-#          - script: |
-#              # Translate back env vars to avoid cyclical reference :/
-#              export aws_access_key_id=$var_aws_access_key_id
-#              export aws_secret_access_key=$var_aws_secret_access_key
-#
-#              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-#              ci/run-pipeline.sh
-#            env:
-#              var_aws_access_key_id: $(aws_access_key_id)
-#              var_aws_secret_access_key: $(aws_secret_access_key)
-#          - task: PublishTestResults@2
-#            condition: failed()
-#            inputs:
-#              testRunTitle: "$(ROR_TASK) results"
-#              testResultsFiles: "**/TEST*xml"
-#              mergeTestResults: true
-#        strategy:
-#          maxParallel: 99
-#          matrix:
-#            IT_es818x:
-#              ROR_TASK: integration_es818x
-#            IT_es816x:
-#              ROR_TASK: integration_es816x
-#            IT_es815x:
-#              ROR_TASK: integration_es815x
-#            IT_es814x:
-#              ROR_TASK: integration_es814x
-#            IT_es813x:
-#              ROR_TASK: integration_es813x
-#            IT_es812x:
-#              ROR_TASK: integration_es812x
-#            IT_es811x:
-#              ROR_TASK: integration_es811x
-#            IT_es810x:
-#              ROR_TASK: integration_es810x
-#            IT_es89x:
-#              ROR_TASK: integration_es89x
-#            IT_es88x:
-#              ROR_TASK: integration_es88x
-#            IT_es87x:
-#              ROR_TASK: integration_es87x
-#            IT_es85x:
-#              ROR_TASK: integration_es85x
-#            IT_es84x:
-#              ROR_TASK: integration_es84x
-#            IT_es83x:
-#              ROR_TASK: integration_es83x
-#            IT_es82x:
-#              ROR_TASK: integration_es82x
-#            IT_es81x:
-#              ROR_TASK: integration_es81x
-#            IT_es80x:
-#              ROR_TASK: integration_es80x
+      - job:
+        condition:
+          and(
+            succeeded(),
+            or(
+              eq(variables.isEpic, true),
+              eq(variables.isDevelop, true),
+              eq(variables.isMaster, true),
+              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
+            )
+          )
+        container: openjdk:22-slim
+        timeoutInMinutes: 120
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es91x:
+              ROR_TASK: integration_es91x
+            IT_es90x:
+              ROR_TASK: integration_es90x
+      - job:
+        condition:
+          and(
+            succeeded(),
+            or(
+              eq(variables.isEpic, true),
+              eq(variables.isDevelop, true),
+              eq(variables.isMaster, true),
+              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
+            )
+          )
+        container: openjdk:22-slim
+        timeoutInMinutes: 120
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es818x:
+              ROR_TASK: integration_es818x
+            IT_es816x:
+              ROR_TASK: integration_es816x
+            IT_es815x:
+              ROR_TASK: integration_es815x
+            IT_es814x:
+              ROR_TASK: integration_es814x
+            IT_es813x:
+              ROR_TASK: integration_es813x
+            IT_es812x:
+              ROR_TASK: integration_es812x
+            IT_es811x:
+              ROR_TASK: integration_es811x
+            IT_es810x:
+              ROR_TASK: integration_es810x
+            IT_es89x:
+              ROR_TASK: integration_es89x
+            IT_es88x:
+              ROR_TASK: integration_es88x
+            IT_es87x:
+              ROR_TASK: integration_es87x
+            IT_es85x:
+              ROR_TASK: integration_es85x
+            IT_es84x:
+              ROR_TASK: integration_es84x
+            IT_es83x:
+              ROR_TASK: integration_es83x
+            IT_es82x:
+              ROR_TASK: integration_es82x
+            IT_es81x:
+              ROR_TASK: integration_es81x
+            IT_es80x:
+              ROR_TASK: integration_es80x
       - job:
         condition:
           and(
@@ -381,24 +381,24 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-#            IT_es717x:
-#              ROR_TASK: integration_es717x
-#            IT_es716x:
-#              ROR_TASK: integration_es716x
-#            IT_es714x:
-#              ROR_TASK: integration_es714x
-#            IT_es711x:
-#              ROR_TASK: integration_es711x
-#            IT_es710x:
-#              ROR_TASK: integration_es710x
-#            IT_es79x:
-#              ROR_TASK: integration_es79x
-#            IT_es78x:
-#              ROR_TASK: integration_es78x
-#            IT_es77x:
-#              ROR_TASK: integration_es77x
-#            IT_es74x:
-#              ROR_TASK: integration_es74x
+            IT_es717x:
+              ROR_TASK: integration_es717x
+            IT_es716x:
+              ROR_TASK: integration_es716x
+            IT_es714x:
+              ROR_TASK: integration_es714x
+            IT_es711x:
+              ROR_TASK: integration_es711x
+            IT_es710x:
+              ROR_TASK: integration_es710x
+            IT_es79x:
+              ROR_TASK: integration_es79x
+            IT_es78x:
+              ROR_TASK: integration_es78x
+            IT_es77x:
+              ROR_TASK: integration_es77x
+            IT_es74x:
+              ROR_TASK: integration_es74x
             IT_es73x:
               ROR_TASK: integration_es73x
             IT_es72x:
