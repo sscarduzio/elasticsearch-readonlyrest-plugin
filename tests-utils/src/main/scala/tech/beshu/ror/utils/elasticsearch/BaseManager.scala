@@ -98,8 +98,8 @@ abstract class BaseManager(client: RestClient,
     private def checkResponseAssertions(): Unit = {
       OsUtils.currentOs match {
         case CurrentOs.Windows =>
-          // On Windows the header is not added to some requests in versions <7.14-8.0)
-          // Assertion is applied since ES 8.0
+          // On Windows the header is (sometimes, not deterministic) not added to some requests in versions <7.14-8.0). 
+          // So the assertion is applied since ES 8.0
           if (!isForbidden && esNativeApi && Version.greaterOrEqualThan(esVersion, 8, 0, 0)) {
             assertContainsXElasticProductHeader(response)
           }

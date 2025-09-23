@@ -42,6 +42,9 @@ object WindowsPseudoWiremockContainer {
     override protected def prepare(): WireMockServer =
       WireMockServerCreator.create(port, mappings)
 
+    override protected def awaitReady(): Unit =
+      ()
+
     override protected def destroy(service: WireMockServer): Unit =
       service.stop()
 

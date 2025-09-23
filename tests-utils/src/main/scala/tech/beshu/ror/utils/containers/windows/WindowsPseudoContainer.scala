@@ -26,6 +26,8 @@ abstract class WindowsPseudoContainer[T <: GenericContainer[T], SERVICE] extends
 
   protected def prepare(): SERVICE
 
+  protected def awaitReady(): Unit
+
   protected def destroy(service: SERVICE): Unit
 
   protected def getPort(service: SERVICE): Int
@@ -37,6 +39,7 @@ abstract class WindowsPseudoContainer[T <: GenericContainer[T], SERVICE] extends
   override final def doStart(): Unit = {
     val success = service.compareAndSet(None, Some(prepare()))
     if (!success) throw new IllegalStateException(s"Service $name is already started, cannot start again.")
+    awaitReady()
   }
 
   override final def stop(): Unit = {

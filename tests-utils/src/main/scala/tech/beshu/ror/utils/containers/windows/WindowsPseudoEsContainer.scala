@@ -32,9 +32,11 @@ class WindowsPseudoEsContainer(elasticsearch: Elasticsearch,
   override protected def name: String = "WindowsPseudoEsContainer"
 
   override protected def prepare(): WindowsEsProcess = {
-    val service = prepareAndStartEs(elasticsearch, additionalLogConsumer)
+    prepareAndStartEs(elasticsearch, additionalLogConsumer)
+  }
+
+  override protected def awaitReady(): Unit = {
     waitStrategy.waitUntilReady()
-    service
   }
 
   override protected def destroy(service: WindowsEsProcess): Unit = {
