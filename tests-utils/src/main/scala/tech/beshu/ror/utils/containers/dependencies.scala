@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.utils.containers
 
-import tech.beshu.ror.utils.containers.windows.WindowsPseudoWiremockContainer
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
@@ -38,20 +37,12 @@ object dependencies {
   )
 
   def wiremock(name: String, portWhenRunningOnWindows: Int, mappings: String*): DependencyDef = {
-    OsUtils.currentOs match {
-      case CurrentOs.Windows =>
-        DependencyDef(
-          name = name,
-          container = new WindowsPseudoWiremockContainer(portWhenRunningOnWindows, mappings.toList),
-          originalPort = portWhenRunningOnWindows,
-        )
-      case CurrentOs.OtherThanWindows =>
-        DependencyDef(
-          name = name,
-          container = new WireMockScalaAdapter(WireMockContainer.create(mappings: _*)),
-          originalPort = WireMockContainer.WIRE_MOCK_PORT,
-        )
-    }
+    val wiremock = Wiremock.create(mappings.toList, portWhenRunningOnWindows)
+    DependencyDef(
+      name = name,
+      container = wiremock.container,
+      originalPort = wiremock.originalPort,
+    )
   }
 
   def es(name: String, container: EsContainer): DependencyDef = {

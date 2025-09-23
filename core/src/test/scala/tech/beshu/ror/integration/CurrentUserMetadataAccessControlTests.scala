@@ -38,10 +38,7 @@ import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
-import tech.beshu.ror.utils.containers.windows.WindowsPseudoWiremockContainer
-import tech.beshu.ror.utils.containers.{LdapContainer, WireMockContainer, WireMockScalaAdapter}
-import tech.beshu.ror.utils.misc.OsUtils
-import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
+import tech.beshu.ror.utils.containers.{LdapContainer, Wiremock}
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -58,15 +55,7 @@ class CurrentUserMetadataAccessControlTests
     "/current_user_metadata_access_control_tests/wiremock_service3_user7.json",
   )
 
-  private val wiremock = OsUtils.currentOs match {
-    case CurrentOs.Windows => new WindowsPseudoWiremockContainer(8080, mappings)
-    case CurrentOs.OtherThanWindows => new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
-  }
-
-  private lazy val (wiremockHost, wiremockPort) = wiremock match {
-    case container: WireMockScalaAdapter => (container.getWireMockHost, container.getWireMockPort)
-    case _ => ("localhost", 8080)
-  }
+  private val wiremock = Wiremock.create(mappings)
 
   private val ldap1 = LdapContainer.create("LDAP1",
     "current_user_metadata_access_control_tests/ldap_ldap1_user5.ldif"
@@ -75,7 +64,7 @@ class CurrentUserMetadataAccessControlTests
     "current_user_metadata_access_control_tests/ldap_ldap2_user6.ldif"
   )
 
-  override val container: MultipleContainers = MultipleContainers(wiremock, ldap1, ldap2)
+  override val container: MultipleContainers = MultipleContainers(wiremock.container, ldap1, ldap2)
 
   override protected def afterAll(): Unit = {
     super.afterAll()
@@ -223,19 +212,19 @@ class CurrentUserMetadataAccessControlTests
        |  user_groups_providers:
        |
        |  - name: Service1
-       |    groups_endpoint: "http://${wiremockHost}:${wiremockPort}/groups"
+       |    groups_endpoint: "http://${wiremock.host}:${wiremock.port}/groups"
        |    auth_token_name: "user"
        |    auth_token_passed_as: QUERY_PARAM
        |    response_groups_json_path: "$$..groups[?(@.name)].name"
        |
        |  - name: Service2
-       |    groups_endpoint: "http://${wiremockHost}:${wiremockPort}/groups"
+       |    groups_endpoint: "http://${wiremock.host}:${wiremock.port}/groups"
        |    auth_token_name: "user"
        |    auth_token_passed_as: QUERY_PARAM
        |    response_groups_json_path: "$$..groups[?(@.name)].name"
        |
        |  - name: Service3
-       |    groups_endpoint: "http://${wiremockHost}:${wiremockPort}/groups"
+       |    groups_endpoint: "http://${wiremock.host}:${wiremock.port}/groups"
        |    auth_token_name: "user"
        |    auth_token_passed_as: QUERY_PARAM
        |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
