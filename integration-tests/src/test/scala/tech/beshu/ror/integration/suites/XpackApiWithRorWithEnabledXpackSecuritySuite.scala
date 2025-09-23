@@ -20,6 +20,7 @@ import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite
 import tech.beshu.ror.utils.containers.SecurityType
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.images.domain.Enabled
+import tech.beshu.ror.utils.misc.Version
 
 class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
@@ -56,53 +57,106 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
           ) :: Nil
         )
         response should have statusCode 200
-        response.responseJson should be(ujson.read(
-          s"""
-             |{
-             |  "username":"_xpack",
-             |  "has_all_requested":false,
-             |  "cluster":{
-             |    "monitor":true
-             |  },
-             |  "index":{
-             |    ".monitoring-*-6-*,.monitoring-*-7-*":{
-             |      "read":true
-             |    }
-             |  },
-             |  "application":{
-             |    "kibana":{
-             |      "space:default":{
-             |        "login:":false,
-             |        "version:$esVersionUsed":false
-             |      }
-             |    }
-             |  }
-             |}
-             |""".stripMargin
-        ))
+        if (Version.greaterOrEqualThan(esVersionUsed, 8, 3, 0)) {
+          response.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "username":"_xpack",
+               |  "has_all_requested":false,
+               |  "cluster":{
+               |    "monitor":true
+               |  },
+               |  "index":{
+               |    ".monitoring-*-6-*,.monitoring-*-7-*":{
+               |      "read":true
+               |    }
+               |  },
+               |  "application":{
+               |    "kibana":{
+               |      "space:default":{
+               |        "login:":false,
+               |        "version:$esVersionUsed":false
+               |      }
+               |    }
+               |  }
+               |}
+               |""".stripMargin
+          ))
+        } else {
+          response.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "username":"_xpack",
+               |  "has_all_requested":true,
+               |  "cluster":{
+               |    "monitor":true
+               |  },
+               |  "index":{
+               |    ".monitoring-*-6-*,.monitoring-*-7-*":{
+               |      "read":true
+               |    }
+               |  },
+               |  "application":{
+               |    "kibana":{
+               |      "space:default":{
+               |        "login:":true,
+               |        "version:$esVersionUsed":true
+               |      }
+               |    }
+               |  }
+               |}
+               |""".stripMargin
+          ))
+        }
       }
     }
     "user/_privileges endpoint is called" should {
       "return ROR artificial user's privileges" excludeES allEs6x in {
         val response = adminXpackApiManager.userPrivileges()
         response should have statusCode 200
-        response.responseJson should be(ujson.read(
-          s"""
-             |{
-             |  "cluster":["all"],
-             |  "global":[],
-             |  "indices":[
-             |    {
-             |      "names":[],
-             |      "privileges":["all"],
-             |      "allow_restricted_indices":false
-             |    }
-             |  ],
-             |  "applications":[],
-             |  "run_as":[]
-             |}
-             |""".stripMargin
-        ))
+        if (Version.greaterOrEqualThan(esVersionUsed, 8, 3, 0)) {
+          response.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "cluster":["all"],
+               |  "global":[],
+               |  "indices":[
+               |    {
+               |      "names":["*"],
+               |      "privileges":["all"],
+               |      "allow_restricted_indices":false
+               |    }
+               |  ],
+               |  "applications":[],
+               |  "run_as":[]
+               |}
+               |""".stripMargin
+          ))
+        } else {
+          response.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "cluster":["all"],
+               |  "global":[],
+               |  "indices":[
+               |    {
+               |      "names":["*"],
+               |      "privileges":["all"],
+               |      "allow_restricted_indices":false
+               |    }
+               |  ],
+               |  "applications":[
+               |    {
+               |      "application":"*",
+               |      "privileges":["*"],
+               |      "resources":["*"]
+               |    }
+               |  ],
+               |  "run_as":[]
+               |}
+               |""".stripMargin
+          ))
+        }
       }
     }
     "API key grant request is called" should {
