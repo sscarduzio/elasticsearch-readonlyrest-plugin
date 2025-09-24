@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.misc
 
 import com.dimafeng.testcontainers.Container
 import com.typesafe.scalalogging.LazyLogging
+import tech.beshu.ror.utils.containers.NoOpContainer
 
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
@@ -57,12 +58,6 @@ object OsUtils extends LazyLogging {
     case object Windows extends CurrentOs
 
     case object OtherThanWindows extends CurrentOs
-  }
-
-  private object NoOpContainer extends Container {
-    override def start(): Unit = ()
-
-    override def stop(): Unit = ()
   }
 
 }

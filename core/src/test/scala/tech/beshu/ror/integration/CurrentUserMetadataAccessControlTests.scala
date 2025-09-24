@@ -212,19 +212,19 @@ class CurrentUserMetadataAccessControlTests
        |  user_groups_providers:
        |
        |  - name: Service1
-       |    groups_endpoint: "http://${wiremock.host}:${wiremock.port}/groups"
+       |    groups_endpoint: "http://${wiremock.host}:${wiremock.portProvider.providePort()}/groups"
        |    auth_token_name: "user"
        |    auth_token_passed_as: QUERY_PARAM
        |    response_groups_json_path: "$$..groups[?(@.name)].name"
        |
        |  - name: Service2
-       |    groups_endpoint: "http://${wiremock.host}:${wiremock.port}/groups"
+       |    groups_endpoint: "http://${wiremock.host}:${wiremock.portProvider.providePort()}/groups"
        |    auth_token_name: "user"
        |    auth_token_passed_as: QUERY_PARAM
        |    response_groups_json_path: "$$..groups[?(@.name)].name"
        |
        |  - name: Service3
-       |    groups_endpoint: "http://${wiremock.host}:${wiremock.port}/groups"
+       |    groups_endpoint: "http://${wiremock.host}:${wiremock.portProvider.providePort()}/groups"
        |    auth_token_name: "user"
        |    auth_token_passed_as: QUERY_PARAM
        |    response_group_ids_json_path: "$$..groups[?(@.id)].id"

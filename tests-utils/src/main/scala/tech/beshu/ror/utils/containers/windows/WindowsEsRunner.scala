@@ -53,14 +53,15 @@ object WindowsEsRunner extends LazyLogging {
 
     sys.addShutdownHook {
       logger.info(s"JVM shutting down, stopping Elasticsearch [${config.clusterName}][${config.nodeName}] process...")
-      process.kill()
+      process.destroy()
     }
 
     process
   }
 
-  class WindowsEsProcess(val clusterName: String, val nodeName: String, proc: SubProcess) {
-    def kill(): Unit = {
+  class WindowsEsProcess(val clusterName: String, val nodeName: String, proc: SubProcess) extends WindowsPseudoContainer.Service {
+    
+    override def destroy(): Unit = {
       logger.info(s"Stopping ES process with pid ${proc.wrapped.pid}")
       try {
         os.proc("taskkill", "/PID", proc.wrapped.pid.toString, "/F", "/T").call()
@@ -68,6 +69,11 @@ object WindowsEsRunner extends LazyLogging {
         case e: Exception => logger.error(s"Failed to stop Elasticsearch [${clusterName}][${nodeName}] process: ${e.getMessage}")
       }
     }
+
+    override def getPort: Int = {
+      WindowsEsPortProvider.get(nodeName).esPort
+    }
+
   }
 
 }

@@ -17,36 +17,37 @@
 package tech.beshu.ror.utils.containers.windows
 
 import org.testcontainers.containers.GenericContainer
+import tech.beshu.ror.utils.containers.windows.WindowsPseudoContainer.Service
 
 import java.util.concurrent.atomic.AtomicReference
 
-abstract class WindowsPseudoContainer[T <: GenericContainer[T], SERVICE] extends GenericContainer[T]("noop:latest") {
+abstract class WindowsPseudoContainer[T <: GenericContainer[T]] extends GenericContainer[T]("noop:latest") {
 
   protected def name: String
 
-  protected def prepare(): SERVICE
+  protected def prepare(): Service
 
   protected def awaitReady(): Unit
 
-  protected def destroy(service: SERVICE): Unit
-
-  protected def getPort(service: SERVICE): Int
-
-  private val service: AtomicReference[Option[SERVICE]] = new AtomicReference(Option.empty[SERVICE])
+  private val service: AtomicReference[Option[Service]] = new AtomicReference(Option.empty[Service])
 
   override final def start(): Unit = doStart()
 
-  override final def doStart(): Unit = {
-    val success = service.compareAndSet(None, Some(prepare()))
-    if (!success) throw new IllegalStateException(s"Service $name is already started, cannot start again.")
-    awaitReady()
+  override final def doStart(): Unit = synchronized {
+    service.get() match {
+      case Some(_) =>
+        throw new IllegalStateException(s"Service $name is already started, cannot start again.")
+      case None =>
+        service.set(Some(prepare()))
+        awaitReady()
+    }
   }
 
-  override final def stop(): Unit = {
-    service.getAndUpdate {
-      case Some(service) =>
-        destroy(service)
-        None
+  override final def stop(): Unit = synchronized {
+    service.get() match {
+      case Some(startedService) =>
+        startedService.destroy()
+        service.set(None)
       case None =>
         throw new IllegalStateException(s"Service $name is not started, cannot stop.")
     }
@@ -54,7 +55,7 @@ abstract class WindowsPseudoContainer[T <: GenericContainer[T], SERVICE] extends
 
   def getPort: Int = {
     service.get() match {
-      case Some(service) => getPort(service)
+      case Some(startedService) => startedService.getPort
       case None => throw new IllegalStateException(s"Service $name is not started, port is not yet defined.")
     }
   }
@@ -63,4 +64,12 @@ abstract class WindowsPseudoContainer[T <: GenericContainer[T], SERVICE] extends
 
   override final def getDockerImageName: String = name
 
+}
+
+object WindowsPseudoContainer {
+  trait Service {
+    def destroy(): Unit
+
+    def getPort: Int
+  }
 }

@@ -27,7 +27,7 @@ import java.util.function.Consumer
 class WindowsPseudoEsContainer(elasticsearch: Elasticsearch,
                                waitStrategy: ElasticsearchNodeWaitingStrategy,
                                additionalLogConsumer: Option[Consumer[OutputFrame]])
-  extends WindowsPseudoContainer[WindowsPseudoEsContainer, WindowsEsProcess] {
+  extends WindowsPseudoContainer[WindowsPseudoEsContainer] {
 
   override protected def name: String = "WindowsPseudoEsContainer"
 
@@ -37,14 +37,6 @@ class WindowsPseudoEsContainer(elasticsearch: Elasticsearch,
 
   override protected def awaitReady(): Unit = {
     waitStrategy.waitUntilReady()
-  }
-
-  override protected def destroy(service: WindowsEsProcess): Unit = {
-    service.kill()
-  }
-
-  override protected def getPort(service: WindowsEsProcess): Int = {
-    WindowsEsPortProvider.get(service.nodeName).esPort
   }
 
 }

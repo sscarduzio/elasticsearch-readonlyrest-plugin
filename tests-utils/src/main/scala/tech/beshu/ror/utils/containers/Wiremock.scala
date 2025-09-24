@@ -27,26 +27,30 @@ object Wiremock {
   def create(mappings: List[String], portWhenRunningOnWindows: Int = 8080): WiremockContainer = {
     OsUtils.currentOs match {
       case CurrentOs.Windows =>
-        WiremockContainer(
+        new WiremockContainer(
           container = new WindowsPseudoWiremockContainer(portWhenRunningOnWindows, mappings),
           host = "localhost",
-          port = portWhenRunningOnWindows,
+          portProvider = () => portWhenRunningOnWindows,
           originalPort = portWhenRunningOnWindows,
         )
       case CurrentOs.OtherThanWindows =>
         val container = new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
-        WiremockContainer(
+        new WiremockContainer(
           container = container,
           host = container.getWireMockHost,
-          port = container.getWireMockPort,
+          portProvider = () => container.getWireMockPort,
           originalPort = WireMockContainer.WIRE_MOCK_PORT,
         )
     }
   }
 
-  final case class WiremockContainer(container: SingleContainer[GenericContainer[_]],
-                                     host: String,
-                                     port: Int,
-                                     originalPort: Int)
+  class WiremockContainer(val container: SingleContainer[GenericContainer[_]],
+                          val host: String,
+                          val portProvider: WiremockPortProvider,
+                          val originalPort: Int)
+
+  trait WiremockPortProvider {
+    def providePort(): Int
+  }
 
 }

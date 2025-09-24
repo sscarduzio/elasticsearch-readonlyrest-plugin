@@ -29,33 +29,27 @@ import java.io.File
 
 class WindowsPseudoWiremockContainer(val port: Int, mappings: List[String])
   extends SingleContainer[GenericContainer[_]] {
-  override val container: WindowsPseudoGenericContainerWiremock = new WindowsPseudoGenericContainerWiremock(port, mappings)
+  override val container: GenericContainer[_] = new WindowsPseudoGenericContainerWiremock(port, mappings)
 }
 
 object WindowsPseudoWiremockContainer {
-  class WindowsPseudoGenericContainerWiremock(port: Int, mappings: List[String])
-    extends WindowsPseudoContainer[WindowsPseudoGenericContainerWiremock, WireMockServer] {
+  private class WindowsPseudoGenericContainerWiremock(port: Int, mappings: List[String])
+    extends WindowsPseudoContainer[WindowsPseudoGenericContainerWiremock] {
 
     override protected def name: String =
       "WireMockServerPseudoGenericContainer"
 
-    override protected def prepare(): WireMockServer =
+    override protected def prepare(): WindowsPseudoContainer.Service =
       WireMockServerCreator.create(port, mappings)
 
     override protected def awaitReady(): Unit =
       ()
 
-    override protected def destroy(service: WireMockServer): Unit =
-      service.stop()
-
-    override protected def getPort(service: WireMockServer): Int =
-      service.port()
-
   }
 }
 
-object WireMockServerCreator {
-  def create(port: Int, mappings: List[String]): WireMockServer = synchronized {
+private object WireMockServerCreator {
+  def create(port: Int, mappings: List[String]): WindowsPseudoContainer.Service = synchronized {
     val mappingFiles: Seq[File] =
       mappings.map(ContainerUtils.getResourceFile)
 
@@ -69,6 +63,10 @@ object WireMockServerCreator {
 
     val wmServer = new WireMockServer(config)
     wmServer.start()
-    wmServer
+    new WindowsPseudoContainer.Service {
+      override def destroy(): Unit = wmServer.stop()
+
+      override def getPort: Int = wmServer.port()
+    }
   }
 }
