@@ -36,7 +36,7 @@ abstract class WindowsPseudoContainer[T <: GenericContainer[T]] extends GenericC
   override final def doStart(): Unit = synchronized {
     service.get() match {
       case Some(_) =>
-        throw new IllegalStateException(s"Service $name is already started, cannot start again.")
+        () // The testcontainers library behaves in idempotent way when starting containers. We must adhere to that behavior in the Windows pseudo-container, because the start method can be called more than once.
       case None =>
         service.set(Some(prepare()))
         awaitReady()
