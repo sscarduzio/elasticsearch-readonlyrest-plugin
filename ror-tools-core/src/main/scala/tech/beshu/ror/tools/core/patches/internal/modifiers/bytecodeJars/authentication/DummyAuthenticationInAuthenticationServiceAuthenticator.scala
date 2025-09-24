@@ -82,6 +82,15 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }
+        case "consumeToken" =>
+          esVersion match {
+            case v if v >= es7160 =>
+              super.visitMethod(access, name, descriptor, signature, exceptions)
+            case v if v >= es670 =>
+              new CallAuthenticateAsyncInConsumeTokenMethodForEsGreaterOrEqual670(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case _ =>
+              super.visitMethod(access, name, descriptor, signature, exceptions)
+          }
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
@@ -464,7 +473,7 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
         val label6 = new Label()
         underlying.visitJumpInsn(Opcodes.GOTO, label6)
 
-        // try { auth = lookForExistingAuthentication(); }
+        // try { auth = lookForExistingAuthentication() }
         underlying.visitLabel(label0)
         underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
         underlying.visitVarInsn(Opcodes.ALOAD, 0)
@@ -921,6 +930,56 @@ private[patches] class DummyAuthenticationInAuthenticationServiceAuthenticator(e
           0
         )
         underlying.visitMaxs(2, 1)
+        underlying.visitEnd()
+      }
+    }
+
+    private class CallAuthenticateAsyncInConsumeTokenMethodForEsGreaterOrEqual670(underlying: MethodVisitor)
+      extends MethodVisitor(Opcodes.ASM9) {
+
+      override def visitCode(): Unit = {
+        underlying.visitCode()
+
+        val label0 = new Label()
+        underlying.visitLabel(label0)
+
+        // this.authenticateAsync();
+        underlying.visitVarInsn(Opcodes.ALOAD, 0) // load `this`
+        underlying.visitMethodInsn(
+          Opcodes.INVOKESPECIAL,
+          "org/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator",
+          "authenticateAsync",
+          "()V",
+          /* itf = */ false
+        )
+
+        // return;
+        val label1 = new Label()
+        underlying.visitLabel(label1)
+        underlying.visitInsn(Opcodes.RETURN)
+
+        // Locals: this, token (kept for signature parity)
+        val label2 = new Label()
+        underlying.visitLabel(label2)
+        underlying.visitLocalVariable(
+          "this",
+          "Lorg/elasticsearch/xpack/security/authc/AuthenticationService$Authenticator;",
+          null,
+          label0,
+          label2,
+          0
+        )
+        underlying.visitLocalVariable(
+          "token",
+          "Lorg/elasticsearch/xpack/core/security/authc/AuthenticationToken;",
+          null,
+          label0,
+          label2,
+          1
+        )
+
+        // Max stack/locals
+        underlying.visitMaxs(1, 2)
         underlying.visitEnd()
       }
     }
