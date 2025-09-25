@@ -62,7 +62,7 @@ abstract class WindowsPseudoContainer[T <: GenericContainer[T]] extends GenericC
     }
   }
 
-  def getPort: Int = synchronized {
+  def getPort: Int = {
     service.get() match {
       case Some(startedService) => startedService.getPort
       case None => throw new IllegalStateException(s"Service $name is not started, port is not yet defined.")
