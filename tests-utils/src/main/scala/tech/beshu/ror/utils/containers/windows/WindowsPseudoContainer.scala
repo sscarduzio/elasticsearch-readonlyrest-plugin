@@ -20,6 +20,7 @@ import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.windows.WindowsPseudoContainer.Service
 
 import java.util.concurrent.atomic.AtomicReference
+import scala.util.control.NonFatal
 
 abstract class WindowsPseudoContainer[T <: GenericContainer[T]] extends GenericContainer[T]("noop:latest") {
 
@@ -38,8 +39,16 @@ abstract class WindowsPseudoContainer[T <: GenericContainer[T]] extends GenericC
       case Some(_) =>
         () // The testcontainers library behaves in idempotent way when starting containers. We must adhere to that behavior in the Windows pseudo-container, because the start method can be called more than once.
       case None =>
-        service.set(Some(prepare()))
-        awaitReady()
+        val prepared = prepare()
+        try {
+          service.set(Some(prepared))
+          awaitReady()
+        } catch {
+          case NonFatal(e) =>
+            service.set(None)
+            prepared.destroy()
+            throw e
+        }
     }
   }
 
@@ -53,7 +62,7 @@ abstract class WindowsPseudoContainer[T <: GenericContainer[T]] extends GenericC
     }
   }
 
-  def getPort: Int = {
+  def getPort: Int = synchronized {
     service.get() match {
       case Some(startedService) => startedService.getPort
       case None => throw new IllegalStateException(s"Service $name is not started, port is not yet defined.")
