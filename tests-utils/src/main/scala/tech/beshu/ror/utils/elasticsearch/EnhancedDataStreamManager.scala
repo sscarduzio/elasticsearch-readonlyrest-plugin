@@ -17,6 +17,8 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import cats.data.NonEmptyList
+import ujson as originalUjson
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -89,8 +91,8 @@ class EnhancedDataStreamManager(dataStreamManager: DataStreamManager,
        |""".stripMargin
   )
 
-  private def documentJson(message: String): ujson.Value =
-    ujson.Obj(
+  private def documentJson(message: String): originalUjson.Value =
+    originalUjson.Obj(
       "@timestamp" -> format(Instant.now()),
       "message" -> message
     )

@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
@@ -115,7 +116,7 @@ class CurrentUserMetadataSuite
                |  "x-ror-correlation-id": "$correlationId",
                |  "x-ror-kibana_index": "user2_kibana_index",
                |  "x-ror-kibana_access": "ro",
-               |  "x-ror-kibana-hidden-apps": [ "user2_app1", "user2_app2", "/^Analytics\\\\|(?!(Maps)$$).*$$/" ],
+               |  "x-ror-kibana-hidden-apps": [ "user2_app1", "user2_app2", "^Analytics\\\\|(?!Maps$$).*" ],
                |  "x-ror-kibana-allowed-api-paths":[
                |    {
                |      "http_method":"ANY",

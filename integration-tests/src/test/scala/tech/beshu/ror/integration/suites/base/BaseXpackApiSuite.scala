@@ -21,11 +21,12 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
+import ujson.{Null, Num, Str}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, SecurityType}
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import ujson.{Null, Num, Str}
 
 trait BaseXpackApiSuite
   extends AnyWordSpecLike

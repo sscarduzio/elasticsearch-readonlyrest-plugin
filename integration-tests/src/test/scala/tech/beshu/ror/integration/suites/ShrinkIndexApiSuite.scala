@@ -20,6 +20,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers

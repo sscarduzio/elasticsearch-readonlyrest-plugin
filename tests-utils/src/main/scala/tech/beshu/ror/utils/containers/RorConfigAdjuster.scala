@@ -18,6 +18,8 @@ package tech.beshu.ror.utils.containers
 
 import better.files.File
 import tech.beshu.ror.utils.containers.ContainerOps.*
+import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 object RorConfigAdjuster {
 
@@ -50,7 +52,12 @@ object RorConfigAdjuster {
 
   private def resolveReplacementForGivenMode(dependency: StartedDependency): Replacement = {
     Replacement(
-      host = dependency.container.ipAddressFromFirstNetwork.getOrElse(throw new IllegalStateException("Could not extract ip address inside docker network")),
+      host = OsUtils.currentOs match {
+        case CurrentOs.Windows =>
+          "localhost"
+        case CurrentOs.OtherThanWindows =>
+          dependency.container.ipAddressFromFirstNetwork.getOrElse(throw new IllegalStateException("Could not extract ip address inside docker network"))
+      },
       port = dependency.originalPort
     )
   }

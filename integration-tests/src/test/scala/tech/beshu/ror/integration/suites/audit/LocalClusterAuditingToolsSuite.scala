@@ -72,7 +72,11 @@ class LocalClusterAuditingToolsSuite
         forEachAuditManager { adminAuditManager =>
           eventually {
             val auditEntries = adminAuditManager.getEntries.force().jsons
-            auditEntries.size shouldBe 2
+
+            // On Linux we could assert number of entries equal to 2.
+            // On Windows reloading config sometimes takes a little longer,
+            // and there are 3 or more messages (from before reload, so not important)
+            auditEntries.size should be >= 2
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&

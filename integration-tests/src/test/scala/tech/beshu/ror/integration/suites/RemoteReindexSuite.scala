@@ -21,13 +21,15 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, OsUtils}
 
 class RemoteReindexSuite
   extends AnyWordSpec
@@ -45,7 +47,12 @@ class RemoteReindexSuite
     EsClusterSettings.create(
       clusterName = "ROR_SOURCE_ES",
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
-      esVersion = EsVersion.SpecificVersion("es67x"),
+      esVersion = OsUtils.currentOs match {
+        case CurrentOs.Windows =>
+          EsVersion.SpecificVersion("es70x") // Integration tests on Windows cannot be run with ES version below 7.0
+        case CurrentOs.OtherThanWindows =>
+          EsVersion.SpecificVersion("es67x")
+      },
       securityType = SecurityType.RorSecurity(
         ReadonlyRestPlugin.Config.Attributes.default.copy(
           rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName,
@@ -59,7 +66,7 @@ class RemoteReindexSuite
       clusterName = "ROR_DEST_ES",
       containerSpecification = ContainerSpecification(
         environmentVariables = Map.empty,
-        additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "\"*:9200\"")
+        additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "[\"*:9200\", \"*:9215\"]")
       ),
       securityType = securityType
     )
