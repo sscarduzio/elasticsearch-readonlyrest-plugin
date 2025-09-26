@@ -26,7 +26,7 @@ import java.io.{File, InputStream}
 /*
   SnapshotsService is not updated with cluster events for certain type of nodes. ROR needs the up-to-date
   SnapshotsService to handle snapshots. In this bytecode modifier we remove the conditional check
-  which was responsible of disabling cluster events update on SnapshotsService instance.
+  which was responsible for disabling cluster events update on SnapshotsService instance.
  */
 private [patches] class SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion: SemVer)
   extends BytecodeJarModifier {

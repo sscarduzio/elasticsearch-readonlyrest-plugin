@@ -190,6 +190,8 @@ stages:
           matrix:
             IT_es91x:
               ROR_TASK: integration_es91x
+            IT_es90x:
+              ROR_TASK: integration_es90x
       - job:
         condition:
           and(

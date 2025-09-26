@@ -49,6 +49,7 @@ import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, fullIndexName, nes, 
 
 import java.time.*
 import java.util.UUID
+import scala.annotation.nowarn
 
 class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfterAll {
 
@@ -61,8 +62,9 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       "es index sink is used" should {
         "not submit any audit entry" when {
           "request was allowed and verbosity level was ERROR" in {
+            @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
-              settings = auditSettings(new DefaultAuditLogSerializer(testAuditEnvironmentContext)),
+              settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
                 override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService =
                   mockedDataStreamBasedAuditSinkService
@@ -70,7 +72,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
               }
             ).runSyncUnsafe().toOption.flatten.get
-            auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error)).runSyncUnsafe()
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error), testAuditEnvironmentContext).runSyncUnsafe()
           }
           "custom serializer throws exception" in {
             val auditingTool = AuditingTool.create(
@@ -83,7 +85,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               }
             ).runSyncUnsafe().toOption.flatten.get
             an[IllegalArgumentException] should be thrownBy {
-              auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
+              auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info), testAuditEnvironmentContext).runSyncUnsafe()
             }
           }
         }
@@ -93,25 +95,25 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
-
+            @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
-              settings = auditSettings(new DefaultAuditLogSerializer(testAuditEnvironmentContext)),
+              settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
                 override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamAuditSink
 
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
               }
             ).runSyncUnsafe().toOption.flatten.get
-            auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info), testAuditEnvironmentContext).runSyncUnsafe()
           }
           "request was matched by forbidden rule" in {
             val indexAuditSink = mock[IndexBasedAuditSinkService]
             (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
-
+            @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
-              settings = auditSettings(new DefaultAuditLogSerializer(testAuditEnvironmentContext)),
+              settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
                 override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamAuditSink
 
@@ -132,16 +134,16 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               Vector.empty
             )
 
-            auditingTool.audit(responseContext).runSyncUnsafe()
+            auditingTool.audit(responseContext, testAuditEnvironmentContext).runSyncUnsafe()
           }
           "request was forbidden" in {
             val indexAuditSink = mock[IndexBasedAuditSinkService]
             (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
-
+            @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
-              settings = auditSettings(new DefaultAuditLogSerializer(testAuditEnvironmentContext)),
+              settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
                 override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamAuditSink
 
@@ -152,16 +154,16 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = Forbidden(requestContext, Vector.empty)
 
-            auditingTool.audit(responseContext).runSyncUnsafe()
+            auditingTool.audit(responseContext, testAuditEnvironmentContext).runSyncUnsafe()
           }
           "request was finished with error" in {
             val indexAuditSink = mock[IndexBasedAuditSinkService]
             (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
-
+            @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
-              settings = auditSettings(new DefaultAuditLogSerializer(testAuditEnvironmentContext)),
+              settings = auditSettings(new DefaultAuditLogSerializer),
               auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
                 override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamAuditSink
 
@@ -172,17 +174,18 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = Errored(requestContext, new Exception("error"))
 
-            auditingTool.audit(responseContext).runSyncUnsafe()
+            auditingTool.audit(responseContext, testAuditEnvironmentContext).runSyncUnsafe()
           }
         }
       }
       "log sink is used" should {
         "saved audit log to file defined in log4j config" in {
+          @nowarn("cat=deprecation")
           val auditingTool = AuditingTool.create(
             settings = AuditSettings(
               NonEmptyList.of(
                 AuditSink.Enabled(Config.LogBasedSink(
-                  new DefaultAuditLogSerializer(testAuditEnvironmentContext),
+                  new DefaultAuditLogSerializer,
                   RorAuditLoggerName.default
                 ))
               )
@@ -200,7 +203,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
           auditLogFile.overwrite("")
 
-          auditingTool.audit(responseContext).runSyncUnsafe()
+          auditingTool.audit(responseContext, testAuditEnvironmentContext).runSyncUnsafe()
           val logFileContent = auditLogFile.contentAsString
 
           logFileContent should include(requestContextId.value)
