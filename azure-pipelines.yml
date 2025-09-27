@@ -360,8 +360,8 @@ stages:
               ROR_TASK: integration_es818x
             IT_es816x:
               ROR_TASK: integration_es816x
-#             IT_es810x:
-#               ROR_TASK: integration_es810x
+            IT_es810x:
+              ROR_TASK: integration_es810x
             IT_es80x:
               ROR_TASK: integration_es80x
 #######################################################
@@ -468,8 +468,8 @@ stages:
           matrix:
             IT_es717x:
               ROR_TASK: integration_es717x
-#             IT_es710x:
-#               ROR_TASK: integration_es710x
+            IT_es710x:
+              ROR_TASK: integration_es710x
             IT_es70x:
               ROR_TASK: integration_es70x
             IT_es67x:
@@ -522,14 +522,6 @@ stages:
               ES_MODULE: es91x
             WIN_IT_es818x:
               ES_MODULE: es818x
-
-            WIN_IT_es816x:
-              ES_MODULE: es816x
-            WIN_IT_es83x:
-              ES_MODULE: es83x
-            WIN_IT_es80x:
-              ES_MODULE: es80x
-
 #######################################################
 ##### Integration tests on Windows on master/develop
 #######################################################
