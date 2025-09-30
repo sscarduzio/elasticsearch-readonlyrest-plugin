@@ -22,6 +22,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsClusterSettings.{NodeType, positiveInt}
 import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, XPackSecurity}

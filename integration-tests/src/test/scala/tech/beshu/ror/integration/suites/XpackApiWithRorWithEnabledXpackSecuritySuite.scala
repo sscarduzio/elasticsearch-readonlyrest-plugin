@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.SecurityType
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.images.domain.Enabled

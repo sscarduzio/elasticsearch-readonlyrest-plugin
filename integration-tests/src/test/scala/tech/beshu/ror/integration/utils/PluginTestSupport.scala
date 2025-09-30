@@ -47,7 +47,6 @@ trait SingletonPluginTestSupport
     SingletonEsContainerWithRorSecurity.cleanUpContainer()
     SingletonEsContainerWithRorSecurity.updateConfig(resolvedRorConfigFile.contentAsString)
     nodeDataInitializer.foreach(SingletonEsContainerWithRorSecurity.initNode)
-
     super.beforeAll()
   }
 

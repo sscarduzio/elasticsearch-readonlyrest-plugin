@@ -17,6 +17,8 @@
 package tech.beshu.ror.utils.containers.images
 
 import better.files.File
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps.emptyPluginInstallationSteps
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
@@ -67,10 +69,10 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
   private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig(), performPatching)
   private val xpackSecurityPlugin = new XpackSecurityPlugin(esVersion, createXpackSecurityConfig())
 
-  override def updateEsImage(image: DockerImageDescription, esConfig: Elasticsearch.Config): DockerImageDescription = {
+  override def installationSteps(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
     (readonlyRestPlugin :: xpackSecurityPlugin :: Nil)
-      .foldLeft(image) { case (currentImage, plugin) =>
-        plugin.updateEsImage(currentImage, esConfig)
+      .foldLeft(emptyPluginInstallationSteps) { case (pluginInstallationSteps, plugin) =>
+        PluginInstallationSteps(pluginInstallationSteps.steps ++ plugin.installationSteps(esConfig).steps)
       }
   }
 

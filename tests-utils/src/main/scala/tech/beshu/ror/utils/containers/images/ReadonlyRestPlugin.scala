@@ -17,7 +17,9 @@
 package tech.beshu.ror.utils.containers.images
 
 import better.files.*
-import tech.beshu.ror.utils.containers.images.Elasticsearch.{esDir, fromResourceBy}
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps.emptyPluginInstallationSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.fromResourceBy
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
@@ -66,9 +68,9 @@ class ReadonlyRestPlugin(esVersion: String,
                          performPatching: Boolean)
   extends Elasticsearch.Plugin {
 
-  override def updateEsImage(image: DockerImageDescription, esConfig: Elasticsearch.Config): DockerImageDescription = {
-    image
-      .copyFile(os.root / "tmp" / config.rorPlugin.name, config.rorPlugin)
+  override def installationSteps(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
+    emptyPluginInstallationSteps
+      .copyFile(esConfig.tempFilePath / config.rorPlugin.name, config.rorPlugin)
       .copyFile(esConfig.esConfigDir / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
       .copyFile(esConfig.esConfigDir / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
       .copyFile(esConfig.esConfigDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
@@ -76,8 +78,8 @@ class ReadonlyRestPlugin(esVersion: String,
       .copyFile(esConfig.esConfigDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .updateFipsDependencies(esConfig)
       .copyFile(esConfig.esConfigDir / "readonlyrest.yml", config.rorConfig)
-      .installRorPlugin()
-      .when(performPatching, _.patchES())
+      .installRorPlugin(esConfig)
+      .when(performPatching, _.patchES(esConfig))
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
@@ -115,39 +117,45 @@ class ReadonlyRestPlugin(esVersion: String,
     )
   }
 
-  private implicit class InstallRorPlugin(val image: DockerImageDescription) {
-    def installRorPlugin(): DockerImageDescription = {
-      image
-        .run(s"${esDir.toString()}/bin/elasticsearch-plugin install --batch file:///tmp/${config.rorPlugin.name}")
+  private implicit class InstallRorPlugin(val pluginInstallationSteps: PluginInstallationSteps) {
+    def installRorPlugin(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
+      pluginInstallationSteps
+        .run(
+          linuxCommand = s"${esConfig.esDir.toString()}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
+          windowsCommand = s"${esConfig.esDir.toString()}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
+        )
     }
 
-    def patchES(): DockerImageDescription = {
-      image
+    def patchES(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
+      pluginInstallationSteps
         .user("root")
         .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
-          command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes"
+          linuxCommand = s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+          windowsCommand = s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
         )
         .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
-          command = s"$$JAVA_HOME/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes"
+          linuxCommand = s"$$JAVA_HOME/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+          windowsCommand =  s"""%JAVA_HOME%\\bin\\java -jar "${esConfig.esDir}\\plugins\\readonlyrest\\ror-tools.jar" patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes""",
         )
         .user("elasticsearch")
     }
   }
 
-  private implicit class UpdateFipsDependencies(val image: DockerImageDescription) {
-    def updateFipsDependencies(esConfig: Elasticsearch.Config): DockerImageDescription = {
+  private implicit class UpdateFipsDependencies(val pluginInstallationSteps: PluginInstallationSteps) {
+    def updateFipsDependencies(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
       if (isFibsEnabled) {
-        image
+        pluginInstallationSteps
           .copyFile(esConfig.esConfigDir / "additional-permissions.policy", fromResourceBy(name = "additional-permissions.policy"))
           .copyFile(esConfig.esConfigDir / "ror-keystore.bcfks", fromResourceBy(name = "ror-keystore.bcfks"))
           .copyFile(esConfig.esConfigDir / "ror-truststore.bcfks", fromResourceBy(name = "ror-truststore.bcfks"))
           .copyFile(esConfig.esConfigDir / "elastic-certificates.bcfks", fromResourceBy(name = "elastic-certificates.bcfks"))
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 10, 0),
-            s"cat ${esConfig.esConfigDir.toString()}/additional-permissions.policy >> ${esDir.toString()}/jdk/conf/security/java.policy"
+            linuxCommand = s"cat ${esConfig.esConfigDir.toString()}/additional-permissions.policy >> ${esConfig.esDir.toString()}/jdk/conf/security/java.policy",
+            windowsCommand = s"type \"${esConfig.esConfigDir.toString()}\\additional-permissions.policy\" >> \"${esConfig.esDir.toString()}\\jdk\\conf\\security\\java.policy\"",
           )
       }
       else {
-        image
+        pluginInstallationSteps
       }
     }
 

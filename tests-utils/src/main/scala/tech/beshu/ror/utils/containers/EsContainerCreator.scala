@@ -19,13 +19,15 @@ package tech.beshu.ror.utils.containers
 import better.files.FileExtensions
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
-import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.GenericContainer as JavaGenericContainer
 import org.testcontainers.containers.output.OutputFrame
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
 import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
+import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import java.io.File
 import java.util.function.Consumer
@@ -38,13 +40,19 @@ object EsContainerCreator extends EsContainerCreator {
                                   containerSpecification: ContainerSpecification,
                                   esVersion: EsVersion)
 }
+
 trait EsContainerCreator {
+
+  val defaultEsInstallationType: EsInstallationType = OsUtils.currentOs match {
+    case CurrentOs.Windows => EsInstallationType.NativeWindowsProcess
+    case CurrentOs.OtherThanWindows => EsInstallationType.EsDockerImage
+  }
 
   def create(nodeSettings: EsNodeSettings,
              allNodeNames: NonEmptyList[String],
              nodeDataInitializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
-             esInstallationType: EsInstallationType = EsInstallationType.EsDockerImage,
+             esInstallationType: EsInstallationType = defaultEsInstallationType,
              additionalLogConsumer: Option[Consumer[OutputFrame]] = None): EsContainer = {
     val project = nodeSettings.esVersion match {
       case EsVersion.DeclaredInProject => RorPluginGradleProject.fromSystemProperty
@@ -185,5 +193,6 @@ trait EsContainerCreator {
   }
 }
 
-final case class StartedDependency(name: String, container: SingleContainer[GenericContainer[_]], originalPort: Int)
+final case class StartedDependency(name: String, container: SingleContainer[JavaGenericContainer[_]], originalPort: Int)
+
 final case class StartedClusterDependencies(values: List[StartedDependency])
