@@ -204,6 +204,7 @@ stages:
               ROR_TASK: integration_es91x
             IT_es90x:
               ROR_TASK: integration_es90x
+
 #######################################################
 ##### Integration tests for ES 8.x on master/develop
 #######################################################
