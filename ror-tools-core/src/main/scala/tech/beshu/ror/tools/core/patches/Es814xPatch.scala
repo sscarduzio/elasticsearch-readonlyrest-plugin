@@ -16,12 +16,17 @@
  */
 package tech.beshu.ror.tools.core.patches
 
+import cats.data.NonEmptyList
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddCreateClassLoaderPermission
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyBootstrapPolicyUtilClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
+import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
 
 import scala.language.postfixOps
 
@@ -29,11 +34,15 @@ private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVer
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       OpenModule,
-      ModifyBootstrapPolicyUtilClass,
+      new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
+        createClassLoaderRuntimePermission, getPropertySecurityPermission
+      )),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
-      AddCreateClassLoaderPermission
+      AddAdditionalPermissions(NonEmptyList.of(
+        createClassLoaderRuntimePermission, getPropertySecurityPermission)
+      ),
     ),
     new XPackCoreJarPatchCreator(
       OpenModule,
@@ -41,9 +50,9 @@ private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      DeactivateSecurityActionFilter,
-      DeactivateAuthenticationServiceInHttpTransport,
-      DummyAuthorizeInAuthorizationService
+      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
+      new DummyAuthenticationInAuthenticationChain(esVersion),
+      new DummyAuthorizeInAuthorizationService(esVersion),
     ),
     new XPackIlmJarPatchCreator(
       OpenModule

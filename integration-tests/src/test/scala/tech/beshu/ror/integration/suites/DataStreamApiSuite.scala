@@ -22,6 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import tech.beshu.ror.integration.suites.DataStreamApiSuite.{DataStreamNameGenerator, IndexTemplateNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.IndexManager.*
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}

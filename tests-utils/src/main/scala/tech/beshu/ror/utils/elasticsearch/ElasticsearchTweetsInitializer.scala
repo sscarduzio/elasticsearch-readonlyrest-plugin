@@ -16,9 +16,10 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import tech.beshu.ror.utils.TestUjson.ujson
+
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneOffset}
-
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.httpclient.RestClient
 

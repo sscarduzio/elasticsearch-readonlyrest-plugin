@@ -64,7 +64,7 @@ class RegularRequestAccessControlTests
       |
     """.stripMargin
 
-  "An ACL" should {
+  "An ACL result" should {
     "be allowed" when {
       "regular request is sent in behalf on admin user" in {
         val request = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:container"))

@@ -1,5 +1,10 @@
 version: 1
 
+dn: dc=example,dc=com
+objectClass: top
+objectClass: domain
+dc: example
+
 dn: ou=People,dc=example,dc=com
 objectClass: top
 objectClass: organizationalUnit
@@ -13,7 +18,7 @@ objectClass: inetOrgPerson
 cn: user5
 sn: user5
 uid: user5
-userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+userPassword: user2
 
 dn: ou=Groups,dc=example,dc=com
 objectClass: top
@@ -26,7 +31,7 @@ objectClass: groupOfUniqueNames
 cn: ldap1_group1
 uniqueMember: cn=user5,ou=People,dc=example,dc=com
 
-dn: cn=ldap1_group1,ou=Groups,dc=example,dc=com
+dn: cn=ldap1_group2,ou=Groups,dc=example,dc=com
 objectClass: top
 objectClass: groupOfUniqueNames
 cn: ldap1_group2

@@ -21,6 +21,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -162,10 +163,12 @@ class ReadonlyRest(coreFactory: CoreFactory,
       }
   }
 
-  private def createAuditingTool(auditingSettings: Option[AuditingTool.Settings])
+  private def createAuditingTool(auditingSettings: Option[AuditSettings])
                                 (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
     auditingSettings
-      .map(settings => AuditingTool.create(settings, auditSinkServiceCreator)(using systemContext.clock, loggingContext))
+      .map { settings =>
+        AuditingTool.create(settings, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
+      }
       .sequence
       .map {
         _.sequence
@@ -242,7 +245,7 @@ object ReadonlyRest {
              env: EsEnv)
             (implicit scheduler: Scheduler,
              systemContext: SystemContext): ReadonlyRest = {
-    val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env.esVersion)
+    val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env)
     create(coreFactory, indexContentService, auditSinkServiceCreator)
   }
 

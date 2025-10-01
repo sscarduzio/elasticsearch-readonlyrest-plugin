@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration.suites.fields.querydsl
 
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import tech.beshu.ror.utils.TestUjson.ujson
 
 class FieldRuleSearchQueryDSLSuite
   extends FieldRuleQueryDSLSuite

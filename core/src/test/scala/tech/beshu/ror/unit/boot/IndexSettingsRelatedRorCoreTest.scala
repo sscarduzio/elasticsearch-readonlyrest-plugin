@@ -22,7 +22,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.apache.commons.lang.StringEscapeUtils.escapeJava
+import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers.*
@@ -281,7 +281,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
   private def createEsConfigBasedRorSettings(resourceEsConfigDir: String) = {
     implicit val systemContext: SystemContext = SystemContext.default
     val esConfig = File(getResourcePath(resourceEsConfigDir))
-    val esEnv = EsEnv(esConfig, esConfig, defaultEsVersionForTests)
+    val esEnv = EsEnv(esConfig, esConfig, defaultEsVersionForTests, testEsNodeSettings)
     EsConfigBasedRorSettings.from(esEnv).runSyncUnsafe() match {
       case Right(settings) => settings.copy(settingsFile = RorSettingsFile(esConfig / "readonlyrest.yml"))
       case Left(error) => throw new IllegalStateException(s"Cannot create EsConfigBasedRorSettings: ${error.show}")

@@ -17,6 +17,7 @@ package tech.beshu.ror.utils.ldap;
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
+import tech.beshu.ror.utils.containers.OpenLdapContainer;
 import tech.beshu.ror.utils.containers.LdapContainer;
 
 /**
@@ -26,8 +27,8 @@ public class LDAPServer {
   public static void main(String[] args) throws InterruptedException {
     String ldifFile = "ldap.ldif";
     System.out.println(LDAPServer.class.getSimpleName() + " using config file: " + ldifFile);
-    LdapContainer lc = LdapContainer.create("ldap", ldifFile);
-    lc.start();
+    LdapContainer lc = OpenLdapContainer.create("ldap", ldifFile);
+    lc.doStart();
     System.out.println(lc.ldapHost() + " " + lc.ldapPort());
     while(true){
       Thread.sleep(Long.MAX_VALUE);

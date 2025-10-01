@@ -17,11 +17,12 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import cats.implicits.*
-import org.apache.commons.lang.StringEscapeUtils.escapeJava
+import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 

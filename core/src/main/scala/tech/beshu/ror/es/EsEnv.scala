@@ -19,7 +19,10 @@ package tech.beshu.ror.es
 import better.files._
 import scala.util.Try
 
-final case class EsEnv(configDir: File, modulesDir: File, esVersion: EsVersion) {
+final case class EsEnv(configDir: File,
+                       modulesDir: File,
+                       esVersion: EsVersion,
+                       esNodeSettings: EsNodeSettings) {
 
   def isOssDistribution: Boolean = {
     Try {

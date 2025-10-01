@@ -34,7 +34,8 @@ parameters:
     default: 'publish_docker_image_pre_builds'
     values:
       - 'publish_docker_image_pre_builds'
-      - 'run_all_tests'
+      - 'run_all_tests_on_linux'
+      - 'run_all_tests_on_windows'
   - name: preBuildVersionsForPublishingToDockerHub
     type: string
     displayName: 'Space or comma-separated list of ES version numbers (e.g., "7.17.20 8.15.0")'
@@ -45,12 +46,12 @@ pool:
 
 stages:
 
-  - stage: CVE
-    displayName: 'CVE check'
+  - stage: OPTIONAL_CHECKS
+    displayName: 'Optional checks'
     dependsOn: [ ]
     condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
     jobs:
-      - job:
+      - job: CVE_CHECK
         steps:
           - checkout: self
             fetchDepth: 1
@@ -64,10 +65,16 @@ stages:
               restoreKeys: dependency-check-v1-
               path: $(dependencyCheckDataDir)
           - script: |
-              echo "[CVE] executing ROR_TASK=$ROR_TASK"
+              echo "[OPTIONAL_CHECKS] executing ROR_TASK=$ROR_TASK"
 
               export DEPENDENCY_CHECK_DATA_DIR=$var_dependency_check_data_dir
-              export NVD_API_KEY=$var_nvd_api_key
+
+              if [ "$var_is_fork" = "False" ]; then
+                # Export API key only when PR is from the same repo; forks do not get secrets.
+                # Using the wrong API key breaks the CVE check.
+
+                export NVD_API_KEY=$var_nvd_api_key
+              fi
 
               ci/run-pipeline.sh
             continueOnError: true
@@ -75,6 +82,7 @@ stages:
               ROR_TASK: cve_check
               var_nvd_api_key: $(NVD_API_KEY)
               var_dependency_check_data_dir: $(dependencyCheckDataDir)
+              var_is_fork: $(System.PullRequest.IsFork)
           - task: Cache@2
             displayName: 'Save updated CVE DB in cache'
             inputs:
@@ -82,6 +90,30 @@ stages:
               key: '$(dependencyCheckCacheKey)'
               path: $(dependencyCheckDataDir)
             condition: succeeded()
+
+  - stage: REQUIRED_CHECKS
+    displayName: 'Required checks'
+    dependsOn: [ ]
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
+    jobs:
+      - job: 
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              echo "[REQUIRED_CHECKS] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+        strategy:
+          maxParallel: 99
+          matrix:
+            LICENSE_CHECK:
+              ROR_TASK: license_check
+            COMPILE_CODEBASE_CHECK:
+              ROR_TASK: compile_codebase_check
+            AUDIT_BUILD_CHECK:
+              ROR_TASK: audit_build_check
 
   - stage: TEST
     displayName: 'Run all tests'
@@ -91,12 +123,21 @@ stages:
         succeeded(),
         or(
           ne(variables['Build.Reason'], 'Manual'),
-          and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
+          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
         )
       )
     jobs:
-      - job:
-        timeoutInMinutes: 20
+####################################
+##### Unit tests
+####################################
+      - job: UNIT
+        condition:
+          and(
+            succeeded(),
+            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows')))
+          )
+        displayName: 'Unit tests'
+        timeoutInMinutes: 30
         steps:
           - checkout: self
             fetchDepth: 1
@@ -112,19 +153,16 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              ROR_TASK: core_tests
           - task: PublishTestResults@2
             condition: failed()
             inputs:
               testRunTitle: "$(ROR_TASK) results"
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            LICENSE:
-              ROR_TASK: license
-            UNIT:
-              ROR_TASK: core_tests
+#######################################################
+##### Integration tests for ES 9.x on master/develop
+#######################################################
       - job:
         condition:
           and(
@@ -133,7 +171,7 @@ stages:
               eq(variables.isEpic, true),
               eq(variables.isDevelop, true),
               eq(variables.isMaster, true),
-              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
+              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
         container: openjdk:22-slim
@@ -162,8 +200,14 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es91x:
+              ROR_TASK: integration_es91x
             IT_es90x:
               ROR_TASK: integration_es90x
+
+#######################################################
+##### Integration tests for ES 8.x on master/develop
+#######################################################
       - job:
         condition:
           and(
@@ -172,7 +216,7 @@ stages:
               eq(variables.isEpic, true),
               eq(variables.isDevelop, true),
               eq(variables.isMaster, true),
-              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
+              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
         container: openjdk:22-slim
@@ -235,6 +279,9 @@ stages:
               ROR_TASK: integration_es81x
             IT_es80x:
               ROR_TASK: integration_es80x
+#######################################################
+##### Integration tests for ES 9.x on PRs
+#######################################################
       - job:
         condition:
           and(
@@ -242,7 +289,7 @@ stages:
             ne(variables.isEpic, true),
             ne(variables.isDevelop, true),
             ne(variables.isMaster, true),
-            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests')))
+            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
         container: openjdk:22-slim
         timeoutInMinutes: 120
@@ -270,8 +317,11 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es90x:
-              ROR_TASK: integration_es90x
+            IT_es91x:
+              ROR_TASK: integration_es91x
+#######################################################
+##### Integration tests for ES 8.x on PRs
+#######################################################
       - job:
         condition:
           and(
@@ -279,7 +329,7 @@ stages:
             ne(variables.isEpic, true),
             ne(variables.isDevelop, true),
             ne(variables.isMaster, true),
-            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests')))
+            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
         container: openjdk:22-slim
         timeoutInMinutes: 120
@@ -309,10 +359,15 @@ stages:
           matrix:
             IT_es818x:
               ROR_TASK: integration_es818x
+            IT_es816x:
+              ROR_TASK: integration_es816x
             IT_es810x:
               ROR_TASK: integration_es810x
             IT_es80x:
               ROR_TASK: integration_es80x
+#######################################################
+##### Integration tests for ES <= 7.x on master/develop
+#######################################################
       - job:
         condition:
           and(
@@ -321,7 +376,7 @@ stages:
               eq(variables.isEpic, true),
               eq(variables.isDevelop, true),
               eq(variables.isMaster, true),
-              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests'))
+              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
         timeoutInMinutes: 120
@@ -375,6 +430,9 @@ stages:
               ROR_TASK: integration_es70x
             IT_es67x:
               ROR_TASK: integration_es67x
+#######################################################
+##### Integration tests for ES <= 7.x on PRs
+#######################################################
       - job:
         condition:
           and(
@@ -382,7 +440,7 @@ stages:
             ne(variables.isEpic, true),
             ne(variables.isDevelop, true),
             ne(variables.isMaster, true),
-            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests')))
+            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
         timeoutInMinutes: 120
         steps:
@@ -417,21 +475,270 @@ stages:
               ROR_TASK: integration_es70x
             IT_es67x:
               ROR_TASK: integration_es67x
-
+#######################################################
+##### Integration tests on Windows on PRs
+#######################################################
+      - job:
+        condition:
+          and(
+            succeeded(),
+            ne(variables.isEpic, true),
+            ne(variables.isDevelop, true),
+            ne(variables.isMaster, true),
+            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
+          )
+        timeoutInMinutes: 150
+        pool:
+          vmImage: 'windows-2025'
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - task: JavaToolInstaller@0
+            displayName: Switch to Java 21
+            inputs:
+              versionSpec: '21'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+          - powershell: |
+                    Write-Host ">>> $env:ES_MODULE"
+                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
+                    if ($LASTEXITCODE -ne 0) {
+                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
+                        Get-Content $_.FullName
+                      }
+                      exit 1
+                    }
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(Windows ES_MODULE) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            WIN_IT_es91x:
+              ES_MODULE: es91x
+            WIN_IT_es818x:
+              ES_MODULE: es818x
+#######################################################
+##### Integration tests on Windows on master/develop
+#######################################################
+      - job:
+        condition:
+          and(
+            succeeded(),
+            or(
+              eq(variables.isEpic, true),
+              eq(variables.isDevelop, true),
+              eq(variables.isMaster, true)
+            ),
+            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
+          )
+        timeoutInMinutes: 150
+        pool:
+          vmImage: 'windows-2025'
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - task: JavaToolInstaller@0
+            displayName: Switch to Java 21
+            inputs:
+              versionSpec: '21'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+          - powershell: |
+                    Write-Host ">>> $env:ES_MODULE"
+                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
+                    if ($LASTEXITCODE -ne 0) {
+                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
+                        Get-Content $_.FullName
+                      }
+                      exit 1
+                    }
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(Windows ES_MODULE) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            WIN_IT_es91x:
+              ES_MODULE: es91x
+            WIN_IT_es90x:
+              ES_MODULE: es90x
+            WIN_IT_es818x:
+              ES_MODULE: es818x
+            WIN_IT_es80x:
+              ES_MODULE: es80x
+            WIN_IT_es717x:
+              ES_MODULE: es717x
+            WIN_IT_es70x:
+              ES_MODULE: es70x
+#######################################################
+##### Integration tests on Windows for manual job 'run_all_tests_on_windows'
+#######################################################
+      - job:
+        condition:
+          and(
+            succeeded(),
+            and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows'))
+          )
+        timeoutInMinutes: 150
+        pool:
+          vmImage: 'windows-2025'
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - task: JavaToolInstaller@0
+            displayName: Switch to Java 21
+            inputs:
+              versionSpec: '21'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+          - powershell: |
+                    Write-Host ">>> $env:ES_MODULE"
+                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
+                    if ($LASTEXITCODE -ne 0) {
+                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
+                        Get-Content $_.FullName
+                      }
+                      exit 1
+                    }
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(Windows ES_MODULE) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            WIN_IT_es91x:
+              ES_MODULE: es91x
+            WIN_IT_es90x:
+              ES_MODULE: es90x
+            WIN_IT_es818x:
+              ES_MODULE: es818x
+            WIN_IT_es816x:
+              ES_MODULE: es816x
+            WIN_IT_es815x:
+              ES_MODULE: es815x
+            WIN_IT_es814x:
+              ES_MODULE: es814x
+            WIN_IT_es813x:
+              ES_MODULE: es813x
+            WIN_IT_es812x:
+              ES_MODULE: es812x
+            WIN_IT_es811x:
+              ES_MODULE: es811x
+            WIN_IT_es810x:
+              ES_MODULE: es810x
+            WIN_IT_es89x:
+              ES_MODULE: es89x
+            WIN_IT_es88x:
+              ES_MODULE: es88x
+            WIN_IT_es87x:
+              ES_MODULE: es87x
+            WIN_IT_es85x:
+              ES_MODULE: es85x
+            WIN_IT_es84x:
+              ES_MODULE: es84x
+            WIN_IT_es83x:
+              ES_MODULE: es83x
+            WIN_IT_es82x:
+              ES_MODULE: es82x
+            WIN_IT_es81x:
+              ES_MODULE: es81x
+            WIN_IT_es80x:
+              ES_MODULE: es80x
+            WIN_IT_es717x:
+              ES_MODULE: es717x
+            WIN_IT_es716x:
+              ES_MODULE: es716x
+            WIN_IT_es714x:
+              ES_MODULE: es714x
+            WIN_IT_es711x:
+              ES_MODULE: es711x
+            WIN_IT_es710x:
+              ES_MODULE: es710x
+            WIN_IT_es79x:
+              ES_MODULE: es79x
+            WIN_IT_es78x:
+              ES_MODULE: es78x
+            WIN_IT_es77x:
+              ES_MODULE: es77x
+            WIN_IT_es74x:
+              ES_MODULE: es74x
+            WIN_IT_es73x:
+              ES_MODULE: es73x
+            WIN_IT_es72x:
+              ES_MODULE: es72x
+            WIN_IT_es70x:
+              ES_MODULE: es70x
+####################################
+##### Unit tests on Windows
+####################################
+      - job:
+        displayName: 'Unit tests on Windows'
+        condition:
+          and(
+            succeeded(),
+            and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows'))
+          )
+        timeoutInMinutes: 150
+        pool:
+          vmImage: 'windows-2025'
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - task: JavaToolInstaller@0
+            displayName: Switch to Java 21
+            inputs:
+              versionSpec: '21'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+          - powershell: |
+                    Write-Host ">>> $env:ES_MODULE"
+                    .\gradlew --no-daemon core:test
+                    if ($LASTEXITCODE -ne 0) {
+                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
+                        Get-Content $_.FullName
+                      }
+                      exit 1
+                    }
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(Windows core) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'
     dependsOn:
+      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(), 
+        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
       - job:
-        timeoutInMinutes: 120
+        timeoutInMinutes: 180
         steps:
           - checkout: self
             fetchDepth: 1
@@ -465,10 +772,12 @@ stages:
   - stage: DETERMINE_CI_TYPE
     displayName: 'Determine if this is release run'
     dependsOn:
+      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(), 
+        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         ne(variables['Build.Reason'], 'Manual')
@@ -488,10 +797,12 @@ stages:
     displayName: 'Upload to S3 ROR plugin pre-builds'
     dependsOn:
       - DETERMINE_CI_TYPE
+      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(),
+        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
@@ -536,10 +847,12 @@ stages:
     displayName: 'Release ROR plugins'
     dependsOn:
       - DETERMINE_CI_TYPE
+      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(),
+        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
@@ -592,38 +905,16 @@ stages:
             RELEASE_ES_6xx:
               ROR_TASK: release_es6xx
 
-  - stage: BUILD_MVN_ARTIFACTS
-    displayName: 'Build Maven artifacts'
-    dependsOn:
-      - TEST
-    condition: |
-      and(
-        succeeded(),
-        succeeded('TEST'),
-        ne(variables.isMaster, true),
-        ne(variables['Build.Reason'], 'Manual')
-      )
-    jobs:
-      - job:
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              echo "[BUILD_MVN_ARTIFACTS] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              ROR_TASK: audit_compile
-
   - stage: PUBLISH_MVN_ARTIFACTS
     displayName: 'Publish Maven artifacts'
     dependsOn:
       - DETERMINE_CI_TYPE
+      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(),
+        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),

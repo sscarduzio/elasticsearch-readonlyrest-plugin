@@ -25,7 +25,7 @@ import io.circe.Json
 import io.lemonlabs.uri.Uri
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.apache.commons.lang.StringEscapeUtils.escapeJava
+import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers.*
@@ -37,7 +37,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
@@ -69,6 +69,7 @@ import java.time.Clock
 import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
+import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 class ReadonlyRestStartingTests
   extends AnyWordSpec
@@ -1379,10 +1380,12 @@ class ReadonlyRestStartingTests
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader),
-          Some(AuditingTool.Settings(
+          Some(AuditingTool.AuditSettings(
             NonEmptyList.of(
               AuditSink.Enabled(dataStreamSinkConfig1),
-              AuditSink.Enabled(dataStreamSinkConfig2))
+              AuditSink.Enabled(dataStreamSinkConfig2)
+            ),
+            testEsNodeSettings
           ))
         )
 
@@ -1411,7 +1414,7 @@ class ReadonlyRestStartingTests
             val expectedMessage =
               s"""Errors:
                  |Unable to configure audit output using a data stream in local cluster. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if the index lifecycle policy with ID 'readonlyrest_audit-lifecycle-policy' has been created]
-                 |Unable to configure audit output using a data stream in remote cluster 0.0.0.0. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created]""".stripMargin
+                 |Unable to configure audit output using a data stream in remote cluster 0.0.0.0. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created]""".stripMarginAndReplaceWindowsLineBreak
             message should be(expectedMessage)
         }
       }
@@ -1457,7 +1460,7 @@ class ReadonlyRestStartingTests
   private def createEsConfigBasedRorSettings(resourceEsConfigDir: String)
                                             (implicit systemContext: SystemContext): Either[LoadingError, EsConfigBasedRorSettings] = {
     val esConfig = File(getResourcePath(resourceEsConfigDir))
-    val esEnv = EsEnv(esConfig, esConfig, defaultEsVersionForTests)
+    val esEnv = EsEnv(esConfig, esConfig, defaultEsVersionForTests, testEsNodeSettings)
     EsConfigBasedRorSettings
       .from(esEnv)
       .runSyncUnsafe()
@@ -1499,7 +1502,7 @@ class ReadonlyRestStartingTests
                               loadedMainSettingsResourceFileName: String,
                               accessControlMock: AccessControlList = mockEnabledAccessControl,
                               dependencies: RorDependencies = RorDependencies.noOp,
-                              auditingSettings: Option[AuditingTool.Settings] = None): CoreFactory = {
+                              auditingSettings: Option[AuditingTool.AuditSettings] = None): CoreFactory = {
     mockCoreFactory(
       mockedCoreFactory,
       rorSettingsFromResource(loadedMainSettingsResourceFileName),
@@ -1513,7 +1516,7 @@ class ReadonlyRestStartingTests
                               loadedMainSettings: RawRorSettings,
                               accessControlMock: AccessControlList,
                               dependencies: RorDependencies,
-                              auditingSettings: Option[AuditingTool.Settings]): CoreFactory = {
+                              auditingSettings: Option[AuditingTool.AuditSettings]): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (settings: RawRorSettings, _, _, _, _) => settings == loadedMainSettings

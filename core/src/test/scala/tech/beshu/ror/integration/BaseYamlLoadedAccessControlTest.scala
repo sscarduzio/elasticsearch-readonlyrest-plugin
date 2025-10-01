@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration
 
+import better.files.File
 import monix.execution.Scheduler.Implicits.global
 import squants.information.Megabytes
 import tech.beshu.ror.SystemContext
@@ -24,12 +25,13 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorSettingsBasedCoreFactory}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, defaultEsVersionForTests, unsafeNes}
+import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, defaultEsVersionForTests, testEsNodeSettings, unsafeNes}
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
@@ -43,7 +45,10 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
     envVarsProvider = envVarsProvider,
     propertiesProvider = propertiesProvider
   )
-  private val factory = new RawRorSettingsBasedCoreFactory(defaultEsVersionForTests)
+  private val factory = {
+    val esEnv = EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
+    new RawRorSettingsBasedCoreFactory(esEnv)
+  }
   protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider
   protected val httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory
   protected val mockProvider: MocksProvider = NoOpMocksProvider

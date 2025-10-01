@@ -26,7 +26,7 @@ import java.io.{File, InputStream}
 /*
   SnapshotsService is not updated with cluster events for certain type of nodes. ROR needs the up-to-date
   SnapshotsService to handle snapshots. In this bytecode modifier we remove the conditional check
-  which was responsible of disabling cluster events update on SnapshotsService instance.
+  which was responsible for disabling cluster events update on SnapshotsService instance.
  */
 private [patches] class SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion: SemVer)
   extends BytecodeJarModifier {
@@ -73,11 +73,11 @@ private [patches] class SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNo
 
     override def visitInsn(opcode: Int): Unit = {
       if (opcode == Opcodes.RETURN) {
-        mv.visitVarInsn(Opcodes.ALOAD, 2)
-        mv.visitVarInsn(Opcodes.ALOAD, 0)
-        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/cluster/service/ClusterService", "addLowPriorityApplier", "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V", false);
+        underlying.visitVarInsn(Opcodes.ALOAD, 2)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/cluster/service/ClusterService", "addLowPriorityApplier", "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V", false);
       }
-      mv.visitInsn(opcode)
+      underlying.visitInsn(opcode)
     }
   }
 }

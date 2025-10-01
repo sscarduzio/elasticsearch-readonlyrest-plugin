@@ -26,9 +26,13 @@ import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
+import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.windows.{WindowsEsDirectoryManager, WindowsEsSetup}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
+import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import java.io.{File, Console as _}
 import scala.concurrent.duration.*
@@ -51,6 +55,11 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
     } finally {
       Task.delay(esContainer.stop()).runSyncUnsafe()
     }
+  }
+
+  def windowsBasedEsPath: Path = {
+    WindowsEsSetup.prepareEs(esContainer.elasticsearch)
+    WindowsEsDirectoryManager.esPath(esContainer.esConfig.clusterName, esContainer.esConfig.nodeName)
   }
 
   private def createEsContainer: EsContainer = {
@@ -96,7 +105,8 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
         nodeName = nodeSettings.nodeName,
         masterNodes = allNodeNames,
         additionalElasticsearchYamlEntries = nodeSettings.containerSpecification.additionalElasticsearchYamlEntries,
-        envs = nodeSettings.containerSpecification.environmentVariables
+        envs = nodeSettings.containerSpecification.environmentVariables,
+        esInstallationType = EsContainerCreator.defaultEsInstallationType,
       ),
       securityConfig = ReadonlyRestWithEnabledXpackSecurityPlugin.Config(
         rorPlugin = pluginFile.toScala,
@@ -105,8 +115,14 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
       ),
       initializer = nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
-      customEntrypoint = Some(Path("""/bin/sh -c "while true; do sleep 30; done"""")),
+      customEntrypoint = OsUtils.currentOs match {
+        case CurrentOs.Windows =>
+          None // On Windows we prepare and configure ES, but we do not start it
+        case CurrentOs.OtherThanWindows =>
+          Some(Path("""/bin/sh -c "while true; do sleep 30; done"""")) // On Linux we need to start the container, but not ES
+      },
       awaitingReadyStrategy = AwaitingReadyStrategy.ImmediatelyTreatAsReady,
+      additionalLogConsumer = None,
     )
   }
 }

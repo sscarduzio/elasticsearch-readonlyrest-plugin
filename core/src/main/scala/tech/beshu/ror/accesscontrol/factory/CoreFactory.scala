@@ -50,16 +50,16 @@ import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, G
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.settings.ror.RawRorSettings
-import tech.beshu.ror.es.EsVersion
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class Core(accessControl: AccessControlList,
                       dependencies: RorDependencies,
-                      auditingSettings: Option[AuditingTool.Settings])
+                      auditingSettings: Option[AuditingTool.AuditSettings])
 
 trait CoreFactory {
   def createCoreFrom(rorSettings: RawRorSettings,
@@ -69,7 +69,7 @@ trait CoreFactory {
                      mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
 }
 
-class RawRorSettingsBasedCoreFactory(esVersion: EsVersion)
+class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                                     (implicit systemContext: SystemContext)
   extends CoreFactory with Logging {
 
@@ -318,7 +318,7 @@ class RawRorSettingsBasedCoreFactory(esVersion: EsVersion)
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
-        auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esVersion))
+        auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
@@ -477,7 +477,10 @@ object RawRorSettingsBasedCoreFactory {
       final case class Message(value: String) extends Reason
       final case class MalformedValue private(value: String) extends Reason
       object MalformedValue {
-        def fromString(str: String): MalformedValue = MalformedValue(str)
+        def fromString(raw: String): MalformedValue = {
+          val normalized = raw.replaceAll("\r\n?", "\n")
+          MalformedValue(normalized)
+        }
 
         def apply(json: Json): MalformedValue = from(json)
 

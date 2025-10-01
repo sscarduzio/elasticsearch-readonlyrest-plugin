@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import monix.eval.Task
 import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.index.query.QueryBuilder
 import org.elasticsearch.threadpool.ThreadPool
@@ -29,13 +28,11 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnB
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, UpdateResponse}
+import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.EsqlRequestHelper
 import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification}
-import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -43,26 +40,20 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
                                           esContext: EsContext,
                                           aclContext: AccessControlStaticContext,
                                           clusterService: RorClusterService,
-                                          override val threadPool: ThreadPool)
+                                          override val threadPool: ThreadPool,
+                                          esqlRequestHelper: EsqlRequestHelper)
   extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  private lazy val requestClassification = EsqlRequestHelper.classifyEsqlRequest(actionRequest) match {
-    case result@Right(_) => result
-    case result@Left(ClassificationError.ParsingException) => result
-    case Left(ClassificationError.UnexpectedException(ex)) =>
-      throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract ESQL indices from ${actionRequest.getClass.show}", ex)
-  }
+  private lazy val requestClassification = esqlRequestHelper.classifyEsqlRequest(actionRequest)
 
   override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
     requestClassification match {
       case Right(r@EsqlRequestClassification.IndicesRelated(_)) =>
         r.indices.flatMap(RequestedIndex.fromString)
-      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(ClassificationError.ParsingException) =>
+      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(ClassificationError.ParsingException(_)) =>
         Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
-      case Left(ClassificationError.UnexpectedException(ex)) =>
-        throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract ESQL indices from ${actionRequest.getClass.show}", ex)
     }
   }
 
@@ -70,48 +61,27 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
                                 filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    val result: Either[EsqlRequestHelper.ModificationError, UpdateResponse] = for {
-      _ <- modifyRequestIndices(request, filteredRequestedIndices)
-      _ <- Right(applyFieldLevelSecurityTo(request, fieldLevelSecurity))
-      _ <- Right(applyFilterTo(request, filter))
-    } yield {
-      UpdateResponse { response =>
-        Task.delay {
-          applyFieldLevelSecurityTo(response, fieldLevelSecurity) match {
-            case Right(modifiedResponse) =>
-              modifiedResponse
-            case Left(EsqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
-              throw new SecurityPermissionException("Cannot apply field level security to the ESQL response", ex)
-          }
-        }
-      }
-    }
-    result.fold(
-      error => {
-        logger.error(s"[${id.show}] Cannot modify ESQL indices of incoming request; error=${error.show}")
-        CannotModify
-      },
-      identity
-    )
+    modifyRequestIndices(request, filteredRequestedIndices)
+    applyFieldLevelSecurityTo(request, fieldLevelSecurity)
+    applyFilterTo(request, filter)
+    UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
   }
 
   private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,
-                                   filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]): Either[EsqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
+                                   filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]): CompositeIndicesRequest = {
     requestClassification match {
       case Right(EsqlRequestClassification.NonIndicesRelated) =>
-        Right(request)
+        request
       case Right(r@EsqlRequestClassification.IndicesRelated(tables)) =>
         val filteredIndicesStrings = filteredIndices.stringify.toCovariantSet
         if (filteredIndicesStrings != r.indices) {
-          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndicesStrings)
+          esqlRequestHelper.modifyIndicesOf(request, tables, filteredIndicesStrings)
         } else {
-          Right(request)
+          request
         }
-      case Left(ClassificationError.ParsingException) =>
-        logger.debug(s"[${id.show}] Cannot parse ESQL statement - we can pass it though, because ES is going to reject it")
-        Right(request)
-      case Left(ClassificationError.UnexpectedException(ex)) =>
-        throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract ESQL indices from ${actionRequest.getClass.show}", ex)
+      case Left(ClassificationError.ParsingException(ex)) =>
+        logger.debug(s"[${id.show}] Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:", ex)
+        request
     }
   }
 
@@ -134,10 +104,8 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
   private def applyFieldLevelSecurityTo(response: ActionResponse,
                                         fieldLevelSecurity: Option[FieldLevelSecurity]) = {
     fieldLevelSecurity match {
-      case Some(fls) =>
-        EsqlRequestHelper.modifyResponseAccordingToFieldLevelSecurity(response, fls)
-      case None =>
-        Right(response)
+      case Some(fls) => esqlRequestHelper.modifyResponseAccordingToFieldLevelSecurity(response, fls)
+      case None => response
     }
   }
 
@@ -159,7 +127,8 @@ object EsqlIndicesEsRequestContext {
         arg.esContext,
         arg.aclContext,
         arg.clusterService,
-        arg.threadPool
+        arg.threadPool,
+        new EsqlRequestHelper(arg.esContext.esVersion)
       ))
     } else {
       None

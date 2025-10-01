@@ -17,15 +17,21 @@
 package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
-import org.testcontainers.images.builder.ImageFromDockerfile
-import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
+import org.testcontainers.containers.output.OutputFrame
+import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
+import tech.beshu.ror.utils.containers.images.Elasticsearch
 import tech.beshu.ror.utils.httpclient.RestClient
+
+import java.util.function.Consumer
 
 class EsContainerWithNoSecurity private(esConfig: Elasticsearch.Config,
                                         esVersion: String,
                                         startedClusterDependencies: StartedClusterDependencies,
-                                        image: ImageFromDockerfile)
-  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image) {
+                                        elasticsearch: Elasticsearch,
+                                        initializer: ElasticsearchNodeDataInitializer,
+                                        additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
+                                        awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, elasticsearch, initializer, additionalLogConsumer, awaitingReadyStrategy) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES without any security installed container ...")
 
@@ -39,28 +45,27 @@ object EsContainerWithNoSecurity extends StrictLogging {
   def create(esVersion: String,
              esConfig: Elasticsearch.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
-    val esContainer = new EsContainerWithNoSecurity(
+             startedClusterDependencies: StartedClusterDependencies,
+             additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
+    new EsContainerWithNoSecurity(
       esConfig,
       esVersion,
       startedClusterDependencies,
-      esImageFromDockerfile(esVersion, esConfig)
+      esImageFromDockerfile(esVersion, esConfig),
+      initializer,
+      additionalLogConsumer,
     )
-    EsContainer.init(esContainer, initializer, logger)
   }
 
   private def esImageFromDockerfile(esVersion: String,
                                     esConfig: Elasticsearch.Config) = {
-    DockerImageCreator.create(
-      Elasticsearch
-        .create(
-          esVersion,
-          esConfig.copy(
-            additionalElasticsearchYamlEntries = esConfig.additionalElasticsearchYamlEntries ++ Map("xpack.security.enabled" -> "false")
-          )
+    Elasticsearch
+      .create(
+        esVersion,
+        esConfig.copy(
+          additionalElasticsearchYamlEntries = esConfig.additionalElasticsearchYamlEntries ++ Map("xpack.security.enabled" -> "false")
         )
-        .toDockerImageDescription
-    )
+      )
   }
 }
 

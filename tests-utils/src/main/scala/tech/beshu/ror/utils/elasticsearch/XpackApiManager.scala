@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPut}
+import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
@@ -82,6 +82,14 @@ class XpackApiManager(client: RestClient,
                     indexPrivileges: Iterable[JSON] = List.empty,
                     applicationPrivileges: Iterable[JSON] = List.empty): JsonResponse = {
     call(createHasPrivilegesRequest(clusterPrivileges, indexPrivileges, applicationPrivileges), new JsonResponse(_))
+  }
+
+  def userPrivileges(): JsonResponse = {
+    call(createUserPrivilegesRequest(), new JsonResponse(_))
+  }
+
+  def grantApiKeyPrivilege(username: String, password: String): JsonResponse = {
+    call(createGrantApiKeyPrivilegeRequest(username, password), new JsonResponse(_))
   }
 
   private def createRollupRequest(jobId: String,
@@ -219,6 +227,25 @@ class XpackApiManager(client: RestClient,
          |  "application": [ ${applicationPrivileges.map(ujson.write(_)).mkString(",")} ]
          |}
        """.stripMargin))
+    request
+  }
+
+  private def createUserPrivilegesRequest() = {
+    new HttpGet(client.from("/_security/user/_privileges"))
+  }
+
+
+  private def createGrantApiKeyPrivilegeRequest(username: String, password: String) = {
+    val request = new HttpPost(client.from("/_security/api_key/grant"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{
+         |  "grant_type": "password",
+         |  "username": "$username",
+         |  "password": "$password",
+         |  "api_key": {"name": "granted-api-key","expiration": "1d"}
+         |}""".stripMargin
+    ))
     request
   }
 

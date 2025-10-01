@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.utils.containers.images
 
-import tech.beshu.ror.utils.containers.images.Elasticsearch.{configDir, esDir, fromResourceBy}
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps.emptyPluginInstallationSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.{esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.misc.Version
@@ -39,12 +41,12 @@ class XpackSecurityPlugin(esVersion: String,
                           config: Config)
   extends Elasticsearch.Plugin {
 
-  override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
-    image
-      .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
-      .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
-      .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
-      .configureKeystore()
+  override def installationSteps(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
+    emptyPluginInstallationSteps
+      .copyFile(esConfig.esConfigDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
+      .copyFile(esConfig.esConfigDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
+      .copyFile(esConfig.esConfigDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
+      .configureKeystore(esConfig)
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
@@ -89,37 +91,49 @@ class XpackSecurityPlugin(esVersion: String,
     }
   }
 
-  private implicit class ConfigureKeystore(val image: DockerImageDescription) {
+  private implicit class ConfigureKeystore(val pluginInstallationSteps: PluginInstallationSteps) {
 
-    def configureKeystore(): DockerImageDescription = {
-      image
-        .run(createKeystoreCommand)
-        .runWhen(
-          config.attributes.internodeSslEnabled,
-          addToKeystoreCommand(key = "xpack.security.transport.ssl.keystore.secure_password", value = "readonlyrest")
+    def configureKeystore(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
+      pluginInstallationSteps
+        .run(
+          linuxCommand = createKeystoreCommand(esConfig),
+          windowsCommand = createKeystoreCommand(esConfig),
         )
         .runWhen(
-          config.attributes.internodeSslEnabled,
-          addToKeystoreCommand(key = "xpack.security.transport.ssl.truststore.secure_password", value = "readonlyrest")
+          condition = config.attributes.internodeSslEnabled,
+          linuxCommand = addToKeystoreLinuxCommand(esConfig, key = "xpack.security.transport.ssl.keystore.secure_password", value = "readonlyrest"),
+          windowsCommand = addToKeystoreWindowsCommand(esConfig, key = "xpack.security.transport.ssl.keystore.secure_password", value = "readonlyrest"),
         )
         .runWhen(
-          config.attributes.restSslEnabled,
-          addToKeystoreCommand(key = "xpack.security.http.ssl.keystore.secure_password", value = "readonlyrest")
+          condition = config.attributes.internodeSslEnabled,
+          linuxCommand = addToKeystoreLinuxCommand(esConfig, key = "xpack.security.transport.ssl.truststore.secure_password", value = "readonlyrest"),
+          windowsCommand = addToKeystoreWindowsCommand(esConfig, key = "xpack.security.transport.ssl.truststore.secure_password", value = "readonlyrest"),
         )
         .runWhen(
-          config.attributes.restSslEnabled,
-          addToKeystoreCommand(key = "xpack.security.http.ssl.truststore.secure_password", value = "readonlyrest")
+          condition = config.attributes.restSslEnabled,
+          linuxCommand = addToKeystoreLinuxCommand(esConfig, key = "xpack.security.http.ssl.keystore.secure_password", value = "readonlyrest"),
+          windowsCommand = addToKeystoreWindowsCommand(esConfig, key = "xpack.security.http.ssl.keystore.secure_password", value = "readonlyrest"),
         )
         .runWhen(
-          Version.greaterOrEqualThan(esVersion, 6, 6, 0),
-          addToKeystoreCommand(key = "bootstrap.password", value = "elastic")
+          condition = config.attributes.restSslEnabled,
+          linuxCommand = addToKeystoreLinuxCommand(esConfig, key = "xpack.security.http.ssl.truststore.secure_password", value = "readonlyrest"),
+          windowsCommand = addToKeystoreWindowsCommand(esConfig, key = "xpack.security.http.ssl.truststore.secure_password", value = "readonlyrest"),
+        )
+        .runWhen(
+          condition = Version.greaterOrEqualThan(esVersion, 6, 6, 0),
+          linuxCommand = addToKeystoreLinuxCommand(esConfig, key = "bootstrap.password", value = "elastic"),
+          windowsCommand = addToKeystoreWindowsCommand(esConfig, key = "bootstrap.password", value = "elastic"),
         )
     }
 
-    private def createKeystoreCommand = s"${esDir.toString()}/bin/elasticsearch-keystore create"
+    private def createKeystoreCommand(esConfig: Elasticsearch.Config) = s"${esConfig.esDir.toString()}/bin/elasticsearch-keystore create"
 
-    private def addToKeystoreCommand(key: String, value: String) = {
-      s"printf '$value\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add $key"
+    private def addToKeystoreLinuxCommand(esConfig: Elasticsearch.Config, key: String, value: String) = {
+      s"printf '$value\\n' | ${esConfig.esDir.toString()}/bin/elasticsearch-keystore add --force $key"
+    }
+
+    private def addToKeystoreWindowsCommand(esConfig: Elasticsearch.Config, key: String, value: String) = {
+      s"""cmd /c "echo|set /p="$value" | "${esConfig.esDir}\\bin\\elasticsearch-keystore.bat" add --force $key" """
     }
   }
 }

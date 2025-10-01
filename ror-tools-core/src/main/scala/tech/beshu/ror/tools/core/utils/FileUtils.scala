@@ -16,11 +16,13 @@
  */
 package tech.beshu.ror.tools.core.utils
 
-import java.io.File
-import java.nio.file.attribute.{DosFileAttributeView, PosixFilePermission}
+import better.files.File
+
+import java.nio.file.attribute.{DosFileAttributeView, PosixFilePermission, UserPrincipal}
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
+import scala.language.implicitConversions
 
 object FileUtils {
 
@@ -31,13 +33,38 @@ object FileUtils {
     digest.digest.map("%02x".format(_)).mkString
   }
 
-  def modifyFileWithMaintainingOriginalPermissionsAndOwner(jar: File)(modifyJar: File => Unit): Unit = {
-    val originalFileOwner = Files.getOwner(jar.toPath)
-    val originalFilePermissions = getOriginalPermissions(jar.toPath)
-    modifyJar(jar)
-    Files.setOwner(jar.toPath, originalFileOwner)
-    setOriginalPermissions(jar.toPath, originalFilePermissions)
-  }
+  extension (file: File)
+    def setFilePermissionsAndOwner(filePermissionsAndOwner: FilePermissionsAndOwner): File = {
+      filePermissionsAndOwner match {
+        case metadata: OriginalFilePermissionsAndOwner =>
+          Files.setOwner(file.path, metadata.owner)
+          setOriginalPermissions(file.path, metadata.filePermissions)
+          file
+      }
+    }
+
+    def setFilePermissionsAndOwnerCopiedFrom(originalFile: File): File = {
+      file.setFilePermissionsAndOwner(originalFile.getFilePermissionsAndOwner)
+    }
+
+    def getFilePermissionsAndOwner: FilePermissionsAndOwner = {
+      OriginalFilePermissionsAndOwner(
+        getOriginalPermissions(file.path),
+        Files.getOwner(file.path),
+      )
+    }
+
+  given osPathToFile: Conversion[os.Path, File] with
+    def apply(path: os.Path): File = File(path.toString)
+
+  given javaFileToFile: Conversion[java.io.File, File] with
+    def apply(jFile: java.io.File): File = File(jFile.toPath)
+
+  sealed trait FilePermissionsAndOwner
+
+  // The implementation details of FilePermissionsAndOwner should not leak outside of this file
+  private final case class OriginalFilePermissionsAndOwner(filePermissions: Any,
+                                                           owner: UserPrincipal) extends FilePermissionsAndOwner
 
   private def getOriginalPermissions(jarPath: Path): Any = {
     if (isWindows) {

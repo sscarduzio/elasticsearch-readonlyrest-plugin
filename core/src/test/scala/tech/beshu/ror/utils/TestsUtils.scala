@@ -50,7 +50,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.es.EsVersion
+import tech.beshu.ror.es.{EsNodeSettings, EsVersion}
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
@@ -73,7 +73,7 @@ object TestsUtils {
 
   val defaultEsVersionForTests: EsVersion = EsVersion(8, 17, 0)
 
-  inline def nes(str : String): NonEmptyString = RefinedUtils.nes(str)
+  inline def nes(str: String): NonEmptyString = RefinedUtils.nes(str)
 
   def basicAuthHeader(value: String): Header =
     new Header(
@@ -84,26 +84,23 @@ object TestsUtils {
   def bearerHeader(jwt: JwtUtils.Jwt): Header =
     bearerHeader(Header.Name.authorization.value, jwt)
 
-  def bearerHeader(headerName: NonEmptyString, jwt: JwtUtils.Jwt): Header =
-    new Header(
-      Header.Name(headerName),
-      NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
-    )
+  def bearerHeader(headerName: NonEmptyString, jwt: JwtUtils.Jwt): Header = new Header(
+    Header.Name(headerName),
+    NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
+  )
 
-  def bearerHeader(jwt: JwtBuilder): Header =
-    new Header(
-      Header.Name.authorization,
-      NonEmptyString.unsafeFrom(s"Bearer ${jwt.compact}")
-    )
+  def bearerHeader(jwt: JwtBuilder): Header = new Header(
+    Header.Name.authorization,
+    NonEmptyString.unsafeFrom(s"Bearer ${jwt.compact}")
+  )
 
   def impersonationHeader(username: NonEmptyString): Header =
     new Header(Header.Name.impersonateAs, username)
 
-  def header(name: String, value: String): Header =
-    new Header(
-      Name(NonEmptyString.unsafeFrom(name)),
-      NonEmptyString.unsafeFrom(value)
-    )
+  def header(name: String, value: String): Header = new Header(
+    Name(NonEmptyString.unsafeFrom(name)),
+    NonEmptyString.unsafeFrom(value)
+  )
 
   def currentGroupHeader(value: String): Header =
     header("x-ror-current-group", value)
@@ -396,7 +393,7 @@ object TestsUtils {
   }
 
   def getResourcePath(resource: String): Path = {
-    File(getClass.getResource(resource).getPath).path
+    File(getClass.getResource(resource).toURI).path
   }
 
   def getResourceContent(resource: String): String = {
@@ -407,6 +404,11 @@ object TestsUtils {
     parser.parse(jsonString).toTry.get
   }
 
+  def testEsNodeSettings: EsNodeSettings = EsNodeSettings(
+    clusterName = "testEsCluster",
+    nodeName = "testEsNode"
+  )
+
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 
     def valueOrThrowIllegalState()(implicit scheduler: Scheduler): SUCCESS = {
@@ -416,7 +418,7 @@ object TestsUtils {
       }
     }
   }
-  
+
   implicit def unsafeNes(str: String): NonEmptyString = NonEmptyString.unsafeFrom(str)
 
   def userIdPatterns(id: String, ids: String*): UserIdPatterns = {

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration
 
-import com.dimafeng.testcontainers.ForAllTestContainer
+import com.dimafeng.testcontainers.{Container, ForAllTestContainer}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
+import tech.beshu.ror.utils.misc.OsUtils.{doNotCreateOnWindows, ignoreOnWindows}
 
 class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
   extends AnyWordSpec
@@ -37,7 +38,12 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
     with ForAllTestContainer
     with Inside {
 
-  override val container: LdapWithDnsContainer = new LdapWithDnsContainer("LDAP1", "test_example.ldif")
+  override val container: Container = doNotCreateOnWindows(new LdapWithDnsContainer("LDAP1", "test_example.ldif"))
+
+  private lazy val ldapPort = container match {
+    case ldap: LdapWithDnsContainer => ldap.dnsPort
+    case _ => 1234 // Just some random value - this test suite is ignored on Windows and the container is not started. But we still have to define port - required by configuration below.
+  }
 
   override protected def settingsYaml: String =
     s"""readonlyrest:
@@ -50,7 +56,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
        |  ldaps:
        |    - name: ldap1
        |      server_discovery:
-       |        dns_url: "dns://localhost:${container.dnsPort}"
+       |        dns_url: "dns://localhost:$ldapPort"
        |      ha: ROUND_ROBIN
        |      ssl_enabled: false                                        # default true
        |      ssl_trust_all_certs: true                                 # default false
@@ -69,16 +75,19 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
     ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
-  "An LDAP connectivity check" should {
-    "allow core to start" when {
-      "server discovery is used and DNS responds with proper address" in {
-        val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
-        val result = acl.handleRegularRequest(request).runSyncUnsafe()
-        result.history should have size 1
-        inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-          block.name should be(Block.Name("LDAP test"))
-          assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))) {
-            blockContext
+  // This test suite does not execute on Windows: there is currently no Windows version of LdapWithDnsContainer
+  ignoreOnWindows {
+    "An LDAP connectivity check" should {
+      "allow core to start" when {
+        "server discovery is used and DNS responds with proper address" in {
+          val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          result.history should have size 1
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("LDAP test"))
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))) {
+              blockContext
+            }
           }
         }
       }

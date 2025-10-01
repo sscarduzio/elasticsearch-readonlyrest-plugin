@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules
 
+import better.files.File
 import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
@@ -30,6 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -50,7 +52,8 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   protected def factory: RawRorSettingsBasedCoreFactory = {
     implicit val systemContext: SystemContext = new SystemContext(envVarsProvider = envVarsProvider)
-    new RawRorSettingsBasedCoreFactory(defaultEsVersionForTests)
+    val esEnv = EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
+    new RawRorSettingsBasedCoreFactory(esEnv)
   }
 
   def assertDecodingSuccess(yaml: String,

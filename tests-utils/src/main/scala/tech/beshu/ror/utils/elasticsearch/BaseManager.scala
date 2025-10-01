@@ -21,12 +21,14 @@ import org.apache.http.client.methods.HttpUriRequest
 import org.apache.http.{HttpRequest, HttpResponse}
 import org.testcontainers.shaded.org.yaml.snakeyaml.constructor.SafeConstructor
 import org.testcontainers.shaded.org.yaml.snakeyaml.{LoaderOptions, Yaml}
+import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, SimpleHeader}
 import tech.beshu.ror.utils.httpclient.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.ScalaUtils.*
-import tech.beshu.ror.utils.misc.Version
-import ujson.Value
+import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
 import java.time.Duration
 import java.util
@@ -94,17 +96,26 @@ abstract class BaseManager(client: RestClient,
     override def toString: String = response.toString
 
     private def checkResponseAssertions(): Unit = {
-      if(!isForbidden && esNativeApi) {
-        if (Version.greaterOrEqualThan(esVersion, 7, 14, 0) && Version.lowerThan(esVersion, 7, 16, 0)) {
-          request match {
-            case Some(req) if isExcludedRequest(req) =>
-              // ES [7.14.0,7.16.0) doesn't add the X-elastic-product header to some responses (under some conditions)
-            case Some(_) | None =>
-              assertContainsXElasticProductHeader(response)
+      OsUtils.currentOs match {
+        case CurrentOs.Windows =>
+          // On Windows the header is (sometimes, not deterministic) not added to some requests in versions <7.14-8.0). 
+          // So the assertion is applied since ES 8.0
+          if (!isForbidden && esNativeApi && Version.greaterOrEqualThan(esVersion, 8, 0, 0)) {
+            assertContainsXElasticProductHeader(response)
           }
-        } else if (Version.greaterOrEqualThan(esVersion, 7, 16, 0)) {
-          assertContainsXElasticProductHeader(response)
-        }
+        case CurrentOs.OtherThanWindows =>
+          if (!isForbidden && esNativeApi) {
+            if (Version.greaterOrEqualThan(esVersion, 7, 14, 0) && Version.lowerThan(esVersion, 7, 16, 0)) {
+              request match {
+                case Some(req) if isExcludedRequest(req) =>
+                // ES [7.14.0,7.16.0) doesn't add the X-elastic-product header to some responses (under some conditions)
+                case Some(_) | None =>
+                  assertContainsXElasticProductHeader(response)
+              }
+            } else if (Version.greaterOrEqualThan(esVersion, 7, 16, 0)) {
+              assertContainsXElasticProductHeader(response)
+            }
+          }
       }
     }
   }

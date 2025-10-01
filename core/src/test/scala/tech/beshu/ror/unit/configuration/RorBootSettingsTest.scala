@@ -24,7 +24,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.{MalformedSettings, RorBootSettings}
 import tech.beshu.ror.es.EsEnv
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath}
+import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath, testEsNodeSettings}
 
 class RorBootSettingsTest
   extends AnyWordSpec with Inside {
@@ -81,7 +81,7 @@ class RorBootSettingsTest
       RorBootSettings.load(esEnvFrom(esConfigFolderPath)).runSyncUnsafe() shouldBe Left {
         MalformedSettings(
           s"Cannot load ROR boot settings from file $expectedFilePath. " +
-          s"Cause: Unsupported response code [200] for readonlyrest.not_started_response_code. Supported response codes are: 403, 503."
+            s"Cause: Unsupported response code [200] for readonlyrest.not_started_response_code. Supported response codes are: 403, 503."
         )
       }
     }
@@ -92,13 +92,16 @@ class RorBootSettingsTest
       RorBootSettings.load(esEnvFrom(esConfigFolderPath)).runSyncUnsafe() shouldBe Left {
         MalformedSettings(
           s"Cannot load ROR boot settings from file $expectedFilePath. " +
-          s"Cause: Unsupported response code [200] for readonlyrest.failed_to_start_response_code. Supported response codes are: 403, 503."
+            s"Cause: Unsupported response code [200] for readonlyrest.failed_to_start_response_code. Supported response codes are: 403, 503."
         )
       }
     }
   }
 
-  private def esEnvFrom(resourceEsConfigFolderPath: String) = {
-    EsEnv(getResourcePath(resourceEsConfigFolderPath), getResourcePath(resourceEsConfigFolderPath), defaultEsVersionForTests)
-  }
+  private def esEnvFrom(resourceEsConfigFolderPath: String) = EsEnv(
+    getResourcePath(resourceEsConfigFolderPath),
+    getResourcePath(resourceEsConfigFolderPath),
+    defaultEsVersionForTests,
+    testEsNodeSettings
+  )
 }
