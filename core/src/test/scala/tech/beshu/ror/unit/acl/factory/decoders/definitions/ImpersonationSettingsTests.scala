@@ -37,7 +37,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
       showBasicAuthPrompt = true,
       forbiddenRequestMessage = "Forbidden by ReadonlyREST",
       flsEngine = FlsEngine.ES,
-      configurationIndex = RorSettingsIndex(fullIndexName(".readonlyrest")),
+      settingsIndex = RorSettingsIndex(fullIndexName(".readonlyrest")),
       userIdCaseSensitivity = CaseSensitivity.Enabled,
       usersDefinitionDuplicateUsernamesValidationEnabled = true
     ),

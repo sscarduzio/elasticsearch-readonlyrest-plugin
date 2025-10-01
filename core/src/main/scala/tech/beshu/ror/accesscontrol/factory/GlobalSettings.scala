@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorSettingsIndex}
 final case class GlobalSettings(showBasicAuthPrompt: Boolean,
                                 forbiddenRequestMessage: String,
                                 flsEngine: GlobalSettings.FlsEngine,
-                                configurationIndex: RorSettingsIndex,
+                                settingsIndex: RorSettingsIndex,
                                 userIdCaseSensitivity: CaseSensitivity,
                                 usersDefinitionDuplicateUsernamesValidationEnabled: Boolean)
 

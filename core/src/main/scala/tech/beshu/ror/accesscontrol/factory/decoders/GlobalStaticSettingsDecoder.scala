@@ -29,7 +29,7 @@ object GlobalStaticSettingsDecoder {
 
   private val globalSettingsSectionName = "global_settings"
 
-  def instance(rorConfigurationIndex: RorSettingsIndex): Decoder[GlobalSettings] = {
+  def instance(settingsIndex: RorSettingsIndex): Decoder[GlobalSettings] = {
     for {
       showBasicAuthPrompt <- decoderFor[Boolean]("prompt_for_basic_auth")
       forbiddenRequestMessage <- decoderFor[String]("response_if_req_forbidden")
@@ -40,7 +40,7 @@ object GlobalStaticSettingsDecoder {
       showBasicAuthPrompt.getOrElse(false),
       forbiddenRequestMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
       flsEngine.getOrElse(GlobalSettings.FlsEngine.ESWithLucene),
-      rorConfigurationIndex,
+      settingsIndex,
       userIdCaseSensitivity.getOrElse(CaseSensitivity.Enabled),
       usersDefinitionDuplicateUsernamesValidationEnabled.getOrElse(true)
     )

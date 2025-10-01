@@ -58,7 +58,7 @@ class AuthMockApi(rorInstance: RorInstance)
 
   private def provideAuthMock()
                              (implicit requestId: RequestId): Task[AuthMockResponse] = {
-    withRorConfigAuthServices(
+    withRorSettingsAuthServices(
       action = readCurrentAuthMocks,
       onNotSet = AuthMockResponse.ProvideAuthMock.NotConfigured.apply,
       onInvalidated = AuthMockResponse.ProvideAuthMock.Invalidated.apply
@@ -101,14 +101,14 @@ class AuthMockApi(rorInstance: RorInstance)
 
   private def readCurrentAuthServices()
                                      (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, RorDependencies.Services] = {
-    EitherT(withRorConfigAuthServices(
+    EitherT(withRorSettingsAuthServices(
       action = identity,
       onNotSet = AuthMockResponse.UpdateAuthMock.NotConfigured.apply,
       onInvalidated = AuthMockResponse.UpdateAuthMock.Invalidated.apply
     ))
   }
 
-  private def withRorConfigAuthServices[A, B](action: RorDependencies.Services => B,
+  private def withRorSettingsAuthServices[A, B](action: RorDependencies.Services => B,
                                               onNotSet: String => A,
                                               onInvalidated: String => A)
                                              (implicit requestId: RequestId): Task[Either[A, B]] = {

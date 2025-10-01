@@ -39,7 +39,7 @@ import tech.beshu.ror.utils.js.JsCompiler
 
 import scala.util.{Failure, Success}
 
-class KibanaUserDataRuleDecoder(configurationIndex: RorSettingsIndex,
+class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
                                 variableCreator: RuntimeResolvableVariableCreator)
                                (implicit jsCompiler: JsCompiler)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule]
@@ -69,7 +69,7 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorSettingsIndex,
           appsToHide = appsToHide.getOrElse(Set.empty),
           allowedApiPaths = allowedApiPaths.getOrElse(Set.empty),
           metadata = metadataResolvableJsonRepresentation,
-          rorIndex = configurationIndex
+          rorIndex = settingsIndex
         ))
       }
       .map(RuleDefinition.create[KibanaUserDataRule](_))

@@ -24,7 +24,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.es.SslConfiguration.*
+import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.utils.SSLCertHelper
 
 sealed trait RorSslSettings
@@ -93,14 +93,14 @@ object RorSslSettings extends Logging {
   }
 }
 
-sealed trait SslConfiguration {
-  def serverCertificateConfiguration: SslConfiguration.ServerCertificateConfiguration
+sealed trait SslSettings {
+  def serverCertificateSettings: SslSettings.ServerCertificateSettings
 
-  def clientCertificateConfiguration: Option[SslConfiguration.ClientCertificateConfiguration]
+  def clientCertificateSettings: Option[SslSettings.ClientCertificateSettings]
 
-  def allowedProtocols: Set[SslConfiguration.Protocol]
+  def allowedProtocols: Set[SslSettings.Protocol]
 
-  def allowedCiphers: Set[SslConfiguration.Cipher]
+  def allowedCiphers: Set[SslSettings.Cipher]
 
   def clientAuthenticationEnabled: Boolean
 
@@ -109,7 +109,7 @@ sealed trait SslConfiguration {
   def fipsMode: FipsMode
 }
 
-object SslConfiguration {
+object SslSettings {
 
   final case class KeystorePassword(value: String)
   final case class KeystoreFile(value: File)
@@ -123,43 +123,47 @@ object SslConfiguration {
   final case class Cipher(value: String)
   final case class Protocol(value: String)
 
-  sealed trait ServerCertificateConfiguration
-  object ServerCertificateConfiguration {
-    final case class KeystoreBasedConfiguration(keystoreFile: KeystoreFile,
-                                                keystorePassword: Option[KeystorePassword],
-                                                keyAlias: Option[KeyAlias],
-                                                keyPass: Option[KeyPass]) extends ServerCertificateConfiguration
-    final case class FileBasedConfiguration(serverCertificateKeyFile: ServerCertificateKeyFile,
-                                            serverCertificateFile: ServerCertificateFile) extends ServerCertificateConfiguration
+  sealed trait ServerCertificateSettings
+  object ServerCertificateSettings {
+    final case class KeystoreBasedSettings(keystoreFile: KeystoreFile,
+                                           keystorePassword: Option[KeystorePassword],
+                                           keyAlias: Option[KeyAlias],
+                                           keyPass: Option[KeyPass])
+      extends ServerCertificateSettings
+    final case class FileBasedSettings(serverCertificateKeyFile: ServerCertificateKeyFile,
+                                       serverCertificateFile: ServerCertificateFile)
+      extends ServerCertificateSettings
   }
 
-  sealed trait ClientCertificateConfiguration
-  object ClientCertificateConfiguration {
-    final case class TruststoreBasedConfiguration(truststoreFile: TruststoreFile,
-                                                  truststorePassword: Option[TruststorePassword]) extends ClientCertificateConfiguration
-    final case class FileBasedConfiguration(clientTrustedCertificateFile: ClientTrustedCertificateFile) extends ClientCertificateConfiguration
+  sealed trait ClientCertificateSettings
+  object ClientCertificateSettings {
+    final case class TruststoreBasedSettings(truststoreFile: TruststoreFile,
+                                             truststorePassword: Option[TruststorePassword])
+      extends ClientCertificateSettings
+    final case class FileBasedSettings(clientTrustedCertificateFile: ClientTrustedCertificateFile)
+      extends ClientCertificateSettings
   }
 
-  final case class ExternalSslSettings(serverCertificateConfiguration: ServerCertificateConfiguration,
-                                       clientCertificateConfiguration: Option[ClientCertificateConfiguration],
-                                       allowedProtocols: Set[SslConfiguration.Protocol],
-                                       allowedCiphers: Set[SslConfiguration.Cipher],
+  final case class ExternalSslSettings(serverCertificateSettings: ServerCertificateSettings,
+                                       clientCertificateSettings: Option[ClientCertificateSettings],
+                                       allowedProtocols: Set[SslSettings.Protocol],
+                                       allowedCiphers: Set[SslSettings.Cipher],
                                        clientAuthenticationEnabled: Boolean,
                                        fipsMode: FipsMode)
-    extends SslConfiguration {
+    extends SslSettings {
 
     val certificateVerificationEnabled: Boolean = false
   }
 
-  final case class InternodeSslSettings(serverCertificateConfiguration: ServerCertificateConfiguration,
-                                        clientCertificateConfiguration: Option[ClientCertificateConfiguration],
-                                        allowedProtocols: Set[SslConfiguration.Protocol],
-                                        allowedCiphers: Set[SslConfiguration.Cipher],
+  final case class InternodeSslSettings(serverCertificateSettings: ServerCertificateSettings,
+                                        clientCertificateSettings: Option[ClientCertificateSettings],
+                                        allowedProtocols: Set[SslSettings.Protocol],
+                                        allowedCiphers: Set[SslSettings.Cipher],
                                         clientAuthenticationEnabled: Boolean,
                                         certificateVerificationEnabled: Boolean,
                                         hostnameVerificationEnabled: Boolean,
                                         fipsMode: FipsMode)
-    extends SslConfiguration
+    extends SslSettings
 
   sealed trait FipsMode
   object FipsMode {
@@ -194,10 +198,10 @@ private object SslDecoders extends Logging {
     val clientTrustedCertificateFile = "client_trusted_certificate_file"
   }
 
-  final case class CommonSslProperties(serverCertificateConfiguration: ServerCertificateConfiguration,
-                                       clientCertificateConfiguration: Option[ClientCertificateConfiguration],
-                                       allowedProtocols: Set[SslConfiguration.Protocol],
-                                       allowedCiphers: Set[SslConfiguration.Cipher],
+  final case class CommonSslProperties(serverCertificateSettings: ServerCertificateSettings,
+                                       clientCertificateSettings: Option[ClientCertificateSettings],
+                                       allowedProtocols: Set[SslSettings.Protocol],
+                                       allowedCiphers: Set[SslSettings.Cipher],
                                        clientAuthentication: Option[Boolean])
 
   private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = DecoderHelpers.decodeStringLike.map(KeystorePassword.apply)
@@ -207,29 +211,29 @@ private object SslDecoders extends Logging {
   private implicit val cipherDecoder: Decoder[Cipher] = DecoderHelpers.decodeStringLike.map(Cipher.apply)
   private implicit val protocolDecoder: Decoder[Protocol] = DecoderHelpers.decodeStringLike.map(Protocol.apply)
 
-  private def clientCertificateConfigurationDecoder(basePath: File): Decoder[Option[ClientCertificateConfiguration]] = {
+  private def clientCertificateSettingsDecoder(basePath: File): Decoder[Option[ClientCertificateSettings]] = {
     val aFileDecoder: Decoder[File] = fileDecoder(basePath)
     implicit val truststoreFileDecoder = aFileDecoder.map(TruststoreFile.apply)
     implicit val clientTrustedCertificateFileDecoder = aFileDecoder.map(ClientTrustedCertificateFile.apply)
 
-    val truststoreBasedClientCertificateConfigurationDecoder: Decoder[ClientCertificateConfiguration] =
-      Decoder.forProduct2(consts.truststoreFile, consts.truststorePass)(ClientCertificateConfiguration.TruststoreBasedConfiguration.apply)
-    val fileBasedClientCertificateConfigurationDecoder: Decoder[ClientCertificateConfiguration] =
-      Decoder.forProduct1(consts.clientTrustedCertificateFile)(ClientCertificateConfiguration.FileBasedConfiguration.apply)
+    val truststoreBasedClientCertificateSettingsDecoder: Decoder[ClientCertificateSettings] =
+      Decoder.forProduct2(consts.truststoreFile, consts.truststorePass)(ClientCertificateSettings.TruststoreBasedSettings.apply)
+    val fileBasedClientCertificateSettingsDecoder: Decoder[ClientCertificateSettings] =
+      Decoder.forProduct1(consts.clientTrustedCertificateFile)(ClientCertificateSettings.FileBasedSettings.apply)
     Decoder.instance { c =>
       val truststoreBasedKeys = Set(consts.truststoreFile, consts.truststorePass)
       val fileBasedKeys = Set(consts.clientTrustedCertificateFile)
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
       if (presentKeys.intersect(truststoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
-        val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${truststoreBasedKeys.show}] could not be present in the same configuration section"
+        val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${truststoreBasedKeys.show}] could not be present in the same settings section"
         logger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       } else if (presentKeys.intersect(truststoreBasedKeys).nonEmpty) {
-        truststoreBasedClientCertificateConfigurationDecoder(c)
+        truststoreBasedClientCertificateSettingsDecoder(c)
           .map(Option.apply)
       } else if (presentKeys.intersect(fileBasedKeys).nonEmpty) {
         if (SSLCertHelper.isPEMHandlingAvailable) {
-          fileBasedClientCertificateConfigurationDecoder(c)
+          fileBasedClientCertificateSettingsDecoder(c)
             .map(Option.apply)
         } else {
           val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
@@ -242,35 +246,35 @@ private object SslDecoders extends Logging {
     }
   }
 
-  private def serverCertificateConfigurationDecoder(basePath: File): Decoder[ServerCertificateConfiguration] = {
+  private def serverCertificateSettingsDecoder(basePath: File): Decoder[ServerCertificateSettings] = {
     val aFileDecoder: Decoder[File] = fileDecoder(basePath)
     implicit val keystoreFileDecoder = aFileDecoder.map(KeystoreFile.apply)
     implicit val serverCertificateFileDecoder = aFileDecoder.map(ServerCertificateFile.apply)
     implicit val serverCertificateKeyFileDecoder = aFileDecoder.map(ServerCertificateKeyFile.apply)
-    val keystoreBasedServerCertificateConfigurationDecoder: Decoder[ServerCertificateConfiguration] =
-      Decoder.forProduct4(consts.keystoreFile, consts.keystorePass, consts.keyAlias, consts.keyPass)(ServerCertificateConfiguration.KeystoreBasedConfiguration.apply)
-    val fileBasedServerCertificateConfigurationDecoder: Decoder[ServerCertificateConfiguration] =
-      Decoder.forProduct2(consts.serverCertificateKeyFile, consts.serverCertificateFile)(ServerCertificateConfiguration.FileBasedConfiguration.apply)
+    val keystoreBasedServerCertificateSettingsDecoder: Decoder[ServerCertificateSettings] =
+      Decoder.forProduct4(consts.keystoreFile, consts.keystorePass, consts.keyAlias, consts.keyPass)(ServerCertificateSettings.KeystoreBasedSettings.apply)
+    val fileBasedServerCertificateSettingsDecoder: Decoder[ServerCertificateSettings] =
+      Decoder.forProduct2(consts.serverCertificateKeyFile, consts.serverCertificateFile)(ServerCertificateSettings.FileBasedSettings.apply)
     Decoder.instance { c =>
       val keystoreBasedKeys = Set(consts.keystoreFile, consts.keystorePass, consts.keyPass, consts.keyAlias)
       val fileBasedKeys = Set(consts.serverCertificateKeyFile, consts.serverCertificateFile)
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
       if (presentKeys.intersect(keystoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
-        val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${keystoreBasedKeys.show}] could not be present in the same configuration section"
+        val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${keystoreBasedKeys.show}] could not be present in the same settings section"
         logger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       } else if (presentKeys.intersect(keystoreBasedKeys).nonEmpty) {
-        keystoreBasedServerCertificateConfigurationDecoder(c)
+        keystoreBasedServerCertificateSettingsDecoder(c)
       } else if (presentKeys.intersect(fileBasedKeys).nonEmpty) {
         if (SSLCertHelper.isPEMHandlingAvailable) {
-          fileBasedServerCertificateConfigurationDecoder(c)
+          fileBasedServerCertificateSettingsDecoder(c)
         } else {
           val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
           logger.error(errorMessage)
           Left(DecodingFailure(errorMessage, List.empty))
         }
       } else {
-        val errorMessage = "There was no SSL configuration present for server"
+        val errorMessage = "There was no SSL settings present for server"
         logger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       }
@@ -281,18 +285,18 @@ private object SslDecoders extends Logging {
     implicit val isFipsCompliantDecoder: Decoder[FipsMode] = Decoder.decodeString.emap {
       case "NON_FIPS" => Right(FipsMode.NonFips)
       case "SSL_ONLY" => Right(FipsMode.SslOnly)
-      case _ => Left("Invalid configuration option for FIPS MODE. Valid values are: NON_FIPS, SSL_ONLY")
+      case _ => Left("Invalid settings option for FIPS MODE. Valid values are: NON_FIPS, SSL_ONLY")
     }
     for {
       fipsMode <- c.downField(consts.rorSection).downField(consts.fipsMode).as[Option[FipsMode]]
       interNodeSsl <- {
-        implicit val internodeSslConfigDecoder: Decoder[Option[InternodeSslSettings]] =
-          sslInternodeConfigurationDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
+        implicit val internodeSslSettingsDecoder: Decoder[Option[InternodeSslSettings]] =
+          sslInternodeSettingsDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
         c.downField(consts.rorSection).downField(consts.internodeSsl).as[Option[Option[InternodeSslSettings]]]
       }
       externalSsl <- {
-        implicit val externalSslConfigDecoder: Decoder[Option[ExternalSslSettings]] =
-          sslExternalConfigurationDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
+        implicit val externalSslSettingsDecoder: Decoder[Option[ExternalSslSettings]] =
+          sslExternalSettingsDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
         c.downField(consts.rorSection).downField(consts.externalSsl).as[Option[Option[ExternalSslSettings]]]
       }
     } yield {
@@ -305,7 +309,7 @@ private object SslDecoders extends Logging {
     }
   }
 
-  private def sslInternodeConfigurationDecoder(basePath: File,
+  private def sslInternodeSettingsDecoder(basePath: File,
                                                fipsMode: FipsMode): Decoder[Option[InternodeSslSettings]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
@@ -315,8 +319,8 @@ private object SslDecoders extends Logging {
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
         InternodeSslSettings(
-          serverCertificateConfiguration = sslCommonProperties.serverCertificateConfiguration,
-          clientCertificateConfiguration = sslCommonProperties.clientCertificateConfiguration,
+          serverCertificateSettings = sslCommonProperties.serverCertificateSettings,
+          clientCertificateSettings = sslCommonProperties.clientCertificateSettings,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
           clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.getOrElse(false),
@@ -327,7 +331,7 @@ private object SslDecoders extends Logging {
     }
   }
 
-  private def sslExternalConfigurationDecoder(basePath: File,
+  private def sslExternalSettingsDecoder(basePath: File,
                                               fipsMode: FipsMode): Decoder[Option[ExternalSslSettings]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
@@ -335,8 +339,8 @@ private object SslDecoders extends Logging {
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
         ExternalSslSettings(
-          serverCertificateConfiguration = sslCommonProperties.serverCertificateConfiguration,
-          clientCertificateConfiguration = sslCommonProperties.clientCertificateConfiguration,
+          serverCertificateSettings = sslCommonProperties.serverCertificateSettings,
+          clientCertificateSettings = sslCommonProperties.clientCertificateSettings,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
           clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.orElse(verification).getOrElse(false),
@@ -350,19 +354,19 @@ private object SslDecoders extends Logging {
       ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
       protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
       clientAuthentication <- c.downField(consts.clientAuthentication).as[Option[Boolean]]
-      serverCertificateConfiguration <- serverCertificateConfigurationDecoder(basePath).apply(c)
-      clientCertificateConfiguration <- clientCertificateConfigurationDecoder(basePath).apply(c)
+      serverCertificateSettings <- serverCertificateSettingsDecoder(basePath).apply(c)
+      clientCertificateSettings <- clientCertificateSettingsDecoder(basePath).apply(c)
     } yield
       CommonSslProperties(
-        serverCertificateConfiguration = serverCertificateConfiguration,
-        clientCertificateConfiguration = clientCertificateConfiguration,
+        serverCertificateSettings = serverCertificateSettings,
+        clientCertificateSettings = clientCertificateSettings,
         allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
         allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
         clientAuthentication = clientAuthentication,
       )
   }
 
-  private def whenEnabled[T <: SslConfiguration](cursor: HCursor)(decoding: => Either[DecodingFailure, T]) = {
+  private def whenEnabled[T <: SslSettings](cursor: HCursor)(decoding: => Either[DecodingFailure, T]) = {
     for {
       isEnabled <- cursor.downField(consts.enable).as[Option[Boolean]]
       result <- if (isEnabled.getOrElse(true)) decoding.map(Some.apply) else Right(None)

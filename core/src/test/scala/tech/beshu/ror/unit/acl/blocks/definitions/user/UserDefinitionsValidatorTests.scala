@@ -122,7 +122,7 @@ class UserDefinitionsValidatorTests extends AnyWordSpec with Matchers {
       showBasicAuthPrompt = false,
       forbiddenRequestMessage = "Forbidden",
       flsEngine = GlobalSettings.FlsEngine.default,
-      configurationIndex = RorSettingsIndex(IndexName.Full(nes(".readonlyrest"))),
+      settingsIndex = RorSettingsIndex(IndexName.Full(nes(".readonlyrest"))),
       userIdCaseSensitivity = CaseSensitivity.Enabled,
       usersDefinitionDuplicateUsernamesValidationEnabled = validationEnabled
     )

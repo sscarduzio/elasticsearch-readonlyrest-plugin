@@ -38,7 +38,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
       showBasicAuthPrompt = true,
       forbiddenRequestMessage = "Forbidden",
       flsEngine = FlsEngine.default,
-      configurationIndex = RorSettingsIndex(IndexName.Full(".readonlyrest")),
+      settingsIndex = RorSettingsIndex(IndexName.Full(".readonlyrest")),
       userIdCaseSensitivity = CaseSensitivity.Enabled,
       usersDefinitionDuplicateUsernamesValidationEnabled = true
     ),

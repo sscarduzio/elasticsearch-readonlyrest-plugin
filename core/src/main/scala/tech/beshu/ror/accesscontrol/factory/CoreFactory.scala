@@ -98,17 +98,17 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
   }
 
   private def createCoreFromRorSection(rorSection: Json,
-                                       rorIndexNameConfiguration: RorSettingsIndex,
+                                       rorSettingsIndex: RorSettingsIndex,
                                        httpClientFactory: HttpClientsFactory,
                                        ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                                        mocksProvider: MocksProvider) = {
-    val jsonConfigResolver = new JsonStaticVariablesResolver(
+    val resolver = new JsonStaticVariablesResolver(
       systemContext.envVarsProvider,
       TransformationCompiler.withoutAliases(systemContext.variablesFunctions),
     )
-    jsonConfigResolver.resolve(rorSection) match {
+    resolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
-        createFrom(resolvedRorSection, rorIndexNameConfiguration, httpClientFactory, ldapConnectionPoolProvider, mocksProvider).map {
+        createFrom(resolvedRorSection, rorSettingsIndex, httpClientFactory, ldapConnectionPoolProvider, mocksProvider).map {
           case Right(settings) =>
             Right(settings)
           case Left(failure) =>
@@ -120,7 +120,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
   }
 
   private def createFrom(settingsJson: Json,
-                         rorConfigurationIndex: RorSettingsIndex,
+                         settingsIndex: RorSettingsIndex,
                          httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                          mocksProvider: MocksProvider) = {
@@ -131,7 +131,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           AsyncDecoderCreator.from(Decoder.const(Core(DisabledAccessControlList, RorDependencies.noOp, None)))
         } else {
           for {
-            globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorConfigurationIndex))
+            globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(settingsIndex))
             core <- coreDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
           } yield core
         }
