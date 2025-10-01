@@ -38,13 +38,13 @@ object RRAdminRequest {
 
   def createFrom(request: RestRequest): RRAdminRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
-      case (constants.FORCE_RELOAD_CONFIG_PATH, POST) =>
+      case (constants.FORCE_RELOAD_SETTINGS_PATH, POST) =>
         MainSettingsApi.MainSettingsRequest.Type.ForceReload
-      case (constants.PROVIDE_FILE_CONFIG_PATH, GET) =>
+      case (constants.PROVIDE_FILE_SETTINGS_PATH, GET) =>
         MainSettingsApi.MainSettingsRequest.Type.ProvideFileSettings
-      case (constants.PROVIDE_INDEX_CONFIG_PATH, GET) =>
+      case (constants.PROVIDE_INDEX_SETTINGS_PATH, GET) =>
         MainSettingsApi.MainSettingsRequest.Type.ProvideIndexSettings
-      case (constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
+      case (constants.UPDATE_INDEX_SETTINGS_PATH, POST) =>
         MainSettingsApi.MainSettingsRequest.Type.UpdateIndexSettings
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")

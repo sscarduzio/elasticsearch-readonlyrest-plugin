@@ -42,7 +42,7 @@ class RRAdminActionHandler extends Logging {
           }
       }
       case None =>
-        listener.onFailure(new Exception("Config API is not available"))
+        listener.onFailure(new Exception("ROR Settings API is not available"))
     }
   }
 

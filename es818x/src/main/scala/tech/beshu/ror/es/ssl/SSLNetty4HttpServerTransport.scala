@@ -28,7 +28,7 @@ import org.elasticsearch.telemetry.tracing.Tracer
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.{SharedGroupFactory, TLSConfig}
 import org.elasticsearch.xcontent.NamedXContentRegistry
-import tech.beshu.ror.settings.es.SslConfiguration.ExternalSslConfiguration
+import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.SSLCertHelper
 
 class SSLNetty4HttpServerTransport(settings: Settings,
@@ -36,7 +36,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
                                    threadPool: ThreadPool,
                                    xContentRegistry: NamedXContentRegistry,
                                    dispatcher: HttpServerTransport.Dispatcher,
-                                   ssl: ExternalSslConfiguration,
+                                   ssl: ExternalSslSettings,
                                    clusterSettings: ClusterSettings,
                                    sharedGroupFactory: SharedGroupFactory,
                                    tracer: Tracer,

@@ -14,44 +14,47 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin
+package tech.beshu.ror.es.actions.rrtestsettings
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
+import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.api.MainSettingsApi
+import tech.beshu.ror.api.{RorApiRequest, TestSettingsApi}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps.*
 
-class RRAdminRequest(adminApiRequest: MainSettingsApi.MainSettingsRequest,
-                     esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
+class RRTestSettingsRequest(request: TestSettingsApi.TestSettingsRequest,
+                            esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
 
-  val getAdminRequest: MainSettingsApi.MainSettingsRequest = adminApiRequest
+  def getTestSettingsRequest: RorApiRequest[TestSettingsApi.TestSettingsRequest] =
+    RorApiRequest(request, loggerUser)
+
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
   override def validate(): ActionRequestValidationException = null
 }
 
-object RRAdminRequest {
+object RRTestSettingsRequest {
 
-  def createFrom(request: RestRequest): RRAdminRequest = {
+  def createFrom(request: RestRequest): RRTestSettingsRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
-      case (constants.FORCE_RELOAD_SETTINGS_PATH, POST) =>
-        MainSettingsApi.MainSettingsRequest.Type.ForceReload
-      case (constants.PROVIDE_FILE_SETTINGS_PATH, GET) =>
-        MainSettingsApi.MainSettingsRequest.Type.ProvideFileSettings
-      case (constants.PROVIDE_INDEX_SETTINGS_PATH, GET) =>
-        MainSettingsApi.MainSettingsRequest.Type.ProvideIndexSettings
-      case (constants.UPDATE_INDEX_SETTINGS_PATH, POST) =>
-        MainSettingsApi.MainSettingsRequest.Type.UpdateIndexSettings
+      case (constants.PROVIDE_TEST_SETTINGS_PATH, GET) =>
+        TestSettingsApi.TestSettingsRequest.Type.ProvideTestSettings
+      case (constants.DELETE_TEST_SETTINGS_PATH, DELETE) =>
+        TestSettingsApi.TestSettingsRequest.Type.InvalidateTestSettings
+      case (constants.UPDATE_TEST_SETTINGS_PATH, POST) =>
+        TestSettingsApi.TestSettingsRequest.Type.UpdateTestSettings
+      case (constants.PROVIDE_LOCAL_USERS_PATH, GET) =>
+        TestSettingsApi.TestSettingsRequest.Type.ProvideLocalUsers
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
-    new RRAdminRequest(
-      new MainSettingsApi.MainSettingsRequest(requestType, request.content.utf8ToString),
+    new RRTestSettingsRequest(
+      TestSettingsApi.TestSettingsRequest(requestType, request.content.utf8ToString),
       request
     )
   }
 }
+

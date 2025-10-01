@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.es.handler
 
-import tech.beshu.ror.settings.es.RorBootConfiguration
-import tech.beshu.ror.settings.es.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
+import tech.beshu.ror.settings.es.RorBootSettings
+import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.{ForbiddenResponse, ServiceNotAvailableResponse}
 
-final class RorNotAvailableRequestHandler(config: RorBootConfiguration) {
+final class RorNotAvailableRequestHandler(settings: RorBootSettings) {
 
   def handleRorNotReadyYet(esContext: EsContext): Unit = {
     val response = prepareNotReadyYetResponse()
@@ -34,7 +34,7 @@ final class RorNotAvailableRequestHandler(config: RorBootConfiguration) {
   }
 
   private def prepareNotReadyYetResponse() = {
-    config.rorNotStartedResponse.httpCode match {
+    settings.rorNotStartedResponse.httpCode match {
       case RorNotStartedResponse.HttpCode.`403` =>
         ForbiddenResponse.createRorNotReadyYetResponse()
       case RorNotStartedResponse.HttpCode.`503` =>
@@ -43,7 +43,7 @@ final class RorNotAvailableRequestHandler(config: RorBootConfiguration) {
   }
 
   private def prepareFailedToStartResponse() = {
-    config.rorFailedToStartResponse.httpCode match {
+    settings.rorFailedToStartResponse.httpCode match {
       case RorFailedToStartResponse.HttpCode.`403` =>
         ForbiddenResponse.createRorStartingFailureResponse()
       case RorFailedToStartResponse.HttpCode.`503` =>

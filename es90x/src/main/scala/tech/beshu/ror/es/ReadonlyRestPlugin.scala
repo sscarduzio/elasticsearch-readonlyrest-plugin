@@ -58,8 +58,8 @@ import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
 import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
-import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
-import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
+import tech.beshu.ror.es.actions.rrtestsettings.{RRTestSettingsActionType, TransportRRTestSettingsAction}
+import tech.beshu.ror.es.actions.rrtestsettings.rest.RestRRTestSettingsAction
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
@@ -203,7 +203,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
       new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
-      new ActionHandler(RRTestConfigActionType.instance, classOf[TransportRRTestConfigAction]),
+      new ActionHandler(RRTestSettingsActionType.instance, classOf[TransportRRTestSettingsAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
       // wrappers
@@ -225,7 +225,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),
-      new RestRRTestConfigAction(),
+      new RestRRTestSettingsAction(),
       new RestRRUserMetadataAction(),
       new RestRRAuditEventAction()
     ).asJava

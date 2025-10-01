@@ -14,18 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin
+package tech.beshu.ror.es.actions.rrtestsettings
 
 import org.elasticsearch.action.ActionType
 import org.elasticsearch.common.io.stream.Writeable
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
-class RRAdminActionType extends ActionType[RRAdminResponse](RRAdminActionType.name)
+class RRTestSettingsActionType extends ActionType[RRTestSettingsResponse](RRTestSettingsActionType.name)
 
-object RRAdminActionType {
-  val name: String = RorAction.RorRefreshSettingsAction.value
-  val instance = new RRAdminActionType()
-  case object RRAdminActionCannotBeTransported extends Exception
-  def exceptionReader[A]: Writeable.Reader[A] =
-    _ => throw RRAdminActionCannotBeTransported
+object RRTestSettingsActionType {
+  val name: String = RorAction.RorTestSettingsAction.value
+  val instance = new RRTestSettingsActionType()
+
+  case object RRTestSettingsActionCannotBeTransported extends Exception
+
+  private [rrtestsettings] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRTestSettingsActionCannotBeTransported
 }
+

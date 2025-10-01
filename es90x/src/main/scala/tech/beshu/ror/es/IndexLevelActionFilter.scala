@@ -68,7 +68,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private implicit val generator: UniqueIdentifierGenerator = systemContext.uniqueIdentifierGenerator
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
-    new RorNotAvailableRequestHandler(esConfig.boot)
+    new RorNotAvailableRequestHandler(esConfigBasedRorSettings.boot)
 
   private val esEnv = EsEnvProvider.create(env)
   private val nodeName = esEnv.esNodeSettings.nodeName
@@ -221,7 +221,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- ror.start(esConfig)
+      result <- ror.start(esConfigBasedRorSettings)
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>

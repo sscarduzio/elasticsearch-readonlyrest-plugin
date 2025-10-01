@@ -30,20 +30,20 @@ class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response match {
-      case forceReloadConfig: MainSettingsResponse.ForceReloadMainSettings => forceReloadConfig match {
+      case forceReloadSettings: MainSettingsResponse.ForceReloadMainSettings => forceReloadSettings match {
         case ForceReloadMainSettings.Success(message) => addResponseJson(builder, response.status, message)
         case ForceReloadMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
       }
-      case provideIndexConfig: MainSettingsResponse.ProvideIndexMainSettings => provideIndexConfig match {
-        case ProvideIndexMainSettings.MainSettings(rawConfig) => addResponseJson(builder, response.status, rawConfig)
+      case provideIndexSettings: MainSettingsResponse.ProvideIndexMainSettings => provideIndexSettings match {
+        case ProvideIndexMainSettings.MainSettings(rawSettings) => addResponseJson(builder, response.status, rawSettings)
         case ProvideIndexMainSettings.MainSettingsNotFound(message) => addResponseJson(builder, response.status, message)
         case ProvideIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
       }
-      case provideFileConfig: MainSettingsResponse.ProvideFileMainSettings => provideFileConfig match {
-        case ProvideFileMainSettings.MainSettings(rawConfig) => addResponseJson(builder, response.status, rawConfig)
+      case provideFileSettings: MainSettingsResponse.ProvideFileMainSettings => provideFileSettings match {
+        case ProvideFileMainSettings.MainSettings(rawSettings) => addResponseJson(builder, response.status, rawSettings)
         case ProvideFileMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
       }
-      case updateIndexConfig: MainSettingsResponse.UpdateIndexMainSettings => updateIndexConfig match {
+      case updateIndexSettings: MainSettingsResponse.UpdateIndexMainSettings => updateIndexSettings match {
         case UpdateIndexMainSettings.Success(message) => addResponseJson(builder, response.status, message)
         case UpdateIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
       }

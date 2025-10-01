@@ -53,11 +53,11 @@ object Action {
     abstract sealed class AdminRorAction(override val value: String) extends RorAction(value)
 
     case object RorUserMetadataAction extends RoRorAction("cluster:internal_ror/user_metadata/get")
-    case object RorConfigAction extends AdminRorAction("cluster:internal_ror/config/manage")
-    case object RorTestConfigAction extends AdminRorAction("cluster:internal_ror/testconfig/manage")
+    case object RorMainSettingsAction extends AdminRorAction("cluster:internal_ror/config/manage")
+    case object RorTestSettingsAction extends AdminRorAction("cluster:internal_ror/testconfig/manage")
     case object RorAuthMockAction extends AdminRorAction("cluster:internal_ror/authmock/manage")
     case object RorAuditEventAction extends RwRorAction("cluster:internal_ror/audit_event/put")
-    case object RorOldConfigAction extends AdminRorAction("cluster:internal_ror/config/refreshsettings")
+    case object RorRefreshSettingsAction extends AdminRorAction("cluster:internal_ror/config/refreshsettings")
 
     def fromString(value: String): Option[Action] = {
       rorActionFrom(value)
@@ -73,21 +73,21 @@ object Action {
 
     private def rorActionFrom(value: String): Option[RorAction] = value match {
       case RorUserMetadataAction.`value` => RorUserMetadataAction.some
-      case RorConfigAction.`value` => RorConfigAction.some
-      case RorTestConfigAction.`value` => RorTestConfigAction.some
+      case RorMainSettingsAction.`value` => RorMainSettingsAction.some
+      case RorTestSettingsAction.`value` => RorTestSettingsAction.some
       case RorAuthMockAction.`value` => RorAuthMockAction.some
       case RorAuditEventAction.`value` => RorAuditEventAction.some
-      case RorOldConfigAction.`value` => RorOldConfigAction.some
+      case RorRefreshSettingsAction.`value` => RorRefreshSettingsAction.some
       case _ => None
     }
 
     private val rorActionByOutdatedName: Map[String, RorAction] = Map(
       "cluster:ror/user_metadata/get" -> RorUserMetadataAction,
-      "cluster:ror/config/manage" -> RorConfigAction,
-      "cluster:ror/testconfig/manage" -> RorTestConfigAction,
+      "cluster:ror/config/manage" -> RorMainSettingsAction,
+      "cluster:ror/testconfig/manage" -> RorTestSettingsAction,
       "cluster:ror/authmock/manage" -> RorAuthMockAction,
       "cluster:ror/audit_event/put" -> RorAuditEventAction,
-      "cluster:ror/config/refreshsettings" -> RorOldConfigAction
+      "cluster:ror/config/refreshsettings" -> RorRefreshSettingsAction
     )
 
     private def patternMatchingOutdatedRorActionName(possiblePattern: String): Option[EsAction] = {
