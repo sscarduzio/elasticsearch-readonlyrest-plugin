@@ -14,15 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.settings.es
 
 import cats.data.NonEmptyList
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.configuration.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 final case class RorBootSettings(rorNotStartedResponse: RorNotStartedResponse,

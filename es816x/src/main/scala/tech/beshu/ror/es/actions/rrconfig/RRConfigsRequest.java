@@ -20,8 +20,8 @@ import org.elasticsearch.action.support.nodes.BaseNodesRequest;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest;
-import tech.beshu.ror.configuration.loader.distributed.internode.NodeConfigRequestSerializer;
+import tech.beshu.ror.settings.es.loader.distributed.NodeConfigRequest;
+import tech.beshu.ror.settings.es.loader.distributed.internode.NodeConfigRequestSerializer;
 
 import java.io.IOException;
 import java.util.Arrays;

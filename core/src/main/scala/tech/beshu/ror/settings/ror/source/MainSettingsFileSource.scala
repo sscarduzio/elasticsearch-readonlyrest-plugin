@@ -14,11 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.source
+package tech.beshu.ror.settings.ror.source
 
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
-import tech.beshu.ror.configuration.{MainRorSettings, RawRorSettingsYamlParser}
+import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettingsYamlParser}
 
 class MainSettingsFileSource private (settingsFile: RorSettingsFile)
                                      (implicit decoder: Decoder[MainRorSettings])

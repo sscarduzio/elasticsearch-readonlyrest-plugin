@@ -57,9 +57,18 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingError
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.CoreRefreshSettings
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSource}
+import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.set.CovariantSet
@@ -396,24 +405,57 @@ trait LogsShowInstances
     case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
   }
 
-  implicit val loadEsConfigErrorShow: Show[LoadingError] = Show.show {
-    case LoadingError.FileNotFound(file) => s"Cannot find elasticsearch settings file: [${file.show}]"
-    case LoadingError.MalformedContent(file, message) => s"Settings file is malformed: [${file.show}], ${message.show}"
-    case LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled => s"Cannot use ROR SSL when XPack Security is enabled"
+  implicit val coreRefreshSettingsShow: Show[CoreRefreshSettings] = Show.show {
+    case CoreRefreshSettings.Disabled => "0 sec"
+    case CoreRefreshSettings.Enabled(interval) => interval.value.toString()
   }
-// todo: fixme
-//  implicit val loadingFromIndexErrorShow: Show[LoadingFromIndexError] = Show.show {
-//    case LoadingFromIndexError.IndexNotExist => "Cannot find ReadonlyREST settings index"
-//    case LoadingFromIndexError.IndexUnknownStructure => "Unknown structure of ReadonlyREST index settings document"
-//    case LoadingFromIndexError.IndexParsingError(message) => s"Cannot parse in-index ReadonlyREST settings. Cause: $message"
-//  }
 
-//  implicit val loadingFromFileErrorShow: Show[LoadingFromFileError] = Show.show {
-//    case LoadingFromFileError.FileParsingError(message) => s"Cannot parse file ReadonlyREST settings. Cause: $message"
-//    case LoadingFromFileError.FileNotExist(file) => s"Cannot find ReadonlyREST settings file: ${file.pathAsString}"
-//  }
-//
-//  implicit val savingIndexSettingsErrorShow: Show[SavingIndexSettingsError] = Show.show {
-//    case SavingIndexSettingsError.CannotSaveSettings => "Cannot save settings in the ReadonlyREST index"
-//  }
+  implicit val loadingDelayShow: Show[LoadingDelay] = Show[FiniteDuration].contramap(_.value.value)
+
+  implicit val loadingAttemptsCountShow: Show[LoadingAttemptsCount] = Show[Int].contramap(_.value.value)
+
+  implicit val loadingAttemptsIntervalShow: Show[LoadingAttemptsInterval] = Show[FiniteDuration].contramap(_.value.value)
+
+  implicit val testRorSettingsShow: Show[TestRorSettings] = Show.show(_.rawSettings.rawYaml)
+
+  implicit val mainRorSettingsShow: Show[MainRorSettings] = Show.show(_.rawSettings.rawYaml)
+
+  implicit val esConfigBasedRorSettingsLoadingErrorShow: Show[EsConfigBasedRorSettings.LoadingError] = Show.show {
+    case EsConfigBasedRorSettings.LoadingError.FileNotFound(file) =>
+      s"Cannot find elasticsearch settings file: [${file.show}]"
+    case EsConfigBasedRorSettings.LoadingError.MalformedContent(file, message) =>
+      s"Settings file is malformed: [${file.show}], ${message.show}"
+    case EsConfigBasedRorSettings.LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled =>
+      s"Cannot use ROR SSL when XPack Security is enabled"
+  }
+
+  implicit val parsingRorSettingsErrorShow: Show[ParsingRorSettingsError] = Show.show {
+    case NoRorSection => "Cannot find any 'readonlyrest' section in settings"
+    case MoreThanOneRorSection => "Only one 'readonlyrest' section is required"
+    case InvalidContent(ex) => s"Settings content is malformed. Details: ${ex.getMessage.show}"
+  }
+
+  implicit val indexSettingsSourceLoadingErrorShow: Show[IndexSettingsSource.LoadingError] = Show.show {
+    case IndexSettingsSource.LoadingError.IndexNotFound => "cannot find ReadonlyREST settings index"
+    case IndexSettingsSource.LoadingError.DocumentNotFound => "cannot found document with ReadonlyREST settings"
+  }
+
+  implicit val indexSettingsSourceSavingErrorShow: Show[IndexSettingsSource.SavingError] = Show.show {
+    case IndexSettingsSource.SavingError.CannotSaveSettings => "Cannot save settings in the ReadonlyREST index"
+  }
+
+  implicit val fileSettingsSourceLoadingErrorShow: Show[FileSettingsSource.LoadingError] = Show.show {
+    case FileSettingsSource.LoadingError.FileNotExist(file) => s"Cannot find settings file: ${file.pathAsString}"
+  }
+
+  implicit val show: Show[StartingFailure] = Show.show(_.message)
+
+  implicit def loadingSettingsErrorShow[ERROR: Show]: Show[LoadingSettingsError[ERROR]] = Show.show {
+    case LoadingSettingsError.SettingsMalformed(cause) => s"ROR settings are malformed: $cause"
+    case LoadingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
+  }
+
+  implicit def savingSettingsErrorShow[ERROR: Show]: Show[SavingSettingsError[ERROR]] = Show.show {
+    case SavingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
+  }
 }

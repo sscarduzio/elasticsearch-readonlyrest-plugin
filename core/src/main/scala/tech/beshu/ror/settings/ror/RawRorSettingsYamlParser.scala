@@ -14,15 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.settings.ror
 
 import better.files.File
-import cats.Show
 import io.circe.{Json, ParsingFailure}
 import squants.information.Information
-import tech.beshu.ror.configuration.RawRorSettingsYamlParser.ParsingRorSettingsError
-import tech.beshu.ror.configuration.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
-import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
 import tech.beshu.ror.utils.yaml.YamlParser
 
 class RawRorSettingsYamlParser(maxSize: Information) {
@@ -59,11 +57,5 @@ object RawRorSettingsYamlParser {
     case object NoRorSection extends ParsingRorSettingsError
     case object MoreThanOneRorSection extends ParsingRorSettingsError
     final case class InvalidContent(throwable: Throwable) extends ParsingRorSettingsError
-
-    implicit val show: Show[ParsingRorSettingsError] = Show.show {
-      case NoRorSection => "Cannot find any 'readonlyrest' section in settings"
-      case MoreThanOneRorSection => "Only one 'readonlyrest' section is required"
-      case InvalidContent(ex) => s"Settings content is malformed. Details: ${ex.getMessage.show}"
-    }
   }
 }

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.boot.engines
 
-import tech.beshu.ror.configuration.RawRorSettings
+import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.utils.Hasher
 
 import scala.language.implicitConversions

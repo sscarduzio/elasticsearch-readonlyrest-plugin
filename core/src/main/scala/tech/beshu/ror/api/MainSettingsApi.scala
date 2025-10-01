@@ -29,10 +29,11 @@ import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
-import tech.beshu.ror.settings.source.IndexSettingsSource.LoadingError.IndexNotFound
-import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
-import tech.beshu.ror.settings.source.{FileSettingsSource, IndexSettingsSource}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.IndexNotFound
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
+import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSource}
+import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
 class MainSettingsApi(rorInstance: RorInstance,

@@ -14,13 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.loader
+package tech.beshu.ror.settings.ror.loader
 
 import monix.eval.Task
-import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.configuration.{MainRorSettings, TestRorSettings}
+import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.ror.source.FileSettingsSource
+import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 
-trait StartingRorSettingsLoader {
+class ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource: FileSettingsSource[MainRorSettings])
+  extends StartingRorSettingsLoader with Logging {
 
-  def load(): Task[Either[StartingFailure, (MainRorSettings, Option[TestRorSettings])]]
+  override def load(): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
+    val result = loadSettingsFromSource(
+      source = mainSettingsFileSource,
+      settingsDescription = s"main settings from file '${mainSettingsFileSource.settingsFile.show}''"
+    )
+    result.map((_, None)).value
+  }
+
 }

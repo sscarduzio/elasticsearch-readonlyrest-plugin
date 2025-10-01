@@ -14,12 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.source
+package tech.beshu.ror.settings.ror.source
 
 import cats.implicits.*
 import io.circe.Decoder.Result
 import io.circe.{Codec, Decoder, HCursor, Json}
-import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser}
 
 private [source] class RawRorSettingsCodec(yamlParser: RawRorSettingsYamlParser)
   extends Codec[RawRorSettings] {

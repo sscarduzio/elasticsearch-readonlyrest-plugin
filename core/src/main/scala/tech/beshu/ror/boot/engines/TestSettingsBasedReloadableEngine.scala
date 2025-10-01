@@ -29,15 +29,16 @@ import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpiration, EngineState, InitialEngine}
 import tech.beshu.ror.boot.engines.SettingsHash.*
-import tech.beshu.ror.configuration.TestRorSettings.Expiration
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.source.IndexSettingsSource.SavingError.CannotSaveSettings
-import tech.beshu.ror.settings.source.{IndexSettingsSource, TestSettingsIndexSource}
-import tech.beshu.ror.settings.source.IndexSettingsSource.{LoadingError, SavingError}
-import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
-import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError.SourceSpecificError
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
+import tech.beshu.ror.settings.ror.TestRorSettings.Expiration
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.{LoadingError, SavingError}
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError.SourceSpecificError
+import tech.beshu.ror.settings.ror.source.{IndexSettingsSource, TestSettingsIndexSource}
+import tech.beshu.ror.settings.ror.{RawRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
 

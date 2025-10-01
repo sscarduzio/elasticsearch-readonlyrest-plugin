@@ -23,8 +23,8 @@ import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.action.RestBuilderListener
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestResponse, RestStatus}
 import org.elasticsearch.transport.ActionNotFoundTransportException
-import tech.beshu.ror.configuration.loader.distributed.NodesResponse
-import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
+import tech.beshu.ror.settings.es.loader.distributed.NodesResponse
+import tech.beshu.ror.settings.es.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.es.actions.rrconfig.{RRConfig, RRConfigsResponse}
 
 import scala.jdk.CollectionConverters.*

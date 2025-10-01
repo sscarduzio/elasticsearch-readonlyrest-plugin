@@ -26,7 +26,7 @@ import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.SharedGroupFactory
 import org.elasticsearch.xcontent.NamedXContentRegistry
-import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration
+import tech.beshu.ror.settings.es.SslConfiguration.ExternalSslConfiguration
 import tech.beshu.ror.utils.SSLCertHelper
 
 class SSLNetty4HttpServerTransport(settings: Settings,

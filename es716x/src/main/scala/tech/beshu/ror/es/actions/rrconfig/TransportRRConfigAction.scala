@@ -29,8 +29,8 @@ import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
-import tech.beshu.ror.configuration.loader.*
+import tech.beshu.ror.settings.es.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
+import tech.beshu.ror.settings.es.loader.*
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.es.utils.EsEnvProvider

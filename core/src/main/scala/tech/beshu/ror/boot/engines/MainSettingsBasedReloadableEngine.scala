@@ -28,12 +28,13 @@ import tech.beshu.ror.boot.RorInstance.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.RawSettingsReloadError.{ReloadingFailed, RorInstanceStopped, SettingsUpToDate}
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
-import tech.beshu.ror.boot.engines.SettingsHash.*
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, MainRorSettings}
+import tech.beshu.ror.boot.engines.SettingsHash.toSettingsHash
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.source.IndexSettingsSource.SavingError.CannotSaveSettings
-import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError.SourceSpecificError
-import tech.beshu.ror.settings.source.{IndexSettingsSource, MainSettingsIndexSource}
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
+import tech.beshu.ror.settings.ror.MainRorSettings
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError.SourceSpecificError
+import tech.beshu.ror.settings.ror.source.{IndexSettingsSource, MainSettingsIndexSource}
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[boot] class MainSettingsBasedReloadableEngine private(boot: ReadonlyRest,

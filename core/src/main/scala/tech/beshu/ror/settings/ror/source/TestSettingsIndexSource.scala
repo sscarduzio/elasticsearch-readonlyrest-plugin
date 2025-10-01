@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.source
+package tech.beshu.ror.settings.ror.source
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Codec, Decoder, Encoder}
@@ -27,10 +27,10 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.L
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorSettingsIndex, User}
-import tech.beshu.ror.configuration.TestRorSettings.Expiration
-import tech.beshu.ror.configuration.{RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
+import tech.beshu.ror.settings.ror.TestRorSettings.Expiration
+import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
 import tech.beshu.ror.es.IndexDocumentManager
-import tech.beshu.ror.settings.source.TestSettingsIndexSource.Const
+import TestSettingsIndexSource.Const
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.json.KeyCodec

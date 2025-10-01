@@ -23,7 +23,7 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.configuration.YamlFileBasedSettingsLoader
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader
 
 class YamlFileBasedRorSettingsLoaderTest extends AnyWordSpec with Inside {
 

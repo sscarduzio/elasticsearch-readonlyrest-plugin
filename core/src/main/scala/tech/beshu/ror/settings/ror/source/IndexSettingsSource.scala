@@ -14,20 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.source
+package tech.beshu.ror.settings.ror.source
 
-import cats.Show
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.IndexDocumentManager
 import tech.beshu.ror.es.IndexDocumentManager.CannotWriteToIndex
-import tech.beshu.ror.settings.source.IndexSettingsSource.LoadingError.{DocumentNotFound, IndexNotFound}
-import tech.beshu.ror.settings.source.IndexSettingsSource.SavingError.CannotSaveSettings
-import tech.beshu.ror.settings.source.IndexSettingsSource.{IndexSettingsLoadingError, IndexSettingsSavingError, LoadingError, SavingError}
-import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.{DocumentNotFound, IndexNotFound}
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.{IndexSettingsLoadingError, IndexSettingsSavingError, LoadingError, SavingError}
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
 
 class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: IndexDocumentManager,
                                                        val settingsIndex: IndexName.Full,
@@ -72,11 +71,6 @@ object IndexSettingsSource {
   object LoadingError {
     case object IndexNotFound extends LoadingError
     case object DocumentNotFound extends LoadingError
-
-    implicit val show: Show[LoadingError] = Show.show {
-      case IndexNotFound => "cannot find ReadonlyREST settings index"
-      case DocumentNotFound => "cannot found document with ReadonlyREST settings"
-    }
   }
 
   type IndexSettingsSavingError = SavingSettingsError[SavingError]
@@ -84,9 +78,5 @@ object IndexSettingsSource {
   sealed trait SavingError
   object SavingError {
     case object CannotSaveSettings extends SavingError
-
-    implicit val show: Show[SavingError] = Show.show {
-      case CannotSaveSettings => "Cannot save settings in the ReadonlyREST index"
-    }
   }
 }

@@ -18,19 +18,15 @@ package tech.beshu.ror.boot
 
 import tech.beshu.ror.api.{MainSettingsApi, TestSettingsApi}
 import tech.beshu.ror.boot.engines.{MainSettingsBasedReloadableEngine, TestSettingsBasedReloadableEngine}
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.es.IndexDocumentManager
-import tech.beshu.ror.settings.source.{MainSettingsFileSource, MainSettingsIndexSource, TestSettingsIndexSource}
-import tech.beshu.ror.settings.loader.{ConfigurableRetryStrategy, ForceLoadRorSettingsFromFileLoader, RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader, StartingRorSettingsLoader}
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingRorCoreStrategy
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
+import tech.beshu.ror.settings.ror.loader.{ConfigurableRetryStrategy, ForceLoadRorSettingsFromFileLoader, RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader, StartingRorSettingsLoader}
+import tech.beshu.ror.settings.ror.source.{MainSettingsFileSource, MainSettingsIndexSource, TestSettingsIndexSource}
 
 final class SettingsRelatedCreatorsAndLoaders private(val startingRorSettingsLoader: StartingRorSettingsLoader,
                                                       val creators: SettingsRelatedCreators)
-
-final class SettingsRelatedCreators(val mainSettingsBasedReloadableEngineCreator: MainSettingsBasedReloadableEngine.Creator,
-                                    val mainSettingsApiCreator: MainSettingsApi.Creator,
-                                    val testSettingsBasedReloadableEngineCreator: TestSettingsBasedReloadableEngine.Creator,
-                                    val testSettingsApiCreator: TestSettingsApi.Creator)
 
 object SettingsRelatedCreatorsAndLoaders {
 
@@ -49,10 +45,10 @@ object SettingsRelatedCreatorsAndLoaders {
     val startingSettingsLoader = esConfigBasedRorSettings.loadingRorCoreStrategy match {
       case s@LoadingRorCoreStrategy.ForceLoadingFromFile =>
         new ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource)
-      case s@LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(params) =>
+      case s@LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(retryStrategySettings, _) =>
         new RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(
           mainSettingsIndexSource,
-          new ConfigurableRetryStrategy(params),
+          new ConfigurableRetryStrategy(retryStrategySettings),
           mainSettingsFileSource,
           testSettingsIndexSource
         )
@@ -68,3 +64,8 @@ object SettingsRelatedCreatorsAndLoaders {
     )
   }
 }
+
+final class SettingsRelatedCreators(val mainSettingsBasedReloadableEngineCreator: MainSettingsBasedReloadableEngine.Creator,
+                                    val mainSettingsApiCreator: MainSettingsApi.Creator,
+                                    val testSettingsBasedReloadableEngineCreator: TestSettingsBasedReloadableEngine.Creator,
+                                    val testSettingsApiCreator: TestSettingsApi.Creator)

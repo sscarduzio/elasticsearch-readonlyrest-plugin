@@ -261,4 +261,8 @@ object ScalaOps {
       Task.delay(logger.error(msg))
     }
   }
+
+  implicit class EitherTOps(t: EitherT.type) extends AnyVal {
+    def liftTask[A](value: => A): EitherT[Task, Nothing, A] = EitherT(Task.delay(Right(value)))
+  }
 }

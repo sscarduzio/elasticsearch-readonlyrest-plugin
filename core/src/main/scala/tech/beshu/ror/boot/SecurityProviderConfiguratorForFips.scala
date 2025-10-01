@@ -18,8 +18,8 @@ package tech.beshu.ror.boot
 
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
-import tech.beshu.ror.configuration.RorSslSettings
-import tech.beshu.ror.configuration.SslConfiguration.FipsMode.{NonFips, SslOnly}
+import tech.beshu.ror.settings.es.RorSslSettings
+import tech.beshu.ror.settings.es.SslConfiguration.FipsMode.{NonFips, SslOnly}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.security.Security

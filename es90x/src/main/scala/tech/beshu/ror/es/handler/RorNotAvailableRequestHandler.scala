@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.handler
 
-import tech.beshu.ror.configuration.RorBootSettings
-import tech.beshu.ror.configuration.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
+import tech.beshu.ror.settings.es.RorBootSettings
+import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.{ForbiddenResponse, ServiceNotAvailableResponse}
 

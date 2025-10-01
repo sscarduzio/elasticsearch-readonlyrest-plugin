@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.settings.es
 
 import better.files.*
 import io.circe.{Decoder, DecodingFailure, HCursor}
@@ -23,8 +23,8 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslSettings, FipsMode, InternodeSslSettings}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.SslConfiguration.*
 import tech.beshu.ror.utils.SSLCertHelper
 
 sealed trait RorSslSettings
@@ -170,8 +170,6 @@ object SslConfiguration {
 }
 
 private object SslDecoders extends Logging {
-
-  import tech.beshu.ror.configuration.SslConfiguration.*
 
   object consts {
     val rorSection = "readonlyrest"

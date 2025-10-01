@@ -14,13 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.source
+package tech.beshu.ror.settings.ror.source
 
 import io.circe.Codec
 import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
-import tech.beshu.ror.configuration.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
+import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.es.IndexDocumentManager
-import tech.beshu.ror.settings.source.MainSettingsIndexSource.Const
+import MainSettingsIndexSource.Const
 
 class MainSettingsIndexSource private(indexDocumentManager: IndexDocumentManager,
                                       settingsIndex: RorSettingsIndex)

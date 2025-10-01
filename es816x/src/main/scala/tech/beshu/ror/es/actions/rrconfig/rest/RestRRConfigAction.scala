@@ -23,7 +23,7 @@ import org.elasticsearch.rest.*
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method.GET
-import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
+import tech.beshu.ror.settings.es.loader.distributed.NodesResponse.NodeId
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, RRConfigsRequest}
 

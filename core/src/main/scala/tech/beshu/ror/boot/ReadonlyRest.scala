@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.boot
 
-import cats.Show
 import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -34,9 +33,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
-import tech.beshu.ror.configuration.*
 import tech.beshu.ror.es.{EsEnv, IndexDocumentManager}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.*
+import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
@@ -53,7 +53,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   def start(esConfigBasedRorSettings: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       creatorsAndLoaders <- lift(SettingsRelatedCreatorsAndLoaders.create(esConfigBasedRorSettings, indexDocumentManager))
-      loadedSettings <- EitherT(creatorsAndLoaders.startingRorSettingsLoader.load())
+      loadedSettings <- EitherT(creatorsAndLoaders.startingRorSettingsLoader.load()).leftMap(StartingFailure(_))
       (loadedMainRorSettings, loadedTestRorSettings) = loadedSettings
       instance <- startRor(esConfigBasedRorSettings, creatorsAndLoaders.creators, loadedMainRorSettings, loadedTestRorSettings)
     } yield instance).value
@@ -204,13 +204,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
 object ReadonlyRest {
 
-  // todo: move somewhere else
-  final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
-  object StartingFailure {
-    // todo: move?
-    implicit val show: Show[StartingFailure] = Show.show(_.message)
-  }
-
   final case class MainEngine(engine: Engine,
                               settings: RawRorSettings)
 
@@ -242,7 +235,8 @@ object ReadonlyRest {
     }
   }
 
-  // todo: do we need both?
+  final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
+
   def create(indexContentService: IndexDocumentManager,
              auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)

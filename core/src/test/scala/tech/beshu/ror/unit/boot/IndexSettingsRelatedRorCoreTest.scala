@@ -36,9 +36,10 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsFil
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.boot.RorInstance.TestSettings
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
 import tech.beshu.ror.es.{EsEnv, IndexDocumentManager}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
+import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -47,8 +48,7 @@ import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-// todo: change name
-class RorIndexTest extends AnyWordSpec
+class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
   with Inside with OptionValues with EitherValues
   with MockFactory with Eventually {
 

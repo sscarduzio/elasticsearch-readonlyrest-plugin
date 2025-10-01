@@ -29,7 +29,7 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.ConnectionProfile
 import org.elasticsearch.transport.netty4.{Netty4Transport, SharedGroupFactory}
-import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
+import tech.beshu.ror.settings.es.SslConfiguration.InternodeSslConfiguration
 import tech.beshu.ror.utils.SSLCertHelper
 import tech.beshu.ror.utils.SSLCertHelper.HostAndPort
 

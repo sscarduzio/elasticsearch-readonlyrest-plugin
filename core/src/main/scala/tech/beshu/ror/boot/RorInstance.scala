@@ -23,25 +23,25 @@ import cats.syntax.either.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
-
-import java.util.concurrent.atomic.AtomicReference
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.RorDependencies
 import tech.beshu.ror.api.{AuthMockApi, MainSettingsApi, TestSettingsApi}
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
-import tech.beshu.ror.configuration.RorProperties.RefreshInterval
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, MainRorSettings, RawRorSettings}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.source.IndexSettingsSource
-import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.{CoreRefreshSettings, LoadingRorCoreStrategy}
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicReference
 
 class RorInstance private(boot: ReadonlyRest,
                           mode: RorInstance.Mode,
@@ -55,17 +55,17 @@ class RorInstance private(boot: ReadonlyRest,
                           scheduler: Scheduler)
   extends Logging {
 
-  import creators.*
   import RorInstance.*
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
+  import creators.*
 
   logger.info("ReadonlyREST was loaded ...")
   private val reloadTaskState: AtomicReference[ReloadTaskState] = new AtomicReference(ReloadTaskState.NotInitiated)
 
   mode match {
-    case Mode.WithPeriodicIndexCheck(RefreshInterval.Enabled(interval)) =>
+    case Mode.WithPeriodicIndexCheck(interval) =>
       scheduleEnginesReload(interval)
-    case Mode.WithPeriodicIndexCheck(RefreshInterval.Disabled) | Mode.NoPeriodicIndexCheck =>
+    case Mode.NoPeriodicIndexCheck =>
       logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
   }
 
@@ -248,10 +248,7 @@ object RorInstance {
              testEngine: ReadonlyRest.TestEngine)
             (implicit systemContext: SystemContext,
              scheduler: Scheduler): Task[RorInstance] = {
-    val mode = esConfigBasedRorSettings.loadingRorCoreStrategy match {
-      case LoadingRorCoreStrategy.ForceLoadingFromFile => Mode.NoPeriodicIndexCheck
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(parameters) => Mode.WithPeriodicIndexCheck(parameters.refreshInterval)
-    }
+    val mode = modeFrom(esConfigBasedRorSettings.loadingRorCoreStrategy)
     createInstance(boot, esConfigBasedRorSettings, creators, mode, mainEngine, testEngine)
   }
 
@@ -278,9 +275,20 @@ object RorInstance {
     )
   }
 
+  private def modeFrom(strategy: LoadingRorCoreStrategy) = {
+    strategy match {
+      case LoadingRorCoreStrategy.ForceLoadingFromFile =>
+        Mode.NoPeriodicIndexCheck
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Disabled) =>
+        Mode.NoPeriodicIndexCheck
+      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Enabled(refreshInterval)) =>
+        Mode.WithPeriodicIndexCheck(refreshInterval)
+    }
+  }
+
   sealed trait RawSettingsReloadError
   object RawSettingsReloadError {
-    final case class ReloadingFailed(failure: ReadonlyRest.StartingFailure) extends RawSettingsReloadError
+    final case class ReloadingFailed(failure: StartingFailure) extends RawSettingsReloadError
     final case class SettingsUpToDate(settings: RawRorSettings) extends RawSettingsReloadError
     object RorInstanceStopped extends RawSettingsReloadError
   }
@@ -328,7 +336,7 @@ object RorInstance {
 
   private sealed trait Mode
   private object Mode {
-    final case class WithPeriodicIndexCheck(reloadInterval: RefreshInterval) extends Mode
+    final case class WithPeriodicIndexCheck(reloadInterval: PositiveFiniteDuration) extends Mode
     case object NoPeriodicIndexCheck extends Mode
   }
 

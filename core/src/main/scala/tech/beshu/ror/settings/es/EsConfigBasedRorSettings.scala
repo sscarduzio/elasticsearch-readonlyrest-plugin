@@ -14,10 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.settings.es
 
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.NonNegative
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import monix.eval.Task
@@ -25,14 +27,16 @@ import squants.information.Information
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsFile, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingError.{CannotUseRorSslWhenXPackSecurityIsEnabled, FileNotFound, MalformedContent}
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadingRorCoreStrategy
-import tech.beshu.ror.configuration.RorProperties.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay, RefreshInterval}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingError.{CannotUseRorSslWhenXPackSecurityIsEnabled, FileNotFound, MalformedContent}
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingRorCoreStrategy
+import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
-import scala.language.implicitConversions
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.language.{implicitConversions, postfixOps}
 
 final case class EsConfigBasedRorSettings(boot: RorBootSettings,
                                           ssl: Option[RorSslSettings],
@@ -60,18 +64,18 @@ object EsConfigBasedRorSettings {
   }
 
   private def loadRorBootSettings(esEnv: EsEnv)
-                                 (implicit systemContext: SystemContext) = {
+                                 (implicit systemContext: SystemContext): EitherT[Task, MalformedContent, RorBootSettings] = {
     EitherT(RorBootSettings.load(esEnv))
       .leftMap(error => MalformedContent(esEnv.elasticsearchYmlFile, error.message))
   }
 
   private def loadXpackSecuritySettings(esEnv: EsEnv, ossDistribution: Boolean)
-                                       (implicit systemContext: SystemContext) = {
+                                       (implicit systemContext: SystemContext): EitherT[Task, MalformedContent, XpackSecuritySettings]  = {
     EitherT {
       Task.delay {
-        implicit val xpackSettingsDecoder: Decoder[XpackSecurity] = decoders.xpackSettingsDecoder(ossDistribution)
+        implicit val xpackSettingsDecoder: Decoder[XpackSecuritySettings] = decoders.xpackSettingsDecoder(ossDistribution)
         new YamlFileBasedSettingsLoader(esEnv.elasticsearchYmlFile)
-          .loadSettings[XpackSecurity](settingsName = "X-Pack settings")
+          .loadSettings[XpackSecuritySettings](settingsName = "X-Pack settings")
           .left.map(error => MalformedContent(esEnv.elasticsearchYmlFile, error.message))
       }
     }
@@ -79,7 +83,7 @@ object EsConfigBasedRorSettings {
 
   private def loadRorSslSettings(esEnv: EsEnv,
                                  rorSettingsFile: RorSettingsFile,
-                                 xpackSecurity: XpackSecurity)
+                                 xpackSecurity: XpackSecuritySettings)
                                 (implicit systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
     EitherT(RorSslSettings.load(rorSettingsFile, esEnv.elasticsearchYmlFile))
       .leftMap(error => MalformedContent(esEnv.elasticsearchYmlFile, error.message))
@@ -130,16 +134,43 @@ object EsConfigBasedRorSettings {
   sealed trait LoadingRorCoreStrategy
   object LoadingRorCoreStrategy {
     case object ForceLoadingFromFile extends LoadingRorCoreStrategy
-    final case class LoadFromIndexWithFileFallback(parameters: LoadFromIndexParameters) // todo: what about retries?
+    final case class LoadFromIndexWithFileFallback(indexLoadingRetrySettings: LoadingRetryStrategySettings,
+                                                   coreRefreshSettings: CoreRefreshSettings)
       extends LoadingRorCoreStrategy
   }
 
-  final case class LoadFromIndexParameters(refreshInterval: RefreshInterval,
-                                           loadingAttemptsInterval: LoadingAttemptsInterval,
-                                           loadingAttemptsCount: LoadingAttemptsCount,
-                                           loadingDelay: LoadingDelay) // todo: rename to reload or sth?
+  final case class LoadingRetryStrategySettings(attemptsInterval: LoadingAttemptsInterval,
+                                                attemptsCount: LoadingAttemptsCount,
+                                                delay: LoadingDelay)
+  object LoadingRetryStrategySettings {
 
-  private final case class XpackSecurity(enabled: Boolean)
+    final case class LoadingAttemptsCount(value: Int Refined NonNegative) extends AnyVal
+    object LoadingAttemptsCount {
+      def unsafeFrom(value: Int): LoadingAttemptsCount = LoadingAttemptsCount(Refined.unsafeApply(value))
+
+      val zero: LoadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(0)
+    }
+
+    final case class LoadingAttemptsInterval(value: NonNegativeFiniteDuration) extends AnyVal
+    object LoadingAttemptsInterval {
+      def unsafeFrom(value: FiniteDuration): LoadingAttemptsInterval = LoadingAttemptsInterval(value.toRefinedNonNegativeUnsafe)
+    }
+
+    final case class LoadingDelay(value: NonNegativeFiniteDuration) extends AnyVal
+    object LoadingDelay {
+      val none: LoadingDelay = unsafeFrom(0 seconds)
+
+      def unsafeFrom(value: FiniteDuration): LoadingDelay = LoadingDelay(value.toRefinedNonNegativeUnsafe)
+    }
+  }
+
+  sealed trait CoreRefreshSettings
+  object CoreRefreshSettings {
+    case object Disabled extends CoreRefreshSettings
+    final case class Enabled(refreshInterval: PositiveFiniteDuration) extends CoreRefreshSettings
+  }
+
+  private final case class XpackSecuritySettings(enabled: Boolean)
 
   sealed trait LoadingError
   object LoadingError {
@@ -159,8 +190,11 @@ object EsConfigBasedRorSettings {
           Decoder.const(LoadingRorCoreStrategy.ForceLoadingFromFile)
         case false =>
           for {
-            loadFromIndexSettings <- loadFromIndexSettingsDecoder(systemContext.propertiesProvider)
-          } yield LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(loadFromIndexSettings)
+            loadingRetryStrategySettings <- loadLoadingRetryStrategySettings(systemContext.propertiesProvider)
+            coreRefreshIntervalSettings <- loadCoreRefreshSettings(systemContext.propertiesProvider)
+          } yield LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(
+            loadingRetryStrategySettings, coreRefreshIntervalSettings
+          )
       }
     }
 
@@ -190,9 +224,9 @@ object EsConfigBasedRorSettings {
       ))
     }
 
-    def xpackSettingsDecoder(isOssDistribution: Boolean): Decoder[XpackSecurity] = {
+    def xpackSettingsDecoder(isOssDistribution: Boolean): Decoder[XpackSecuritySettings] = {
       if (isOssDistribution) {
-        Decoder.const(XpackSecurity(enabled = false))
+        Decoder.const(XpackSecuritySettings(enabled = false))
       } else {
         val booleanDecoder = YamlKeyDecoder[Boolean](
           path = NonEmptyList.of("xpack", "security", "enabled"),
@@ -204,18 +238,16 @@ object EsConfigBasedRorSettings {
         ) map {
           _.toBoolean
         }
-        (booleanDecoder or stringDecoder) map XpackSecurity.apply
+        (booleanDecoder or stringDecoder) map XpackSecuritySettings.apply
       }
     }
 
-    private implicit def loadFromIndexSettingsDecoder(propertiesProvider: PropertiesProvider): Decoder[LoadFromIndexParameters] = {
+    private def loadLoadingRetryStrategySettings(propertiesProvider: PropertiesProvider): Decoder[LoadingRetryStrategySettings] = {
       for {
-        refreshInterval <- Decoder.instance(_ => Right(RorProperties.rorIndexSettingsReloadInterval(propertiesProvider)))
         loadingAttemptsInterval <- Decoder.instance(_ => Right(RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(propertiesProvider)))
         loadingAttemptsCount <- Decoder.instance(_ => Right(RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(propertiesProvider)))
         loadingDelay <- Decoder.instance(_ => Right(RorProperties.atStartupRorIndexSettingLoadingDelay(propertiesProvider)))
-      } yield LoadFromIndexParameters(
-        refreshInterval,
+      } yield LoadingRetryStrategySettings(
         loadingAttemptsInterval,
         loadingAttemptsCount,
         loadingDelay
@@ -223,4 +255,7 @@ object EsConfigBasedRorSettings {
     }
   }
 
+  private def loadCoreRefreshSettings(propertiesProvider: PropertiesProvider): Decoder[CoreRefreshSettings] = {
+    Decoder.instance(_ => Right(RorProperties.rorCoreRefreshSettings(propertiesProvider)))
+  }
 }

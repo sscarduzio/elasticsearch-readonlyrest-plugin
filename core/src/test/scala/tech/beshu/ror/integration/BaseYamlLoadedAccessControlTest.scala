@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration
 
-import cats.implicits.*
 import monix.execution.Scheduler.Implicits.global
 import squants.information.Megabytes
 import tech.beshu.ror.SystemContext
@@ -25,9 +24,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorSettingsBasedCoreFactory}
-import tech.beshu.ror.configuration.RawRorSettingsYamlParser
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers.*
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, defaultEsVersionForTests, unsafeNes}
 

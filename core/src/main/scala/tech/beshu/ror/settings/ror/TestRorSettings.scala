@@ -14,7 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.settings.ror
 
-final case class MainRorSettings(rawSettings: RawRorSettings)
+import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
+import tech.beshu.ror.settings.ror.TestRorSettings.Expiration
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
+import java.time.{Clock, Instant}
+
+final case class TestRorSettings(rawSettings: RawRorSettings,
+                                 mocks: AuthServicesMocks,
+                                 expiration: Expiration) {
+  def isExpired(clock: Clock): Boolean = {
+    expiration.validTo.isBefore(clock.instant())
+  }
+}
+
+object TestRorSettings {
+  final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
+}

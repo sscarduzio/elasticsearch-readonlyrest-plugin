@@ -14,17 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.source
+package tech.beshu.ror.settings.ror.source
 
 import better.files.File
-import cats.Show
 import cats.data.EitherT
 import io.circe.{Decoder, Json}
 import monix.eval.Task
-import tech.beshu.ror.settings.source.FileSettingsSource.FileSettingsLoadingError
-import tech.beshu.ror.settings.source.FileSettingsSource.LoadingError.FileNotExist
-import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
+import tech.beshu.ror.settings.ror.source.FileSettingsSource.FileSettingsLoadingError
+import tech.beshu.ror.settings.ror.source.FileSettingsSource.LoadingError.FileNotExist
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
 
 class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
   extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
@@ -56,9 +55,5 @@ object FileSettingsSource {
   sealed trait LoadingError
   object LoadingError {
     final case class FileNotExist(file: File) extends LoadingError
-
-    implicit val show: Show[LoadingError] = Show.show {
-      case FileNotExist(file) => s"Cannot find settings file: ${file.pathAsString}"
-    }
   }
 }

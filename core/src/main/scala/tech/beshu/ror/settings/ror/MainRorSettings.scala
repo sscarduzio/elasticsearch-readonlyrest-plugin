@@ -14,12 +14,6 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.settings.ror
 
-import cats.Eq
-import io.circe.Json
-
-final case class RawRorSettings(settingsJson: Json, rawYaml: String)
-object RawRorSettings {
-  implicit val eq: Eq[RawRorSettings] = Eq.fromUniversalEquals
-}
+final case class MainRorSettings(rawSettings: RawRorSettings)

@@ -14,13 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.source
+package tech.beshu.ror.settings.ror.source
 
-import cats.Show
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
-import tech.beshu.ror.settings.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
 
 sealed trait SettingsSource[SETTINGS]
 
@@ -33,11 +32,6 @@ object ReadOnlySettingsSource {
     final case class SettingsMalformed(cause: String) extends LoadingSettingsError[Nothing]
     final case class SourceSpecificError[ERROR](error: ERROR) extends LoadingSettingsError[ERROR]
   }
-
-  implicit def show[ERROR: Show]: Show[LoadingSettingsError[ERROR]] = Show.show {
-    case LoadingSettingsError.SettingsMalformed(cause) => s"ROR settings are malformed: $cause"
-    case LoadingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
-  }
 }
 
 trait ReadWriteSettingsSource[SETTINGS: Encoder : Decoder, READ_SPECIFIC_ERROR, WRITE_SPECIFIC_ERROR]
@@ -49,9 +43,5 @@ object ReadWriteSettingsSource {
   sealed trait SavingSettingsError[+ERROR]
   object SavingSettingsError {
     final case class SourceSpecificError[ERROR](error: ERROR) extends SavingSettingsError[ERROR]
-  }
-
-  implicit def show[ERROR: Show]: Show[SavingSettingsError[ERROR]] = Show.show {
-    case SavingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
   }
 }

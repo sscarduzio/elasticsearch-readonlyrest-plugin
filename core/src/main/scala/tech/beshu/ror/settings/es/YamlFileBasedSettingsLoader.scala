@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.settings.es
 
 import better.files.File
 import io.circe.{Decoder, DecodingFailure, Json}
@@ -22,8 +22,8 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.factory.JsonStaticVariablesResolver
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.yaml.YamlParser
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
+import tech.beshu.ror.utils.yaml.YamlParser
 
 final class YamlFileBasedSettingsLoader(file: File)
                                        (implicit systemContext: SystemContext) {

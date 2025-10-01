@@ -14,14 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.loader
+package tech.beshu.ror.settings.ror.loader
 
 import cats.Show
 import cats.data.EitherT
 import cats.implicits.toShow
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.EsConfigBasedRorSettings.LoadFromIndexParameters
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingRetryStrategySettings
 
 trait RetryStrategy {
   def withRetry[ERROR: Show, RESULT](operation: Task[Either[ERROR, RESULT]]): Task[Either[ERROR, RESULT]]
@@ -34,25 +35,25 @@ object NoRetryStrategy extends RetryStrategy {
     operation
 }
 
-class ConfigurableRetryStrategy(params: LoadFromIndexParameters) // todo: custom case class
+class ConfigurableRetryStrategy(config: LoadingRetryStrategySettings)
   extends RetryStrategy with Logging {
 
   override def withRetry[ERROR: Show, RESULT](operation: Task[Either[ERROR, RESULT]]): Task[Either[ERROR, RESULT]] =
-    attemptWithRetry(operation, currentAttempt = 1, params.loadingAttemptsCount.value.value)
+    attemptWithRetry(operation, currentAttempt = 1, config.attemptsCount.value.value)
 
   private def attemptWithRetry[ERROR : Show, A](operation: Task[Either[ERROR, A]],
                                                 currentAttempt: Int,
                                                 maxAttempts: Int): Task[Either[ERROR, A]] = {
-    val delay = if (currentAttempt == 1) params.loadingDelay.value.value else params.loadingAttemptsInterval.value.value
+    val delay = if (currentAttempt == 1) config.delay.value.value else config.attemptsInterval.value.value
     for {
       _ <- Task.sleep(delay)
       result <- operation
       finalResult <- result match {
         case Right(value) =>
           Task.now(Right(value))
-          // todo: better mesages
+          // todo: better messages
         case Left(error) if shouldRetry(currentAttempt, maxAttempts) =>
-          logger.debug(s"Retry attempt $currentAttempt/$maxAttempts failed with: ${error.show}. Retrying in ${params.loadingAttemptsInterval.show}...")
+          logger.debug(s"Retry attempt $currentAttempt/$maxAttempts failed with: ${error.show}. Retrying in ${config.attemptsInterval.show}...")
           attemptWithRetry(operation, currentAttempt + 1, maxAttempts)
         case Left(error) =>
           logger.debug(s"Operation failed after $currentAttempt attempts: ${error.show}")

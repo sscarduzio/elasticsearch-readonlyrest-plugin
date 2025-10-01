@@ -22,9 +22,9 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
-import tech.beshu.ror.configuration.SslConfiguration.*
-import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.{FileBasedConfiguration, KeystoreBasedConfiguration}
-import tech.beshu.ror.configuration.{MalformedSettings, RorSslSettings}
+import tech.beshu.ror.settings.es.SslConfiguration.*
+import tech.beshu.ror.settings.es.SslConfiguration.ServerCertificateConfiguration.{FileBasedConfiguration, KeystoreBasedConfiguration}
+import tech.beshu.ror.settings.es.{MalformedSettings, RorSslSettings}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.getResourcePath
 

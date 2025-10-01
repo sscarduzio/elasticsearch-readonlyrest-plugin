@@ -26,13 +26,14 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.boot.ReadonlyRest
-import tech.beshu.ror.boot.ReadonlyRest.Engine
+import tech.beshu.ror.boot.ReadonlyRest.{Engine, StartingFailure}
 import tech.beshu.ror.boot.RorInstance.RawSettingsReloadError
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.*
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.EngineState.NotStartedYet
-import tech.beshu.ror.boot.engines.SettingsHash.*
-import tech.beshu.ror.configuration.{EsConfigBasedRorSettings, RawRorSettings}
+import tech.beshu.ror.boot.engines.SettingsHash.toSettingsHash
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
+import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.utils.DurationOps.*
 
 import java.time.Instant
@@ -373,7 +374,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
         }
         newEngineState match {
           case _: EngineState.NotStartedYet =>
-            Left(RawSettingsReloadError.ReloadingFailed(ReadonlyRest.StartingFailure("Cannot update engine TTL because engine was invalidated")))
+            Left(RawSettingsReloadError.ReloadingFailed(StartingFailure("Cannot update engine TTL because engine was invalidated")))
           case EngineState.Working(engineWithSetting, _) =>
             Right(ReloadResult(engineWithSetting.engine, engineWithSetting.expiration.get))
           case EngineState.Stopped =>

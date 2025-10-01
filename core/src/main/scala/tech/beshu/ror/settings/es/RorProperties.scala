@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.settings.es
 
 import better.files.File
 import cats.Show
@@ -27,6 +27,8 @@ import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.CoreRefreshSettings
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingRetryStrategySettings.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 
@@ -59,11 +61,11 @@ object RorProperties extends Logging {
       .getProperty(PropName(keys.rorSettingsFilePath))
       .map(f => RorSettingsFile(File(f)))
 
-  def rorIndexSettingsReloadInterval(implicit propertiesProvider: PropertiesProvider): RefreshInterval =
+  def rorCoreRefreshSettings(implicit propertiesProvider: PropertiesProvider): CoreRefreshSettings =
     getProperty(
       keys.rorSettingsRefreshInterval,
-      str => toRefreshInterval(str),
-      RefreshInterval.Enabled(defaults.refreshInterval)
+      str => toCoreRefreshSettings(str),
+      CoreRefreshSettings.Enabled(defaults.refreshInterval)
     )
 
   def atStartupRorIndexSettingsLoadingAttemptsInterval(implicit propertiesProvider: PropertiesProvider): LoadingAttemptsInterval =
@@ -121,17 +123,19 @@ object RorProperties extends Logging {
       }
   }
 
-  private def toRefreshInterval(value: String): Try[RefreshInterval] = toPositiveFiniteDuration(value).map {
-    case Some(value) => RefreshInterval.Enabled(value)
-    case None => RefreshInterval.Disabled
+  private def toCoreRefreshSettings(value: String): Try[CoreRefreshSettings] = toPositiveFiniteDuration(value).map {
+    case Some(value) => CoreRefreshSettings.Enabled(value)
+    case None => CoreRefreshSettings.Disabled
   }
 
   private def toLoadingAttemptsInterval(value: String): Try[LoadingAttemptsInterval] =
     toNonNegativeFiniteDuration(value).map(LoadingAttemptsInterval.apply)
 
-  private def toLoadingDelay(value: String): Try[LoadingDelay] = toNonNegativeFiniteDuration(value).map(LoadingDelay.apply)
+  private def toLoadingDelay(value: String): Try[LoadingDelay] =
+    toNonNegativeFiniteDuration(value).map(LoadingDelay.apply)
 
-  private def toLoadingAttempts(value: String): Try[LoadingAttemptsCount] = toNonNegativeInt(value).map(LoadingAttemptsCount.apply)
+  private def toLoadingAttempts(value: String): Try[LoadingAttemptsCount] =
+    toNonNegativeInt(value).map(LoadingAttemptsCount.apply)
 
   private def toPositiveFiniteDuration(value: String): Try[Option[PositiveFiniteDuration]] = Try {
     durationFrom(value) match {
@@ -156,42 +160,5 @@ object RorProperties extends Logging {
       case Success(int) if int >= 0 => Refined.unsafeApply(int)
       case Success(_) | Failure(_) => throw new IllegalArgumentException(s"Cannot convert '${value.show}' to non-negative integer")
     }
-  }
-
-  final case class LoadingDelay(value: NonNegativeFiniteDuration) extends AnyVal
-  object LoadingDelay {
-    val none: LoadingDelay = unsafeFrom(0 seconds)
-
-    def unsafeFrom(value: FiniteDuration): LoadingDelay = LoadingDelay(value.toRefinedNonNegativeUnsafe)
-
-    implicit val show: Show[LoadingDelay] = Show[FiniteDuration].contramap(_.value.value)
-  }
-
-  sealed trait RefreshInterval
-  object RefreshInterval {
-    case object Disabled extends RefreshInterval
-
-    final case class Enabled(interval: PositiveFiniteDuration) extends RefreshInterval
-
-    implicit val show: Show[RefreshInterval] = Show.show {
-      case Disabled => "0 sec"
-      case Enabled(interval) => interval.value.toString()
-    }
-  }
-
-  final case class LoadingAttemptsCount(value: Int Refined NonNegative) extends AnyVal
-  object LoadingAttemptsCount {
-    def unsafeFrom(value: Int): LoadingAttemptsCount = LoadingAttemptsCount(Refined.unsafeApply(value))
-
-    val zero: LoadingAttemptsCount = LoadingAttemptsCount.unsafeFrom(0)
-
-    implicit val show: Show[LoadingAttemptsCount] = Show[Int].contramap(_.value.value)
-  }
-
-  final case class LoadingAttemptsInterval(value: NonNegativeFiniteDuration) extends AnyVal
-  object LoadingAttemptsInterval {
-    def unsafeFrom(value: FiniteDuration): LoadingAttemptsInterval = LoadingAttemptsInterval(value.toRefinedNonNegativeUnsafe)
-
-    implicit val show: Show[LoadingAttemptsInterval] = Show[FiniteDuration].contramap(_.value.value)
   }
 }

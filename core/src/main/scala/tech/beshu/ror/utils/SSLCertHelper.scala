@@ -27,10 +27,10 @@ import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import org.bouncycastle.openssl.PEMParser
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
-import tech.beshu.ror.configuration.SslConfiguration
-import tech.beshu.ror.configuration.SslConfiguration.*
-import tech.beshu.ror.configuration.SslConfiguration.ClientCertificateConfiguration.TruststoreBasedConfiguration
-import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.KeystoreBasedConfiguration
+import tech.beshu.ror.settings.es.SslConfiguration
+import tech.beshu.ror.settings.es.SslConfiguration.*
+import tech.beshu.ror.settings.es.SslConfiguration.ClientCertificateConfiguration.TruststoreBasedConfiguration
+import tech.beshu.ror.settings.es.SslConfiguration.ServerCertificateConfiguration.KeystoreBasedConfiguration
 import tech.beshu.ror.implicits.*
 
 import java.io.{FileInputStream, FileReader, IOException}
