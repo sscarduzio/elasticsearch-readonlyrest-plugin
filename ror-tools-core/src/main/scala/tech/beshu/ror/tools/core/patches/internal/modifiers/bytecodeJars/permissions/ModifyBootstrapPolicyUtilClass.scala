@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions
 
 import cats.data.NonEmptyList
 import just.semver.SemVer
@@ -47,8 +47,11 @@ private[patches] class ModifyBootstrapPolicyUtilClass(esVersion: SemVer,
   private class EsClassVisitor(writer: ClassWriter)
     extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    new CreateIsItRorPluginMethod(this)
-    new CreateAllowedPluginPermissionsExclusivelyForRorMethod(this)
+    override def visit(version: Int, access: Int, name: String, signature: String, superName: String, interfaces: Array[String]): Unit = {
+      super.visit(version, access, name, signature, superName, interfaces)
+      IsItRorPluginMethod.create(this)
+      AllowedPluginPermissionsExclusivelyForRorMethod.create(this)
+    }
 
     override def visitMethod(access: Int,
                              name: String,
@@ -66,171 +69,177 @@ private[patches] class ModifyBootstrapPolicyUtilClass(esVersion: SemVer,
     }
   }
 
-  private class CreateIsItRorPluginMethod(classVisitor: ClassVisitor) {
-    private val methodVisitor = classVisitor.visitMethod(
-      Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
-      "isItRorPlugin",
-      "(Lorg/elasticsearch/bootstrap/PluginPolicyInfo;)Z",
-      null,
-      null
-    )
-    methodVisitor.visitCode()
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
-    esVersion match {
-      case v if v >= es800 =>
-        methodVisitor.visitMethodInsn(
-          Opcodes.INVOKEVIRTUAL,
-          "org/elasticsearch/bootstrap/PluginPolicyInfo",
-          "file",
-          "()Ljava/nio/file/Path;",
-          false
-        )
-      case _ =>
-        methodVisitor.visitFieldInsn(
-          Opcodes.GETFIELD,
-          "org/elasticsearch/bootstrap/PluginPolicyInfo",
-          "file",
-          "Ljava/nio/file/Path;"
-        );
+  private object IsItRorPluginMethod {
+
+    def create(classVisitor: ClassVisitor): Unit = {
+      val methodVisitor = classVisitor.visitMethod(
+        Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
+        "isItRorPlugin",
+        "(Lorg/elasticsearch/bootstrap/PluginPolicyInfo;)Z",
+        null,
+        null
+      )
+      methodVisitor.visitCode()
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
+      esVersion match {
+        case v if v >= es800 =>
+          methodVisitor.visitMethodInsn(
+            Opcodes.INVOKEVIRTUAL,
+            "org/elasticsearch/bootstrap/PluginPolicyInfo",
+            "file",
+            "()Ljava/nio/file/Path;",
+            false
+          )
+        case _ =>
+          methodVisitor.visitFieldInsn(
+            Opcodes.GETFIELD,
+            "org/elasticsearch/bootstrap/PluginPolicyInfo",
+            "file",
+            "Ljava/nio/file/Path;"
+          );
+      }
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKEINTERFACE,
+        "java/nio/file/Path",
+        "toAbsolutePath",
+        "()Ljava/nio/file/Path;",
+        true
+      )
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKEINTERFACE,
+        "java/nio/file/Path",
+        "toString",
+        "()Ljava/lang/String;",
+        true
+      )
+      methodVisitor.visitLdcInsn("/readonlyrest/plugin-security.policy")
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        "java/lang/String",
+        "endsWith",
+        "(Ljava/lang/String;)Z",
+        false
+      )
+      methodVisitor.visitInsn(Opcodes.IRETURN)
+      methodVisitor.visitMaxs(2, 1)
+      methodVisitor.visitEnd()
     }
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKEINTERFACE,
-      "java/nio/file/Path",
-      "toAbsolutePath",
-      "()Ljava/nio/file/Path;",
-      true
-    )
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKEINTERFACE,
-      "java/nio/file/Path",
-      "toString",
-      "()Ljava/lang/String;",
-      true
-    )
-    methodVisitor.visitLdcInsn("/readonlyrest/plugin-security.policy")
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKEVIRTUAL,
-      "java/lang/String",
-      "endsWith",
-      "(Ljava/lang/String;)Z",
-      false
-    )
-    methodVisitor.visitInsn(Opcodes.IRETURN)
-    methodVisitor.visitMaxs(2, 1)
-    methodVisitor.visitEnd()
   }
 
-  private class CreateAllowedPluginPermissionsExclusivelyForRorMethod(classVisitor: ClassVisitor) {
-    private val methodVisitor = classVisitor.visitMethod(
-      Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
-      "allowedPluginPermissionsExclusivelyForRor",
-      "()Lorg/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher;",
-      null,
-      null
-    )
-    methodVisitor.visitCode()
-    methodVisitor.visitTypeInsn(Opcodes.NEW, "java/security/Permissions")
-    methodVisitor.visitInsn(Opcodes.DUP)
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKESPECIAL,
-      "java/security/Permissions",
-      "<init>",
-      "()V",
-      false
-    )
-    methodVisitor.visitVarInsn(Opcodes.ASTORE, 0)
-    methodVisitor.visitFieldInsn(
-      Opcodes.GETSTATIC,
-      "org/elasticsearch/bootstrap/PolicyUtil",
-      "ALLOWED_PLUGIN_PERMISSIONS",
-      "Lorg/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher;"
-    )
-    methodVisitor.visitFieldInsn(
-      Opcodes.GETFIELD,
-      "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher",
-      "namedPermissions",
-      "Ljava/security/PermissionCollection;"
-    )
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKEVIRTUAL,
-      "java/security/PermissionCollection",
-      "elementsAsStream",
-      "()Ljava/util/stream/Stream;",
-      false
-    )
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
-    methodVisitor.visitInsn(Opcodes.DUP)
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKESTATIC,
-      "java/util/Objects",
-      "requireNonNull",
-      "(Ljava/lang/Object;)Ljava/lang/Object;",
-      false
-    )
-    methodVisitor.visitInsn(Opcodes.POP)
-    methodVisitor.visitInvokeDynamicInsn(
-      "accept",
-      "(Ljava/security/PermissionCollection;)Ljava/util/function/Consumer;",
-      new Handle(
-        Opcodes.H_INVOKESTATIC,
-        "java/lang/invoke/LambdaMetafactory",
-        "metafactory",
-        "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
+  private object AllowedPluginPermissionsExclusivelyForRorMethod {
+
+    def create(classVisitor: ClassVisitor): Unit = {
+      val methodVisitor = classVisitor.visitMethod(
+        Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
+        "allowedPluginPermissionsExclusivelyForRor",
+        "()Lorg/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher;",
+        null,
+        null
+      )
+      methodVisitor.visitCode()
+      methodVisitor.visitTypeInsn(Opcodes.NEW, "java/security/Permissions")
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKESPECIAL,
+        "java/security/Permissions",
+        "<init>",
+        "()V",
         false
-      ),
-      Type.getType("(Ljava/lang/Object;)V"),
-      new Handle(
-        Opcodes.H_INVOKEVIRTUAL,
+      )
+      methodVisitor.visitVarInsn(Opcodes.ASTORE, 0)
+      methodVisitor.visitFieldInsn(
+        Opcodes.GETSTATIC,
+        "org/elasticsearch/bootstrap/PolicyUtil",
+        "ALLOWED_PLUGIN_PERMISSIONS",
+        "Lorg/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher;"
+      )
+      methodVisitor.visitFieldInsn(
+        Opcodes.GETFIELD,
+        "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher",
+        "namedPermissions",
+        "Ljava/security/PermissionCollection;"
+      )
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
         "java/security/PermissionCollection",
-        "add",
-        "(Ljava/security/Permission;)V",
+        "elementsAsStream",
+        "()Ljava/util/stream/Stream;",
         false
-      ),
-      Type.getType("(Ljava/security/Permission;)V")
-    )
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKEINTERFACE,
-      "java/util/stream/Stream",
-      "forEach",
-      "(Ljava/util/function/Consumer;)V",
-      true
-    )
-    additionalAllowedPermissions.toList.foreach { permission =>
-      includeAdditionalPermission(methodVisitor, permission)
+      )
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKESTATIC,
+        "java/util/Objects",
+        "requireNonNull",
+        "(Ljava/lang/Object;)Ljava/lang/Object;",
+        false
+      )
+      methodVisitor.visitInsn(Opcodes.POP)
+      methodVisitor.visitInvokeDynamicInsn(
+        "accept",
+        "(Ljava/security/PermissionCollection;)Ljava/util/function/Consumer;",
+        new Handle(
+          Opcodes.H_INVOKESTATIC,
+          "java/lang/invoke/LambdaMetafactory",
+          "metafactory",
+          "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
+          false
+        ),
+        Type.getType("(Ljava/lang/Object;)V"),
+        new Handle(
+          Opcodes.H_INVOKEVIRTUAL,
+          "java/security/PermissionCollection",
+          "add",
+          "(Ljava/security/Permission;)V",
+          false
+        ),
+        Type.getType("(Ljava/security/Permission;)V")
+      )
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKEINTERFACE,
+        "java/util/stream/Stream",
+        "forEach",
+        "(Ljava/util/function/Consumer;)V",
+        true
+      )
+      additionalAllowedPermissions.toList.foreach { permission =>
+        includeAdditionalPermission(methodVisitor, permission)
+      }
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        "java/security/PermissionCollection",
+        "setReadOnly",
+        "()V",
+        false
+      )
+      methodVisitor.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher")
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
+      methodVisitor.visitFieldInsn(
+        Opcodes.GETSTATIC,
+        "org/elasticsearch/bootstrap/PolicyUtil",
+        "ALLOWED_PLUGIN_PERMISSIONS",
+        "Lorg/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher;"
+      )
+      methodVisitor.visitFieldInsn(
+        Opcodes.GETFIELD,
+        "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher",
+        "classPermissions",
+        "Ljava/util/Map;"
+      )
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKESPECIAL,
+        "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher",
+        "<init>",
+        "(Ljava/security/PermissionCollection;Ljava/util/Map;)V",
+        false
+      )
+      methodVisitor.visitInsn(Opcodes.ARETURN)
+      methodVisitor.visitMaxs(4, 1)
+      methodVisitor.visitEnd()
     }
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKEVIRTUAL,
-      "java/security/PermissionCollection",
-      "setReadOnly",
-      "()V",
-      false
-    )
-    methodVisitor.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher")
-    methodVisitor.visitInsn(Opcodes.DUP)
-    methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
-    methodVisitor.visitFieldInsn(
-      Opcodes.GETSTATIC,
-      "org/elasticsearch/bootstrap/PolicyUtil",
-      "ALLOWED_PLUGIN_PERMISSIONS",
-      "Lorg/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher;"
-    )
-    methodVisitor.visitFieldInsn(
-      Opcodes.GETFIELD,
-      "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher",
-      "classPermissions",
-      "Ljava/util/Map;"
-    )
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKESPECIAL,
-      "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher",
-      "<init>",
-      "(Ljava/security/PermissionCollection;Ljava/util/Map;)V",
-      false
-    )
-    methodVisitor.visitInsn(Opcodes.ARETURN)
-    methodVisitor.visitMaxs(4, 1)
-    methodVisitor.visitEnd()
 
     private def includeAdditionalPermission(methodVisitor: MethodVisitor, permission: Permission): Unit = {
       val jvmStylePermissionClassName = permission.getClass.getName.replace('.', '/')
@@ -253,6 +262,7 @@ private[patches] class ModifyBootstrapPolicyUtilClass(esVersion: SemVer,
         false
       )
     }
+
   }
 
   private class GetPluginPolicyInfoAddingRorExtraPermission(underlying: MethodVisitor)
