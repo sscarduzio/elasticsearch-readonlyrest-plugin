@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.factory
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.{Json, parser}
 import io.lemonlabs.uri.Uri
 import monix.execution.Scheduler.Implicits.global
 import org.json.JSONObject
@@ -27,6 +28,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
+import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{LocalAuditCluster, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditLoggerName, RorConfigurationIndex}
@@ -567,6 +569,90 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             serializedResponse shouldBe defined
             serializedResponse.get.get("custom_field_for_es_node_name") shouldBe "testEsNode"
             serializedResponse.get.get("custom_field_for_es_cluster_name") shouldBe "testEsCluster"
+          }
+          "ECS serializer is set" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: index
+                |      serializer:
+                |        type: ecs
+                |        verbosity_level_serialization_mode: [INFO]
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+                 """.stripMargin)
+
+            assertIndexBasedAuditSinkSettingsPresent[EcsV1AuditLogSerializer](
+              config,
+              expectedIndexName = "readonlyrest_audit-2018-12-31",
+              expectedAuditCluster = LocalAuditCluster
+            )
+            val createdSerializer = serializer(config)
+            val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(DummyAuditRequestContext))
+
+            val expectedJsonStr =
+              """{
+                |  "trace": {
+                |    "id": ""
+                |  },
+                |  "elasticsearch": {
+                |    "node": {
+                |      "name": "testEsNode"
+                |    },
+                |    "cluster": {
+                |      "name": "testEsCluster"
+                |    },
+                |    "index": {
+                |      "name": []
+                |    }
+                |  },
+                |  "destination": {
+                |    "address": ""
+                |  },
+                |  "http": {
+                |    "request": {
+                |      "headers": {},
+                |      "method": "",
+                |      "bytes": 0,
+                |      "body": {
+                |        "content": ""
+                |      },
+                |    }
+                |  },
+                |  "source": {
+                |    "address": ""
+                |  },
+                |  "error": {},
+                |  "event": {
+                |    "duration": 0,
+                |    "action": "",
+                |    "id": "",
+                |    "type": "",
+                |    "outcome": "FORBIDDEN"
+                |  },
+                |  "user": {
+                |    "effective": {},
+                |    "name": "logged_user"
+                |  },
+                |  "url": {
+                |    "path": ""
+                |  },
+                |  "labels": {
+                |    "acl_history": "",
+                |    "task_id": 0
+                |  }
+                |}""".stripMargin
+            val actualJson = circeJsonWithIgnoredTimestamp(serializedResponse)
+            val expectedJson = circeJsonWithIgnoredTimestamp(Some(new JSONObject(expectedJsonStr)))
+            actualJson should be(expectedJson)
           }
           "deprecated custom serializer is set" in {
             val config = rorConfigFromUnsafe(
@@ -1954,6 +2040,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       errors.length should be(1)
       errors.head should be(AuditingSettingsCreationError(Message(expectedErrorMessage)))
     }
+  }
+
+  def circeJsonWithIgnoredTimestamp(json: Option[JSONObject]): Option[Json] = {
+    json.map(_.put("@timestamp", "IGNORED").toString(0)).flatMap(parser.parse(_).toOption)
   }
 
 }

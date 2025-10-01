@@ -79,13 +79,27 @@ private[ror] object AuditSerializationHelper {
   private def createEntry(fields: Map[AuditFieldName, AuditFieldValueDescriptor],
                           eventData: EventData) = {
     val resolveAuditFieldValue = resolver(eventData)
-    val resolvedFields: Map[String, Any] =
-      Map("@timestamp" -> timestampFormatter.format(eventData.requestContext.timestamp)) ++
-        fields.map { case (name, valueDescriptor) => name.value -> resolveAuditFieldValue(valueDescriptor) }
+    val resolvedFields: Map[AuditFieldName, Any] =
+      Map(AuditFieldName("@timestamp") -> timestampFormatter.format(eventData.requestContext.timestamp)) ++
+        fields.map { case (name, valueDescriptor) => name -> resolveAuditFieldValue(valueDescriptor) }
 
-    resolvedFields
-      .foldLeft(new JSONObject()) { case (soFar, (key, value)) => soFar.put(key, value) }
-      .mergeWith(eventData.requestContext.generalAuditEvents)
+    resolvedFields.foldLeft(new JSONObject()) { case (soFar, (path, value)) =>
+      putNested(soFar, path.path, value)
+    }.mergeWith(eventData.requestContext.generalAuditEvents)
+  }
+
+  private def putNested(json: JSONObject, path: List[String], value: Any): JSONObject = {
+    path match {
+      case Nil => json
+      case key :: Nil =>
+        println((key, value))
+        json.put(key, value)
+        json
+      case key :: tail =>
+        val child = Option(json.optJSONObject(key)).getOrElse(new JSONObject())
+        json.put(key, putNested(child, tail, value))
+        json
+    }
   }
 
   private def resolver(eventData: EventData): AuditFieldValueDescriptor => Any = auditValue => {
@@ -100,6 +114,7 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.InvolvedIndices => if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava
       case AuditFieldValueDescriptor.AclHistory => requestContext.history
       case AuditFieldValueDescriptor.ProcessingDurationMillis => eventData.duration.toMillis
+      case AuditFieldValueDescriptor.ProcessingDurationNanos => eventData.duration.toNanos
       case AuditFieldValueDescriptor.Timestamp => timestampFormatter.format(requestContext.timestamp)
       case AuditFieldValueDescriptor.Id => requestContext.id
       case AuditFieldValueDescriptor.CorrelationId => requestContext.correlationId
@@ -153,7 +168,11 @@ private[ror] object AuditSerializationHelper {
     final case class Include(types: Set[Verbosity]) extends AllowedEventMode
   }
 
-  final case class AuditFieldName(value: String)
+  final case class AuditFieldName(path: List[String])
+
+  object AuditFieldName {
+    def apply(value: String) = new AuditFieldName(List(value))
+  }
 
   sealed trait AuditFieldValueDescriptor
 
@@ -177,6 +196,8 @@ private[ror] object AuditSerializationHelper {
     case object AclHistory extends AuditFieldValueDescriptor
 
     case object ProcessingDurationMillis extends AuditFieldValueDescriptor
+
+    case object ProcessingDurationNanos extends AuditFieldValueDescriptor
 
     // Identifiers
     case object Timestamp extends AuditFieldValueDescriptor

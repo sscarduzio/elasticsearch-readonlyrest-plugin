@@ -65,6 +65,7 @@ object AuditFieldValueDescriptorParser {
       case "INVOLVED_INDICES" => Some(AuditFieldValueDescriptor.InvolvedIndices)
       case "ACL_HISTORY" => Some(AuditFieldValueDescriptor.AclHistory)
       case "PROCESSING_DURATION_MILLIS" => Some(AuditFieldValueDescriptor.ProcessingDurationMillis)
+      case "PROCESSING_DURATION_NANOS" => Some(AuditFieldValueDescriptor.ProcessingDurationNanos)
       case "TIMESTAMP" => Some(AuditFieldValueDescriptor.Timestamp)
       case "ID" => Some(AuditFieldValueDescriptor.Id)
       case "CORRELATION_ID" => Some(AuditFieldValueDescriptor.CorrelationId)

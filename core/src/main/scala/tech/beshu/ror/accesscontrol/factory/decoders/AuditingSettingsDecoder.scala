@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
 import io.circe.Decoder.*
-import io.circe.{Decoder, DecodingFailure, Json, HCursor, KeyDecoder}
+import io.circe.{Decoder, DecodingFailure, HCursor, Json, KeyDecoder}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
 import tech.beshu.ror.accesscontrol.audit.configurable.{AuditFieldValueDescriptorParser, ConfigurableAuditLogSerializer}
+import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -218,18 +219,22 @@ object AuditingSettingsDecoder extends Logging {
         case SerializerType.ExtendedSyntaxConfigurableSerializer =>
           c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxConfigurableSerializerDecoder)
         case SerializerType.EcsSerializer =>
-          c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxConfigurableSerializerDecoder)
+          c.downField("serializer").as[Option[AuditLogSerializer]](ecsSerializerDecoder)
       }
     } yield result
   }
 
   private def ecsSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
     for {
+      version <- c.downField("version").as[Option[EcsSerializerVersion]]
       allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
-      fields <- c.downField("fields").as[Map[AuditFieldName, AuditFieldValueDescriptor]]
-        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'fields' setting is missing or invalid: $msg"))
-      serializer = new ConfigurableAuditLogSerializer(allowedEventMode, fields)
+      serializer = version match {
+        case None =>
+          new EcsV1AuditLogSerializer(allowedEventMode)
+        case Some(EcsSerializerVersion.V1) =>
+          new EcsV1AuditLogSerializer(allowedEventMode)
+      }
     } yield Some(serializer)
   }
 
@@ -299,6 +304,17 @@ object AuditingSettingsDecoder extends Logging {
     case object ExtendedSyntaxConfigurableSerializer extends SerializerType
 
     case object EcsSerializer extends SerializerType
+  }
+
+  private given ccsSerializerVersionDecoder: Decoder[EcsSerializerVersion] = Decoder.decodeString.map(_.toLowerCase).emap {
+    case "v1" => Right(EcsSerializerVersion.V1)
+    case other => Left(s"Invalid ECS serializer version $other")
+  }
+
+  private sealed trait EcsSerializerVersion
+
+  private object EcsSerializerVersion {
+    case object V1 extends EcsSerializerVersion
   }
 
   private def withAuditingSettingsCreationErrorMessage(message: String => String)(decodingFailure: DecodingFailure) = {
