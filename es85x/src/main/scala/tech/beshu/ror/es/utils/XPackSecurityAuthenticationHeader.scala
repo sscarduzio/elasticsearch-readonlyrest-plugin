@@ -34,12 +34,12 @@ object XPackSecurityAuthenticationHeader {
   )
 
   def createXpackSecurityAuthenticationHeader(nodeName: String) = new Header(
-    Header.Name(nes("_xpack_security_authentication1")),
+    Header.Name(nes("_xpack_security_authentication")),
     getAuthenticationHeaderValue(nodeName, "_xpack_security", isInternal = true)
   )
 
   def createSystemAuthenticationHeader(nodeName: String) = new Header(
-    Header.Name(nes("_xpack_security_authentication1")),
+    Header.Name(nes("_xpack_security_authentication")),
     getAuthenticationHeaderValue(nodeName, "_system", isInternal = true)
   )
 
