@@ -27,7 +27,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.tracing.Tracer
 import org.elasticsearch.transport.netty4.SharedGroupFactory
 import org.elasticsearch.xcontent.NamedXContentRegistry
-import tech.beshu.ror.settings.es.SslConfiguration.ExternalSslConfiguration
+import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.SSLCertHelper
 
 class SSLNetty4HttpServerTransport(settings: Settings,
@@ -35,15 +35,14 @@ class SSLNetty4HttpServerTransport(settings: Settings,
                                    threadPool: ThreadPool,
                                    xContentRegistry: NamedXContentRegistry,
                                    dispatcher: HttpServerTransport.Dispatcher,
-                                   ssl: ExternalSslConfiguration,
+                                   ssl: ExternalSslSettings,
                                    clusterSettings: ClusterSettings,
                                    sharedGroupFactory: SharedGroupFactory,
-                                   tracer: Tracer,
-                                   fipsCompliant: Boolean)
+                                   tracer: Tracer)
   extends Netty4HttpServerTransport(settings, networkService, threadPool, xContentRegistry, dispatcher, clusterSettings, sharedGroupFactory, tracer)
     with Logging {
 
-  private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled)
+  private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, ssl.clientAuthenticationEnabled)
 
   override def configureServerChannelHandler = new SSLHandler(this)
 

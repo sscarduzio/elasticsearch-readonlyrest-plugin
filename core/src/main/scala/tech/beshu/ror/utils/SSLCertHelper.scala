@@ -32,6 +32,7 @@ import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.SslSettings.ClientCertificateSettings.TruststoreBasedSettings
 import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.KeystoreBasedSettings
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
 
 import java.io.{FileInputStream, FileReader, IOException}
 import java.security.cert.{CertificateFactory, X509Certificate}
@@ -65,14 +66,12 @@ object SSLCertHelper extends Logging {
     sslEngine
   }
 
-  def prepareClientSSLContext(sslSettings: SslSettings,
-                              fipsCompliant: Boolean,
-                              certificateVerificationEnabled: Boolean): SslContext = {
+  def prepareClientSSLContext(sslSettings: SslSettings): SslContext = {
     val builder =
-      if (certificateVerificationEnabled) {
+      if (sslSettings.certificateVerificationEnabled) {
         sslSettings.clientCertificateSettings match {
           case Some(truststoreBasedSettings: TruststoreBasedSettings) =>
-            SslContextBuilder.forClient.trustManager(getTrustManagerFactory(truststoreBasedSettings, fipsCompliant))
+            SslContextBuilder.forClient.trustManager(getTrustManagerFactory(truststoreBasedSettings, sslSettings.fipsMode.isSslFipsCompliant))
           case Some(fileBasedSettings: ClientCertificateSettings.FileBasedSettings) =>
             SslContextBuilder.forClient.trustManager(getTrustedCertificatesFromPemFile(fileBasedSettings).toList.asJava)
           case None =>
@@ -81,7 +80,7 @@ object SSLCertHelper extends Logging {
       } else {
         SslContextBuilder.forClient.trustManager(InsecureTrustManagerFactory.INSTANCE)
       }
-    val result = if (fipsCompliant) {
+    val result = if (sslSettings.fipsMode.isSslFipsCompliant) {
       val keystoreBasedSettings = sslSettings.serverCertificateSettings match {
         case keystoreBasedSettings: KeystoreBasedSettings => keystoreBasedSettings
         case _ => throw new Exception("KeyStore based settings is required in FIPS compliant mode")
@@ -105,10 +104,8 @@ object SSLCertHelper extends Logging {
     result.unsafeRunSync().build()
   }
 
-  def prepareServerSSLContext(sslSettings: SslSettings,
-                              fipsCompliant: Boolean,
-                              clientAuthenticationEnabled: Boolean): SslContext = {
-    prepareSslContextBuilder(sslSettings, fipsCompliant)
+  def prepareServerSSLContext(sslSettings: SslSettings, clientAuthenticationEnabled: Boolean): SslContext = {
+    prepareSslContextBuilder(sslSettings)
       .attempt
       .map {
         case Right(sslCtxBuilder) =>
@@ -120,7 +117,7 @@ object SSLCertHelper extends Logging {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
             sslSettings.clientCertificateSettings match {
               case Some(truststoreBasedSettings: TruststoreBasedSettings) =>
-                sslCtxBuilder.trustManager(getTrustManagerFactory(truststoreBasedSettings, fipsCompliant))
+                sslCtxBuilder.trustManager(getTrustManagerFactory(truststoreBasedSettings, sslSettings.fipsMode.isSslFipsCompliant))
               case Some(fileBasedSettings: ClientCertificateSettings.FileBasedSettings) =>
                 sslCtxBuilder.trustManager(getTrustedCertificatesFromPemFile(fileBasedSettings).toList.asJava)
               case None =>
@@ -327,8 +324,8 @@ object SSLCertHelper extends Logging {
     }
   }
 
-  private def prepareSslContextBuilder(sslSettings: SslSettings, fipsCompliant: Boolean): IO[SslContextBuilder] = {
-    if (fipsCompliant) {
+  private def prepareSslContextBuilder(sslSettings: SslSettings): IO[SslContextBuilder] = {
+    if (sslSettings.fipsMode.isSslFipsCompliant) {
       val keystoreBasedSettings = sslSettings.serverCertificateSettings match {
         case keystoreBasedSettings: KeystoreBasedSettings => keystoreBasedSettings
         case _ => throw new Exception("KeyStore based settings is required in FIPS compliant mode")

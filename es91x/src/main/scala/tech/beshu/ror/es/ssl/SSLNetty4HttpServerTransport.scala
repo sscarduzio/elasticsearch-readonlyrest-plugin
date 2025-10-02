@@ -38,12 +38,11 @@ class SSLNetty4HttpServerTransport(settings: Settings,
                                    ssl: ExternalSslSettings,
                                    clusterSettings: ClusterSettings,
                                    sharedGroupFactory: SharedGroupFactory,
-                                   tracer: Tracer,
-                                   fipsCompliant: Boolean)
+                                   tracer: Tracer)
   extends Netty4HttpServerTransport(settings, networkService, threadPool, xContentRegistry, dispatcher, clusterSettings, sharedGroupFactory, tracer, TLSConfig.noTLS(), null, null)
     with Logging {
 
-  private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled)
+  private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, ssl.clientAuthenticationEnabled)
 
   override def configureServerChannelHandler = new SSLHandler(this)
 
