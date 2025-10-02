@@ -31,7 +31,10 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
   override def load(): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
     val result = for {
       mainSettings <- mainSettingsIndexLoadingRetryStrategy
-        .withRetryT(loadMainSettingsFromIndex())
+        .withRetryT(
+          operation = loadMainSettingsFromIndex(),
+          operationDescription = s"Loading ReadonlyREST main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
+        )
         .orElse(loadMainSettingsFromFile())
       testSettings <- loadTestSettingsFromIndex()
         .map(Option.apply)

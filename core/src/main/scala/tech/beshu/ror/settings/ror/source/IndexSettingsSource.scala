@@ -44,10 +44,8 @@ class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: Ind
             }
         case Left(IndexDocumentManager.IndexNotFound) =>
           settingsLoaderError(IndexNotFound)
-        case Left(IndexDocumentManager.DocumentNotFound) =>
+        case Left(IndexDocumentManager.DocumentNotFound | IndexDocumentManager.DocumentUnreachable) =>
           settingsLoaderError(DocumentNotFound)
-        case Left(IndexDocumentManager.DocumentUnreachable) =>
-          settingsLoaderError(IndexNotFound) // todo: throw ex?
       }
   }
 

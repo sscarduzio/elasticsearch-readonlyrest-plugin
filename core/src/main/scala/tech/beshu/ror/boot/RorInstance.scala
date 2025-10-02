@@ -164,7 +164,6 @@ class RorInstance private(boot: ReadonlyRest,
     }
   }
 
-  // todo: check messages
   private def scheduleIndexSettingsChecking(interval: PositiveFiniteDuration,
                                             reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]])
                                            (implicit requestId: RequestId): CancelableWithRequestId = {
