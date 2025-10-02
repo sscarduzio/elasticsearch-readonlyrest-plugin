@@ -250,7 +250,7 @@ class IndexManager(client: RestClient,
 
   private def createPutMappingRequest(indexName: String, propertiesJson: JSON) = {
     val request = new HttpPut(client.from(
-      if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) s"/$indexName/_mapping" else s"/$indexName/_mapping/_doc"
+      if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) s"/$indexName/_mapping" else s"/$indexName/_mapping/doc"
     ))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
