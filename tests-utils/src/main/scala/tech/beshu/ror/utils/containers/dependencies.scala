@@ -16,32 +16,49 @@
  */
 package tech.beshu.ror.utils.containers
 
-import monix.eval.Coeval
+import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 object dependencies {
 
   def ldap(name: String, ldapInitScript: String): DependencyDef = {
+    val ldap = LdapContainer.create(name, ldapInitScript)
     DependencyDef(
       name = name,
-      Coeval(LdapContainer.create(name, ldapInitScript)),
-      originalPort = LdapContainer.defaults.ldap.port)
+      container = ldap,
+      originalPort = ldap.originalPort
+    )
   }
 
-  def ldap(name: String, ldap: NonStoppableLdapContainer): DependencyDef = DependencyDef(
+  def ldap(name: String, ldap: LdapContainer): DependencyDef = DependencyDef(
     name = name,
-    Coeval(ldap),
-    originalPort = LdapContainer.defaults.ldap.port
+    container = ldap,
+    originalPort = ldap.originalPort
   )
 
-  def wiremock(name: String, mappings: String*): DependencyDef = {
-    DependencyDef(name,
-      containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))),
-      originalPort = WireMockContainer.WIRE_MOCK_PORT)
+  def wiremock(name: String, portWhenRunningOnWindows: Int, mappings: String*): DependencyDef = {
+    val wiremock = Wiremock.create(mappings.toList, portWhenRunningOnWindows)
+    DependencyDef(
+      name = name,
+      container = wiremock.container,
+      originalPort = wiremock.originalPort,
+    )
   }
 
-  def es(name: String, container: EsContainer): DependencyDef = DependencyDef(
-    name = name,
-    containerCreator = Coeval(container),
-    originalPort = 9200
-  )
+  def es(name: String, container: EsContainer): DependencyDef = {
+    OsUtils.currentOs match {
+      case CurrentOs.Windows =>
+        DependencyDef(
+          name = name,
+          container = container,
+          originalPort = container.port
+        )
+      case CurrentOs.OtherThanWindows =>
+        DependencyDef(
+          name = name,
+          container = container,
+          originalPort = 9200
+        )
+    }
+  }
 }

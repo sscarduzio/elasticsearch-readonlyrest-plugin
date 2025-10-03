@@ -22,9 +22,11 @@ import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationServiceAuthenticator
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{AlwaysGrantApplicationPermission, ModifyBootstrapPolicyUtilClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
-import tech.beshu.ror.tools.core.utils.EsUtil.es7160
 
 import scala.language.postfixOps
 
@@ -44,16 +46,11 @@ private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new XPackCoreJarPatchCreator(
       AlwaysGrantApplicationPermission,
-      GetAuthenticationFromHeaderWhenMissingInTransient
     ),
     new XPackSecurityJarPatchCreator(
-      DeactivateSecurityActionFilter,
+      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       DeactivateSecurityServerTransportInterceptor,
-      new MockAuthorizationInfoInAuthorizationService(esVersion),
-      DummyAuthorizeInAuthorizationService,
-      esVersion match {
-        case v if v >= es7160 =>  new DummyAuthenticationInAuthenticationChain(esVersion)
-        case _ => new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion)
-      },
+      new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion),
+      new DummyAuthorizeInAuthorizationService(esVersion),
     )
   )

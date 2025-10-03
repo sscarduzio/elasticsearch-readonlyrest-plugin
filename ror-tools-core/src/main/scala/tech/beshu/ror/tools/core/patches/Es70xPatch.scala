@@ -21,6 +21,9 @@ import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationServiceAuthenticator
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.AlwaysGrantApplicationPermission
 
 import scala.language.postfixOps
 
@@ -32,13 +35,11 @@ private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     ),
     new OptionalXPackCoreJarPatchCreator(
       AlwaysGrantApplicationPermission,
-      GetAuthenticationFromHeaderWhenMissingInTransient
     ),
     new OptionalXPackSecurityJarPatchCreator(
-      DeactivateSecurityActionFilter,
+      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       DeactivateSecurityServerTransportInterceptor,
-      new MockAuthorizationInfoInAuthorizationService(esVersion),
-      DummyAuthorizeInAuthorizationService,
-      new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion)
+      new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion),
+      new DummyAuthorizeInAuthorizationService(esVersion),
     )
   )

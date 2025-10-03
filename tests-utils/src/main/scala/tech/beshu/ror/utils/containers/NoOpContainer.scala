@@ -14,22 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.misc;
+package tech.beshu.ror.utils.containers
 
-import better.files.File;
-import better.files.package$;
-import scala.collection.immutable.Seq$;
+import com.dimafeng.testcontainers.Container
 
-import java.nio.file.Path;
+object NoOpContainer extends Container {
+  override def start(): Unit = ()
 
-public class Resources {
-
-  public static Path getResourcePath(String resource) {
-    return File.apply(Resources.class.getResource(resource).getPath(), Seq$.MODULE$.<String>newBuilder().result()).path();
-  }
-
-  public static String getResourceContent(String resource) {
-    return File.apply(getResourcePath(resource)).contentAsString(package$.MODULE$.DefaultCharset());
-  }
-
+  override def stop(): Unit = ()
 }

@@ -1,3 +1,14 @@
+dn: dc=example,dc=com
+objectClass: top
+objectClass: domain
+dc: example
+
+dn: cn=admin,dc=example,dc=com
+objectClass: simpleSecurityObject
+objectClass: organizationalRole
+cn: admin
+userPassword: password
+
 #################################
 #################################
 #################################
@@ -45,7 +56,7 @@ objectClass: inetOrgPerson
 cn: Morgan Freeman
 sn: Freeman
 uid: morgan
-userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+userPassword: user1
 
 dn: cn=Eric Cartman,ou=People,dc=example,dc=com
 objectClass: top
@@ -55,7 +66,7 @@ objectClass: inetOrgPerson
 cn: Eric Cartman
 sn: Cartman
 uid: cartman
-userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+userPassword: user2
 
 dn: cn=Chanandler Bong,ou=People,dc=example,dc=com
 objectClass: top
@@ -144,7 +155,7 @@ objectClass: inetOrgPerson
 cn: Jesus Christ
 sn: Jesus
 uid: jesus
-userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+userPassword: user1
 title: cn=europe,ou=Regions,dc=example,dc=com
 title: cn=north america,ou=Regions,dc=example,dc=com
 title: cn=south america,ou=Regions,dc=example,dc=com
@@ -208,7 +219,7 @@ objectClass: inetOrgPerson
 cn: UserSpeaker (ext)
 sn: UserSpeaker (ext)
 uid: userspeaker
-userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+userPassword: aaa
 memberOf: cn=speakers (external),ou=Roles,dc=example,dc=com
 
 
