@@ -357,7 +357,7 @@ class RorKbnAuthenticationRuleSettingsTests
                  |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(RulesLevelCreationError(Message("""Cannot create ror_kbn_authentication, because there are superfluous groups settings. Remove the groups settings, or use authorization or auth rule, if group settings are required.""".stripMargin)))
+              errors.head should be(RulesLevelCreationError(Message("""Cannot create ror_kbn_authentication, because there are superfluous groups settings. Remove the groups settings, or use ror_kbn_authorization or ror_kbn_auth rule, if group settings are required.""".stripMargin)))
             }
           )
         }

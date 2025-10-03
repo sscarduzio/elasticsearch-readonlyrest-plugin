@@ -17,15 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.RorKbnRuleHelper
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.RorKbnRuleHelper.RorKbnOperation.Authenticate
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.RorKbnOperation.Authenticate
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthenticationImpersonationCustomSupport
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 
@@ -33,15 +32,14 @@ final class RorKbnAuthenticationRule(val settings: Settings,
                                      override val userIdCaseSensitivity: CaseSensitivity)
   extends AuthenticationRule
     with AuthenticationImpersonationCustomSupport
-    with AuthorizationImpersonationCustomSupport
-    with Logging {
+    with BaseRorKbnRule {
 
   override val name: Rule.Name = RorKbnAuthenticationRule.Name.name
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    Task.delay(RorKbnRuleHelper.processUsingJwtToken(blockContext, Authenticate(settings.rorKbn)))
+    Task.delay(processUsingJwtToken(blockContext, Authenticate(settings.rorKbn)))
 
 }
 

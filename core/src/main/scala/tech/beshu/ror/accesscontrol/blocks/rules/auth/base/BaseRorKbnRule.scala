@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.*
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -36,7 +37,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.util.Try
 
-object RorKbnRuleHelper extends Logging {
+trait BaseRorKbnRule extends Logging {
 
   def processUsingJwtToken[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                     operation: RorKbnOperation): RuleResult[B] = {
@@ -63,11 +64,6 @@ object RorKbnRuleHelper extends Logging {
             authenticate(blockContext, userId, groups, userOrigin, tokenPayload)
           case RorKbnOperation.Authorize(_, permittedGroups) =>
             authorize(blockContext, groups, permittedGroups)
-          case RorKbnOperation.AuthenticateAndAuthorize(_, permittedGroups) =>
-            for {
-              withAuthentication <- authenticate(blockContext, userId, groups, userOrigin, tokenPayload)
-              withAuthenticationAndAuthorization <- authorize(withAuthentication, groups, permittedGroups)
-            } yield withAuthenticationAndAuthorization
         }
         claimProcessingResult match {
           case Left(_) =>
@@ -170,7 +166,9 @@ object RorKbnRuleHelper extends Logging {
     case Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
     case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
   }
+}
 
+object BaseRorKbnRule {
   private val userClaimName = Jwt.ClaimName(JsonPath("user").get)
   private val groupIdsClaimName = Jwt.ClaimName(JsonPath("groups").get)
 
@@ -182,8 +180,5 @@ object RorKbnRuleHelper extends Logging {
     final case class Authenticate(rorKbn: RorKbnDef) extends RorKbnOperation
 
     final case class Authorize(rorKbn: RorKbnDef, groupsLogic: GroupsLogic) extends RorKbnOperation
-
-    final case class AuthenticateAndAuthorize(rorKbn: RorKbnDef, groupsLogic: GroupsLogic) extends RorKbnOperation
   }
-
 }

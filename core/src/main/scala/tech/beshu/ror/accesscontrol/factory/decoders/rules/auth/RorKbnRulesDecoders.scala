@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.RorKbnDefinitionsDecoder.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.RorKbnRulesDecodersHelper.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
@@ -38,22 +39,20 @@ class RorKbnAuthenticationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
   extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthenticationRule] with Logging {
 
   override protected def decoder: Decoder[RuleDefinition[RorKbnAuthenticationRule]] = {
-    RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder
-      .or(RorKbnAuthRuleDecoder.nameAndGroupsExtendedDecoder)
+    nameAndGroupsSimpleDecoder
+      .or(nameAndGroupsExtendedDecoder)
       .toSyncDecoder
       .emapE { case (name, groupsLogicOpt) =>
-        rorKbnDefinitions.items.find(_.id === name) match {
-          case Some(rorKbnDef) =>
-            groupsLogicOpt match {
-              case Some(_) =>
-                Left(RulesLevelCreationError(Message(s"Cannot create ${RorKbnAuthenticationRule.Name.name.show}, because there are superfluous groups settings. Remove the groups settings, or use authorization or auth rule, if group settings are required.")))
-              case None =>
-                val settings = RorKbnAuthenticationRule.Settings(rorKbnDef)
-                val rule = new RorKbnAuthenticationRule(settings, globalSettings.userIdCaseSensitivity)
-                Right(RuleDefinition.create(rule))
-            }
-          case None =>
-            Left(RulesLevelCreationError(Message(s"Cannot find ROR Kibana definition with name: ${name.show}")))
+        val foundKbnDef = rorKbnDefinitions.items.find(_.id === name)
+        (foundKbnDef, groupsLogicOpt) match {
+          case (Some(_), Some(_)) =>
+            Left(RulesLevelCreationError(Message(s"Cannot create ${RorKbnAuthenticationRule.Name.name.show}, because there are superfluous groups settings. Remove the groups settings, or use ${RorKbnAuthorizationRule.Name.name.show} or ${RorKbnAuthRule.Name.name.show} rule, if group settings are required.")))
+          case (Some(rorKbnDef), None) =>
+            val settings = RorKbnAuthenticationRule.Settings(rorKbnDef)
+            val rule = new RorKbnAuthenticationRule(settings, globalSettings.userIdCaseSensitivity)
+            Right(RuleDefinition.create(rule))
+          case (None, _) =>
+            Left(cannotFindRorKibanaDefinition(name))
         }
       }
       .decoder
@@ -64,22 +63,20 @@ class RorKbnAuthorizationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
   extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthorizationRule] with Logging {
 
   override protected def decoder: Decoder[RuleDefinition[RorKbnAuthorizationRule]] = {
-    RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder
-      .or(RorKbnAuthRuleDecoder.nameAndGroupsExtendedDecoder)
+    nameAndGroupsSimpleDecoder
+      .or(nameAndGroupsExtendedDecoder)
       .toSyncDecoder
       .emapE { case (name, groupsLogicOpt) =>
-        rorKbnDefinitions.items.find(_.id === name) match {
-          case Some(rorKbnDef) =>
-            groupsLogicOpt match {
-              case Some(groupsLogic) =>
-                val settings = RorKbnAuthorizationRule.Settings(rorKbnDef, groupsLogic)
-                val rule = new RorKbnAuthorizationRule(settings)
-                Right(RuleDefinition.create[RorKbnAuthorizationRule](rule))
-              case None =>
-                Left(RulesLevelCreationError(Message(s"Cannot create RorKbnAuthorizationRule - missing groups settings")))
-            }
-          case None =>
-            Left(RulesLevelCreationError(Message(s"Cannot find ROR Kibana definition with name: ${name.show}")))
+        val foundKbnDef = rorKbnDefinitions.items.find(_.id === name)
+        (foundKbnDef, groupsLogicOpt) match {
+          case (Some(rorKbnDef), Some(groupsLogic)) =>
+            val settings = RorKbnAuthorizationRule.Settings(rorKbnDef, groupsLogic)
+            val rule = new RorKbnAuthorizationRule(settings)
+            Right(RuleDefinition.create[RorKbnAuthorizationRule](rule))
+          case (Some(_), None) =>
+            Left(RulesLevelCreationError(Message(s"Cannot create ${RorKbnAuthorizationRule.Name.name.show} - missing groups settings")))
+          case (None, _) =>
+            Left(cannotFindRorKibanaDefinition(name))
         }
       }
       .decoder
@@ -91,26 +88,25 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
   extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthRule | RorKbnAuthenticationRule] with Logging {
 
   override protected def decoder: Decoder[RuleDefinition[RorKbnAuthRule | RorKbnAuthenticationRule]] = {
-    RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder
-      .or(RorKbnAuthRuleDecoder.nameAndGroupsExtendedDecoder)
+    nameAndGroupsSimpleDecoder
+      .or(nameAndGroupsExtendedDecoder)
       .toSyncDecoder
       .emapE[RorKbnAuthRule | RorKbnAuthenticationRule] { case (name, groupsLogicOpt) =>
-        rorKbnDefinitions.items.find(_.id === name) match {
-          case Some(rorKbnDef) =>
-            val rule: RorKbnAuthRule | RorKbnAuthenticationRule = groupsLogicOpt match {
-              case Some(groupsLogic) =>
-                val settings = RorKbnAuthRule.Settings(rorKbnDef, groupsLogic)
-                val rule = new RorKbnAuthRule(settings, globalSettings.userIdCaseSensitivity)
-                rule
-              case None =>
-                logger.warn(s"There are no group mappings configured for rule ${name.value} of type ${RorKbnAuthRule.Name.name.show}. The rule is therefore interpreted as ${RorKbnAuthenticationRule.Name.name.show}. This syntax is deprecated, please change the rule type to ${RorKbnAuthenticationRule.Name.name.show}.")
-                val settings = RorKbnAuthenticationRule.Settings(rorKbnDef)
-                val rule = new RorKbnAuthenticationRule(settings, globalSettings.userIdCaseSensitivity)
-                rule
-            }
-            Right(rule)
-          case None =>
-            Left(RulesLevelCreationError(Message(s"Cannot find ROR Kibana definition with name: ${name.show}")))
+        val foundKbnDef = rorKbnDefinitions.items.find(_.id === name)
+        (foundKbnDef, groupsLogicOpt) match {
+          case (Some(rorKbnDef), Some(groupsLogic)) =>
+            Right(
+              new RorKbnAuthRule(
+                authentication = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(rorKbnDef), globalSettings.userIdCaseSensitivity),
+                authorization = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(rorKbnDef, groupsLogic)),
+              ): RorKbnAuthRule | RorKbnAuthenticationRule
+            )
+          case (Some(rorKbnDef), None) =>
+            logger.warn(s"There are no group mappings configured for rule ${name.value} of type ${RorKbnAuthRule.Name.name.show}. The rule is therefore interpreted as ${RorKbnAuthenticationRule.Name.name.show}. This syntax is deprecated, please change the rule type to ${RorKbnAuthenticationRule.Name.name.show}.")
+            val settings = RorKbnAuthenticationRule.Settings(rorKbnDef)
+            Right(new RorKbnAuthenticationRule(settings, globalSettings.userIdCaseSensitivity): RorKbnAuthRule | RorKbnAuthenticationRule)
+          case (None, _) =>
+            Left(cannotFindRorKibanaDefinition(name))
         }
       }
       .map(RuleDefinition.create[RorKbnAuthRule | RorKbnAuthenticationRule](_))
@@ -118,7 +114,10 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
   }
 }
 
-private object RorKbnAuthRuleDecoder {
+private object RorKbnRulesDecodersHelper {
+
+  def cannotFindRorKibanaDefinition(name: RorKbnDef.Name) =
+    RulesLevelCreationError(Message(s"Cannot find ROR Kibana definition with name: ${name.show}"))
 
   val nameAndGroupsSimpleDecoder: Decoder[(RorKbnDef.Name, Option[GroupsLogic])] =
     DecoderHelpers

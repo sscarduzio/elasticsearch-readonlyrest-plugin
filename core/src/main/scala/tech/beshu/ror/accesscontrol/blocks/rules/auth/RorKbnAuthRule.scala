@@ -16,49 +16,24 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.RorKbnRuleHelper
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.RorKbnRuleHelper.RorKbnOperation.AuthenticateAndAuthorize
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseComposedAuthenticationAndAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.*
 
-final class RorKbnAuthRule(val settings: Settings,
-                           override val userIdCaseSensitivity: CaseSensitivity)
-  extends AuthRule
-    with AuthenticationImpersonationCustomSupport
-    with AuthorizationImpersonationCustomSupport
-    with Logging {
+final class RorKbnAuthRule(val authentication: RorKbnAuthenticationRule,
+                           val authorization: RorKbnAuthorizationRule)
+  extends BaseComposedAuthenticationAndAuthorizationRule(authentication, authorization) {
 
   override val name: Rule.Name = RorKbnAuthRule.Name.name
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
-
-  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    Task.now(RuleResult.Fulfilled(blockContext))
-
-  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    Task {
-      settings.groupsLogic match {
-        case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
-          RorKbnRuleHelper.processUsingJwtToken(blockContext, AuthenticateAndAuthorize(settings.rorKbn, groupsLogic))
-        case _ =>
-          RuleResult.Rejected()
-      }
-    }
+  override val userIdCaseSensitivity: CaseSensitivity = authentication.userIdCaseSensitivity
 }
 
 object RorKbnAuthRule {
-
   implicit case object Name extends RuleName[RorKbnAuthRule | RorKbnAuthenticationRule] {
     override val name = Rule.Name("ror_kbn_auth")
   }
-
-  final case class Settings(rorKbn: RorKbnDef, groupsLogic: GroupsLogic)
 }

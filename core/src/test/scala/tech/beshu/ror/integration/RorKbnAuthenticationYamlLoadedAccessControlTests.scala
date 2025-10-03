@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.integration
 
-import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -29,26 +27,15 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.*
-
-import scala.jdk.CollectionConverters.*
+import tech.beshu.ror.utils.misc.JwtUtils
+import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 
 class RorKbnAuthenticationYamlLoadedAccessControlTests
   extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
   override protected def configYaml: String =
-    """http.bind_host: _eth0:ipv4_
-      |network.host: _eth0:ipv4_
-      |
-      |http.type: ssl_netty4
-      |#transport.type: local
-      |
+    """
       |readonlyrest:
-      |  ssl:
-      |    enable: true
-      |    keystore_file:  "ror-keystore.jks"
-      |    keystore_pass: readonlyrest
-      |    key_pass: readonlyrest
-      |
       |  access_control_rules:
       |    - name: Container housekeeping is allowed
       |      type: allow
@@ -89,12 +76,11 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
     "is configured using config above" should {
       "allow to proceed" when {
         "JWT token is defined" in {
-          val claims = new DefaultClaims(Map[String, AnyRef]("sub" -> "test", "user" -> "user", "groups" -> "").asJava)
-          val jwtBuilder = Jwts.builder
-            .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
-            .subject("test")
-            .claims(claims)
-          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwtBuilder))
+          val jwt = JwtUtils.Jwt(
+            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            claims = List("sub" := "test", "user" := "user", "groups" := "")
+          )
+          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -103,7 +89,7 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
             block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
-              jwt = Some(Jwt.Payload(claims))
+              jwt = Some(Jwt.Payload(jwt.defaultClaims()))
             ) {
               blockContext
             }
