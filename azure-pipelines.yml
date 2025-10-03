@@ -74,7 +74,7 @@ stages:
                 # Using the wrong API key breaks the CVE check.
 
                 export NVD_API_KEY=$var_nvd_api_key
-                export OSS_INDEX_USER=$var_oss_index_user
+                export OSS_INDEX_USERNAME=$var_oss_index_username
                 export OSS_INDEX_PASSWORD=$var_oss_index_password
               fi
 
@@ -85,7 +85,7 @@ stages:
               var_nvd_api_key: $(NVD_API_KEY)
               var_dependency_check_data_dir: $(dependencyCheckDataDir)
               var_is_fork: $(System.PullRequest.IsFork)
-              var_oss_index_user: $(OSS_INDEX_USER)
+              var_oss_index_username: $(OSS_INDEX_USERNAME)
               var_oss_index_password: $(OSS_INDEX_PASSWORD)
           - task: Cache@2
             displayName: 'Save updated CVE DB in cache'
