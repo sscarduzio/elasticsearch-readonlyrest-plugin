@@ -65,6 +65,17 @@ dependencyCheck {
         // Disable Maven Central checksum lookups (we already have Maven coords from Gradle).
         // Avoids flaky network calls to Central search.
         centralEnabled = false
+
+        ossIndex {
+            // Configure the OSS Index analyzer. If no credentials are supplied,
+            // dependency-check will skip this analyzer and log a warning.
+            if (System.getenv('OSS_INDEX_USER')) {
+                user = System.getenv('OSS_INDEX_USER')
+            }
+            if (System.getenv('OSS_INDEX_PASSWORD')) {
+                user = System.getenv('OSS_INDEX_PASSWORD')
+            }
+        }
     }
     data {
         if (System.getenv('DEPENDENCY_CHECK_DATA_DIR')) {  // We want to fall back to the default path for local builds
