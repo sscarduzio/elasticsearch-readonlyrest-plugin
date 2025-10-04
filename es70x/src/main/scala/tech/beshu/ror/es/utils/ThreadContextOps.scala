@@ -59,7 +59,7 @@ final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
 
 object ThreadContextOps {
 
-  private val transientHeaderNames: List[String] = "_xpack_security_authentication" :: "_authz_info" :: Nil
+  private val transientHeaderNames: List[String] = "_xpack_security_authentication" :: "_authz_info" :: "_indices_permissions" :: Nil
 
   implicit def createThreadContextOps(threadContext: ThreadContext): ThreadContextOps = new ThreadContextOps(threadContext)
 }
