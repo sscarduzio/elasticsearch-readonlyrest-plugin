@@ -20,122 +20,44 @@ import cats.implicits.toShow
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.*
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.from
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
-import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.json.JsonPath
-import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.util.Try
 
 trait BaseRorKbnRule extends Logging {
 
-  def processUsingJwtToken[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                    operation: RorKbnOperation): RuleResult[B] = {
+  protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
+                                                        rorKbnDef: RorKbnDef)
+                                                       (operation: TokenData => Either[Unit, B]): RuleResult[B] = {
     val authHeaderName = Header.Name.authorization
     blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {
       case None =>
         logger.debug(s"[${blockContext.requestContext.id.show}] Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
         Rejected()
       case Some(token) =>
-        process(token, blockContext, operation)
-    }
-  }
-
-  private def process[B <: BlockContext : BlockContextUpdater](token: Jwt.Token,
-                                                               blockContext: B,
-                                                               operation: RorKbnOperation): RuleResult[B] = {
-    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-    jwtTokenData(token, operation.rorKbn) match {
-      case Left(_) =>
-        Rejected()
-      case Right((tokenPayload, userId, groups, userOrigin)) =>
-        val claimProcessingResult = operation match {
-          case RorKbnOperation.Authenticate(_) =>
-            authenticate(blockContext, userId, groups, userOrigin, tokenPayload)
-          case RorKbnOperation.Authorize(_, permittedGroups) =>
-            authorize(blockContext, groups, permittedGroups)
-        }
-        claimProcessingResult match {
+        implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
+        jwtTokenData(token, rorKbnDef) match {
           case Left(_) =>
             Rejected()
-          case Right(modifiedBlockContext) =>
-            Fulfilled(modifiedBlockContext)
-        }
-    }
-  }
-
-  private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                 result: ClaimSearchResult[UniqueList[Group]],
-                                                                 groupsLogic: GroupsLogic) = {
-    (result, groupsLogic) match {
-      case (NotFound, _) =>
-        Left(())
-      case (Found(groups), groupsLogic) =>
-        UniqueNonEmptyList.from(groups) match {
-          case Some(nonEmptyGroups) =>
-            groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
-              case Some(matchedGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups)) =>
-                Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
-              case Some(_) | None =>
-                Left(())
+          case Right(tokenData) =>
+            val claimProcessingResult = operation(tokenData)
+            claimProcessingResult match {
+              case Left(_) =>
+                Rejected()
+              case Right(modifiedBlockContext) =>
+                Fulfilled(modifiedBlockContext)
             }
-          case None =>
-            Left(())
-        }
-    }
-  }
-
-  private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                    userId: ClaimSearchResult[User.Id],
-                                                                    result: ClaimSearchResult[UniqueList[Group]],
-                                                                    userOrigin: ClaimSearchResult[Header],
-                                                                    tokenPayload: Jwt.Payload) = {
-    userId match {
-      case Found(userId) =>
-        val withUserMetadata = userOrigin match {
-          case Found(header) =>
-            blockContext.withUserMetadata(
-              _
-                .withLoggedUser(DirectlyLoggedUser(userId))
-                .withUserOrigin(UserOrigin(header.value))
-                .withJwtToken(tokenPayload)
-            )
-          case ClaimSearchResult.NotFound =>
-            blockContext.withUserMetadata(
-              _
-                .withLoggedUser(DirectlyLoggedUser(userId))
-                .withJwtToken(tokenPayload)
-            )
-        }
-        handleGroupsClaimSearchResult(withUserMetadata, result)
-      case NotFound =>
-        Left(())
-    }
-  }
-
-  private def handleGroupsClaimSearchResult[B <: BlockContext](blockContext: B,
-                                                               result: ClaimSearchResult[UniqueList[Group]]) = {
-    result match {
-      case NotFound =>
-        Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
-      case Found(groups) =>
-        UniqueNonEmptyList.from(groups) match {
-          case None =>
-            Right(blockContext)
-          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(nonEmptyGroups)) =>
-            Right(blockContext)
-          case Some(_) =>
-            Left(())
         }
     }
   }
@@ -144,7 +66,7 @@ trait BaseRorKbnRule extends Logging {
                           (implicit requestId: RequestId) = {
     claimsFrom(token, rorKbn)
       .map { tokenPayload =>
-        (
+        TokenData(
           tokenPayload,
           tokenPayload.claims.userIdClaim(userClaimName),
           tokenPayload.claims.groupsClaim(groupIdsClaimName = groupIdsClaimName, groupNamesClaimName = None),
@@ -172,13 +94,9 @@ object BaseRorKbnRule {
   private val userClaimName = Jwt.ClaimName(JsonPath("user").get)
   private val groupIdsClaimName = Jwt.ClaimName(JsonPath("groups").get)
 
-  sealed trait RorKbnOperation {
-    def rorKbn: RorKbnDef
-  }
+  protected final case class TokenData(payload: Jwt.Payload,
+                                       userId: ClaimSearchResult[User.Id],
+                                       groups: ClaimSearchResult[UniqueList[Group]],
+                                       userOrigin: ClaimSearchResult[Header])
 
-  object RorKbnOperation {
-    final case class Authenticate(rorKbn: RorKbnDef) extends RorKbnOperation
-
-    final case class Authorize(rorKbn: RorKbnDef, groupsLogic: GroupsLogic) extends RorKbnOperation
-  }
 }

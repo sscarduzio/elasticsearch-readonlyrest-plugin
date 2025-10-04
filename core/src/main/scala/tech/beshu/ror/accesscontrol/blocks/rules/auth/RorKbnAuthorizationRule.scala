@@ -22,10 +22,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.RorKbnOperation.Authorize
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthorizationImpersonationCustomSupport
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIds, GroupsLogic}
+import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult
+import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 final class RorKbnAuthorizationRule(val settings: Settings)
   extends AuthorizationRule
@@ -34,15 +36,37 @@ final class RorKbnAuthorizationRule(val settings: Settings)
 
   override val name: Rule.Name = RorKbnAuthorizationRule.Name.name
 
-  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    Task {
-      settings.groupsLogic match {
-        case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
-          processUsingJwtToken(blockContext, Authorize(settings.rorKbn, groupsLogic))
-        case _ =>
-          RuleResult.Rejected()
-      }
+  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task.delay {
+    settings.groupsLogic match {
+      case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
+        processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
+          authorize(blockContext, tokenData.groups, settings.groupsLogic)
+        }
+      case _ =>
+        RuleResult.Rejected()
     }
+  }
+
+  private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                 result: ClaimSearchResult[UniqueList[Group]],
+                                                                 groupsLogic: GroupsLogic) = {
+    (result, groupsLogic) match {
+      case (NotFound, _) =>
+        Left(())
+      case (Found(groups), groupsLogic) =>
+        UniqueNonEmptyList.from(groups) match {
+          case Some(nonEmptyGroups) =>
+            groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
+              case Some(matchedGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups)) =>
+                Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
+              case Some(_) | None =>
+                Left(())
+            }
+          case None =>
+            Left(())
+        }
+    }
+  }
 
 }
 
