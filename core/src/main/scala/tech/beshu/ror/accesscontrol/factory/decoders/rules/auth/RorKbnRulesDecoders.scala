@@ -20,6 +20,8 @@ import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{RorKbnAuthRule, RorKbnAuthenticationRule, RorKbnAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
@@ -40,7 +42,7 @@ class RorKbnAuthenticationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
 
   override protected def decoder: Decoder[RuleDefinition[RorKbnAuthenticationRule]] = {
     nameAndGroupsSimpleDecoder
-      .or(nameAndGroupsExtendedDecoder)
+      .or(nameAndGroupsExtendedDecoder[RorKbnAuthenticationRule])
       .toSyncDecoder
       .emapE { case (name, groupsLogicOpt) =>
         val foundKbnDef = rorKbnDefinitions.items.find(_.id === name)
@@ -64,7 +66,7 @@ class RorKbnAuthorizationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
 
   override protected def decoder: Decoder[RuleDefinition[RorKbnAuthorizationRule]] = {
     nameAndGroupsSimpleDecoder
-      .or(nameAndGroupsExtendedDecoder)
+      .or(nameAndGroupsExtendedDecoder[RorKbnAuthorizationRule])
       .toSyncDecoder
       .emapE { case (name, groupsLogicOpt) =>
         val foundKbnDef = rorKbnDefinitions.items.find(_.id === name)
@@ -83,33 +85,41 @@ class RorKbnAuthorizationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
   }
 }
 
+// There RorKbnAuthRuleDecoder includes a fallback to RorKbnAuthenticationRule (when there is no groups logic present)
+// As a result the type of the decoder is RuleDecoder[Rule] without a specific rule type.
+
+private implicit object RorKbnAuthRuleAsSimpleRuleName extends RuleName[Rule] {
+  override def name: Rule.Name = RorKbnAuthRule.Name.name
+}
+
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                             globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthRule | RorKbnAuthenticationRule] with Logging {
+  extends RuleBaseDecoderWithoutAssociatedFields[Rule] with Logging {
 
-  override protected def decoder: Decoder[RuleDefinition[RorKbnAuthRule | RorKbnAuthenticationRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[Rule]] = {
     nameAndGroupsSimpleDecoder
-      .or(nameAndGroupsExtendedDecoder)
+      .or(nameAndGroupsExtendedDecoder[RorKbnAuthRule])
       .toSyncDecoder
-      .emapE[RorKbnAuthRule | RorKbnAuthenticationRule] { case (name, groupsLogicOpt) =>
+      .emapE[RuleDefinition[Rule]] { case (name, groupsLogicOpt) =>
         val foundKbnDef = rorKbnDefinitions.items.find(_.id === name)
         (foundKbnDef, groupsLogicOpt) match {
           case (Some(rorKbnDef), Some(groupsLogic)) =>
-            Right(
-              new RorKbnAuthRule(
-                authentication = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(rorKbnDef), globalSettings.userIdCaseSensitivity),
-                authorization = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(rorKbnDef, groupsLogic)),
-              ): RorKbnAuthRule | RorKbnAuthenticationRule
+            val rule = new RorKbnAuthRule(
+              authentication = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(rorKbnDef), globalSettings.userIdCaseSensitivity),
+              authorization = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(rorKbnDef, groupsLogic)),
             )
+            val ruleDefinition = RuleDefinition.create(rule)
+            Right(ruleDefinition.asInstanceOf[RuleDefinition[Rule]])
           case (Some(rorKbnDef), None) =>
             logger.warn(s"There are no group mappings configured for rule ${name.value} of type ${RorKbnAuthRule.Name.name.show}. The rule is therefore interpreted as ${RorKbnAuthenticationRule.Name.name.show}. This syntax is deprecated, please change the rule type to ${RorKbnAuthenticationRule.Name.name.show}.")
             val settings = RorKbnAuthenticationRule.Settings(rorKbnDef)
-            Right(new RorKbnAuthenticationRule(settings, globalSettings.userIdCaseSensitivity): RorKbnAuthRule | RorKbnAuthenticationRule)
+            val rule = new RorKbnAuthenticationRule(settings, globalSettings.userIdCaseSensitivity)
+            val ruleDefinition = RuleDefinition.create(rule)
+            Right(ruleDefinition.asInstanceOf[RuleDefinition[Rule]])
           case (None, _) =>
             Left(cannotFindRorKibanaDefinition(name))
         }
       }
-      .map(RuleDefinition.create[RorKbnAuthRule | RorKbnAuthenticationRule](_))
       .decoder
   }
 }
@@ -125,12 +135,12 @@ private object RorKbnRulesDecodersHelper {
       .map(RorKbnDef.Name.apply)
       .map((_, None))
 
-  val nameAndGroupsExtendedDecoder: Decoder[(RorKbnDef.Name, Option[GroupsLogic])] =
+  def nameAndGroupsExtendedDecoder[T <: Rule](implicit ruleName: RuleName[T]): Decoder[(RorKbnDef.Name, Option[GroupsLogic])] =
     Decoder
       .instance { c =>
         for {
           rorKbnDefName <- c.downField("name").as[RorKbnDef.Name]
-          groupsLogicDecodingResult <- GroupsLogicDecoder.decoder[RorKbnAuthRule | RorKbnAuthenticationRule].apply(c)
+          groupsLogicDecodingResult <- GroupsLogicDecoder.decoder[T].apply(c)
         } yield (rorKbnDefName, groupsLogicDecodingResult)
       }
       .toSyncDecoder

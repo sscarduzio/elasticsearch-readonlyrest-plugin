@@ -33,7 +33,7 @@ final class RorKbnAuthRule(val authentication: RorKbnAuthenticationRule,
 }
 
 object RorKbnAuthRule {
-  implicit case object Name extends RuleName[RorKbnAuthRule | RorKbnAuthenticationRule] {
+  implicit case object Name extends RuleName[RorKbnAuthRule] {
     override val name = Rule.Name("ror_kbn_auth")
   }
 }

@@ -145,7 +145,7 @@ object ImpersonationWarning {
       ldapWarning(rule.name, blockName, rule.authorization.settings.ldap.id, rule.authorization.impersonation)(requestId)
     }
     implicit val proxyAuthRule: ImpersonationWarningExtractor[ProxyAuthRule] = noWarnings[ProxyAuthRule]
-    implicit val rorKbnAuthRule: ImpersonationWarningExtractor[RorKbnAuthRule | RorKbnAuthenticationRule] = ImpersonationWarningExtractor[RorKbnAuthRule | RorKbnAuthenticationRule] { (rule, blockName, _) =>
+    implicit val rorKbnAuthRule: ImpersonationWarningExtractor[RorKbnAuthRule] = ImpersonationWarningExtractor[RorKbnAuthRule] { (rule, blockName, _) =>
       Some(impersonationNotSupportedWarning(rule, blockName))
     }
     implicit val rorKbnAuthenticationRule: ImpersonationWarningExtractor[RorKbnAuthenticationRule] = ImpersonationWarningExtractor[RorKbnAuthenticationRule] { (rule, blockName, _) =>
