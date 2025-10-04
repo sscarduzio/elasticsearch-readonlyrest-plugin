@@ -6,6 +6,7 @@ This project contains the ElasticSearch dependencies in the Maven build system, 
 For this example, we cloned the source code under a short path: the `/me` directory.
 ## Set proper JDK version
 Current version of ROR requires JDK 17. 
+## to be removed
 ## Run ES as a Java Application
 Gradle project named `eshome` is configured to run ROR as java application. You can run it from console
 ```bash
@@ -14,7 +15,6 @@ Gradle project named `eshome` is configured to run ROR as java application. You 
 or using Intellij for debug. ![Dropdown edit configurations](https://i.imgur.com/KiFSyD9.png)
 
 ES version and ROR ES module can be defined in gradle.properties. Currently, eshome should support ES 8.x
-
 ```
 $ tree eshome
 .
