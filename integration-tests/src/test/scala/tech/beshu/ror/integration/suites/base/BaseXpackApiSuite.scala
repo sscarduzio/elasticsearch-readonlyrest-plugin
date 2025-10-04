@@ -1093,7 +1093,7 @@ trait BaseXpackApiSuite
 
       result should have statusCode 404
     }
-    // todo: will be done in separate PR
+    // todo: uncomment when RORDEV-1636 is done
     "support filter and fields rule" excludeES(allEs6x, allEs7xBelowEs714x) ignore {
       val result = dev2XpackApiManager.getTerms("test2_index", "age.keyword")
 
