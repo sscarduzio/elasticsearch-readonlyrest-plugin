@@ -106,6 +106,28 @@ class RorKbnAuthenticationRuleTests
             )(blockContext)
         }
       }
+      "preferred group is not on the groups list from JWT" in {
+        val key: Key = Jwts.SIG.HS256.key().build()
+        val jwt = Jwt(key, claims = List(
+          "user" := "user1",
+          "groups" := List("group1", "group2")
+        ))
+        assertMatchRule(
+          configuredRorKbnDef = RorKbnDef(
+            RorKbnDef.Name("test"),
+            SignatureCheckMethod.Hmac(key.getEncoded)
+          ),
+          tokenHeader = bearerHeader(jwt),
+          preferredGroupId = Some(GroupId("group5"))
+        ) {
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("group5"))
+            )(blockContext)
+        }
+      }
     }
     "not match" when {
       "token has invalid HS256 signature" in {
@@ -150,21 +172,6 @@ class RorKbnAuthenticationRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           tokenHeader = bearerHeader(jwt)
-        )
-      }
-      "preferred group is not on the groups list from JWT" in {
-        val key: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(key, claims = List(
-          "user" := "user1",
-          "groups" := List("group1", "group2")
-        ))
-        assertNotMatchRule(
-          configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test"),
-            SignatureCheckMethod.Hmac(key.getEncoded)
-          ),
-          tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group5"))
         )
       }
     }

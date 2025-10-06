@@ -391,7 +391,7 @@ class RorKbnAuthorizationRuleTests
                          tokenHeader: Header,
                          preferredGroupId: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(configuredRorKbnDef, groupsLogic))
+    val rule = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(configuredRorKbnDef, Some(groupsLogic)))
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )

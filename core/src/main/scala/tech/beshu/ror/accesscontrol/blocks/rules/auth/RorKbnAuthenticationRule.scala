@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
-import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 final class RorKbnAuthenticationRule(val settings: Settings,
                                      override val userIdCaseSensitivity: CaseSensitivity)
@@ -43,13 +42,12 @@ final class RorKbnAuthenticationRule(val settings: Settings,
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task.delay {
     processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
-      authenticate(blockContext, tokenData.userId, tokenData.groups, tokenData.userOrigin, tokenData.payload)
+      authenticate(blockContext, tokenData.userId, tokenData.userOrigin, tokenData.payload)
     }
   }
 
   private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                     userId: ClaimSearchResult[User.Id],
-                                                                    groups: ClaimSearchResult[UniqueList[Group]],
                                                                     userOrigin: ClaimSearchResult[Header],
                                                                     tokenPayload: Jwt.Payload): Either[Unit, B] = {
     userId match {
@@ -69,26 +67,9 @@ final class RorKbnAuthenticationRule(val settings: Settings,
                 .withJwtToken(tokenPayload)
             )
         }
-        handleGroupsClaimSearchResult(withUserMetadata, groups)
+        Right(withUserMetadata)
       case NotFound =>
         Left(())
-    }
-  }
-
-  private def handleGroupsClaimSearchResult[B <: BlockContext](blockContext: B,
-                                                               groups: ClaimSearchResult[UniqueList[Group]]): Either[Unit, B] = {
-    groups match {
-      case NotFound =>
-        Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
-      case Found(groups) =>
-        UniqueNonEmptyList.from(groups) match {
-          case None =>
-            Right(blockContext)
-          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(nonEmptyGroups)) =>
-            Right(blockContext)
-          case Some(_) =>
-            Left(())
-        }
     }
   }
 

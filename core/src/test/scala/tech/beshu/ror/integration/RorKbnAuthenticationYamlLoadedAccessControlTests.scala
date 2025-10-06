@@ -23,6 +23,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -75,7 +76,7 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
   "An ACL" when {
     "is configured using config above" should {
       "allow to proceed" when {
-        "JWT token is defined" in {
+        "JWT token is defined with empty groups" in {
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
             claims = List("sub" := "test", "user" := "user", "groups" := "")
@@ -90,6 +91,30 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               jwt = Some(Jwt.Payload(jwt.defaultClaims()))
+            ) {
+              blockContext
+            }
+          }
+        }
+        "JWT token is defined with group that does not match the current group passed in header" in {
+          val jwt = JwtUtils.Jwt(
+            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            claims = List("sub" := "test", "user" := "user", "groups" := List("some_group_in_jwt"))
+          )
+          val request = MockRequestContext.indices.withHeaders(
+            bearerHeader(jwt),
+            currentGroupHeader("mapped_viewer_group")
+          )
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          result.history should have size 2
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("Valid JWT token is present"))
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
+              jwt = Some(Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("mapped_viewer_group"))
             ) {
               blockContext
             }

@@ -426,7 +426,7 @@ class RorKbnAuthRuleTests
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new RorKbnAuthRule(
       authentication = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(configuredRorKbnDef), CaseSensitivity.Enabled),
-      authorization = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(configuredRorKbnDef, groupsLogic)),
+      authorization = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(configuredRorKbnDef, Some(groupsLogic))),
     )
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
