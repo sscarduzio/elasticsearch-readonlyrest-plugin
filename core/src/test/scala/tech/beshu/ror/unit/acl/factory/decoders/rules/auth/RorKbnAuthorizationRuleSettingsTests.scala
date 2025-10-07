@@ -63,11 +63,11 @@ class RorKbnAuthorizationRuleSettingsTests
             assertion = rule => {
               rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
               rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
-              rule.settings.groupsLogic should be(Some(
+              rule.settings.groupsLogic should be(
                 GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
                 ))
-              ))
+              )
             }
           )
         }
@@ -96,11 +96,11 @@ class RorKbnAuthorizationRuleSettingsTests
             assertion = rule => {
               rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
               rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-              rule.settings.groupsLogic should be(Some(
+              rule.settings.groupsLogic should be(
                   GroupsLogic.AllOf(GroupIds(
                     UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
                   ))
-              ))
+              )
             }
           )
         }

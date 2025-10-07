@@ -23,7 +23,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{RorKbnAuthRule, RorKbnAuthenticationRule, RorKbnAuthorizationRule}
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupIdPattern
+import tech.beshu.ror.accesscontrol.domain.{GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -35,6 +36,8 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLog
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class RorKbnAuthenticationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                                       globalSettings: GlobalSettings)
@@ -72,7 +75,7 @@ class RorKbnAuthorizationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
         val foundKbnDef = rorKbnDefinitions.items.find(_.id === name)
         (foundKbnDef, groupsLogicOpt) match {
           case (Some(rorKbnDef), Some(groupsLogic)) =>
-            val settings = RorKbnAuthorizationRule.Settings(rorKbnDef, Some(groupsLogic))
+            val settings = RorKbnAuthorizationRule.Settings(rorKbnDef, groupsLogic)
             val rule = new RorKbnAuthorizationRule(settings)
             Right(RuleDefinition.create[RorKbnAuthorizationRule](rule))
           case (Some(_), None) =>
@@ -96,12 +99,13 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
       .emapE { case (name, groupsLogicOpt) =>
         val foundKbnDef = rorKbnDefinitions.items.find(_.id === name)
         (foundKbnDef, groupsLogicOpt) match {
-          case (Some(rorKbnDef), groupsLogic) =>
-            groupsLogic match {
-              case Some(_) =>
-                ()
+          case (Some(rorKbnDef), groupsLogicOpt) =>
+            val groupsLogic = groupsLogicOpt match {
+              case Some(groupsLogic) =>
+                groupsLogic
               case None =>
                 logger.warn(s"There are no group mappings configured for rule ${name.value} of type ${RorKbnAuthRule.Name.name.show}. This syntax is deprecated, please change the rule type to ${RorKbnAuthenticationRule.Name.name.show}.")
+                GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdPattern.fromNes(nes("*")))))
             }
             val rule = new RorKbnAuthRule(
               authentication = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(rorKbnDef), globalSettings.userIdCaseSensitivity),

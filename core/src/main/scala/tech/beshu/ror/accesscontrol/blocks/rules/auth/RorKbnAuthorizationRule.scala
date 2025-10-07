@@ -38,26 +38,22 @@ final class RorKbnAuthorizationRule(val settings: Settings)
 
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task.delay {
     settings.groupsLogic match {
-      case Some(groupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
+      case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
         processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
           authorize(blockContext, tokenData.groups, settings.groupsLogic)
         }
-      case None =>
-        processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
-          authorize(blockContext, tokenData.groups, settings.groupsLogic)
-        }
-      case Some(_) =>
+      case _ =>
         RuleResult.Rejected()
     }
   }
 
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                  result: ClaimSearchResult[UniqueList[Group]],
-                                                                 groupsLogic: Option[GroupsLogic]) = {
+                                                                 groupsLogic: GroupsLogic) = {
     (result, groupsLogic) match {
       case (NotFound, _) =>
         Left(())
-      case (Found(groups), Some(groupsLogic)) =>
+      case (Found(groups), groupsLogic) =>
         UniqueNonEmptyList.from(groups) match {
           case Some(nonEmptyGroups) =>
             groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
@@ -67,15 +63,6 @@ final class RorKbnAuthorizationRule(val settings: Settings)
                 Left(())
             }
           case None =>
-            Left(())
-        }
-      case (Found(groups), None) =>
-        UniqueNonEmptyList.from(groups) match {
-          case None =>
-            Right(blockContext)
-          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(nonEmptyGroups)) =>
-            Right(blockContext)
-          case Some(_) | None =>
             Left(())
         }
     }
@@ -89,5 +76,5 @@ object RorKbnAuthorizationRule {
     override val name = Rule.Name("ror_kbn_authorization")
   }
 
-  final case class Settings(rorKbn: RorKbnDef, groupsLogic: Option[GroupsLogic])
+  final case class Settings(rorKbn: RorKbnDef, groupsLogic: GroupsLogic)
 }
