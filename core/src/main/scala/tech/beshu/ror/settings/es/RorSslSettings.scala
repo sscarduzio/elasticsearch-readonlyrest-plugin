@@ -104,8 +104,11 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
     val settingsFile = rorSettingsFile.file
     if (settingsFile.exists) {
       for {
-        _ <- lift(logger.warn(s"Defining SSL settings in ReadonlyREST file is deprecated and will be removed in the future. Move your ReadonlyREST SSL settings to Elasticsearch config file. See https://docs.readonlyrest.com/elasticsearch#encryption for details"))
         settings <- loadSslSettingsFrom(settingsFile)
+        _ <- lift(settings match {
+          case None => logger.warn(s"Defining SSL settings in ReadonlyREST file is deprecated and will be removed in the future. Move your ReadonlyREST SSL settings to Elasticsearch config file. See https://docs.readonlyrest.com/elasticsearch#encryption for details")
+          case Some(_) =>
+        })
       } yield settings
     } else {
       EitherT.rightT(None)

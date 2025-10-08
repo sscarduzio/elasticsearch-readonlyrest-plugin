@@ -36,7 +36,7 @@ trait StartingRorSettingsLoader {
       _ <- EitherT.liftTask(logger.info(s"Loading ReadonlyREST $settingsDescription ..."))
       loadedSettings <- EitherT(source.load())
         .biSemiflatTap(
-          error => logger.dError(s"Loading ReadonlyREST $settingsDescription failed: ${error.show}"),
+          error => logger.dInfo(s"Loading ReadonlyREST $settingsDescription failed: ${error.show}"),
           settings => logger.dDebug(s"Loaded ReadonlyREST $settingsDescription:\n${settings.show}")
         )
         .leftMap(error => error.show)

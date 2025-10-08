@@ -59,7 +59,6 @@ class RorInstance private(boot: ReadonlyRest,
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
   import creators.*
 
-  logger.info("ReadonlyREST was loaded ...")
   private val reloadTaskState: AtomicReference[ReloadTaskState] = new AtomicReference(ReloadTaskState.NotInitiated)
 
   mode match {
@@ -86,6 +85,8 @@ class RorInstance private(boot: ReadonlyRest,
   private val testSettingsRestApi = testSettingsApiCreator.create(this)
   private val authMockRestApi = new AuthMockApi(rorInstance = this)
 
+  logger.info("ReadonlyREST was loaded ...")
+  
   def engines: Option[Engines] = theMainSettingsEngine.engine.map(Engines(_, theTestSettingsEngine.engine))
 
   def mainSettingsApi: MainSettingsApi = mainSettingsRestApi
@@ -164,6 +165,7 @@ class RorInstance private(boot: ReadonlyRest,
     }
   }
 
+  // todo: do we need all of these messages
   private def scheduleIndexSettingsChecking(interval: PositiveFiniteDuration,
                                             reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]])
                                            (implicit requestId: RequestId): CancelableWithRequestId = {
