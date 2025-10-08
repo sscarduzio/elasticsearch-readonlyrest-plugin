@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -529,16 +528,3 @@ object IndexAttribute {
   case object Opened extends IndexAttribute
   case object Closed extends IndexAttribute
 }
-
-final case class RorSettingsIndex(index: IndexName.Full) extends AnyVal {
-  def toLocal: ClusterIndexName.Local = ClusterIndexName.Local(index)
-}
-object RorSettingsIndex {
-  val default: RorSettingsIndex = RorSettingsIndex(IndexName.Full(nes(".readonlyrest")))
-}
-
-final case class RorSettingsFile(file: File) extends AnyVal
-object RorSettingsFile {
-  def default(esEnv: EsEnv): RorSettingsFile = RorSettingsFile(esEnv.configDir / "readonlyrest.yml")
-}
-

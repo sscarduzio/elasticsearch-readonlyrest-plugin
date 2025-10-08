@@ -18,9 +18,11 @@ package tech.beshu.ror.settings.es
 
 import better.files.File
 import io.circe.{Decoder, DecodingFailure, Json}
+import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.factory.JsonStaticVariablesResolver
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 import tech.beshu.ror.utils.yaml.YamlParser
@@ -67,3 +69,24 @@ final class YamlFileBasedSettingsLoader(file: File)
 }
 
 final case class MalformedSettings(message: String)
+
+private[es] trait YamlFileBasedSettingsLoaderSupport {
+
+  protected def loadSetting[T: Decoder](esEnv: EsEnv, settingsName: String)
+                                       (implicit systemContext: SystemContext): Task[Either[MalformedSettings, T]] = {
+    loadSetting(esEnv.elasticsearchConfig.file, settingsName)
+  }
+
+  protected def loadSetting[T: Decoder](file: File, settingsName: String)
+                                       (implicit systemContext: SystemContext): Task[Either[MalformedSettings, T]] = {
+    Task.delay {
+      val loader = new YamlFileBasedSettingsLoader(file)
+      for {
+        strategy <- loader
+          .loadSettings[T](settingsName)
+          .left.map(error => MalformedSettings(error.message))
+      } yield strategy
+    }
+  }
+
+}

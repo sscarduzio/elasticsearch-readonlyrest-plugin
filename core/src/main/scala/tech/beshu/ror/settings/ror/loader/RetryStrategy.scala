@@ -22,7 +22,7 @@ import cats.implicits.toShow
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingRetryStrategySettings
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategy.LoadingRetryStrategySettings
 
 trait RetryStrategy {
   def withRetry[ERROR: Show, RESULT](operation: Task[Either[ERROR, RESULT]],

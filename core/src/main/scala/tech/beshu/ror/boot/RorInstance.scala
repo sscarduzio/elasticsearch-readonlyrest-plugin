@@ -32,8 +32,8 @@ import tech.beshu.ror.api.{AuthMockApi, MainSettingsApi, TestSettingsApi}
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.{CoreRefreshSettings, LoadingRorCoreStrategy}
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategy.CoreRefreshSettings
+import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, LoadingRorCoreStrategy}
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError

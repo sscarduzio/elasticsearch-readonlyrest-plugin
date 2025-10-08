@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.es
 
-import better.files._
+import better.files.*
+import tech.beshu.ror.accesscontrol.domain.EsConfigFile
+
 import scala.util.Try
 
 final case class EsEnv(configDir: File,
@@ -32,5 +34,5 @@ final case class EsEnv(configDir: File,
     }
   }
 
-  def elasticsearchYmlFile: File = configDir / "elasticsearch.yml"
+  def elasticsearchConfig: EsConfigFile = EsConfigFile.default(this)
 }

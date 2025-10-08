@@ -19,8 +19,7 @@ package tech.beshu.ror.boot
 import tech.beshu.ror.api.{MainSettingsApi, TestSettingsApi}
 import tech.beshu.ror.boot.engines.{MainSettingsBasedReloadableEngine, TestSettingsBasedReloadableEngine}
 import tech.beshu.ror.es.IndexDocumentManager
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingRorCoreStrategy
+import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, LoadingRorCoreStrategy}
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
 import tech.beshu.ror.settings.ror.loader.{ConfigurableRetryStrategy, ForceLoadRorSettingsFromFileLoader, RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader, StartingRorSettingsLoader}
 import tech.beshu.ror.settings.ror.source.{MainSettingsFileSource, MainSettingsIndexSource, TestSettingsIndexSource}
@@ -32,16 +31,13 @@ object SettingsRelatedCreatorsAndLoaders {
 
   def create(esConfigBasedRorSettings: EsConfigBasedRorSettings,
              indexDocumentManager: IndexDocumentManager): SettingsRelatedCreatorsAndLoaders = {
-    val settingsYamlParser = new RawRorSettingsYamlParser(esConfigBasedRorSettings.settingsMaxSize)
-    val mainSettingsIndexSource = MainSettingsIndexSource.create(
-      indexDocumentManager, esConfigBasedRorSettings.settingsIndex, settingsYamlParser
-    )
-    val mainSettingsFileSource = MainSettingsFileSource.create(
-      esConfigBasedRorSettings.settingsFile, settingsYamlParser
-    )
-    val testSettingsIndexSource = TestSettingsIndexSource.create(
-      indexDocumentManager, esConfigBasedRorSettings.settingsIndex, settingsYamlParser
-    )
+    val settingsIndex = esConfigBasedRorSettings.settingsSource.settingsIndex
+    val settingsFile = esConfigBasedRorSettings.settingsSource.settingsFile
+    val settingsMaxSize = esConfigBasedRorSettings.settingsSource.settingsMaxSize
+    val settingsYamlParser = new RawRorSettingsYamlParser(settingsMaxSize)
+    val mainSettingsIndexSource = MainSettingsIndexSource.create(indexDocumentManager, settingsIndex, settingsYamlParser)
+    val mainSettingsFileSource = MainSettingsFileSource.create(settingsFile, settingsYamlParser)
+    val testSettingsIndexSource = TestSettingsIndexSource.create(indexDocumentManager, settingsIndex, settingsYamlParser)
     val startingSettingsLoader = esConfigBasedRorSettings.loadingRorCoreStrategy match {
       case s@LoadingRorCoreStrategy.ForceLoadingFromFile =>
         new ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource)

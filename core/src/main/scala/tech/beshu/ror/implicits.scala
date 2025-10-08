@@ -61,8 +61,8 @@ import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.CoreRefreshSettings
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategy.CoreRefreshSettings
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
@@ -410,6 +410,8 @@ trait LogsShowInstances
     case CoreRefreshSettings.Enabled(interval) => interval.value.toString()
   }
 
+  implicit val esConfigFileShow: Show[EsConfigFile] = Show.show(_.file.show)
+
   implicit val loadingDelayShow: Show[LoadingDelay] = Show[FiniteDuration].contramap(_.value.value)
 
   implicit val loadingAttemptsCountShow: Show[LoadingAttemptsCount] = Show[Int].contramap(_.value.value)
@@ -425,8 +427,6 @@ trait LogsShowInstances
       s"Cannot find elasticsearch settings file: [${file.show}]"
     case EsConfigBasedRorSettings.LoadingError.MalformedContent(file, message) =>
       s"Settings file is malformed: [${file.show}], ${message.show}"
-    case EsConfigBasedRorSettings.LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled =>
-      s"Cannot use ROR SSL when XPack Security is enabled"
   }
 
   implicit val parsingRorSettingsErrorShow: Show[ParsingRorSettingsError] = Show.show {
@@ -448,7 +448,7 @@ trait LogsShowInstances
     case FileSettingsSource.LoadingError.FileNotExist(file) => s"Cannot find settings file: ${file.pathAsString}"
   }
 
-  implicit val show: Show[StartingFailure] = Show.show(_.message)
+  implicit val startingFailureShow: Show[StartingFailure] = Show.show(_.message)
 
   implicit def loadingSettingsErrorShow[ERROR: Show]: Show[LoadingSettingsError[ERROR]] = Show.show {
     case LoadingSettingsError.SettingsMalformed(cause) => s"ROR settings are malformed: $cause"

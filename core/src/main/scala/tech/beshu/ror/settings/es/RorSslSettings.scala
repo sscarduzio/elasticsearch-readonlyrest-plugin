@@ -17,18 +17,21 @@
 package tech.beshu.ror.settings.es
 
 import better.files.*
+import cats.data.{EitherT, NonEmptyList}
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
+import tech.beshu.ror.accesscontrol.domain.{EsConfigFile, RorSettingsFile}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 sealed trait RorSslSettings
-object RorSslSettings extends Logging {
+object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
 
   final case class OnlyExternalSslSettings(ssl: ExternalSslSettings) extends RorSslSettings
   final case class OnlyInternodeSslSettings(ssl: InternodeSslSettings) extends RorSslSettings
@@ -57,40 +60,92 @@ object RorSslSettings extends Logging {
     }
   }
 
-  def load(rorSettingsFile: RorSettingsFile, esConfigFile: File)
-          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, Option[RorSslSettings]]] = Task {
-    implicit val rorSslSettingsDecoder: Decoder[Option[RorSslSettings]] = SslDecoders.rorSslDecoder(esConfigFile.parent)
-    loadSslSettingsFrom(esConfigFile)
-      .fold(
-        error => Left(error),
-        {
-          case None =>
-            logger.info(s"Cannot find ROR SSL settings in ${esConfigFile.show} ...")
-            fallbackToRorSettingsFile(rorSettingsFile)
-          case Some(ssl) =>
-            Right(Some(ssl))
-        }
-      )
+  def load(esEnv: EsEnv,
+           rorSettingsFile: RorSettingsFile)
+          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, Option[RorSslSettings]]] = {
+    val result = for {
+      xpackSecuritySettings <- loadXpackSecuritySettings(esEnv)
+      rorSslSettings <- loadRorSslSetting(esEnv.elasticsearchConfig, rorSettingsFile, xpackSecuritySettings)
+    } yield rorSslSettings
+    result.value
+  }
+
+  private def loadXpackSecuritySettings(esEnv: EsEnv)
+                                       (implicit systemContext: SystemContext): EitherT[Task, MalformedSettings, XpackSecuritySettings] = {
+    EitherT {
+      implicit val decoder: Decoder[XpackSecuritySettings] = xpackSettingsDecoder(esEnv.isOssDistribution)
+      loadSetting[XpackSecuritySettings](esEnv, "X-Pack settings")
+    }
+  }
+
+  private def loadRorSslSetting(esConfigFile: EsConfigFile,
+                                rorSettingsFile: RorSettingsFile,
+                                xpackSecuritySettings: XpackSecuritySettings)
+                               (implicit systemContext: SystemContext): EitherT[Task, MalformedSettings, Option[RorSslSettings]] = {
+    implicit val rorSslSettingsDecoder: Decoder[Option[RorSslSettings]] = SslDecoders.rorSslDecoder(esConfigFile.file.parent)
+    loadSslSettingsFrom(esConfigFile.file)
+      .flatMap {
+        case None =>
+          fallbackToRorSettingsFile(rorSettingsFile)
+        case Some(ssl) =>
+          EitherT.rightT(Some(ssl))
+      }
+      .subflatMap {
+        case Some(ssl) if xpackSecuritySettings.enabled =>
+          Left(MalformedSettings("Cannot use ROR SSL when XPack Security is enabled"))
+        case rorSsl@(Some(_) | None) =>
+          Right(rorSsl)
+      }
   }
 
   private def fallbackToRorSettingsFile(rorSettingsFile: RorSettingsFile)
                                        (implicit decoder: Decoder[Option[RorSslSettings]],
-                                        systemContext: SystemContext) = {
+                                        systemContext: SystemContext): EitherT[Task, MalformedSettings, Option[RorSslSettings]] = {
     val settingsFile = rorSettingsFile.file
-    logger.info(s"... trying: ${settingsFile.show}")
     if (settingsFile.exists) {
-      loadSslSettingsFrom(settingsFile)
+      for {
+        _ <- lift(logger.warn(s"Defining SSL settings in ReadonlyREST file is deprecated and will be removed in the future. Move your ReadonlyREST SSL settings to Elasticsearch config file. See https://docs.readonlyrest.com/elasticsearch#encryption for details"))
+        settings <- loadSslSettingsFrom(settingsFile)
+      } yield settings
     } else {
-      Right(None)
+      EitherT.rightT(None)
     }
   }
 
   private def loadSslSettingsFrom(settingsFile: File)
                                  (implicit decoder: Decoder[Option[RorSslSettings]],
                                   systemContext: SystemContext) = {
-    new YamlFileBasedSettingsLoader(settingsFile)
-      .loadSettings[Option[RorSslSettings]](settingsName = "ROR SSL settings")
+    for {
+      _ <- lift(logger.info(s"Trying to load ROR SSL settings from '${settingsFile.show}' file ..."))
+      settings <- EitherT(loadSetting[Option[RorSslSettings]](settingsFile, "ROR SSL settings"))
+      _ <- lift(logger.info(settings match {
+        case Some(_) => s"ROR SSL settings loaded from '${settingsFile.show}' file."
+        case None => s"No ROR SSL settings found in '${settingsFile.show}' file."
+      }))
+    } yield settings
   }
+
+  private final case class XpackSecuritySettings(enabled: Boolean)
+
+  private def xpackSettingsDecoder(isOssDistribution: Boolean): Decoder[XpackSecuritySettings] = {
+    if (isOssDistribution) {
+      Decoder.const(XpackSecuritySettings(enabled = false))
+    } else {
+      val booleanDecoder = YamlKeyDecoder[Boolean](
+        path = NonEmptyList.of("xpack", "security", "enabled"),
+        default = true
+      )
+      val stringDecoder = YamlKeyDecoder[String](
+        path = NonEmptyList.of("xpack", "security", "enabled"),
+        default = "true"
+      ) map {
+        _.toBoolean
+      }
+      (booleanDecoder or stringDecoder) map XpackSecuritySettings.apply
+    }
+  }
+
+  private def lift[T](value: => T): EitherT[Task, MalformedSettings, T] = EitherT.rightT(value)
 }
 
 sealed trait SslSettings {
@@ -310,7 +365,7 @@ private object SslDecoders extends Logging {
   }
 
   private def sslInternodeSettingsDecoder(basePath: File,
-                                               fipsMode: FipsMode): Decoder[Option[InternodeSslSettings]] = Decoder.instance { c =>
+                                          fipsMode: FipsMode): Decoder[Option[InternodeSslSettings]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
         certificateVerification <- c.downField(consts.certificateVerification).as[Option[Boolean]]
@@ -332,7 +387,7 @@ private object SslDecoders extends Logging {
   }
 
   private def sslExternalSettingsDecoder(basePath: File,
-                                              fipsMode: FipsMode): Decoder[Option[ExternalSslSettings]] = Decoder.instance { c =>
+                                         fipsMode: FipsMode): Decoder[Option[ExternalSslSettings]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
         verification <- c.downField(consts.verification).as[Option[Boolean]]

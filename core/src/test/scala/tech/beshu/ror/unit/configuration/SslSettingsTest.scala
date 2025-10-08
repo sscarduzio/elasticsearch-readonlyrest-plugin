@@ -218,8 +218,8 @@ class SslSettingsTest
   private def loadRorSslSettings(settingsFolderPath: String) = {
     RorSslSettings
       .load(
+        getResourcePath(s"$settingsFolderPath/elasticsearch.yml"),
         RorSettingsFile(getResourcePath(s"$settingsFolderPath/readonlyrest.yml")),
-        getResourcePath(s"$settingsFolderPath/elasticsearch.yml")
       )
       .runSyncUnsafe()
   }

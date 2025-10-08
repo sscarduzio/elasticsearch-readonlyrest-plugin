@@ -65,8 +65,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
                        loadedMainRorSettings: MainRorSettings,
                        loadedTestRorSettings: Option[TestRorSettings]) = {
     for {
-      mainEngine <- EitherT(loadRorEngine(loadedMainRorSettings.rawSettings, esConfigBasedRorSettings.settingsIndex))
-      testEngine <- EitherT.right(loadTestEngine(loadedTestRorSettings, esConfigBasedRorSettings.settingsIndex))
+      mainEngine <- EitherT(loadRorEngine(loadedMainRorSettings.rawSettings, esConfigBasedRorSettings.settingsSource.settingsIndex))
+      testEngine <- EitherT.right(loadTestEngine(loadedTestRorSettings, esConfigBasedRorSettings.settingsSource.settingsIndex))
       rorInstance <- createRorInstance(esConfigBasedRorSettings, creators, mainEngine, testEngine, loadedMainRorSettings)
     } yield rorInstance
   }
