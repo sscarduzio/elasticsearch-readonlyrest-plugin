@@ -40,6 +40,7 @@ import scala.language.{implicitConversions, postfixOps}
 
 final case class EsConfigBasedRorSettings(boot: RorBootSettings,
                                           ssl: Option[RorSslSettings],
+                                         // todo: rename - settings storeage related 
                                           settingsIndex: RorSettingsIndex,
                                           settingsFile: RorSettingsFile,
                                           settingsMaxSize: Information,
