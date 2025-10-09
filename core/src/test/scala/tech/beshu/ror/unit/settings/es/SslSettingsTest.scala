@@ -14,19 +14,21 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.configuration
+package tech.beshu.ror.unit.settings.es
 
+import better.files.File
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.{FileBasedSettings, KeystoreBasedSettings}
 import tech.beshu.ror.settings.es.{MalformedSettings, RorSslSettings}
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.getResourcePath
+import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath, testEsNodeSettings}
 
 class SslSettingsTest
   extends AnyWordSpec with Inside {
@@ -216,11 +218,11 @@ class SslSettingsTest
   }
 
   private def loadRorSslSettings(settingsFolderPath: String) = {
+    val esConfigFile = File(getResourcePath(settingsFolderPath))
+    val rorSettingsFile = RorSettingsFile(getResourcePath(s"$settingsFolderPath/readonlyrest.yml"))
+    val esEnv = EsEnv(esConfigFile, esConfigFile, defaultEsVersionForTests, testEsNodeSettings)
     RorSslSettings
-      .load(
-        getResourcePath(s"$settingsFolderPath/elasticsearch.yml"),
-        RorSettingsFile(getResourcePath(s"$settingsFolderPath/readonlyrest.yml")),
-      )
+      .load(esEnv, rorSettingsFile)
       .runSyncUnsafe()
   }
 }

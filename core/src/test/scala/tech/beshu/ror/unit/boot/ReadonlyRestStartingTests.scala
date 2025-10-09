@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.boot
 
 import better.files.File
 import cats.data.NonEmptyList
-import cats.effect.Resource
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
@@ -61,6 +60,7 @@ import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.unit.utils.WithReadonlyrestBootSupport
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
@@ -73,6 +73,7 @@ import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 class ReadonlyRestStartingTests
   extends AnyWordSpec
+    with WithReadonlyrestBootSupport
     with Inside with OptionValues with EitherValues
     with MockFactory with Eventually {
 
@@ -384,19 +385,25 @@ class ReadonlyRestStartingTests
           implicit val systemContext: SystemContext = createSystemContext()
           val result = createEsConfigBasedRorSettings("/boot_tests/ror_ssl_declared_in_es_file_xpack_security_enabled/")
 
-          result should be (Left(LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled))
+          inside(result) {
+            case Left(LoadingError.MalformedContent(_, "Cannot use ROR SSL when XPack Security is enabled")) =>
+          }
         }
         "ROR SSL (in readonlyrest.yml) is tried to be used when XPack Security is enabled" in {
           implicit val systemContext: SystemContext = createSystemContext()
           val result = createEsConfigBasedRorSettings("/boot_tests/ror_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
 
-          result should be (Left(LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled))
+          inside(result) {
+            case Left(LoadingError.MalformedContent(_, "Cannot use ROR SSL when XPack Security is enabled")) =>
+          }
         }
         "ROR FIPS SSL is tried to be used when XPack Security is enabled" in {
           implicit val systemContext: SystemContext = createSystemContext()
           val result = createEsConfigBasedRorSettings("/boot_tests/ror_fisb_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
 
-          result should be(Left(LoadingError.CannotUseRorSslWhenXPackSecurityIsEnabled))
+          inside(result) {
+            case Left(LoadingError.MalformedContent(_, "Cannot use ROR SSL when XPack Security is enabled")) =>
+          }
         }
       }
     }
@@ -1358,9 +1365,10 @@ class ReadonlyRestStartingTests
         implicit val systemContext: SystemContext = createSystemContext()
         val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexDocumentManager])
 
-        val esConfigBasedRorSettings =
-          forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading/")
-            .copy(settingsMaxSize = Bytes(1))
+        val esConfigBasedRorSettings = {
+          val settings = forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading/")
+          settings.copy(settingsSource = settings.settingsSource.copy(settingsMaxSize = Bytes(1)))
+        }
 
         val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
         inside(result) {
@@ -1421,34 +1429,6 @@ class ReadonlyRestStartingTests
     }
   }
 
-  private def withReadonlyRest(readonlyRestAndSettings: (ReadonlyRest, EsConfigBasedRorSettings))
-                              (testCode: RorInstance => Any): Unit = {
-    val (readonlyRest, esConfigBasedRorSettings) = readonlyRestAndSettings
-    withReadonlyRestExt((readonlyRest, esConfigBasedRorSettings, ())) { case (rorInstance, ()) => testCode(rorInstance) }
-  }
-
-  private def withReadonlyRestExt[EXT](readonlyRestAndSettingsAndExt: (ReadonlyRest, EsConfigBasedRorSettings, EXT))
-                                      (testCode: (RorInstance, EXT) => Any): Unit = {
-    val (readonlyRest, esConfigBasedRorSettings, ext) = readonlyRestAndSettingsAndExt
-    Resource
-      .make(
-        acquire = readonlyRest
-          .start(esConfigBasedRorSettings)
-          .flatMap {
-            case Right(startedInstance) => Task.now(startedInstance)
-            case Left(startingFailure) => Task.raiseError(new Exception(s"$startingFailure"))
-          }
-      )(
-        release = _.stop()
-      )
-      .use { startedInstance =>
-        Task.delay {
-          testCode(startedInstance, ext)
-        }
-      }
-      .runSyncUnsafe()
-  }
-
   private def forceCreateEsConfigBasedRorSettings(resourceEsConfigDir: String)
                                                  (implicit systemContext: SystemContext) = {
     createEsConfigBasedRorSettings(resourceEsConfigDir) match {
@@ -1464,7 +1444,6 @@ class ReadonlyRestStartingTests
     EsConfigBasedRorSettings
       .from(esEnv)
       .runSyncUnsafe()
-      .map(settings => settings.copy(settingsFile = RorSettingsFile(esConfig / "readonlyrest.yml")))
   }
 
   private def createSystemContext(refreshInterval: Option[FiniteDuration] = None,

@@ -85,16 +85,16 @@ class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
   private def scheduleIndexSettingsChecking(interval: PositiveFiniteDuration,
                                             reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]])
                                            (implicit requestId: RequestId): CancelableWithRequestId = {
-    logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Scheduling next in-index settings check within ${interval.show}")
+    logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}][${instance.id}] Scheduling next in-index settings check within ${interval.show}")
     val cancellable = scheduler.scheduleOnce(interval.value) {
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ReadonlyREST settings from index ...")
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}][${instance.id}] Loading ReadonlyREST settings from index ...")
       reloadTask(requestId)
         .runAsync {
           case Right(reloadResults) =>
             reloadResults.foreach(logSettingsReloadResult)
             scheduleNextIfNotStopping(interval, reloadTask)
           case Left(ex) =>
-            logger.error(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Checking index settings failed: error", ex)
+            logger.error(s"[CLUSTERWIDE SETTINGS][${requestId.show}][${instance.id}] Checking index settings failed: error", ex)
             scheduleNextIfNotStopping(interval, reloadTask)
         }
     }

@@ -5,7 +5,7 @@ xpack.security.enabled: true
 readonlyrest:
   force_load_from_file: true
   ssl_internode:
-    enable: false
+    enable: true
     keystore_file:  "ror-keystore.jks"
     keystore_pass: readonlyrest1
     key_pass: readonlyrest2

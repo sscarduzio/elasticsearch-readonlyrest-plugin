@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.configuration
+package tech.beshu.ror.unit.settings.es
 
 import better.files.File
 import cats.implicits.*

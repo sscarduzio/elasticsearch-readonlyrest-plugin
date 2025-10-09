@@ -14,16 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.configuration
+package tech.beshu.ror.unit.settings.es
 
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.{MalformedSettings, RorBootSettings}
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath, testEsNodeSettings}
 
 class RorBootSettingsTest

@@ -38,6 +38,7 @@ import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.time.Instant
+import java.util.UUID
 
 class RorInstance private(boot: ReadonlyRest,
                           mode: RorInstance.Mode,
@@ -77,7 +78,9 @@ class RorInstance private(boot: ReadonlyRest,
   private val authMockRestApi = new AuthMockApi(rorInstance = this)
 
   settingsAutoReloader.start()
-  logger.info("ReadonlyREST was loaded!")
+
+  val id: String = UUID.randomUUID().toString
+  logger.info(s"[$id] ReadonlyREST was loaded!")
 
   def engines: Option[Engines] = theMainSettingsEngine.engine.map(Engines(_, theTestSettingsEngine.engine))
 
