@@ -116,7 +116,6 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
               authentication = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(rorKbnDef), globalSettings.userIdCaseSensitivity),
               authorization = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(rorKbnDef, groupsLogic)),
             )
-            
             Right(RuleDefinition.create(rule))
           case (None, _) =>
             Left(cannotFindRorKibanaDefinition(name))
