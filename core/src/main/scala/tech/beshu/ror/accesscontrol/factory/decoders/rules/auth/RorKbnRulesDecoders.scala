@@ -104,7 +104,12 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
               case Some(groupsLogic) =>
                 groupsLogic
               case None =>
-                logger.warn(s"There are no group mappings configured for rule ${name.value} of type ${RorKbnAuthRule.Name.name.show}. This syntax is deprecated, please change the rule type to ${RorKbnAuthenticationRule.Name.name.show}.")
+                logger.warn(
+                  s"""There are no group mappings configured for rule ${name.value} of type ${RorKbnAuthRule.Name.name.show}.
+                     |The rule is therefore interpreted as ${RorKbnAuthRule.Name.name.show} rule with `any_of: ["*"]` groups logic.
+                     |This syntax is deprecated. Either explicitly define groups, or use ${RorKbnAuthenticationRule.Name.name.show} rule instead (when only authentication logic is required).
+                     |""".stripMargin
+                )
                 GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdPattern.fromNes(nes("*")))))
             }
             val rule = new RorKbnAuthRule(

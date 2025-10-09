@@ -50,21 +50,15 @@ final class RorKbnAuthorizationRule(val settings: Settings)
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                  result: ClaimSearchResult[UniqueList[Group]],
                                                                  groupsLogic: GroupsLogic) = {
-    (result, groupsLogic) match {
-      case (NotFound, _) =>
+    result match {
+      case NotFound =>
         Left(())
-      case (Found(groups), groupsLogic) =>
-        UniqueNonEmptyList.from(groups) match {
-          case Some(nonEmptyGroups) =>
-            groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
-              case Some(matchedGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups)) =>
-                Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
-              case Some(_) | None =>
-                Left(())
-            }
-          case None =>
-            Left(())
-        }
+      case Found(groups) =>
+        (for {
+          nonEmptyGroups <- UniqueNonEmptyList.from(groups)
+          matchedGroups <- groupsLogic.availableGroupsFrom(nonEmptyGroups)
+          if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))
+        } yield blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))).toRight(())
     }
   }
 

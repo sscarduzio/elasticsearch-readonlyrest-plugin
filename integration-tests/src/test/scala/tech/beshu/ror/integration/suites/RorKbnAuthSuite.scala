@@ -73,10 +73,10 @@ class RorKbnAuthSuite
   }
 
   "acceptValidTokenWithUserClaim" in {
-    // Groups claim is mandatory, even if empty
+    // Groups claim is mandatory, cannot be empty
     val jwt = Jwt(algo, validKey, claims = List(
       "user" := "user",
-      "groups" := ""
+      "groups" := "any_arbitrary_group"
     ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
