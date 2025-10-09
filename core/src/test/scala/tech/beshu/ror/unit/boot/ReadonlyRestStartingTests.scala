@@ -47,15 +47,15 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.RorDependencies.NoOpImpersonationWarningsReader
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
+import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, TestSettings}
-import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingError
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.IndexDocumentManager.*
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, EsEnv, IndexDocumentManager}
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingError
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
@@ -64,12 +64,12 @@ import tech.beshu.ror.unit.utils.WithReadonlyrestBootSupport
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 import java.time.Clock
 import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 class ReadonlyRestStartingTests
   extends AnyWordSpec
