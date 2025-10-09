@@ -92,11 +92,11 @@ class ReadonlyRest(coreFactory: CoreFactory,
             TestEngine.Configured(
               engine = loadedEngine,
               settings = testSettings.rawSettings,
-              expiration = expirationFrom(testSettings.expiration)
+              expiration = TestEngine.Expiration(testSettings.expiration.ttl, testSettings.expiration.validTo)
             )
           case Left(startingFailure) =>
             logger.error(s"Unable to start test engine. Cause: ${startingFailure.message.show}. Test settings engine will be marked as invalidated.")
-            TestEngine.Invalidated(testSettings.rawSettings, expirationFrom(testSettings.expiration))
+            invalidatedTestEngine(testSettings)
         }
     } yield testEngine
   }
@@ -104,13 +104,14 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def loadInvalidatedTestEngine(testSettings: TestRorSettings) = {
     Task
       .delay(authServicesMocksProvider.update(testSettings.mocks))
-      .map { _ =>
-        TestEngine.Invalidated(testSettings.rawSettings, expirationFrom(testSettings.expiration))
-      }
+      .map { case () => invalidatedTestEngine(testSettings) }
   }
 
-  private def expirationFrom(expiration: TestRorSettings.Expiration): TestEngine.Expiration = {
-    TestEngine.Expiration(expiration.ttl, expiration.validTo)
+  private def invalidatedTestEngine(testSettings: TestRorSettings) = {
+    TestEngine.Invalidated(
+      testSettings.rawSettings,
+      TestEngine.Expiration(testSettings.expiration.ttl, testSettings.expiration.validTo)
+    )
   }
 
   private def createRorInstance(esConfigBasedRorSettings: EsConfigBasedRorSettings,
