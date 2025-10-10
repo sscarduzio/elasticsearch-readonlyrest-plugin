@@ -25,6 +25,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsFile, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 final case class RorSettingsSourcesConfig(settingsIndex: RorSettingsIndex,
@@ -34,7 +35,7 @@ final case class RorSettingsSourcesConfig(settingsIndex: RorSettingsIndex,
 object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
 
   def from(esEnv: EsEnv)
-          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, RorSettingsSourcesConfig]] = {
+          (implicit systemContext: SystemContext): Task[Either[LoadingError, RorSettingsSourcesConfig]] = {
     implicit val decoder: Decoder[RorSettingsSourcesConfig] = for {
       rorSettingsIndex <- decoders.rorSettingsIndexDecoder
       rorSettingsFile <- decoders.rorSettingsFileDecoder(esEnv)

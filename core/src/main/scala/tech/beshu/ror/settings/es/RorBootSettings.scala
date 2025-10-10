@@ -23,6 +23,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 final case class RorBootSettings(rorNotStartedResponse: RorNotStartedResponse,
@@ -31,7 +32,7 @@ final case class RorBootSettings(rorNotStartedResponse: RorNotStartedResponse,
 object RorBootSettings extends YamlFileBasedSettingsLoaderSupport {
 
   def load(env: EsEnv)
-          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, RorBootSettings]] = {
+          (implicit systemContext: SystemContext): Task[Either[LoadingError, RorBootSettings]] = {
     implicit val rorBootSettingsDecoder: Decoder[RorBootSettings] = decoders.rorBootSettingsDecoder
     loadSetting[RorBootSettings](env, "ROR boot settings")
   }

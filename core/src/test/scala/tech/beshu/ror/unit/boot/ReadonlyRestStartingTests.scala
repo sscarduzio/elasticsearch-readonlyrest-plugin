@@ -55,7 +55,7 @@ import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.IndexDocumentManager.*
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, EsEnv, IndexDocumentManager}
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingError
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
@@ -287,7 +287,7 @@ class ReadonlyRestStartingTests
           implicit val systemContext: SystemContext = createSystemContext()
           val result = createEsConfigBasedRorSettings(resourcesPath)
 
-          inside(result) { case Left(LoadingError.MalformedContent(_, message)) =>
+          inside(result) { case Left(LoadingError.MalformedSettings(_, message)) =>
             message should startWith("Cannot parse file")
           }
         }
@@ -386,7 +386,7 @@ class ReadonlyRestStartingTests
           val result = createEsConfigBasedRorSettings("/boot_tests/ror_ssl_declared_in_es_file_xpack_security_enabled/")
 
           inside(result) {
-            case Left(LoadingError.MalformedContent(_, "Cannot use ROR SSL when XPack Security is enabled")) =>
+            case Left(LoadingError.MalformedSettings(_, "Cannot use ROR SSL when XPack Security is enabled")) =>
           }
         }
         "ROR SSL (in readonlyrest.yml) is tried to be used when XPack Security is enabled" in {
@@ -394,7 +394,7 @@ class ReadonlyRestStartingTests
           val result = createEsConfigBasedRorSettings("/boot_tests/ror_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
 
           inside(result) {
-            case Left(LoadingError.MalformedContent(_, "Cannot use ROR SSL when XPack Security is enabled")) =>
+            case Left(LoadingError.MalformedSettings(_, "Cannot use ROR SSL when XPack Security is enabled")) =>
           }
         }
         "ROR FIPS SSL is tried to be used when XPack Security is enabled" in {
@@ -402,7 +402,7 @@ class ReadonlyRestStartingTests
           val result = createEsConfigBasedRorSettings("/boot_tests/ror_fisb_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
 
           inside(result) {
-            case Left(LoadingError.MalformedContent(_, "Cannot use ROR SSL when XPack Security is enabled")) =>
+            case Left(LoadingError.MalformedSettings(_, "Cannot use ROR SSL when XPack Security is enabled")) =>
           }
         }
       }

@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.Transformati
 import tech.beshu.ror.accesscontrol.factory.JsonStaticVariablesResolver
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 import tech.beshu.ror.utils.yaml.YamlParser
 
@@ -37,7 +38,7 @@ final class YamlFileBasedSettingsLoader(file: File)
     TransformationCompiler.withoutAliases(systemContext.variablesFunctions)
   )
 
-  def loadSettings[SETTINGS: Decoder](settingsName: String): Either[MalformedSettings, SETTINGS] = {
+  def loadSettings[SETTINGS: Decoder](settingsName: String): Either[LoadingError, SETTINGS] = {
     loadedSettingsJson
       .flatMap { json =>
         implicitly[Decoder[SETTINGS]]
@@ -46,7 +47,7 @@ final class YamlFileBasedSettingsLoader(file: File)
       }
   }
 
-  private lazy val loadedSettingsJson: Either[MalformedSettings, Json] = {
+  private lazy val loadedSettingsJson: Either[LoadingError, Json] = {
     file.fileReader { reader =>
       yamlParser
         .parse(reader)
@@ -67,26 +68,31 @@ final class YamlFileBasedSettingsLoader(file: File)
     }
   }
 
-  private def createError(message:String) = MalformedSettings(file, message)
+  private def createError(message:String) = LoadingError.MalformedSettings(file, message)
 }
 
-final case class MalformedSettings(file: File, message: String)
+object YamlFileBasedSettingsLoader  {
+  sealed trait LoadingError
+  object LoadingError {
+    final case class FileNotFound(file: File) extends LoadingError
+    final case class MalformedSettings(file: File, message: String) extends LoadingError
+  }
+}
 
 private[es] trait YamlFileBasedSettingsLoaderSupport {
 
   protected def loadSetting[T: Decoder](esEnv: EsEnv, settingsName: String)
-                                       (implicit systemContext: SystemContext): Task[Either[MalformedSettings, T]] = {
+                                       (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
     loadSetting(esEnv.elasticsearchConfig.file, settingsName)
   }
 
   protected def loadSetting[T: Decoder](file: File, settingsName: String)
-                                       (implicit systemContext: SystemContext): Task[Either[MalformedSettings, T]] = {
+                                       (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
     Task.delay {
-      val loader = new YamlFileBasedSettingsLoader(file)
       for {
-        strategy <- loader
-          .loadSettings[T](settingsName)
-          .left.map(error => MalformedSettings(file, error.message))
+        _ <- Either.cond(file.exists, (), LoadingError.FileNotFound(file): LoadingError)
+        loader = new YamlFileBasedSettingsLoader(file)
+        strategy <- loader.loadSettings[T](settingsName)
       } yield strategy
     }
   }

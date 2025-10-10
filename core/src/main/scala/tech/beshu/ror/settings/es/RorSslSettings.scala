@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.SslSettings.*
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.SSLCertHelper
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
@@ -62,7 +63,7 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
 
   def load(esEnv: EsEnv,
            rorSettingsFile: RorSettingsFile)
-          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, Option[RorSslSettings]]] = {
+          (implicit systemContext: SystemContext): Task[Either[LoadingError, Option[RorSslSettings]]] = {
     val result = for {
       xpackSecuritySettings <- loadXpackSecuritySettings(esEnv)
       rorSslSettings <- loadRorSslSetting(esEnv.elasticsearchConfig, rorSettingsFile, xpackSecuritySettings)
@@ -71,7 +72,7 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
   }
 
   private def loadXpackSecuritySettings(esEnv: EsEnv)
-                                       (implicit systemContext: SystemContext): EitherT[Task, MalformedSettings, XpackSecuritySettings] = {
+                                       (implicit systemContext: SystemContext): EitherT[Task, LoadingError, XpackSecuritySettings] = {
     EitherT {
       implicit val decoder: Decoder[XpackSecuritySettings] = xpackSettingsDecoder(esEnv.isOssDistribution)
       loadSetting[XpackSecuritySettings](esEnv, "X-Pack settings")
@@ -81,7 +82,7 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
   private def loadRorSslSetting(esConfigFile: EsConfigFile,
                                 rorSettingsFile: RorSettingsFile,
                                 xpackSecuritySettings: XpackSecuritySettings)
-                               (implicit systemContext: SystemContext): EitherT[Task, MalformedSettings, Option[RorSslSettings]] = {
+                               (implicit systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
     implicit val rorSslSettingsDecoder: Decoder[Option[RorSslSettings]] = SslDecoders.rorSslDecoder(esConfigFile.file.parent)
     loadSslSettingsFrom(esConfigFile.file)
       .flatMap {
@@ -92,7 +93,7 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
       }
       .subflatMap {
         case Some(ssl) if xpackSecuritySettings.enabled =>
-          Left(MalformedSettings(esConfigFile.file, "Cannot use ROR SSL when XPack Security is enabled"))
+          Left(LoadingError.MalformedSettings(esConfigFile.file, "Cannot use ROR SSL when XPack Security is enabled"): LoadingError)
         case rorSsl@(Some(_) | None) =>
           Right(rorSsl)
       }
@@ -100,7 +101,7 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
 
   private def fallbackToRorSettingsFile(rorSettingsFile: RorSettingsFile)
                                        (implicit decoder: Decoder[Option[RorSslSettings]],
-                                        systemContext: SystemContext): EitherT[Task, MalformedSettings, Option[RorSslSettings]] = {
+                                        systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
     val settingsFile = rorSettingsFile.file
     if (settingsFile.exists) {
       for {
@@ -148,7 +149,7 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
     }
   }
 
-  private def lift[T](value: => T): EitherT[Task, MalformedSettings, T] = EitherT.rightT(value)
+  private def lift[T](value: => T): EitherT[Task, LoadingError, T] = EitherT.rightT(value)
 }
 
 sealed trait SslSettings {

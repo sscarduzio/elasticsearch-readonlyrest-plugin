@@ -25,6 +25,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
@@ -71,7 +72,7 @@ object LoadingRorCoreStrategySettings extends YamlFileBasedSettingsLoaderSupport
   }
 
   def load(esEnv: EsEnv)
-          (implicit systemContext: SystemContext): Task[Either[MalformedSettings, LoadingRorCoreStrategySettings]] = {
+          (implicit systemContext: SystemContext): Task[Either[LoadingError, LoadingRorCoreStrategySettings]] = {
     implicit val decoder: Decoder[LoadingRorCoreStrategySettings] = decoders.loadRorCoreStrategyDecoder(esEnv)
     loadSetting[LoadingRorCoreStrategySettings](esEnv, "ROR loading core strategy settings")
   }

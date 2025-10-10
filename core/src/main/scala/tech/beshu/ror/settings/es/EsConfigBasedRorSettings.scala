@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.settings.es
 
-import better.files.File
 import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingError.{FileNotFound, MalformedContent}
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 
 import scala.language.{implicitConversions, postfixOps}
 
@@ -32,28 +31,14 @@ final case class EsConfigBasedRorSettings(settingsSource: RorSettingsSourcesConf
 
 object EsConfigBasedRorSettings {
 
-  sealed trait LoadingError
-  object LoadingError {
-    final case class FileNotFound(file: File) extends LoadingError
-    final case class MalformedContent(file: File, message: String) extends LoadingError
-  }
-
   def from(esEnv: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, EsConfigBasedRorSettings]] = {
-    val esConfig = esEnv.elasticsearchConfig
     val result = for {
-      _ <- EitherT.fromEither[Task](Either.cond(esConfig.file.exists, (), FileNotFound(esConfig.file): LoadingError))
-      settingsSource <- RorSettingsSourcesConfig.from(esEnv).adaptError
-      bootSettings <- RorBootSettings.load(esEnv).adaptError
-      sslSettings <- RorSslSettings.load(esEnv, settingsSource.settingsFile).adaptError
-      loadingRorCoreStrategy <- LoadingRorCoreStrategySettings.load(esEnv).adaptError
+      settingsSource <- EitherT(RorSettingsSourcesConfig.from(esEnv))
+      bootSettings <- EitherT(RorBootSettings.load(esEnv))
+      sslSettings <- EitherT(RorSslSettings.load(esEnv, settingsSource.settingsFile))
+      loadingRorCoreStrategy <- EitherT(LoadingRorCoreStrategySettings.load(esEnv))
     } yield EsConfigBasedRorSettings(settingsSource, bootSettings, sslSettings, loadingRorCoreStrategy)
     result.value
   }
-
-  private implicit class AdaptError[T](val task: Task[Either[MalformedSettings, T]]) extends AnyVal {
-    def adaptError: EitherT[Task, LoadingError, T] =
-      EitherT(task).leftMap(error => MalformedContent(error.file, error.message): LoadingError)
-  }
-
 }

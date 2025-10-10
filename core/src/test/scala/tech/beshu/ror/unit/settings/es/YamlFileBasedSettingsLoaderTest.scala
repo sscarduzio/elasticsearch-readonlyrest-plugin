@@ -24,6 +24,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 
 class YamlFileBasedSettingsLoaderTest extends AnyWordSpec with Inside {
 
@@ -48,22 +49,30 @@ class YamlFileBasedSettingsLoaderTest extends AnyWordSpec with Inside {
       val result = loadFromTempFile[String](""""${USER_NAME}#{to_uppercase}"""")
       result shouldBe "JOHN".asRight
     }
-    "fail for non existing vairable" in {
+    "fail for non-existing variable" in {
       val result = loadFromTempFile[String](""""${WRONG_VARIABLE}"""")
       inside(result) {
-        case Left(error) =>
+        case Left(error: LoadingError.MalformedSettings) =>
           error.message should include("WRONG_VARIABLE")
+      }
+    }
+    "fail for non-existing file" in {
+      val loader = new YamlFileBasedSettingsLoader(File("non-existing-file"))
+      val result = loader.loadSettings[String]("TEST")
+      inside(result) {
+        case Left(error: LoadingError.FileNotFound) =>
       }
     }
   }
 
   private def loadFromTempFile[A: Decoder](content: String) =
-    tempFile(content).map { file =>
-      createFileConfigLoader(file)
-        .loadSettings[A]("TEST")
-    }.get()
+    tempFile(content)
+      .map { file =>
+        val loader = new YamlFileBasedSettingsLoader(file)
+        loader.loadSettings[A]("TEST")
+      }
+      .get()
 
   private def tempFile(content: String) = File.temporaryFile().map(_.write(content))
 
-  private def createFileConfigLoader(file: File) = new YamlFileBasedSettingsLoader(file)
 }

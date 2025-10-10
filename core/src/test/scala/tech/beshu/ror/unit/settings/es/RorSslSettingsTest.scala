@@ -24,9 +24,11 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.settings.es.RorSslSettings
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.{FileBasedSettings, KeystoreBasedSettings}
-import tech.beshu.ror.settings.es.{MalformedSettings, RorSslSettings}
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath, testEsNodeSettings}
 
@@ -122,7 +124,7 @@ class RorSslSettingsTest
       "file content is not valid yaml" in {
         val error = loadRorSslSettings("/boot_tests/es_api_ssl_settings_file_invalid_yaml/")
         inside(error) {
-          case Left(error) =>
+          case Left(error: LoadingError.MalformedSettings) =>
             error.message should startWith("Cannot parse file")
         }
       }

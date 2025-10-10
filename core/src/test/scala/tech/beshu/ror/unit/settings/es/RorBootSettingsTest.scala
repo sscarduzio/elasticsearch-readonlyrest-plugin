@@ -22,8 +22,9 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.settings.es.RorBootSettings
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
-import tech.beshu.ror.settings.es.{MalformedSettings, RorBootSettings}
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath, testEsNodeSettings}
 
 class RorBootSettingsTest
