@@ -30,7 +30,7 @@ import tech.beshu.ror.settings.es.{MalformedSettings, RorSslSettings}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath, testEsNodeSettings}
 
-class SslSettingsTest
+class RorSslSettingsTest
   extends AnyWordSpec with Inside {
 
   private implicit val systemContext: SystemContext = new SystemContext(
@@ -113,9 +113,9 @@ class SslSettingsTest
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
           val esConfigFolderPath = "/boot_tests/es_api_ssl_settings_malformed"
-          val expectedFilePath = getResourcePath(s"$esConfigFolderPath/elasticsearch.yml").toString
+          val expectedFilePath = getResourcePath(s"$esConfigFolderPath/elasticsearch.yml")
           loadRorSslSettings(esConfigFolderPath) shouldBe Left {
-            MalformedSettings(s"Cannot load ROR SSL settings from file $expectedFilePath. Cause: Missing required field")
+            MalformedSettings(expectedFilePath, s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. Cause: Missing required field")
           }
         }
       }
@@ -128,11 +128,12 @@ class SslSettingsTest
       }
       "SSL settings contain both pem and truststore based configuration" in {
         val configFolderPath = "/boot_tests/es_api_ssl_settings_both_pem_and_keystore_configured"
-        val expectedFilePath = getResourcePath(s"$configFolderPath/elasticsearch.yml").toString
+        val expectedFilePath = getResourcePath(s"$configFolderPath/elasticsearch.yml")
 
         loadRorSslSettings(configFolderPath) shouldBe Left {
           MalformedSettings(
-            s"Cannot load ROR SSL settings from file $expectedFilePath. " +
+            expectedFilePath,
+            s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. " +
               s"Cause: Field sets [server_certificate_key_file, server_certificate_file] and [keystore_file, keystore_pass, key_pass, key_alias] could not be present in the same settings section")
         }
       }
@@ -203,9 +204,9 @@ class SslSettingsTest
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
           val configFolderPath = "/boot_tests/internode_ssl_settings_malformed"
-          val expectedFilePath = getResourcePath(s"$configFolderPath/elasticsearch.yml").toString
+          val expectedFilePath = getResourcePath(s"$configFolderPath/elasticsearch.yml")
           loadRorSslSettings(configFolderPath) shouldBe Left {
-            MalformedSettings(s"Cannot load ROR SSL settings from file $expectedFilePath. Cause: Missing required field")
+            MalformedSettings(expectedFilePath, s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. Cause: Missing required field")
           }
         }
       }

@@ -92,7 +92,7 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
       }
       .subflatMap {
         case Some(ssl) if xpackSecuritySettings.enabled =>
-          Left(MalformedSettings("Cannot use ROR SSL when XPack Security is enabled"))
+          Left(MalformedSettings(esConfigFile.file, "Cannot use ROR SSL when XPack Security is enabled"))
         case rorSsl@(Some(_) | None) =>
           Right(rorSsl)
       }

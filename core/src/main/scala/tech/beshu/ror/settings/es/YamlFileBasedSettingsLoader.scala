@@ -42,7 +42,7 @@ final class YamlFileBasedSettingsLoader(file: File)
       .flatMap { json =>
         implicitly[Decoder[SETTINGS]]
           .decodeJson(json)
-          .left.map(e => MalformedSettings(s"Cannot load ${settingsName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"))
+          .left.map(e => createError(s"Cannot load ${settingsName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"))
       }
   }
 
@@ -50,11 +50,11 @@ final class YamlFileBasedSettingsLoader(file: File)
     file.fileReader { reader =>
       yamlParser
         .parse(reader)
-        .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString.show} content. Cause: ${e.message.show}"))
+        .left.map(e => createError(s"Cannot parse file ${file.pathAsString.show} content. Cause: ${e.message.show}"))
         .flatMap { json =>
           jsonStaticVariableResolver
             .resolve(json)
-            .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString.show}. $e."))
+            .left.map(e => createError(s"Unable to resolve environment variables for file ${file.pathAsString.show}. $e."))
         }
         .map(jsonWithOneLinerKeysToRegularJson)
     }
@@ -66,9 +66,11 @@ final class YamlFileBasedSettingsLoader(file: File)
       case other => other
     }
   }
+
+  private def createError(message:String) = MalformedSettings(file, message)
 }
 
-final case class MalformedSettings(message: String)
+final case class MalformedSettings(file: File, message: String)
 
 private[es] trait YamlFileBasedSettingsLoaderSupport {
 
@@ -84,7 +86,7 @@ private[es] trait YamlFileBasedSettingsLoaderSupport {
       for {
         strategy <- loader
           .loadSettings[T](settingsName)
-          .left.map(error => MalformedSettings(error.message))
+          .left.map(error => MalformedSettings(file, error.message))
       } yield strategy
     }
   }

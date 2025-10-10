@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategy.CoreRefreshSettings
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.CoreRefreshSettings
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 

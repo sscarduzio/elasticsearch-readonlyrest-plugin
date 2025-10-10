@@ -20,7 +20,6 @@ import better.files.File
 import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings.LoadingError.{FileNotFound, MalformedContent}
 
@@ -29,7 +28,7 @@ import scala.language.{implicitConversions, postfixOps}
 final case class EsConfigBasedRorSettings(settingsSource: RorSettingsSourcesConfig,
                                           boot: RorBootSettings,
                                           ssl: Option[RorSslSettings],
-                                          loadingRorCoreStrategy: LoadingRorCoreStrategy)
+                                          loadingRorCoreStrategy: LoadingRorCoreStrategySettings)
 
 object EsConfigBasedRorSettings {
 
@@ -44,36 +43,17 @@ object EsConfigBasedRorSettings {
     val esConfig = esEnv.elasticsearchConfig
     val result = for {
       _ <- EitherT.fromEither[Task](Either.cond(esConfig.file.exists, (), FileNotFound(esConfig.file): LoadingError))
-      settingsSource <- loadSettingsSource(esEnv)
-      bootSettings <- loadRorBootSettings(esEnv)
-      sslSettings <- loadSslSettings(esEnv, settingsSource.settingsFile)
-      loadingRorCoreStrategy <- loadLoadingRorCoreStrategy(esEnv)
+      settingsSource <- RorSettingsSourcesConfig.from(esEnv).adaptError
+      bootSettings <- RorBootSettings.load(esEnv).adaptError
+      sslSettings <- RorSslSettings.load(esEnv, settingsSource.settingsFile).adaptError
+      loadingRorCoreStrategy <- LoadingRorCoreStrategySettings.load(esEnv).adaptError
     } yield EsConfigBasedRorSettings(settingsSource, bootSettings, sslSettings, loadingRorCoreStrategy)
     result.value
   }
 
-  private def loadRorBootSettings(esEnv: EsEnv)
-                                 (implicit systemContext: SystemContext): EitherT[Task, LoadingError, RorBootSettings] = {
-    EitherT(RorBootSettings.load(esEnv))
-      .leftMap(error => MalformedContent(esEnv.elasticsearchConfig.file, error.message))
-  }
-
-  private def loadLoadingRorCoreStrategy(esEnv: EsEnv)
-                                        (implicit systemContext: SystemContext): EitherT[Task, LoadingError, LoadingRorCoreStrategy] = {
-    EitherT(LoadingRorCoreStrategy.load(esEnv))
-      .leftMap(error => MalformedContent(esEnv.elasticsearchConfig.file, error.message))
-  }
-
-  private def loadSettingsSource(esEnv: EsEnv)
-                                (implicit systemContext: SystemContext): EitherT[Task, LoadingError, RorSettingsSourcesConfig] = {
-    EitherT(RorSettingsSourcesConfig.from(esEnv))
-      .leftMap(error => MalformedContent(esEnv.elasticsearchConfig.file, error.message))
-  }
-
-  private def loadSslSettings(esEnv: EsEnv, rorSettingsFile: RorSettingsFile)
-                             (implicit systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
-    EitherT(RorSslSettings.load(esEnv, rorSettingsFile))
-      .leftMap(error => MalformedContent(esEnv.elasticsearchConfig.file, error.message))
+  private implicit class AdaptError[T](val task: Task[Either[MalformedSettings, T]]) extends AnyVal {
+    def adaptError: EitherT[Task, LoadingError, T] =
+      EitherT(task).leftMap(error => MalformedContent(error.file, error.message): LoadingError)
   }
 
 }

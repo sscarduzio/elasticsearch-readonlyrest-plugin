@@ -19,7 +19,7 @@ package tech.beshu.ror.boot
 import tech.beshu.ror.api.{MainSettingsApi, TestSettingsApi}
 import tech.beshu.ror.boot.engines.{MainSettingsBasedReloadableEngine, TestSettingsBasedReloadableEngine}
 import tech.beshu.ror.es.IndexDocumentManager
-import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, LoadingRorCoreStrategy}
+import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, LoadingRorCoreStrategySettings}
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
 import tech.beshu.ror.settings.ror.loader.{ConfigurableRetryStrategy, ForceLoadRorSettingsFromFileLoader, RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader, StartingRorSettingsLoader}
 import tech.beshu.ror.settings.ror.source.{MainSettingsFileSource, MainSettingsIndexSource, TestSettingsIndexSource}
@@ -39,9 +39,9 @@ object SettingsRelatedCreatorsAndLoaders {
     val mainSettingsFileSource = MainSettingsFileSource.create(settingsFile, settingsYamlParser)
     val testSettingsIndexSource = TestSettingsIndexSource.create(indexDocumentManager, settingsIndex, settingsYamlParser)
     val startingSettingsLoader = esConfigBasedRorSettings.loadingRorCoreStrategy match {
-      case s@LoadingRorCoreStrategy.ForceLoadingFromFile =>
+      case s@LoadingRorCoreStrategySettings.ForceLoadingFromFile$Settings =>
         new ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource)
-      case s@LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(retryStrategySettings, _) =>
+      case s@LoadingRorCoreStrategySettings.LoadFromIndexWithFileFallback(retryStrategySettings, _) =>
         new RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(
           mainSettingsIndexSource,
           new ConfigurableRetryStrategy(retryStrategySettings),

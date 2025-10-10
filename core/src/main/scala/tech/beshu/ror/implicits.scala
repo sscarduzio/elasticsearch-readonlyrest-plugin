@@ -61,8 +61,8 @@ import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategy.CoreRefreshSettings
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.CoreRefreshSettings
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError

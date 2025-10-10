@@ -29,8 +29,8 @@ import tech.beshu.ror.accesscontrol.factory.RorDependencies
 import tech.beshu.ror.api.{AuthMockApi, MainSettingsApi, TestSettingsApi}
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategy.CoreRefreshSettings
-import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, LoadingRorCoreStrategy}
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.CoreRefreshSettings
+import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, LoadingRorCoreStrategySettings}
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
@@ -188,13 +188,13 @@ object RorInstance {
     )
   }
 
-  private def modeFrom(strategy: LoadingRorCoreStrategy) = {
+  private def modeFrom(strategy: LoadingRorCoreStrategySettings) = {
     strategy match {
-      case LoadingRorCoreStrategy.ForceLoadingFromFile =>
+      case LoadingRorCoreStrategySettings.ForceLoadingFromFile$Settings =>
         Mode.NoPeriodicIndexCheck
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Disabled) =>
+      case LoadingRorCoreStrategySettings.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Disabled) =>
         Mode.NoPeriodicIndexCheck
-      case LoadingRorCoreStrategy.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Enabled(refreshInterval)) =>
+      case LoadingRorCoreStrategySettings.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Enabled(refreshInterval)) =>
         Mode.WithPeriodicIndexCheck(refreshInterval)
     }
   }

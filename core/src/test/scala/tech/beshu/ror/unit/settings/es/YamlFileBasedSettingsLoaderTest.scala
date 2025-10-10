@@ -25,7 +25,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader
 
-class YamlFileBasedRorSettingsLoaderTest extends AnyWordSpec with Inside {
+class YamlFileBasedSettingsLoaderTest extends AnyWordSpec with Inside {
 
   private implicit val systemContext: SystemContext = new SystemContext(
     envVarsProvider = name =>
