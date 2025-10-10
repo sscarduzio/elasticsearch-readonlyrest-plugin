@@ -79,7 +79,7 @@ class RorKbnAuthorizationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
             val rule = new RorKbnAuthorizationRule(settings)
             Right(RuleDefinition.create[RorKbnAuthorizationRule](rule))
           case (Some(_), None) =>
-            Left(RulesLevelCreationError(Message(s"Cannot create ${RorKbnAuthorizationRule.Name.name.show} - missing groups settings")))
+            Left(RulesLevelCreationError(Message(s"Cannot create ${RorKbnAuthorizationRule.Name.name.show} - missing groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic)")))
           case (None, _) =>
             Left(cannotFindRorKibanaDefinition(name))
         }
@@ -105,9 +105,10 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                 groupsLogic
               case None =>
                 logger.warn(
-                  s"""There are no group mappings configured for rule ${name.value} of type ${RorKbnAuthRule.Name.name.show}.
-                     |The rule is therefore interpreted as ${RorKbnAuthRule.Name.name.show} rule with `any_of: ["*"]` groups logic.
-                     |This syntax is deprecated. Either explicitly define groups, or use ${RorKbnAuthenticationRule.Name.name.show} rule instead (when only authentication logic is required).
+                  s"""Missing groups logic settings in ${RorKbnAuthRule.Name.name.show} rule.
+                     |For old configs, ROR treats this as `groups_any_of: ["*"]`.
+                     |This syntax is deprecated. Add groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic),
+                     |or use ${RorKbnAuthenticationRule.Name.name.show} if you only need authentication.
                      |""".stripMargin
                 )
                 GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdPattern.fromNes(nes("*")))))
