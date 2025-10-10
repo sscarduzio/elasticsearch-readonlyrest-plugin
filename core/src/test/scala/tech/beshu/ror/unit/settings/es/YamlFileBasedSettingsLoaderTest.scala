@@ -19,6 +19,7 @@ package tech.beshu.ror.unit.settings.es
 import better.files.File
 import cats.implicits.*
 import io.circe.Decoder
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -58,7 +59,7 @@ class YamlFileBasedSettingsLoaderTest extends AnyWordSpec with Inside {
     }
     "fail for non-existing file" in {
       val loader = new YamlFileBasedSettingsLoader(File("non-existing-file"))
-      val result = loader.loadSettings[String]("TEST")
+      val result = loader.loadSettings[String]("TEST").runSyncUnsafe()
       inside(result) {
         case Left(error: LoadingError.FileNotFound) =>
       }
@@ -69,7 +70,7 @@ class YamlFileBasedSettingsLoaderTest extends AnyWordSpec with Inside {
     tempFile(content)
       .map { file =>
         val loader = new YamlFileBasedSettingsLoader(file)
-        loader.loadSettings[A]("TEST")
+        loader.loadSettings[A]("TEST").runSyncUnsafe()
       }
       .get()
 

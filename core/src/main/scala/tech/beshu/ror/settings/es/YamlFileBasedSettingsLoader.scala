@@ -38,13 +38,16 @@ final class YamlFileBasedSettingsLoader(file: File)
     TransformationCompiler.withoutAliases(systemContext.variablesFunctions)
   )
 
-  def loadSettings[SETTINGS: Decoder](settingsName: String): Either[LoadingError, SETTINGS] = {
-    loadedSettingsJson
-      .flatMap { json =>
-        implicitly[Decoder[SETTINGS]]
-          .decodeJson(json)
-          .left.map(e => createError(s"Cannot load ${settingsName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"))
-      }
+  def loadSettings[SETTINGS: Decoder](settingsName: String): Task[Either[LoadingError, SETTINGS]] = Task.delay {
+    for {
+      _ <- Either.cond(file.exists, (), LoadingError.FileNotFound(file): LoadingError)
+      settings <- loadedSettingsJson
+        .flatMap { json =>
+          implicitly[Decoder[SETTINGS]]
+            .decodeJson(json)
+            .left.map(e => createError(s"Cannot load ${settingsName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"))
+        }
+    } yield settings
   }
 
   private lazy val loadedSettingsJson: Either[LoadingError, Json] = {
@@ -68,10 +71,10 @@ final class YamlFileBasedSettingsLoader(file: File)
     }
   }
 
-  private def createError(message:String) = LoadingError.MalformedSettings(file, message)
+  private def createError(message: String) = LoadingError.MalformedSettings(file, message)
 }
 
-object YamlFileBasedSettingsLoader  {
+object YamlFileBasedSettingsLoader {
   sealed trait LoadingError
   object LoadingError {
     final case class FileNotFound(file: File) extends LoadingError
@@ -88,13 +91,8 @@ private[es] trait YamlFileBasedSettingsLoaderSupport {
 
   protected def loadSetting[T: Decoder](file: File, settingsName: String)
                                        (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
-    Task.delay {
-      for {
-        _ <- Either.cond(file.exists, (), LoadingError.FileNotFound(file): LoadingError)
-        loader = new YamlFileBasedSettingsLoader(file)
-        strategy <- loader.loadSettings[T](settingsName)
-      } yield strategy
-    }
+    val loader = new YamlFileBasedSettingsLoader(file)
+    loader.loadSettings[T](settingsName)
   }
 
 }
