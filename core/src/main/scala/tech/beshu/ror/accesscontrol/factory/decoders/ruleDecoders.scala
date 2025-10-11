@@ -139,6 +139,10 @@ object ruleDecoders {
         Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case RorKbnAuthRule.Name.name =>
         Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, globalSettings))
+      case RorKbnAuthenticationRule.Name.name =>
+        Some(new RorKbnAuthenticationRuleDecoder(rorKbnDefinitions, globalSettings))
+      case RorKbnAuthorizationRule.Name.name =>
+        Some(new RorKbnAuthorizationRuleDecoder(rorKbnDefinitions))
       case _ =>
         authenticationRuleDecoderBy(
           name,

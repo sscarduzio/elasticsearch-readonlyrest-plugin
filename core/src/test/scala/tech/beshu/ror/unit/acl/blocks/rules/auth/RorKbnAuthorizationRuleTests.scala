@@ -27,10 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{RorKbnAuthRule, RorKbnAuthenticationRule, RorKbnAuthorizationRule}
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
@@ -43,10 +41,10 @@ import java.security.Key
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class RorKbnAuthRuleTests
+class RorKbnAuthorizationRuleTests
   extends AnyWordSpec with Inside with BlockContextAssertion {
 
-  "A RorKbnAuthRule" should {
+  "A RorKbnAuthorizationRule" should {
     "match" when {
       "token has valid HS256 signature" in {
         val key: Key = Jwts.SIG.HS256.key().build()
@@ -64,8 +62,6 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
             )(blockContext)
@@ -83,12 +79,10 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Rsa(pub)
           ),
           groupsLogic = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group2")))),
-          tokenHeader = bearerHeader(jwt),
+          tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
             )(blockContext)
@@ -114,10 +108,8 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
             )(blockContext)
         }
       }
@@ -142,10 +134,8 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
             )(blockContext)
         }
       }
@@ -170,10 +160,8 @@ class RorKbnAuthRuleTests
           ) {
             blockContext =>
               assertBlockContext(
-                loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group2")),
                 availableGroups = UniqueList.of(group("group2")),
-                jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
         }
@@ -197,10 +185,8 @@ class RorKbnAuthRuleTests
           ) {
             blockContext =>
               assertBlockContext(
-                loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group2")),
                 availableGroups = UniqueList.of(group("group2")),
-                jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
         }
@@ -226,10 +212,8 @@ class RorKbnAuthRuleTests
           ) {
             blockContext =>
               assertBlockContext(
-                loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group3")),
                 availableGroups = UniqueList.of(group("group3"), group("group2")),
-                jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
         }
@@ -253,10 +237,8 @@ class RorKbnAuthRuleTests
           ) {
             blockContext =>
               assertBlockContext(
-                loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group3")),
                 availableGroups = UniqueList.of(group("group3"), group("group2")),
-                jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
         }
@@ -290,21 +272,6 @@ class RorKbnAuthRuleTests
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
-          ),
-          groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
-          tokenHeader = bearerHeader(jwt)
-        )
-      }
-      "userId isn't passed in JWT token claim" in {
-        val key: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(key, claims = List(
-          "userId" := "user1",
-          "groups" := List("group1", "group2")
-        ))
-        assertNotMatchRule(
-          configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test"),
-            SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
           tokenHeader = bearerHeader(jwt)
@@ -424,10 +391,7 @@ class RorKbnAuthRuleTests
                          tokenHeader: Header,
                          preferredGroupId: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new RorKbnAuthRule(
-      authentication = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(configuredRorKbnDef), CaseSensitivity.Enabled),
-      authorization = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(configuredRorKbnDef, groupsLogic)),
-    )
+    val rule = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(configuredRorKbnDef, groupsLogic))
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
