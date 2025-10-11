@@ -32,28 +32,62 @@ class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode) extends Au
 
 object EcsV1AuditLogSerializer {
   private val fields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
-    AuditFieldName("@timestamp" :: Nil) -> AuditFieldValueDescriptor.Timestamp,
-    AuditFieldName("trace" :: "id" :: Nil) -> AuditFieldValueDescriptor.CorrelationId,
-    AuditFieldName("elasticsearch" :: "cluster" :: "name" :: Nil) -> AuditFieldValueDescriptor.EsClusterName,
-    AuditFieldName("elasticsearch" :: "index" :: "name" :: Nil) -> AuditFieldValueDescriptor.InvolvedIndices,
-    AuditFieldName("elasticsearch" :: "node" :: "name" :: Nil) -> AuditFieldValueDescriptor.EsNodeName,
-    AuditFieldName("user" :: "name" :: Nil) -> AuditFieldValueDescriptor.User,
-    AuditFieldName("user" :: "effective" :: "name" :: Nil) -> AuditFieldValueDescriptor.ImpersonatedByUser,
-    AuditFieldName("event" :: "action" :: Nil) -> AuditFieldValueDescriptor.Action,
-    AuditFieldName("event" :: "id" :: Nil) -> AuditFieldValueDescriptor.Id,
-    AuditFieldName("event" :: "outcome" :: Nil) -> AuditFieldValueDescriptor.FinalState,
-    AuditFieldName("event" :: "type" :: Nil) -> AuditFieldValueDescriptor.Type,
-    AuditFieldName("event" :: "duration" :: Nil) -> AuditFieldValueDescriptor.ProcessingDurationNanos,
-    AuditFieldName("url" :: "path" :: Nil) -> AuditFieldValueDescriptor.HttpPath,
-    AuditFieldName("source" :: "address" :: Nil) -> AuditFieldValueDescriptor.RemoteAddress,
-    AuditFieldName("destination" :: "address" :: Nil) -> AuditFieldValueDescriptor.LocalAddress,
-    AuditFieldName("http" :: "request" :: "body" :: "content" :: Nil) -> AuditFieldValueDescriptor.Content,
-    AuditFieldName("http" :: "request" :: "bytes" :: Nil) -> AuditFieldValueDescriptor.ContentLengthInBytes,
-    AuditFieldName("http" :: "request" :: "headers" :: "x-forwarded-for" :: Nil) -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
-    AuditFieldName("http" :: "request" :: "method" :: Nil) -> AuditFieldValueDescriptor.HttpMethod,
-    AuditFieldName("error" :: "message" :: Nil) -> AuditFieldValueDescriptor.ErrorMessage,
-    AuditFieldName("error" :: "type" :: Nil) -> AuditFieldValueDescriptor.ErrorType,
-    AuditFieldName("labels" :: "acl_history" :: Nil) -> AuditFieldValueDescriptor.AclHistory,
-    AuditFieldName("labels" :: "task_id" :: Nil) -> AuditFieldValueDescriptor.TaskId,
+    AuditFieldName("@timestamp") -> AuditFieldValueDescriptor.Timestamp,
+    AuditFieldName("trace") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("id") -> AuditFieldValueDescriptor.CorrelationId,
+    ),
+    AuditFieldName("elasticsearch") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("cluster") -> AuditFieldValueDescriptor.Nested(
+        AuditFieldName("name") -> AuditFieldValueDescriptor.EsClusterName,
+      ),
+      AuditFieldName("index") -> AuditFieldValueDescriptor.Nested(
+        AuditFieldName("name") -> AuditFieldValueDescriptor.InvolvedIndices,
+      ),
+      AuditFieldName("node") -> AuditFieldValueDescriptor.Nested(
+        AuditFieldName("name") -> AuditFieldValueDescriptor.EsNodeName,
+      ),
+    ),
+    AuditFieldName("user") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("name") -> AuditFieldValueDescriptor.User,
+      AuditFieldName("effective") -> AuditFieldValueDescriptor.Nested(
+        AuditFieldName("name") -> AuditFieldValueDescriptor.ImpersonatedByUser,
+      ),
+    ),
+    AuditFieldName("event") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
+      AuditFieldName("id") -> AuditFieldValueDescriptor.Id,
+      AuditFieldName("outcome") -> AuditFieldValueDescriptor.FinalState,
+      AuditFieldName("type") -> AuditFieldValueDescriptor.Type,
+      AuditFieldName("duration") -> AuditFieldValueDescriptor.ProcessingDurationNanos,
+    ),
+    AuditFieldName("url") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("path") -> AuditFieldValueDescriptor.HttpPath,
+    ),
+    AuditFieldName("source") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("address") -> AuditFieldValueDescriptor.RemoteAddress,
+    ),
+    AuditFieldName("destination") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("address") -> AuditFieldValueDescriptor.LocalAddress,
+    ),
+    AuditFieldName("http") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("request") -> AuditFieldValueDescriptor.Nested(
+        AuditFieldName("body") -> AuditFieldValueDescriptor.Nested(
+          AuditFieldName("content") -> AuditFieldValueDescriptor.Content,
+        ),
+        AuditFieldName("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
+        AuditFieldName("headers") -> AuditFieldValueDescriptor.Nested(
+          AuditFieldName("x-forwarded-for") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
+        ),
+        AuditFieldName("method") -> AuditFieldValueDescriptor.HttpMethod,
+      ),
+    ),
+    AuditFieldName("error") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("message") -> AuditFieldValueDescriptor.ErrorMessage,
+      AuditFieldName("type") -> AuditFieldValueDescriptor.ErrorType,
+    ),
+    AuditFieldName("labels") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory,
+      AuditFieldName("task_id") -> AuditFieldValueDescriptor.TaskId,
+    ),
   )
 }

@@ -390,6 +390,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |        type: configurable
                 |        verbosity_level_serialization_mode: [INFO]
                 |        fields:
+                |          custom_section:
+                |            nested_text: "nt"
+                |            nested_number: 123
+                |            nested_boolean: true
+                |            double_nested:
+                |              double_nested_next: "dnt"
+                |              triple_nested:
+                |                triple_nested_next: "tnt"
                 |          node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
                 |          another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
                 |          tid: "{TASK_ID}"
@@ -412,6 +420,23 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             configuredSerializer.allowedEventMode shouldBe AllowedEventMode.Include(Set(Verbosity.Info))
             configuredSerializer.fields shouldBe Map(
+              AuditFieldName("custom_section") -> AuditFieldValueDescriptor.Nested(
+                Map(
+                  AuditFieldName("nested_text") -> AuditFieldValueDescriptor.StaticText("nt"),
+                  AuditFieldName("nested_number") -> AuditFieldValueDescriptor.NumericValue(123),
+                  AuditFieldName("nested_boolean") -> AuditFieldValueDescriptor.BooleanValue(true),
+                  AuditFieldName("double_nested") -> AuditFieldValueDescriptor.Nested(
+                    Map(
+                      AuditFieldName("double_nested_next") -> AuditFieldValueDescriptor.StaticText("dnt"),
+                      AuditFieldName("triple_nested") -> AuditFieldValueDescriptor.Nested(
+                        Map(
+                          AuditFieldName("triple_nested_next") -> AuditFieldValueDescriptor.StaticText("tnt"),
+                        )
+                      ),
+                    )
+                  ),
+                )
+              ),
               AuditFieldName("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
               AuditFieldName("another_field") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsClusterName, AuditFieldValueDescriptor.StaticText(" "), AuditFieldValueDescriptor.HttpMethod)),
               AuditFieldName("tid") -> AuditFieldValueDescriptor.TaskId,
@@ -604,11 +629,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    "id": ""
                 |  },
                 |  "elasticsearch": {
-                |    "node": {
-                |      "name": "testEsNode"
-                |    },
                 |    "cluster": {
                 |      "name": "testEsCluster"
+                |    },
+                |    "node": {
+                |      "name": "testEsNode"
                 |    },
                 |    "index": {
                 |      "name": []
@@ -630,7 +655,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |  "source": {
                 |    "address": ""
                 |  },
-                |  "error": {},
                 |  "event": {
                 |    "duration": 0,
                 |    "action": "",
@@ -638,6 +662,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    "type": "",
                 |    "outcome": "FORBIDDEN"
                 |  },
+                |  "error": {},
                 |  "user": {
                 |    "effective": {},
                 |    "name": "logged_user"

@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
 import io.circe.Decoder.*
-import io.circe.{Decoder, DecodingFailure, HCursor, Json, KeyDecoder}
+import io.circe.*
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
@@ -34,10 +34,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{AclCreationErrorCoders, DecodingFailureOps}
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
-import tech.beshu.ror.audit.AuditResponseContext.Verbosity
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
-import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.AuditLogSerializer
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.audit.adapters.*
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
@@ -373,11 +373,23 @@ object AuditingSettingsDecoder extends Logging {
     KeyDecoder.decodeKeyString.map(AuditFieldName.apply)
   }
 
-  given auditFieldValueDecoder: Decoder[AuditFieldValueDescriptor] = {
-    SyncDecoderCreator
-      .from(Decoder.decodeString)
-      .emap(AuditFieldValueDescriptorParser.parse)
-      .decoder
+  given auditFieldValueDecoder: Decoder[AuditFieldValueDescriptor] = Decoder.instance { cursor =>
+    cursor.value.fold(
+      jsonNull = Left(DecodingFailure("Expected AuditFieldValueDescriptor, got null", cursor.history)),
+      jsonBoolean = b => Right(AuditFieldValueDescriptor.BooleanValue(b)),
+      jsonNumber = n => Right(AuditFieldValueDescriptor.NumericValue(n.toDouble)),
+      jsonString = s => AuditFieldValueDescriptorParser.parse(s).left.map(err => DecodingFailure(err, cursor.history)),
+      jsonArray = _ => Left(DecodingFailure("AuditFieldValueDescriptor cannot be an array", cursor.history)),
+      jsonObject = obj => {
+        val decoded = obj.toMap.toList.traverse { case (k, v) =>
+          for {
+            name <- Right(AuditFieldName(k))
+            value <- v.as[AuditFieldValueDescriptor](using auditFieldValueDecoder)
+          } yield name -> value
+        }
+        decoded.map(pairs => AuditFieldValueDescriptor.Nested(pairs.toMap))
+      }
+    )
   }
 
   given verbosityDecoder: Decoder[Verbosity] = {

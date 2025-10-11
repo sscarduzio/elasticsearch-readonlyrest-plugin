@@ -79,27 +79,13 @@ private[ror] object AuditSerializationHelper {
   private def createEntry(fields: Map[AuditFieldName, AuditFieldValueDescriptor],
                           eventData: EventData) = {
     val resolveAuditFieldValue = resolver(eventData)
-    val resolvedFields: Map[AuditFieldName, Any] =
-      Map(AuditFieldName("@timestamp") -> timestampFormatter.format(eventData.requestContext.timestamp)) ++
-        fields.map { case (name, valueDescriptor) => name -> resolveAuditFieldValue(valueDescriptor) }
+    val resolvedFields: Map[String, Any] =
+      Map("@timestamp" -> timestampFormatter.format(eventData.requestContext.timestamp)) ++
+        fields.map { case (name, valueDescriptor) => name.value -> resolveAuditFieldValue(valueDescriptor) }
 
-    resolvedFields.foldLeft(new JSONObject()) { case (soFar, (path, value)) =>
-      putNested(soFar, path.path, value)
-    }.mergeWith(eventData.requestContext.generalAuditEvents)
-  }
-
-  private def putNested(json: JSONObject, path: List[String], value: Any): JSONObject = {
-    path match {
-      case Nil => json
-      case key :: Nil =>
-        println((key, value))
-        json.put(key, value)
-        json
-      case key :: tail =>
-        val child = Option(json.optJSONObject(key)).getOrElse(new JSONObject())
-        json.put(key, putNested(child, tail, value))
-        json
-    }
+    resolvedFields
+      .foldLeft(new JSONObject()) { case (soFar, (key, value)) => soFar.put(key, value) }
+      .mergeWith(eventData.requestContext.generalAuditEvents)
   }
 
   private def resolver(eventData: EventData): AuditFieldValueDescriptor => Any = auditValue => {
@@ -134,7 +120,17 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.EsNodeName => eventData.requestContext.auditEnvironmentContext.esNodeName
       case AuditFieldValueDescriptor.EsClusterName => eventData.requestContext.auditEnvironmentContext.esClusterName
       case AuditFieldValueDescriptor.StaticText(text) => text
+      case AuditFieldValueDescriptor.NumericValue(value) => value
+      case AuditFieldValueDescriptor.BooleanValue(value) => value
       case AuditFieldValueDescriptor.Combined(values) => values.map(resolver(eventData)).mkString
+      case AuditFieldValueDescriptor.Nested(values) =>
+        val resolveAuditFieldValue = resolver(eventData)
+        val nestedFields: Map[String, Any] = values.map { case (nestedName, nestedDescriptor) =>
+          nestedName.value -> resolveAuditFieldValue(nestedDescriptor)
+        }
+        nestedFields.foldLeft(new JSONObject()) { case (soFar, (key, value)) =>
+          soFar.put(key, value)
+        }
     }
   }
 
@@ -168,11 +164,7 @@ private[ror] object AuditSerializationHelper {
     final case class Include(types: Set[Verbosity]) extends AllowedEventMode
   }
 
-  final case class AuditFieldName(path: List[String])
-
-  object AuditFieldName {
-    def apply(value: String) = new AuditFieldName(List(value))
-  }
+  final case class AuditFieldName(value: String)
 
   sealed trait AuditFieldValueDescriptor
 
@@ -244,7 +236,17 @@ private[ror] object AuditSerializationHelper {
 
     final case class StaticText(value: String) extends AuditFieldValueDescriptor
 
+    final case class BooleanValue(value: Boolean) extends AuditFieldValueDescriptor
+
+    final case class NumericValue(value: Double) extends AuditFieldValueDescriptor
+
     final case class Combined(values: List[AuditFieldValueDescriptor]) extends AuditFieldValueDescriptor
+
+    final case class Nested(values: Map[AuditFieldName, AuditFieldValueDescriptor]) extends AuditFieldValueDescriptor
+
+    object Nested {
+      def apply(elems: (AuditFieldName, AuditFieldValueDescriptor)*) = new Nested(elems.toMap)
+    }
 
   }
 
