@@ -94,6 +94,8 @@ object VariableContext {
     implicit val methodsRule: VariableUsage[MethodsRule] = NotUsingVariable()
     implicit val proxyAuthRule: VariableUsage[ProxyAuthRule] = NotUsingVariable()
     implicit val rorKbnAuthRule: VariableUsage[RorKbnAuthRule] = NotUsingVariable()
+    implicit val rorKbnAuthenticationRule: VariableUsage[RorKbnAuthenticationRule] = NotUsingVariable()
+    implicit val rorKbnAuthorizationRule: VariableUsage[RorKbnAuthorizationRule] = NotUsingVariable()
     implicit val sessionMaxIdleRule: VariableUsage[SessionMaxIdleRule] = NotUsingVariable()
     implicit val tokenAuthenticationRule: VariableUsage[TokenAuthenticationRule] = NotUsingVariable()
   }
@@ -141,6 +143,8 @@ object VariableContext {
           .collect {
             case rule: JwtAuthRule => rule
             case rule: RorKbnAuthRule => rule
+            case rule: RorKbnAuthenticationRule => rule
+            case rule: RorKbnAuthorizationRule => rule
           }
           .nonEmpty
     }
