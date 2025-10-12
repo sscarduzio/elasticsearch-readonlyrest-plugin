@@ -629,6 +629,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    "id" : "corr_id_123"
                 |  },
                 |  "@timestamp" : "IGNORED",
+                |  "ecs" : {
+                |    "version" : "1.4.0"
+                |  },
                 |  "destination" : {
                 |    "address" : "192.168.0.124"
                 |  },
