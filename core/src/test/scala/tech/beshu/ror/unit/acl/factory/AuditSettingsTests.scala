@@ -625,54 +625,48 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             val expectedJsonStr =
               """{
-                |  "trace": {
-                |    "id": ""
+                |  "trace" : {
+                |    "id" : "corr_id_123"
                 |  },
-                |  "elasticsearch": {
-                |    "cluster": {
-                |      "name": "testEsCluster"
-                |    },
-                |    "node": {
-                |      "name": "testEsNode"
-                |    },
-                |    "index": {
-                |      "name": []
+                |  "@timestamp" : "IGNORED",
+                |  "destination" : {
+                |    "address" : "192.168.0.124"
+                |  },
+                |  "http" : {
+                |    "request" : {
+                |      "method" : "GET",
+                |      "body" : {
+                |        "bytes" : 123,
+                |        "content" : "Full content of the request"
+                |      }
                 |    }
                 |  },
-                |  "destination": {
-                |    "address": ""
+                |  "source" : {
+                |    "address" : "192.168.0.123"
                 |  },
-                |  "http": {
-                |    "request": {
-                |      "headers": {},
-                |      "method": "",
-                |      "bytes": 0,
-                |      "body": {
-                |        "content": ""
-                |      },
-                |    }
+                |  "event" : {
+                |    "duration" : 5000000000,
+                |    "reason" : "FORBIDDEN",
+                |    "action" : "cluster:internal_ror/user_metadata/get",
+                |    "id" : "trace_id_123",
+                |    "type" : "RRTestConfigRequest"
                 |  },
-                |  "source": {
-                |    "address": ""
+                |  "error" : {},
+                |  "user" : {
+                |    "effective" : {
+                |      "name" : "impersonated_by_user"
+                |    },
+                |    "name" : "logged_user"
                 |  },
-                |  "event": {
-                |    "duration": 0,
-                |    "action": "",
-                |    "id": "",
-                |    "type": "",
-                |    "outcome": "FORBIDDEN"
+                |  "url" : {
+                |    "path" : "/path/to/resource"
                 |  },
-                |  "error": {},
-                |  "user": {
-                |    "effective": {},
-                |    "name": "logged_user"
-                |  },
-                |  "url": {
-                |    "path": ""
-                |  },
-                |  "labels": {
-                |    "acl_history": "",
-                |    "task_id": 0
+                |  "labels" : {
+                |    "es_cluster_name" : "testEsCluster",
+                |    "es_task_id" : 123,
+                |    "involved_indices" : [],
+                |    "es_node_name" : "testEsNode",
+                |    "acl_history" : "historyEntry1, historyEntry2"
                 |  }
                 |}""".stripMargin
             val actualJson = circeJsonWithIgnoredTimestamp(serializedResponse)
@@ -2085,41 +2079,41 @@ private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAud
 }
 
 private object DummyAuditRequestContext extends AuditRequestContext {
-  override def timestamp: Instant = Instant.now()
+  override def timestamp: Instant = Instant.now().minusSeconds(5)
 
-  override def id: String = ""
+  override def id: String = "trace_id_123"
 
-  override def correlationId: String = ""
+  override def correlationId: String = "corr_id_123"
 
-  override def indices: Set[String] = Set.empty
+  override def indices: Set[String] = Set("a1", "a2", "b1", "b2")
 
-  override def action: String = ""
+  override def action: String = "cluster:internal_ror/user_metadata/get"
 
-  override def headers: Map[String, String] = Map.empty
+  override def headers: Map[String, String] = Map("HEADER1" -> "HVALUE1", "HEADER2" -> "HVALUE2")
 
-  override def requestHeaders: Headers = Headers(Map.empty)
+  override def requestHeaders: Headers = Headers(headers.view.mapValues(v => Set(v)).toMap)
 
-  override def uriPath: String = ""
+  override def uriPath: String = "/path/to/resource"
 
-  override def history: String = ""
+  override def history: String = "historyEntry1, historyEntry2"
 
-  override def content: String = ""
+  override def content: String = "Full content of the request"
 
-  override def contentLength: Integer = 0
+  override def contentLength: Integer = 123
 
-  override def remoteAddress: String = ""
+  override def remoteAddress: String = "192.168.0.123"
 
-  override def localAddress: String = ""
+  override def localAddress: String = "192.168.0.124"
 
-  override def `type`: String = ""
+  override def `type`: String = "RRTestConfigRequest"
 
-  override def taskId: Long = 0
+  override def taskId: Long = 123
 
-  override def httpMethod: String = ""
+  override def httpMethod: String = "GET"
 
   override def loggedInUserName: Option[String] = Some("logged_user")
 
-  override def impersonatedByUserName: Option[String] = None
+  override def impersonatedByUserName: Option[String] = Some("impersonated_by_user")
 
   override def involvesIndices: Boolean = false
 

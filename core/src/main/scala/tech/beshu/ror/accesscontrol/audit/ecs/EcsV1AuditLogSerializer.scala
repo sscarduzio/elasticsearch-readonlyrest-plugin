@@ -36,30 +36,6 @@ object EcsV1AuditLogSerializer {
     AuditFieldName("trace") -> AuditFieldValueDescriptor.Nested(
       AuditFieldName("id") -> AuditFieldValueDescriptor.CorrelationId,
     ),
-    AuditFieldName("elasticsearch") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("cluster") -> AuditFieldValueDescriptor.Nested(
-        AuditFieldName("name") -> AuditFieldValueDescriptor.EsClusterName,
-      ),
-      AuditFieldName("index") -> AuditFieldValueDescriptor.Nested(
-        AuditFieldName("name") -> AuditFieldValueDescriptor.InvolvedIndices,
-      ),
-      AuditFieldName("node") -> AuditFieldValueDescriptor.Nested(
-        AuditFieldName("name") -> AuditFieldValueDescriptor.EsNodeName,
-      ),
-    ),
-    AuditFieldName("user") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("name") -> AuditFieldValueDescriptor.User,
-      AuditFieldName("effective") -> AuditFieldValueDescriptor.Nested(
-        AuditFieldName("name") -> AuditFieldValueDescriptor.ImpersonatedByUser,
-      ),
-    ),
-    AuditFieldName("event") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
-      AuditFieldName("id") -> AuditFieldValueDescriptor.Id,
-      AuditFieldName("outcome") -> AuditFieldValueDescriptor.FinalState,
-      AuditFieldName("type") -> AuditFieldValueDescriptor.Type,
-      AuditFieldName("duration") -> AuditFieldValueDescriptor.ProcessingDurationNanos,
-    ),
     AuditFieldName("url") -> AuditFieldValueDescriptor.Nested(
       AuditFieldName("path") -> AuditFieldValueDescriptor.HttpPath,
     ),
@@ -71,23 +47,37 @@ object EcsV1AuditLogSerializer {
     ),
     AuditFieldName("http") -> AuditFieldValueDescriptor.Nested(
       AuditFieldName("request") -> AuditFieldValueDescriptor.Nested(
+        AuditFieldName("method") -> AuditFieldValueDescriptor.HttpMethod,
         AuditFieldName("body") -> AuditFieldValueDescriptor.Nested(
           AuditFieldName("content") -> AuditFieldValueDescriptor.Content,
+          AuditFieldName("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
         ),
-        AuditFieldName("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
-        AuditFieldName("headers") -> AuditFieldValueDescriptor.Nested(
-          AuditFieldName("x-forwarded-for") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
-        ),
-        AuditFieldName("method") -> AuditFieldValueDescriptor.HttpMethod,
       ),
     ),
+    AuditFieldName("user") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("name") -> AuditFieldValueDescriptor.User,
+      AuditFieldName("effective") -> AuditFieldValueDescriptor.Nested(
+        AuditFieldName("name") -> AuditFieldValueDescriptor.ImpersonatedByUser,
+      ),
+    ),
+    AuditFieldName("event") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("id") -> AuditFieldValueDescriptor.Id,
+      AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
+      AuditFieldName("type") -> AuditFieldValueDescriptor.Type,
+      AuditFieldName("reason") -> AuditFieldValueDescriptor.FinalState,
+      AuditFieldName("duration") -> AuditFieldValueDescriptor.ProcessingDurationNanos,
+    ),
     AuditFieldName("error") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("message") -> AuditFieldValueDescriptor.ErrorMessage,
       AuditFieldName("type") -> AuditFieldValueDescriptor.ErrorType,
+      AuditFieldName("message") -> AuditFieldValueDescriptor.ErrorMessage,
     ),
     AuditFieldName("labels") -> AuditFieldValueDescriptor.Nested(
+      AuditFieldName("es_cluster_name") -> AuditFieldValueDescriptor.EsClusterName,
+      AuditFieldName("es_node_name") -> AuditFieldValueDescriptor.EsNodeName,
+      AuditFieldName("es_task_id") -> AuditFieldValueDescriptor.TaskId,
+      AuditFieldName("involved_indices") -> AuditFieldValueDescriptor.InvolvedIndices,
       AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory,
-      AuditFieldName("task_id") -> AuditFieldValueDescriptor.TaskId,
+      AuditFieldName("x_forwarded_for") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
     ),
   )
 }
