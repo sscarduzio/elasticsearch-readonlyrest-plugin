@@ -29,7 +29,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.SSLCertHelper
-import tech.beshu.ror.utils.yaml.YamlKeyDecoder
+import tech.beshu.ror.utils.yaml.YamlLeafDecoder
 
 sealed trait RorSslSettings
 object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
@@ -135,11 +135,11 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
     if (isOssDistribution) {
       Decoder.const(XpackSecuritySettings(enabled = false))
     } else {
-      val booleanDecoder = YamlKeyDecoder[Boolean](
+      val booleanDecoder = YamlLeafDecoder[Boolean](
         path = NonEmptyList.of("xpack", "security", "enabled"),
         default = true
       )
-      val stringDecoder = YamlKeyDecoder[String](
+      val stringDecoder = YamlLeafDecoder[String](
         path = NonEmptyList.of("xpack", "security", "enabled"),
         default = "true"
       ) map {

@@ -39,7 +39,6 @@ import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 import scala.annotation.nowarn
 import scala.util.{Failure, Success, Try}
@@ -55,10 +54,8 @@ object AuditingSettingsDecoder extends Logging {
 
   private def auditSettingsDecoder(esEnv: EsEnv): Decoder[Option[AuditingTool.AuditSettings]] = Decoder.instance { c =>
     for {
-      isAuditEnabled <- YamlKeyDecoder[Boolean](
-        path = NonEmptyList.of("audit", "enabled"),
-        default = false
-      ).apply(c)
+      isAuditEnabledOpt <- c.downField("audit").downField("enabled").as[Option[Boolean]]
+      isAuditEnabled = isAuditEnabledOpt.getOrElse(false)
       result <- if (isAuditEnabled) {
         decodeAuditSettings(esEnv)(c).map(Some.apply)
       } else {

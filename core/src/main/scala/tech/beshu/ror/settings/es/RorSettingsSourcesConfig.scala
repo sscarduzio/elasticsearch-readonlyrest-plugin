@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsFile, RorSetti
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
-import tech.beshu.ror.utils.yaml.YamlKeyDecoder
+import tech.beshu.ror.utils.yaml.YamlLeafDecoder
 
 final case class RorSettingsSourcesConfig(settingsIndex: RorSettingsIndex,
                                           settingsFile: RorSettingsFile,
@@ -55,7 +55,7 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
         Decoder[NonEmptyString]
           .map(IndexName.Full.apply)
           .map(RorSettingsIndex.apply)
-      YamlKeyDecoder[RorSettingsIndex](
+      YamlLeafDecoder[RorSettingsIndex](
         path = NonEmptyList.of("readonlyrest", "settings_index"),
         default = RorSettingsIndex.default
       )

@@ -27,7 +27,7 @@ import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
-import tech.beshu.ror.utils.yaml.YamlKeyDecoder
+import tech.beshu.ror.utils.yaml.YamlLeafDecoder
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.{implicitConversions, postfixOps}
@@ -80,7 +80,7 @@ object LoadingRorCoreStrategySettings extends YamlFileBasedSettingsLoaderSupport
   private object decoders {
     implicit def loadRorCoreStrategyDecoder(esEnv: EsEnv)
                                            (implicit systemContext: SystemContext): Decoder[LoadingRorCoreStrategySettings] = {
-      YamlKeyDecoder[Boolean](
+      YamlLeafDecoder[Boolean](
         path = NonEmptyList.of("readonlyrest", "force_load_from_file"),
         default = false
       ) flatMap {
