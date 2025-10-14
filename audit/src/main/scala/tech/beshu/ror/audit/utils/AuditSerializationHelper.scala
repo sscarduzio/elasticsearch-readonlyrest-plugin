@@ -120,7 +120,7 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.EsNodeName => eventData.requestContext.auditEnvironmentContext.esNodeName
       case AuditFieldValueDescriptor.EsClusterName => eventData.requestContext.auditEnvironmentContext.esClusterName
       case AuditFieldValueDescriptor.StaticText(text) => text
-      case AuditFieldValueDescriptor.NumericValue(value) => value
+      case AuditFieldValueDescriptor.NumericValue(value) => value.bigDecimal
       case AuditFieldValueDescriptor.BooleanValue(value) => value
       case AuditFieldValueDescriptor.Combined(values) => values.map(resolver(eventData)).mkString
       case AuditFieldValueDescriptor.Nested(values) =>
@@ -238,7 +238,7 @@ private[ror] object AuditSerializationHelper {
 
     final case class BooleanValue(value: Boolean) extends AuditFieldValueDescriptor
 
-    final case class NumericValue(value: Double) extends AuditFieldValueDescriptor
+    final case class NumericValue(value: BigDecimal) extends AuditFieldValueDescriptor
 
     final case class Combined(values: List[AuditFieldValueDescriptor]) extends AuditFieldValueDescriptor
 

@@ -27,7 +27,7 @@ object AuditFieldValueDescriptorParser {
   private val key = P.charsWhile(c => c != '{' && c != '}')
 
   private val placeholder: P[Either[String, AuditFieldValueDescriptor]] =
-    (lbrace *> key <* rbrace).map(k => deserializerAuditFieldValueDescriptor(k.trim.toUpperCase).toRight(k))
+    (lbrace *> key <* rbrace).map(k => deserializerAuditFieldValueDescriptor(k.trim).toRight(k))
 
   private val text: P[AuditFieldValueDescriptor] =
     P.charsWhile(_ != '{').map(AuditFieldValueDescriptor.StaticText.apply)

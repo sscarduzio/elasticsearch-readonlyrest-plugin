@@ -36,7 +36,6 @@ object EcsV1AuditLogSerializer {
       // Schema defined by EcsV1AuditLogSerializer is ECS 1.4.0 compliant and does not use newer features introduced by later versions
       AuditFieldName("version") -> AuditFieldValueDescriptor.StaticText("1.4.0"),
     ),
-    AuditFieldName("@timestamp") -> AuditFieldValueDescriptor.Timestamp,
     AuditFieldName("trace") -> AuditFieldValueDescriptor.Nested(
       AuditFieldName("id") -> AuditFieldValueDescriptor.CorrelationId,
     ),

@@ -17,8 +17,8 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
-import io.circe.Decoder.*
 import io.circe.*
+import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
@@ -306,7 +306,7 @@ object AuditingSettingsDecoder extends Logging {
     case object EcsSerializer extends SerializerType
   }
 
-  private given ccsSerializerVersionDecoder: Decoder[EcsSerializerVersion] = Decoder.decodeString.map(_.toLowerCase).emap {
+  private given ecsSerializerVersionDecoder: Decoder[EcsSerializerVersion] = Decoder.decodeString.map(_.toLowerCase).emap {
     case "v1" => Right(EcsSerializerVersion.V1)
     case other => Left(s"Invalid ECS serializer version $other")
   }
@@ -377,7 +377,10 @@ object AuditingSettingsDecoder extends Logging {
     cursor.value.fold(
       jsonNull = Left(DecodingFailure("Expected AuditFieldValueDescriptor, got null", cursor.history)),
       jsonBoolean = b => Right(AuditFieldValueDescriptor.BooleanValue(b)),
-      jsonNumber = n => Right(AuditFieldValueDescriptor.NumericValue(n.toDouble)),
+      jsonNumber = n =>
+        n.toBigDecimal
+          .map(bd => AuditFieldValueDescriptor.NumericValue(bd))
+          .toRight(DecodingFailure("Cannot decode number", cursor.history)),
       jsonString = s => AuditFieldValueDescriptorParser.parse(s).left.map(err => DecodingFailure(err, cursor.history)),
       jsonArray = _ => Left(DecodingFailure("AuditFieldValueDescriptor cannot be an array", cursor.history)),
       jsonObject = obj => {
