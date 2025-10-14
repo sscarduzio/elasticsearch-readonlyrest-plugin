@@ -228,7 +228,7 @@ object AuditingSettingsDecoder extends Logging {
     for {
       version <- c.downField("version").as[Option[EcsSerializerVersion]]
       allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
-        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
+        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"ECS serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
       serializer = version match {
         case None =>
           new EcsV1AuditLogSerializer(allowedEventMode)
