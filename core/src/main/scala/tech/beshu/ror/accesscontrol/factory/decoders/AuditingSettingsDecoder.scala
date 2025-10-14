@@ -286,7 +286,7 @@ object AuditingSettingsDecoder extends Logging {
             Right(SerializerType.EcsSerializer)
           case other =>
             Left(DecodingFailure(AclCreationErrorCoders.stringify(
-              AuditingSettingsCreationError(Message(s"Invalid serializer type '$other', allowed values [static, configurable]"))
+              AuditingSettingsCreationError(Message(s"Invalid serializer type '$other', allowed values [static, configurable, ecs]"))
             ), Nil))
         }
       case Some(_) | None =>
