@@ -60,6 +60,8 @@ object AuditFieldValueDescriptorParser {
       case "FINAL_STATE" => Some(AuditFieldValueDescriptor.FinalState)
       case "REASON" => Some(AuditFieldValueDescriptor.Reason)
       case "USER" => Some(AuditFieldValueDescriptor.User)
+      case "LOGGED_USER" => Some(AuditFieldValueDescriptor.LoggedUser)
+      case "PRESENTED_IDENTITY" => Some(AuditFieldValueDescriptor.PresentedIdentity)
       case "IMPERSONATED_BY_USER" => Some(AuditFieldValueDescriptor.ImpersonatedByUser)
       case "ACTION" => Some(AuditFieldValueDescriptor.Action)
       case "INVOLVED_INDICES" => Some(AuditFieldValueDescriptor.InvolvedIndices)
