@@ -310,6 +310,29 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    ror_kbn_auth:
+              |      name: "kbn1"
+              |      groups: ["group2", "group3"]
+              |
+              |  ror_kbn:
+              |
+              |  - name: kbn1
+              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+              |
+              |""".stripMargin
+
+          impersonationWarningsReader(config, NoOpMocksProvider).read() should be(List(
+            impersonationNotSupportedWarning("test_block1", "ror_kbn_auth")
+          ))
+        }
+        "ror kbn auth rule (configured without groups)" in {
+          val config =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
               |    ror_kbn_auth: kbn1
               |
               |  ror_kbn:

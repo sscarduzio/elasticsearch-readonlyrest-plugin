@@ -65,6 +65,7 @@ object RuleOrdering {
     // then we could check potentially slow async rules
     classOf[LdapAuthRule],
     classOf[LdapAuthenticationRule],
+    classOf[RorKbnAuthenticationRule],
     classOf[ExternalAuthenticationRule],
     classOf[AnyOfGroupsRule],
     classOf[AllOfGroupsRule],
@@ -73,6 +74,7 @@ object RuleOrdering {
     classOf[CombinedLogicGroupsRule],
     // all authorization rules should be placed after any authentication rule
     classOf[LdapAuthorizationRule],
+    classOf[RorKbnAuthorizationRule],
     classOf[ExternalAuthorizationRule],
     // Inspection rules next; these act based on properties of the request.
     classOf[KibanaUserDataRule],
