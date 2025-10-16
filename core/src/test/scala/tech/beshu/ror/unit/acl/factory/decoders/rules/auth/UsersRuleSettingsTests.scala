@@ -45,7 +45,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
   )
 
   "A UsersRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one user is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -104,7 +104,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no user is defined" in {
         assertDecodingFailure(
           yaml =

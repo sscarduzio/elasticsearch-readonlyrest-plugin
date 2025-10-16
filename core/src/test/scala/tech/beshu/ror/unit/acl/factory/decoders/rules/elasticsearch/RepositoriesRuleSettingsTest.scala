@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[RepositoriesRule] {
 
   "A RepositoriesRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one repository is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -114,7 +114,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no repository is defined" in {
         assertDecodingFailure(
           yaml =

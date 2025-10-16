@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.TestsUtils.unsafeNes
 class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
 
   "A FilterRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "filter is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -65,7 +65,7 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no filter is defined" in {
         assertDecodingFailure(
           yaml =

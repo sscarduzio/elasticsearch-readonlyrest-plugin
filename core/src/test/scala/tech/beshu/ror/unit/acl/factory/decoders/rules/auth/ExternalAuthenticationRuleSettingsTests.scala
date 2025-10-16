@@ -31,7 +31,7 @@ class ExternalAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ExternalAuthenticationRule] with MockFactory {
 
   "An ExternalAuthenticationRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one authentication service is declared" in {
         assertDecodingSuccess(
           yaml =
@@ -191,7 +191,7 @@ class ExternalAuthenticationRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "extended version of rule definition doesn't declare cache TTL" in {
         assertDecodingFailure(
           yaml =

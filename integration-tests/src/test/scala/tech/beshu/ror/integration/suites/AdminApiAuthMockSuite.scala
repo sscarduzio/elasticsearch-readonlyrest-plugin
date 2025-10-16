@@ -192,7 +192,7 @@ class AdminApiAuthMockSuite
         ))
 
         rorClients.foreach { rorApiManager =>
-          val testConfigResponse = rorApiManager.currentRorTestConfig
+          val testConfigResponse = rorApiManager.currentRorTestSettings
           testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
           testConfigResponse.responseJson("warnings") should be(
             ujson.read(
@@ -660,7 +660,7 @@ class AdminApiAuthMockSuite
         }
 
         rorClients.foreach { rorApiManager =>
-          val response = rorApiManager.currentRorTestConfig
+          val response = rorApiManager.currentRorTestSettings
           response should have statusCode 200
           response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
           response.responseJson("warnings") should be(ujson.read(
@@ -1236,7 +1236,7 @@ class AdminApiAuthMockSuite
 
   private def invalidateTestSettingsOnAllNodes(): Unit = {
     rorClients.head
-      .invalidateRorTestConfig()
+      .invalidateRorTestSettings()
       .forceOkStatus()
 
     eventually { // await until all nodes load config
@@ -1247,7 +1247,7 @@ class AdminApiAuthMockSuite
   }
 
   private def assertTestSettings(rorApiManager: RorApiManager, expectedStatus: String) = {
-    val response = rorApiManager.currentRorTestConfig
+    val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
     response.responseJson("status").str should be(expectedStatus)
   }
@@ -1326,7 +1326,7 @@ class AdminApiAuthMockSuite
 
   private def setupTestSettingsOnAllNodes(): Unit = {
     rorClients.head
-      .updateRorTestConfig(testEngineConfig())
+      .updateRorTestSettings(testEngineConfig())
       .forceOkStatus()
 
     eventually { // await until all nodes load config

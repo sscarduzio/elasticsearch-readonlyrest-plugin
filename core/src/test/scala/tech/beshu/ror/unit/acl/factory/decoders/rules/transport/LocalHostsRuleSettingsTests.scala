@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHostsRule] {
 
   "A LocalHostsRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one host is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -90,7 +90,7 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no host is defined" in {
         assertDecodingFailure(
           yaml =

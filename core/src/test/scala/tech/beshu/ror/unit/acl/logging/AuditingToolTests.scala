@@ -179,7 +179,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         }
       }
       "log sink is used" should {
-        "saved audit log to file defined in log4j config" in {
+        "saved audit log to file defined in log4j settings" in {
           @nowarn("cat=deprecation")
           val auditingTool = AuditingTool.create(
             settings = AuditSettings(

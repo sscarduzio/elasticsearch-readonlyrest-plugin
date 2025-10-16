@@ -49,7 +49,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
 ) {
 
   "An impersonation definition" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one impersonator is defined" which {
         "using auth key as authentication method" in {
           assertDecodingSuccess(
@@ -110,7 +110,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "impersonation section is empty" in {
         assertDecodingFailure(
           yaml =

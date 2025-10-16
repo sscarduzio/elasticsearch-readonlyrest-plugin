@@ -211,7 +211,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           }
         }
         "ror_kbn_auth rule used" in {
-          val config =
+          val settings =
             s"""
                |readonlyrest:
                |  access_control_rules:
@@ -252,10 +252,10 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |      signature_key: "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
                |""".stripMargin
 
-          val rorConfig = rorConfigFromUnsafe(config)
-          inside(createCore(rorConfig, new UnboundidLdapConnectionPoolProvider())) {
+          val rorSettings = rorSettingsFromUnsafe(settings)
+          inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
-              core.rorConfig.localUsers should be(allUsersResolved(Set(
+              core.dependencies.localUsers should be(allUsersResolved(Set(
                 User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
               )))
             case Left(error) =>
@@ -263,7 +263,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           }
         }
         "ror_kbn_authentication rule used" in {
-          val config =
+          val settings =
             s"""
                |readonlyrest:
                |  access_control_rules:
@@ -304,10 +304,10 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |      signature_key: "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
                |""".stripMargin
 
-          val rorConfig = rorConfigFromUnsafe(config)
-          inside(createCore(rorConfig, new UnboundidLdapConnectionPoolProvider())) {
+          val rorSettings = rorSettingsFromUnsafe(settings)
+          inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
-              core.rorConfig.localUsers should be(allUsersResolved(Set(
+              core.dependencies.localUsers should be(allUsersResolved(Set(
                 User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
               )))
             case Left(error) =>

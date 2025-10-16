@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRule] {
 
   "A SnapshotsRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one snapshot is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -113,7 +113,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no snapshot is defined" in {
         assertDecodingFailure(
           yaml =

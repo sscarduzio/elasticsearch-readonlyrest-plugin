@@ -28,7 +28,7 @@ import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTes
 class ActionRuleSettingsTests extends BaseRuleSettingsDecoderTest[ActionsRule] {
 
   "An ActionRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one action is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -64,7 +64,7 @@ class ActionRuleSettingsTests extends BaseRuleSettingsDecoderTest[ActionsRule] {
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no action is defined" in {
         assertDecodingFailure(
           yaml =

@@ -44,44 +44,44 @@ class RorApiManager(client: RestClient,
     call(createSendAuditEventRequest(payload), new RorApiJsonResponse(_))
   }
 
-  def getRorFileConfig: RorApiJsonResponse = {
-    call(createGetRorFileConfigRequest(), new RorApiJsonResponse(_))
+  def getRorFileSettings: RorApiJsonResponse = {
+    call(createGetRorFileSettingsRequest(), new RorApiJsonResponse(_))
   }
 
-  def getRorInIndexConfig: RorApiJsonResponse = {
-    call(createGetRorInIndexConfigRequest(), new RorApiJsonResponse(_))
+  def getRorInIndexSettings: RorApiJsonResponse = {
+    call(createGetRorInIndexSettingsRequest(), new RorApiJsonResponse(_))
   }
 
-  def updateRorInIndexConfig(config: String): RorApiResponseWithBusinessStatus = {
-    call(createUpdateRorInIndexConfigRequest(config), new RorApiResponseWithBusinessStatus(_))
+  def updateRorInIndexSettings(settings: String): RorApiResponseWithBusinessStatus = {
+    call(createUpdateRorInIndexSettingsRequest(settings), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def updateRorInIndexConfigRaw(rawRequestBody: String): RorApiResponseWithBusinessStatus = {
-    call(createUpdateRorInIndexConfigRequestFromRaw(rawRequestBody), new RorApiResponseWithBusinessStatus(_))
+  def updateRorInIndexSettingsRaw(rawRequestBody: String): RorApiResponseWithBusinessStatus = {
+    call(createUpdateRorInIndexSettingsRequestFromRaw(rawRequestBody), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def currentRorTestConfig: RorApiJsonResponse = {
-    call(createGetTestConfigRequest, new RorApiJsonResponse(_))
+  def currentRorTestSettings: RorApiJsonResponse = {
+    call(createGetTestSettingsRequest, new RorApiJsonResponse(_))
   }
 
-  def updateRorTestConfig(config: String, ttl: FiniteDuration = 30.minutes): RorApiResponseWithBusinessStatus = {
-    call(createUpdateRorTestConfigRequest(config, ttl), new RorApiResponseWithBusinessStatus(_))
+  def updateRorTestSettings(settings: String, ttl: FiniteDuration = 30.minutes): RorApiResponseWithBusinessStatus = {
+    call(createUpdateRorTestSettingsRequest(settings, ttl), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def updateRorTestConfigRaw(rawRequestBody: String): RorApiResponseWithBusinessStatus = {
-    call(createUpdateRorTestConfigRequest(rawRequestBody), new RorApiResponseWithBusinessStatus(_))
+  def updateRorTestSettingsRaw(rawRequestBody: String): RorApiResponseWithBusinessStatus = {
+    call(createUpdateRorTestSettingsRequest(rawRequestBody), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def invalidateRorTestConfig(): RorApiResponseWithBusinessStatus = {
-    call(createInvalidateRorTestConfigRequest(), new RorApiResponseWithBusinessStatus(_))
+  def invalidateRorTestSettings(): RorApiResponseWithBusinessStatus = {
+    call(createInvalidateRorTestSettingsRequest(), new RorApiResponseWithBusinessStatus(_))
   }
 
   def currentRorLocalUsers: RorApiJsonResponse = {
     call(createProvideLocalUsersRequest(), new RorApiJsonResponse(_))
   }
 
-  def reloadRorConfig(): RorApiJsonResponse = {
-    call(createReloadRorConfigRequest(), new RorApiJsonResponse(_))
+  def reloadRorSettings(): RorApiJsonResponse = {
+    call(createReloadRorSettingsRequest(), new RorApiJsonResponse(_))
   }
 
   def configureImpersonationMocks(payload: JSON): RorApiResponseWithBusinessStatus = {
@@ -103,10 +103,10 @@ class RorApiManager(client: RestClient,
     call(createConfigureImpersonationMocksRequest(payload), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String, config: String): documentManager.JsonResponse = {
+  def insertInIndexSettingsDirectlyToRorIndex(rorIndex: String, settings: String): documentManager.JsonResponse = {
     documentManager.createFirstDoc(
-      index = rorConfigIndex,
-      content = ujson.read(rorConfigIndexDocumentContentFrom(config))
+      index = rorIndex,
+      content = ujson.read(rorSettingsIndexDocumentContentFrom(settings))
     )
   }
 
@@ -127,34 +127,34 @@ class RorApiManager(client: RestClient,
     request
   }
 
-  private def createUpdateRorInIndexConfigRequest(config: String) = {
+  private def createUpdateRorInIndexSettingsRequest(settings: String) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(rorConfigIndexDocumentContentFrom(config)))
+    request.setEntity(new StringEntity(rorSettingsIndexDocumentContentFrom(settings)))
     request
   }
 
-  private def createUpdateRorInIndexConfigRequestFromRaw(rawRequestJson: String) = {
+  private def createUpdateRorInIndexSettingsRequestFromRaw(rawRequestJson: String) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(rawRequestJson))
     request
   }
 
-  private def createGetTestConfigRequest = {
+  private def createGetTestSettingsRequest = {
     new HttpGet(client.from("/_readonlyrest/admin/config/test"))
   }
 
-  private def createUpdateRorTestConfigRequest(config: String,
-                                               ttl: FiniteDuration) = {
+  private def createUpdateRorTestSettingsRequest(settings: String,
+                                                 ttl: FiniteDuration) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
 
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(rorTestConfig(config, ttl)))
+    request.setEntity(new StringEntity(rorTestSettings(settings, ttl)))
     request
   }
 
-  private def createUpdateRorTestConfigRequest(rawRequestJson: String) = {
+  private def createUpdateRorTestSettingsRequest(rawRequestJson: String) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
 
     request.addHeader("Content-Type", "application/json")
@@ -162,15 +162,15 @@ class RorApiManager(client: RestClient,
     request
   }
 
-  private def rorConfigIndexDocumentContentFrom(config: String) = {
-    s"""{"settings": "${escapeJava(config)}"}"""
+  private def rorSettingsIndexDocumentContentFrom(settings: String) = {
+    s"""{"settings": "${escapeJava(settings)}"}"""
   }
 
-  private def rorTestConfig(config: String, ttl: FiniteDuration) = {
-    s"""{"settings": "${escapeJava(config)}", "ttl": "${ttl.toString()}"}"""
+  private def rorTestSettings(settings: String, ttl: FiniteDuration) = {
+    s"""{"settings": "${escapeJava(settings)}", "ttl": "${ttl.toString()}"}"""
   }
 
-  private def createInvalidateRorTestConfigRequest() = {
+  private def createInvalidateRorTestSettingsRequest() = {
     new HttpDelete(client.from("/_readonlyrest/admin/config/test"))
   }
 
@@ -178,15 +178,15 @@ class RorApiManager(client: RestClient,
     new HttpGet(client.from("/_readonlyrest/admin/config/test/localusers"))
   }
 
-  private def createGetRorFileConfigRequest() = {
+  private def createGetRorFileSettingsRequest() = {
     new HttpGet(client.from("/_readonlyrest/admin/config/file"))
   }
 
-  private def createGetRorInIndexConfigRequest() = {
+  private def createGetRorInIndexSettingsRequest() = {
     new HttpGet(client.from("/_readonlyrest/admin/config"))
   }
 
-  private def createReloadRorConfigRequest() = {
+  private def createReloadRorSettingsRequest() = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/refreshconfig"))
     request.addHeader("Content-Type", "application/json")
     request
@@ -224,14 +224,14 @@ class RorApiManager(client: RestClient,
       this
     }
 
-    def forceOKStatusOrConfigAlreadyLoaded(): this.type = {
+    def forceOKStatusOrSettingsAlreadyLoaded(): this.type = {
       force()
-      if (businessStatus === "OK" || isConfigAlreadyLoaded) {
+      if (businessStatus === "OK" || isSettingsAlreadyLoaded) {
         this
       } else {
         throw new IllegalStateException(
           s"""
-             |Expected business status 'OK' or info about already loaded config, but got:"
+             |Expected business status 'OK' or info about already loaded settings, but got:"
              |
              |HTTP $responseCode
              |${responseJson.toString()}
@@ -240,7 +240,7 @@ class RorApiManager(client: RestClient,
       }
     }
 
-    private def isConfigAlreadyLoaded = {
+    private def isSettingsAlreadyLoaded = {
       businessStatus == "KO" && message.contains("already loaded")
     }
 

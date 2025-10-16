@@ -40,7 +40,7 @@ class KibanaUserDataRuleSettingsTests
     with OptionValues with EitherValues {
 
   "A KibanaUserDataRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "all required properties are set" in {
         assertDecodingSuccess(
           yaml =
@@ -583,7 +583,7 @@ class KibanaUserDataRuleSettingsTests
         }
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "some of the required properties are not set" in {
         assertDecodingFailure(
           yaml =

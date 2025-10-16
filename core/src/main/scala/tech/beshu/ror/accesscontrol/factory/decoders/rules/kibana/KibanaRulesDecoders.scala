@@ -66,12 +66,12 @@ class KibanaTemplateIndexRuleDecoder(variableCreator: RuntimeResolvableVariableC
   }
 }
 
-class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorSettingsIndex)
+class KibanaAccessRuleDecoder(rorIndexName: RorSettingsIndex)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaAccessRule] {
 
   override protected def decoder: Decoder[RuleDefinition[KibanaAccessRule]] = {
     Decoder[KibanaAccess]
-      .map(KibanaAccessRule.Settings(_, rorIndexNameConfiguration))
+      .map(KibanaAccessRule.Settings(_, rorIndexName))
       .map(settings => new KibanaAccessRule(settings))
       .map(RuleDefinition.create(_))
       .decoder

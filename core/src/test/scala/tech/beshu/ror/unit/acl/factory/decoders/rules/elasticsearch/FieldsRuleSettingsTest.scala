@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
 
   "A FieldsRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "ror is run in plugin mode and" when {
         "only one field is defined" in {
           assertDecodingSuccess(
@@ -171,7 +171,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
         }
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no field is defined" in {
         assertDecodingFailure(
           yaml =

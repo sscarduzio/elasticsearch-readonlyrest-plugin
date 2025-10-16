@@ -132,7 +132,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
         }
       }
     }
-    "return valid ror config" when {
+    "return valid ror settings" when {
       "none of the keys is duplicated within its scope" in {
         val rawConfig =
           """

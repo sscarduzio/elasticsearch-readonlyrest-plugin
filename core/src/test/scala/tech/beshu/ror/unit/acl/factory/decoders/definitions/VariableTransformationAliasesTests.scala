@@ -28,7 +28,7 @@ class VariableTransformationAliasesTests
   extends BaseDecoderTest(VariableTransformationAliasesDefinitionsDecoder.create(SupportedVariablesFunctions.default)) {
 
   "A variable transformation aliases definition" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one alias is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -99,7 +99,7 @@ class VariableTransformationAliasesTests
       )
     }
   }
-  "not be able to be loaded from config" when {
+  "not be able to be loaded from settings" when {
     "aliases section is empty" in {
       assertDecodingFailure(
         yaml =

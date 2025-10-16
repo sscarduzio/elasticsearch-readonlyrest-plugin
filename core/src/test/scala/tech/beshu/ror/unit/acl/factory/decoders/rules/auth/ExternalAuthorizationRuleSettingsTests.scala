@@ -42,7 +42,7 @@ class ExternalAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ExternalAuthorizationRule] with MockFactory with Inside {
 
   "An ExternalAuthorizationRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one authorization service is declared" in {
         assertDecodingSuccess(
           yaml =
@@ -477,7 +477,7 @@ class ExternalAuthorizationRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "authorization rule doesn't have service name declared" in {
         assertDecodingFailure(
           yaml =

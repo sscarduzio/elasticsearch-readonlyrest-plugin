@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaHideAppsRule] {
 
   "A KibanaHideAppsRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one kibana app is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -68,7 +68,7 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "empty string kibana app is defined" in {
         assertDecodingFailure(
           yaml =

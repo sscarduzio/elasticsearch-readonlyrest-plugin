@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class DataStreamsRuleSettingsTest extends BaseRuleSettingsDecoderTest[DataStreamsRule] {
 
   "A DataStreamsRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one data stream is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -113,7 +113,7 @@ class DataStreamsRuleSettingsTest extends BaseRuleSettingsDecoderTest[DataStream
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no data stream is defined" in {
         assertDecodingFailure(
           yaml =

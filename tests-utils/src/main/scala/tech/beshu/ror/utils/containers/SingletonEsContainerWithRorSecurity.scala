@@ -55,8 +55,8 @@ object SingletonEsContainerWithRorSecurity
 
   def updateConfig(rorConfig: String): Unit = {
     rorApiManager
-      .updateRorInIndexConfig(rorConfig)
-      .forceOKStatusOrConfigAlreadyLoaded()
+      .updateRorInIndexSettings(rorConfig)
+      .forceOKStatusOrSettingsAlreadyLoaded()
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {

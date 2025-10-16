@@ -190,7 +190,7 @@ class LocalClusterAuditingToolsSuite
   private def updateRorConfig(originalString: String, newString: String) = {
     val initialConfig = getResourceContent(rorConfigFileName)
     val modifiedConfig = initialConfig.replace(originalString, newString)
-    rorApiManager.updateRorInIndexConfig(modifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
-    rorApiManager.reloadRorConfig().force()
+    rorApiManager.updateRorInIndexSettings(modifiedConfig).forceOKStatusOrSettingsAlreadyLoaded()
+    rorApiManager.reloadRorSettings().force()
   }
 }

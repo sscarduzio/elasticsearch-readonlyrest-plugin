@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwardedForRule] {
 
   "A XForwardedForRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one address is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -148,7 +148,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no address or ip is defined" in {
         assertDecodingFailure(
           yaml =

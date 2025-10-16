@@ -31,7 +31,7 @@ class TokenAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[TokenAuthenticationRule] {
 
   "A TokenAuthenticationRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "token and username defined" in {
         assertDecodingSuccess(
           yaml =
@@ -119,7 +119,7 @@ class TokenAuthenticationRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "username is not defined" in {
         assertDecodingFailure(
           yaml =

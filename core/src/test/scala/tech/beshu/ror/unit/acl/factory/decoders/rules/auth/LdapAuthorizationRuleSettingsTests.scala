@@ -31,7 +31,7 @@ class LdapAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthorizationRule] {
 
   "An LdapAuthorizationRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "there is LDAP service with given name and groups are defined" in {
         assertDecodingSuccess(
           yaml =
@@ -580,7 +580,7 @@ class LdapAuthorizationRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no LDAP service with given name is defined" in {
         assertDecodingFailure(
           yaml =

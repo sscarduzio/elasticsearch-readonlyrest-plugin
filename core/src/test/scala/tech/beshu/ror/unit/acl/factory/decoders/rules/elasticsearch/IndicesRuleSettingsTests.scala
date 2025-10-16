@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] {
 
   "An IndicesRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one index is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -240,7 +240,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no index is defined" in {
         assertDecodingFailure(
           yaml =

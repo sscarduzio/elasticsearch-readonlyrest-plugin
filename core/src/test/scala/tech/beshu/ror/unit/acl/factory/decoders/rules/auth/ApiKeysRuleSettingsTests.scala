@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] {
 
   "An ApiKeysRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one api key is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -64,7 +64,7 @@ class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] 
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no api key is defined" in {
         assertDecodingFailure(
           yaml =

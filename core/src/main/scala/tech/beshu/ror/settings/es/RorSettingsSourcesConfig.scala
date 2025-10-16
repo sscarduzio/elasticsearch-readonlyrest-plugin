@@ -45,7 +45,7 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
       rorSettingsFile,
       rorSettingsMaxSize
     )
-    loadSetting[RorSettingsSourcesConfig](esEnv, "ROR settings source config")
+    loadSetting[RorSettingsSourcesConfig](esEnv, "ROR settings source settings")
   }
 
   private object decoders {

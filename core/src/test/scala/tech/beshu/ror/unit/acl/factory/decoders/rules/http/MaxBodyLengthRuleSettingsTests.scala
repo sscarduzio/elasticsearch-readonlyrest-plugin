@@ -27,7 +27,7 @@ import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTes
 class MaxBodyLengthRuleSettingsTests extends BaseRuleSettingsDecoderTest[MaxBodyLengthRule] {
 
   "A MaxBodyLengthRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "max body length > 0 is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -63,7 +63,7 @@ class MaxBodyLengthRuleSettingsTests extends BaseRuleSettingsDecoderTest[MaxBody
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "max body length field is defined, but no value it set" in {
         assertDecodingFailure(
           yaml =

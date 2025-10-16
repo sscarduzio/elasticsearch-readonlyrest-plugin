@@ -71,7 +71,7 @@ class GroupsRuleSettingsTests
 
   forAll(simpleSyntaxTestParams) { (simpleSyntaxName, creator) =>
   s"A GroupsRule settings test for $simpleSyntaxName" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "a groups mapping is not used" when {
         "only one group is defined" when {
           "one, full username is used" in {
@@ -724,7 +724,7 @@ class GroupsRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "groups section is defined, but without any group" in {
         assertDecodingFailure(
           yaml =
@@ -1453,7 +1453,7 @@ class GroupsRuleSettingsTests
   }
 
   s"A Combined GroupsRule settings" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "a groups mapping is not used" when {
         "only one group is defined" when {
           "one, full username is used" in {

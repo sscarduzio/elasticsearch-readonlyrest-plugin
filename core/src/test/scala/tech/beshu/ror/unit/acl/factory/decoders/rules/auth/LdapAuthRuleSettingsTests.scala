@@ -22,13 +22,12 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.SingletonLdapContainers
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class LdapAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthRule] {
 
   "An LdapAuthRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "there is LDAP service with given name and groups are defined" in {
         assertDecodingSuccess(
           yaml =
@@ -88,7 +87,7 @@ class LdapAuthRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no LDAP service with given name is defined" in {
         assertDecodingFailure(
           yaml =

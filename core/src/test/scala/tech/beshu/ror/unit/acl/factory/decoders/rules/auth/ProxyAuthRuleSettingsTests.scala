@@ -28,7 +28,7 @@ class ProxyAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ProxyAuthRule] {
 
   "A ProxyAuthRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one user is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -135,7 +135,7 @@ class ProxyAuthRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no proxy_auth data is defined" in {
         assertDecodingFailure(
           yaml =

@@ -43,7 +43,7 @@ class JwtAuthRuleSettingsTests
     with MockFactory {
 
   "A JwtAuthRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "rule is defined using simplified version and minimal required set of fields in JWT definition" in {
         assertDecodingSuccess(
           yaml =
@@ -593,7 +593,7 @@ class JwtAuthRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no JWT definition name is defined in rule setting" in {
         assertDecodingFailure(
           yaml =

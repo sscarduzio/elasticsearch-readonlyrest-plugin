@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[ResponseFieldsRule] {
 
   "A ResponseFieldsRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "ror is run in plugin mode and" when {
         "only one field is defined" in {
           assertDecodingSuccess(
@@ -142,7 +142,7 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
         }
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no field is defined" in {
         assertDecodingFailure(
           yaml =

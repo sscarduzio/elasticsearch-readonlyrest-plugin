@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaIndexRule] {
 
   "A KibanaIndexRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "kibana index is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -64,7 +64,7 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no kibana index is defined" in {
         assertDecodingFailure(
           yaml =

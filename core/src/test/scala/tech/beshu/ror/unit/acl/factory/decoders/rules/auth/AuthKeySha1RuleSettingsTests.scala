@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.TestsUtils.unsafeNes
 class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha1Rule] {
 
   "An AuthKeySha1Rule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "SHA1 auth key is defined (all hashed syntax)" in {
         assertDecodingSuccess(
           yaml =
@@ -67,7 +67,7 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no SHA1 auth key is defined" in {
         assertDecodingFailure(
           yaml =

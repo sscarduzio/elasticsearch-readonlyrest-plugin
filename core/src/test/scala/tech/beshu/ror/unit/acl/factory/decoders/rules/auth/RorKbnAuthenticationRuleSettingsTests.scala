@@ -20,8 +20,9 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthenticationRule
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
+
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -34,7 +35,7 @@ class RorKbnAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[RorKbnAuthenticationRule] {
 
   "A RorKbnAuthenticationRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "rule is defined using simplified version and minimal required set of fields in ROR kbn definition" in {
         assertDecodingSuccess(
           yaml =
@@ -184,7 +185,7 @@ class RorKbnAuthenticationRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "rule is defined with groups" in {
         val rolesKeys = List("roles_and", "groups_and")
         rolesKeys.foreach { roleKey =>

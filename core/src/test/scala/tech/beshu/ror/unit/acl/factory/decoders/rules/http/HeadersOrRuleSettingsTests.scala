@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class HeadersOrRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersOrRule] {
 
   "A HeadersOrRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one header requirement is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -92,7 +92,7 @@ class HeadersOrRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersOrRu
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no header is defined" in {
         assertDecodingFailure(
           yaml =

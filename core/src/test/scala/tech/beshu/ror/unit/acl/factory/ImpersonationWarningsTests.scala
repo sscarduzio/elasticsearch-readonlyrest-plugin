@@ -321,12 +321,12 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
               |
               |""".stripMargin
 
-          impersonationWarningsReader(config, NoOpMocksProvider).read() should be(List(
+          impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(List(
             impersonationNotSupportedWarning("test_block1", "ror_kbn_auth")
           ))
         }
         "ror kbn auth rule (configured without groups)" in {
-          val config =
+          val settings =
             """
               |readonlyrest:
               |

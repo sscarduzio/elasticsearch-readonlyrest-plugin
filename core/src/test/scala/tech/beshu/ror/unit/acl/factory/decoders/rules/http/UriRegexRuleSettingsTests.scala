@@ -33,7 +33,7 @@ import tech.beshu.ror.syntax.*
 class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule] with MockFactory {
 
   "A UriRegexRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "single uri pattern is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -117,7 +117,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no uri pattern is defined" in {
         assertDecodingFailure(
           yaml =

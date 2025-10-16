@@ -74,7 +74,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
   )
 
   "An LdapService" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one LDAP service is declared (without server_side_groups_filtering)" in {
         assertDecodingSuccess(
           yamls = NonEmptyList.of(
@@ -1750,7 +1750,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "circuit breaker config is malformed" in {
         assertDecodingFailure(
           yaml =

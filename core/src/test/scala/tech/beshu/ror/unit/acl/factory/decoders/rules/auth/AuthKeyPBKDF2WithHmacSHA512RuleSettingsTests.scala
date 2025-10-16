@@ -28,7 +28,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
   extends BaseRuleSettingsDecoderTest[AuthKeyPBKDF2WithHmacSHA512Rule] {
 
   "An AuthKeyPBKDF2WithHmacSHA512Rule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "PBKDF2 auth key is defined (all hashed syntax)" in {
         assertDecodingSuccess(
           yaml =
@@ -68,7 +68,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no PBKDF2 auth key is defined" in {
         assertDecodingFailure(
           yaml =

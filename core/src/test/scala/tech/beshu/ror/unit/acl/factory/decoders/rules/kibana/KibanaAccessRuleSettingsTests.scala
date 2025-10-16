@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.TestsUtils.unsafeNes
 class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAccessRule] {
 
   "A KibanaAccess" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "ro access is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -137,7 +137,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no access is defined" in {
         assertDecodingFailure(
           yaml =

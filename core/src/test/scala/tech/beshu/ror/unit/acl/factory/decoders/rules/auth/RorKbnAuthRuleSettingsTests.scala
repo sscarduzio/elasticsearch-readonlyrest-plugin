@@ -37,7 +37,7 @@ class RorKbnAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] {
 
   "A RorKbnAuthRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "rule is defined using extended version with groups or logic and minimal request set of fields in ROR kbn definition" in {
         val rolesKeys = List("roles", "groups", "groups_or")
         rolesKeys.foreach { roleKey =>
@@ -108,7 +108,7 @@ class RorKbnAuthRuleSettingsTests
         }
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no ROR kbn definition name is defined in rule setting" in {
         assertDecodingFailure(
           yaml =
