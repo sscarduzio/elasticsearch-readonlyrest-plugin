@@ -76,7 +76,6 @@ abstract class EsContainer(val esVersion: String,
         container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
         container.setNetwork(Network.SHARED)
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
-        container.withFileSystemBind("/sys/fs/cgroup", "/sys/fs/cgroup", BindMode.READ_ONLY);
         EsContainerImplementation.Linux(
           esImage = esImage,
           container = container
