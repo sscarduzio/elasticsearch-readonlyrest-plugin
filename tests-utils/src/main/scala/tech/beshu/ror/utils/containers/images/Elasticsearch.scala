@@ -316,6 +316,7 @@ class Elasticsearch(val esVersion: String,
       .add("-Xmx512m")
       .add("-Djava.security.egd=file:/dev/./urandoms")
       .add("-Xdebug", s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${xDebugAddressBasedOn(esVersion)}")
+      .add("-XX:-UseContainerSupport")
   }
 
   private def xDebugAddressBasedOn(esVersion: String) = {
