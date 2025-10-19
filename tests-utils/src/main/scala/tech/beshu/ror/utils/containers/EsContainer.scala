@@ -21,7 +21,7 @@ import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
 import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
-import org.testcontainers.containers.{BindMode, GenericContainer, Network}
+import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
