@@ -233,7 +233,8 @@ trait RorTools {
       .action((_, c) => c.copy(command = Some(Command.Unpatch(None))))
       .text("unpatch is a command that reverts modifications done by patching")
       .children(
-        esPathOption.action((p, args) => modifyCommand(args, _.asInstanceOf[Command.Unpatch].copy(customEsPath = Some(os.Path(p)))))
+        esPathOption.action((p, args) => modifyCommand(args, _.asInstanceOf[Command.Unpatch].copy(customEsPath = Some(os.Path(p))))),
+        patchingConsentDefinition.hidden(), // Accepts patching consent argument, for example passed as env variable, but does not require or use it
       )
 
   private lazy val verifyCommand =
@@ -241,7 +242,8 @@ trait RorTools {
       .action((_, c) => c.copy(command = Some(Command.Verify(None))))
       .text("verify is a command that verifies if ES installation is patched")
       .children(
-        esPathOption.action((p, args) => modifyCommand(args, _.asInstanceOf[Command.Verify].copy(customEsPath = Some(os.Path(p)))))
+        esPathOption.action((p, args) => modifyCommand(args, _.asInstanceOf[Command.Verify].copy(customEsPath = Some(os.Path(p))))),
+        patchingConsentDefinition.hidden(), // Accepts patching consent argument, for example passed as env variable, but does not require or use it
       )
 
   private lazy val esPathOption =
@@ -255,9 +257,7 @@ trait RorTools {
       }
 
   private lazy val patchingConsent =
-    opt[String](consentFlagName)
-      .unbounded()
-      .valueName("<yes/no>")
+    patchingConsentDefinition
       .validate { value =>
         value.toLowerCase match {
           case "yes" => success
@@ -272,6 +272,11 @@ trait RorTools {
         }
       }
       .text("Optional, when provided with value 'yes', it confirms that the user understands and accepts the implications of ES patching. The patching can therefore be performed. When not provided, user will be asked for confirmation in interactive mode. You can read about patching in our documentation: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch.")
+
+  private lazy val patchingConsentDefinition =
+    opt[String](consentFlagName)
+      .unbounded()
+      .valueName("<yes/no>")
 
   private def addPatchingConsentValue(scriptArguments: ScriptArguments, patchingConsent: PatchingConsent) = {
     modifyPatchCommand(scriptArguments, patch => patch.copy(patchingConsentValues = patch.patchingConsentValues ::: patchingConsent :: Nil))
