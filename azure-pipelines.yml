@@ -42,7 +42,7 @@ parameters:
     default: ' '
 
 pool:
-  vmImage: 'ubuntu-24.04@20250929.60.1'
+  vmImage: 'ubuntu-24.04'
 
 stages:
 
