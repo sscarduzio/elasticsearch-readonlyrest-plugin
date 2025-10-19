@@ -313,7 +313,7 @@ class RorToolsAppSuite
 
       val (unpatchResult, unpatchOutput) = captureResultAndOutput(
         RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_, _),
-        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes") // Additionally verifies, that unpatch can be executed when env consent is present
+        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes") // Additionally verifies, that `unpatch` can be executed when env consent is present
       )
       unpatchResult should equal(Result.Failure)
       unpatchOutput.replace("\r\n", "\n") should include(
@@ -345,7 +345,7 @@ class RorToolsAppSuite
       patchMetadataFile.exists() should be(false)
       val (verifyResult, verifyOutput) = captureResultAndOutput(
         RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _),
-        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes") // Additionally verifies, that unpatch can be executed when env consent is present
+        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes") // Additionally verifies, that `verify` can be executed when env consent is present
       )
       verifyResult should equal(Result.Failure)
       verifyOutput should include(
