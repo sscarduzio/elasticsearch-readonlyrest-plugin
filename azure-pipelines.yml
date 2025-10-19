@@ -44,7 +44,6 @@ parameters:
 pool:
   vmImage: 'ubuntu-24.04@20250929.60.1'
 
-
 stages:
 
   - stage: OPTIONAL_CHECKS
