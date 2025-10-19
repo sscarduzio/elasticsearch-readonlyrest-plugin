@@ -77,12 +77,9 @@ abstract class EsContainer(val esVersion: String,
         container.setNetwork(Network.SHARED)
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
         container.withCommand(
-            "/bin/bash", "-c",
-            "exec java -XX:-UseContainerSupport " +
-              "-Xms512m -Xmx512m " +
-              "-Djava.security.egd=file:/dev/./urandom " +
-              "-jar /usr/share/elasticsearch/lib/elasticsearch.jar"
-          );
+          "/bin/bash", "-c",
+          "exec /usr/share/elasticsearch/jdk/bin/java -XX:-UseContainerSupport -jar /usr/share/elasticsearch/lib/elasticsearch.jar"
+        )
         EsContainerImplementation.Linux(
           esImage = esImage,
           container = container
