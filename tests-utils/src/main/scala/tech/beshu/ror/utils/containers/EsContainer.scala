@@ -26,7 +26,6 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
 import tech.beshu.ror.utils.containers.EsContainer.{Credentials, EsContainerImplementation}
-import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
 import tech.beshu.ror.utils.containers.logs.CompositeLogConsumer
 import tech.beshu.ror.utils.containers.providers.ClientProvider
@@ -77,22 +76,6 @@ abstract class EsContainer(val esVersion: String,
         container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
         container.setNetwork(Network.SHARED)
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
-        if (esVersion.startsWith("8.")) {
-          esConfig.esInstallationType match {
-            case EsInstallationType.NativeWindowsProcess =>
-              ()
-            case EsInstallationType.EsDockerImage =>
-              container.withCommand(
-                "/bin/bash", "-c",
-                "ES_JAVA_OPTS='-XX:-UseContainerSupport' /usr/local/bin/docker-entrypoint.sh"
-              )
-            case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
-              container.withCommand(
-                "/bin/bash", "-c",
-                "ES_JAVA_OPTS='-XX:-UseContainerSupport' /usr/share/elasticsearch/bin/elasticsearch"
-              )
-          }
-        }
         EsContainerImplementation.Linux(
           esImage = esImage,
           container = container
