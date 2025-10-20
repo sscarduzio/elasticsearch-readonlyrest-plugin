@@ -134,12 +134,12 @@ object BlockValidator extends Logging {
       case r: KibanaAccessRule => r.settings.access
       case r: KibanaUserDataRule => r.settings.access
     } match {
-      case Nil => None
+      case Nil =>
+        None
       case head :: Nil =>
         Some(head)
       case head :: _ =>
-        logger.warn(s"More than one kibana access rule found in the '${blockName.show}! It may lead to unexpected behaviors. Please, report this problem as soon as possible.'")
-        Some(head)
+        throw new IllegalStateException(s"More than one kibana access rule found in the '${blockName.show}'! It may lead to unexpected behaviors. Please, report this problem as soon as possible.'")
     }
   }
 
