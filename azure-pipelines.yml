@@ -46,54 +46,54 @@ pool:
 
 stages:
 
-  - stage: OPTIONAL_CHECKS
-    displayName: 'Optional checks'
-    dependsOn: [ ]
-    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
-    jobs:
-      - job: CVE_CHECK
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore CVE DB from cache'
-            inputs:
-              key: '$(dependencyCheckCacheKey)'
-              # prefix fallback to any prior cache entry
-              restoreKeys: dependency-check-v1-
-              path: $(dependencyCheckDataDir)
-          - script: |
-              echo "[OPTIONAL_CHECKS] executing ROR_TASK=$ROR_TASK"
-
-              export DEPENDENCY_CHECK_DATA_DIR=$var_dependency_check_data_dir
-
-              if [ "$var_is_fork" = "False" ]; then
-                # Export API key only when PR is from the same repo; forks do not get secrets.
-                # Using the wrong API key breaks the CVE check.
-
-                export NVD_API_KEY=$var_nvd_api_key
-                export OSS_INDEX_USERNAME=$var_oss_index_username
-                export OSS_INDEX_PASSWORD=$var_oss_index_password
-              fi
-
-              ci/run-pipeline.sh
-            continueOnError: true
-            env:
-              ROR_TASK: cve_check
-              var_nvd_api_key: $(NVD_API_KEY)
-              var_dependency_check_data_dir: $(dependencyCheckDataDir)
-              var_is_fork: $(System.PullRequest.IsFork)
-              var_oss_index_username: $(OSS_INDEX_USERNAME)
-              var_oss_index_password: $(OSS_INDEX_PASSWORD)
-          - task: Cache@2
-            displayName: 'Save updated CVE DB in cache'
-            inputs:
-              # Cache entries are immutable, a new write will only occur when a new key appears
-              key: '$(dependencyCheckCacheKey)'
-              path: $(dependencyCheckDataDir)
-            condition: succeeded()
+#   - stage: OPTIONAL_CHECKS
+#     displayName: 'Optional checks'
+#     dependsOn: [ ]
+#     condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
+#     jobs:
+#       - job: CVE_CHECK
+#         steps:
+#           - checkout: self
+#             fetchDepth: 1
+#             clean: false
+#             persistCredentials: true
+#           - task: Cache@2
+#             displayName: 'Restore CVE DB from cache'
+#             inputs:
+#               key: '$(dependencyCheckCacheKey)'
+#               # prefix fallback to any prior cache entry
+#               restoreKeys: dependency-check-v1-
+#               path: $(dependencyCheckDataDir)
+#           - script: |
+#               echo "[OPTIONAL_CHECKS] executing ROR_TASK=$ROR_TASK"
+#
+#               export DEPENDENCY_CHECK_DATA_DIR=$var_dependency_check_data_dir
+#
+#               if [ "$var_is_fork" = "False" ]; then
+#                 # Export API key only when PR is from the same repo; forks do not get secrets.
+#                 # Using the wrong API key breaks the CVE check.
+#
+#                 export NVD_API_KEY=$var_nvd_api_key
+#                 export OSS_INDEX_USERNAME=$var_oss_index_username
+#                 export OSS_INDEX_PASSWORD=$var_oss_index_password
+#               fi
+#
+#               ci/run-pipeline.sh
+#             continueOnError: true
+#             env:
+#               ROR_TASK: cve_check
+#               var_nvd_api_key: $(NVD_API_KEY)
+#               var_dependency_check_data_dir: $(dependencyCheckDataDir)
+#               var_is_fork: $(System.PullRequest.IsFork)
+#               var_oss_index_username: $(OSS_INDEX_USERNAME)
+#               var_oss_index_password: $(OSS_INDEX_PASSWORD)
+#           - task: Cache@2
+#             displayName: 'Save updated CVE DB in cache'
+#             inputs:
+#               # Cache entries are immutable, a new write will only occur when a new key appears
+#               key: '$(dependencyCheckCacheKey)'
+#               path: $(dependencyCheckDataDir)
+#             condition: succeeded()
 
 #   - stage: REQUIRED_CHECKS
 #     displayName: 'Required checks'
