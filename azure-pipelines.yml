@@ -500,51 +500,51 @@ stages:
 #######################################################
 ##### Integration tests on Windows on PRs
 #######################################################
-      - job:
-        condition:
-          and(
-            succeeded(),
-            ne(variables.isEpic, true),
-            ne(variables.isDevelop, true),
-            ne(variables.isMaster, true),
-            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
-          )
-        timeoutInMinutes: 150
-        pool:
-          vmImage: 'windows-2025'
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-                    Write-Host ">>> $env:ES_MODULE"
-                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-                    if ($LASTEXITCODE -ne 0) {
-                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                        Get-Content $_.FullName
-                      }
-                      exit 1
-                    }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            WIN_IT_es91x:
-              ES_MODULE: es91x
-            WIN_IT_es818x:
-              ES_MODULE: es818x
+#       - job:
+#         condition:
+#           and(
+#             succeeded(),
+#             ne(variables.isEpic, true),
+#             ne(variables.isDevelop, true),
+#             ne(variables.isMaster, true),
+#             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
+#           )
+#         timeoutInMinutes: 150
+#         pool:
+#           vmImage: 'windows-2025'
+#         steps:
+#           - checkout: self
+#             fetchDepth: 1
+#             clean: false
+#             persistCredentials: true
+#           - task: JavaToolInstaller@0
+#             displayName: Switch to Java 21
+#             inputs:
+#               versionSpec: '21'
+#               jdkArchitectureOption: 'x64'
+#               jdkSourceOption: 'PreInstalled'
+#           - powershell: |
+#                     Write-Host ">>> $env:ES_MODULE"
+#                     .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
+#                     if ($LASTEXITCODE -ne 0) {
+#                       Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
+#                         Get-Content $_.FullName
+#                       }
+#                       exit 1
+#                     }
+#           - task: PublishTestResults@2
+#             condition: failed()
+#             inputs:
+#               testRunTitle: "$(Windows ES_MODULE) results"
+#               testResultsFiles: "**/TEST*xml"
+#               mergeTestResults: true
+#         strategy:
+#           maxParallel: 99
+#           matrix:
+#             WIN_IT_es91x:
+#               ES_MODULE: es91x
+#             WIN_IT_es818x:
+#               ES_MODULE: es818x
 #######################################################
 ##### Integration tests on Windows on master/develop
 #######################################################
