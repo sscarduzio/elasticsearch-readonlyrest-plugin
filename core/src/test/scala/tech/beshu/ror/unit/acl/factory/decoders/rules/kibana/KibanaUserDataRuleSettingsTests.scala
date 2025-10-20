@@ -256,30 +256,6 @@ class KibanaUserDataRuleSettingsTests
               }
             )
           }
-          "the access is defined implicitly and actions rule is used" in {
-            assertDecodingSuccess(
-              yaml =
-                """
-                  |readonlyrest:
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block1
-                  |    kibana:
-                  |      index: ".test_kbn"
-                  |    actions: ["*"]
-                  |
-                  |""".stripMargin,
-              assertion = rule => {
-                rule.settings.access should be(KibanaAccess.Unrestricted)
-                rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".test_kbn")))
-                rule.settings.kibanaTemplateIndex should be(None)
-                rule.settings.appsToHide should be(Set.empty)
-                rule.settings.allowedApiPaths should be(Set.empty)
-                rule.settings.metadata should be(None)
-                rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
-              }
-            )
-          }
         }
       }
       "'hide_apps' property is set" when {

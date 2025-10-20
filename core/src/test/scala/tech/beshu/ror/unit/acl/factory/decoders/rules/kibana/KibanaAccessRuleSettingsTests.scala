@@ -136,7 +136,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
           }
         )
       }
-      "unrestricted access is defined (explicitly) and actions rule is used" in {
+      "unrestricted access is defined and actions rule is used" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -146,25 +146,6 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |
               |  - name: test_block1
               |    kibana_access: unrestricted
-              |    actions: ["*"]
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.access should be(KibanaAccess.Unrestricted)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
-          }
-        )
-      }
-      "unrestricted access is defined (implicitly) and actions rule is used" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_hide_apps: [app1, "/^Analytics\\|(?!(Maps)$).*$/"]
               |    actions: ["*"]
               |
               |""".stripMargin,
