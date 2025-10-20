@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.factory
 import cats.data.*
 import cats.data.Validated.*
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
@@ -34,12 +35,13 @@ import tech.beshu.ror.implicits.*
 
 object BlockValidator extends Logging {
 
-  def validate(rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+  def validate(blockName: Block.Name,
+               rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
     (
       validateAuthorizationWithAuthenticationPrinciple(rules),
       validateOnlyOneAuthenticationRulePrinciple(rules),
       validateRequirementsForRulesUsingVariables(rules),
-      validateKibanaRuleInContextOfOtherRules(rules),
+      validateKibanaRuleInContextOfOtherRules(blockName, rules),
     ).mapN { case (_, _, _, _) => () }
   }
 
@@ -76,32 +78,35 @@ object BlockValidator extends Logging {
     }
   }
 
-  private def validateKibanaRuleInContextOfOtherRules(ruleDefs: NonEmptyList[RuleDefinition[Rule]]) = {
+  private def validateKibanaRuleInContextOfOtherRules(blockName: Block.Name,
+                                                      ruleDefs: NonEmptyList[RuleDefinition[Rule]]) = {
     val allRules = ruleDefs.map(_.rule)
     findKibanaRelatedRules(allRules) match {
       case Some(kibanaRules) =>
         (
           validateIfKibanaUserDataRuleIsNotUsedWithOldDeprecatedKibanaRules(kibanaRules, allRules),
-          validateIfKibanaRelatedRulesCoexistenceWithOther(kibanaRules, allRules)
+          validateIfKibanaRelatedRulesCoexistenceWithOther(blockName, kibanaRules, allRules)
         ).mapN { case _ => () }
       case None =>
         Validated.Valid(())
     }
   }
 
-  private def validateIfKibanaRelatedRulesCoexistenceWithOther(kibanaRulesInBlock: NonEmptyList[KibanaRelatedRule],
+  private def validateIfKibanaRelatedRulesCoexistenceWithOther(blockName: Block.Name,
+                                                               kibanaRulesInBlock: NonEmptyList[KibanaRelatedRule],
                                                                allRulesInBlock: NonEmptyList[Rule]) = {
     NonEmptyList.fromList {
-      allRulesInBlock.toList.flatMap(validateRuleUsageInContextOf(kibanaRulesInBlock))
+      allRulesInBlock.toList.flatMap(validateRuleUsageInContextOf(blockName, kibanaRulesInBlock))
     } match {
       case Some(errors) => Validated.Invalid(errors)
       case None => Validated.Valid(())
     }
   }
 
-  private def validateRuleUsageInContextOf(kibanaRules: NonEmptyList[KibanaRelatedRule]): Rule => Option[KibanaRuleTogetherWith] = {
+  private def validateRuleUsageInContextOf(blockName: Block.Name,
+                                           kibanaRules: NonEmptyList[KibanaRelatedRule]): Rule => Option[KibanaRuleTogetherWith] = {
     case _: ActionsRule =>
-      determineConfiguredKibanaAccessIn(kibanaRules) match {
+      determineConfiguredKibanaAccessIn(blockName, kibanaRules) match {
         case None | Some(KibanaAccess.Unrestricted) => None
         case Some(_) => Some(KibanaRuleTogetherWith.ActionsRule)
       }
@@ -123,14 +128,17 @@ object BlockValidator extends Logging {
     }
   }
 
-  private def determineConfiguredKibanaAccessIn(kibanaRules: NonEmptyList[KibanaRelatedRule]) = {
+  private def determineConfiguredKibanaAccessIn(blockName: Block.Name,
+                                                kibanaRules: NonEmptyList[KibanaRelatedRule]) = {
     kibanaRules.collect {
       case r: KibanaAccessRule => r.settings.access
       case r: KibanaUserDataRule => r.settings.access
     } match {
       case Nil => None
-      case head :: rest =>
-        logger.warn("???") // todo:
+      case head :: Nil =>
+        Some(head)
+      case head :: _ =>
+        logger.warn(s"More than one kibana access rule found in the '${blockName.show}! It may lead to unexpected behaviors. Please, report this problem as soon as possible.'")
         Some(head)
     }
   }
