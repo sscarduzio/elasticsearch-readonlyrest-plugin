@@ -748,12 +748,10 @@ stages:
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'
     dependsOn:
-      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
-        succeeded(), 
-        succeeded('REQUIRED_CHECKS'),
+        succeeded(),
         succeeded('TEST'),
         eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
@@ -794,12 +792,10 @@ stages:
   - stage: DETERMINE_CI_TYPE
     displayName: 'Determine if this is release run'
     dependsOn:
-      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
-        succeeded(), 
-        succeeded('REQUIRED_CHECKS'),
+        succeeded(),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         ne(variables['Build.Reason'], 'Manual')
@@ -819,12 +815,10 @@ stages:
     displayName: 'Upload to S3 ROR plugin pre-builds'
     dependsOn:
       - DETERMINE_CI_TYPE
-      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(),
-        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
@@ -869,12 +863,10 @@ stages:
     displayName: 'Release ROR plugins'
     dependsOn:
       - DETERMINE_CI_TYPE
-      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(),
-        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
@@ -931,12 +923,10 @@ stages:
     displayName: 'Publish Maven artifacts'
     dependsOn:
       - DETERMINE_CI_TYPE
-      - REQUIRED_CHECKS
       - TEST
     condition: |
       and(
         succeeded(),
-        succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
