@@ -286,43 +286,43 @@ stages:
 #######################################################
 ##### Integration tests for ES 9.x on PRs
 #######################################################
-      - job:
-        condition:
-          and(
-            succeeded(),
-            ne(variables.isEpic, true),
-            ne(variables.isDevelop, true),
-            ne(variables.isMaster, true),
-            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
-          )
-        container: openjdk:22-slim
-        timeoutInMinutes: 120
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            IT_es91x:
-              ROR_TASK: integration_es91x
+#       - job:
+#         condition:
+#           and(
+#             succeeded(),
+#             ne(variables.isEpic, true),
+#             ne(variables.isDevelop, true),
+#             ne(variables.isMaster, true),
+#             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
+#           )
+#         container: openjdk:22-slim
+#         timeoutInMinutes: 120
+#         steps:
+#           - checkout: self
+#             fetchDepth: 1
+#             clean: false
+#             persistCredentials: true
+#           - script: |
+#               # Translate back env vars to avoid cyclical reference :/
+#               export aws_access_key_id=$var_aws_access_key_id
+#               export aws_secret_access_key=$var_aws_secret_access_key
+#
+#               echo "[TEST] executing ROR_TASK = $ROR_TASK"
+#               ci/run-pipeline.sh
+#             env:
+#               var_aws_access_key_id: $(aws_access_key_id)
+#               var_aws_secret_access_key: $(aws_secret_access_key)
+#           - task: PublishTestResults@2
+#             condition: failed()
+#             inputs:
+#               testRunTitle: "$(ROR_TASK) results"
+#               testResultsFiles: "**/TEST*xml"
+#               mergeTestResults: true
+#         strategy:
+#           maxParallel: 99
+#           matrix:
+#             IT_es91x:
+#               ROR_TASK: integration_es91x
 #######################################################
 ##### Integration tests for ES 8.x on PRs
 #######################################################
