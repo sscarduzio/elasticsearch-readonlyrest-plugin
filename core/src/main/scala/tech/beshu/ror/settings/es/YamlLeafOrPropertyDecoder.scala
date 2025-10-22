@@ -20,13 +20,33 @@ import cats.data.NonEmptyList
 import cats.{Functor, Monad}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
+import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.utils.yaml.YamlLeafDecoder
+
 import scala.language.implicitConversions
 
 trait YamlLeafOrPropertyDecoder[T] {
   def decode(json: Json): Either[String, T]
 }
 object YamlLeafOrPropertyDecoder {
+
+  def createRequiredValueDecoder[T](path: NonEmptyList[NonEmptyString], creator: String => Either[String, T])
+                                   (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[T] = {
+    implicit val yamlLeafDecoder: YamlLeafDecoder[T] = YamlLeafDecoder.from(creator)
+    implicit val propertyValueDecoder: PropertyValueDecoder[T] = PropertyValueDecoder.from(creator)
+    apply(path)
+  }
+
+  def createOptionalValueDecoder[T](path: NonEmptyList[NonEmptyString], creator: String => Either[String, T])
+                                   (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[T]] = {
+    implicit val yamlLeafDecoder: YamlLeafDecoder[T] = YamlLeafDecoder.from(creator)
+    implicit val propertyValueDecoder: PropertyValueDecoder[T] = PropertyValueDecoder.from(creator)
+    apply(path)
+  }
+
+  def pure[T](value: T): YamlLeafOrPropertyDecoder[T] = {
+    PureYamlLeafOrPropertyDecoder(value)
+  }
 
   implicit def apply[T](path: NonEmptyList[NonEmptyString])
                        (implicit yamlLeafDecoder: YamlLeafDecoder[T],
@@ -98,4 +118,8 @@ final class RequiredYamlLeafOrPropertyDecoder[T: YamlLeafDecoder : PropertyValue
       }
   }
 
+}
+
+final case class PureYamlLeafOrPropertyDecoder[T](value: T) extends YamlLeafOrPropertyDecoder[T] {
+  override def decode(json: Json): Either[String, T] = Right(value)
 }

@@ -16,17 +16,17 @@
  */
 package tech.beshu.ror.settings.es
 
+import better.files.File
 import cats.data.NonEmptyList
-import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.Decoder
+import eu.timepit.refined.types.all.NonEmptyString
 import monix.eval.Task
-import squants.information.Information
+import squants.information.{Information, Megabytes}
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsFile, RorSettingsIndex}
-import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
-import tech.beshu.ror.utils.yaml.YamlLeafDecoder
 
 final case class RorSettingsSourcesConfig(settingsIndex: RorSettingsIndex,
                                           settingsFile: RorSettingsFile,
@@ -36,46 +36,79 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
 
   def from(esEnv: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, RorSettingsSourcesConfig]] = {
-    implicit val decoder: Decoder[RorSettingsSourcesConfig] = for {
-      rorSettingsIndex <- decoders.rorSettingsIndexDecoder
-      rorSettingsFile <- decoders.rorSettingsFileDecoder(esEnv)
-      rorSettingsMaxSize <- decoders.settingsMaxSizeDecoder()
-    } yield RorSettingsSourcesConfig(
-      rorSettingsIndex,
-      rorSettingsFile,
-      rorSettingsMaxSize
-    )
+    implicit val rorBootSettingsDecoder: YamlLeafOrPropertyDecoder[RorSettingsSourcesConfig] =
+      decoders.rorSettingsSourcesConfigDecoder(systemContext, esEnv)
     loadSetting[RorSettingsSourcesConfig](esEnv, "ROR settings source settings")
   }
 
   private object decoders {
 
-    val rorSettingsIndexDecoder: Decoder[RorSettingsIndex] = {
-      implicit val indexNameDecoder: Decoder[RorSettingsIndex] =
-        Decoder[NonEmptyString]
-          .map(IndexName.Full.apply)
-          .map(RorSettingsIndex.apply)
-      YamlLeafDecoder[RorSettingsIndex](
-        path = NonEmptyList.of("readonlyrest", "settings_index"),
-        default = RorSettingsIndex.default
+    object defaults {
+      val rorSettingsMaxSize: Information = Megabytes(3)
+    }
+
+    object consts {
+      val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
+      val settingsSection: NonEmptyString = NonEmptyString.unsafeFrom("settings")
+      val indexNameKey: NonEmptyString = NonEmptyString.unsafeFrom("index_name")
+      val filePathKey: NonEmptyString = NonEmptyString.unsafeFrom("file_path")
+      val maxSizeKey: NonEmptyString = NonEmptyString.unsafeFrom("max_size")
+    }
+
+    def rorSettingsSourcesConfigDecoder(systemContext: SystemContext,
+                                        esEnv: EsEnv): YamlLeafOrPropertyDecoder[RorSettingsSourcesConfig] = {
+      for {
+        settingsIndexName <- settingsIndexNameDecoder(systemContext)
+        settingsFilePath <- settingsFileDecoder(systemContext)
+        settingsMaxSize <- settingsMaxSizeDecoder(systemContext)
+      } yield RorSettingsSourcesConfig(
+        settingsIndexName.getOrElse(RorSettingsIndex.default),
+        settingsFilePath.getOrElse(RorSettingsFile.default(esEnv)),
+        settingsMaxSize.getOrElse(defaults.rorSettingsMaxSize)
       )
     }
 
-    def rorSettingsFileDecoder(esEnv: EsEnv)
-                              (implicit systemContext: SystemContext): Decoder[RorSettingsFile] =
-      Decoder.instance(_ => Right(
-        RorProperties
-          .rorSettingsCustomFile(systemContext.propertiesProvider)
-          .getOrElse(RorSettingsFile.default(esEnv))
-      ))
+    private def settingsIndexNameDecoder(systemContext: SystemContext) = {
+      implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      val creator: String => Either[String, RorSettingsIndex] = { str =>
+        NonEmptyString
+          .from(str)
+          .map(str => RorSettingsIndex(IndexName.Full(str)))
+          .left.map(error => ???) // todo:
+      }
+      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.indexNameKey),
+        creator = creator
+      )
+    }
 
-    def settingsMaxSizeDecoder()
-                              (implicit systemContext: SystemContext): Decoder[Information] = {
-      Decoder.instance(_ => Right(
-        RorProperties.rorSettingsMaxSize(systemContext.propertiesProvider)
-      ))
+    private def settingsFileDecoder(systemContext: SystemContext) = {
+      implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      val creator: String => Either[String, RorSettingsFile] = { str =>
+        NonEmptyString
+          .from(str)
+          .map(str => RorSettingsFile(File(str.value)))
+          .left.map(error => ???) // todo:
+      }
+      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.filePathKey),
+        creator = creator
+      )
+    }
+
+    private def settingsMaxSizeDecoder(systemContext: SystemContext) = {
+      implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      val creator: String => Either[String, Information] = { str =>
+        Information
+          .parseString(str)
+          .toEither
+          .left.map(ex => ???) // todo:
+      }
+      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.maxSizeKey),
+        creator = creator
+      )
     }
 
   }
-
 }

@@ -19,23 +19,24 @@ package tech.beshu.ror.settings.es
 import cats.data.NonEmptyList
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.NonNegative
-import io.circe.Decoder
+import eu.timepit.refined.types.all.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
-import tech.beshu.ror.utils.yaml.YamlLeafDecoder
 
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.language.{implicitConversions, postfixOps}
+import scala.util.{Failure, Success, Try}
 
 sealed trait LoadingRorCoreStrategySettings
 object LoadingRorCoreStrategySettings extends YamlFileBasedSettingsLoaderSupport {
 
-  case object ForceLoadingFromFile$Settings extends LoadingRorCoreStrategySettings
+  case object ForceLoadingFromFileSettings extends LoadingRorCoreStrategySettings
   final case class LoadFromIndexWithFileFallback(indexLoadingRetrySettings: LoadingRetryStrategySettings,
                                                  coreRefreshSettings: CoreRefreshSettings)
     extends LoadingRorCoreStrategySettings
@@ -68,48 +69,158 @@ object LoadingRorCoreStrategySettings extends YamlFileBasedSettingsLoaderSupport
   sealed trait CoreRefreshSettings
   object CoreRefreshSettings {
     case object Disabled extends CoreRefreshSettings
-    final case class Enabled(refreshInterval: PositiveFiniteDuration) extends CoreRefreshSettings
+    final case class Enabled(poolInterval: PositiveFiniteDuration) extends CoreRefreshSettings
   }
 
   def load(esEnv: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, LoadingRorCoreStrategySettings]] = {
-    implicit val decoder: Decoder[LoadingRorCoreStrategySettings] = decoders.loadRorCoreStrategyDecoder(esEnv)
+    implicit val loadingRorCoreStrategySettingsDecoder: YamlLeafOrPropertyDecoder[LoadingRorCoreStrategySettings] =
+      decoders.loadingRorCoreStrategySettingsDecoder(systemContext)
     loadSetting[LoadingRorCoreStrategySettings](esEnv, "ROR loading core strategy settings")
   }
 
   private object decoders {
-    implicit def loadRorCoreStrategyDecoder(esEnv: EsEnv)
-                                           (implicit systemContext: SystemContext): Decoder[LoadingRorCoreStrategySettings] = {
-      YamlLeafDecoder[Boolean](
-        path = NonEmptyList.of("readonlyrest", "force_load_from_file"),
-        default = false
-      ) flatMap {
-        case true =>
-          Decoder.const(LoadingRorCoreStrategySettings.ForceLoadingFromFile$Settings)
-        case false =>
-          for {
-            loadingRetryStrategySettings <- loadLoadingRetryStrategySettings(systemContext.propertiesProvider)
-            coreRefreshIntervalSettings <- loadCoreRefreshSettings(systemContext.propertiesProvider)
-          } yield LoadingRorCoreStrategySettings.LoadFromIndexWithFileFallback(
-            loadingRetryStrategySettings, coreRefreshIntervalSettings
-          )
-      }
+
+    object defaults {
+      val coreRefreshSettings: CoreRefreshSettings = CoreRefreshSettings.Enabled((5 second).toRefinedPositiveUnsafe)
+      val loadingDelay: LoadingDelay = LoadingDelay((5 second).toRefinedNonNegativeUnsafe)
+      val loadingAttemptsCount: LoadingAttemptsCount = LoadingAttemptsCount(Refined.unsafeApply(5))
+      val loadingAttemptsInterval = LoadingAttemptsInterval((5 second).toRefinedNonNegativeUnsafe)
     }
 
-    private def loadCoreRefreshSettings(propertiesProvider: PropertiesProvider): Decoder[CoreRefreshSettings] = {
-      Decoder.instance(_ => Right(RorProperties.rorCoreRefreshSettings(propertiesProvider)))
+    private object consts {
+      val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
+      val forceLoadFromFileKey: NonEmptyString = NonEmptyString.unsafeFrom("force_load_from_file")
+      val loadFromIndexSection: NonEmptyString = NonEmptyString.unsafeFrom("load_from_index")
+      val retryStrategySection: NonEmptyString = NonEmptyString.unsafeFrom("initial_loading_retry_strategy")
+      val poolIntervalSection: NonEmptyString = NonEmptyString.unsafeFrom("poll_interval")
+      val attemptsIntervalKey: NonEmptyString = NonEmptyString.unsafeFrom("attempts_interval")
+      val attemptsCountKey: NonEmptyString = NonEmptyString.unsafeFrom("attempts_count")
+      val initialDelayKey: NonEmptyString = NonEmptyString.unsafeFrom("initial_delay")
     }
 
-    private def loadLoadingRetryStrategySettings(propertiesProvider: PropertiesProvider): Decoder[LoadingRetryStrategySettings] = {
+    def loadingRorCoreStrategySettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyDecoder[LoadingRorCoreStrategySettings] = {
       for {
-        loadingAttemptsInterval <- Decoder.instance(_ => Right(RorProperties.atStartupRorIndexSettingsLoadingAttemptsInterval(propertiesProvider)))
-        loadingAttemptsCount <- Decoder.instance(_ => Right(RorProperties.atStartupRorIndexSettingsLoadingAttemptsCount(propertiesProvider)))
-        loadingDelay <- Decoder.instance(_ => Right(RorProperties.atStartupRorIndexSettingLoadingDelay(propertiesProvider)))
-      } yield LoadingRetryStrategySettings(
-        loadingAttemptsInterval,
-        loadingAttemptsCount,
-        loadingDelay
+        forceLoadFromFile <- forceLoadFromFileDecoder(systemContext)
+        loadingRorCoreStrategy <- forceLoadFromFile match {
+          case None | Some(false) => loadFromIndexWithFileFallbackDecoder(systemContext)
+          case Some(true) => YamlLeafOrPropertyDecoder.pure[LoadingRorCoreStrategySettings](ForceLoadingFromFileSettings)
+        }
+      } yield loadingRorCoreStrategy
+    }
+
+    private def forceLoadFromFileDecoder(systemContext: SystemContext) = {
+      implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      val creator: String => Either[String, Boolean] = { str =>
+        str.toLowerCase match {
+          case "true" => Right(true)
+          case "false" => Right(false)
+          case _ => Left(???) // todo:
+        }
+      }
+      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = NonEmptyList.of(consts.rorSection, consts.forceLoadFromFileKey),
+        creator = creator
       )
+    }
+
+    private def loadFromIndexWithFileFallbackDecoder(systemContext: SystemContext): YamlLeafOrPropertyDecoder[LoadingRorCoreStrategySettings] = {
+      for {
+        loadingRetryStrategySettings <- loadingRetryStrategySettingsDecoder(systemContext)
+        coreRefreshSettings <- coreRefreshSettingsDecoder(systemContext)
+      } yield LoadFromIndexWithFileFallback(
+        loadingRetryStrategySettings,
+        coreRefreshSettings.getOrElse(defaults.coreRefreshSettings)
+      )
+    }
+
+    private def loadingRetryStrategySettingsDecoder(systemContext: SystemContext) = {
+      for {
+        loadingAttemptsInterval <- loadingAttemptsIntervalDecoder(systemContext)
+        loadingAttemptsCount <- loadingAttemptsCountDecoder(systemContext)
+        loadingDelay <- loadingDelayDecoder(systemContext)
+      } yield LoadingRetryStrategySettings(
+        loadingAttemptsInterval.getOrElse(defaults.loadingAttemptsInterval),
+        loadingAttemptsCount.getOrElse(defaults.loadingAttemptsCount),
+        loadingDelay.getOrElse(defaults.loadingDelay)
+      )
+    }
+
+    private def loadingAttemptsIntervalDecoder(systemContext: SystemContext) = {
+      implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      val creator: String => Either[String, LoadingAttemptsInterval] = { str =>
+        Try(Duration(str)) match {
+          case Success(v: FiniteDuration) =>
+            v.toRefineNonNegative
+              .map(v => LoadingAttemptsInterval(v))
+              .left.map(_ => ???) // todo:
+          case Success(_) | Failure(_) =>
+            Left(???) // todo:
+        }
+      }
+      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsIntervalKey),
+        creator = creator
+      )
+    }
+
+    private def loadingAttemptsCountDecoder(systemContext: SystemContext) = {
+      implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      val creator: String => Either[String, LoadingAttemptsCount] = { str =>
+        toNonNegativeInt(str) match {
+          case Success(value) => Right(LoadingAttemptsCount(value))
+          case Failure(exception) => Left(???) // todo:
+        }
+      }
+      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsCountKey),
+        creator = creator
+      )
+    }
+
+    private def loadingDelayDecoder(systemContext: SystemContext) = {
+      implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      val creator: String => Either[String, LoadingDelay] = { str =>
+        Try(Duration(str)) match {
+          case Success(v: FiniteDuration) =>
+            v.toRefineNonNegative
+              .map(v => LoadingDelay(v))
+              .left.map(_ => ???) // todo:
+          case Success(_) | Failure(_) =>
+            Left(???) // todo:
+        }
+      }
+      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.initialDelayKey),
+        creator = creator
+      )
+    }
+
+    private def coreRefreshSettingsDecoder(systemContext: SystemContext) = {
+      implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      val creator: String => Either[String, CoreRefreshSettings] = { str =>
+        Try(Duration(str)) match {
+          case Success(v: FiniteDuration) if v == Duration.Zero =>
+            Right(CoreRefreshSettings.Disabled)
+          case Success(v: FiniteDuration) =>
+            v.toRefinedPositive
+              .map(v => CoreRefreshSettings.Enabled(v))
+              .left.map(_ => ???) // todo:
+          case Success(_) | Failure(_) =>
+            Left(???) // todo:
+        }
+      }
+      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.poolIntervalSection),
+        creator = creator
+      )
+    }
+
+    private def toNonNegativeInt(value: String): Try[Int Refined NonNegative] = Try {
+      Try(Integer.valueOf(value)) match {
+        case Success(int) if int >= 0 => Refined.unsafeApply(int)
+        case Success(_) | Failure(_) => throw new IllegalArgumentException(s"Cannot convert '${value.show}' to non-negative integer")
+      }
     }
   }
 

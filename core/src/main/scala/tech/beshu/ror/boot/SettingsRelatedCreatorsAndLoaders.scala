@@ -39,7 +39,7 @@ object SettingsRelatedCreatorsAndLoaders {
     val mainSettingsFileSource = MainSettingsFileSource.create(settingsFile, settingsYamlParser)
     val testSettingsIndexSource = TestSettingsIndexSource.create(indexDocumentManager, settingsIndex, settingsYamlParser)
     val startingSettingsLoader = esConfigBasedRorSettings.loadingRorCoreStrategy match {
-      case s@LoadingRorCoreStrategySettings.ForceLoadingFromFile$Settings =>
+      case s@LoadingRorCoreStrategySettings.ForceLoadingFromFileSettings =>
         new ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource)
       case s@LoadingRorCoreStrategySettings.LoadFromIndexWithFileFallback(retryStrategySettings, _) =>
         new RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(

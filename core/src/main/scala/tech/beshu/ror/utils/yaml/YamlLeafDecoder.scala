@@ -20,6 +20,8 @@ import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{ACursor, HCursor, Json}
 
+import scala.language.implicitConversions
+
 
 // todo: move?
 trait FromStringCreator[A] {
@@ -52,8 +54,9 @@ trait YamlLeafDecoder[A] extends FromStringCreator[A] {
 }
 object YamlLeafDecoder {
 
-  implicit def toOptionalYamlLeafDecoder[T](implicit decoder: YamlLeafDecoder[T]): YamlLeafDecoder[Option[T]] =
+  implicit def toOptionalYamlLeafDecoder[T](implicit decoder: YamlLeafDecoder[T]): YamlLeafDecoder[Option[T]] = {
     new OptionalYamlLeafDecoder
+  }
 
   final def from[T](creator: String => Either[String, T]): YamlLeafDecoder[T] =
     new RequiredYamlLeafDecoder[T](creator)

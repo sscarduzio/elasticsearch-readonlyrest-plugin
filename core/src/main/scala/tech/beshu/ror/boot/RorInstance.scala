@@ -190,7 +190,7 @@ object RorInstance {
 
   private def modeFrom(strategy: LoadingRorCoreStrategySettings) = {
     strategy match {
-      case LoadingRorCoreStrategySettings.ForceLoadingFromFile$Settings =>
+      case LoadingRorCoreStrategySettings.ForceLoadingFromFileSettings =>
         Mode.NoPeriodicIndexCheck
       case LoadingRorCoreStrategySettings.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Disabled) =>
         Mode.NoPeriodicIndexCheck
