@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.KibanaApp
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+@deprecated("This rule is deprecated. Users should use KibanaUserDataRule instead.", "1.48.0")
 class KibanaHideAppsRule(val settings: Settings)
   extends MatchingAlwaysRule with KibanaRelatedRule {
 

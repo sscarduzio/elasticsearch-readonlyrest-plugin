@@ -153,10 +153,10 @@ tasks.withType(ScalaCompile).configureEach {
             "-Wunused:params",
             "-Wunused:privates",
             "-Wunused:nowarn",
+            "-Wconf:cat=deprecation&origin=tech\\.beshu(\\.ror)?\\..*:i"
     ]
 
     parameters -= ["-target:8"]
-
 
     // Finally set the additionalParameters
     scalaCompileOptions.additionalParameters = parameters

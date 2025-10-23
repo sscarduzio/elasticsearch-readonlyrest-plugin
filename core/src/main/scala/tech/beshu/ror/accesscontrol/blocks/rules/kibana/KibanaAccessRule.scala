@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.Setting
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 
+@deprecated("This rule is deprecated. Users should use KibanaUserDataRule instead.", "1.48.0")
 class KibanaAccessRule(override val settings: Settings)
   extends BaseKibanaRule(settings) {
 
