@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolv
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 
-@deprecated("This rule is deprecated. Users should use KibanaUserDataRule instead.", "1.48.0")
+@deprecated("[ROR] This rule is deprecated. Users should use KibanaUserDataRule instead.", "1.48.0")
 class KibanaTemplateIndexRule(val settings: Settings)
   extends MatchingAlwaysRule with KibanaRelatedRule {
 
