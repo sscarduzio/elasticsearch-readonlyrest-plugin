@@ -20,10 +20,10 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
+import org.elasticsearch.index.IndexMode
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -83,7 +83,8 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
         resolvedIndex.getName,
         allowedResolvedAliases,
         resolvedIndex.getAttributes,
-        resolvedIndex.getDataStream
+        resolvedIndex.getDataStream,
+        resolvedIndex.getMode
       ))
     } else {
       None
@@ -110,9 +111,13 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
     allowedIndices.exists(_.matches(resolvedAliasOrIndexName))
   }
 
-  private def createResolvedIndex(index: String, aliases: List[String], attributes: Array[String], dataStream: String) = {
+  private def createResolvedIndex(index: String,
+                                  aliases: List[String],
+                                  attributes: Array[String],
+                                  dataStream: String,
+                                  indexMode: IndexMode) = {
     onClass(classOf[ResolvedIndex])
-      .create(index, aliases.toArray, attributes, dataStream)
+      .create(index, aliases.toArray, attributes, dataStream, indexMode)
       .get[ResolvedIndex]()
   }
 
