@@ -106,9 +106,9 @@ object BlockValidator extends Logging {
   private def validateRuleUsageInContextOf(blockName: Block.Name,
                                            kibanaRules: NonEmptyList[KibanaRelatedRule]): Rule => Option[KibanaRuleTogetherWith] = {
     case _: ActionsRule =>
-      determineConfiguredKibanaAccessIn(blockName, kibanaRules) match {
-        case None | Some(KibanaAccess.Unrestricted) => None
-        case Some(_) => Some(KibanaRuleTogetherWith.ActionsRule)
+      determineKibanaAccessInBlock(blockName, kibanaRules) match {
+        case KibanaAccess.Unrestricted => None
+        case _ => Some(KibanaRuleTogetherWith.ActionsRule)
       }
     case _: FilterRule =>
       Some(KibanaRuleTogetherWith.FilterRule)
@@ -128,16 +128,16 @@ object BlockValidator extends Logging {
     }
   }
 
-  private def determineConfiguredKibanaAccessIn(blockName: Block.Name,
-                                                kibanaRules: NonEmptyList[KibanaRelatedRule]) = {
+  private def determineKibanaAccessInBlock(blockName: Block.Name,
+                                           kibanaRules: NonEmptyList[KibanaRelatedRule]) = {
     kibanaRules.collect {
       case r: KibanaAccessRule => r.settings.access
       case r: KibanaUserDataRule => r.settings.access
     } match {
       case Nil =>
-        None
+        KibanaAccess.Unrestricted // no kibana access-level related rule - it's the Unrestricted access
       case head :: Nil =>
-        Some(head)
+        head
       case head :: _ =>
         throw new IllegalStateException(s"More than one kibana access rule found in the '${blockName.show}'! It may lead to unexpected behaviors. Please, report this problem as soon as possible.'")
     }
