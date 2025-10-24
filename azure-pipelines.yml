@@ -490,6 +490,65 @@ stages:
               ROR_TASK: integration_es67x
 
 #######################################################
+##### Integration tests on Windows on master/develop
+#######################################################
+      - job:
+        condition:
+          and(
+            succeeded(),
+            or(
+              eq(variables.isEpic, true),
+              eq(variables.isDevelop, true),
+              eq(variables.isMaster, true)
+            ),
+            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
+          )
+        timeoutInMinutes: 150
+        pool:
+          vmImage: 'windows-2025'
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - task: JavaToolInstaller@0
+            displayName: Switch to Java 21
+            inputs:
+              versionSpec: '21'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+          - powershell: |
+              Write-Host ">>> $env:ES_MODULE"
+              .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
+              if ($LASTEXITCODE -ne 0) {
+                Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
+                  Get-Content $_.FullName
+                }
+                exit 1
+              }
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(Windows ES_MODULE) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            WIN_IT_es92x:
+              ES_MODULE: es92x
+            WIN_IT_es90x:
+              ES_MODULE: es90x
+            WIN_IT_es818x:
+              ES_MODULE: es818x
+            WIN_IT_es80x:
+              ES_MODULE: es80x
+            WIN_IT_es717x:
+              ES_MODULE: es717x
+            WIN_IT_es70x:
+              ES_MODULE: es70x
+
+#######################################################
 ##### Integration tests on Windows on PRs
 #######################################################
       - job:
@@ -533,69 +592,12 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            WIN_IT_es91x:
-              ES_MODULE: es91x
+            WIN_IT_es92x:
+              ES_MODULE: es92x
             WIN_IT_es818x:
               ES_MODULE: es818x
-
-#######################################################
-##### Integration tests on Windows on master/develop
-#######################################################
-      - job:
-        condition:
-          and(
-            succeeded(),
-            or(
-              eq(variables.isEpic, true),
-              eq(variables.isDevelop, true),
-              eq(variables.isMaster, true)
-            ),
-            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
-          )
-        timeoutInMinutes: 150
-        pool:
-          vmImage: 'windows-2025'
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-                    Write-Host ">>> $env:ES_MODULE"
-                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-                    if ($LASTEXITCODE -ne 0) {
-                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                        Get-Content $_.FullName
-                      }
-                      exit 1
-                    }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            WIN_IT_es91x:
-              ES_MODULE: es91x
-            WIN_IT_es90x:
-              ES_MODULE: es90x
-            WIN_IT_es818x:
-              ES_MODULE: es818x
-            WIN_IT_es80x:
-              ES_MODULE: es80x
             WIN_IT_es717x:
               ES_MODULE: es717x
-            WIN_IT_es70x:
-              ES_MODULE: es70x
 
 #######################################################
 ##### Integration tests on Windows for manual job 'run_all_tests_on_windows'
@@ -638,6 +640,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            WIN_IT_es92x:
+              ES_MODULE: es92x
             WIN_IT_es91x:
               ES_MODULE: es91x
             WIN_IT_es90x:
