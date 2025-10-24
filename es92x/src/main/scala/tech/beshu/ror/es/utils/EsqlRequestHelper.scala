@@ -28,9 +28,8 @@ import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFie
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-import java.time.ZoneOffset
 import java.util.regex.Pattern
-import java.util.{Locale, List as JList}
+import java.util.List as JList
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
@@ -75,26 +74,6 @@ object EsqlRequestHelper {
     on(request).call("params").get[AnyRef]
   }
 
-  private def createConfiguration(request: CompositeIndicesRequest): AnyRef = {
-    val classLoader = request.getClass.getClassLoader
-    onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.session.Configuration"))
-      .create(
-        ZoneOffset.UTC,
-        Option(on(request).call("locale").get[Locale]).getOrElse(Locale.US),
-        null, // at the moment it's not used anywhere, so it's null here - probably to be fixed in the future
-        "ROR", // at the moment it's not used anywhere, so it's placeholder here - probably to be fixed in the future
-        on(request).call("pragmas").get[AnyRef],
-        Int.MaxValue,
-        Int.MaxValue,
-        getQuery(request),
-        on(request).call("profile").get[AnyRef],
-        on(request).call("tables").get[AnyRef],
-        System.nanoTime(),
-        Option(on(request).call("allowPartialResults").get[Any]).getOrElse(true)
-      )
-      .get[AnyRef]()
-  }
-
   private def newQueryFrom(oldQuery: String, requestTables: NonEmptyList[IndexTable], finalIndices: Set[String]) = {
     requestTables.toList.foldLeft(oldQuery) {
       case (currentQuery, table) =>
@@ -130,8 +109,7 @@ object EsqlRequestHelper {
     private def createStatement(request: CompositeIndicesRequest) = {
       val query = getQuery(request)
       val params = getParams(request)
-      val configuration = createConfiguration(request)
-      Try(on(underlyingObject).call("createStatement", query, params, configuration).get[AnyRef]) match {
+      Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
         case Success(s) => Right(s)
         case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
         case Failure(ex) => Left(ClassificationError.ParsingException(ex))
@@ -140,14 +118,12 @@ object EsqlRequestHelper {
 
     private def indicesFrom(statement: Any) = {
       val preAnalyze =  doPreAnalyze(newPreAnalyzer, statement)
-      val indexPatterns = indexPatternsFrom(preAnalyze)
-      indexPatterns
-        .map(indexPatternStringFrom)
-        .flatMap { indexPatternString =>
-          NonEmptyList
-            .fromList(splitIntoIndices(indexPatternString))
-            .map(IndexTable(indexPatternString, _))
-        }
+      val indexPattern = indexPatternFrom(preAnalyze)
+      val indexPatternString = indexPatternStringFrom(indexPattern)
+      NonEmptyList
+        .fromList(splitIntoIndices(indexPatternString))
+        .map(IndexTable(indexPatternString, _))
+        .toList
     }
 
     private def splitIntoIndices(tableString: String) = {
@@ -162,8 +138,8 @@ object EsqlRequestHelper {
       on(preAnalyzer).call("preAnalyze", statement).get[Any]()
     }
 
-    private def indexPatternsFrom(preAnalysis: Any) = {
-      on(preAnalysis).get[java.util.List[Any]]("indices").asScala.toList
+    private def indexPatternFrom(preAnalysis: Any) = {
+      on(preAnalysis).get[Any]("indexPattern")
     }
 
     private def indexPatternStringFrom(indexPattern: Any) = {
