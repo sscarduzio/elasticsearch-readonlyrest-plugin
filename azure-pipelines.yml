@@ -164,6 +164,7 @@ stages:
               testRunTitle: "$(ROR_TASK) results"
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
+
 #######################################################
 ##### Integration tests for ES 9.x on master/develop
 #######################################################
@@ -204,6 +205,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es92x:
+              ROR_TASK: integration_es92x
             IT_es91x:
               ROR_TASK: integration_es91x
             IT_es90x:
@@ -283,92 +286,7 @@ stages:
               ROR_TASK: integration_es81x
             IT_es80x:
               ROR_TASK: integration_es80x
-#######################################################
-##### Integration tests for ES 9.x on PRs
-#######################################################
-      - job:
-        condition:
-          and(
-            succeeded(),
-            ne(variables.isEpic, true),
-            ne(variables.isDevelop, true),
-            ne(variables.isMaster, true),
-            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
-          )
-        container: openjdk:22-slim
-        timeoutInMinutes: 120
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
 
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            IT_es91x:
-              ROR_TASK: integration_es91x
-#######################################################
-##### Integration tests for ES 8.x on PRs
-#######################################################
-      - job:
-        condition:
-          and(
-            succeeded(),
-            ne(variables.isEpic, true),
-            ne(variables.isDevelop, true),
-            ne(variables.isMaster, true),
-            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
-          )
-        container: openjdk:22-slim
-        timeoutInMinutes: 120
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-        strategy:
-          maxParallel: 99
-          matrix:
-            IT_es818x:
-              ROR_TASK: integration_es818x
-            IT_es816x:
-              ROR_TASK: integration_es816x
-            IT_es810x:
-              ROR_TASK: integration_es810x
-            IT_es80x:
-              ROR_TASK: integration_es80x
 #######################################################
 ##### Integration tests for ES <= 7.x on master/develop
 #######################################################
@@ -434,6 +352,97 @@ stages:
               ROR_TASK: integration_es70x
             IT_es67x:
               ROR_TASK: integration_es67x
+
+#######################################################
+##### Integration tests for ES 9.x on PRs
+#######################################################
+      - job:
+        condition:
+          and(
+            succeeded(),
+            ne(variables.isEpic, true),
+            ne(variables.isDevelop, true),
+            ne(variables.isMaster, true),
+            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
+          )
+        container: openjdk:22-slim
+        timeoutInMinutes: 120
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es92x:
+              ROR_TASK: integration_es92x
+            IT_es90x:
+              ROR_TASK: integration_es90x
+
+#######################################################
+##### Integration tests for ES 8.x on PRs
+#######################################################
+      - job:
+        condition:
+          and(
+            succeeded(),
+            ne(variables.isEpic, true),
+            ne(variables.isDevelop, true),
+            ne(variables.isMaster, true),
+            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
+          )
+        container: openjdk:22-slim
+        timeoutInMinutes: 120
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es818x:
+              ROR_TASK: integration_es818x
+            IT_es816x:
+              ROR_TASK: integration_es816x
+            IT_es810x:
+              ROR_TASK: integration_es810x
+            IT_es80x:
+              ROR_TASK: integration_es80x
+
 #######################################################
 ##### Integration tests for ES <= 7.x on PRs
 #######################################################
@@ -479,6 +488,7 @@ stages:
               ROR_TASK: integration_es70x
             IT_es67x:
               ROR_TASK: integration_es67x
+
 #######################################################
 ##### Integration tests on Windows on PRs
 #######################################################
@@ -527,6 +537,7 @@ stages:
               ES_MODULE: es91x
             WIN_IT_es818x:
               ES_MODULE: es818x
+
 #######################################################
 ##### Integration tests on Windows on master/develop
 #######################################################
@@ -585,6 +596,7 @@ stages:
               ES_MODULE: es717x
             WIN_IT_es70x:
               ES_MODULE: es70x
+
 #######################################################
 ##### Integration tests on Windows for manual job 'run_all_tests_on_windows'
 #######################################################
@@ -688,6 +700,7 @@ stages:
               ES_MODULE: es72x
             WIN_IT_es70x:
               ES_MODULE: es70x
+
 ####################################
 ##### Unit tests on Windows
 ####################################
@@ -727,6 +740,8 @@ stages:
               testRunTitle: "$(Windows core) results"
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
+
+
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'
     dependsOn:
