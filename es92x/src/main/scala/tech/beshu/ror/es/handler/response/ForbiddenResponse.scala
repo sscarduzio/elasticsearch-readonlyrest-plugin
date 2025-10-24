@@ -29,7 +29,7 @@ final class ForbiddenResponse private(context: ForbiddenResponseContext)
   addMetadata("es.due_to", context.causes.toList.asJava)
 
   if (context.doesRequirePassword) {
-    addHttpHeader("WWW-Authenticate", "Basic")
+    addHeader("WWW-Authenticate", "Basic")
   }
 
   override def status(): RestStatus =
@@ -38,6 +38,11 @@ final class ForbiddenResponse private(context: ForbiddenResponseContext)
     } else {
       RestStatus.FORBIDDEN
     }
+
+  private def addHeader(name: String, value: String): Unit = {
+    addHttpHeader(name, value)
+    addBodyHeader(name, value)
+  }
 }
 
 object ForbiddenResponse extends ResponseCreator[ForbiddenResponse] {
