@@ -23,7 +23,7 @@ import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.{ClusterSettings, Settings}
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport
 import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
-import org.elasticsearch.telemetry.tracing.Tracer
+import org.elasticsearch.telemetry.TelemetryProvider
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.{SharedGroupFactory, TLSConfig}
 import org.elasticsearch.xcontent.NamedXContentRegistry
@@ -38,9 +38,9 @@ class SSLNetty4HttpServerTransport(settings: Settings,
                                    ssl: ExternalSslConfiguration,
                                    clusterSettings: ClusterSettings,
                                    sharedGroupFactory: SharedGroupFactory,
-                                   tracer: Tracer,
+                                   telemetryProvider: TelemetryProvider,
                                    fipsCompliant: Boolean)
-  extends Netty4HttpServerTransport(settings, networkService, threadPool, xContentRegistry, dispatcher, clusterSettings, sharedGroupFactory, tracer, TLSConfig.noTLS(), null, null)
+  extends Netty4HttpServerTransport(settings, networkService, threadPool, xContentRegistry, dispatcher, clusterSettings, sharedGroupFactory, telemetryProvider, TLSConfig.noTLS(), null, null)
     with Logging {
 
   private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled)

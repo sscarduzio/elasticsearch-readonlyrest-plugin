@@ -39,7 +39,7 @@ import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins.*
 import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestController, RestHandler}
-import org.elasticsearch.telemetry.tracing.Tracer
+import org.elasticsearch.telemetry.TelemetryProvider
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.{Netty4Utils, SharedGroupFactory}
 import org.elasticsearch.transport.{Transport, TransportInterceptor}
@@ -159,13 +159,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                  dispatcher: HttpServerTransport.Dispatcher,
                                  perRequestThreadContext: BiConsumer[HttpPreRequest, ThreadContext],
                                  clusterSettings: ClusterSettings,
-                                 tracer: Tracer): util.Map[String, Supplier[HttpServerTransport]] = {
+                                 telemetryProvider: TelemetryProvider): util.Map[String, Supplier[HttpServerTransport]] = {
     rorEsConfig
       .sslConfig
       .externalSsl
       .map(ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings), tracer, rorEsConfig.fipsConfig.isSslFipsCompliant)
+          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings), telemetryProvider, rorEsConfig.fipsConfig.isSslFipsCompliant)
         }
       )
       .toMap
