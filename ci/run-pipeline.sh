@@ -57,6 +57,10 @@ run_integration_tests() {
   ./gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es92x" ]]; then
+  run_integration_tests "es92x"
+fi
+
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es91x" ]]; then
   run_integration_tests "es91x"
 fi
