@@ -433,5 +433,5 @@ private object SslDecoders extends Logging {
   }
 
   private def fileDecoder(basePath: File): Decoder[File] =
-    Decoder.decodeString.map { str => basePath / str }
+    Decoder.decodeString.map { str => basePath / str } // todo: I don't think this is ok. readonlyrest.yml can have custom location. Can it?
 }
