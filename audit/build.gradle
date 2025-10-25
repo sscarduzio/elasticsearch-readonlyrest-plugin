@@ -26,8 +26,6 @@ plugins {
     id "com.github.maiflai.scalatest" version "0.33"
 }
 
-
-
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(8)
