@@ -33,9 +33,9 @@ class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode) extends Au
 object EcsV1AuditLogSerializer {
   private val fields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
     AuditFieldName("ecs") -> AuditFieldValueDescriptor.Nested(
-      // Schema defined by EcsV1AuditLogSerializer is ECS 1.4.0 compliant and does not use newer features
-      // introduced by later versions (https://www.elastic.co/guide/en/ecs/1.4/ecs-field-reference.html)
-      AuditFieldName("version") -> AuditFieldValueDescriptor.StaticText("1.4.0"),
+      // Schema defined by EcsV1AuditLogSerializer is ECS 1.6.0 compliant and does not use newer features
+      // introduced by later versions (https://www.elastic.co/guide/en/ecs/1.6/ecs-field-reference.html)
+      AuditFieldName("version") -> AuditFieldValueDescriptor.StaticText("1.6.0"),
     ),
     AuditFieldName("trace") -> AuditFieldValueDescriptor.Nested(
       AuditFieldName("id") -> AuditFieldValueDescriptor.CorrelationId,
@@ -66,9 +66,9 @@ object EcsV1AuditLogSerializer {
     ),
     AuditFieldName("event") -> AuditFieldValueDescriptor.Nested(
       AuditFieldName("id") -> AuditFieldValueDescriptor.Id,
-      AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
-      AuditFieldName("type") -> AuditFieldValueDescriptor.Type,
-      AuditFieldName("reason") -> AuditFieldValueDescriptor.FinalState,
+      AuditFieldName("dataset") -> AuditFieldValueDescriptor.Action, // ROR Action describes the resource being accessed, so it is dataset in ECS
+      AuditFieldName("action") -> AuditFieldValueDescriptor.Type, // ROR Type describes operation that is executed, so it is ECS action
+      AuditFieldName("reason") -> AuditFieldValueDescriptor.FinalState, // ROR Final state described the outcome, so it is the ECS reason of event happening, the ROR Reason is a custom detailed_reason label
       AuditFieldName("duration") -> AuditFieldValueDescriptor.ProcessingDurationNanos,
     ),
     AuditFieldName("error") -> AuditFieldValueDescriptor.Nested(
@@ -82,6 +82,7 @@ object EcsV1AuditLogSerializer {
       AuditFieldName("involved_indices") -> AuditFieldValueDescriptor.InvolvedIndices,
       AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory,
       AuditFieldName("x_forwarded_for") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
+      AuditFieldName("detailed_reason") -> AuditFieldValueDescriptor.Reason,
     ),
   )
 }
