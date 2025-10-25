@@ -18,6 +18,8 @@ package tech.beshu.ror.accesscontrol.factory
 
 import cats.data.*
 import cats.data.Validated.*
+import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
@@ -27,17 +29,19 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
+import tech.beshu.ror.accesscontrol.domain.KibanaAccess
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith, RuleDoesNotMeetRequirement}
 import tech.beshu.ror.implicits.*
 
-object BlockValidator {
+object BlockValidator extends Logging {
 
-  def validate(rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+  def validate(blockName: Block.Name,
+               rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
     (
       validateAuthorizationWithAuthenticationPrinciple(rules),
       validateOnlyOneAuthenticationRulePrinciple(rules),
       validateRequirementsForRulesUsingVariables(rules),
-      validateKibanaRuleInContextOfOtherRules(rules),
+      validateKibanaRuleInContextOfOtherRules(blockName, rules),
     ).mapN { case (_, _, _, _) => () }
   }
 
@@ -74,51 +78,77 @@ object BlockValidator {
     }
   }
 
-  private def validateKibanaRuleInContextOfOtherRules(ruleDefs: NonEmptyList[RuleDefinition[Rule]]) = {
-    if(isKibanaRelated(ruleDefs)) {
-      (
-        validateIfKibanaUserDataRuleIsNotUsedWithOldDeprecatedKibanaRules(ruleDefs),
-        validateIfKibanaRelatedRulesCoexistenceWithOther(ruleDefs)
-      ).mapN { case _ => () }
-    } else {
-      Validated.Valid(())
+  private def validateKibanaRuleInContextOfOtherRules(blockName: Block.Name,
+                                                      ruleDefs: NonEmptyList[RuleDefinition[Rule]]) = {
+    val allRules = ruleDefs.map(_.rule)
+    findKibanaRelatedRules(allRules) match {
+      case Some(kibanaRules) =>
+        (
+          validateIfKibanaUserDataRuleIsNotUsedWithOldDeprecatedKibanaRules(kibanaRules, allRules),
+          validateIfKibanaRelatedRulesCoexistenceWithOther(blockName, kibanaRules, allRules)
+        ).mapN { case _ => () }
+      case None =>
+        Validated.Valid(())
     }
   }
 
-  private def isKibanaRelated(ruleDefs: NonEmptyList[RuleDefinition[Rule]]) = {
-    ruleDefs.exists(_.rule match {
-      case _: KibanaRelatedRule => true
-      case _ => false
-    })
+  private def validateIfKibanaRelatedRulesCoexistenceWithOther(blockName: Block.Name,
+                                                               kibanaRulesInBlock: NonEmptyList[KibanaRelatedRule],
+                                                               allRulesInBlock: NonEmptyList[Rule]) = {
+    NonEmptyList.fromList {
+      allRulesInBlock.toList.flatMap(validateRuleUsageInContextOf(blockName, kibanaRulesInBlock))
+    } match {
+      case Some(errors) => Validated.Invalid(errors)
+      case None => Validated.Valid(())
+    }
   }
 
-  private def validateIfKibanaRelatedRulesCoexistenceWithOther(rules: NonEmptyList[RuleDefinition[Rule]]) = {
-    if(isKibanaRelated(rules)) {
-      NonEmptyList
-        .fromList {
-          rules
-            .map(_.rule)
-            .collect[BlockValidationError] {
-              case _: ActionsRule => KibanaRuleTogetherWith.ActionsRule
-              case _: FilterRule => KibanaRuleTogetherWith.FilterRule
-              case _: FieldsRule => KibanaRuleTogetherWith.FieldsRule
-              case _: ResponseFieldsRule => KibanaRuleTogetherWith.ResponseFieldsRule
-            }
-        } match {
-        case None => Validated.Valid(())
-        case Some(errors) => Validated.Invalid(errors)
+  private def validateRuleUsageInContextOf(blockName: Block.Name,
+                                           kibanaRules: NonEmptyList[KibanaRelatedRule]): Rule => Option[KibanaRuleTogetherWith] = {
+    case _: ActionsRule =>
+      determineKibanaAccessInBlock(blockName, kibanaRules) match {
+        case KibanaAccess.Unrestricted => None
+        case _ => Some(KibanaRuleTogetherWith.ActionsRule)
       }
-    } else {
-      Validated.Valid(())
+    case _: FilterRule =>
+      Some(KibanaRuleTogetherWith.FilterRule)
+    case _: FieldsRule =>
+      Some(KibanaRuleTogetherWith.FieldsRule)
+    case _: ResponseFieldsRule =>
+      Some(KibanaRuleTogetherWith.ResponseFieldsRule)
+    case _ =>
+      None
+  }
+
+  private def findKibanaRelatedRules(rules: NonEmptyList[Rule]): Option[NonEmptyList[KibanaRelatedRule]] = {
+    NonEmptyList.fromList {
+      rules.collect {
+        case r: KibanaRelatedRule => r
+      }
     }
   }
 
-  private def validateIfKibanaUserDataRuleIsNotUsedWithOldDeprecatedKibanaRules(ruleDefs: NonEmptyList[RuleDefinition[Rule]]) = {
-    if(containsKibanaUserDataRule(ruleDefs)) {
+  private def determineKibanaAccessInBlock(blockName: Block.Name,
+                                           kibanaRules: NonEmptyList[KibanaRelatedRule]) = {
+    kibanaRules.collect {
+      case r: KibanaAccessRule => r.settings.access
+      case r: KibanaUserDataRule => r.settings.access
+    } match {
+      case Nil =>
+        KibanaAccess.Unrestricted // no kibana access-level related rule - it's the Unrestricted access
+      case head :: Nil =>
+        head
+      case head :: _ =>
+        throw new IllegalStateException(s"More than one kibana access rule found in the '${blockName.show}'! It may lead to unexpected behaviors. Please, report this problem as soon as possible.'")
+    }
+  }
+
+  private def validateIfKibanaUserDataRuleIsNotUsedWithOldDeprecatedKibanaRules(kibanaRulesInBlock: NonEmptyList[KibanaRelatedRule],
+                                                                                allRulesInBlock: NonEmptyList[Rule]) = {
+    if (containsKibanaUserDataRule(kibanaRulesInBlock)) {
       NonEmptyList
         .fromList {
-          ruleDefs
-            .map(_.rule)
+          allRulesInBlock
             .collect[BlockValidationError] {
               case _: KibanaAccessRule => KibanaUserDataRuleTogetherWith.KibanaAccessRule
               case _: KibanaHideAppsRule => KibanaUserDataRuleTogetherWith.KibanaHideAppsRule
@@ -134,11 +164,11 @@ object BlockValidator {
     }
   }
 
-  private def containsKibanaUserDataRule(ruleDefs: NonEmptyList[RuleDefinition[Rule]]) = {
-    ruleDefs.exists(_.rule match {
+  private def containsKibanaUserDataRule(rules: NonEmptyList[KibanaRelatedRule]) = {
+    rules.exists {
       case _: KibanaUserDataRule => true
       case _ => false
-    })
+    }
   }
 
   private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])
