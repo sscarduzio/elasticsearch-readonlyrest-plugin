@@ -33,7 +33,8 @@ class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode) extends Au
 object EcsV1AuditLogSerializer {
   private val fields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
     AuditFieldName("ecs") -> AuditFieldValueDescriptor.Nested(
-      // Schema defined by EcsV1AuditLogSerializer is ECS 1.4.0 compliant and does not use newer features introduced by later versions
+      // Schema defined by EcsV1AuditLogSerializer is ECS 1.4.0 compliant and does not use newer features
+      // introduced by later versions (https://www.elastic.co/guide/en/ecs/1.4/ecs-field-reference.html)
       AuditFieldName("version") -> AuditFieldValueDescriptor.StaticText("1.4.0"),
     ),
     AuditFieldName("trace") -> AuditFieldValueDescriptor.Nested(

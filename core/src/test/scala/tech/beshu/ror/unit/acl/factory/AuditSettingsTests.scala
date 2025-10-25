@@ -672,8 +672,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    "acl_history" : "historyEntry1, historyEntry2"
                 |  }
                 |}""".stripMargin
-            val actualJson = circeJsonWithIgnoredTimestamp(serializedResponse)
-            val expectedJson = circeJsonWithIgnoredTimestamp(Some(new JSONObject(expectedJsonStr)))
+            val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
+            val expectedJson = circeJsonWithIgnoredTimestamp(new JSONObject(expectedJsonStr))
             actualJson should be(expectedJson)
           }
           "deprecated custom serializer is set" in {
@@ -2064,8 +2064,19 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  def circeJsonWithIgnoredTimestamp(json: Option[JSONObject]): Option[Json] = {
-    json.map(_.put("@timestamp", "IGNORED").toString(0)).flatMap(parser.parse(_).toOption)
+  private def circeJsonWithIgnoredTimestamp(json: JSONObject): Option[Json] = {
+    json
+      .withTimestampValue("IGNORED")
+      .circeJsonE
+      .toOption
+  }
+
+  extension (jsonObject: JSONObject) {
+    private def withTimestampValue(value: String): JSONObject = {
+      jsonObject.put("@timestamp", value)
+    }
+    private def circeJsonE: Either[String, Json] =
+      parser.parse(jsonObject.toString(0)).left.map(_.getMessage)
   }
 
 }
