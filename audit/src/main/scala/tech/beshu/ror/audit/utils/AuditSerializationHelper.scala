@@ -168,6 +168,7 @@ private[ror] object AuditSerializationHelper {
 
     case object Reason extends AuditFieldValueDescriptor
 
+    @deprecated("[ROR] The User audit field value descriptor should not be used. Use LoggedUser or PresentedIdentity instead", "1.68.0")
     case object User extends AuditFieldValueDescriptor
 
     case object LoggedUser extends AuditFieldValueDescriptor
