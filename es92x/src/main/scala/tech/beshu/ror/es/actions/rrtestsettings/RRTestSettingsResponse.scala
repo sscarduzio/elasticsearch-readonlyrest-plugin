@@ -14,35 +14,35 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rrtestconfig
+package tech.beshu.ror.es.actions.rrtestsettings
 
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import tech.beshu.ror.es.utils.StatusToXContentObject
 import org.elasticsearch.rest.RestStatus
 import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
-import tech.beshu.ror.api.TestConfigApi
-import tech.beshu.ror.api.TestConfigApi.TestConfigResponse.*
+import tech.beshu.ror.api.TestSettingsApi
+import tech.beshu.ror.api.TestSettingsApi.TestSettingsResponse.*
 
 import java.time.ZoneOffset
 
-class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
+class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
   extends ActionResponse with StatusToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response match {
-      case provideConfigResponse: ProvideTestConfig => provideConfigResponse match {
-        case res: ProvideTestConfig.CurrentTestSettings => currentConfigJson(builder, res)
-        case ProvideTestConfig.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
-        case res: ProvideTestConfig.TestSettingsInvalidated => invalidatedConfigJson(builder, res)
+      case provideSettingsResponse: ProvideTestSettings => provideSettingsResponse match {
+        case res: ProvideTestSettings.CurrentTestSettings => currentSettingsJson(builder, res)
+        case ProvideTestSettings.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
+        case res: ProvideTestSettings.TestSettingsInvalidated => invalidatedSettingsJson(builder, res)
       }
-      case updateConfigResponse: UpdateTestConfig => updateConfigResponse match {
-        case res: UpdateTestConfig.SuccessResponse => updateConfigSuccessResponseJson(builder, res)
-        case UpdateTestConfig.FailedResponse(message) => addResponseJson(builder, response.status, message)
+      case updateSettingsResponse: UpdateTestSettings => updateSettingsResponse match {
+        case res: UpdateTestSettings.SuccessResponse => updateSettingsSuccessResponseJson(builder, res)
+        case UpdateTestSettings.FailedResponse(message) => addResponseJson(builder, response.status, message)
       }
-      case invalidateConfigResponse: InvalidateTestConfig => invalidateConfigResponse match {
-        case InvalidateTestConfig.SuccessResponse(message) => addResponseJson(builder, response.status, message)
-        case InvalidateTestConfig.FailedResponse(message) => addResponseJson(builder, response.status, message)
+      case invalidateSettingsResponse: InvalidateTestSettings => invalidateSettingsResponse match {
+        case InvalidateTestSettings.SuccessResponse(message) => addResponseJson(builder, response.status, message)
+        case InvalidateTestSettings.FailedResponse(message) => addResponseJson(builder, response.status, message)
       }
       case provideUsersResponse: ProvideLocalUsers => provideUsersResponse match {
         case res: ProvideLocalUsers.SuccessResponse => provideLocalUsersJson(builder, res)
@@ -59,9 +59,9 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
   override def writeTo(out: StreamOutput): Unit = ()
 
   override def status: RestStatus = response match {
-    case _: ProvideTestConfig => RestStatus.OK
-    case _: UpdateTestConfig => RestStatus.OK
-    case _: InvalidateTestConfig => RestStatus.OK
+    case _: ProvideTestSettings => RestStatus.OK
+    case _: UpdateTestSettings => RestStatus.OK
+    case _: InvalidateTestSettings => RestStatus.OK
     case _: ProvideLocalUsers => RestStatus.OK
     case failure: Failure => failure match {
       case Failure.BadRequest(_) => RestStatus.BAD_REQUEST
@@ -75,26 +75,26 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.endObject
   }
 
-  private def currentConfigJson(builder: XContentBuilder, response: ProvideTestConfig.CurrentTestSettings): Unit = {
+  private def currentSettingsJson(builder: XContentBuilder, response: ProvideTestSettings.CurrentTestSettings): Unit = {
     builder.startObject
     builder.field("status", response.status)
     builder.field("ttl", response.ttl.toString())
-    builder.field("settings", response.settings.raw)
+    builder.field("settings", response.settings.rawYaml)
     builder.field("valid_to", response.validTo.atOffset(ZoneOffset.UTC).toString)
     warningsJson(builder, response.warnings)
     builder.endObject
   }
 
-  private def invalidatedConfigJson(builder: XContentBuilder, response: ProvideTestConfig.TestSettingsInvalidated): Unit = {
+  private def invalidatedSettingsJson(builder: XContentBuilder, response: ProvideTestSettings.TestSettingsInvalidated): Unit = {
     builder.startObject
     builder.field("status", response.status)
     builder.field("message", response.message)
-    builder.field("settings", response.settings.raw)
+    builder.field("settings", response.settings.rawYaml)
     builder.field("ttl", response.ttl.toString())
     builder.endObject
   }
 
-  private def updateConfigSuccessResponseJson(builder: XContentBuilder, response: UpdateTestConfig.SuccessResponse): Unit = {
+  private def updateSettingsSuccessResponseJson(builder: XContentBuilder, response: UpdateTestSettings.SuccessResponse): Unit = {
     builder.startObject
     builder.field("status", response.status)
     builder.field("message", response.message)

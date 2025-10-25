@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rrtestconfig
+package tech.beshu.ror.es.actions.rrtestsettings
 
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
@@ -26,12 +26,12 @@ import org.elasticsearch.transport.TransportService
 import java.util.concurrent.Executor
 import scala.annotation.unused
 
-class TransportRRTestConfigAction(transportService: TransportService,
-                                  actionFilters: ActionFilters,
-                                  executor: Executor,
-                                  @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRTestConfigRequest, RRTestConfigResponse](
-    RRTestConfigActionType.name, transportService, actionFilters, RRTestConfigActionType.exceptionReader[RRTestConfigRequest], executor
+class TransportRRTestSettingsAction(transportService: TransportService,
+                                    actionFilters: ActionFilters,
+                                    executor: Executor,
+                                    @unused constructorDiscriminator: Unit)
+  extends HandledTransportAction[RRTestSettingsRequest, RRTestSettingsResponse](
+    RRTestSettingsActionType.name, transportService, actionFilters, RRTestSettingsActionType.exceptionReader[RRTestSettingsRequest], executor
   ) {
 
   @Inject
@@ -40,9 +40,9 @@ class TransportRRTestConfigAction(transportService: TransportService,
            threadPool: ThreadPool) =
     this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
 
-  private val handler = new RRTestConfigActionHandler()
+  private val handler = new RRTestSettingsActionHandler()
 
-  override def doExecute(task: Task, request: RRTestConfigRequest, listener: ActionListener[RRTestConfigResponse]): Unit = {
+  override def doExecute(task: Task, request: RRTestSettingsRequest, listener: ActionListener[RRTestSettingsResponse]): Unit = {
     handler.handle(request, listener)
   }
 }

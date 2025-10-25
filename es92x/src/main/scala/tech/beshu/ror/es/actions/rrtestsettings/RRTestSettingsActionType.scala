@@ -14,21 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rrconfig;
+package tech.beshu.ror.es.actions.rrtestsettings
 
-import org.elasticsearch.action.support.nodes.BaseNodesRequest;
-import org.elasticsearch.cluster.node.DiscoveryNode;
-import org.elasticsearch.common.io.stream.StreamInput;
-import org.elasticsearch.common.io.stream.StreamOutput;
-import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest;
-import tech.beshu.ror.configuration.loader.distributed.internode.NodeConfigRequestSerializer;
+import org.elasticsearch.action.ActionType
+import org.elasticsearch.common.io.stream.Writeable
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
-import java.io.IOException;
-import java.util.Arrays;
+class RRTestSettingsActionType extends ActionType[RRTestSettingsResponse](RRTestSettingsActionType.name)
 
-public class RRConfigsRequest extends BaseNodesRequest {
-    
-    public RRConfigsRequest(DiscoveryNode... concreteNodes) {
-        super(concreteNodes);
-    }
+object RRTestSettingsActionType {
+  val name: String = RorAction.RorTestSettingsAction.value
+  val instance = new RRTestSettingsActionType()
+
+  case object RRTestSettingsActionCannotBeTransported extends Exception
+
+  private [rrtestsettings] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRTestSettingsActionCannotBeTransported
 }
+

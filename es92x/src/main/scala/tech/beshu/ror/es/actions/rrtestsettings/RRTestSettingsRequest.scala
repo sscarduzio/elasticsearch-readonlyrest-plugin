@@ -14,45 +14,45 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rrtestconfig
+package tech.beshu.ror.es.actions.rrtestsettings
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.api.{RorApiRequest, TestConfigApi}
+import tech.beshu.ror.api.{RorApiRequest, TestSettingsApi}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps.*
 
-class RRTestConfigRequest(testConfigApiRequest: TestConfigApi.TestConfigRequest,
-                          esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
+class RRTestSettingsRequest(request: TestSettingsApi.TestSettingsRequest,
+                            esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
 
-  def getTestConfigRequest: RorApiRequest[TestConfigApi.TestConfigRequest] =
-    RorApiRequest(testConfigApiRequest, loggerUser)
+  def getTestSettingsRequest: RorApiRequest[TestSettingsApi.TestSettingsRequest] =
+    RorApiRequest(request, loggerUser)
 
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
   override def validate(): ActionRequestValidationException = null
 }
 
-object RRTestConfigRequest {
+object RRTestSettingsRequest {
 
-  def createFrom(request: RestRequest): RRTestConfigRequest = {
+  def createFrom(request: RestRequest): RRTestSettingsRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
-      case (constants.PROVIDE_TEST_CONFIG_PATH, GET) =>
-        TestConfigApi.TestConfigRequest.Type.ProvideTestConfig
-      case (constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
-        TestConfigApi.TestConfigRequest.Type.InvalidateTestConfig
-      case (constants.UPDATE_TEST_CONFIG_PATH, POST) =>
-        TestConfigApi.TestConfigRequest.Type.UpdateTestConfig
+      case (constants.PROVIDE_TEST_SETTINGS_PATH, GET) =>
+        TestSettingsApi.TestSettingsRequest.Type.ProvideTestSettings
+      case (constants.DELETE_TEST_SETTINGS_PATH, DELETE) =>
+        TestSettingsApi.TestSettingsRequest.Type.InvalidateTestSettings
+      case (constants.UPDATE_TEST_SETTINGS_PATH, POST) =>
+        TestSettingsApi.TestSettingsRequest.Type.UpdateTestSettings
       case (constants.PROVIDE_LOCAL_USERS_PATH, GET) =>
-        TestConfigApi.TestConfigRequest.Type.ProvideLocalUsers
+        TestSettingsApi.TestSettingsRequest.Type.ProvideLocalUsers
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
-    new RRTestConfigRequest(
-      TestConfigApi.TestConfigRequest(requestType, request.content.utf8ToString),
+    new RRTestSettingsRequest(
+      TestSettingsApi.TestSettingsRequest(requestType, request.content.utf8ToString),
       request
     )
   }
