@@ -67,6 +67,28 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
           }
         )
       }
+      "it's defined with 'actions' rule" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    kibana_hide_apps: [app1, "/^Analytics\\|(?!(Maps)$).*$/"]
+              |    actions: ["*"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            val apps = UniqueNonEmptyList.of(
+              FullNameKibanaApp("app1"),
+              kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
+            )
+            rule.settings.kibanaAppsToHide should be(apps)
+          }
+        )
+      }
     }
     "not be able to be loaded from config" when {
       "empty string kibana app is defined" in {
@@ -133,26 +155,6 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
         )
       }
       "it's defined with other rule in the block" when {
-        "the rule is 'actions' rule" in {
-          assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    kibana_hide_apps: "app1"
-                |    actions: ["indices:data/write/*"]
-                |
-                |""".stripMargin,
-            assertion = errors => {
-              errors should have size 1
-              errors.head should be(BlocksLevelCreationError(Message(
-                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'actions' rule. These two cannot be used together in one block."
-              )))
-            }
-          )
-        }
         "the rule is 'filter' rule" in {
           assertDecodingFailure(
             yaml =

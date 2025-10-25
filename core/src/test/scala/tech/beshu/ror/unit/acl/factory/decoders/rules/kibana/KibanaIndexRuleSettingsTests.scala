@@ -63,6 +63,25 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
           }
         )
       }
+      "it's defined with 'actions' rule" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    auth_key: user:pass
+              |    kibana_index: "@{user}_kibana_index"
+              |    actions: ["*"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.kibanaIndex shouldBe a[ToBeResolved[_]]
+          }
+        )
+      }
     }
     "not be able to be loaded from config" when {
       "no kibana index is defined" in {
@@ -86,26 +105,6 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
         )
       }
       "it's defined with other rule in the block" when {
-        "the rule is 'actions' rule" in {
-          assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    kibana_index: some_kibana_index
-                |    actions: ["indices:data/write/*"]
-                |
-                |""".stripMargin,
-            assertion = errors => {
-              errors should have size 1
-              errors.head should be(BlocksLevelCreationError(Message(
-                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'actions' rule. These two cannot be used together in one block."
-              )))
-            }
-          )
-        }
         "the rule is 'filter' rule" in {
           assertDecodingFailure(
             yaml =
