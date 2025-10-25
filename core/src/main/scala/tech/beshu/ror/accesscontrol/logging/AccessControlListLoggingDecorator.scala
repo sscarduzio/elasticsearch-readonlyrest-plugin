@@ -105,13 +105,26 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
       import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator.responseContextShow
       logger.info(responseContextShow[B].show(responseContext))
     }
-    auditingTool.foreach {
-      _
-        .audit(responseContext, auditEnvironmentContext)
-        .runAsync {
-          case Right(_) =>
-          case Left(ex) =>
-            logger.warn(s"[${responseContext.requestContext.id.show}] Auditing issue", ex)
+    val blockAuditSettings = responseContext match {
+      case AllowedBy(_, block, _, _) => Some(block.audit)
+      case Allow(_, _, block, _) => Some(block.audit)
+      case ForbiddenBy(_, block, _, _) => Some(block.audit)
+      case Forbidden(_, _) => None
+      case RequestedIndexNotExist(_, _) => None
+      case Errored(_, _) => None
+    }
+    blockAuditSettings match {
+      case Some(Block.Audit.Disabled) =>
+        logger.warn(s"Log ommitted $responseContext")
+      case None | Some(Block.Audit.Enabled) =>
+        auditingTool.foreach {
+          _
+            .audit(responseContext, auditEnvironmentContext)
+            .runAsync {
+              case Right(_) =>
+              case Left(ex) =>
+                logger.warn(s"[${responseContext.requestContext.id.show}] Auditing issue", ex)
+            }
         }
     }
   }

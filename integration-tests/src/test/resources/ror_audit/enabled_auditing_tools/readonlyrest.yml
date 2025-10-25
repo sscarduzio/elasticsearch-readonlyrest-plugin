@@ -37,6 +37,8 @@ readonlyrest:
       methods: GET
       auth_key: username:dev
       indices: ["twitter"]
+      audit:
+        enabled: false
 
     - name: "Rule 2"
       verbosity: error
