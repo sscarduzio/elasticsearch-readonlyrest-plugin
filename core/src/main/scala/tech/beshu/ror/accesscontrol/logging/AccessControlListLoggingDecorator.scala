@@ -115,7 +115,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
     }
     blockAuditSettings match {
       case Some(Block.Audit.Disabled) =>
-        logger.warn(s"Log ommitted $responseContext")
+        ()
       case None | Some(Block.Audit.Enabled) =>
         auditingTool.foreach {
           _
