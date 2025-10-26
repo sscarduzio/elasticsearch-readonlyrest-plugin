@@ -630,7 +630,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |  },
                 |  "@timestamp" : "IGNORED",
                 |  "ecs" : {
-                |    "version" : "1.4.0"
+                |    "version" : "1.6.0"
                 |  },
                 |  "destination" : {
                 |    "address" : "192.168.0.124"
@@ -650,9 +650,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |  "event" : {
                 |    "duration" : 5000000000,
                 |    "reason" : "FORBIDDEN",
-                |    "action" : "cluster:internal_ror/user_metadata/get",
+                |    "dataset" : "cluster:internal_ror/user_metadata/get",
+                |    "action" : "RRTestConfigRequest",
                 |    "id" : "trace_id_123",
-                |    "type" : "RRTestConfigRequest"
                 |  },
                 |  "error" : {},
                 |  "user" : {
@@ -669,7 +669,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    "es_task_id" : 123,
                 |    "involved_indices" : [],
                 |    "es_node_name" : "testEsNode",
-                |    "acl_history" : "historyEntry1, historyEntry2"
+                |    "acl_history" : "historyEntry1, historyEntry2",
+                |    "detailed_reason" : "default"
                 |  }
                 |}""".stripMargin
             val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)

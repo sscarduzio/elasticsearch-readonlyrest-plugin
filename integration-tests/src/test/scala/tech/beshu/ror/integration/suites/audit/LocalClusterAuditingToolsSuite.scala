@@ -191,7 +191,7 @@ class LocalClusterAuditingToolsSuite
           val auditEntries = auditIndexManager.getEntries.force().jsons
           auditEntries.exists { entry =>
             // ecs
-            entry("ecs")("version").str == "1.4.0" &&
+            entry("ecs")("version").str == "1.6.0" &&
               // trace
               entry("trace")("id").strOpt.isDefined &&
               // timestamp (exists, not verified for exact value)
@@ -207,9 +207,9 @@ class LocalClusterAuditingToolsSuite
               // event
               entry("event")("duration").numOpt.isDefined &&
               entry("event")("reason").str == "ALLOWED" &&
-              entry("event")("action").str == "indices:admin/get" &&
+              entry("event")("dataset").str == "indices:admin/get" &&
+              entry("event")("action").str == "GetIndexRequest" &&
               entry("event")("id").strOpt.isDefined &&
-              entry("event")("type").str == "GetIndexRequest" &&
               // error (empty object)
               entry("error").obj.isEmpty &&
               // user
