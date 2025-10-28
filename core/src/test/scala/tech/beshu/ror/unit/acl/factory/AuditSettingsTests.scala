@@ -563,12 +563,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             )
             val createdSerializer = serializer(config)
             val serializedResponse = createdSerializer.onResponse(
-              AuditResponseContext.Forbidden(new DummyAuditRequestContext(username = None))
+              AuditResponseContext.Forbidden(new DummyAuditRequestContext(loggedInUserName = None, attemptedUserName = None))
             )
 
             serializedResponse shouldBe defined
             serializedResponse.get.get("user") shouldBe "Bearer 123"
-            serializedResponse.get.get("presented_identity") shouldBe "Bearer 123"
+            serializedResponse.get.isNull("presented_identity")
             serializedResponse.get.isNull("logged_user")
           }
           "QueryAuditLogSerializer serializer is set and correctly serializes event with logged user" in {
@@ -596,12 +596,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             )
             val createdSerializer = serializer(config)
             val serializedResponse = createdSerializer.onResponse(
-              AuditResponseContext.Forbidden(new DummyAuditRequestContext(username = Some("my_user")))
+              AuditResponseContext.Forbidden(new DummyAuditRequestContext(loggedInUserName = Some("my_user")))
             )
 
             serializedResponse shouldBe defined
             serializedResponse.get.get("user") shouldBe "my_user"
-            serializedResponse.get.get("presented_identity") shouldBe "my_user"
+            serializedResponse.get.get("presented_identity") shouldBe "basic auth user"
             serializedResponse.get.get("logged_user") shouldBe "my_user"
           }
           "custom environment-aware serializer is set and correctly serializes events" in {
@@ -2035,7 +2035,8 @@ private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAud
 
 }
 
-private class DummyAuditRequestContext(username: Option[String] = Some("logged_user")) extends AuditRequestContext {
+private class DummyAuditRequestContext(override val loggedInUserName: Option[String] = Some("logged_user"),
+                                       override val attemptedUserName: Option[String] = Some("basic auth user")) extends AuditRequestContext {
   override def timestamp: Instant = Instant.now()
 
   override def id: String = ""
@@ -2068,13 +2069,9 @@ private class DummyAuditRequestContext(username: Option[String] = Some("logged_u
 
   override def httpMethod: String = ""
 
-  override def loggedInUserName: Option[String] = username
-
   override def impersonatedByUserName: Option[String] = None
 
   override def involvesIndices: Boolean = false
-
-  override def attemptedUserName: Option[String] = None
 
   override def rawAuthHeader: Option[String] = Some("Bearer 123")
 

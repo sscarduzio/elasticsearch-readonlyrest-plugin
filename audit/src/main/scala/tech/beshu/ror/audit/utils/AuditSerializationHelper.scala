@@ -96,7 +96,7 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.Reason => eventData.reason
       case AuditFieldValueDescriptor.User => SerializeUser.serialize(requestContext).orNull
       case AuditFieldValueDescriptor.LoggedUser => requestContext.loggedInUserName.orNull
-      case AuditFieldValueDescriptor.PresentedIdentity => SerializeUser.serialize(requestContext).orNull
+      case AuditFieldValueDescriptor.PresentedIdentity => requestContext.attemptedUserName.orNull
       case AuditFieldValueDescriptor.ImpersonatedByUser => requestContext.impersonatedByUserName.orNull
       case AuditFieldValueDescriptor.Action => requestContext.action
       case AuditFieldValueDescriptor.InvolvedIndices => if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava

@@ -347,7 +347,7 @@ private object DummyAuditRequestContext extends AuditRequestContext {
 
   override def involvesIndices: Boolean = false
 
-  override def attemptedUserName: Option[String] = None
+  override def attemptedUserName: Option[String] = Some("basic_auth_username")
 
   override def rawAuthHeader: Option[String] = None
 
