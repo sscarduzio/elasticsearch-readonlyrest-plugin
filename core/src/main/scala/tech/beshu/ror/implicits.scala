@@ -33,7 +33,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
@@ -45,7 +44,6 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
-import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -143,6 +141,7 @@ trait LogsShowInstances
   implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
 
   implicit def requestedIndexShow[T <: ClusterIndexName : Show]: Show[RequestedIndex[T]] = Show(_.name.show)
+
   implicit val clusterIndexNameShow: Show[ClusterIndexName] = Show.show(_.stringify)
   implicit val localClusterIndexNameShow: Show[ClusterIndexName.Local] = Show.show(_.stringify)
   implicit val remoteClusterIndexNameShow: Show[ClusterIndexName.Remote] = Show.show(_.stringify)
@@ -381,10 +380,10 @@ trait LogsShowInstances
     showNamedIterable(name, option.toList)
   }
 
-  implicit val authorizationValueErrorShow: Show[AuthorizationValueError] = Show.show {
+  implicit def authorizationValueErrorShow(debugEnabled: Boolean): Show[AuthorizationValueError] = Show.show {
     case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
-    case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [${value.show}]"
-    case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [${value.show}], reason: [${message.show}]"
+    case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata${if (debugEnabled) s": [${value.show}]" else ""}"
+    case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [${if (debugEnabled) s"${value.show}], " else ""}reason: [${message.show}]"
   }
 
   implicit val unresolvableErrorShow: Show[Unresolvable] = Show.show {
@@ -394,6 +393,6 @@ trait LogsShowInstances
 
   implicit def accessShow[T: Show]: Show[AccessRequirement[T]] = Show.show {
     case MustBePresent(value) => value.show
-    case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
+    case MustBeAbsent(value) => s"~${value.show}"
   }
 }

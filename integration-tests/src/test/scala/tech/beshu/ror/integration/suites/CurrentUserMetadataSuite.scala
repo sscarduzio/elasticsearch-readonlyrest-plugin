@@ -360,11 +360,11 @@ class CurrentUserMetadataSuite
               |    "root_cause":[
               |      {
               |        "type":"exception",
-              |        "reason":"Unexpected header format in ror_metadata: [x-ror-current-group:]"
+              |        "reason":"Unexpected header format in ror_metadata"
               |      }
               |    ],
               |    "type":"exception",
-              |    "reason":"Unexpected header format in ror_metadata: [x-ror-current-group:]"
+              |    "reason":"Unexpected header format in ror_metadata"
               |  },
               |  "status":400
               |}

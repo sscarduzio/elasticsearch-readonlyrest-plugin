@@ -47,6 +47,7 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
           addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
           wrapped.handleRequest(request, rorRestChannel, client)
         case Left(error) =>
+          implicit val show = authorizationValueErrorShow(logger.delegate.isDebugEnabled())
           logger.error(s"The incoming request was malformed. Cause: ${error.show}")
           channel.sendResponse(new BytesRestResponse(channel, RestStatus.BAD_REQUEST, new ElasticsearchException(error.show)))
       }
