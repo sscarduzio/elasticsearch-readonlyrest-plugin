@@ -21,11 +21,21 @@ import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.httpclient.RestClient
 
+import java.util.Base64
+
 object providers {
 
   trait ClientProvider {
 
     def basicAuthClient(user: String, pass: String): RestClient = client(Credentials.BasicAuth(user, pass))
+
+    def basicAuthClientWithRorMetadataAttached(user: String, pass: String, headers: (String, String)*): RestClient = {
+      val encoder = Base64.getEncoder
+      val userPassString = s"$user:$pass"
+      val rorMetadataJsonString = s"""{ "headers": [ ${headers.map { case (name, value) => s"\"$name:$value\"" }.mkString(",")} ] }"""
+      val basicAuthWithRorMetadata = s"Basic ${encoder.encodeToString(userPassString.getBytes)}, ror_metadata=${encoder.encodeToString(rorMetadataJsonString.getBytes)}"
+      client(Credentials.Token(basicAuthWithRorMetadata))
+    }
 
     def tokenAuthClient(token: String): RestClient = client(Credentials.Token(token))
 
@@ -79,6 +89,7 @@ object providers {
       esTargets.map { target =>
         new ClientProvider {
           override lazy val adminClient: RestClient = target.adminClient
+
           override private[providers] def client(credentials: Credentials) = target.client(credentials)
         }
       }
