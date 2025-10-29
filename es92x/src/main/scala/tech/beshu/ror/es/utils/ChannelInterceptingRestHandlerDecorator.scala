@@ -20,8 +20,8 @@ import cats.implicits.*
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.client.internal.node.NodeClient
-import org.elasticsearch.rest.action.cat.RestCatAction
 import org.elasticsearch.rest.*
+import org.elasticsearch.rest.action.cat.RestCatAction
 import org.joor.Reflect.on
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
