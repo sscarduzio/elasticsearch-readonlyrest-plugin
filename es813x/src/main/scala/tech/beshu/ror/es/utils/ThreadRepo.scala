@@ -29,7 +29,9 @@ object ThreadRepo {
     threadLocalChannel.set(restChannel)
     Try(code) match {
       case Success(_) =>
-      case Failure(ex) => removeRestChannel(restChannel)
+      case Failure(ex) =>
+        removeRestChannel(restChannel)
+        throw ex
     }
   }
 
