@@ -23,6 +23,7 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.rest.*
 import org.elasticsearch.rest.action.cat.RestCatAction
 import org.joor.Reflect.on
+import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
@@ -43,12 +44,13 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
     Try {
       RorRestChannel.from(channel) match {
         case Right(rorRestChannel) =>
-          ThreadRepo.setRestChannel(rorRestChannel)
-          addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
-          wrapped.handleRequest(request, rorRestChannel, client)
+          ThreadRepo.safeSetRestChannel(rorRestChannel) {
+            addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
+            wrapped.handleRequest(request, rorRestChannel, client)
+          }
         case Left(error) =>
-          implicit val show = authorizationValueErrorShow(logger.delegate.isDebugEnabled())
-          logger.error(s"The incoming request was malformed. Cause: ${error.show}")
+          logError(error)
+          implicit val show = authorizationValueErrorSanitizedShow
           channel.sendResponse(new BytesRestResponse(channel, RestStatus.BAD_REQUEST, new ElasticsearchException(error.show)))
       }
     } match {
@@ -97,6 +99,17 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
       client
         .threadPool().getThreadContext
         .addXpackUserAuthenticationHeader(client.getLocalNodeId)
+    }
+  }
+
+  private def logError(error: AuthorizationValueError): Unit = {
+    {
+      implicit val show = authorizationValueErrorSanitizedShow
+      logger.warn(s"The incoming request was malformed. Cause: ${error.show}")
+    }
+    if (logger.delegate.isDebugEnabled()) {
+      implicit val show = authorizationValueErrorWithDetailsShow
+      logger.debug(s"Malformed request detailed cause: ${error.show}")
     }
   }
 

@@ -20,11 +20,17 @@ import org.elasticsearch.rest.RestRequest
 import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.es.RorRestChannel
 
+import scala.util.{Failure, Success, Try}
+
 object ThreadRepo {
   private val threadLocalChannel = new ThreadLocal[RorRestChannel]
 
-  def setRestChannel(restChannel: RorRestChannel): Unit = {
+  def safeSetRestChannel(restChannel: RorRestChannel)(code: => Unit): Unit = {
     threadLocalChannel.set(restChannel)
+    Try(code) match {
+      case Success(_) =>
+      case Failure(ex) => removeRestChannel(restChannel)
+    }
   }
 
   def removeRestChannel(restChannel: RorRestChannel): Unit = {

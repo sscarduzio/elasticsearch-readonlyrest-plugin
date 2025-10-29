@@ -380,10 +380,16 @@ trait LogsShowInstances
     showNamedIterable(name, option.toList)
   }
 
-  implicit def authorizationValueErrorShow(debugEnabled: Boolean): Show[AuthorizationValueError] = Show.show {
+  val authorizationValueErrorWithDetailsShow: Show[AuthorizationValueError] = Show.show {
     case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
-    case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata${if (debugEnabled) s": [${value.show}]" else ""}"
-    case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [${if (debugEnabled) s"${value.show}], " else ""}reason: [${message.show}]"
+    case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [${value.show}]"
+    case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [${value.show}], reason: [${message.show}]"
+  }
+
+  val authorizationValueErrorSanitizedShow: Show[AuthorizationValueError] = Show.show {
+    case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
+    case AuthorizationValueError.InvalidHeaderFormat(_) => s"Unexpected header format in ror_metadata"
+    case AuthorizationValueError.RorMetadataInvalidFormat(_, message) => s"Invalid format of ror_metadata. Reason: [${message.show}]"
   }
 
   implicit val unresolvableErrorShow: Show[Unresolvable] = Show.show {
