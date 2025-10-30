@@ -26,7 +26,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
