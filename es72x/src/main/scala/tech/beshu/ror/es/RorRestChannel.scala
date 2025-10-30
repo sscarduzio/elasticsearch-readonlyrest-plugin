@@ -42,7 +42,7 @@ final class RorRestChannel private(underlying: EsRestChannel, val restRequest: R
     with ResponseFieldsFiltering
     with Logging {
 
-  override def sendResponse(response: EsRestResponse): Unit =
+  override def sendResponse(response: EsRestResponse): Unit = {
     ThreadRepo.removeRestChannel(this)
     underlying.sendResponse(filterRestResponse(response))
   }
