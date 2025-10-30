@@ -23,6 +23,7 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.RestRequest
+import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 
@@ -42,6 +43,7 @@ final class RorRestChannel private(underlying: EsRestChannel, val restRequest: R
     with Logging {
 
   override def sendResponse(response: EsRestResponse): Unit = {
+    ThreadRepo.removeRestChannel(this)
     underlying.sendResponse(filterRestResponse(response))
   }
 }
