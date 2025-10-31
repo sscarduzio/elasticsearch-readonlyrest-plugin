@@ -205,11 +205,11 @@ class LocalClusterAuditingToolsSuite
               entry("http")("request")("body")("bytes").num == 0 &&
               entry("http")("request")("body")("content").str == "" &&
               // event
-              entry("event")("duration").numOpt.isDefined &&
-              entry("event")("reason").str == "ALLOWED" &&
-              entry("event")("dataset").str == "indices:admin/get" &&
-              entry("event")("action").str == "GetIndexRequest" &&
               entry("event")("id").strOpt.isDefined &&
+              entry("event")("duration").numOpt.isDefined &&
+              entry("event")("action").str == "indices:admin/get" &&
+              entry("event")("reason").str == "GetIndexRequest" &&
+              entry("event")("outcome").str == "success" &&
               // error (empty object)
               entry("error").obj.isEmpty &&
               // user
@@ -219,10 +219,12 @@ class LocalClusterAuditingToolsSuite
               entry("url")("path").str == "/twitter/" &&
               // labels
               entry("labels")("es_cluster_name").str == "ROR_SINGLE" &&
-              entry("labels")("es_task_id").numOpt.isDefined &&
-              entry("labels")("involved_indices").arrOpt.isDefined &&
               entry("labels")("es_node_name").str == "ROR_SINGLE_1" &&
-              entry("labels")("acl_history").str == "[CONTAINER ADMIN-> RULES:[auth_key->false] RESOLVED:[indices=twitter]], [Rule 1-> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]"
+              entry("labels")("es_task_id").numOpt.isDefined &&
+              entry("labels")("ror_involved_indices").arrOpt.isDefined &&
+              entry("labels")("ror_acl_history").str == "[CONTAINER ADMIN-> RULES:[auth_key->false] RESOLVED:[indices=twitter]], [Rule 1-> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]" &&
+              entry("labels")("ror_final_state").str == "ALLOWED" &&
+              entry("labels")("ror_detailed_reason").str == "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices]"
           } shouldBe true
         }
         updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")

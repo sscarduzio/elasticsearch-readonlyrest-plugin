@@ -39,7 +39,7 @@ import tech.beshu.ror.audit.*
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.adapters.{DeprecatedAuditLogSerializerAdapter, EnvironmentAwareAuditLogSerializerAdapter}
 import tech.beshu.ror.audit.instances.*
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
@@ -419,28 +419,24 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             val configuredSerializer = serializer(config).asInstanceOf[ConfigurableAuditLogSerializer]
 
             configuredSerializer.allowedEventMode shouldBe AllowedEventMode.Include(Set(Verbosity.Info))
-            configuredSerializer.fields shouldBe Map(
-              AuditFieldName("custom_section") -> AuditFieldValueDescriptor.Nested(
-                Map(
-                  AuditFieldName("nested_text") -> AuditFieldValueDescriptor.StaticText("nt"),
-                  AuditFieldName("nested_number") -> AuditFieldValueDescriptor.NumericValue(123),
-                  AuditFieldName("nested_boolean") -> AuditFieldValueDescriptor.BooleanValue(true),
-                  AuditFieldName("double_nested") -> AuditFieldValueDescriptor.Nested(
+            configuredSerializer.fields shouldBe AuditFieldPath.fields(
+              AuditFieldPath.withPrefix("custom_section")(
+                AuditFieldPath("nested_text") -> AuditFieldValueDescriptor.StaticText("nt"),
+                AuditFieldPath("nested_number") -> AuditFieldValueDescriptor.NumericValue(123),
+                AuditFieldPath("nested_boolean") -> AuditFieldValueDescriptor.BooleanValue(true),
+                AuditFieldPath.withPrefix("double_nested")(
+                  AuditFieldPath("double_nested_next") -> AuditFieldValueDescriptor.StaticText("dnt"),
+                  AuditFieldPath.withPrefix("triple_nested")(
                     Map(
-                      AuditFieldName("double_nested_next") -> AuditFieldValueDescriptor.StaticText("dnt"),
-                      AuditFieldName("triple_nested") -> AuditFieldValueDescriptor.Nested(
-                        Map(
-                          AuditFieldName("triple_nested_next") -> AuditFieldValueDescriptor.StaticText("tnt"),
-                        )
-                      ),
+                      AuditFieldPath("triple_nested_next") -> AuditFieldValueDescriptor.StaticText("tnt"),
                     )
                   ),
-                )
+                ),
               ),
-              AuditFieldName("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
-              AuditFieldName("another_field") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsClusterName, AuditFieldValueDescriptor.StaticText(" "), AuditFieldValueDescriptor.HttpMethod)),
-              AuditFieldName("tid") -> AuditFieldValueDescriptor.TaskId,
-              AuditFieldName("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
+              AuditFieldPath("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
+              AuditFieldPath("another_field") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsClusterName, AuditFieldValueDescriptor.StaticText(" "), AuditFieldValueDescriptor.HttpMethod)),
+              AuditFieldPath("tid") -> AuditFieldValueDescriptor.TaskId,
+              AuditFieldPath("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
             )
           }
         }
@@ -649,10 +645,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |  },
                 |  "event" : {
                 |    "duration" : 5000000000,
-                |    "reason" : "FORBIDDEN",
-                |    "dataset" : "cluster:internal_ror/user_metadata/get",
-                |    "action" : "RRTestConfigRequest",
+                |    "reason" : "RRTestConfigRequest",
+                |    "action" : "cluster:internal_ror/user_metadata/get",
                 |    "id" : "trace_id_123",
+                |    "outcome" : "failure"
                 |  },
                 |  "error" : {},
                 |  "user" : {
@@ -667,10 +663,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |  "labels" : {
                 |    "es_cluster_name" : "testEsCluster",
                 |    "es_task_id" : 123,
-                |    "involved_indices" : [],
                 |    "es_node_name" : "testEsNode",
-                |    "acl_history" : "historyEntry1, historyEntry2",
-                |    "detailed_reason" : "default"
+                |    "ror_acl_history" : "historyEntry1, historyEntry2",
+                |    "ror_detailed_reason" : "default",
+                |    "ror_involved_indices" : [],
+                |    "ror_final_state" : "FORBIDDEN"
                 |  }
                 |}""".stripMargin
             val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)

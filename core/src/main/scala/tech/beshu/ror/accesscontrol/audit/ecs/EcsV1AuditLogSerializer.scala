@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.audit.ecs
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer.fields
 import tech.beshu.ror.audit.utils.AuditSerializationHelper
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
 class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode) extends AuditLogSerializer {
@@ -31,58 +31,59 @@ class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode) extends Au
 }
 
 object EcsV1AuditLogSerializer {
-  private val fields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
-    AuditFieldName("ecs") -> AuditFieldValueDescriptor.Nested(
+  private val fields: Map[AuditFieldPath, AuditFieldValueDescriptor] = AuditFieldPath.fields(
+    AuditFieldPath.withPrefix("ecs")(
       // Schema defined by EcsV1AuditLogSerializer is ECS 1.6.0 compliant and does not use newer features
       // introduced by later versions (https://www.elastic.co/guide/en/ecs/1.6/ecs-field-reference.html)
-      AuditFieldName("version") -> AuditFieldValueDescriptor.StaticText("1.6.0"),
+      AuditFieldPath("version") -> AuditFieldValueDescriptor.StaticText("1.6.0"),
     ),
-    AuditFieldName("trace") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("id") -> AuditFieldValueDescriptor.CorrelationId,
+    AuditFieldPath.withPrefix("trace")(
+      AuditFieldPath("id") -> AuditFieldValueDescriptor.CorrelationId,
     ),
-    AuditFieldName("url") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("path") -> AuditFieldValueDescriptor.HttpPath,
+    AuditFieldPath.withPrefix("url")(
+      AuditFieldPath("path") -> AuditFieldValueDescriptor.HttpPath,
     ),
-    AuditFieldName("source") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("address") -> AuditFieldValueDescriptor.RemoteAddress,
+    AuditFieldPath.withPrefix("source")(
+      AuditFieldPath("address") -> AuditFieldValueDescriptor.RemoteAddress,
     ),
-    AuditFieldName("destination") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("address") -> AuditFieldValueDescriptor.LocalAddress,
+    AuditFieldPath.withPrefix("destination")(
+      AuditFieldPath("address") -> AuditFieldValueDescriptor.LocalAddress,
     ),
-    AuditFieldName("http") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("request") -> AuditFieldValueDescriptor.Nested(
-        AuditFieldName("method") -> AuditFieldValueDescriptor.HttpMethod,
-        AuditFieldName("body") -> AuditFieldValueDescriptor.Nested(
-          AuditFieldName("content") -> AuditFieldValueDescriptor.Content,
-          AuditFieldName("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
+    AuditFieldPath.withPrefix("http")(
+      AuditFieldPath.withPrefix("request")(
+        AuditFieldPath("method") -> AuditFieldValueDescriptor.HttpMethod,
+        AuditFieldPath.withPrefix("body")(
+          AuditFieldPath("content") -> AuditFieldValueDescriptor.Content,
+          AuditFieldPath("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
         ),
       ),
     ),
-    AuditFieldName("user") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("name") -> AuditFieldValueDescriptor.User,
-      AuditFieldName("effective") -> AuditFieldValueDescriptor.Nested(
-        AuditFieldName("name") -> AuditFieldValueDescriptor.ImpersonatedByUser,
+    AuditFieldPath.withPrefix("user")(
+      AuditFieldPath("name") -> AuditFieldValueDescriptor.User,
+      AuditFieldPath.withPrefix("effective")(
+        AuditFieldPath("name") -> AuditFieldValueDescriptor.ImpersonatedByUser,
       ),
     ),
-    AuditFieldName("event") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("id") -> AuditFieldValueDescriptor.Id,
-      AuditFieldName("dataset") -> AuditFieldValueDescriptor.Action, // ROR Action describes the resource being accessed, so it is dataset in ECS
-      AuditFieldName("action") -> AuditFieldValueDescriptor.Type, // ROR Type describes operation that is executed, so it is ECS action
-      AuditFieldName("reason") -> AuditFieldValueDescriptor.FinalState, // ROR Final state described the outcome, so it is the ECS reason of event happening, the ROR Reason is a custom detailed_reason label
-      AuditFieldName("duration") -> AuditFieldValueDescriptor.ProcessingDurationNanos,
+    AuditFieldPath.withPrefix("event")(
+      AuditFieldPath("id") -> AuditFieldValueDescriptor.Id,
+      AuditFieldPath("duration") -> AuditFieldValueDescriptor.ProcessingDurationNanos,
+      AuditFieldPath("action") -> AuditFieldValueDescriptor.Action,
+      AuditFieldPath("reason") -> AuditFieldValueDescriptor.Type,
+      AuditFieldPath("outcome") -> AuditFieldValueDescriptor.EcsEventOutcome,
     ),
-    AuditFieldName("error") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("type") -> AuditFieldValueDescriptor.ErrorType,
-      AuditFieldName("message") -> AuditFieldValueDescriptor.ErrorMessage,
+    AuditFieldPath.withPrefix("error")(
+      AuditFieldPath("type") -> AuditFieldValueDescriptor.ErrorType,
+      AuditFieldPath("message") -> AuditFieldValueDescriptor.ErrorMessage,
     ),
-    AuditFieldName("labels") -> AuditFieldValueDescriptor.Nested(
-      AuditFieldName("es_cluster_name") -> AuditFieldValueDescriptor.EsClusterName,
-      AuditFieldName("es_node_name") -> AuditFieldValueDescriptor.EsNodeName,
-      AuditFieldName("es_task_id") -> AuditFieldValueDescriptor.TaskId,
-      AuditFieldName("involved_indices") -> AuditFieldValueDescriptor.InvolvedIndices,
-      AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory,
-      AuditFieldName("x_forwarded_for") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
-      AuditFieldName("detailed_reason") -> AuditFieldValueDescriptor.Reason,
+    AuditFieldPath.withPrefix("labels")(
+      AuditFieldPath("x_forwarded_for") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
+      AuditFieldPath("es_cluster_name") -> AuditFieldValueDescriptor.EsClusterName,
+      AuditFieldPath("es_node_name") -> AuditFieldValueDescriptor.EsNodeName,
+      AuditFieldPath("es_task_id") -> AuditFieldValueDescriptor.TaskId,
+      AuditFieldPath("ror_involved_indices") -> AuditFieldValueDescriptor.InvolvedIndices,
+      AuditFieldPath("ror_acl_history") -> AuditFieldValueDescriptor.AclHistory,
+      AuditFieldPath("ror_final_state") -> AuditFieldValueDescriptor.FinalState,
+      AuditFieldPath("ror_detailed_reason") -> AuditFieldValueDescriptor.Reason,
     ),
   )
 }

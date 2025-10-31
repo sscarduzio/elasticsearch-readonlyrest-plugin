@@ -58,6 +58,7 @@ object AuditFieldValueDescriptorParser {
     str.toUpperCase match {
       case "IS_MATCHED" => Some(AuditFieldValueDescriptor.IsMatched)
       case "FINAL_STATE" => Some(AuditFieldValueDescriptor.FinalState)
+      case "ECS_EVENT_OUTCOME" => Some(AuditFieldValueDescriptor.EcsEventOutcome)
       case "REASON" => Some(AuditFieldValueDescriptor.Reason)
       case "USER" => Some(AuditFieldValueDescriptor.User)
       case "IMPERSONATED_BY_USER" => Some(AuditFieldValueDescriptor.ImpersonatedByUser)
