@@ -69,40 +69,36 @@ object Header {
 
   def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-  def fromRawHeaders(headers: Map[String, List[String]]): Set[Header] = {
-    val (authorizationHeaders, otherHeaders) =
+  def fromRawHeaders(headers: Map[String, List[String]]): Either[AuthorizationValueError, Set[Header]] = {
+    val (authorizationHeaders, nonAuthorizationHeaders) =
       headers
         .map { case (name, values) => (name, values.toCovariantSet) }
-        .flatMap { case (name, values) =>
-          for {
-            nonEmptyName <- NonEmptyString.unapply(name)
-            nonEmptyValues <- NonEmptyList.fromList(values.toList.flatMap(NonEmptyString.unapply))
-          } yield (Header.Name(nonEmptyName), nonEmptyValues)
-        }
-        .toSeq
-        .partition { case (name, _) => name === Header.Name.authorization }
-    val headersFromAuthorizationHeaderValues = authorizationHeaders
-      .flatMap { case (_, values) =>
-        val headersFromAuthorizationHeaderValues = values
-          .map(fromAuthorizationValue)
-          .toList
-          .map(_.map(_.toList))
-          .sequence
-          .map(_.flatten)
-        headersFromAuthorizationHeaderValues match {
-          case Left(error) => throw new IllegalArgumentException(error.show)
-          case Right(v) => v
-        }
+        .flatMap { case (name, values) => createHeadersFrom(name, values) }
+        .partition(h => h.name === Header.Name.authorization)
+    val headersFromAuthorizationHeaderValues =
+      authorizationHeaders.toList
+        .map(header => fromAuthorizationValue(header.value))
+        .sequence
+        .map(_.flatMap(_.toList))
+
+    headersFromAuthorizationHeaderValues
+      .map { authHeaderBasedExtractedHeaders =>
+        val restOfHeadersNames = nonAuthorizationHeaders.map(_.name).toCovariantSet
+        val filteredAuthHeaderBasedExtractedHeaders = authHeaderBasedExtractedHeaders
+          .filter { header => !restOfHeadersNames.contains(header.name) }
+        (nonAuthorizationHeaders ++ filteredAuthHeaderBasedExtractedHeaders).toCovariantSet
       }
-      .toCovariantSet
-    val restOfHeaders = otherHeaders
-      .flatMap { case (name, values) => values.map(new Header(name, _)).toList }
-      .toCovariantSet
-    val restOfHeaderNames = restOfHeaders.map(_.name)
-    restOfHeaders ++ headersFromAuthorizationHeaderValues.filter { header => !restOfHeaderNames.contains(header.name) }
   }
 
-  def fromAuthorizationValue(value: NonEmptyString): Either[AuthorizationValueError, NonEmptyList[Header]] = {
+  private def createHeadersFrom(name: String, values: Iterable[String]) = {
+    val value = for {
+      nonEmptyName <- NonEmptyString.unapply(name)
+      nonEmptyValues <- NonEmptyList.fromList(values.toList.flatMap(NonEmptyString.unapply))
+    } yield nonEmptyValues.toList.map(value => new Header(Header.Name(nonEmptyName), value))
+    value.toList.flatten
+  }
+
+  private def fromAuthorizationValue(value: NonEmptyString): Either[AuthorizationValueError, NonEmptyList[Header]] = {
     value.value.splitBy("ror_metadata=") match {
       case (_, None) =>
         Right(NonEmptyList.one(new Header(Name.authorization, value)))
@@ -182,7 +178,7 @@ object Address {
     Hostname.fromString(value).map(Address.Name.apply)
 
   private def parseIpAddress(value: String) =
-    (cutOffZoneIndex _ andThen IpAddress.fromString andThen (_.map(createAddressIp))) (value)
+    (cutOffZoneIndex _ andThen IpAddress.fromString andThen (_.map(createAddressIp)))(value)
 
   private def createAddressIp(ip: IpAddress) =
     Address.Ip(Cidr(ip, 32))
@@ -214,9 +210,9 @@ final case class UriPath private(value: NonEmptyString) {
   def isSqlQueryPath: Boolean = value.value.startsWith("/_sql")
 
   def isXpackSqlQueryPath: Boolean = value.value.startsWith("/_xpack/sql")
-  
+
   def isEsqlQueryPath: Boolean = value.value.startsWith("/_query")
-  
+
   def isAliasesPath: Boolean =
     value.value.startsWith("/_cat/aliases") ||
       value.value.startsWith("/_alias") ||

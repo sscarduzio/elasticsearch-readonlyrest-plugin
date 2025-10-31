@@ -23,25 +23,48 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.RestRequest
+import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 
 import java.net.InetSocketAddress
 import scala.jdk.CollectionConverters.*
 
-final class RorRestChannel(underlying: EsRestChannel)
+object RorRestChannel {
+  def from(esRestChannel: EsRestChannel): Either[Header.AuthorizationValueError, RorRestChannel] = {
+    RorRestRequest
+      .from(esRestChannel.request())
+      .map(new RorRestChannel(esRestChannel, _))
+  }
+}
+final class RorRestChannel private(underlying: EsRestChannel, val restRequest: RorRestRequest)
   extends AbstractRestChannel(underlying.request(), true)
     with ResponseFieldsFiltering
     with Logging {
 
-  val restRequest: RorRestRequest = new RorRestRequest(underlying.request())
-
   override def sendResponse(response: EsRestResponse): Unit = {
+    ThreadRepo.removeRestChannel(this)
     underlying.sendResponse(filterRestResponse(response))
   }
 }
 
-final class RorRestRequest(underlying: EsRestRequest) extends RestRequest {
+object RorRestRequest {
+
+  def from(esRestRequest: EsRestRequest): Either[Header.AuthorizationValueError, RorRestRequest] = {
+    headersFrom(esRestRequest).map(new RorRestRequest(esRestRequest, _))
+  }
+
+  private def headersFrom(esRestRequest: EsRestRequest) = {
+    Header.fromRawHeaders(
+      esRestRequest
+        .getHeaders.asScala
+        .view.mapValues(_.asScala.toList)
+        .toMap
+    )
+  }
+}
+final class RorRestRequest private(underlying: EsRestRequest,
+                                   headers: Set[Header]) extends RestRequest {
 
   override lazy val method: Method = Method.fromStringUnsafe(underlying.method().name())
 
@@ -49,12 +72,7 @@ final class RorRestRequest(underlying: EsRestRequest) extends RestRequest {
     .from(underlying.path())
     .getOrElse(UriPath.from(nes("/")))
 
-  override lazy val allHeaders: Set[Header] = Header.fromRawHeaders(
-    underlying
-      .getHeaders.asScala
-      .view.mapValues(_.asScala.toList)
-      .toMap
-  )
+  override lazy val allHeaders: Set[Header] = headers
 
   override lazy val localAddress: Address =
     createAddressFrom(_.getLocalAddress)
