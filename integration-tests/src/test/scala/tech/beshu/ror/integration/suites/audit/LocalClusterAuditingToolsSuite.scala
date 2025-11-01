@@ -164,7 +164,6 @@ class LocalClusterAuditingToolsSuite
         forEachAuditManager { adminAuditManager =>
           eventually {
             val auditEntries = adminAuditManager.getEntries.force().jsons
-            println(auditEntries)
             auditEntries.size shouldBe 1
 
             auditEntries.exists(entry =>
