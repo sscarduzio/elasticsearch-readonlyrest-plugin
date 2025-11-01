@@ -102,7 +102,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
 
 private[templates] object GetTemplatesEsRequestContext extends Logging {
 
-  def filter(templates: List[IndexTemplateMetadata],
+  def filter(templates: Iterable[IndexTemplateMetadata],
              usingTemplate: Set[Template] => Set[Template])
             (implicit requestContextId: RequestContext.Id): List[IndexTemplateMetadata] = {
     val templatesMap = templates
