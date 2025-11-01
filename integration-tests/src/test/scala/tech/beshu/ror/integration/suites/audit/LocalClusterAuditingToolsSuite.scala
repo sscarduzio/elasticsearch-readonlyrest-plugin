@@ -80,6 +80,8 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
+                entry("logged_user").str == "username" &&
+                entry("presented_identity").str == "username" &&
                 entry("block").str.contains("name: 'Rule 1'") &&
                 entry.obj.get("es_node_name").isEmpty &&
                 entry.obj.get("es_cluster_name").isEmpty
@@ -87,6 +89,8 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
+                entry("logged_user").str == "username" &&
+                entry("presented_identity").str == "username" &&
                 entry("block").str.contains("name: 'Rule 1'") &&
                 Try(entry("es_node_name")).map(_.str) == Success("ROR_SINGLE_1") &&
                 Try(entry("es_cluster_name")).map(_.str) == Success("ROR_SINGLE")
@@ -109,6 +113,8 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
+                entry("logged_user").str == "username" &&
+                entry("presented_identity").str == "username" &&
                 entry("block").str.contains("name: 'Rule 1'") &&
                 Try(entry("es_node_name")).map(_.str) == Success("ROR_SINGLE_1") &&
                 Try(entry("es_cluster_name")).map(_.str) == Success("ROR_SINGLE") &&
@@ -136,6 +142,8 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
+                entry("logged_user").str == "username" &&
+                entry("presented_identity").str == "username" &&
                 entry("block").str.contains("name: 'Rule 1'") &&
                 Try(entry("es_node_name")).map(_.str) == Success("ROR_SINGLE_1") &&
                 Try(entry("es_cluster_name")).map(_.str) == Success("ROR_SINGLE") &&
