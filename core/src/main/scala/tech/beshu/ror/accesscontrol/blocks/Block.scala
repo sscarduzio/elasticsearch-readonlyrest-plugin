@@ -104,7 +104,7 @@ object Block {
                  rules: NonEmptyList[RuleDefinition[Rule]])
                 (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
     val sortedRules = rules.sorted
-    BlockValidator.validate(sortedRules) match {
+    BlockValidator.validate(name, sortedRules) match {
       case Validated.Valid(_) =>
         Right(createBlockInstance(name, policy, verbosity, sortedRules))
       case Validated.Invalid(errors) =>

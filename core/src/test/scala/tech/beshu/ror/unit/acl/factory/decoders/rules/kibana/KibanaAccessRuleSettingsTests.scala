@@ -136,6 +136,25 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
           }
         )
       }
+      "unrestricted access is defined and actions rule is used" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    kibana_access: unrestricted
+              |    actions: ["*"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.access should be(KibanaAccess.Unrestricted)
+            rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
+          }
+        )
+      }
     }
     "not be able to be loaded from settings" when {
       "no access is defined" in {
