@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.{es71722, es800, es8150}
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 private[patches] class SecurityManagerShouldAllowReadingEsConfigFile(esVersion: SemVer)
   extends BytecodeJarModifier {

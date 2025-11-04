@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es7150, es7160, es740}
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /*
   X-Pack’s AuthenticationService.Authenticator performs full realm-based auth. ROR needs a controlled bypass to attach

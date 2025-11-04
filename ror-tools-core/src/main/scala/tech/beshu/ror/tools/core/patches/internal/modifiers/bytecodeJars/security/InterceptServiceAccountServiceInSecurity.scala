@@ -22,17 +22,17 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.InputStream
 
-private [patches] object CreateRorServiceAccountServiceBridgeInSecurity extends BytecodeJarModifier {
+private [patches] object InterceptServiceAccountServiceInSecurity extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
       filePathString = "org/elasticsearch/xpack/security/Security.class",
-      processFileContent = doCreateRorBridge
+      processFileContent = doInterceptServiceAccountService
     )
   }
 
-  private def doCreateRorBridge(moduleInputStream: InputStream) = {
+  private def doInterceptServiceAccountService(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
@@ -156,7 +156,7 @@ private [patches] object CreateRorServiceAccountServiceBridgeInSecurity extends 
       val label22 = new Label()
       underlying.visitLabel(label22)
       underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/security/Security$ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
+      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/security/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
       val label23 = new Label()
       underlying.visitLabel(label23)
       underlying.visitJumpInsn(Opcodes.GOTO, label19)

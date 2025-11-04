@@ -24,6 +24,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.{ModifyEntitlementInitializationClass, ModifyEntitlementRuntimePolicyParserClass, ModifyFilesEntitlementsValidationClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.DeactivateGetRequestCacheKeyDifferentiatorInSecurity
 import tech.beshu.ror.tools.core.utils.EsUtil.es8182
 
 import scala.language.postfixOps

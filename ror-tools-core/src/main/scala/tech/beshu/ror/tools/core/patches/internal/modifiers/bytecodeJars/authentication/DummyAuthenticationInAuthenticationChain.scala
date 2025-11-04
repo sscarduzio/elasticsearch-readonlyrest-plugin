@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.*
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /*
   Replace AuthenticatorChain#doAuthenticate with a short-circuit. We add the X-elastic-product: Elasticsearch header,

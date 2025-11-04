@@ -16,13 +16,14 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions
 
+import better.files.File
 import cats.data.NonEmptyList
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.es800
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 import java.security.Permission
 
 private[patches] class ModifyBootstrapPolicyUtilClass(esVersion: SemVer,

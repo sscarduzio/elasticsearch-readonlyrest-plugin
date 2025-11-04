@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers
 
-import java.io.File
+import better.files.File
 
 private [patches] trait FileModifier {
 

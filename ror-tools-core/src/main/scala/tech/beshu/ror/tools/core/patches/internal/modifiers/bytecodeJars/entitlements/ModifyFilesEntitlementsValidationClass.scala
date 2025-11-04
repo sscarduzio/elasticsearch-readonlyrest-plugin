@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.{es8182, es8190, es900, es910}
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /**
  * Modifies the FilesEntitlementsValidation class to bypass forbidden file path validation

@@ -24,6 +24,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationServiceAuthenticator
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.AlwaysGrantApplicationPermission
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.DeactivateGetRequestCacheKeyDifferentiatorInSecurity
 
 import scala.language.postfixOps
 

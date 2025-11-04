@@ -23,6 +23,7 @@ import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJar
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationServiceAuthenticator
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.DeactivateGetRequestCacheKeyDifferentiatorInSecurity
 
 import scala.language.postfixOps
 

@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles
 
+import better.files.File
 import cats.data.NonEmptyList
 import tech.beshu.ror.tools.core.patches.internal.modifiers.SecurityPolicyFileModifier
 
-import java.io.File
 import java.security.Permission
 import java.security.SecurityPermission
 

@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.es780
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /*
   SnapshotsService is not updated with cluster events for certain type of nodes. ROR needs the up-to-date

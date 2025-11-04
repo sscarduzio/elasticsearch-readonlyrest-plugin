@@ -17,6 +17,7 @@
 package tech.beshu.ror.tools.core.patches.internal
 
 import better.files.File
+import better.files.*
 import os.Path
 import tech.beshu.ror.tools.core.patches.internal.FileModifiersBasedPatch.addPatchedByRorVersionPropertyToJarManifest
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
@@ -52,7 +53,7 @@ private[patches] abstract class FileModifiersBasedPatch(val rorPluginDirectory: 
 
   override def patch(): List[FilePatchMetadata] = {
     patchingSteps.foreach { step =>
-      step(fileToPatchPath toIO)
+      step(fileToPatchPath.toIO.toScala)
     }
     addPatchedByRorVersionPropertyToJarManifest(rorPluginDirectory, fileToPatchPath)
     List(FilePatchMetadata.forPath(fileToPatchPath))
