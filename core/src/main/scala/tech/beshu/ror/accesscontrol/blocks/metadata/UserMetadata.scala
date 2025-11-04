@@ -74,7 +74,8 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
 object UserMetadata {
   def from(request: RequestContext): UserMetadata = {
     request
-      .headers
+      .restRequest
+      .allHeaders
       .find(_.name === Header.Name.currentGroup) match {
       case None => UserMetadata.empty
       case Some(Header(_, value)) => UserMetadata.empty.withCurrentGroupId(GroupId(value))

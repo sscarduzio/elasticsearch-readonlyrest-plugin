@@ -89,14 +89,9 @@ object ForbiddenResponseContext {
   case object RorFailedToStart extends Cause
   case object TestSettingsNotConfigured extends Cause
 
-  def create(causes: NonEmptyList[ForbiddenResponseContext.Cause],
-             aclStaticContext: AccessControlStaticContext): ForbiddenResponseContext =
+  def from(causes: NonEmptyList[ForbiddenResponseContext.Cause],
+           aclStaticContext: AccessControlStaticContext): ForbiddenResponseContext =
     new ForbiddenResponseContext(Some(aclStaticContext), causes)
-
-  def from(causes: NonEmptyList[ForbiddenCause],
-           aclStaticContext: AccessControlStaticContext): ForbiddenResponseContext = {
-    new ForbiddenResponseContext(Some(aclStaticContext), causes.map(Cause.fromMismatchedCause))
-  }
 
   private implicit val forbiddenCauseShow: Show[Cause] = Show.show {
     case ForbiddenBlockMatch(_) => "FORBIDDEN_BY_BLOCK"

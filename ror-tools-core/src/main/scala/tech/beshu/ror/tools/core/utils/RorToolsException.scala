@@ -21,11 +21,8 @@ import just.semver.SemVer
 sealed trait RorToolsException {
   this: Throwable =>
 }
+
 object RorToolsException {
-
-  object EsNotPatchedException extends IllegalStateException("Elasticsearch is NOT patched yet") with RorToolsException
-
-  object EsAlreadyPatchedException extends IllegalStateException("Elasticsearch is already patched") with RorToolsException
 
   final class EsPatchingNotRequired(esVersion: SemVer)
     extends IllegalStateException(s"Elasticsearch ${esVersion.render} doesn't require patching")

@@ -17,6 +17,8 @@
 package tech.beshu.ror.utils.containers.images
 
 import better.files.File
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps.emptyPluginInstallationSteps
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
@@ -29,6 +31,7 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
                           attributes: Attributes)
   object Config {
     final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
+                                rorInIndexConfigLoadingDelay: FiniteDuration,
                                 rorCustomSettingsIndex: Option[String],
                                 restSsl: Enabled[RestSsl],
                                 internodeSsl: Enabled[InternodeSsl],
@@ -36,6 +39,7 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
     object Attributes {
       val default: Attributes = Attributes(
         rorConfigReloading = ReadonlyRestPlugin.Config.Attributes.default.rorConfigReloading,
+        rorInIndexConfigLoadingDelay = ReadonlyRestPlugin.Config.Attributes.default.rorInIndexConfigLoadingDelay,
         rorCustomSettingsIndex = ReadonlyRestPlugin.Config.Attributes.default.rorCustomSettingsIndex,
         restSsl = if(XpackSecurityPlugin.Config.Attributes.default.restSslEnabled) Enabled.Yes(RestSsl.Xpack) else Enabled.No,
         internodeSsl = if(XpackSecurityPlugin.Config.Attributes.default.internodeSslEnabled) Enabled.Yes(InternodeSsl.Xpack) else Enabled.No,
@@ -58,16 +62,17 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
 }
 
 class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
-                                                 config: Config)
+                                                 config: Config,
+                                                 performPatching: Boolean)
   extends Elasticsearch.Plugin {
 
-  private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig())
+  private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig(), performPatching)
   private val xpackSecurityPlugin = new XpackSecurityPlugin(esVersion, createXpackSecurityConfig())
 
-  override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
+  override def installationSteps(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
     (readonlyRestPlugin :: xpackSecurityPlugin :: Nil)
-      .foldLeft(image) { case (currentImage, plugin) =>
-        plugin.updateEsImage(currentImage)
+      .foldLeft(emptyPluginInstallationSteps) { case (pluginInstallationSteps, plugin) =>
+        PluginInstallationSteps(pluginInstallationSteps.steps ++ plugin.installationSteps(esConfig).steps)
       }
   }
 
@@ -92,6 +97,7 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
       rorPlugin = config.rorPlugin,
       attributes = ReadonlyRestPlugin.Config.Attributes(
         config.attributes.rorConfigReloading,
+        config.attributes.rorInIndexConfigLoadingDelay,
         config.attributes.rorCustomSettingsIndex,
         restSsl = createRorRestSsl(),
         internodeSsl = createRorInternodeSsl(),

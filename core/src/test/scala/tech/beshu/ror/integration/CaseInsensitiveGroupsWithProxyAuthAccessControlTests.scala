@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.integration
-
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -35,7 +33,8 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
   override protected def configYaml: String =
     """
       |readonlyrest:
-      |  username_case_sensitivity: case_insensitive
+      |  global_settings:
+      |    username_case_sensitivity: case_insensitive
       |
       |  access_control_rules:
       |  - name: "Allowed only for group1 and group2"
@@ -59,14 +58,16 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
     "user are case insensitive" should {
       "allow to proceed" when {
         "user is user1" in {
-          val request = MockRequestContext.indices.copy(
-            headers = Set(header("X-Auth-Token", "user1-proxy-id")),
-            filteredIndices = Set(requestedIndex("g12_index")),
-            allIndicesAndAliases = Set(
-              fullLocalIndexWithAliases(fullIndexName("g12_index")),
-              fullLocalIndexWithAliases(fullIndexName("g34_index"))
-            )
+          val request = MockRequestContext.indices
+            .withHeaders(header("X-Auth-Token", "user1-proxy-id"))
+            .copy(
+              filteredIndices = Set(requestedIndex("g12_index")),
+              allIndicesAndAliases = Set(
+                fullLocalIndexWithAliases(fullIndexName("g12_index")),
+                fullLocalIndexWithAliases(fullIndexName("g34_index"))
+              )
           )
+
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
@@ -75,14 +76,16 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
           }
         }
         "user is User1" in {
-          val request = MockRequestContext.indices.copy(
-            headers = Set(header("X-Auth-Token", "User1-proxy-id")),
-            filteredIndices = Set(requestedIndex("g12_index")),
-            allIndicesAndAliases = Set(
-              fullLocalIndexWithAliases(fullIndexName("g12_index")),
-              fullLocalIndexWithAliases(fullIndexName("g34_index"))
-            )
+          val request = MockRequestContext.indices
+            .withHeaders(header("X-Auth-Token", "User1-proxy-id"))
+            .copy(
+              filteredIndices = Set(requestedIndex("g12_index")),
+              allIndicesAndAliases = Set(
+                fullLocalIndexWithAliases(fullIndexName("g12_index")),
+                fullLocalIndexWithAliases(fullIndexName("g34_index"))
+              )
           )
+
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>

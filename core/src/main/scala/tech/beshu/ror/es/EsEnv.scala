@@ -19,11 +19,16 @@ package tech.beshu.ror.es
 import better.files.File
 
 import java.nio.file.Path
+import scala.util.Try
 
-final case class EsEnv(configPath: Path, modulesPath: Path) {
+final case class EsEnv(configPath: Path, modulesPath: Path, esVersion: EsVersion, esNodeSettings: EsNodeSettings) {
 
   def isOssDistribution: Boolean = {
-    !modulesPath.resolve("x-pack-security").toFile.exists()
+    Try {
+      !modulesPath.resolve("x-pack-security").toFile.exists()
+    } getOrElse {
+      false
+    }
   }
 
   def elasticsearchConfig: File = {

@@ -228,6 +228,8 @@ object SyncDecoderCreator extends ADecoderCreator[Id, SyncDecoder] {
 
   def from[A](decoder: ADecoder[Id, A]): SyncDecoder[A] = decoder.asInstanceOf[SyncDecoder[A]]
 
+  def pure[A](a: A): SyncDecoder[A] = new SyncDecoder(Decoder.instance[A](_ => Right(a)))
+
   override def instance[A](f: HCursor => Id[Either[DecodingFailure, A]]): SyncDecoder[A] =
     new SyncDecoder(Decoder.instance(f))
 

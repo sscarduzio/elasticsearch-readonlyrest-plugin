@@ -35,19 +35,18 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
                                 override val impersonation: Impersonation)
   extends BaseAuthorizationRule {
 
-  private val userMatcher = PatternsMatcher.create[User.Id](settings.users.toSet)
-
   override val name: Rule.Name = ExternalAuthorizationRule.Name.name
 
-  override protected val groupsPermittedByRule: PermittedGroupIds = settings.permittedGroupsLogic.permittedGroupIds
+  override val groupsLogic: GroupsLogic = settings.permittedGroupsLogic
+
+  private val userMatcher = PatternsMatcher.create[User.Id](settings.users.toSet)
 
   override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = {
     Either.cond(userMatcher.`match`(user.id), (), ())
   }
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
-                                                       user: LoggedUser,
-                                                       permittedGroupIds: Set[GroupIdLike])
+                                                       user: LoggedUser)
                                                       (implicit requestId: RequestId): Task[UniqueList[Group]] =
     settings.service.grantsFor(user.id)
 
@@ -66,9 +65,6 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
         Groups.CannotCheck
       }
   }
-
-  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
-    settings.permittedGroupsLogic.availableGroupsFrom(usersGroups)
 }
 
 object ExternalAuthorizationRule {

@@ -1,6 +1,7 @@
 readonlyrest:
 
-  prompt_for_basic_auth: false
+  global_settings:
+    prompt_for_basic_auth: false
 
   access_control_rules:
 
@@ -8,7 +9,7 @@ readonlyrest:
       verbosity: error
       auth_key: kibana:kibana
 
-    # ES containter initializer need this rule to configure ES instance after startup
+    # ES container initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow

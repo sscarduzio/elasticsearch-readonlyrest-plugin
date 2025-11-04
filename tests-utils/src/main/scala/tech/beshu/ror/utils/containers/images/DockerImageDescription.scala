@@ -24,7 +24,8 @@ final case class DockerImageDescription(baseImage: String,
                                         runCommands: Seq[Command],
                                         copyFiles: Set[CopyFile],
                                         envs: Set[Env],
-                                        entrypoint: Option[Path]) {
+                                        entrypoint: Option[Path],
+                                        command: Option[String]) {
 
   def run(command: String): DockerImageDescription = {
     this.copy(runCommands = this.runCommands :+ Command.Run(command))
@@ -38,6 +39,11 @@ final case class DockerImageDescription(baseImage: String,
   def runWhen(condition: Boolean, command: => String, orElseCommand: => String): DockerImageDescription = {
     if (condition) run(command)
     else run(orElseCommand)
+  }
+
+  def when(condition: Boolean, f: DockerImageDescription => DockerImageDescription): DockerImageDescription = {
+    if (condition) f(this)
+    else this
   }
 
   def user(name: String): DockerImageDescription = {
@@ -59,6 +65,10 @@ final case class DockerImageDescription(baseImage: String,
   def setEntrypoint(entrypoint: Path): DockerImageDescription = {
     this.copy(entrypoint = Some(entrypoint))
   }
+
+  def setCommand(cmd: String): DockerImageDescription = {
+    this.copy(command = Some(cmd))
+  }
 }
 
 object DockerImageDescription {
@@ -70,11 +80,12 @@ object DockerImageDescription {
   final case class CopyFile(destination: Path, file: File)
   final case class Env(name: String, value: String)
 
-  def create(image: String): DockerImageDescription = DockerImageDescription(
+  def create(image: String, customEntrypoint: Option[Path] = None): DockerImageDescription = DockerImageDescription(
     baseImage = image,
     runCommands = Seq.empty,
     copyFiles = Set.empty,
     envs = Set.empty,
-    entrypoint = None
+    entrypoint = customEntrypoint,
+    command = None,
   )
 }

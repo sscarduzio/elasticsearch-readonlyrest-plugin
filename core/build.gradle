@@ -26,7 +26,7 @@ plugins {
     id "readonlyrest.base-common-conventions"
 
     id "com.github.johnrengelman.shadow" version "8.1.1"
-    id "com.github.maiflai.scalatest" version "0.32"
+    id "com.github.maiflai.scalatest" version "0.33"
     id "java-library"
 }
 
@@ -45,20 +45,6 @@ repositories {
             artifact()
         }
     }
-}
-
-dependencyCheck {
-    /*
-       Severity	Base Score
-       None     0
-       Low      0.1-3.9
-       Medium   4.0-6.9
-       High     7.0-8.9
-       Critical 9.0-10.0
-     */
-    failBuildOnCVSS = 3
-    scanConfigurations = ['runtimeClasspath']
-    suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
 
 java {
@@ -83,10 +69,10 @@ dependencies {
     api group: 'com.hrakaroo',                  name: 'glob',                                version: '0.9.0'
     api group: 'com.comcast',                   name: 'ip4s-core_3',                         version: '2.0.4'
     api group: 'org.typelevel',                 name: 'jawn-parser_3',                       version: '1.5.1'
-    api group: 'io.jsonwebtoken',               name: 'jjwt-api',                            version: '0.11.5'
-    api group: 'io.jsonwebtoken',               name: 'jjwt-impl',                           version: '0.11.5'
-    api(group: 'io.jsonwebtoken',               name: 'jjwt-orgjson',                        version: '0.11.5') {
-        // jjwt-orgjson:0.11.5 uses json version, which has known security vulnerabilities
+    api group: 'io.jsonwebtoken',               name: 'jjwt-api',                            version: '0.12.7'
+    api group: 'io.jsonwebtoken',               name: 'jjwt-impl',                           version: '0.12.7'
+    api(group: 'io.jsonwebtoken',               name: 'jjwt-orgjson',                        version: '0.12.7') {
+        // jjwt-orgjson:0.12.57 uses json version, which has known security vulnerabilities
         exclude group: 'org.json', module: 'json'
     }
     api group: 'org.jooq',                  name: 'joor',                                   version: '0.9.15'
@@ -95,7 +81,7 @@ dependencies {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     }
     api group: 'io.monix',                      name: 'monix_3',                            version: '3.4.1'
-    api group: 'eu.timepit',                    name: 'refined_3',                          version: '0.11.2'
+    api group: 'eu.timepit',                    name: 'refined_3',                          version: '0.11.3'
     api group: 'org.reflections',               name: 'reflections',                        version: '0.9.11'
     api group: 'org.mozilla',                   name: 'rhino',                              version: '1.7.14'
     api group: 'com.github.ben-manes.caffeine', name: 'caffeine',                           version: '3.1.8'
@@ -105,14 +91,8 @@ dependencies {
     api group: 'org.typelevel',                 name: 'squants_3',                          version: '1.8.3'
     api group: 'com.unboundid',                 name: 'unboundid-ldapsdk',                  version: '6.0.11'
     api group: 'com.lihaoyi',                   name: 'upickle_3',                          version: '4.0.2'
-    // https://www.bouncycastle.org/latest_releases.html#1.0.2.4-NONCERT
-    api group: 'org.bouncycastle',          name: 'bc-noncert',                             version: '1.0.2.4'
-    api(group: 'org.bouncycastle',          name: 'bctls-fips',                             version: '1.0.19') {
-        exclude group: 'org.bouncycastle', module: 'bc-fips'
-    }
-    api(group: 'org.bouncycastle',          name: 'bcpkix-fips',                            version: '1.0.7') {
-        exclude group: 'org.bouncycastle', module: 'bc-fips'
-    }
+    api group: 'org.bouncycastle',              name: 'bctls-fips',                         version: '2.1.20'
+    api group: 'org.bouncycastle',              name: 'bcpkix-fips',                        version: '2.1.9'
 
     testImplementation  project(':tests-utils')
     testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                 version: '2.24.2'
@@ -125,11 +105,12 @@ dependencies {
     testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala-core_3',     version: '0.41.4'
 
     constraints {
-        api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.115.Final'
-        api group: 'io.netty',              name: 'netty-handler-proxy',                version: '4.1.115.Final'
-        api group: 'io.netty',              name: 'netty-transport-native-unix-common', version: '4.1.115.Final'
-        api group: 'io.netty',              name: 'netty-transport-native-epoll',       version: '4.1.115.Final'
-        api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.115.Final'
+        api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.126.Final'
+        api group: 'io.netty',              name: 'netty-handler-proxy',                version: '4.1.126.Final'
+        api group: 'io.netty',              name: 'netty-resolver-dns',                 version: '4.1.126.Final'
+        api group: 'io.netty',              name: 'netty-transport-native-unix-common', version: '4.1.126.Final'
+        api group: 'io.netty',              name: 'netty-transport-native-epoll',       version: '4.1.126.Final'
+        api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.126.Final'
         api group: 'com.google.guava',      name: 'guava',                              version: '32.0.1-jre'
         api group: 'io.spray',              name: 'spray-json_3',                       version: '1.3.6'
         api group: 'org.asynchttpclient',   name: 'async-http-client',                  version: '3.0.1'
@@ -172,10 +153,10 @@ tasks.withType(ScalaCompile).configureEach {
             "-Wunused:params",
             "-Wunused:privates",
             "-Wunused:nowarn",
+            "-Wconf:cat=deprecation&msg=\\[ROR\\].*:i"
     ]
 
     parameters -= ["-target:8"]
-
 
     // Finally set the additionalParameters
     scalaCompileOptions.additionalParameters = parameters

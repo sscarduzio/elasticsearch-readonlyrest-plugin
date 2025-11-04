@@ -63,7 +63,7 @@ abstract class BaseKibanaRule(val settings: Settings)
   }
 
   private def isCurrentUserMetadataRequest = ProcessingContext.create { (r, _) =>
-    val result = r.uriPath.isCurrentUserMetadataPath
+    val result = r.restRequest.path.isCurrentUserMetadataPath
     logger.debug(s"[${r.id.show}] Is is a current user metadata request? ${result.show}")
     result
   }
@@ -124,13 +124,13 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   // Save UI state in discover & Short urls
   private def isNonStrictAllowedPath = ProcessingContext.create { (requestContext, kibanaIndexName) =>
-    val uriPath = requestContext.uriPath
+    val path = requestContext.restRequest.path
     val nonStrictAllowedPaths = Try(Pattern.compile(
       "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
         .replace("@kibana_index", kibanaIndexName.stringify)
     )).toOption
     val result = nonStrictAllowedPaths match {
-      case Some(paths) => paths.matcher(uriPath.value.value).find()
+      case Some(paths) => paths.matcher(path.value.value).find()
       case None => false
     }
     logger.debug(s"[${requestContext.id.show}] Is non strict allowed path? ${result.show}")
@@ -161,7 +161,8 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private def isRequestRelatedToTagsPath(pathPart: String) = ProcessingContext.create { (requestContext, _) =>
     val result = requestContext
-      .headers
+      .restRequest
+      .allHeaders
       .find(_.name === Header.Name.kibanaRequestPath)
       .exists(_.value.value.contains(s"/$pathPart/"))
     logger.debug(s"[${requestContext.id.show}] Does kibana request contains '${pathPart.show}' in path? ${result.show}")

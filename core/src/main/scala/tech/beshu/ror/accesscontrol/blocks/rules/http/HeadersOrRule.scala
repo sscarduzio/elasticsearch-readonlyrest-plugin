@@ -38,7 +38,7 @@ class HeadersOrRule(val settings: Settings)
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.resultBasedOnCondition(blockContext) {
-      val requestHeaders = blockContext.requestContext.headers
+      val requestHeaders = blockContext.requestContext.restRequest.allHeaders
       val result = settings
         .headerAccessRequirements
         .exists { isFulfilled(_, requestHeaders) }

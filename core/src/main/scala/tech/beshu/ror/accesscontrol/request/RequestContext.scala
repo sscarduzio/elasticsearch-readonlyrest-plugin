@@ -22,7 +22,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
-import squants.information.{Bytes, Information}
+import squants.information.Bytes
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.request.RequestContext.{Id, Method}
+import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -45,6 +45,8 @@ trait RequestContext extends Logging {
 
   def initialBlockContext: BLOCK_CONTEXT
 
+  def restRequest: RestRequest
+
   def timestamp: Instant
 
   def taskId: Long
@@ -57,20 +59,6 @@ trait RequestContext extends Logging {
 
   def action: Action
 
-  def headers: Set[Header]
-
-  def remoteAddress: Option[Address]
-
-  def localAddress: Address
-
-  def method: Method
-
-  def uriPath: UriPath
-
-  def contentLength: Information
-
-  def content: String
-
   def indexAttributes: Set[IndexAttribute]
 
   def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
@@ -82,8 +70,6 @@ trait RequestContext extends Logging {
   def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]]
 
   def allTemplates: Set[Template]
-
-  def allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]]
 
   lazy val legacyTemplates: Set[Template.LegacyTemplate] =
     allTemplates.collect { case t: Template.LegacyTemplate => t }
@@ -133,9 +119,9 @@ object RequestContext extends Logging {
       }
 
       def stringifyContentLength = {
-        if (r.contentLength == Bytes(0)) "<N/A>"
-        else if (logger.delegate.isEnabled(Level.DEBUG)) r.content
-        else s"<OMITTED, LENGTH=${r.contentLength}> "
+        if (r.restRequest.contentLength == Bytes(0)) "<N/A>"
+        else if (logger.delegate.isEnabled(Level.DEBUG)) r.restRequest.content
+        else s"<OMITTED, LENGTH=${r.restRequest.contentLength}> "
       }
 
       def stringifyIndices = {
@@ -156,17 +142,17 @@ object RequestContext extends Logging {
          | TYP:${r.`type`.show},
          | CGR:${stringifyUserGroup.show},
          | USR:${stringifyUser.show},
-         | BRS:${r.headers.exists(_.name === Header.Name.userAgent).show},
+         | BRS:${r.restRequest.allHeaders.exists(_.name === Header.Name.userAgent).show},
          | KDX:${userMetadata.kibanaIndex.map(_.show).getOrElse("null").show},
          | ACT:${r.action.show},
-         | OA:${r.remoteAddress.map(_.show).getOrElse("null")},
-         | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.value.show).getOrElse("null").show},
-         | DA:${r.localAddress.show},
+         | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
+         | XFF:${r.restRequest.allHeaders.find(_.name === Header.Name.xForwardedFor).map(_.value.show).getOrElse("null").show},
+         | DA:${r.restRequest.localAddress.show},
          | IDX:${stringifyIndices.show},
-         | MET:${r.method.show},
-         | PTH:${r.uriPath.show},
+         | MET:${r.restRequest.method.show},
+         | PTH:${r.restRequest.path.show},
          | CNT:${stringifyContentLength.show},
-         | HDR:${r.headers.show},
+         | HDR:${r.restRequest.allHeaders.show},
          | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ").show},
          | }""".oneLiner
     }
@@ -232,7 +218,8 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 
   def basicAuth: Option[BasicAuth] = {
     requestContext
-      .headers
+      .restRequest
+      .allHeaders
       .to(LazyList)
       .map(BasicAuth.fromHeader)
       .find(_.isDefined)
@@ -247,7 +234,8 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 
   def authorizationToken(config: AuthorizationTokenDef): Option[AuthorizationToken] = {
     requestContext
-      .headers
+      .restRequest
+      .allHeaders
       .find(_.name === config.headerName)
       .flatMap { h =>
         if (h.value.value.startsWith(config.prefix)) {
@@ -261,7 +249,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   }
 
   private def findHeader(name: Header.Name) =
-    requestContext.headers.find(_.name === name)
+    requestContext.restRequest.allHeaders.find(_.name === name)
 }
 
 object RequestContextOps {

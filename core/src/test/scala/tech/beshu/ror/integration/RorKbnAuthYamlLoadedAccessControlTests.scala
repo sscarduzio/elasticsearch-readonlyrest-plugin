@@ -16,42 +16,29 @@
  */
 package tech.beshu.ror.integration
 
-import eu.timepit.refined.auto.*
-import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
+import tech.beshu.ror.accesscontrol.AccessControlList.{ForbiddenCause, RegularRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.*
-import tech.beshu.ror.utils.uniquelist.UniqueList
-
-import scala.jdk.CollectionConverters.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.misc.JwtUtils
+import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class RorKbnAuthYamlLoadedAccessControlTests
   extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
   override protected def configYaml: String =
-    """http.bind_host: _eth0:ipv4_
-      |network.host: _eth0:ipv4_
-      |
-      |http.type: ssl_netty4
-      |#transport.type: local
-      |
+    """
       |readonlyrest:
-      |  ssl:
-      |    enable: true
-      |    keystore_file:  "ror-keystore.jks"
-      |    keystore_pass: readonlyrest
-      |    key_pass: readonlyrest
-      |
       |  access_control_rules:
       |    - name: Container housekeeping is allowed
       |      type: allow
@@ -96,13 +83,12 @@ class RorKbnAuthYamlLoadedAccessControlTests
   "An ACL" when {
     "is configured using config above" should {
       "allow to proceed" when {
-        "JWT token with empty list of groups is defined" in {
-          val claims = new DefaultClaims(Map[String, AnyRef]("sub" -> "test", "user" -> "user", "groups" -> "").asJava)
-          val jwtBuilder = Jwts.builder
-            .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
-            .setSubject("test")
-            .setClaims(claims)
-          val request = MockRequestContext.indices.copy(headers = Set(bearerHeader(jwtBuilder)))
+        "JWT token with some arbitrary group is defined" in {
+          val jwt = JwtUtils.Jwt(
+            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            claims = List("sub" := "test", "user" := "user", "groups" := "arbitrary_group_name")
+          )
+          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -111,25 +97,48 @@ class RorKbnAuthYamlLoadedAccessControlTests
             block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
-              jwt = Some(Jwt.Payload(claims))
+              jwt = Some(Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("arbitrary_group_name"))
+            ) {
+              blockContext
+            }
+          }
+        }
+        "JWT token with some arbitrary group is defined, preferred group is used and matches group in JWT" in {
+          val jwt = JwtUtils.Jwt(
+            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            claims = List("sub" := "test", "user" := "user", "groups" := "group_in_jwt_token")
+          )
+          val preferredGroup = group("group_in_jwt_token")
+          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt), preferredGroup.id.toCurrentGroupHeader)
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          result.history should have size 2
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("Valid JWT token is present"))
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
+              jwt = Some(Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("group_in_jwt_token"))
             ) {
               blockContext
             }
           }
         }
         "JWT token with non-empty list of groups is defined, preferred group is used" in {
-          val claims = new DefaultClaims(Map[String, AnyRef]("sub" -> "test", "user" -> "user", "groups" -> List("viewer_group").asJava).asJava)
-          val jwtBuilder = Jwts.builder
-            .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
-            .setSubject("test")
-            .setClaims(claims)
+          val jwt = JwtUtils.Jwt(
+            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            claims = List("sub" := "test", "user" := "user", "groups" := List("viewer_group"))
+          )
           val preferredGroup = group("mapped_viewer_group")
 
-          val request = MockRequestContext.indices.copy(
-            filteredIndices = Set(requestedIndex("index2")),
-            allAllowedIndices = Set(clusterIndexName("index2")),
-            headers = Set(bearerHeader(jwtBuilder), preferredGroup.id.toCurrentGroupHeader)
-          )
+          val request = MockRequestContext.indices
+            .withHeaders(bearerHeader(jwt), preferredGroup.id.toCurrentGroupHeader)
+            .copy(
+              allAllowedIndices = Set(clusterIndexName("index2")),
+              filteredIndices = Set(requestedIndex("index2")),
+            )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -140,10 +149,44 @@ class RorKbnAuthYamlLoadedAccessControlTests
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               currentGroup = Some(preferredGroup.id),
               availableGroups = UniqueList.of(preferredGroup),
-              indices = Set(requestedIndex("index2"))
+              indices = Set(requestedIndex("index2")),
+              jwt = Some(Jwt.Payload(jwt.defaultClaims()))
             ) {
               blockContext
             }
+          }
+        }
+      }
+      "not allow to proceed" when {
+        "JWT token with empty list of groups is defined" in {
+          val jwt = JwtUtils.Jwt(
+            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            claims = List("sub" := "test", "user" := "user", "groups" := "")
+          )
+          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          result.history should have size 4
+          inside(result.result) { case RegularRequestResult.ForbiddenByMismatched(causes) =>
+            causes.toNonEmptyList should have size 1
+            causes.head should be(ForbiddenCause.OperationNotAllowed)
+          }
+        }
+        "JWT token with some arbitrary group is defined, preferred group is used and does not match group in JWT" in {
+          val jwt = JwtUtils.Jwt(
+            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            claims = List("sub" := "test", "user" := "user", "groups" := "arbitrary_group_name")
+          )
+          val preferredGroup = group("mapped_viewer_group")
+          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt), preferredGroup.id.toCurrentGroupHeader)
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          result.history should have size 4
+          inside(result.result) { case RegularRequestResult.ForbiddenByMismatched(causes) =>
+            causes.toNonEmptyList should have size 1
+            causes.head should be(ForbiddenCause.OperationNotAllowed)
           }
         }
       }

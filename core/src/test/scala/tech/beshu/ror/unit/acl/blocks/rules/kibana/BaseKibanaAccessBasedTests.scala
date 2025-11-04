@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
-
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -32,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -317,6 +315,38 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           )
         }
       }
+      "is kibana reporting data stream backing index" in {
+        val customKibanaIndex = kibanaIndexName(".kibana-admin")
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(RW, Some(customKibanaIndex)),
+          Action("indices:data/write/bulk"),
+          requestedIndices = Set(requestedIndex(".ds-.kibana-reporting-.kibana-admin-2025.01.01-000001")),
+          uriPath = Some(UriPath.from("/_bulk")),
+          customKibanaIndex = Some(customKibanaIndex),
+        ) {
+          assertBlockContext(
+            kibanaIndex = Some(kibanaIndexName(".kibana-admin")),
+            kibanaAccess = Some(RW),
+            indices = Set(requestedIndex(".ds-.kibana-reporting-.kibana-admin-2025.01.01-000001"))
+          )
+        }
+      }
+      "is kibana reporting data stream" in {
+        val customKibanaIndex = kibanaIndexName(".kibana-admin")
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(RW, Some(customKibanaIndex)),
+          Action("indices:data/write/bulk"),
+          requestedIndices = Set(requestedIndex(".kibana-reporting-.kibana-admin")),
+          uriPath = Some(UriPath.from("/_bulk")),
+          customKibanaIndex = Some(customKibanaIndex),
+        ) {
+          assertBlockContext(
+            kibanaIndex = Some(kibanaIndexName(".kibana-admin")),
+            kibanaAccess = Some(RW),
+            indices = Set(requestedIndex(".kibana-reporting-.kibana-admin"))
+          )
+        }
+      }
     }
     "Kibana related data stream is used" which {
       "is kibana_sample_data_logs" in {
@@ -401,9 +431,9 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
                                             uriPath: Option[UriPath],
                                             blockContextAssertion: Option[BlockContext => Unit]) = {
     val requestContext = MockRequestContext.indices.copy(
+      restRequest = MockRestRequest(path = uriPath.getOrElse(UriPath.from("/undefined"))),
       action = action,
       filteredIndices = requestedIndices,
-      uriPath = uriPath.getOrElse(UriPath.from("/undefined"))
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
@@ -423,9 +453,9 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
                                                 uriPath: Option[UriPath],
                                                 blockContextAssertion: Option[BlockContext => Unit]) = {
     val requestContext = MockRequestContext.dataStreams.copy(
+      restRequest = MockRestRequest(path = uriPath.getOrElse(UriPath.from("/undefined"))),
       action = action,
       dataStreams = requestedDataStreams,
-      uriPath = uriPath.getOrElse(UriPath.from("/undefined"))
     )
     val blockContext = DataStreamRequestBlockContext(
       requestContext = requestContext,

@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites.base
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -156,7 +157,7 @@ trait BaseIndexApiSuite
           val response = dev9IndexManager.getIndex("index9")
 
           response should have statusCode forbiddenStatusReturned
-          response.responseJson should be(forbiddenByBlockResponse("forbidden"))
+          response.responseJson should be(forbiddenByBlockResponse("Forbidden by ReadonlyREST"))
         }
         "custom forbidden response for block configured" in {
           val response = dev10IndexManager.getIndex("index10")
@@ -448,7 +449,7 @@ trait BaseIndexApiSuite
           result.indices.size should be(0)
           result.aliases.size should be(0)
         }
-        "user has no access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x, allEs8xAboveEs86x) in {
+        "user has no access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x, allEs8xAboveEs86x, allEs9x) in {
           val result = dev7IndexManager.resolve("index2")
 
           result should have statusCode 200

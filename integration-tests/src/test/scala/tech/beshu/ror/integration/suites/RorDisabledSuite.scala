@@ -61,7 +61,7 @@ class RorDisabledSuite
         val result = user1MetadataManager.fetchMetadata()
 
         result should have statusCode 403
-        result.responseJson("error")("reason").str should be("forbidden")
+        result.responseJson("error")("reason").str should be("Forbidden by ReadonlyREST")
         result.responseJson("error")("due_to").str should be("READONLYREST_NOT_ENABLED")
       }
     }

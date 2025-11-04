@@ -64,7 +64,8 @@ final class TokenAuthenticationRule(val settings: Settings,
 
   private def verifyTokenFromHeader(requestContext: RequestContext) = {
     requestContext
-      .headers
+      .restRequest
+      .allHeaders
       .find(_.name === settings.tokenHeaderName)
       .exists(_.value == settings.token.value)
   }

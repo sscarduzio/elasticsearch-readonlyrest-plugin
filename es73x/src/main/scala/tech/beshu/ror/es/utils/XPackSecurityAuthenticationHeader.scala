@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.utils
 
-import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.Version
 import org.elasticsearch.common.bytes.BytesReference
@@ -29,9 +28,9 @@ import scala.jdk.CollectionConverters.*
 
 object XPackSecurityAuthenticationHeader {
 
-  def createRorUserAuthenticationHeader(nodeName: String) = new Header(
+  def createXpackUserAuthenticationHeader(nodeName: String) = new Header(
     Header.Name(nes("_xpack_security_authentication")),
-    getAuthenticationHeaderValue(nodeName, "ROR", isInternal = false)
+    getAuthenticationHeaderValue(nodeName, "_xpack", isInternal = false)
   )
 
   def createXpackSecurityAuthenticationHeader(nodeName: String) = new Header(

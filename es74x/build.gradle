@@ -39,7 +39,7 @@ dependencies {
     implementation  project(path: ':ror-tools', configuration: 'shadow')
     implementation  project(path: ':ror-tools-core')
     implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: moduleEsVersion
-    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: moduleEsVersion
+    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: moduleEsVersion
     implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
     compileOnly     group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',                     version: moduleEsVersion
     compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
@@ -171,7 +171,7 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
 
 tasks.register('localRorDockerImage', Exec) {
     // we prepare docker image for local architecture - the image is loaded to local registry
-    dependsOn('packageRorPlugin', 'prepareDockerImageFiles') 
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'

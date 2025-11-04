@@ -17,7 +17,7 @@ spec:
                 runAsUser: 0
                 runAsGroup: 0
               env:
-                - name: I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING
+                - name: I_UNDERSTAND_AND_ACCEPT_ES_PATCHING
                   value: "yes"
                 - name: INTERNAL_USR_PASS
                   valueFrom:

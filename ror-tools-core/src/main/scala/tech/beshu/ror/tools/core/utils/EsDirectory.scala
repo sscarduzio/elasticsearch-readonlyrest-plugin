@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.tools.core.utils
 
+import just.semver.SemVer
 import os.Path
 import tech.beshu.ror.tools.core.utils.EsUtil.findTransportNetty4JarIn
 import tech.beshu.ror.tools.core.utils.RorToolsException.EsPathException
@@ -24,12 +25,31 @@ import scala.util.{Failure, Success, Try}
 
 sealed case class EsDirectory private(path: os.Path) {
 
+  private val elasticsearchJar = """^elasticsearch-(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)\.jar$""".r
+
   val libPath: Path = path / "lib"
   val modulesPath: Path = path / "modules"
 
   def findTransportNetty4Jar: Option[Path] = {
     findTransportNetty4JarIn(path / "modules" / "transport-netty4")
   }
+
+  def readEsVersion(): SemVer = {
+    os
+      .list(path / "lib")
+      .view
+      .flatMap { file =>
+        file.last match {
+          case elasticsearchJar(version, _) => SemVer.parse(version).toOption
+          case _ => None
+        }
+      }
+      .headOption
+      .getOrElse {
+        throw new IllegalArgumentException("Cannot determine Elasticsearch version")
+      }
+  }
+
 }
 object EsDirectory {
 

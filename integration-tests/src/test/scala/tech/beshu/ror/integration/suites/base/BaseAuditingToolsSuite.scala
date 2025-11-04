@@ -22,10 +22,15 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.SingleClientSupport
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.containers.providers.ClientProvider
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, IndexManager, RorApiManager}
-import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import tech.beshu.ror.utils.elasticsearch.*
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
+import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
+import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
+import tech.beshu.ror.utils.misc.Resources.getResourceContent
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 import java.util.UUID
 
@@ -40,12 +45,35 @@ trait BaseAuditingToolsSuite
 
   protected def destNodeClientProvider: ClientProvider
 
-  private lazy val adminAuditIndexManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, "audit_index")
+  protected def assertForEveryAuditEntry(entry: JSON): Unit
+
+  protected def baseRorConfig: String
+
+  protected def baseAuditDataStreamName: Option[String]
+
+  private lazy val baseAuditIndexName = "audit_index"
+
+  protected lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
+  private lazy val dataStreamManager = new DataStreamManager(destNodeClientProvider.adminClient, esVersionUsed)
+
+  private lazy val adminAuditManagers =
+    (List(baseAuditIndexName) ++ baseAuditDataStreamName.toList)
+      .map { indexName =>
+        (indexName, new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, indexName))
+      }
+      .toMap
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    adminAuditIndexManager.truncate
+    adminAuditManagers.values.foreach(_.truncate())
   }
+
+  protected def forEachAuditManager[A](test: => AuditIndexManager => A): Unit =
+    adminAuditManagers.foreach { case (indexName, manager) =>
+      withClue(s"Error for audit index '$indexName'") {
+        test(manager)
+      }
+    }
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
@@ -57,14 +85,16 @@ trait BaseAuditingToolsSuite
         val response = indexManager.getIndex("twitter")
         response should have statusCode 200
 
-        eventually {
-          val auditEntries = adminAuditIndexManager.getEntries.force().jsons
-          auditEntries.size shouldBe 1
-
-          val firstEntry = auditEntries(0)
-          firstEntry("final_state").str shouldBe "ALLOWED"
-          firstEntry("user").str shouldBe "username"
-          firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.force().jsons
+            auditEntries.size shouldBe 1
+            val firstEntry = auditEntries(0)
+            firstEntry("final_state").str shouldBe "ALLOWED"
+            firstEntry("user").str shouldBe "username"
+            firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
+            assertForEveryAuditEntry(firstEntry)
+          }
         }
       }
       "no rule is matched with username from auth header" in {
@@ -74,13 +104,16 @@ trait BaseAuditingToolsSuite
         val response = indexManager.getIndex("twitter")
         response should have statusCode 403
 
-        eventually {
-          val auditEntries = adminAuditIndexManager.getEntries.jsons
-          auditEntries.size shouldBe 1
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.jsons
+            auditEntries.size shouldBe 1
 
-          val firstEntry = auditEntries(0)
-          firstEntry("final_state").str shouldBe "FORBIDDEN"
-          firstEntry("user").str shouldBe "username"
+            val firstEntry = auditEntries(0)
+            firstEntry("final_state").str shouldBe "FORBIDDEN"
+            firstEntry("user").str shouldBe "username"
+            assertForEveryAuditEntry(firstEntry)
+          }
         }
       }
       "no rule is matched with raw auth header as user" in {
@@ -88,13 +121,16 @@ trait BaseAuditingToolsSuite
         val response = indexManager.getIndex("twitter")
         response should have statusCode 403
 
-        eventually {
-          val auditEntries = adminAuditIndexManager.getEntries.jsons
-          auditEntries.size shouldBe 1
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.jsons
+            auditEntries.size shouldBe 1
 
-          val firstEntry = auditEntries(0)
-          firstEntry("final_state").str shouldBe "FORBIDDEN"
-          firstEntry("user").str shouldBe "user_token"
+            val firstEntry = auditEntries(0)
+            firstEntry("final_state").str shouldBe "FORBIDDEN"
+            firstEntry("user").str shouldBe "user_token"
+            assertForEveryAuditEntry(firstEntry)
+          }
         }
       }
       "rule 1 is matched" when {
@@ -112,12 +148,16 @@ trait BaseAuditingToolsSuite
           val response2 = indexManager.getIndex("twitter")
           response2 should have statusCode 200
 
-          eventually {
-            val auditEntries = adminAuditIndexManager.getEntries.jsons
-            auditEntries.size shouldBe 2
+          forEachAuditManager { adminAuditManager =>
+            eventually {
+              val auditEntries = adminAuditManager.getEntries.jsons
+              auditEntries.size shouldBe 2
 
-            auditEntries(0)("correlation_id").str shouldBe correlationId
-            auditEntries(1)("correlation_id").str shouldBe correlationId
+              auditEntries(0)("correlation_id").str shouldBe correlationId
+              auditEntries(1)("correlation_id").str shouldBe correlationId
+              assertForEveryAuditEntry(auditEntries(0))
+              assertForEveryAuditEntry(auditEntries(1))
+            }
           }
         }
         "two requests were sent and the first one is user metadata request" in {
@@ -136,12 +176,16 @@ trait BaseAuditingToolsSuite
           val getIndexResponse = indexManager.getIndex("twitter")
           getIndexResponse should have statusCode 200
 
-          eventually {
-            val auditEntries = adminAuditIndexManager.getEntries.jsons
-            auditEntries.size shouldBe 2
+          forEachAuditManager { adminAuditManager =>
+            eventually {
+              val auditEntries = adminAuditManager.getEntries.jsons
+              auditEntries.size shouldBe 2
 
-            auditEntries(0)("correlation_id").str shouldBe correlationId
-            auditEntries(1)("correlation_id").str shouldBe correlationId
+              auditEntries(0)("correlation_id").str shouldBe correlationId
+              auditEntries(1)("correlation_id").str shouldBe correlationId
+              assertForEveryAuditEntry(auditEntries(0))
+              assertForEveryAuditEntry(auditEntries(1))
+            }
           }
         }
         "two metadata requests were sent, one with correlationId" in {
@@ -164,11 +208,15 @@ trait BaseAuditingToolsSuite
 
           loggingId1 should be(loggingId2)
 
-          eventually {
-            val auditEntries = adminAuditIndexManager.getEntries.jsons
-            auditEntries.size shouldBe 2
+          forEachAuditManager { adminAuditManager =>
+            eventually {
+              val auditEntries = adminAuditManager.getEntries.jsons
+              auditEntries.size shouldBe 2
 
-            auditEntries.map(_("correlation_id").str).toSet shouldBe Set(loggingId1, loggingId2)
+              auditEntries.map(_("correlation_id").str).toSet shouldBe Set(loggingId1, loggingId2)
+              assertForEveryAuditEntry(auditEntries(0))
+              assertForEveryAuditEntry(auditEntries(1))
+            }
           }
         }
       }
@@ -179,9 +227,10 @@ trait BaseAuditingToolsSuite
         val response = indexManager.getIndex("facebook")
         response should have statusCode 200
 
-        eventually {
-          val auditEntriesResponse = adminAuditIndexManager.getEntries
-          auditEntriesResponse should have statusCode 404
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            adminAuditManager.hasNoEntries
+          }
         }
       }
     }
@@ -190,17 +239,20 @@ trait BaseAuditingToolsSuite
   "ROR audit event request" should {
     "be audited" when {
       "rule 3 is matched" when {
-        "no JSON kay attribute from request body payload is defined in audit serializer" in {
+        "no JSON key attribute from request body payload is defined in audit serializer" in {
           val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }""")).force()
 
           response should have statusCode 204
 
-          eventually {
-            val auditEntries = adminAuditIndexManager.getEntries.jsons
-            auditEntries.size should be(1)
-            auditEntries(0)("event").str should be("logout")
+          forEachAuditManager { adminAuditManager =>
+            eventually {
+              val auditEntries = adminAuditManager.getEntries.jsons
+              auditEntries.size should be(1)
+              auditEntries(0)("event").str should be("logout")
+              assertForEveryAuditEntry(auditEntries(0))
+            }
           }
         }
         "user JSON key attribute from request doesn't override the defined in audit serializer" in {
@@ -210,23 +262,29 @@ trait BaseAuditingToolsSuite
 
           response should have statusCode 204
 
-          eventually {
-            val auditEntries = adminAuditIndexManager.getEntries.jsons
-            auditEntries.size should be(1)
-            auditEntries(0)("user").str should be("username")
+          forEachAuditManager { adminAuditManager =>
+            eventually {
+              val auditEntries = adminAuditManager.getEntries.jsons
+              auditEntries.size should be(1)
+              auditEntries(0)("user").str should be("username")
+              assertForEveryAuditEntry(auditEntries(0))
+            }
           }
         }
         "new JSON key attribute from request body as a JSON value" in {
           val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-          val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": { "field1": 1, "fields2": "f2" } }"""))
+          val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event_obj": { "field1": 1, "fields2": "f2" } }"""))
 
           response should have statusCode 204
 
-          eventually {
-            val auditEntries = adminAuditIndexManager.getEntries.jsons
-            auditEntries.size should be(1)
-            auditEntries(0)("event") should be(ujson.read("""{ "field1": 1, "fields2": "f2" }"""))
+          forEachAuditManager { adminAuditManager =>
+            eventually {
+              val auditEntries = adminAuditManager.getEntries.jsons
+              auditEntries.size should be(1)
+              auditEntries(0)("event_obj") should be(ujson.read("""{ "field1": 1, "fields2": "f2" }"""))
+              assertForEveryAuditEntry(auditEntries(0))
+            }
           }
         }
       }
@@ -238,9 +296,10 @@ trait BaseAuditingToolsSuite
         val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
         response should have statusCode 204
 
-        eventually {
-          val entriesResult = adminAuditIndexManager.getEntries
-          entriesResult should have statusCode 404
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            adminAuditManager.hasNoEntries
+          }
         }
       }
       "request JSON is malformed" in {
@@ -265,9 +324,10 @@ trait BaseAuditingToolsSuite
             |}
           """.stripMargin))
 
-        eventually {
-          val entriesResult = adminAuditIndexManager.getEntries
-          entriesResult should have statusCode 404
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            adminAuditManager.hasNoEntries
+          }
         }
       }
       "request JSON is too large (>5KB)" in {
@@ -292,11 +352,431 @@ trait BaseAuditingToolsSuite
             |}
           """.stripMargin))
 
-        eventually {
-          val entriesResult = adminAuditIndexManager.getEntries
-          entriesResult should have statusCode 404
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            adminAuditManager.hasNoEntries
+          }
         }
       }
     }
+  }
+
+  "ROR audit index setup" should {
+    "create an index if not exist" in {
+      disableAudit()
+
+      val newIndex = s"audit-index-${UUID.randomUUID().toString}"
+      rorApiManager.updateRorInIndexConfig(rorConfigWithIndexAudit(newIndex)).forceOkStatus()
+
+      val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newIndex)
+      auditEventAssertion(adminAuditManager)
+
+      assertDynamicIndexMappings(newIndex)
+    }
+  }
+
+  "ROR audit data stream setup" should {
+    "create an audit data stream if not exist" excludeES(allEs6x, allEs7xBelowEs79x) in {
+      disableAudit()
+
+      val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
+
+      assertDataStreamNotExists(newDataStream)
+
+      rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+
+      eventually {
+        val response = dataStreamManager.getAllDataStreams()
+        response.force().allDataStreams should contain(newDataStream)
+      }
+      val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
+      auditEventAssertion(adminAuditManager)
+
+      assertAuditDataStreamSettings(newDataStream)
+    }
+    "create an audit data stream" when {
+      "policy already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        disableAudit()
+
+        val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
+
+        assertDataStreamNotExists(newDataStream)
+
+        val policy = ujson.read(
+          """{
+            |  "policy": {
+            |    "phases": {
+            |      "hot": {
+            |        "actions": {
+            |          "rollover" : {"max_docs": 0}
+            |        }
+            |      }
+            |    }
+            |  }
+            |}""".stripMargin
+        )
+        val indexLifecycleManager = new IndexLifecycleManager(destNodeClientProvider.adminClient, esVersionUsed)
+        indexLifecycleManager.putPolicyAndWaitForIndexing(id = s"$newDataStream-lifecycle-policy", policy)
+
+        rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+
+        eventually {
+          assertDataStreamExists(newDataStream)
+        }
+
+        val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
+        auditEventAssertion(adminAuditManager)
+      }
+      "component mapping already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        disableAudit()
+
+        val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
+
+        assertDataStreamNotExists(newDataStream)
+
+        val template = ujson.read(
+          s"""
+             |{
+             |  "template": {
+             |    "mappings": {
+             |      "properties": {
+             |        "@timestamp": {
+             |          "type": "date",
+             |          "format":"date_optional_time||epoch_millis"
+             |        }
+             |      }
+             |    }
+             |  }
+             |}
+             |""".stripMargin
+        )
+        val templateManager = new ComponentTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
+        templateManager.putTemplateAndWaitForIndexing(templateName = s"$newDataStream-mappings", body = template)
+
+        rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+
+        eventually {
+          assertDataStreamExists(newDataStream)
+        }
+
+        val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
+        auditEventAssertion(adminAuditManager)
+      }
+      "component settings already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        disableAudit()
+
+        val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
+        assertDataStreamNotExists(newDataStream)
+
+        val template = ujson.read(
+          s"""
+             |{
+             |  "template": {
+             |    "settings" : {
+             |      "number_of_shards" : 1
+             |    }
+             |  }
+             |}""".stripMargin
+        )
+        val templateManager = new ComponentTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
+        templateManager.putTemplateAndWaitForIndexing(templateName = s"$newDataStream-settings", body = template)
+
+        rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+
+        eventually {
+          assertDataStreamExists(newDataStream)
+        }
+
+        val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
+        auditEventAssertion(adminAuditManager)
+      }
+      "index template already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        disableAudit()
+
+        val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
+        assertDataStreamNotExists(newDataStream)
+
+        val templateManager = new IndexTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
+        templateManager
+          .putTemplateAndWaitForIndexing(
+            templateName = s"$newDataStream-template",
+            template = ujson.read(
+              s"""
+                 |{
+                 |  "index_patterns": ["$newDataStream"],
+                 |  "data_stream": {}
+                 |}
+                 |""".stripMargin
+            )
+          )
+
+        rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+
+        eventually {
+          assertDataStreamExists(newDataStream)
+        }
+
+        val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
+        auditEventAssertion(adminAuditManager)
+      }
+    }
+    "use existing data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
+      disableAudit()
+
+      val dataStreamName = s"audit-ds-${UUID.randomUUID().toString}"
+
+      createAuditDataStream(dataStreamName)
+
+      rorApiManager.updateRorInIndexConfig(rorConfigWithDataStreamAudit(dataStreamName)).forceOkStatus()
+
+      val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, dataStreamName)
+      auditEventAssertion(adminAuditManager)
+    }
+  }
+
+  private def assertDataStreamNotExists(newDataStream: String): Unit = {
+    val response = dataStreamManager.getAllDataStreams()
+    response.force().allDataStreams should not contain (newDataStream)
+  }
+
+  private def assertDataStreamExists(newDataStream: String): Unit = {
+    val response = dataStreamManager.getAllDataStreams()
+    response.force().allDataStreams should contain(newDataStream)
+  }
+
+  private def disableAudit(): Unit = {
+    val initialConfig = getResourceContent("/ror_audit/disabled_auditing_tools/readonlyrest.yml")
+    rorApiManager.updateRorInIndexConfig(initialConfig).forceOKStatusOrConfigAlreadyLoaded()
+  }
+
+  private def auditEventAssertion(adminAuditManager: AuditIndexManager) = {
+    val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
+    val indexResponse = indexManager.getIndex("twitter")
+    indexResponse should have statusCode 200
+    eventually {
+      val auditEntries = adminAuditManager.getEntries.force().jsons
+      auditEntries.size shouldBe 1
+
+      val firstEntry = auditEntries(0)
+      firstEntry("final_state").str shouldBe "ALLOWED"
+      firstEntry("user").str shouldBe "username"
+      firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
+      assertForEveryAuditEntry(firstEntry)
+    }
+  }
+
+  private def rorConfigWithIndexAudit(indexName: String) = {
+    baseRorConfig.replace(
+      baseAuditIndexName,
+      indexName
+    )
+  }
+
+  private def rorConfigWithDataStreamAudit(dataStreamName: String) = {
+    baseRorConfig.replace(
+      baseAuditDataStreamName.getOrElse(throw new IllegalStateException("Data stream name should be set for Data Stream audit test")),
+      dataStreamName
+    )
+  }
+
+  private def createAuditDataStream(dataStreamName: String) = {
+    val templateManager = new IndexTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
+    templateManager.createTemplate(
+      templateName = s"$dataStreamName-template",
+      body = ujson.read(
+        s"""
+           |{
+           |  "index_patterns": ["$dataStreamName*"],
+           |  "data_stream": { },
+           |  "priority": 500,
+           |  "template": {
+           |    "mappings": {
+           |      "properties": {
+           |        "@timestamp": {
+           |          "type": "date",
+           |          "format": "date_optional_time||epoch_millis"
+           |        }
+           |      }
+           |    }
+           |  }
+           |}
+           |""".stripMargin
+      )
+    ).force()
+
+    dataStreamManager.createDataStream(dataStreamName).force()
+  }
+
+  private def assertAuditDataStreamSettings(dataStreamName: String): Unit = {
+    val indexLifecycleManager = new IndexLifecycleManager(destNodeClientProvider.adminClient, esVersionUsed)
+    val policyName = s"$dataStreamName-lifecycle-policy"
+    val settingsName = s"$dataStreamName-settings"
+    val mappingsName = s"$dataStreamName-mappings"
+    val indexTemplateName = s"$dataStreamName-template"
+
+    val indexLifecycle = indexLifecycleManager.getPolicy(policyName)
+    val policy = indexLifecycle.policies.get(policyName)
+
+    val expectedPolicy = if (Version.greaterOrEqualThan(esVersionUsed, 8, 14, 0)) {
+      ujson.read(
+        s"""
+           |{
+           |  "policy":{
+           |    "phases":{
+           |      "hot":{
+           |        "min_age":"0ms",
+           |        "actions":{
+           |          "rollover":{
+           |            "max_age":"1d",
+           |            "max_primary_shard_size":"50gb"
+           |          }
+           |        }
+           |      },
+           |      "warm":{
+           |        "min_age":"14d",
+           |        "actions":{
+           |          "shrink":{
+           |            "number_of_shards":1,
+           |            "allow_write_after_shrink":false
+           |          },
+           |          "forcemerge":{
+           |            "max_num_segments":1
+           |          }
+           |        }
+           |      },
+           |      "cold":{
+           |        "min_age":"30d",
+           |        "actions":{
+           |          "freeze":{
+           |
+           |          }
+           |        }
+           |      }
+           |    }
+           |  }
+           |}
+           |
+           |""".stripMargin
+      )
+    } else if (Version.greaterOrEqualThan(esVersionUsed, 7, 14, 0)) {
+      ujson.read(
+        s"""
+           |{
+           |  "policy":{
+           |    "phases":{
+           |      "hot":{
+           |        "min_age":"0ms",
+           |        "actions":{
+           |          "rollover":{
+           |            "max_age":"1d",
+           |            "max_primary_shard_size":"50gb"
+           |          }
+           |        }
+           |      },
+           |      "warm":{
+           |        "min_age":"14d",
+           |        "actions":{
+           |          "shrink":{
+           |            "number_of_shards":1
+           |          },
+           |          "forcemerge":{
+           |            "max_num_segments":1
+           |          }
+           |        }
+           |      },
+           |      "cold":{
+           |        "min_age":"30d",
+           |        "actions":{
+           |          "freeze":{
+           |
+           |          }
+           |        }
+           |      }
+           |    }
+           |  }
+           |}
+           |
+           |""".stripMargin
+      )
+    }
+    else {
+      ujson.read(
+        s"""
+           |{
+           |  "policy":{
+           |    "phases":{
+           |      "hot":{
+           |        "min_age":"0ms",
+           |        "actions":{
+           |          "rollover":{
+           |            "max_age":"1d"
+           |          }
+           |        }
+           |      },
+           |      "warm":{
+           |        "min_age":"14d",
+           |        "actions":{
+           |          "shrink":{
+           |            "number_of_shards":1
+           |          },
+           |          "forcemerge":{
+           |            "max_num_segments":1
+           |          }
+           |        }
+           |      },
+           |      "cold":{
+           |        "min_age":"30d",
+           |        "actions":{
+           |          "freeze":{
+           |
+           |          }
+           |        }
+           |      }
+           |    }
+           |  }
+           |}
+           |
+           |""".stripMargin
+      )
+    }
+
+    policy shouldBe Some(expectedPolicy)
+
+    val componentTemplateManager = new ComponentTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
+    val settingsResponse = componentTemplateManager.getTemplate(settingsName)
+    settingsResponse.templates.headOption shouldBe Some(ComponentTemplate(settingsName, aliases = Set.empty))
+    val mappingsResponse = componentTemplateManager.getTemplate(mappingsName)
+    mappingsResponse.templates.headOption shouldBe Some(ComponentTemplate(mappingsName, aliases = Set.empty))
+
+    val templateManager = new IndexTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
+    val templateResponse = templateManager.getTemplate(indexTemplateName)
+    templateResponse.templates.headOption shouldBe Some(Template(indexTemplateName, patterns = Set(dataStreamName), aliases = Set.empty))
+
+    val dataStreamResponse = dataStreamManager.getDataStream(dataStreamName)
+    dataStreamResponse.indexTemplateByDataStream(dataStreamName) shouldBe indexTemplateName
+    dataStreamResponse.ilmPolicyByDataStream(dataStreamName) shouldBe policyName
+
+    dataStreamResponse.backingIndices.foreach { backingIndex =>
+      assertDynamicIndexMappings(backingIndex)
+    }
+  }
+
+  private def assertDynamicIndexMappings(indexName: String) = {
+    val indexManager = new IndexManager(destNodeClientProvider.adminClient, esVersionUsed)
+    val expectedProperties = List(
+      "@timestamp", "acl_history", "action", "block", "content_len", "content_len_kb",
+      "correlation_id", "destination", "final_state", "headers", "id", "indices", "match",
+      "origin", "path", "processingMillis", "req_method", "task_id", "type", "user"
+    )
+    val mappings = indexManager.getMappings(indexName).responseJson(indexName)("mappings").obj
+    val properties = {
+      if (Version.greaterOrEqualThan(esVersionUsed, 7,0,0)) {
+        mappings("properties").obj.keySet
+      } else {
+        mappings("ror_audit_evt")("properties").obj.keySet
+      }
+    }
+
+    properties should contain allElementsOf (expectedProperties)
   }
 }

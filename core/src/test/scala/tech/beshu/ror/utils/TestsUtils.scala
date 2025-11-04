@@ -26,7 +26,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.matchers.should.Matchers.*
 import squants.information.Megabytes
-import tech.beshu.ror.accesscontrol.audit.LoggingContext
+import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
@@ -50,7 +50,9 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
+import tech.beshu.ror.audit.AuditEnvironmentContext
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.es.{EsNodeSettings, EsVersion}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
@@ -69,6 +71,10 @@ object TestsUtils {
 
   implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
   val rorYamlParser = new RorYamlParser(Megabytes(3))
+
+  val defaultEsVersionForTests: EsVersion = EsVersion(8, 17, 0)
+
+  inline def nes(str : String): NonEmptyString = RefinedUtils.nes(str)
 
   def basicAuthHeader(value: String): Header =
     new Header(
@@ -160,7 +166,7 @@ object TestsUtils {
 
   def fullIndexName(str: NonEmptyString): IndexName.Full = IndexName.Full.fromString(str.value).get
 
-  def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromString(str.value).get
+  def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromNes(str.value)
 
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
@@ -172,13 +178,13 @@ object TestsUtils {
                           impersonatorCredentials: Credentials,
                           impersonatedUsersIdPatterns: NonEmptyList[NonEmptyString]): ImpersonatorDef = {
     ImpersonatorDef(
-      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userId(userIdPattern)))),
+      userIdPatterns(userIdPattern.toString),
       new AuthKeyRule(
         BasicAuthenticationRule.Settings(impersonatorCredentials),
         CaseSensitivity.Enabled,
         Impersonation.Disabled
       ),
-      ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.fromNonEmptyList(impersonatedUsersIdPatterns.map(User.Id.apply).map(UserIdPattern.apply))))
+      ImpersonatedUsers(userIdPatterns(impersonatedUsersIdPatterns.head.toString, impersonatedUsersIdPatterns.map(_.toString).tail: _*))
     )
   }
 
@@ -343,7 +349,7 @@ object TestsUtils {
     }
   }
 
-  implicit class CurrentGroupToHeader(group: GroupId) extends AnyVal {
+  implicit class CurrentGroupToHeader(private val group: GroupId) extends AnyVal {
     def toCurrentGroupHeader: Header = currentGroupHeader(group.value.value)
   }
 
@@ -370,7 +376,7 @@ object TestsUtils {
     case Failure(ex) => throw new IllegalArgumentException(s"Cannot parse $value to Url: ${ex.getMessage}")
   }
 
-  implicit class NonEmptyListOps[T](value: T) extends AnyVal {
+  implicit class NonEmptyListOps[T](private val value: T) extends AnyVal {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)
   }
 
@@ -391,14 +397,21 @@ object TestsUtils {
   }
 
   def getResourcePath(resource: String): Path = {
-    File(getClass.getResource(resource).getPath).path
+    File(getClass.getResource(resource).toURI).path
   }
 
   def getResourceContent(resource: String): String = {
     File(getResourcePath(resource)).contentAsString
   }
 
-  implicit class ValueOrIllegalState[ERROR, SUCCESS](eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
+  def testEsNodeSettings: EsNodeSettings = EsNodeSettings(
+    clusterName = "testEsCluster",
+    nodeName = "testEsNode"
+  )
+
+  def testAuditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(testEsNodeSettings)
+
+  implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 
     def valueOrThrowIllegalState()(implicit scheduler: Scheduler): SUCCESS = {
       eitherT.value.runSyncUnsafe() match {
@@ -409,4 +422,12 @@ object TestsUtils {
   }
   
   implicit def unsafeNes(str: String): NonEmptyString = NonEmptyString.unsafeFrom(str)
+
+  def userIdPatterns(id: String, ids: String*): UserIdPatterns = {
+    UserIdPatterns(
+      UniqueNonEmptyList.unsafeFrom(
+        (id :: ids.toList).map(str => UserIdPattern(User.Id(NonEmptyString.unsafeFrom(str))))
+      )
+    )
+  }
 }

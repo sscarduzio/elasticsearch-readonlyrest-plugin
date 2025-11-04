@@ -16,19 +16,21 @@
  */
 package tech.beshu.ror.es.handler
 
-import cats.data.NonEmptySet
+import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
-import tech.beshu.ror.accesscontrol.AccessControlList.{ForbiddenCause, UserMetadataRequestResult}
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
+import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
+import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.ForbiddenBlockMatch
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
@@ -57,8 +59,10 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
       result match {
         case UserMetadataRequestResult.Allow(userMetadata, _) =>
           onAllow(request, userMetadata)
-        case UserMetadataRequestResult.Forbidden(causes) =>
-          onForbidden(request, causes)
+        case UserMetadataRequestResult.ForbiddenBy(_, block) =>
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
+        case UserMetadataRequestResult.ForbiddenByMismatched(causes) =>
+          onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)
       }
@@ -72,18 +76,18 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
 
   private def onAllow(requestContext: RequestContext, userMetadata: UserMetadata): Unit = {
     logRequestProcessingTime(requestContext)
-    esContext.listener.onResponse(new RRMetadataResponse(userMetadata, esContext.correlationId))
+    esContext.listener.onResponse(new RRMetadataResponse(userMetadata, esContext.correlationId.value))
   }
 
-  private def onForbidden(requestContext: RequestContext, causes: NonEmptySet[ForbiddenCause]): Unit = {
+  private def onForbidden(requestContext: RequestContext, causes: NonEmptyList[ForbiddenResponseContext.Cause]): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(ForbiddenResponse.create(
-      ForbiddenResponseContext.from(causes.toNonEmptyList, engine.core.accessControl.staticContext)
+      ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext)
     ))
   }
 
   private def onPassThrough(requestContext: RequestContext): Unit = {
-    logger.warn(s"[${requestContext.id.toRequestId.show}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST plugin was disabled in settings")
+    logger.warn(s"[${requestContext.id.toRequestId.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST plugin was disabled in settings")
     esContext.listener.onFailure(createRorNotEnabledResponse())
   }
 

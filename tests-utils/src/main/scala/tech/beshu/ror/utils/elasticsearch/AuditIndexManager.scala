@@ -18,7 +18,10 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
+import org.scalatest.Assertion
+import org.scalatest.matchers.should.Matchers.shouldBe
+import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class AuditIndexManager(restClient: RestClient,
@@ -28,6 +31,7 @@ class AuditIndexManager(restClient: RestClient,
 
   final lazy val searchManager = new SearchManager(restClient, esVersion)
   final lazy val indexManager = new IndexManager(restClient, esVersion)
+  final lazy val documentManager = new DocumentManager(restClient, esVersion)
 
   def getEntries: AuditEntriesResult = {
     val result = searchManager.eventually(searchManager.search(indexName))(
@@ -36,8 +40,17 @@ class AuditIndexManager(restClient: RestClient,
     new AuditEntriesResult(result)
   }
 
-  def truncate: indexManager.SimpleResponse =
-    indexManager.removeIndex(indexName)
+  def truncate(): Unit = {
+    val matchAllQuery = ujson.read("""{"query" : {"match_all" : {}}}""".stripMargin)
+    documentManager.deleteByQuery(indexName, matchAllQuery)
+    indexManager.refresh(indexName)
+  }
+
+  def hasNoEntries: Assertion = {
+    indexManager.refresh(indexName).force()
+    val result = new AuditEntriesResult(searchManager.search(indexName))
+    result.jsons.toList shouldBe List.empty[Value]
+  }
 
   class AuditEntriesResult(response: HttpResponse)
     extends searchManager.SearchResult(response) {
@@ -46,7 +59,7 @@ class AuditIndexManager(restClient: RestClient,
       this(AuditEntriesResult.refreshEntity(searchResult))
     }
 
-    lazy val jsons: Vector[JSON] =
+    lazy val jsons: Vector[Value] =
       searchHits
         .map(hit => hit("_source"))
         .toVector

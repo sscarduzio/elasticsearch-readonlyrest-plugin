@@ -1226,7 +1226,7 @@ components:
         type:
           type: string
           enum:
-            - LDAP
+            - EXT_AUTHZ
         name:
           type: string
           description: Name of the LDAP connector defined in ReadonlyREST settings

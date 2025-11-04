@@ -36,10 +36,11 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
 
-class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
-                                      esContext: EsContext,
-                                      clusterService: RorClusterService,
-                                      override val threadPool: ThreadPool)
+class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequest,
+                                              allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]],
+                                              esContext: EsContext,
+                                              clusterService: RorClusterService,
+                                              override val threadPool: ThreadPool)
   extends BaseSnapshotEsRequestContext[SnapshotsStatusRequest](actionRequest, esContext, clusterService, threadPool) {
 
   override protected def snapshotsFrom(request: SnapshotsStatusRequest): Set[SnapshotName] =
@@ -62,9 +63,9 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   }
 
   private def updateSnapshotStatusResponse(blockContext: SnapshotRequestBlockContext): ModificationResult = {
-    ModificationResult.UpdateResponse {
-      case r: SnapshotsStatusResponse => Task.delay(filterOutNotAllowedSnapshotsAndRepositories(r, blockContext))
-      case r => Task.now(r)
+    ModificationResult.UpdateResponse.sync {
+      case r: SnapshotsStatusResponse => filterOutNotAllowedSnapshotsAndRepositories(r, blockContext)
+      case r => r
     }
   }
 
@@ -106,7 +107,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
 
   private def repositoryFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, RepositoryName] = {
     val repositories = blockContext.repositories
-    if(allRepositoriesRequested(repositories)) {
+    if (allRepositoriesRequested(repositories)) {
       Right(RepositoryName.All)
     } else {
       fullNamedRepositoriesFrom(repositories).toList match {
@@ -173,5 +174,19 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
     val snapshots = snapshotsFrom(actionRequest)
     (repositories.isEmpty || repositories.contains(RepositoryName.all)) &&
       (snapshots.isEmpty || snapshots.contains(SnapshotName.all))
+  }
+}
+object SnapshotsStatusEsRequestContext {
+
+  def create(actionRequest: SnapshotsStatusRequest,
+             esContext: EsContext,
+             clusterService: RorClusterService,
+             threadPool: ThreadPool): Task[SnapshotsStatusEsRequestContext] = {
+    clusterService.allSnapshots
+      .map { case (repository, getSnapshots) => getSnapshots.map((repository, _)) }
+      .toList.sequence
+      .map { allSnapshots =>
+        new SnapshotsStatusEsRequestContext(actionRequest, allSnapshots.toMap, esContext, clusterService, threadPool)
+      }
   }
 }

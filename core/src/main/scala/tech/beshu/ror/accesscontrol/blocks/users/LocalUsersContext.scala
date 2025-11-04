@@ -22,13 +22,15 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.LocalUsers
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LocalUsers}
 import tech.beshu.ror.syntax.*
 
 object LocalUsersContext {
@@ -53,8 +55,7 @@ object LocalUsersContext {
     implicit val externalAuthorizationRule: LocalUsersSupport[ExternalAuthorizationRule] = NotAvailableLocalUsers()
     implicit val fieldsRule: LocalUsersSupport[FieldsRule] = NotAvailableLocalUsers()
     implicit val filterRule: LocalUsersSupport[FilterRule] = NotAvailableLocalUsers()
-    implicit val groupsOrRule: LocalUsersSupport[GroupsOrRule] = NotAvailableLocalUsers()
-    implicit val groupsAndRule: LocalUsersSupport[GroupsAndRule] = NotAvailableLocalUsers()
+    implicit def groupsRule[GL <: GroupsLogic]: LocalUsersSupport[BaseGroupsRule[GL]] = NotAvailableLocalUsers()
     implicit val headersAndRule: LocalUsersSupport[HeadersAndRule] = NotAvailableLocalUsers()
     implicit val headersOrRule: LocalUsersSupport[HeadersOrRule] = NotAvailableLocalUsers()
     implicit val hostsRule: LocalUsersSupport[HostsRule] = NotAvailableLocalUsers()
@@ -74,6 +75,8 @@ object LocalUsersContext {
     implicit val repositoriesRule: LocalUsersSupport[RepositoriesRule] = NotAvailableLocalUsers()
     implicit val responseFieldsRule: LocalUsersSupport[ResponseFieldsRule] = NotAvailableLocalUsers()
     implicit val rorKbnAuthRule: LocalUsersSupport[RorKbnAuthRule] = NotAvailableLocalUsers()
+    implicit val rorKbnAuthenticationRule: LocalUsersSupport[RorKbnAuthenticationRule] = NotAvailableLocalUsers()
+    implicit val rorKbnAuthorizationRule: LocalUsersSupport[RorKbnAuthorizationRule] = NotAvailableLocalUsers()
     implicit val sessionMaxIdleRule: LocalUsersSupport[SessionMaxIdleRule] = NotAvailableLocalUsers()
     implicit val snapshotsRule: LocalUsersSupport[SnapshotsRule] = NotAvailableLocalUsers()
     implicit val uriRegexRule: LocalUsersSupport[UriRegexRule] = NotAvailableLocalUsers()

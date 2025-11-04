@@ -32,8 +32,9 @@ import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
 import tech.beshu.ror.configuration.loader.*
-import tech.beshu.ror.es.{EsEnv, IndexJsonContentService}
+import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
+import tech.beshu.ror.es.utils.EsEnvProvider
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.annotation.unused
@@ -105,7 +106,7 @@ class TransportRRConfigAction(actionName: String,
 
   private def loadConfig() = doPrivileged {
     RawRorConfigLoadingAction
-      .load(EsEnv(env.configFile(), env.modulesFile()), indexContentProvider)
+      .loadFromIndex(EsEnvProvider.create(env), indexContentProvider)
       .map(_.map(_.map(_.raw)))
   }
 

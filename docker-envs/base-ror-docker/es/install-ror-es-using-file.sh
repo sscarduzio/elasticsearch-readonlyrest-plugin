@@ -1,7 +1,9 @@
 #!/bin/bash
 
-function verlte() {
-  [ "$1" = "`echo -e "$1\n$2" | sort -V | head -n1`" ]
+verlte() {
+  local v1="$1"
+  local v2="${2%%[-+]*}"  # Strip suffix from second argument in order to support -pre versions
+  [ "$v1" = "$(echo -e "$v1\n$v2" | sort -V | head -n1)" ]
 }
 
 if [[ -z "$ES_VERSION" ]]; then
@@ -11,8 +13,29 @@ fi
 
 echo "Installing ES ROR from file..."
 /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/ror.zip
-if verlte "6.5.0" "$ES_VERSION"; then
-  echo "Patching ES ROR..."
-  /usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch
+ROR_VERSION=$(unzip -p /tmp/ror.zip plugin-descriptor.properties | grep -oP '^version=\K.*')
+
+if [[ ! -v ROR_VERSION || -z "$ROR_VERSION" ]]; then
+  echo "No ROR_VERSION variable is set"
+  exit 3
 fi
+
+# Set Java path based on ES version
+if verlte "7.0.0" "$ES_VERSION"; then
+  JAVA_BIN_PATH="/usr/share/elasticsearch/jdk/bin/java"
+elif verlte "6.7.0" "$ES_VERSION"; then
+  JAVA_BIN_PATH="$JAVA_HOME/bin/java"
+else
+  echo "Unsupported ES version: $ES_VERSION"
+  exit 4
+fi
+
+# Set OPTIONS based on ROR version
+if verlte "1.64.0" "$ROR_VERSION"; then
+  OPTIONS="--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes"
+else
+  OPTIONS=""
+fi
+
+$JAVA_BIN_PATH -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch $OPTIONS
 echo "DONE!"

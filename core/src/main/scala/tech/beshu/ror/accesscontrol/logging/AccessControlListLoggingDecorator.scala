@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpd
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.audit.AuditEnvironmentContext
 import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.TaskOps.*
@@ -39,13 +40,14 @@ import scala.util.{Failure, Success}
 class AccessControlListLoggingDecorator(val underlying: AccessControlList,
                                         auditingTool: Option[AuditingTool])
                                        (implicit loggingContext: LoggingContext,
+                                        auditEnvironmentContext: AuditEnvironmentContext,
                                         scheduler: Scheduler)
   extends AccessControlList with Logging {
 
   override def description: String = underlying.description
 
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {
-    logger.debug(s"[${requestContext.id.show}] checking request ${requestContext.method.show} ${requestContext.uriPath.show} ...")
+    logger.debug(s"[${requestContext.id.show}] checking request ${requestContext.restRequest.method.show} ${requestContext.restRequest.path.show} ...")
     underlying
       .handleRegularRequest(requestContext)
       .andThen {
@@ -83,7 +85,9 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
           resultWithHistory.result match {
             case UserMetadataRequestResult.Allow(userMetadata, block) =>
               log(Allow(requestContext, userMetadata, block, resultWithHistory.history))
-            case UserMetadataRequestResult.Forbidden(_) =>
+            case forbiddenBy: UserMetadataRequestResult.ForbiddenBy =>
+              log(ForbiddenBy(requestContext, forbiddenBy.block, forbiddenBy.blockContext, resultWithHistory.history))
+            case UserMetadataRequestResult.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, resultWithHistory.history))
             case UserMetadataRequestResult.PassedThrough =>
             // ignore
@@ -103,7 +107,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
     }
     auditingTool.foreach {
       _
-        .audit(responseContext)
+        .audit(responseContext, auditEnvironmentContext)
         .runAsync {
           case Right(_) =>
           case Left(ex) =>

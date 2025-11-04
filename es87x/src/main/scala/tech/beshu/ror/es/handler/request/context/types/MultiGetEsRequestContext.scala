@@ -19,13 +19,13 @@ package tech.beshu.ror.es.handler.request.context.types
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
@@ -47,6 +47,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                esContext: EsContext,
                                clusterService: RorClusterService,
                                override val threadPool: ThreadPool)
+                              (implicit scheduler: Scheduler)
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
@@ -80,7 +81,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
         .foreach { case (item, pack) =>
           updateItem(item, pack)
         }
-      ModificationResult.UpdateResponse(updateFunction(blockContext.filter, blockContext.fieldLevelSecurity))
+      ModificationResult.UpdateResponse.async(updateFunction(blockContext.filter, blockContext.fieldLevelSecurity))
     } else {
       logger.error(
         s"""[${id.show}] Cannot alter MultiGetRequest request, because origin request contained different

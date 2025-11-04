@@ -17,17 +17,23 @@
 package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
-import org.testcontainers.images.builder.ImageFromDockerfile
+import org.testcontainers.containers.output.OutputFrame
+import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.images.domain.Enabled
-import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, ReadonlyRestPlugin}
+import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
+
+import java.util.function.Consumer
 
 class EsContainerWithRorSecurity private(esVersion: String,
                                          esConfig: Elasticsearch.Config,
                                          startedClusterDependencies: StartedClusterDependencies,
-                                         image: ImageFromDockerfile,
-                                         override val sslEnabled: Boolean)
-  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image) {
+                                         elasticsearch: Elasticsearch,
+                                         override val sslEnabled: Boolean,
+                                         initializer: ElasticsearchNodeDataInitializer,
+                                         additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
+                                         awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, elasticsearch, initializer, additionalLogConsumer, awaitingReadyStrategy) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with ROR plugin installed container ...")
 
@@ -45,8 +51,9 @@ object EsContainerWithRorSecurity extends StrictLogging {
              esConfig: Elasticsearch.Config,
              rorConfig: ReadonlyRestPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
-    val rorContainer = new EsContainerWithRorSecurity(
+             startedClusterDependencies: StartedClusterDependencies,
+             additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
+    new EsContainerWithRorSecurity(
       esVersion,
       esConfig,
       startedClusterDependencies,
@@ -54,18 +61,16 @@ object EsContainerWithRorSecurity extends StrictLogging {
       rorConfig.attributes.restSsl match {
         case Enabled.Yes(_) => true
         case Enabled.No => false
-      }
+      },
+      initializer,
+      additionalLogConsumer,
     )
-    EsContainer.init(rorContainer, initializer, logger)
   }
 
   private def esImageWithRorFromDockerfile(esVersion: String,
                                            esConfig: Elasticsearch.Config,
                                            rorConfig: ReadonlyRestPlugin.Config) = {
-    DockerImageCreator.create(
-      Elasticsearch.create(esVersion, esConfig)
-        .install(new ReadonlyRestPlugin(esVersion, rorConfig))
-        .toDockerImageDescription
-    )
+    Elasticsearch.create(esVersion, esConfig)
+      .install(new ReadonlyRestPlugin(esVersion, rorConfig, performPatching = true))
   }
 }

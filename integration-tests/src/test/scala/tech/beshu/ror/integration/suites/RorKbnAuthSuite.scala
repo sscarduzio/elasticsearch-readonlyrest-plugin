@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.suites
 
-import io.jsonwebtoken.SignatureAlgorithm
+import io.jsonwebtoken.Jwts
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
@@ -32,7 +32,7 @@ class RorKbnAuthSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  private val algo = SignatureAlgorithm.valueOf("HS256")
+  private val algo = Jwts.SIG.HS256
   private val validKey = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
   private val validKeyRole = "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
   private val wrongKey = "abcdefdsadsadsadsadsadfdsfdsfdsfdsfds"
@@ -73,10 +73,10 @@ class RorKbnAuthSuite
   }
 
   "acceptValidTokenWithUserClaim" in {
-    // Groups claim is mandatory, even if empty
+    // Groups claim is mandatory, cannot be empty
     val jwt = Jwt(algo, validKey, claims = List(
       "user" := "user",
-      "groups" := ""
+      "groups" := "any_arbitrary_group"
     ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,

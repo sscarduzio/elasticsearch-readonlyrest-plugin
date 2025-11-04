@@ -23,6 +23,7 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.SecurityType.{RorWithXpackSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
@@ -610,9 +611,7 @@ object CrossClusterCallsSuite extends StrictLogging {
     indexManager.createAliasOf("service2-logs-*", "service2-logs").force()
 
     if (Version.greaterOrEqualThan(esVersion, 7, 9, 0)) {
-      val templateManager = new IndexTemplateManager(adminRestClient, esVersion)
-      val dataStreamManager = new DataStreamManager(adminRestClient, esVersion)
-      val enhancedDataStreamManager = new EnhancedDataStreamManager(dataStreamManager, documentManager, indexManager, templateManager)
+      val enhancedDataStreamManager = EnhancedDataStreamManager(adminRestClient, esVersion)
       enhancedDataStreamManager.createDataStream("test1_ds")
       enhancedDataStreamManager.createDocsInDataStream(
         name = "test1_ds",

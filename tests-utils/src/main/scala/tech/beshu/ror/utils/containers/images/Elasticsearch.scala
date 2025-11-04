@@ -22,6 +22,8 @@ import com.typesafe.scalalogging.LazyLogging
 import os.Path
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.images.Elasticsearch.*
+import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{PluginInstallationStep, PluginInstallationSteps}
+import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager
 import tech.beshu.ror.utils.misc.Version
 
 object Elasticsearch {
@@ -30,18 +32,98 @@ object Elasticsearch {
                           nodeName: String,
                           masterNodes: NonEmptyList[String],
                           additionalElasticsearchYamlEntries: Map[String, String],
-                          envs: Map[String, String])
+                          envs: Map[String, String],
+                          esInstallationType: EsInstallationType)
 
-  lazy val esDir: Path = os.root / "usr" / "share" / "elasticsearch"
-  lazy val configDir: Path = esDir / "config"
+  extension (config: Config)
+    def esConfigDir: Path = config.esInstallationType match {
+      case EsInstallationType.EsDockerImage =>
+        os.root / "usr" / "share" / "elasticsearch" / "config"
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        os.root / "etc" / "elasticsearch"
+      case EsInstallationType.NativeWindowsProcess =>
+        WindowsEsDirectoryManager.configPath(config.clusterName, config.nodeName)
+    }
+
+    def esDir: Path = config.esInstallationType match {
+      case EsInstallationType.EsDockerImage =>
+        os.root / "usr" / "share" / "elasticsearch"
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        os.root / "usr" / "share" / "elasticsearch"
+      case EsInstallationType.NativeWindowsProcess =>
+        WindowsEsDirectoryManager.esPath(config.clusterName, config.nodeName)
+    }
+
+    def tempFilePath: Path = config.esInstallationType match {
+      case EsInstallationType.EsDockerImage =>
+        os.root / "tmp"
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        os.root / "tmp"
+      case EsInstallationType.NativeWindowsProcess =>
+        WindowsEsDirectoryManager.esPath(config.clusterName, config.nodeName) / "temp"
+    }
+
+  sealed trait EsInstallationType
+
+  object EsInstallationType {
+    case object NativeWindowsProcess extends EsInstallationType
+
+    case object EsDockerImage extends EsInstallationType
+
+    case object UbuntuDockerImageWithEsFromApt extends EsInstallationType
+  }
 
   trait Plugin {
-    def updateEsImage(image: DockerImageDescription): DockerImageDescription
+    def installationSteps(config: Config): PluginInstallationSteps
+
     def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder
+
     def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder
   }
 
-  private [images] def fromResourceBy(name: String): File = {
+  object Plugin {
+    final case class PluginInstallationSteps(steps: List[PluginInstallationStep]) {
+
+      def copyFile(destination: Path, file: File): PluginInstallationSteps = {
+        PluginInstallationSteps(steps ::: PluginInstallationStep.CopyFile(destination, file) :: Nil)
+      }
+
+      def when(condition: Boolean, f: PluginInstallationSteps => PluginInstallationSteps): PluginInstallationSteps = {
+        if (condition) f(this)
+        else this
+      }
+
+      def run(linuxCommand: String, windowsCommand: String): PluginInstallationSteps = {
+        PluginInstallationSteps(steps ::: PluginInstallationStep.RunCommand(linuxCommand, windowsCommand) :: Nil)
+      }
+
+      def runWhen(condition: Boolean, linuxCommand: String, windowsCommand: String): PluginInstallationSteps = {
+        if (condition) run(linuxCommand, windowsCommand)
+        else this
+      }
+
+      def user(user: String): PluginInstallationSteps = {
+        PluginInstallationSteps(steps ::: PluginInstallationStep.ChangeUser(user) :: Nil)
+      }
+
+    }
+
+    object PluginInstallationSteps {
+      val emptyPluginInstallationSteps: PluginInstallationSteps = PluginInstallationSteps(List.empty)
+    }
+
+    sealed trait PluginInstallationStep
+
+    object PluginInstallationStep {
+      final case class CopyFile(destination: Path, file: File) extends PluginInstallationStep
+
+      final case class RunCommand(linuxCommand: String, windowsCommand: String) extends PluginInstallationStep
+
+      final case class ChangeUser(user: String) extends PluginInstallationStep
+    }
+  }
+
+  private[images] def fromResourceBy(name: String): File = {
     scala.util.Try(ContainerUtils.getResourceFile(s"/$name"))
       .map(_.toScala)
       .get
@@ -51,32 +133,89 @@ object Elasticsearch {
     new Elasticsearch(esVersion, config)
   }
 }
-class Elasticsearch(esVersion: String,
-                    config: Config,
-                    plugins: Seq[Plugin])
+
+class Elasticsearch(val esVersion: String,
+                    val config: Config,
+                    val plugins: Seq[Plugin],
+                    customEntrypoint: Option[Path])
   extends LazyLogging {
 
   def this(esVersion: String, config: Config) = {
-    this(esVersion, config, Seq.empty)
+    this(esVersion, config, Seq.empty, None)
+  }
+
+  def when[T](opt: Option[T], f: (Elasticsearch, T) => Elasticsearch): Elasticsearch = {
+    opt match {
+      case Some(t) => f(this, t)
+      case None => this
+    }
   }
 
   def install(plugin: Plugin): Elasticsearch = {
-    new Elasticsearch(esVersion, config, plugins :+ plugin)
+    new Elasticsearch(esVersion, config, plugins :+ plugin, customEntrypoint)
   }
 
-  def toDockerImageDescription: DockerImageDescription = {
+  def setEntrypoint(entrypoint: Path): Elasticsearch = {
+    new Elasticsearch(esVersion, config, plugins, Some(entrypoint))
+  }
+
+  def toDockerImageDescription: DockerImageDescription = config.esInstallationType match {
+    case EsInstallationType.EsDockerImage =>
+      toOfficialEsImageBasedDockerImageDescription
+    case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+      toUbuntuWithAptEsDockerImageDescription
+    case EsInstallationType.NativeWindowsProcess =>
+      throw new IllegalStateException("The ES installation type is native Windows process. It is not possible to create docker image description")
+  }
+
+  private def toOfficialEsImageBasedDockerImageDescription: DockerImageDescription = {
     DockerImageDescription
-      .create(image = s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion")
+      .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
       .copyFile(
-        destination = configDir / "elasticsearch.yml",
-        file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)
+        destination = config.esConfigDir / "elasticsearch.yml",
+        file = esConfigFile
       )
       .copyFile(
-        destination = configDir / "log4j2.properties",
+        destination = config.esConfigDir / "log4j2.properties",
         file = log4jFileFromResources
       )
       .user("root")
-      .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
+      // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
+      // Red Hat Universal Base Image 9 Minimal, which does not contain it.
+      .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
+      .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
+      .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
+      .installPlugins()
+      .user("elasticsearch")
+  }
+
+  private def toUbuntuWithAptEsDockerImageDescription: DockerImageDescription = {
+    val esMajorVersion: String = esVersion.split("\\.")(0) + ".x"
+    DockerImageDescription
+      .create("ubuntu:24.04", customEntrypoint)
+      .user("root")
+      .run("apt update")
+      .run("apt install -y ca-certificates gnupg2 curl apt-transport-https")
+      .run("curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -")
+      .run(s"""echo "deb https://artifacts.elastic.co/packages/$esMajorVersion/apt stable main" > /etc/apt/sources.list.d/elastic-$esMajorVersion.list""")
+      .run(s"""apt update && apt install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion""")
+      .run("apt clean && rm -rf /var/lib/apt/lists/*")
+      .user("elasticsearch")
+      .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
+      .copyFile(
+        destination = config.esConfigDir / "elasticsearch.yml",
+        file = esConfigFile
+      )
+      .copyFile(
+        destination = config.esConfigDir / "log4j2.properties",
+        file = log4jFileFromResources
+      )
+      .user("root")
+      // ES is started as Docker CMD, so elasticsearch user must have permission to read ES files.
+      // In standard Ubuntu with ES from apt it is not necessary, because ES is executed from systemd
+      .run(s"chown -R elasticsearch:elasticsearch ${config.esDir.toString()}")
+      .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
+      .run("rm /etc/elasticsearch/elasticsearch.keystore")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
       .user("elasticsearch")
@@ -84,10 +223,20 @@ class Elasticsearch(esVersion: String,
 
   private implicit class InstallPlugins(val image: DockerImageDescription) {
     def installPlugins(): DockerImageDescription = {
-      plugins
-        .foldLeft(image) {
-          case (currentImage, plugin) => plugin.updateEsImage(currentImage)
-        }
+      plugins.foldLeft(image) {
+        case (currentImage, plugin) =>
+          plugin.installationSteps(config).steps.foldLeft(currentImage) {
+            case (img, step) =>
+              step match {
+                case PluginInstallationStep.CopyFile(destination, file) =>
+                  img.copyFile(destination, file)
+                case PluginInstallationStep.RunCommand(linuxCommand, _) =>
+                  img.run(linuxCommand)
+                case PluginInstallationStep.ChangeUser(user) =>
+                  img.user(user)
+              }
+          }
+      }
     }
   }
 
@@ -103,18 +252,15 @@ class Elasticsearch(esVersion: String,
       .foldLeft(builder) { case (currentBuilder, update) => update(currentBuilder) }
   }
 
-  private def esConfigFileBasedOn(config: Config,
-                                  withEsConfigBuilder: EsConfigBuilder => EsConfigBuilder) = {
+  def esConfigFile: File = {
     val file = File
       .newTemporaryFile()
-      .appendLines(
-        withEsConfigBuilder(baseEsConfigBuilder(config)).entries: _*
-      )
+      .appendLines(updateEsConfigBuilderFromPlugins(baseEsConfigBuilder).entries: _*)
     logger.info(s"elasticsearch.yml content:\n${file.contentAsString}")
     file
   }
 
-  private def baseEsConfigBuilder(config: Config) = {
+  private def baseEsConfigBuilder = {
     EsConfigBuilder
       .empty
       .add(s"node.name: ${config.nodeName}")
@@ -201,6 +347,7 @@ final case class EsConfigBuilder(entries: Seq[String]) {
     else add(orElseEntry)
   }
 }
+
 object EsConfigBuilder {
   def empty: EsConfigBuilder = EsConfigBuilder(Seq.empty)
 }
@@ -211,6 +358,7 @@ final case class EsJavaOptsBuilder(options: Seq[String]) {
     this.copy(options = this.options ++ option.toSeq)
   }
 }
+
 object EsJavaOptsBuilder {
   def empty: EsJavaOptsBuilder = EsJavaOptsBuilder(Seq.empty)
 }

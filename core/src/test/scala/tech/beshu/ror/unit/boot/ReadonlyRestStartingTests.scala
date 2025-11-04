@@ -19,7 +19,8 @@ package tech.beshu.ror.unit.boot
 import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.implicits.*
-import eu.timepit.refined.auto.*
+import eu.timepit.refined.types.string.NonEmptyString
+import io.lemonlabs.uri.Uri
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -30,10 +31,13 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.audit.AuditingTool
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, User}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
@@ -41,20 +45,23 @@ import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, TestConfig}
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
+import tech.beshu.ror.configuration.RorConfig.NoOpImpersonationWarningsReader
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
+import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
+import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
-import tech.beshu.ror.es.{AuditSinkService, EsEnv, IndexJsonContentService}
+import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, EsEnv, IndexJsonContentService}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
-import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 import java.time.Clock
 import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
+import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 class ReadonlyRestStartingTests
   extends AnyWordSpec
@@ -73,7 +80,7 @@ class ReadonlyRestStartingTests
           val mockedIndexJsonContentManager = mock[IndexJsonContentService]
           (mockedIndexJsonContentManager.sourceOf _)
             .expects(fullIndexName(".readonlyrest"), "1")
-            .repeated(5)
+            .repeated(1)
             .returns(Task.now(Left(CannotReachContentSource)))
 
           mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
@@ -272,7 +279,7 @@ class ReadonlyRestStartingTests
           val mockedIndexJsonContentManager = mock[IndexJsonContentService]
           (mockedIndexJsonContentManager.sourceOf _)
             .expects(fullIndexName(".readonlyrest"), "1")
-            .repeated(5)
+            .repeated(1)
             .returns(Task.now(Left(ContentNotFound)))
 
           val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexJsonContentManager, "/boot_tests/index_config_not_exists_malformed_file_config/")
@@ -287,7 +294,7 @@ class ReadonlyRestStartingTests
           val mockedIndexJsonContentManager = mock[IndexJsonContentService]
           (mockedIndexJsonContentManager.sourceOf _)
             .expects(fullIndexName(".readonlyrest"), "1")
-            .repeated(5)
+            .repeated(1)
             .returns(Task.now(Left(ContentNotFound)))
           mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
 
@@ -409,7 +416,7 @@ class ReadonlyRestStartingTests
 
               val coreFactory = mock[CoreFactory]
               mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-              mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+              mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
               val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
               (readonlyRest, expirationTimestamp)
@@ -496,7 +503,7 @@ class ReadonlyRestStartingTests
 
             (mockedIndexJsonContentManager.sourceOf _)
               .expects(fullIndexName(".readonlyrest"), "2")
-              .repeated(5)
+              .repeated(1)
               .returns(Task.now(Left(CannotReachContentSource)))
 
             val coreFactory = mock[CoreFactory]
@@ -591,7 +598,7 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
           (readonlyRest, mockedIndexJsonContentManager)
@@ -643,7 +650,7 @@ class ReadonlyRestStartingTests
 
             val coreFactory = mock[CoreFactory]
             mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-            mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+            mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
             val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
             (readonlyRest, mockedIndexJsonContentManager)
@@ -712,7 +719,7 @@ class ReadonlyRestStartingTests
 
             val coreFactory = mock[CoreFactory]
             mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-            mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+            mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
             val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
             (readonlyRest, mockedIndexJsonContentManager)
@@ -795,8 +802,8 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
-          mockCoreFactory(coreFactory, testConfig2, mockEnabledAccessControl)
+          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
+          mockCoreFactory(coreFactory, testConfig2, mockEnabledAccessControl, disabledRorConfig)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
           (readonlyRest, mockedIndexJsonContentManager)
@@ -881,7 +888,7 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
           (readonlyRest, mockedIndexJsonContentManager)
@@ -939,7 +946,7 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
           (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
@@ -1002,7 +1009,7 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
           (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
@@ -1066,7 +1073,7 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
           (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
@@ -1120,7 +1127,7 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
           (readonlyRest, mockedIndexJsonContentManager)
@@ -1173,7 +1180,7 @@ class ReadonlyRestStartingTests
 
         val coreFactory = mock[CoreFactory]
         mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-        mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+        mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
         val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
         (readonlyRest, mockedIndexJsonContentManager)
@@ -1249,7 +1256,7 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
+          mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl, disabledRorConfig)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
           (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
@@ -1305,6 +1312,59 @@ class ReadonlyRestStartingTests
             message should include("The incoming YAML document exceeds the limit: 1 code points")
         }
       }
+      "unable to setup data stream audit output" in {
+        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
+        mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
+
+        val dataStreamSinkConfig1 = AuditSink.Config.EsDataStreamBasedSink.default
+        val dataStreamSinkConfig2 = dataStreamSinkConfig1.copy(
+          auditCluster = AuditCluster.RemoteAuditCluster(NonEmptyList.one(Uri.parse("0.0.0.0")))
+        )
+
+        val coreFactory = mockCoreFactory(
+          mock[CoreFactory],
+          "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
+          mockEnabledAccessControl,
+          RorConfig(RorConfig.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader, Some(AuditingTool.AuditSettings(
+            NonEmptyList.of(
+              AuditSink.Enabled(dataStreamSinkConfig1),
+              AuditSink.Enabled(dataStreamSinkConfig2))
+          )
+          ))
+        )
+
+        val dataStreamService1 = mockedDataSteamService(dataStreamExists = false, ilmCreationResult = NotAcknowledged)
+        val dataStreamService2 = mockedDataSteamService(dataStreamExists = false, ilmCreationResult = Acknowledged, componentTemplateResult = NotAcknowledged)
+
+        val auditSinkServiceCreator = mock[DataStreamAndIndexBasedAuditSinkServiceCreator]
+
+        (auditSinkServiceCreator.dataStream _)
+          .expects(dataStreamSinkConfig1.auditCluster)
+          .once()
+          .returns(mockedDataStreamAuditSinkService(dataStreamService1))
+
+        (auditSinkServiceCreator.dataStream _)
+          .expects(dataStreamSinkConfig2.auditCluster)
+          .once()
+          .returns(mockedDataStreamAuditSinkService(dataStreamService2))
+
+        val readonlyRest = readonlyRestBoot(
+          coreFactory,
+          mockedIndexJsonContentManager,
+          "/boot_tests/forced_file_loading_with_audit/",
+          auditSinkServiceCreator
+        )
+
+        val result = readonlyRest.start().runSyncUnsafe()
+        inside(result) {
+          case Left(StartingFailure(message, _)) =>
+            val expectedMessage =
+              s"""Errors:
+                 |Unable to configure audit output using a data stream in local cluster. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if the index lifecycle policy with ID 'readonlyrest_audit-lifecycle-policy' has been created]
+                 |Unable to configure audit output using a data stream in remote cluster 0.0.0.0. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created]""".stripMarginAndReplaceWindowsLineBreak
+            message should be(expectedMessage)
+        }
+      }
     }
   }
 
@@ -1337,6 +1397,7 @@ class ReadonlyRestStartingTests
   private def readonlyRestBoot(factory: CoreFactory,
                                indexJsonContentService: IndexJsonContentService,
                                configPath: String,
+                               auditSinkServiceCreator: AuditSinkServiceCreator = mock[AuditSinkServiceCreator],
                                refreshInterval: Option[FiniteDuration] = None,
                                maxYamlSize: Option[String] = None): ReadonlyRest = {
     def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
@@ -1354,7 +1415,8 @@ class ReadonlyRestStartingTests
         mapWithIntervalFrom(refreshInterval) ++
           mapWithMaxYamlSize(maxYamlSize) ++
           Map(
-            "com.readonlyrest.settings.loading.delay" -> "0"
+            "com.readonlyrest.settings.loading.delay" -> "1",
+            "com.readonlyrest.settings.loading.attempts.count" -> "1"
           )
       )
     )
@@ -1362,8 +1424,8 @@ class ReadonlyRestStartingTests
     ReadonlyRest.create(
       factory,
       indexJsonContentService,
-      _ => mock[AuditSinkService],
-      EsEnv(getResourcePath(configPath), getResourcePath(configPath))
+      auditSinkServiceCreator,
+      EsEnv(getResourcePath(configPath), getResourcePath(configPath), defaultEsVersionForTests, testEsNodeSettings),
     )
   }
 
@@ -1399,21 +1461,25 @@ class ReadonlyRestStartingTests
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               resourceFileName: String,
-                              accessControlMock: AccessControlList = mockEnabledAccessControl): CoreFactory = {
-    mockCoreFactory(mockedCoreFactory, rorConfigFromResource(resourceFileName), accessControlMock)
+                              accessControlMock: AccessControlList = mockEnabledAccessControl,
+                              rorConfig: RorConfig = RorConfig.disabled): CoreFactory = {
+    mockCoreFactory(mockedCoreFactory, rorConfigFromResource(resourceFileName), accessControlMock, rorConfig)
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               rawRorConfig: RawRorConfig,
-                              accessControlMock: AccessControlList): CoreFactory = {
+                              accessControlMock: AccessControlList,
+                              rorConfig: RorConfig): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
       })
       .once()
-      .returns(Task.now(Right(Core(accessControlMock, RorConfig.disabled))))
+      .returns(Task.now(Right(Core(accessControlMock, rorConfig))))
     mockedCoreFactory
   }
+
+  private def disabledRorConfig = RorConfig.disabled
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               resourceFileName: String,
@@ -1570,4 +1636,42 @@ class ReadonlyRestStartingTests
   private abstract class EnabledAcl extends AccessControlList
 
   private abstract class DisabledAcl extends AccessControlList
+
+  private def mockedDataStreamAuditSinkService(dataStreamService: DataStreamService) = {
+    val dataStreamAuditSink = mock[DataStreamBasedAuditSinkService]
+
+    (() => dataStreamAuditSink.dataStreamCreator)
+      .expects()
+      .once()
+      .returns(new AuditDataStreamCreator(NonEmptyList.of(dataStreamService)))
+    dataStreamAuditSink
+  }
+
+  // anonymous class instead of mock due to final defs and protected methods in DataStreamService
+  private def mockedDataSteamService(dataStreamExists: Boolean,
+                                     ilmExists: Boolean = false,
+                                     ilmCreationResult: CreationResult = CreationResult.Acknowledged,
+                                     componentTemplateExists: Boolean = false,
+                                     componentTemplateResult: CreationResult = CreationResult.Acknowledged,
+                                     indexTemplateExists: Boolean = false,
+                                     indexTemplateResult: CreationResult = CreationResult.Acknowledged,
+                                     dataStreamResult: CreationResult = CreationResult.Acknowledged) = new DataStreamService {
+    override def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean] = Task.now(dataStreamExists)
+
+    override protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean] = Task.pure(ilmExists)
+
+    override protected def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = Task.now(ilmCreationResult)
+
+    override protected def checkComponentTemplateExists(templateName: TemplateName): Task[Boolean] = Task.pure(componentTemplateExists)
+
+    override protected def createComponentTemplateForMappings(settings: DataStreamSettings.ComponentTemplateMappings): Task[CreationResult] = Task.now(componentTemplateResult)
+
+    override protected def createComponentTemplateForIndex(settings: DataStreamSettings.ComponentTemplateSettings): Task[CreationResult] = Task.now(componentTemplateResult)
+
+    override protected def checkIndexTemplateExists(templateName: TemplateName): Task[Boolean] = Task.pure(indexTemplateExists)
+
+    override protected def createIndexTemplate(settings: DataStreamSettings.IndexTemplateSettings): Task[CreationResult] = Task.now(indexTemplateResult)
+
+    override protected def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult] = Task.now(dataStreamResult)
+  }
 }

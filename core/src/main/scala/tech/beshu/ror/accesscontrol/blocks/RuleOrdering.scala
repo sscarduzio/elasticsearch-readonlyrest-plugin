@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
 import tech.beshu.ror.accesscontrol.orders.*
 
 class RuleOrdering extends Ordering[Rule] with Logging {
@@ -64,11 +65,16 @@ object RuleOrdering {
     // then we could check potentially slow async rules
     classOf[LdapAuthRule],
     classOf[LdapAuthenticationRule],
+    classOf[RorKbnAuthenticationRule],
     classOf[ExternalAuthenticationRule],
-    classOf[GroupsOrRule],
-    classOf[GroupsAndRule],
+    classOf[AnyOfGroupsRule],
+    classOf[AllOfGroupsRule],
+    classOf[NotAnyOfGroupsRule],
+    classOf[NotAllOfGroupsRule],
+    classOf[CombinedLogicGroupsRule],
     // all authorization rules should be placed after any authentication rule
     classOf[LdapAuthorizationRule],
+    classOf[RorKbnAuthorizationRule],
     classOf[ExternalAuthorizationRule],
     // Inspection rules next; these act based on properties of the request.
     classOf[KibanaUserDataRule],

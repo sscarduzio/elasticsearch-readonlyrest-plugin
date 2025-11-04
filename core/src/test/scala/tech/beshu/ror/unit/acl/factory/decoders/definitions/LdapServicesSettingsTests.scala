@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.joor.Reflect.on
 import org.scalatest.compatible.Assertion
@@ -40,6 +39,7 @@ import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
+import tech.beshu.ror.utils.misc.OsUtils.{doNotCreateOnWindows, ignoreOnWindows}
 
 import java.time.Clock
 import scala.annotation.tailrec
@@ -68,7 +68,9 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
   private val ldapWithDnsContainer = new LdapWithDnsContainer("LDAP3", "test_example.ldif")
 
   override val container: MultipleContainers = MultipleContainers(
-    SingletonLdapContainers.ldap1, SingletonLdapContainers.ldap1Backup, ldapWithDnsContainer
+    SingletonLdapContainers.ldap1,
+    SingletonLdapContainers.ldap1Backup,
+    doNotCreateOnWindows(ldapWithDnsContainer),
   )
 
   "An LdapService" should {
@@ -1106,35 +1108,38 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
-      "server discovery is enabled with custom dns and custom ttl" in {
-        assertDecodingSuccess(
-          yaml =
-            s"""
-               |  ldaps:
-               |  - name: ldap1
-               |    server_discovery:
-               |      dns_url: "dns://localhost:${ldapWithDnsContainer.dnsPort}"
-               |      ttl: "3 hours"
-               |    ssl_enabled: false
-               |    ssl_trust_all_certs: true
-               |    bind_dn: "cn=admin,dc=example,dc=com"
-               |    bind_password: "password"
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-               |    user_id_attribute: "uid"
-               |    unique_member_attribute: "uniqueMember"
-               |    connection_pool_size: 10
-               |    connection_timeout_in_sec: 10
-               |    request_timeout_in_sec: 10
-               |    cache_ttl_in_sec: 60
-           """.stripMargin,
-          assertion = { definitions =>
-            definitions.items should have size 1
-            val ldapService = definitions.items.head
-            ldapService shouldBe a[ComposedLdapAuthService]
-            ldapService.id should be(LdapService.Name("ldap1"))
-          }
-        )
+      // This test does not execute on Windows: there is currently no Windows version of LdapWithDnsContainer
+      ignoreOnWindows {
+        "server discovery is enabled with custom dns and custom ttl" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    server_discovery:
+                 |      dns_url: "dns://localhost:${ldapWithDnsContainer.dnsPort}"
+                 |      ttl: "3 hours"
+                 |    ssl_enabled: false
+                 |    ssl_trust_all_certs: true
+                 |    bind_dn: "cn=admin,dc=example,dc=com"
+                 |    bind_password: "password"
+                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+                 |    user_id_attribute: "uid"
+                 |    unique_member_attribute: "uniqueMember"
+                 |    connection_pool_size: 10
+                 |    connection_timeout_in_sec: 10
+                 |    request_timeout_in_sec: 10
+                 |    cache_ttl_in_sec: 60
+                   """.stripMargin,
+            assertion = { definitions =>
+              definitions.items should have size 1
+              val ldapService = definitions.items.head
+              ldapService shouldBe a[ComposedLdapAuthService]
+              ldapService.id should be(LdapService.Name("ldap1"))
+            }
+          )
+        }
       }
       "ROUND_ROBIN HA method is defined" in {
         assertDecodingSuccess(

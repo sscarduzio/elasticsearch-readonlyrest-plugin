@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.utils
 
+import monix.eval.Task
 import org.elasticsearch.Version
-import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.repositories.RepositoryData
 import org.elasticsearch.snapshots.SnapshotsService
 import org.joor.Reflect.on
@@ -26,25 +26,27 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 class EsVersionAwareReflectionBasedSnapshotServiceAdapter(snapshotsService: SnapshotsService) {
 
-  def getRepositoryData(repository: RepositoryName): RepositoryData = {
+  def getRepositoryData(repository: RepositoryName): Task[RepositoryData] = {
     if(Version.CURRENT.before(Version.fromString("7.6.0")))
       getRepositoriesDataForEsPre76x(repository)
     else
       getRepositoriesDataForPostEs76x(repository)
   }
 
-  private def getRepositoriesDataForPostEs76x(repository: RepositoryName): RepositoryData = {
-    val repositoryData: RepositoryData = PlainActionFuture.get { (fut: PlainActionFuture[RepositoryData]) =>
-      doPrivileged {
-        on(snapshotsService).call("getRepositoryData", RepositoryName.toString(repository), fut)
-      }
+  private def getRepositoriesDataForPostEs76x(repository: RepositoryName): Task[RepositoryData] = {
+    val listener = new ActionListenerToTaskAdapter[RepositoryData]()
+    doPrivileged {
+      on(snapshotsService).call("getRepositoryData", RepositoryName.toString(repository), listener)
     }
-    repositoryData
+    listener.result
   }
 
-  private def getRepositoriesDataForEsPre76x(repository: RepositoryName): RepositoryData = doPrivileged {
-    on(snapshotsService)
-      .call("getRepositoryData", RepositoryName.toString(repository))
-      .get[RepositoryData]
-  }
+  private def getRepositoriesDataForEsPre76x(repository: RepositoryName): Task[RepositoryData] =
+    Task.delay {
+      doPrivileged {
+        on(snapshotsService)
+          .call("getRepositoryData", RepositoryName.toString(repository))
+          .get[RepositoryData]
+      }
+    }
 }

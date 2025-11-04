@@ -6,6 +6,7 @@ out/
 *-execution-hints.log
 *-execution-times.log
 *.log
+*/bin
 
 // ignore the downloaded model files in git
 src/test/resources/models/
@@ -52,6 +53,7 @@ target/
 
 .travis/secret.pgp
 .java-version
+.sdkmanrc
 
 // docker-envs
 builds/*

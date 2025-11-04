@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.kibana
 
-import eu.timepit.refined.auto.*
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{EitherValues, OptionValues}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
@@ -209,28 +208,54 @@ class KibanaUserDataRuleSettingsTests
             }
           )
         }
-        "Unrestricted access is used" in {
-          assertDecodingSuccess(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    kibana:
-                |      access: unrestricted
-                |
-                |""".stripMargin,
-            assertion = rule => {
-              rule.settings.access should be(KibanaAccess.Unrestricted)
-              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
-              rule.settings.kibanaTemplateIndex should be(None)
-              rule.settings.appsToHide should be(Set.empty)
-              rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(None)
-              rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
-            }
-          )
+        "Unrestricted access is used" when {
+          "no other related rule is used" in {
+            assertDecodingSuccess(
+              yaml =
+                """
+                  |readonlyrest:
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block1
+                  |    kibana:
+                  |      access: unrestricted
+                  |
+                  |""".stripMargin,
+              assertion = rule => {
+                rule.settings.access should be(KibanaAccess.Unrestricted)
+                rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
+                rule.settings.kibanaTemplateIndex should be(None)
+                rule.settings.appsToHide should be(Set.empty)
+                rule.settings.allowedApiPaths should be(Set.empty)
+                rule.settings.metadata should be(None)
+                rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
+              }
+            )
+          }
+          "the access is defined explicitly and actions rule is used" in {
+            assertDecodingSuccess(
+              yaml =
+                """
+                  |readonlyrest:
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block1
+                  |    kibana:
+                  |      access: unrestricted
+                  |    actions: ["*"]
+                  |
+                  |""".stripMargin,
+              assertion = rule => {
+                rule.settings.access should be(KibanaAccess.Unrestricted)
+                rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
+                rule.settings.kibanaTemplateIndex should be(None)
+                rule.settings.appsToHide should be(Set.empty)
+                rule.settings.allowedApiPaths should be(Set.empty)
+                rule.settings.metadata should be(None)
+                rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
+              }
+            )
+          }
         }
       }
       "'hide_apps' property is set" when {

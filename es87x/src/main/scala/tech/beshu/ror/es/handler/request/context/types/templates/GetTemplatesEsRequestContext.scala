@@ -18,8 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import eu.timepit.refined.auto.*
-import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest, GetIndexTemplatesResponse}
 import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexTemplateMetadata}
@@ -67,7 +65,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
   override def modifyWhenTemplateNotFound: ModificationResult = {
     val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(requestTemplateNamePatterns.head)
     updateRequest(NonEmptyList.one(nonExistentTemplateNamePattern))
-    ModificationResult.UpdateResponse(a => Task.delay(a))
+    ModificationResult.UpdateResponse.sync(identity)
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
@@ -89,18 +87,18 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
   }
 
   private def updateResponse(`using`: TemplateRequestBlockContext) = {
-    ModificationResult.UpdateResponse {
+    ModificationResult.UpdateResponse.sync {
       case r: GetIndexTemplatesResponse =>
-        Task.now(new GetIndexTemplatesResponse(
+        new GetIndexTemplatesResponse(
           GetTemplatesEsRequestContext
             .filter(
               templates = r.getIndexTemplates.asSafeList,
               usingTemplate = `using`.responseTemplateTransformation
             )
             .asJava
-        ))
+        )
       case other =>
-        Task.now(other)
+        other
     }
   }
 
@@ -108,7 +106,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
 
 private[templates] object GetTemplatesEsRequestContext extends Logging {
 
-  def filter(templates: List[IndexTemplateMetadata],
+  def filter(templates: Iterable[IndexTemplateMetadata],
              usingTemplate: Set[Template] => Set[Template])
             (implicit requestContextId: RequestContext.Id): List[IndexTemplateMetadata] = {
     val templatesMap = templates

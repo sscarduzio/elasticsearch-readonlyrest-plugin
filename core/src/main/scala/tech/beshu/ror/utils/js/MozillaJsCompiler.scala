@@ -44,6 +44,33 @@ object MozillaJsCompiler
         acquire = Task.delay {
           val context = Context.enter
           context.setApplicationClassLoader(this.getClass.getClassLoader)
+          // The default optimization level is '0'. On that level, Rhino uses ClassLoader's and requires `createClassLoader` permission.
+          //
+          // Only on ES versions <8.0-8.18) AND on Windows Rhino throws `access denied` exception on that permission.
+          // It is unclear, why it fails:
+          //   - summary of changes in ES versions concerning security and JDKs:
+          //     - ES versions before ES 8.0:
+          //       - allow to add `createClassLoader` permission in `plugin-security.policy`
+          //       - those versions work fine
+          //     - ES <8.0,8.18):
+          //       - do not allow to add the `createClassLoader` permission in `plugin-security.policy` - we add it through ES patching
+          //       - ES creates empty SecurityManager on ES startup
+          //       - the bundled JDK is Eclipse Temurin
+          //     - ES <8.18-9.x>:
+          //       - have new model of permission, we still add permission through patching
+          //       - ES no longer creates empty SecurityManager on startup
+          //       - the bundled JDK changed to Oracle distribution
+          //       - those versions again work fine
+          //   - it is confirmed (by decompilation and debugging), that the ROR patch with the permissions is installed correctly, detects ROR plugin and applies permissions
+          //   - Rhino checks available permissions when it sets its default optimization level, so it thinks that it has the permission
+          //   - but the operation fails on missing permission
+          //   - there are a few possibilities what is causing the issue:
+          //     - maybe in the affected versions Eclipse Temurin JDK somehow works in a different way on Windows and Linux (in version 8.18 JDK changed to Oracle)
+          //     - maybe the empty SecurityManager created by ES <8.0,8.18) somehow confuses Rhino permission checks and interferes with permissions we add through patching
+          //     - or some combination of all those factors
+          //
+          // In order to omit using ClassLoader's we need to set optimization level to `-1` (a bit worse performance, but it concerns only reading few values from config)
+          context.setOptimizationLevel(-1)
           context
         }
       )(

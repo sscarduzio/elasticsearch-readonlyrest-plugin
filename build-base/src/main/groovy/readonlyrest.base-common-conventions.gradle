@@ -46,6 +46,47 @@ test {
     }
 }
 
+dependencyCheck {
+    /*
+       Severity	Base Score
+       None     0
+       Low      0.1-3.9
+       Medium   4.0-6.9
+       High     7.0-8.9
+       Critical 9.0-10.0
+     */
+    failBuildOnCVSS = 3
+    scanConfigurations = ['runtimeClasspath'] 
+    suppressionFiles = ["${project.rootDir}/suppressions_cve.xml"]
+    
+    analyzers {
+        // We don't need 'exe' or 'dll' files scanning
+        assemblyEnabled = false
+        // Disable Maven Central checksum lookups (we already have Maven coords from Gradle).
+        // Avoids flaky network calls to Central search.
+        centralEnabled = false
+
+        ossIndex {
+            // Configure the OSS Index analyzer. If no credentials are supplied,
+            // dependency-check will skip this analyzer and log a warning.
+            if (System.getenv('OSS_INDEX_USERNAME')) {
+                username = System.getenv('OSS_INDEX_USERNAME')
+            }
+            if (System.getenv('OSS_INDEX_PASSWORD')) {
+                password = System.getenv('OSS_INDEX_PASSWORD')
+            }
+        }
+    }
+    data {
+        if (System.getenv('DEPENDENCY_CHECK_DATA_DIR')) {  // We want to fall back to the default path for local builds
+            directory = System.getenv('DEPENDENCY_CHECK_DATA_DIR')
+        }
+    }
+    nvd {
+        apiKey = System.getenv('NVD_API_KEY')
+    }
+}
+
 githook {
     hooks {
         "pre-commit" {

@@ -20,7 +20,6 @@ import cats.data.*
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import com.unboundid.ldap.sdk.LDAPSearchException
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
@@ -36,7 +35,8 @@ import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
-import tech.beshu.ror.utils.containers.{LdapContainer, ToxiproxyContainer}
+import tech.beshu.ror.utils.containers.{OpenLdapContainer, LdapContainer, ToxiproxyContainer}
+import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 
 import java.time.Clock
@@ -53,12 +53,12 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
     with Inside
     with WithDummyRequestIdSupport {
 
-  private val ldap1ContainerWithToxiproxy = new ToxiproxyContainer(
+  private lazy val ldap1ContainerWithToxiproxy = new ToxiproxyContainer(
     SingletonLdapContainers.ldap1,
-    LdapContainer.defaults.ldap.port
+    OpenLdapContainer.port
   )
-  private val ldapContainerToStop = LdapContainer.create("LDAP3", "test_example.ldif")
-  private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
+  private lazy val ldapContainerToStop = LdapContainer.create("LDAP3", "test_example.ldif")
+  private lazy val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   override val container: Container = MultipleContainers(ldap1ContainerWithToxiproxy, ldapContainerToStop)
 
@@ -73,44 +73,47 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
     ldap1ContainerWithToxiproxy.disableNetworkTimeout()
   }
 
-  "An LdapAuthenticationService should" - {
-    "allow to authenticate user" - {
-      "after connection timeout and retry" in {
-        val authenticationService = createSimpleAuthenticationService()
-        authenticationService.assertSuccessfulAuthentication
-        ldap1ContainerWithToxiproxy.enableNetworkTimeout()
-        authenticationService.assertFailedAuthentication[LdapUnexpectedResult, LDAPSearchException]
-        ldap1ContainerWithToxiproxy.disableNetworkTimeout()
-        authenticationService.assertSuccessfulAuthentication
+  // This test suite does not execute on Windows: there is currently no Windows version of ToxiproxyContainer
+  ignoreOnWindows {
+    "An LdapAuthenticationService should" - {
+      "allow to authenticate user" - {
+        "after connection timeout and retry" in {
+          val authenticationService = createSimpleAuthenticationService()
+          authenticationService.assertSuccessfulAuthentication
+          ldap1ContainerWithToxiproxy.enableNetworkTimeout()
+          authenticationService.assertFailedAuthentication[LdapUnexpectedResult, LDAPSearchException]
+          ldap1ContainerWithToxiproxy.disableNetworkTimeout()
+          authenticationService.assertSuccessfulAuthentication
+        }
+        "after connection failure and retry" in {
+          val authenticationService = createSimpleAuthenticationService()
+          authenticationService.assertSuccessfulAuthentication
+          ldap1ContainerWithToxiproxy.disableNetwork()
+          authenticationService.assertFailedAuthentication[LDAPSearchException, LDAPSearchException]
+          ldap1ContainerWithToxiproxy.enableNetwork()
+          authenticationService.assertSuccessfulAuthentication
+        }
       }
-      "after connection failure and retry" in {
-        val authenticationService = createSimpleAuthenticationService()
-        authenticationService.assertSuccessfulAuthentication
-        ldap1ContainerWithToxiproxy.disableNetwork()
-        authenticationService.assertFailedAuthentication[LDAPSearchException, LDAPSearchException]
-        ldap1ContainerWithToxiproxy.enableNetwork()
-        authenticationService.assertSuccessfulAuthentication
-      }
-    }
-    "be able to work when" - {
-      "Round robin HA method is configured when" - {
-        "one of servers goes down" in {
-          def assertMorganCanAuthenticate(service: UnboundidLdapAuthenticationService) = {
-            service
-              .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-              .runSyncUnsafe() should be(true)
-          }
+      "be able to work when" - {
+        "Round robin HA method is configured when" - {
+          "one of servers goes down" in {
+            def assertMorganCanAuthenticate(service: UnboundidLdapAuthenticationService) = {
+              service
+                .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
+                .runSyncUnsafe() should be(true)
+            }
 
-          val service = createHaAuthenticationService()
-          (for {
-            _ <- repeat(maxRetries = 5, delay = 500 millis) {
-              Task(assertMorganCanAuthenticate(service))
-            }
-            _ <- Task(ldapContainerToStop.stop())
-            _ <- repeat(10, 500 millis) {
-              Task(assertMorganCanAuthenticate(service))
-            }
-          } yield ()).runSyncUnsafe()
+            val service = createHaAuthenticationService()
+            (for {
+              _ <- repeat(maxRetries = 5, delay = 500 millis) {
+                Task(assertMorganCanAuthenticate(service))
+              }
+              _ <- Task(ldapContainerToStop.stop())
+              _ <- repeat(10, 500 millis) {
+                Task(assertMorganCanAuthenticate(service))
+              }
+            } yield ()).runSyncUnsafe()
+          }
         }
       }
     }

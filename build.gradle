@@ -21,6 +21,13 @@ plugins {
     id 'com.bmuschko.docker-remote-api'             version '9.4.0'
     id 'io.github.gradle-nexus.publish-plugin'      version '2.0.0-rc-1'
     id 'org.gradle.crypto.checksum'                 version '1.4.0'
+    id "idea"
+}
+
+idea {
+    module {
+        downloadSources = true
+    }
 }
 
 tasks.register("buildRorPlugin", RorTaskFinder) {
@@ -49,6 +56,7 @@ version = pluginVersion
 nexusPublishing {
     repositories {
         sonatype {
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
             stagingProfileId = System.getenv('MAVEN_STAGING_PROFILE_ID')
             username = System.getenv('MAVEN_REPO_USER')
             password = System.getenv('MAVEN_REPO_PASSWORD')

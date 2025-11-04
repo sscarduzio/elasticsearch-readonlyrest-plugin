@@ -131,7 +131,7 @@ class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
           .responseJson("error")
           .obj("root_cause")
           .arr.exists { json =>
-          json("reason").str == "forbidden" &&
+          json("reason").str == "Forbidden by ReadonlyREST" &&
             json("due_to").str == "READONLYREST_NOT_READY_YET"
         }
       }
@@ -181,7 +181,8 @@ private object RorStartingSuite extends EsModulePatterns {
           clusterName = clusterName,
           securityType = SecurityType.RorWithXpackSecurity(
             ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-              rorConfigFileName = rorConfigFile
+              rorConfigFileName = rorConfigFile,
+              rorInIndexConfigLoadingDelay = 5 seconds
             )
           ),
           containerSpecification = ContainerSpecification.empty.copy(

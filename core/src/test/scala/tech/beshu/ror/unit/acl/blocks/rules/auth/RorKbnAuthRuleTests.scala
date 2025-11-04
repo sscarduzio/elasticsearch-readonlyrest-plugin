@@ -16,9 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
-import eu.timepit.refined.auto.*
-import io.jsonwebtoken.SignatureAlgorithm
-import io.jsonwebtoken.security.Keys
+import io.jsonwebtoken.Jwts
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -29,12 +27,11 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{RorKbnAuthRule, RorKbnAuthenticationRule, RorKbnAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Jwt => _, *}
+import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -52,7 +49,7 @@ class RorKbnAuthRuleTests
   "A RorKbnAuthRule" should {
     "match" when {
       "token has valid HS256 signature" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -62,12 +59,15 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
+          groupsLogic = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group2")))),
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("group2")),
+              availableGroups = UniqueList.of(group("group2")),
             )(blockContext)
         }
       }
@@ -82,37 +82,20 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
-          tokenHeader = bearerHeader(jwt)
+          groupsLogic = GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("group2")))),
+          tokenHeader = bearerHeader(jwt),
         ) {
           blockContext =>
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
-        }
-      }
-      "groups claim name is defined and no groups field is passed in token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
-        val jwt = Jwt(key, claims = List(
-          "user" := "user1",
-        ))
-        assertMatchRule(
-          configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test"),
-            SignatureCheckMethod.Hmac(key.getEncoded)
-          ),
-          configuredGroups = Groups.NotDefined,
-          tokenHeader = bearerHeader(jwt)
-        ) {
-          blockContext =>
-            assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              currentGroup = Some(GroupId("group2")),
+              availableGroups = UniqueList.of(group("group2")),
             )(blockContext)
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (no preferred group)" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -122,10 +105,10 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = Groups.Defined(
-            GroupsLogic.Or(PermittedGroupIds(
+          groupsLogic = GroupsLogic.AnyOf(
+            GroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2")),
-            ))
+            )
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
@@ -139,7 +122,7 @@ class RorKbnAuthRuleTests
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (with preferred group)" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -149,10 +132,10 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = Groups.Defined(
-            GroupsLogic.Or(PermittedGroupIds(
+          groupsLogic = GroupsLogic.AnyOf(
+            GroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
-            ))
+            )
           ),
           tokenHeader = bearerHeader(jwt),
           preferredGroupId = Some(GroupId("group2"))
@@ -168,7 +151,7 @@ class RorKbnAuthRuleTests
       }
       "groups OR logic is used" when {
         "at least one allowed group matches the JWT groups (1)" in {
-          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val key: Key = Jwts.SIG.HS256.key().build()
           val jwt = Jwt(key, claims = List(
             "user" := "user1",
             "groups" := List("group1", "group2")
@@ -178,10 +161,10 @@ class RorKbnAuthRuleTests
               RorKbnDef.Name("test"),
               SignatureCheckMethod.Hmac(key.getEncoded)
             ),
-            configuredGroups = Groups.Defined(
-              GroupsLogic.Or(PermittedGroupIds(
+            groupsLogic = GroupsLogic.AnyOf(
+              GroupIds(
                 UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2")),
-              ))
+              )
             ),
             tokenHeader = bearerHeader(jwt)
           ) {
@@ -195,7 +178,7 @@ class RorKbnAuthRuleTests
           }
         }
         "at least one allowed group matches the JWT groups (2)" in {
-          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val key: Key = Jwts.SIG.HS256.key().build()
           val jwt = Jwt(key, claims = List(
             "user" := "user1",
             "groups" := List("group1", "group2")
@@ -205,10 +188,10 @@ class RorKbnAuthRuleTests
               RorKbnDef.Name("test"),
               SignatureCheckMethod.Hmac(key.getEncoded)
             ),
-            configuredGroups = Groups.Defined(
-              GroupsLogic.Or(PermittedGroupIds(
+            groupsLogic = GroupsLogic.AnyOf(
+              GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("*3"), GroupIdLike.from("*2")),
-              ))
+              )
             ),
             tokenHeader = bearerHeader(jwt)
           ) {
@@ -224,7 +207,7 @@ class RorKbnAuthRuleTests
       }
       "groups AND logic is used" when {
         "all allowed groups match the JWT groups (1)" in {
-          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val key: Key = Jwts.SIG.HS256.key().build()
           val jwt = Jwt(key, claims = List(
             "user" := "user1",
             "groups" := List("group1", "group2", "group3")
@@ -234,10 +217,10 @@ class RorKbnAuthRuleTests
               RorKbnDef.Name("test"),
               SignatureCheckMethod.Hmac(key.getEncoded)
             ),
-            configuredGroups = Groups.Defined(
-              GroupsLogic.And(PermittedGroupIds(
+            groupsLogic = GroupsLogic.AllOf(
+              GroupIds(
                 UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2")),
-              ))
+              )
             ),
             tokenHeader = bearerHeader(jwt)
           ) {
@@ -251,7 +234,7 @@ class RorKbnAuthRuleTests
           }
         }
         "all allowed groups match the JWT groups (2)" in {
-          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val key: Key = Jwts.SIG.HS256.key().build()
           val jwt = Jwt(key, claims = List(
             "user" := "user1",
             "groups" := List("group1", "group2", "group3")
@@ -261,10 +244,10 @@ class RorKbnAuthRuleTests
               RorKbnDef.Name("test"),
               SignatureCheckMethod.Hmac(key.getEncoded)
             ),
-            configuredGroups = Groups.Defined(
-              GroupsLogic.And(PermittedGroupIds(
-                UniqueNonEmptyList.of(GroupIdLike.from("*3"), GroupIdLike.from(("*2"))),
-              ))
+            groupsLogic = GroupsLogic.AllOf(
+              GroupIds(
+                UniqueNonEmptyList.of(GroupIdLike.from("*3"), GroupIdLike.from("*2")),
+              )
             ),
             tokenHeader = bearerHeader(jwt)
           ) {
@@ -281,8 +264,8 @@ class RorKbnAuthRuleTests
     }
     "not match" when {
       "token has invalid HS256 signature" in {
-        val key1: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
-        val key2: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key1: Key = Jwts.SIG.HS256.key().build()
+        val key2: Key = Jwts.SIG.HS256.key().build()
         val jwt2 = Jwt(key2, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -292,6 +275,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
+          groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
           tokenHeader = bearerHeader(jwt2)
         )
       }
@@ -307,11 +291,12 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
+          groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
           tokenHeader = bearerHeader(jwt)
         )
       }
       "userId isn't passed in JWT token claim" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
           "groups" := List("group1", "group2")
@@ -321,11 +306,12 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
+          groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
           tokenHeader = bearerHeader(jwt)
         )
       }
       "groups aren't passed in JWT token claim while some groups are defined in settings" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "userGroups" := List("group1", "group2")
@@ -335,16 +321,16 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = Groups.Defined(
-            GroupsLogic.Or(PermittedGroupIds(
+          groupsLogic = GroupsLogic.AnyOf(
+            GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"))
-            ))
+            )
           ),
           tokenHeader = bearerHeader(jwt)
         )
       }
       "rule groups are defined with 'or' logic and intersection between those groups and ROR Kbn ones is empty" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -354,16 +340,16 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = Groups.Defined(
-            GroupsLogic.Or(PermittedGroupIds(
+          groupsLogic = GroupsLogic.AnyOf(
+            GroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4")),
-            ))
+            )
           ),
           tokenHeader = bearerHeader(jwt)
         )
       }
       "rule groups are defined with 'and' logic and intersection between those groups and ROR Kbn ones is empty" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -373,16 +359,16 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = Groups.Defined(
-            GroupsLogic.And(PermittedGroupIds(
+          groupsLogic = GroupsLogic.AllOf(
+            GroupIds(
               UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3")),
-            ))
+            )
           ),
           tokenHeader = bearerHeader(jwt)
         )
       }
       "preferred group is not on the groups list from JWT" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group1", "group2")
@@ -392,12 +378,13 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
+          groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
           tokenHeader = bearerHeader(jwt),
           preferredGroupId = Some(GroupId("group5"))
         )
       }
       "preferred group is not on the permitted groups list" in {
-        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
           "groups" := List("group5", "group2")
@@ -407,10 +394,10 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = Groups.Defined(
-            GroupsLogic.Or(PermittedGroupIds(
+          groupsLogic = GroupsLogic.AnyOf(
+            GroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
-            ))
+            )
           ),
           tokenHeader = bearerHeader(jwt),
           preferredGroupId = Some(GroupId("group5"))
@@ -420,26 +407,29 @@ class RorKbnAuthRuleTests
   }
 
   private def assertMatchRule(configuredRorKbnDef: RorKbnDef,
-                              configuredGroups: Groups = Groups.NotDefined,
+                              groupsLogic: GroupsLogic,
                               tokenHeader: Header,
                               preferredGroupId: Option[GroupId] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroupId, Some(blockContextAssertion))
+    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
-                                 configuredGroups: Groups = Groups.NotDefined,
+                                 groupsLogic: GroupsLogic,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroupId, blockContextAssertion = None)
+    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, blockContextAssertion = None)
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
-                         configuredGroups: Groups,
+                         groupsLogic: GroupsLogic,
                          tokenHeader: Header,
                          preferredGroupId: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), CaseSensitivity.Enabled)
-    val requestContext = MockRequestContext.indices.copy(
-      headers = Set(tokenHeader) ++ preferredGroupId.map(_.toCurrentGroupHeader).toSet
+    val rule = new RorKbnAuthRule(
+      authentication = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(configuredRorKbnDef), CaseSensitivity.Enabled),
+      authorization = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(configuredRorKbnDef, groupsLogic)),
+    )
+    val requestContext = MockRequestContext.indices.withHeaders(
+      preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,

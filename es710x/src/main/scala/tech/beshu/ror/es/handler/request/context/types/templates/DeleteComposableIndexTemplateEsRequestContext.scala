@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import org.elasticsearch.action.admin.indices.template.delete.{DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
@@ -29,8 +29,6 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposableIndexTemplateAction.Request,
@@ -56,7 +54,7 @@ class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposa
           case _ =>
             logger.warn(
               s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
-                 | The whole set of patterns [${namePatterns.toList.mkString(",")}]""".oneLiner)
+                 | The whole set of patterns [${namePatterns.show}]""".oneLiner)
         }
         actionRequest.name(namePatterns.head.value.value)
         ModificationResult.Modified

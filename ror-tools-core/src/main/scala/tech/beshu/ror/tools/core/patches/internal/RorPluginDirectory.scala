@@ -16,15 +16,23 @@
  */
 package tech.beshu.ror.tools.core.patches.internal
 
+import better.files.File
+import just.semver.SemVer
 import os.Path
+import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
+import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
+import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
+import tech.beshu.ror.tools.core.utils.FileUtils.*
+import tech.beshu.ror.tools.core.utils.FileUtils.osPathToFile
+import scala.language.implicitConversions
 
-private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
+private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   private val rorPath: Path = readonlyrestPluginPath(esDirectory.path)
   private val backupFolderPath: Path = rorPath / "patch_backup"
-  private val patchedByFilePath: Path = backupFolderPath / "patched_by"
+  private val patchMetadataFilePath: Path = backupFolderPath / "patch_metadata"
   private val pluginPropertiesFilePath = rorPath / "plugin-descriptor.properties"
 
   val securityPolicyPath: Path = rorPath / "plugin-security.policy"
@@ -41,35 +49,46 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     os.remove.all(target = backupFolderPath)
   }
 
-  def backup(file: Path): Unit = {
-    os.copy(from = file, to = backupFolderPath / file.last, replaceExisting = true)
+  def backup(originalFile: Path): Unit = {
+    val backedUpFile = backupFolderPath / originalFile.last
+    os.copy(from = originalFile, to = backedUpFile, replaceExisting = true, copyAttributes = true)
+    backedUpFile.setFilePermissionsAndOwnerCopiedFrom(originalFile)
   }
 
   def restore(file: Path): Unit = {
-    os.copy(from = backupFolderPath / file.last, to = file, replaceExisting = true)
+    val backedUpFile = backupFolderPath / file.last
+    os.copy(from = backedUpFile, to = file, replaceExisting = true, copyAttributes = true)
+    file.setFilePermissionsAndOwnerCopiedFrom(backedUpFile)
   }
 
   def copyToPluginPath(file: Path): Unit = {
     os.copy(from = file, to = rorPath / file.last)
   }
 
-  def isTransportNetty4PresentInRorPluginPath: Boolean = {
-    findTransportNetty4JarIn(rorPath).isDefined
-  }
-
   def findTransportNetty4Jar: Option[Path] = {
     findTransportNetty4JarIn(rorPath)
   }
 
-  def readPatchedByRorVersion(): Option[String] = {
-    Option.when(os.exists(patchedByFilePath)) {
-      os.read(patchedByFilePath)
-    }
+  def readEsPatchMetadata(): Option[EsPatchMetadata] = {
+    if (os.exists(patchMetadataFilePath)) {
+      val metadataContent = os.read(patchMetadataFilePath)
+      EsPatchMetadataCodec.decode(metadataContent) match {
+        case Right(metadata) => Some(metadata)
+        case Left(error) => throw new IllegalStateException(s"Cannot decode ROR patch metadata file: $error. File content: [$metadataContent]")
+      }
+    } else None
   }
 
-  def updatePatchedByRorVersion(): Unit = {
-    os.remove(patchedByFilePath, checkExists = false)
-    os.write(patchedByFilePath, readCurrentRorVersion())
+  def updateEsPatchMetadata(items: List[FilePatchMetadata]): Unit = {
+    lazy val fileContent = EsPatchMetadataCodec.encode(
+      EsPatchMetadata(
+        rorVersion = readCurrentRorVersion(),
+        esVersion = esDirectory.readEsVersion(),
+        patchedFilesMetadata = items,
+      )
+    )
+    os.remove(patchMetadataFilePath, checkExists = false)
+    os.write(patchMetadataFilePath, fileContent)
   }
 
   def readCurrentRorVersion(): String = {
@@ -84,5 +103,10 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
       .getOrElse(throw new IllegalStateException(s"Cannot read ROR version from ${pluginPropertiesFilePath}"))
   }
 
-  def isRorPluginPath(path: Path): Boolean = path.startsWith(rorPath)
+}
+
+object RorPluginDirectory {
+  final case class EsPatchMetadata(rorVersion: String,
+                                   esVersion: SemVer,
+                                   patchedFilesMetadata: List[FilePatchMetadata])
 }

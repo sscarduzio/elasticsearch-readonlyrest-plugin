@@ -22,7 +22,8 @@ final case class GlobalSettings(showBasicAuthPrompt: Boolean,
                                 forbiddenRequestMessage: String,
                                 flsEngine: GlobalSettings.FlsEngine,
                                 configurationIndex: RorConfigurationIndex,
-                                userIdCaseSensitivity: CaseSensitivity)
+                                userIdCaseSensitivity: CaseSensitivity,
+                                usersDefinitionDuplicateUsernamesValidationEnabled: Boolean)
 
 object GlobalSettings {
 
@@ -35,5 +36,5 @@ object GlobalSettings {
     val default = ESWithLucene
   }
 
-  val defaultForbiddenRequestMessage: String = "forbidden"
+  val defaultForbiddenRequestMessage: String = "Forbidden by ReadonlyREST"
 }

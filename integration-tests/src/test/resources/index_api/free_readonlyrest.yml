@@ -1,10 +1,11 @@
 readonlyrest:
 
-  prompt_for_basic_auth: true
+  global_settings:
+    prompt_for_basic_auth: true
 
   access_control_rules:
 
-    # ES containter initializer need this rule to configure ES instance after startup
+    # ES container initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow

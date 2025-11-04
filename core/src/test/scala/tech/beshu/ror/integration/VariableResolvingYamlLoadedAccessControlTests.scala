@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration
 
 import com.dimafeng.testcontainers.ForAllTestContainer
-import eu.timepit.refined.auto.*
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -38,7 +37,7 @@ import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.*
-import tech.beshu.ror.utils.containers.NonStoppableLdapContainer
+import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -50,7 +49,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
   with ForAllTestContainer
   with Inside {
 
-  override val container: NonStoppableLdapContainer = SingletonLdapContainers.ldap1
+  override val container: LdapContainer = SingletonLdapContainers.ldap1
 
   override protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
@@ -182,8 +181,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
     "is configured using config above" should {
       "allow to proceed" when {
         "old style header variable is used" in {
-          val request = MockRequestContext.indices.copy(
-            headers = Set(basicAuthHeader("user1:passwd"), header("X-my-group-id-1", "g3"))
+          val request = MockRequestContext.indices.withHeaders(
+            basicAuthHeader("user1:passwd"), header("X-my-group-id-1", "g3")
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -200,8 +199,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           }
         }
         "new style header variable is used" in {
-          val request = MockRequestContext.indices.copy(
-            headers = Set(basicAuthHeader("user1:passwd"), header("X-my-group-id-2", "g3"))
+          val request = MockRequestContext.indices.withHeaders(
+            basicAuthHeader("user1:passwd"), header("X-my-group-id-2", "g3")
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -218,9 +217,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           }
         }
         "old style of env variable is used" in {
-          val request = MockRequestContext.indices.copy(
-            headers = Set(basicAuthHeader("user2:passwd"))
-          )
+          val request = MockRequestContext.indices.withHeaders(basicAuthHeader("user2:passwd"))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -236,9 +233,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           }
         }
         "new style of env variable is used" in {
-          val request = MockRequestContext.indices.copy(
-            headers = Set(basicAuthHeader("user1:passwd"))
-          )
+          val request = MockRequestContext.indices.withHeaders(basicAuthHeader("user1:passwd"))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -258,8 +253,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             "userId" := "user3",
             "tech" :-> "beshu" :-> "mainGroup" := List("j1", "j2")
           ))
-          val request = MockRequestContext.indices.copy(
-            headers = Set(bearerHeader(jwt)),
+          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt)).copy(
             filteredIndices = Set(requestedIndex("gjj1"))
           )
 
@@ -283,11 +277,12 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
           ))
 
-          val request = MockRequestContext.indices.copy(
-            headers = Set(bearerHeader(jwt)),
-            filteredIndices = Set(requestedIndex("gj0")),
-            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("gj0")))
-          )
+          val request = MockRequestContext.indices
+            .withHeaders(bearerHeader(jwt))
+            .copy(
+              filteredIndices = Set(requestedIndex("gj0")),
+              allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("gj0")))
+            )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -309,11 +304,12 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             "user_id_list" := List("alice", "bob")
           ))
 
-          val request = MockRequestContext.search.copy(
-            headers = Set(bearerHeader(jwt)),
-            indices = Set.empty,
-            allIndicesAndAliases = Set.empty
-          )
+          val request = MockRequestContext.search
+            .withHeaders(bearerHeader(jwt))
+            .copy(
+              indices = Set.empty,
+              allIndicesAndAliases = Set.empty
+            )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -331,14 +327,15 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           }
         }
         "Available groups env is used" in {
-          val request = MockRequestContext.search.copy(
-            headers = Set(basicAuthHeader("cartman:user2")),
-            indices = Set(requestedIndex("*")),
-            allIndicesAndAliases = Set(
-              fullLocalIndexWithAliases(fullIndexName("test-g1")),
-              fullLocalIndexWithAliases(fullIndexName("test-g2")),
-              fullLocalIndexWithAliases(fullIndexName("test-g3"))
-            )
+          val request = MockRequestContext.search
+            .withHeaders(basicAuthHeader("cartman:user2"))
+            .copy(
+              indices = Set(requestedIndex("*")),
+              allIndicesAndAliases = Set(
+                fullLocalIndexWithAliases(fullIndexName("test-g1")),
+                fullLocalIndexWithAliases(fullIndexName("test-g2")),
+                fullLocalIndexWithAliases(fullIndexName("test-g3"))
+              )
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -364,9 +361,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
           ))
 
-          val request = MockRequestContext.metadata.copy(
-            headers = Set(bearerHeader(jwt))
-          )
+          val request = MockRequestContext.search.withHeaders(bearerHeader(jwt))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 

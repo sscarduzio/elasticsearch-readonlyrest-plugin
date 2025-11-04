@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder.DecodingContext
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -34,9 +35,16 @@ sealed abstract class RuleDecoder[T <: Rule : RuleName] extends Decoder[RuleDeco
 
   def ruleName: Rule.Name = implicitly[RuleName[T]].name
 
+  protected def decodingContext: DecodingContext = DecodingContext.OnlyValueForTheRuleName
+
   override def apply(c: HCursor): Decoder.Result[RuleDecoder.Result[T]] = {
     decode(
-      c.downField(ruleName.value),
+      decodingContext match {
+        case DecodingContext.OnlyValueForTheRuleName =>
+          c.downField(ruleName.value)
+        case DecodingContext.RuleNameWithValue =>
+          c
+      },
       c.withKeysOnly(associatedFields)
     ) map { ruleWithVariable =>
       RuleDecoder.Result(ruleWithVariable, c.withoutKeys(associatedFields + ruleName.value))
@@ -60,8 +68,17 @@ sealed abstract class RuleDecoder[T <: Rule : RuleName] extends Decoder[RuleDeco
   protected def doDecode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[RuleDefinition[T]]
 
 }
+
 object RuleDecoder {
   final case class Result[T <: Rule](rule: RuleDefinition[T], unconsumedCursor: ACursor)
+
+  sealed trait DecodingContext
+
+  object DecodingContext {
+    case object RuleNameWithValue extends DecodingContext
+
+    case object OnlyValueForTheRuleName extends DecodingContext
+  }
 }
 
 object RuleBaseDecoder {

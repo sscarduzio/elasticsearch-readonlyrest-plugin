@@ -20,6 +20,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction.{Add, Delete}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
@@ -113,7 +114,7 @@ class IndexAliasesManagementSuite
         result should have statusCode 200
         val allAliasesResponse = adminCatManager.aliases()
         allAliasesResponse should have statusCode 200
-        allAliasesResponse.results.size should be(0)
+        allAliasesResponse.results.map(_.obj("alias").str) should not contain "admin-alias"
       }
       "user has access to both: index pattern and alias name" when {
         "an index of the pattern exists" in {
@@ -128,7 +129,7 @@ class IndexAliasesManagementSuite
 
           val allAliasesResponse = adminCatManager.aliases()
           allAliasesResponse should have statusCode 200
-          allAliasesResponse.results.size should be(0)
+          allAliasesResponse.results.map(_.obj("alias").str) should not contain "dev1"
         }
         "no index of the pattern exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()

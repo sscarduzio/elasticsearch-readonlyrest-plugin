@@ -73,11 +73,11 @@ private [patches] class SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNo
 
     override def visitInsn(opcode: Int): Unit = {
       if (opcode == Opcodes.RETURN) {
-        mv.visitVarInsn(Opcodes.ALOAD, 2)
-        mv.visitVarInsn(Opcodes.ALOAD, 0)
-        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/cluster/service/ClusterService", "addLowPriorityApplier", "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V", false);
+        underlying.visitVarInsn(Opcodes.ALOAD, 2)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/cluster/service/ClusterService", "addLowPriorityApplier", "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V", false);
       }
-      mv.visitInsn(opcode)
+      underlying.visitInsn(opcode)
     }
   }
 }

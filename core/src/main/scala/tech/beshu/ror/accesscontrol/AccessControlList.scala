@@ -66,7 +66,8 @@ object AccessControlList {
   sealed trait UserMetadataRequestResult
   object UserMetadataRequestResult {
     final case class Allow(userMetadata: UserMetadata, block: Block) extends UserMetadataRequestResult
-    final case class Forbidden(causes: NonEmptySet[ForbiddenCause]) extends UserMetadataRequestResult
+    final case class ForbiddenBy(blockContext: CurrentUserMetadataRequestBlockContext, block: Block) extends UserMetadataRequestResult
+    final case class ForbiddenByMismatched(causes: NonEmptySet[ForbiddenCause]) extends UserMetadataRequestResult
     case object PassedThrough extends UserMetadataRequestResult
   }
 

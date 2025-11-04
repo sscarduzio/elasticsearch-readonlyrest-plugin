@@ -21,9 +21,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.*
@@ -31,12 +32,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.*
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsRuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.http.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana.*
@@ -60,15 +62,27 @@ object ruleDecoders {
     )
 
     val optionalRuleDecoder = name match {
+      case ruleName@(
+        Rule.Name("groups") |
+        AllOfGroupsRule.DeprecatedSimpleSyntaxNameV1.name |
+        AllOfGroupsRule.DeprecatedSimpleSyntaxNameV2.name |
+        AllOfGroupsRule.SimpleSyntaxName.name |
+        AnyOfGroupsRule.DeprecatedSimpleSyntaxNameV1.name |
+        AnyOfGroupsRule.DeprecatedSimpleSyntaxNameV2.name |
+        AnyOfGroupsRule.DeprecatedSimpleSyntaxNameV3.name |
+        AnyOfGroupsRule.SimpleSyntaxName.name |
+        NotAllOfGroupsRule.SimpleSyntaxName.name |
+        NotAnyOfGroupsRule.SimpleSyntaxName.name) =>
+        implicit val ruleNameForDecoder: RuleName[BaseGroupsRule[GroupsLogic]] = new RuleName[BaseGroupsRule[GroupsLogic]] {
+          override val name: Rule.Name = ruleName
+        }
+        Some(new GroupsRuleDecoder(definitions.users, globalSettings, variableCreator))
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)
       case DataStreamsRule.Name.name => Some(new DataStreamsRuleDecoder(variableCreator))
       case FieldsRule.Name.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine, variableCreator))
       case ResponseFieldsRule.Name.name => Some(new ResponseFieldsRuleDecoder(variableCreator))
       case FilterRule.Name.name => Some(new FilterRuleDecoder(variableCreator))
-      case GroupsOrRule.Name.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsOrRule.Name))
-      case GroupsOrRule.DeprecatedName.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsOrRule.DeprecatedName))
-      case GroupsAndRule.Name.name => Some(new GroupsAndRuleDecoder(definitions.users, globalSettings, variableCreator))
       case HeadersAndRule.Name.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.Name))
       case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)
@@ -125,6 +139,10 @@ object ruleDecoders {
         Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case RorKbnAuthRule.Name.name =>
         Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, globalSettings))
+      case RorKbnAuthenticationRule.Name.name =>
+        Some(new RorKbnAuthenticationRuleDecoder(rorKbnDefinitions, globalSettings))
+      case RorKbnAuthorizationRule.Name.name =>
+        Some(new RorKbnAuthorizationRuleDecoder(rorKbnDefinitions))
       case _ =>
         authenticationRuleDecoderBy(
           name,

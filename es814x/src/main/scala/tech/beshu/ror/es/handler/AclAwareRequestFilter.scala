@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.handler
 
+import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -57,7 +58,6 @@ import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.reindex.ReindexRequest
-import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task as EsTask
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
@@ -69,13 +69,13 @@ import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.*
-import tech.beshu.ror.es.handler.request.RestRequestOps.*
 import tech.beshu.ror.es.handler.request.context.types.*
 import tech.beshu.ror.es.handler.request.context.types.datastreams.*
 import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
+import tech.beshu.ror.es.{HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel, AtEsLevelUpdateActionResponseListener}
 import tech.beshu.ror.es.handler.request.context.types.xpacksecurity.*
 import tech.beshu.ror.es.services.EsApiKeyService
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
@@ -137,9 +137,15 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: DeleteSnapshotRequest =>
         regularRequestHandler.handle(new DeleteSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
       case request: RestoreSnapshotRequest =>
-        regularRequestHandler.handle(new RestoreSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
+        for {
+          requestContext <- RestoreSnapshotEsRequestContext.create(request, esContext, clusterService, threadPool)
+          result <- regularRequestHandler.handle(requestContext)
+        } yield result
       case request: SnapshotsStatusRequest =>
-        regularRequestHandler.handle(new SnapshotsStatusEsRequestContext(request, esContext, clusterService, threadPool))
+        for {
+          requestContext <- SnapshotsStatusEsRequestContext.create(request, esContext, clusterService, threadPool)
+          result <- regularRequestHandler.handle(requestContext)
+        } yield result
       // repositories
       case request: GetRepositoriesRequest =>
         regularRequestHandler.handle(new GetRepositoriesEsRequestContext(request, esContext, clusterService, threadPool))
@@ -285,25 +291,23 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 }
 
 object AclAwareRequestFilter {
-  final case class EsContext(channel: RestChannel with ResponseFieldsFiltering,
-                             nodeName: String,
-                             task: EsTask,
-                             action: Action,
-                             actionRequest: ActionRequest,
-                             listener: ActionListener[ActionResponse],
-                             chain: EsChain,
-                             threadContextResponseHeaders: Set[(String, String)]) {
+
+  final class EsContext(val channel: RorRestChannel,
+                        val correlationId: Eval[CorrelationId],
+                        val nodeName: String,
+                        val task: EsTask,
+                        val action: Action,
+                        val actionRequest: ActionRequest,
+                        val listener: RorActionListener[ActionResponse],
+                        val chain: EsChain,
+                        val threadContextResponseHeaders: Set[(String, String)]) {
 
     val timestamp: Instant = Instant.now()
 
-    lazy val allHeaders: Set[Header] = channel.request().allHeaders()
-
-    lazy val correlationId: CorrelationId =
-      allHeaders
-        .find(_.name === Header.Name.correlationId)
-        .map(_.value)
-        .map(CorrelationId.apply)
-        .getOrElse(CorrelationId.random)
+    private lazy val isImpersonationHeader =
+      channel.restRequest
+        .allHeaders
+        .exists { case Header(name, _) => name === Header.Name.impersonateAs }
 
     def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
       val impersonationHeaderPresent = isImpersonationHeader
@@ -313,20 +317,31 @@ object AclAwareRequestFilter {
         case Some(_) | None => Right(engines.mainEngine)
       }
     }
+  }
+  object EsContext {
 
-    private def isImpersonationHeader = {
-      channel
-        .request()
-        .allHeaders()
-        .exists { case Header(name, _) => name === Header.Name.impersonateAs }
+    implicit class CorrelationIdFrom(val channel: RorRestChannel) extends AnyVal {
+      def correlationId: Eval[CorrelationId] = Eval.later {
+        channel.restRequest
+          .allHeaders
+          .find(_.name === Header.Name.correlationId)
+          .map(_.value)
+          .map(CorrelationId.apply)
+          .getOrElse(CorrelationId.random)
+      }
     }
+
   }
 
   final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse]) {
 
     def continue(esContext: EsContext,
-                 listener: ActionListener[ActionResponse]): Unit = {
-      continue(esContext.task, esContext.action, esContext.actionRequest, listener)
+                 listener: RorActionListener[ActionResponse]): Unit = {
+      val esListener = listener match {
+        case listener: HidingInternalErrorDetailsRorActionListener[_] => listener.underlying
+        case listener: AtEsLevelUpdateActionResponseListener => listener
+      }
+      continue(esContext.task, esContext.action, esContext.actionRequest, esListener)
     }
 
     def continue(task: EsTask,

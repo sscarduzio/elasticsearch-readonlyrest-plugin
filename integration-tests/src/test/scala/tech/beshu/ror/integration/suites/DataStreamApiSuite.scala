@@ -22,6 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import tech.beshu.ror.integration.suites.DataStreamApiSuite.{DataStreamNameGenerator, IndexTemplateNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.IndexManager.*
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
@@ -51,9 +52,7 @@ class DataStreamApiSuite
   private lazy val adminIndexManager = new IndexManager(client, esVersionUsed)
   private lazy val adminSearchManager = new SearchManager(client, esVersionUsed)
   private lazy val adminTemplateManager = new IndexTemplateManager(client, esVersionUsed)
-  private lazy val adminEnhancedDataStreamManager = new EnhancedDataStreamManager(
-    adminDataStreamManager, adminDocumentManager, adminIndexManager, adminTemplateManager
-  )
+  private lazy val adminEnhancedDataStreamManager = EnhancedDataStreamManager(client, esVersionUsed)
 
   private val adminDataStream = DataStreamNameGenerator.next("admin")
   private val devDataStream = DataStreamNameGenerator.next("dev")

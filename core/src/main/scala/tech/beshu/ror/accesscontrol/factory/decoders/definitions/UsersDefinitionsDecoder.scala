@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.user.UserDefinitionsValid
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsOrRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, GroupName, UserIdPatterns}
@@ -89,7 +89,9 @@ object UsersDefinitionsDecoder {
           } yield UserDef(usernamePatterns, mode)
         }
         .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
-    DefinitionsBaseDecoder.instance[Id, UserDef]("users").emapE(validate)
+    DefinitionsBaseDecoder
+      .instance[Id, UserDef]("users")
+      .emapE(validate(globalSettings, _))
   }
 
   private implicit val userIdPatternsDecoder: Decoder[UserIdPatterns] =
@@ -166,7 +168,7 @@ object UsersDefinitionsDecoder {
   }
 
   private def oneRuleModeFrom(rule: Rule): Decoder[Mode] = rule match {
-    case _: GroupsOrRule =>
+    case _: BaseGroupsRule[_] =>
       failed(DefinitionsLevelCreationError(Message(s"Cannot use '${rule.name.show}' rule in users definition section")))
     case r: AuthRule =>
       Decoder[GroupMappings].map(UserDef.Mode.WithGroupsMapping(Auth.SingleRule(r), _))
@@ -230,8 +232,10 @@ object UsersDefinitionsDecoder {
 
   private def decodingFailure(msg: Message) = DecodingFailureOps.fromError(DefinitionsLevelCreationError(msg))
 
-  private def validate(definitions: Definitions[UserDef]): Either[CoreCreationError, Definitions[UserDef]] = {
-    UserDefinitionsValidator.validate(definitions)
+  private def validate(globalSettings: GlobalSettings,
+                       definitions: Definitions[UserDef]): Either[CoreCreationError, Definitions[UserDef]] = {
+    new UserDefinitionsValidator(globalSettings)
+      .validate(definitions)
       .leftMap { validationErrors =>
         val cause = validationErrors.map(toErrorMessage).toList.mkString(",")
         DefinitionsLevelCreationError(Message(s"The `users` definition is malformed: $cause"))

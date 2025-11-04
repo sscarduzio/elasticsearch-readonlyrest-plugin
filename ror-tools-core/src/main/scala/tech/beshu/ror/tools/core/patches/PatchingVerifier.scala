@@ -17,8 +17,11 @@
 package tech.beshu.ror.tools.core.patches
 
 import tech.beshu.ror.tools.core.patches.PatchingVerifier.Error.{CannotVerifyIfPatched, EsNotPatched}
-import tech.beshu.ror.tools.core.patches.base.EsPatch
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.{No, Yes}
+import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
+import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus
+import tech.beshu.ror.tools.core.utils.EsDirectory
+import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
+import tech.beshu.ror.tools.core.utils.RorToolsError.*
 
 import scala.util.Try
 
@@ -26,16 +29,19 @@ object PatchingVerifier {
 
   def verify(esHome: String): Either[Error, Unit] = {
     for {
-      esPatch <- createPatcher(esHome)
-      result <- esPatch.isPatched match {
-        case Yes => Right(())
-        case No(cause) => Left(EsNotPatched(cause.message))
-      }
+      esPatchExecutor <- createEsPatchExecutor(esHome)
+      result <- esPatchExecutor.isPatched match
+        case EsPatchStatus.NotPatched =>
+          Left(EsNotPatched(EsNotPatchedError.message))
+        case EsPatchStatus.PatchedWithCurrentRorVersion(_) =>
+          Right(())
+        case EsPatchStatus.PatchProblemDetected(patchProblem) =>
+          Left(EsNotPatched(patchProblem.rorToolsError.message))
     } yield result
   }
 
-  private def createPatcher(esHome: String) = {
-    Try(EsPatch.create(os.Path(esHome)))
+  private def createEsPatchExecutor(esHome: String) = {
+    Try(EsPatchExecutor.create(EsDirectory.from(os.Path(esHome)))(ConsoleInOut))
       .toEither
       .left.map { e => CannotVerifyIfPatched(e.getMessage) }
   }
@@ -43,8 +49,10 @@ object PatchingVerifier {
   sealed trait Error {
     def message: String
   }
+
   object Error {
     final case class EsNotPatched(override val message: String) extends Error
+
     final case class CannotVerifyIfPatched(errorCause: String) extends Error {
       override val message: String = s"Cannot verify if the ES was patched. $errorCause"
     }

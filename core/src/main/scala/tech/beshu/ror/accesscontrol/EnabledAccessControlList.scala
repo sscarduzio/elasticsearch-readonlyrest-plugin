@@ -88,17 +88,16 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
       .map(_.flatten)
       .map { blockResults =>
-        val history = blockResults.map(_._2).toVector
-        val result = matchedAllowedBlocks(blockResults.map(_._1)) match {
+        val (executionResults, history) = blockResults.unzip
+        val result = matchedAllowedBlocks(executionResults) match {
           case Right(matchedResults) =>
             userMetadataFrom(matchedResults, context.initialBlockContext.userMetadata.currentGroupId) match {
               case Some((userMetadata, matchedBlock)) => UserMetadataRequestResult.Allow(userMetadata, matchedBlock)
-              case None => UserMetadataRequestResult.Forbidden(nonEmptySetOfMismatchedCausesFromHistory(history))
+              case None => createForbiddenResult(executionResults, history)
             }
-          case Left(_) =>
-            UserMetadataRequestResult.Forbidden(nonEmptySetOfMismatchedCausesFromHistory(history))
+          case Left(()) => createForbiddenResult(executionResults, history)
         }
-        WithHistory(history, result)
+        WithHistory(history.toVector, result)
       }
   }
 
@@ -106,13 +105,15 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
                                optPreferredGroupId: Option[GroupId]): Option[(UserMetadata, Block)] = {
     optPreferredGroupId match {
       case Some(preferredGroupId) =>
-        matchedResults
+        val matchingPreferredGroupResults = matchedResults
           .toList
           .flatMap { case result@Matched(_, bc) =>
             bc.userMetadata.availableGroups.find(_.id == preferredGroupId)
               .map(preferredGroup => (result, preferredGroup))
           }
-          .headOption
+        matchingPreferredGroupResults
+          .find { case (matched, preferredGroup) => matched.blockContext.userMetadata.kibanaIndex.isDefined }
+          .orElse { matchingPreferredGroupResults.headOption }
           .map { case (result, preferredGroup) =>
             val userMetadata =
               updateUserMetadataGroups(result.blockContext, Some(preferredGroup), allAvailableGroupsFrom(matchedResults))
@@ -120,10 +121,28 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
           }
       case None =>
         Some {
-          val Matched(block, bc) = matchedResults.head
+          val Matched(block, bc) = matchedResults.toList
+            .find { _.blockContext.userMetadata.kibanaIndex.isDefined }
+            .getOrElse { matchedResults.head }
           val userMetadata = updateUserMetadataGroups(bc, None, allAvailableGroupsFrom(matchedResults))
           (userMetadata, block)
         }
+    }
+  }
+
+
+  private def createForbiddenResult(blockResults: List[Block.ExecutionResult[CurrentUserMetadataRequestBlockContext]],
+                                    history: List[History[CurrentUserMetadataRequestBlockContext]]) = {
+    val matchedForbidBlock = blockResults.collectFirstSome {
+      case m@Matched(block, _) => block.policy match {
+        case Policy.Allow => None
+        case Policy.Forbid(_) => Some(m)
+      }
+      case Mismatched(_) => None
+    }
+    matchedForbidBlock match {
+      case Some(Matched(block, blockContext)) => UserMetadataRequestResult.ForbiddenBy(blockContext, block)
+      case None => UserMetadataRequestResult.ForbiddenByMismatched(nonEmptySetOfMismatchedCausesFromHistory(history))
     }
   }
 
@@ -190,7 +209,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     WriterT.value[Task, Vector[History[B]], ExecutionResult[B]](executionResult)
   }
 
-  private def nonEmptySetOfMismatchedCausesFromHistory[B <: BlockContext](history: Vector[History[B]]): NonEmptySet[ForbiddenCause] = {
+  private def nonEmptySetOfMismatchedCausesFromHistory[B <: BlockContext](history: Iterable[History[B]]): NonEmptySet[ForbiddenCause] = {
     val causes = rejectionsFrom(history).map {
       case Rejected(None) | Rejected(Some(Rejected.Cause.IndexNotFound | Rejected.Cause.AliasNotFound | Rejected.Cause.TemplateNotFound)) =>
         ForbiddenCause.OperationNotAllowed
@@ -264,12 +283,14 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
   }
 
-  private def rejectionsFrom[B <: BlockContext](history: Vector[History[B]]): Vector[Rejected[B]] = {
-    history.flatMap {
-      _.items
-        .collect { case h: HistoryItem.RuleHistoryItem[B] => h.result }
-        .collect { case r: Rejected[B] => r }
-    }
+  private def rejectionsFrom[B <: BlockContext](history: Iterable[History[B]]): Vector[Rejected[B]] = {
+    history
+      .flatMap {
+        _.items
+          .collect { case h: HistoryItem.RuleHistoryItem[B] => h.result }
+          .collect { case r: Rejected[B] => r }
+      }
+      .toVector
   }
 }
 

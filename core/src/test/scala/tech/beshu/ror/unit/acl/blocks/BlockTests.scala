@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory

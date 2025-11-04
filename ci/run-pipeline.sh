@@ -20,24 +20,29 @@ export TERM=dumb
 # Adaptation for Azure
 ([ ! -z $BUILD_BUILDNUMBER ] || [ "$TRAVIS" ]) && TRAVIS="true"
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "license" ]]; then
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "license_check" ]]; then
   echo ">>> Check all license headers are in place"
-  ./gradlew license
+  ./gradlew --no-daemon license
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "cve_check" ]]; then
   echo ">>> Running CVE checks.."
-  ./gradlew dependencyCheckAnalyze
+  ./gradlew --no-daemon dependencyCheckAnalyze
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "audit_compile" ]]; then
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "compile_codebase_check" ]]; then
+  echo ">>> Running compile codebase.."
+  ./gradlew --no-daemon classes
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "audit_build_check" ]]; then
   echo ">>> Running audit module cross build.."
-  ./gradlew --stacktrace audit:crossBuildAssemble
+  ./gradlew --no-daemon --stacktrace audit:crossBuildAssemble
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "core_tests" ]]; then
   echo ">>> Running unit tests.."
-  ./gradlew --stacktrace core:test
+  ./gradlew --no-daemon --stacktrace core:test audit:test
 fi
 
 run_integration_tests() {
@@ -49,8 +54,24 @@ run_integration_tests() {
   ES_MODULE=$1
 
   echo ">>> $ES_MODULE => Running testcontainers.."
-  ./gradlew integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
+  ./gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es92x" ]]; then
+  run_integration_tests "es92x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es91x" ]]; then
+  run_integration_tests "es91x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es90x" ]]; then
+  run_integration_tests "es90x"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es818x" ]]; then
+  run_integration_tests "es818x"
+fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es816x" ]]; then
   run_integration_tests "es816x"
@@ -199,6 +220,10 @@ build_ror_plugin() {
   ./gradlew buildRorPlugin "-PesVersion=$ROR_VERSION" </dev/null
 }
 
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es9xx" ]]; then
+  build_ror_plugins "ci/supported-es-versions/es9x.txt"
+fi
+
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es8xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
@@ -241,6 +266,10 @@ upload_pre_ror_plugin() {
   ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
 }
 
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es9xx" ]]; then
+  upload_pre_ror_plugins "ci/supported-es-versions/es9x.txt"
+fi
+
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es8xx" ]]; then
   upload_pre_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
@@ -276,7 +305,7 @@ release_ror_plugin() {
   local ROR_VERSION=$1
   local ES_VERSION=$2
 
-  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
     echo "Invalid ES version format. Expected format: X.Y.Z"
     return 2
   fi
@@ -320,7 +349,7 @@ public_ror_prebuild_plugin() {
 
   local ES_VERSION=$1
 
-  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
     echo "Invalid ES version format. Expected format: X.Y.Z"
     return 2
   fi
@@ -341,6 +370,10 @@ public_ror_prebuild_plugin() {
   $DOCKER system prune -fa
 }
 
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es9xx" ]]; then
+  release_ror_plugins "ci/supported-es-versions/es9x.txt"
+fi
+
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es8xx" ]]; then
   release_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
@@ -353,18 +386,42 @@ if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es6xx" ]]; then
   release_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
+check_maven_artifacts_exist() {
+  local CURRENT_VERSION="$1"
+
+  local ARTIFACT_URL="https://repo1.maven.org/maven2/tech/beshu/ror/audit_3/$CURRENT_VERSION/"
+  echo ">>> Checking if Maven artifacts already exist at: $ARTIFACT_URL"
+  
+  local MVN_STATUS=$(curl -L --write-out '%{http_code}' --silent --output /dev/null "$ARTIFACT_URL" || echo "000")
+  
+  if [[ $MVN_STATUS == "404" ]]; then
+    echo ">>> Maven artifacts not found"
+    return 1
+  elif [[ $MVN_STATUS == "200" ]]; then
+    echo ">>> Maven artifacts for version $CURRENT_VERSION already exist."
+    return 0
+  else
+    echo ">>> ERROR: Unexpected HTTP status $MVN_STATUS when checking Maven repository"
+    echo ">>> Cannot determine if artifacts exist, failing to avoid potential issues"
+    exit 1
+  fi
+}
+
 if [[ $ROR_TASK == "publish_maven_artifacts" ]] && [[ $TRAVIS_BRANCH == "master" ]]; then
-
   # .travis/secret.pgp is downloaded via Azure secret files, see azure-pipelines.yml
-
   CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
   PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
 
   if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
-    echo ">>> Publishing audit module artifacts to sonatype repo"
-    ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
+    if check_maven_artifacts_exist "$CURRENT_PLUGIN_VER"; then
+      echo ">>> Skipping publishing audit module artifacts"
+    else
+      echo ">>> Publishing audit module artifacts to sonatype repo"
+      ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
+    fi
   else
-    echo ">>> Skipping publishing audit module artifacts"
+    echo ">>> Version mismatch: current=$CURRENT_PLUGIN_VER, published=$PUBLISHED_PLUGIN_VER"
+    echo ">>> Skipping publishing audit module artifacts."
   fi
 fi
 
