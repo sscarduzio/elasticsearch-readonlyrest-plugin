@@ -18,22 +18,18 @@ package tech.beshu.ror.es.services
 
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import monix.execution.CancelablePromise
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.ApiKey
 import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 
-import java.util.Base64
-import scala.concurrent.Promise
-
 final case class ApiKeyDefinition(id: NonEmptyString, name: NonEmptyString)
 
 class EsApiKeyService(underlying: AnyRef) {
 
   def getApiKeys(): Task[Vector[ApiKey]] = {
-    Task.now(())
+    Task.now(Vector.empty)
   }
 
   def getApiKeyDefinitionOf(apiKey: ApiKey): Task[Option[ApiKeyDefinition]] = {
@@ -47,6 +43,7 @@ class EsApiKeyService(underlying: AnyRef) {
             // todo: warning
             Some(one)
       }
+      .map(_ => None) // todo:
   }
 
   def authenticateUsing(apiKey: ApiKey): Task[Boolean] = {
@@ -86,9 +83,9 @@ class EsApiKeyService(underlying: AnyRef) {
   }
 
   private def getCredentialsFromHeader(threadContext: ThreadContext) = {
-    new ApiKeyCredentials {
+    new ApiKeyCredentials(
       on(underlying).call("getCredentialsFromHeader", threadContext).get[AnyRef]()
-    }
+    )
   }
 
   private class ApiKeyCredentials(val underlying: AnyRef) {
@@ -105,11 +102,12 @@ class EsApiKeyService(underlying: AnyRef) {
         .call("getApiKeyInfos")
         .get[Array[AnyRef]]()
         .map(new EsApiKey(_))
+        .toList
   }
 
   private class EsApiKey(val underlying: AnyRef) {
-    lazy val id: Boolean = on(underlying).call("getId").get[String]()
-    lazy val name: Boolean = on(underlying).call("getName").get[String]()
+    lazy val id: String = on(underlying).call("getId").get[String]()
+    lazy val name: String = on(underlying).call("getName").get[String]()
     lazy val invalidated: Boolean = on(underlying).call("isInvalidated").get[Boolean]()
   }
 }

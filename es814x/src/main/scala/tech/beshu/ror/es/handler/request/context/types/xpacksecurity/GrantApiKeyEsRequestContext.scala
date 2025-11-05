@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.Error.RequestCannotBeHandled
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
+import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.ReflectionBasedActionRequest
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.es.services.EsApiKeyService
@@ -50,9 +50,7 @@ class GrantApiKeyEsRequestContext private[xpacksecurity](actionRequest: ActionRe
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = {
     esApiKeyService.toString
     actionRequest.toString
-    UpdateResponse.using { response =>
-      response
-    }
+    Modified
   }
 }
 

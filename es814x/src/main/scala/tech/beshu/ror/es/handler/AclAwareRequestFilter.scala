@@ -65,6 +65,7 @@ import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
+import tech.beshu.ror.es.*
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
@@ -75,10 +76,8 @@ import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.es.{HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel, AtEsLevelUpdateActionResponseListener}
 import tech.beshu.ror.es.handler.request.context.types.xpacksecurity.*
 import tech.beshu.ror.es.services.EsApiKeyService
-import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -137,15 +136,17 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: DeleteSnapshotRequest =>
         regularRequestHandler.handle(new DeleteSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
       case request: RestoreSnapshotRequest =>
-        for {
+        val ll: Task[Unit] = for {
           requestContext <- RestoreSnapshotEsRequestContext.create(request, esContext, clusterService, threadPool)
           result <- regularRequestHandler.handle(requestContext)
         } yield result
+        ll // todo:
       case request: SnapshotsStatusRequest =>
-        for {
+        val ll = for {
           requestContext <- SnapshotsStatusEsRequestContext.create(request, esContext, clusterService, threadPool)
           result <- regularRequestHandler.handle(requestContext)
         } yield result
+        ll // todo:
       // repositories
       case request: GetRepositoriesRequest =>
         regularRequestHandler.handle(new GetRepositoriesEsRequestContext(request, esContext, clusterService, threadPool))
@@ -255,7 +256,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case _ =>
-            logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.show}")
+            logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.toString.show}") //todo:
             regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
         }
       // rest
@@ -360,4 +361,4 @@ object AclAwareRequestFilter {
 }
 
 final case class RequestSeemsToBeInvalid[T: ClassTag](message: String, cause: Throwable = null)
-  extends IllegalStateException(s"Request '${implicitly[ClassTag[T]].runtimeClass.show}' cannot be handled; [msg: ${message.show}]", cause)
+  extends IllegalStateException(s"Request '${implicitly[ClassTag[T]].runtimeClass.toString.show}' cannot be handled; [msg: ${message.show}]", cause) //todo:

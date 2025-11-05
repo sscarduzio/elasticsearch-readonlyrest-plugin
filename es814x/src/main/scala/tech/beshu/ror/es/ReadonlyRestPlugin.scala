@@ -65,8 +65,7 @@ import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType,
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.services.EsApiKeyService
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsEnvProvider, EsPatchVerifier, RemoteClusterServiceSupplier}
-import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsApiKeyServiceSupplier, EsPatchVerifier, RemoteClusterServiceSupplier}
+import tech.beshu.ror.es.utils.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
 
