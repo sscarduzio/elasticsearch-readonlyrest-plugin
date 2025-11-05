@@ -31,7 +31,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.util
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler)
   extends RestHandler with Logging {
@@ -41,23 +41,16 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   }
 
   override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
-    Try {
-      RorRestChannel.from(channel) match {
-        case Right(rorRestChannel) =>
-          ThreadRepo.safeSetRestChannel(rorRestChannel) {
-            addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
-            wrapped.handleRequest(request, rorRestChannel, client)
-          }
-        case Left(error) =>
-          logError(error)
-          implicit val show = authorizationValueErrorSanitizedShow
-          channel.sendResponse(new BytesRestResponse(channel, RestStatus.BAD_REQUEST, new ElasticsearchException(error.show)))
-      }
-    } match {
-      case Success(_) =>
-      case Failure(ex) =>
-        logger.error(s"The incoming request handling error:", ex)
-        channel.sendResponse(new BytesRestResponse(channel, RestStatus.INTERNAL_SERVER_ERROR, new ElasticsearchException("ROR internal error")))
+    RorRestChannel.from(channel) match {
+      case Right(rorRestChannel) =>
+        ThreadRepo.safeSetRestChannel(rorRestChannel) {
+          addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
+          wrapped.handleRequest(request, rorRestChannel, client)
+        }
+      case Left(error) =>
+        logError(error)
+        implicit val show = authorizationValueErrorSanitizedShow
+        channel.sendResponse(new BytesRestResponse(channel, RestStatus.BAD_REQUEST, new ElasticsearchException(error.show)))
     }
   }
 
