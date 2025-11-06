@@ -179,7 +179,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: openjdk:22-slim
+        container: openjdk:22-jdk-slim
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -226,7 +226,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: openjdk:22-slim
+        container: openjdk:22-jdk-slim
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -365,7 +365,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: openjdk:22-slim
+        container: openjdk:22-jdk-slim
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -408,7 +408,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: openjdk:22-slim
+        container: openjdk:22-jdk-slim
         timeoutInMinutes: 120
         steps:
           - checkout: self
