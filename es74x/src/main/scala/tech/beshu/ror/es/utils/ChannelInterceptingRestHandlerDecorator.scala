@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.utils
 
+import cats.Show
 import cats.implicits.*
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.ElasticsearchException
@@ -29,9 +30,9 @@ import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import java.lang.reflect.{Proxy => JProxy}
-import java.lang.reflect.{InvocationHandler, Method}
-import scala.util.{Failure, Success, Try}
+
+import java.lang.reflect.{InvocationHandler, Method, Proxy as JProxy}
+import scala.util.Try
 
 class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler)
   extends RestHandler with InvocationHandler with Logging {
@@ -63,23 +64,16 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   }
 
   override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
-    Try {
-      RorRestChannel.from(channel) match {
-        case Right(rorRestChannel) =>
-          ThreadRepo.safeSetRestChannel(rorRestChannel) {
-            addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
-            wrapped.handleRequest(request, rorRestChannel, client)
-          }
-        case Left(error) =>
-          logError(error)
-          implicit val show = authorizationValueErrorSanitizedShow
-          channel.sendResponse(new BytesRestResponse(channel, RestStatus.BAD_REQUEST, new ElasticsearchException(error.show)))
-      }
-    } match {
-      case Success(_) =>
-      case Failure(ex) =>
-        logger.error(s"The incoming request handling error:", ex)
-        channel.sendResponse(new BytesRestResponse(channel, RestStatus.INTERNAL_SERVER_ERROR, new ElasticsearchException("ROR internal error")))
+    RorRestChannel.from(channel) match {
+      case Right(rorRestChannel) =>
+        ThreadRepo.safeSetRestChannel(rorRestChannel) {
+          addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
+          wrapped.handleRequest(request, rorRestChannel, client)
+        }
+      case Left(error) =>
+        logError(error)
+        implicit val show: Show[AuthorizationValueError] = authorizationValueErrorSanitizedShow
+        channel.sendResponse(new BytesRestResponse(channel, RestStatus.BAD_REQUEST, new ElasticsearchException(error.show)))
     }
   }
 
@@ -116,11 +110,11 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
 
   private def logError(error: AuthorizationValueError): Unit = {
     {
-      implicit val show = authorizationValueErrorSanitizedShow
+      implicit val show: Show[AuthorizationValueError] = authorizationValueErrorSanitizedShow
       logger.warn(s"The incoming request was malformed. Cause: ${error.show}")
     }
     if (logger.delegate.isDebugEnabled()) {
-      implicit val show = authorizationValueErrorWithDetailsShow
+      implicit val show: Show[AuthorizationValueError] = authorizationValueErrorWithDetailsShow
       logger.debug(s"Malformed request detailed cause: ${error.show}")
     }
   }
