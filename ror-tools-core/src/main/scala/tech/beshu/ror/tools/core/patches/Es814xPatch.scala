@@ -25,7 +25,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyBootstrapPolicyUtilClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.DeactivateGetRequestCacheKeyDifferentiatorInSecurity
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{CreateServiceAccountServiceBridgeClass, DeactivateGetRequestCacheKeyDifferentiatorInSecurity, InterceptServiceAccountServiceInSecurity}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
 
@@ -51,6 +51,8 @@ private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
+      CreateServiceAccountServiceBridgeClass,
+      new InterceptServiceAccountServiceInSecurity(esVersion),
       DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       new DummyAuthenticationInAuthenticationChain(esVersion),
       new DummyAuthorizeInAuthorizationService(esVersion),

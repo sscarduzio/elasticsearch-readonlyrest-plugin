@@ -49,7 +49,7 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new XPackSecurityJarPatchCreator(
       OpenModule,
       CreateServiceAccountServiceBridgeClass,
-      InterceptServiceAccountServiceInSecurity,
+      new InterceptServiceAccountServiceInSecurity(esVersion),
       DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       new DummyAuthenticationInAuthenticationChain(esVersion),
       new DummyAuthorizeInAuthorizationService(esVersion),

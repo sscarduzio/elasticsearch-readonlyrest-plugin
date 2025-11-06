@@ -18,6 +18,7 @@ package tech.beshu.ror.es.handler.request.context.types.xpacksecurity
 
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.onClass
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.es.RorClusterService
@@ -43,6 +44,8 @@ class CreateApiKeyEsRequestContext private(actionRequest: ActionRequest,
 
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = {
     actionRequest.toString
+    val instance = ServiceAccountServiceRef.getInstance
+    instance.toString
     Modified
   }
 }
@@ -55,5 +58,27 @@ object CreateApiKeyEsRequestContext {
     } else {
       None
     }
+  }
+}
+
+object ServiceAccountServiceRef {
+  private val bridgeClass = "org.elasticsearch.xpack.security.ServiceAccountServiceBridge"
+
+  def available: Boolean =
+    try {
+      Class.forName(bridgeClass, false, Thread.currentThread.getContextClassLoader)
+      true
+    } catch { case _: Throwable => false }
+
+  def getInstance: Option[AnyRef] =
+    try {
+      Option(onClass(bridgeClass).call("get").get[AnyRef])
+    } catch { case _: Throwable => None }
+
+  def clear(): Unit =
+    try onClass(bridgeClass).call("clear") catch { case _: Throwable => () }
+
+  def callExample(svc: AnyRef): Unit = {
+    // val result = Reflect.on(svc).call("someMethod", arg1, arg2, java.lang.Boolean.TRUE).get[AnyRef]
   }
 }

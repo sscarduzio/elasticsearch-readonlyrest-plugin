@@ -35,7 +35,6 @@ import java.util.function.Supplier
 class GrantApiKeyEsRequestContext private[xpacksecurity](actionRequest: ActionRequest,
                                                          esContext: EsContext,
                                                          clusterService: RorClusterService,
-                                                         esApiKeyService: EsApiKeyService,
                                                          override implicit val threadPool: ThreadPool)
   extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext, clusterService)
     with EsRequest[GeneralNonIndexRequestBlockContext] {
@@ -48,8 +47,10 @@ class GrantApiKeyEsRequestContext private[xpacksecurity](actionRequest: ActionRe
   )
 
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = {
-    esApiKeyService.toString
+//    esApiKeyService.toString
     actionRequest.toString
+    val instance = ServiceAccountServiceRef.getInstance
+    instance.toString
     Modified
   }
 }
@@ -68,9 +69,9 @@ object GrantApiKeyEsRequestContext extends Logging {
 class GrantApiKeyEsRequestContextCreator private[xpacksecurity](request: ReflectionBasedActionRequest) {
 
   def create(esApiKeyServiceSupplier: Supplier[Option[EsApiKeyService]]): Either[RequestCannotBeHandled, GrantApiKeyEsRequestContext] = {
-    esApiKeyServiceSupplier.get() match
-      case Some(esApiKeyService) =>
-        Right(new GrantApiKeyEsRequestContext(request.esContext.actionRequest, request.esContext, request.clusterService, esApiKeyService, request.threadPool))
+    ServiceAccountServiceRef.getInstance match
+      case Some(_) =>
+        Right(new GrantApiKeyEsRequestContext(request.esContext.actionRequest, request.esContext, request.clusterService, request.threadPool))
       case None =>
         Left(RequestCannotBeHandled("No ApiKeyService available"))
   }
