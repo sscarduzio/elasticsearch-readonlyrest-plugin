@@ -537,7 +537,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedAuditCluster = LocalAuditCluster
             )
           }
-          "custom serializer is set" in {
+          "QueryAuditLogSerializer serializer is set" in {
             val config = rorConfigFromUnsafe(
               """
                 |readonlyrest:
@@ -560,6 +560,72 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedIndexName = "readonlyrest_audit-2018-12-31",
               expectedAuditCluster = LocalAuditCluster
             )
+          }
+          "QueryAuditLogSerializer serializer is set and correctly serializes event without logged user" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: index
+                |      serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
+              config,
+              expectedIndexName = "readonlyrest_audit-2018-12-31",
+              expectedAuditCluster = LocalAuditCluster
+            )
+            val createdSerializer = serializer(config)
+            val serializedResponse = createdSerializer.onResponse(
+              AuditResponseContext.Forbidden(new DummyAuditRequestContext(loggedInUserName = None, attemptedUserName = None))
+            )
+
+            serializedResponse shouldBe defined
+            serializedResponse.get.get("user") shouldBe "Bearer 123"
+            serializedResponse.get.isNull("presented_identity")
+            serializedResponse.get.isNull("logged_user")
+          }
+          "QueryAuditLogSerializer serializer is set and correctly serializes event with logged user" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: index
+                |      serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
+
+            assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
+              config,
+              expectedIndexName = "readonlyrest_audit-2018-12-31",
+              expectedAuditCluster = LocalAuditCluster
+            )
+            val createdSerializer = serializer(config)
+            val serializedResponse = createdSerializer.onResponse(
+              AuditResponseContext.Forbidden(new DummyAuditRequestContext(loggedInUserName = Some("my_user")))
+            )
+
+            serializedResponse shouldBe defined
+            serializedResponse.get.get("user") shouldBe "my_user"
+            serializedResponse.get.get("presented_identity") shouldBe "basic auth user"
+            serializedResponse.get.get("logged_user") shouldBe "my_user"
           }
           "custom environment-aware serializer is set and correctly serializes events" in {
             val config = rorConfigFromUnsafe(
@@ -585,7 +651,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedAuditCluster = LocalAuditCluster
             )
             val createdSerializer = serializer(config)
-            val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(DummyAuditRequestContext))
+            val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
 
             serializedResponse shouldBe defined
             serializedResponse.get.get("custom_field_for_es_node_name") shouldBe "testEsNode"
@@ -947,13 +1013,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "ES version is greater than or equal 7.9.0" in {
             val esVersions =
               List(
-                EsVersion(8,17,0),
-                EsVersion(8,1,0),
-                EsVersion(8,0,0),
-                EsVersion(7,17,27),
-                EsVersion(7,10,0),
-                EsVersion(7,9,1),
-                EsVersion(7,9,0),
+                EsVersion(8, 17, 0),
+                EsVersion(8, 1, 0),
+                EsVersion(8, 0, 0),
+                EsVersion(7, 17, 27),
+                EsVersion(7, 10, 0),
+                EsVersion(7, 9, 1),
+                EsVersion(7, 9, 0),
               )
 
             val config = rorConfigFromUnsafe(
@@ -2090,7 +2156,8 @@ private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAud
 
 }
 
-private object DummyAuditRequestContext extends AuditRequestContext {
+private class DummyAuditRequestContext(override val loggedInUserName: Option[String] = Some("logged_user"),
+                                       override val attemptedUserName: Option[String] = Some("basic auth user")) extends AuditRequestContext {
   override def timestamp: Instant = Instant.now().minusSeconds(5)
 
   override def id: String = "trace_id_123"
@@ -2123,15 +2190,11 @@ private object DummyAuditRequestContext extends AuditRequestContext {
 
   override def httpMethod: String = "GET"
 
-  override def loggedInUserName: Option[String] = Some("logged_user")
-
   override def impersonatedByUserName: Option[String] = Some("impersonated_by_user")
 
   override def involvesIndices: Boolean = false
 
-  override def attemptedUserName: Option[String] = None
-
-  override def rawAuthHeader: Option[String] = None
+  override def rawAuthHeader: Option[String] = Some("Bearer 123")
 
   override def generalAuditEvents: JSONObject = new JSONObject
 

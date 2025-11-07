@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.audit.utils
 
-import cats.data.NonEmptyList
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext._
 import tech.beshu.ror.audit.{AuditRequestContext, AuditResponseContext}
@@ -121,6 +120,8 @@ private[ror] object AuditSerializationHelper {
       }
       case AuditFieldValueDescriptor.Reason => eventData.reason
       case AuditFieldValueDescriptor.User => SerializeUser.serialize(requestContext).orNull
+      case AuditFieldValueDescriptor.LoggedUser => requestContext.loggedInUserName.orNull
+      case AuditFieldValueDescriptor.PresentedIdentity => requestContext.attemptedUserName.orNull
       case AuditFieldValueDescriptor.ImpersonatedByUser => requestContext.impersonatedByUserName.orNull
       case AuditFieldValueDescriptor.Action => requestContext.action
       case AuditFieldValueDescriptor.InvolvedIndices => if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava
@@ -243,7 +244,12 @@ private[ror] object AuditSerializationHelper {
 
     case object Reason extends AuditFieldValueDescriptor
 
+    @deprecated("[ROR] The User audit field value descriptor should not be used. Use LoggedUser or PresentedIdentity instead", "1.68.0")
     case object User extends AuditFieldValueDescriptor
+
+    case object LoggedUser extends AuditFieldValueDescriptor
+
+    case object PresentedIdentity extends AuditFieldValueDescriptor
 
     case object ImpersonatedByUser extends AuditFieldValueDescriptor
 
@@ -341,6 +347,8 @@ private[ror] object AuditSerializationHelper {
     AuditFieldPath("headers") -> AuditFieldValueDescriptor.HttpHeaderNames,
     AuditFieldPath("path") -> AuditFieldValueDescriptor.HttpPath,
     AuditFieldPath("user") -> AuditFieldValueDescriptor.User,
+    AuditFieldPath("logged_user") -> AuditFieldValueDescriptor.LoggedUser,
+    AuditFieldPath("presented_identity") -> AuditFieldValueDescriptor.PresentedIdentity,
     AuditFieldPath("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
     AuditFieldPath("action") -> AuditFieldValueDescriptor.Action,
     AuditFieldPath("indices") -> AuditFieldValueDescriptor.InvolvedIndices,

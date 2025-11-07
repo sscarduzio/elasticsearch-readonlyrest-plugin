@@ -18,9 +18,10 @@ package tech.beshu.ror.accesscontrol.audit.configurable
 
 import cats.parse.{Parser0, Parser as P}
 import cats.syntax.list.*
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldValueDescriptor
 
-object AuditFieldValueDescriptorParser {
+object AuditFieldValueDescriptorParser extends Logging {
 
   private val lbrace = P.char('{')
   private val rbrace = P.char('}')
@@ -60,7 +61,16 @@ object AuditFieldValueDescriptorParser {
       case "FINAL_STATE" => Some(AuditFieldValueDescriptor.FinalState)
       case "ECS_EVENT_OUTCOME" => Some(AuditFieldValueDescriptor.EcsEventOutcome)
       case "REASON" => Some(AuditFieldValueDescriptor.Reason)
-      case "USER" => Some(AuditFieldValueDescriptor.User)
+      case "USER" =>
+        logger.warn(
+          """The USER audit value placeholder is deprecated and should not be used in the configurable audit log serializer.
+            |Please use LOGGED_USER or PRESENTED_IDENTITY instead. Check the list of available placeholders in the documentation:
+            |https://docs.readonlyrest.com/elasticsearch/audit#using-configurable-serializer.
+            |""".stripMargin
+        )
+        Some(AuditFieldValueDescriptor.User)
+      case "LOGGED_USER" => Some(AuditFieldValueDescriptor.LoggedUser)
+      case "PRESENTED_IDENTITY" => Some(AuditFieldValueDescriptor.PresentedIdentity)
       case "IMPERSONATED_BY_USER" => Some(AuditFieldValueDescriptor.ImpersonatedByUser)
       case "ACTION" => Some(AuditFieldValueDescriptor.Action)
       case "INVOLVED_INDICES" => Some(AuditFieldValueDescriptor.InvolvedIndices)
