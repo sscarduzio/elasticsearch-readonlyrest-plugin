@@ -135,6 +135,12 @@ object ImpersonationWarning {
     implicit val jwtAuthRule: ImpersonationWarningExtractor[JwtAuthRule] = ImpersonationWarningExtractor[JwtAuthRule] { (rule, blockName, _) =>
       Some(impersonationNotSupportedWarning(rule, blockName))
     }
+    implicit val jwtAuthenticationRule: ImpersonationWarningExtractor[JwtAuthenticationRule] = ImpersonationWarningExtractor[JwtAuthenticationRule] { (rule, blockName, _) =>
+      Some(impersonationNotSupportedWarning(rule, blockName))
+    }
+    implicit val jwtAuthorizationRule: ImpersonationWarningExtractor[JwtAuthorizationRule] = ImpersonationWarningExtractor[JwtAuthorizationRule] { (rule, blockName, _) =>
+      Some(impersonationNotSupportedWarning(rule, blockName))
+    }
     implicit val ldapAuthenticationRule: ImpersonationWarningExtractor[LdapAuthenticationRule] = ImpersonationWarningExtractor[LdapAuthenticationRule] { (rule, blockName, requestId) =>
       ldapWarning(rule.name, blockName, rule.settings.ldap.id, rule.impersonation)(requestId)
     }
