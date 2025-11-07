@@ -42,10 +42,10 @@ class SearchManager(client: RestClient,
     call(createSearchRequest(indexNames), new SearchResult(_))
 
   def search(query: JSON): SearchResult =
-    call(createSearchRequest(None, query), new SearchResult(_))
+    call(createSearchRequest(None, ujson.write(query)), new SearchResult(_))
 
   def search(indexName: String, query: JSON): SearchResult =
-    call(createSearchRequest(Some(indexName), query), new SearchResult(_))
+    call(createSearchRequest(Some(indexName), ujson.write(query)), new SearchResult(_))
 
   def search(indexName: String, queryString: String): SearchResult =
     call(createSearchRequest(Some(indexName), queryString), new SearchResult(_))
@@ -108,7 +108,7 @@ class SearchManager(client: RestClient,
   def renderTemplate(query: String): JsonResponse =
     call(createRenderTemplateRequest(query), new JsonResponse(_))
 
-  private def createSearchRequest(indexName: Option[String], query: JSON | String) = {
+  private def createSearchRequest(indexName: Option[String], queryJsonString: String) = {
     val request = new HttpPost(client.from(
       indexName match {
         case Some(name) => s"/$name/_search"
@@ -117,12 +117,7 @@ class SearchManager(client: RestClient,
       Map("size" -> "100")
     ))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      query match {
-        case query: JSON => ujson.write(query)
-        case queryString: String => queryString
-      }
-    ))
+    request.setEntity(new StringEntity(queryJsonString))
     request
   }
 
