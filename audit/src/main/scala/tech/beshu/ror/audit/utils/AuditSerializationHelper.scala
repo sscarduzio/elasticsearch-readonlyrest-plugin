@@ -95,6 +95,8 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.FinalState => eventData.finalState
       case AuditFieldValueDescriptor.Reason => eventData.reason
       case AuditFieldValueDescriptor.User => SerializeUser.serialize(requestContext).orNull
+      case AuditFieldValueDescriptor.LoggedUser => requestContext.loggedInUserName.orNull
+      case AuditFieldValueDescriptor.PresentedIdentity => requestContext.attemptedUserName.orNull
       case AuditFieldValueDescriptor.ImpersonatedByUser => requestContext.impersonatedByUserName.orNull
       case AuditFieldValueDescriptor.Action => requestContext.action
       case AuditFieldValueDescriptor.InvolvedIndices => if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava
@@ -166,7 +168,12 @@ private[ror] object AuditSerializationHelper {
 
     case object Reason extends AuditFieldValueDescriptor
 
+    @deprecated("[ROR] The User audit field value descriptor should not be used. Use LoggedUser or PresentedIdentity instead", "1.68.0")
     case object User extends AuditFieldValueDescriptor
+
+    case object LoggedUser extends AuditFieldValueDescriptor
+
+    case object PresentedIdentity extends AuditFieldValueDescriptor
 
     case object ImpersonatedByUser extends AuditFieldValueDescriptor
 
@@ -258,6 +265,8 @@ private[ror] object AuditSerializationHelper {
     AuditFieldName("headers") -> AuditFieldValueDescriptor.HttpHeaderNames,
     AuditFieldName("path") -> AuditFieldValueDescriptor.HttpPath,
     AuditFieldName("user") -> AuditFieldValueDescriptor.User,
+    AuditFieldName("logged_user") -> AuditFieldValueDescriptor.LoggedUser,
+    AuditFieldName("presented_identity") -> AuditFieldValueDescriptor.PresentedIdentity,
     AuditFieldName("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
     AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
     AuditFieldName("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
