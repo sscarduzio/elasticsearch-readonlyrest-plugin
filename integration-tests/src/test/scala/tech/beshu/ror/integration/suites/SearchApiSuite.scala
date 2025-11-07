@@ -170,7 +170,23 @@ class SearchApiSuite
         result.searchHits should be(List.empty)
       }
     }
-    if(EsModule.doesCurrentModuleMatch(allEs7xBelowEs74x)) {
+    if (EsModule.doesCurrentModuleMatch(allEs6x, allEs7xBelowEs74x)) {
+      "return 500" when {
+        "invalid JSON is passed in body" in {
+          val result = user2SearchManager.search(
+            indexName = "*logs*",
+            queryString =
+              """{
+                |  "query": { BAD_JSON
+                |    "match_all": {}
+                |  }
+                |}""".stripMargin
+          )
+
+          result should have statusCode 500
+        }
+      }
+    } else {
       "return 400" when {
         "invalid JSON is passed in body" in {
           val result = user2SearchManager.search(
@@ -184,22 +200,6 @@ class SearchApiSuite
           )
 
           result should have statusCode 400
-        }
-      }
-    } else {
-      "return 500" when {
-        "invalid JSON is passed in body" excludeES(allEs8x, allEs9x) in {
-          val result = user2SearchManager.search(
-            indexName = "*logs*",
-            queryString =
-              """{
-                |  "query": { BAD_JSON
-                |    "match_all": {}
-                |  }
-                |}""".stripMargin
-          )
-
-          result should have statusCode 500
         }
       }
     }
