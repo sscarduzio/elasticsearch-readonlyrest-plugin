@@ -23,8 +23,8 @@ import scala.util.matching.Regex
 final case class EsModule(name: String)
 object EsModule {
 
-  def doesCurrentModuleMatch(esModuleRegex: Regex): Boolean = {
-    doesEsModuleMatchRegex(currentEsModule, esModuleRegex :: Nil)
+  def doesCurrentModuleMatch(esModuleRegex: Regex, otherEsModuleRegex: Regex*): Boolean = {
+    doesEsModuleMatchRegex(currentEsModule, esModuleRegex :: otherEsModuleRegex.toList)
   }
 
   def isCurrentModuleExcluded(excludedEsModulePatterns: Regex, otherExcludedEsModulePatterns: Regex*): Boolean = {
