@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, EnhancedDataStreamManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, EsModule, Version}
 
 import java.time.Instant
 
@@ -170,19 +170,37 @@ class SearchApiSuite
         result.searchHits should be(List.empty)
       }
     }
-    "return 400" when {
-      "invalid JSON is passed in body" in {
-        val result = user2SearchManager.search(
-          indexName = "*logs*",
-          queryString =
-            """{
-              |  "query": { BAD_JSON
-              |    "match_all": {}
-              |  }
-              |}""".stripMargin
-        )
+    if(EsModule.doesCurrentModuleMatch(allEs7xBelowEs74x)) {
+      "return 400" when {
+        "invalid JSON is passed in body" in {
+          val result = user2SearchManager.search(
+            indexName = "*logs*",
+            queryString =
+              """{
+                |  "query": { BAD_JSON
+                |    "match_all": {}
+                |  }
+                |}""".stripMargin
+          )
 
-        result should have statusCode 400
+          result should have statusCode 400
+        }
+      }
+    } else {
+      "return 500" when {
+        "invalid JSON is passed in body" excludeES(allEs8x, allEs9x) in {
+          val result = user2SearchManager.search(
+            indexName = "*logs*",
+            queryString =
+              """{
+                |  "query": { BAD_JSON
+                |    "match_all": {}
+                |  }
+                |}""".stripMargin
+          )
+
+          result should have statusCode 500
+        }
       }
     }
   }
