@@ -243,13 +243,8 @@ object AuditingSettingsDecoder extends Logging {
     for {
       allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
-      decodedFields <- c.downField("fields").as[Map[String, DecodedAuditFieldValue]]
+      fields <- c.downField("fields").as[Map[AuditFieldPath, AuditFieldValueDescriptor]]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'fields' setting is missing or invalid: $msg"))
-      fields <- flatten(decodedFields).left.map { msg =>
-        DecodingFailure(AclCreationErrorCoders.stringify(
-          AuditingSettingsCreationError (Message(s"Configurable serializer is used, but the 'fields' setting is missing or invalid: $msg"))
-        ), Nil)
-      }
       serializer = new ConfigurableAuditLogSerializer(allowedEventMode, fields)
     } yield Some(serializer)
   }
@@ -375,63 +370,45 @@ object AuditingSettingsDecoder extends Logging {
       .decoder
   }
 
-  private given auditFieldValueDecoder: Decoder[DecodedAuditFieldValue] = Decoder.instance { cursor =>
-    cursor.value.fold(
-      jsonNull =
-        Left(DecodingFailure("Expected AuditFieldValueDescriptor, got null", cursor.history)),
-      jsonBoolean = b =>
-        Right(DecodedAuditFieldValue.Simple(AuditFieldValueDescriptor.BooleanValue(b))),
-      jsonNumber = n =>
-        n.toBigDecimal
-          .map(bd => DecodedAuditFieldValue.Simple(AuditFieldValueDescriptor.NumericValue(bd)))
-          .toRight(DecodingFailure("Cannot decode number", cursor.history)),
-      jsonString = s =>
-        AuditFieldValueDescriptorParser
-          .parse(s)
-          .map(DecodedAuditFieldValue.Simple.apply)
-          .left.map(err => DecodingFailure(err, cursor.history)),
-      jsonArray = _ =>
-        Left(DecodingFailure("AuditFieldValueDescriptor cannot be an array", cursor.history)),
-      jsonObject = obj =>
-        obj.toList
-          .traverse { case (k, v) => v.as[DecodedAuditFieldValue](using auditFieldValueDecoder).map(k -> _)}
-          .map(pairs => DecodedAuditFieldValue.Nested(pairs.toMap))
-    )
-  }
+  private given auditFieldsDecoder: Decoder[Map[AuditFieldPath, AuditFieldValueDescriptor]] =
+    Decoder.instance { cursor =>
+      def decodeJson(json: Json,
+                     path: List[String]): Decoder.Result[Map[List[String], AuditFieldValueDescriptor]] = {
+        json.fold(
+          jsonNull =
+            Left(DecodingFailure("Expected AuditFieldValueDescriptor, got null", cursor.history)),
+          jsonBoolean = b =>
+            Right(Map(path -> AuditFieldValueDescriptor.BooleanValue(b))),
+          jsonNumber = n =>
+            n.toBigDecimal
+              .map(bd => Map(path -> AuditFieldValueDescriptor.NumericValue(bd)))
+              .toRight(DecodingFailure("Cannot decode number", cursor.history)),
+          jsonString = s =>
+            AuditFieldValueDescriptorParser
+              .parse(s)
+              .map(desc => Map(path -> desc))
+              .left.map(err => DecodingFailure(err, cursor.history)),
+          jsonArray = _ =>
+            Left(DecodingFailure("AuditFieldValueDescriptor cannot be an array", cursor.history)),
+          jsonObject = obj =>
+            obj.toList
+              .traverse { case (k, v) => decodeJson(v, path :+ k) }
+              .map(_.foldLeft(Map.empty[List[String], AuditFieldValueDescriptor])(_ ++ _))
+        )
+      }
 
-  private sealed trait DecodedAuditFieldValue
-
-  private object DecodedAuditFieldValue {
-    final case class Simple(value: AuditFieldValueDescriptor) extends DecodedAuditFieldValue
-    final case class Nested(value: Map[String, DecodedAuditFieldValue]) extends DecodedAuditFieldValue
-  }
-
-  private def flatten(input: Map[String, DecodedAuditFieldValue]): Either[String, Map[AuditFieldPath, AuditFieldValueDescriptor]] = {
-    def loop(prefix: NonEmptyList[String],
-             value: DecodedAuditFieldValue,
-             acc: Map[AuditFieldPath, AuditFieldValueDescriptor]): Either[String, Map[AuditFieldPath, AuditFieldValueDescriptor]] = value match {
-      case DecodedAuditFieldValue.Simple(descriptor) =>
-        val path = AuditFieldPath(prefix)
-        if (acc.contains(path)) Left(s"Duplicate path detected: ${path.path.toList}")
-        else Right(acc + (path -> descriptor))
-      case DecodedAuditFieldValue.Nested(nested) =>
-        val currentPath = AuditFieldPath(prefix)
-        if (acc.keys.exists(_.path == prefix)) {
-          Left(s"Path conflict: ${currentPath.path.toList} is both leaf and parent")
-        } else {
-          nested.foldLeft[Either[String, Map[AuditFieldPath, AuditFieldValueDescriptor]]](Right(acc)) {
-            case (Right(accum), (childKey, innerValue)) =>
-              loop(prefix.append(childKey), innerValue, accum)
-            case (Left(err), _) =>
-              Left(err)
+      for {
+        rawResult <- decodeJson(cursor.value, Nil)
+        result = rawResult.view.map{ case (path, value) =>
+          NonEmptyList.fromList(path) match {
+            case Some(nonEmptyPath) =>
+              AuditFieldPath(nonEmptyPath.head, nonEmptyPath.tail) -> value
+            case None =>
+              throw new IllegalStateException(s"Empty audit field path encountered when decoding configurable audit fields definition.")
           }
-        }
+        }.toMap
+      } yield result
     }
-    input.foldLeft[Either[String, Map[AuditFieldPath, AuditFieldValueDescriptor]]](Right(Map.empty)) {
-      case (Right(acc), (key, value)) => loop(NonEmptyList.one(key), value, acc)
-      case (Left(err), _)             => Left(err)
-    }
-  }
 
   given verbosityDecoder: Decoder[Verbosity] = {
     SyncDecoderCreator

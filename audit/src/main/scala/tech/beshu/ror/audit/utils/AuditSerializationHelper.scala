@@ -195,14 +195,14 @@ private[ror] object AuditSerializationHelper {
     final case class Include(types: Set[Verbosity]) extends AllowedEventMode
   }
 
-  final case class AuditFieldPath(path: NonEmptyList[String])
+  final case class AuditFieldPath private(path: List[String])
 
   object AuditFieldPath {
     def apply(name: String): AuditFieldPath =
-      AuditFieldPath(NonEmptyList.one(name))
+      AuditFieldPath(List(name))
 
-    def apply(head: String, tail: String*): AuditFieldPath =
-      AuditFieldPath(NonEmptyList(head, tail.toList))
+    def apply(head: String, tail: List[String]): AuditFieldPath =
+      AuditFieldPath(head :: tail)
 
     def fields(values: ((AuditFieldPath, AuditFieldValueDescriptor) | Map[AuditFieldPath, AuditFieldValueDescriptor])*): Map[AuditFieldPath, AuditFieldValueDescriptor] =
       values.flatMap(toMap).toMap
@@ -214,9 +214,8 @@ private[ror] object AuditSerializationHelper {
 
     private def withPrefix(prefix: String,
                            values: Map[AuditFieldPath, AuditFieldValueDescriptor]): Map[AuditFieldPath, AuditFieldValueDescriptor] = {
-      val prefixNel = NonEmptyList.one(prefix)
       values.map { case (path, desc) =>
-        val newPath = AuditFieldPath(prefixNel.concatNel(path.path))
+        val newPath = AuditFieldPath(prefix, path.path)
         newPath -> desc
       }
     }

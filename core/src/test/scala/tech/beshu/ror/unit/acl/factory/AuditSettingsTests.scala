@@ -683,7 +683,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedAuditCluster = LocalAuditCluster
             )
             val createdSerializer = serializer(config)
-            val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(DummyAuditRequestContext))
+            val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
 
             val expectedJsonStr =
               """{
