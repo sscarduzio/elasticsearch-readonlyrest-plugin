@@ -23,7 +23,7 @@ private [patches] object CreateServiceAccountServiceBridgeClass extends Bytecode
   override def apply(file: File): Unit = {
     addNewFileToJar(
       jar = file,
-      filePathString = "org/elasticsearch/xpack/security/ServiceAccountServiceBridge.class",
+      filePathString = "org/elasticsearch/plugins/ServiceAccountServiceBridge.class",
       content = bridgeClassBytes()
     )
   }
@@ -31,7 +31,7 @@ private [patches] object CreateServiceAccountServiceBridgeClass extends Bytecode
   private def bridgeClassBytes(): Array[Byte] = {
     import org.objectweb.asm.*
     val cw = new ClassWriter(0)
-    val name = "org/elasticsearch/xpack/security/ServiceAccountServiceBridge"
+    val name = "org/elasticsearch/plugins/ServiceAccountServiceBridge"
     cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER, name, null, "java/lang/Object", null)
 
     cw

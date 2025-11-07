@@ -38,6 +38,7 @@ private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
         createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
+      CreateServiceAccountServiceBridgeClass,
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
@@ -51,7 +52,6 @@ private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      CreateServiceAccountServiceBridgeClass,
       new InterceptServiceAccountServiceInSecurity(esVersion),
       DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       new DummyAuthenticationInAuthenticationChain(esVersion),

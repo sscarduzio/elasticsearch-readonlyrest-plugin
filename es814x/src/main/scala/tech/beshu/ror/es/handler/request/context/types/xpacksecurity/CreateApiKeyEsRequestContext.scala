@@ -27,6 +27,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.ReflectionBasedActionRequest
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.syntax.Set
+import tech.beshu.ror.utils.AccessControllerHelper
 
 class CreateApiKeyEsRequestContext private(actionRequest: ActionRequest,
                                           esContext: EsContext,
@@ -62,23 +63,42 @@ object CreateApiKeyEsRequestContext {
 }
 
 object ServiceAccountServiceRef {
-  private val bridgeClass = "org.elasticsearch.xpack.security.ServiceAccountServiceBridge"
+  private val Bridge = "org.elasticsearch.plugins.ServiceAccountServiceBridge"
 
-  def available: Boolean =
-    try {
-      Class.forName(bridgeClass, false, Thread.currentThread.getContextClassLoader)
-      true
-    } catch { case _: Throwable => false }
+  private def candidates: List[ClassLoader] = AccessControllerHelper.doPrivileged {
+    List(
+      Thread.currentThread().getContextClassLoader,
+      this.getClass.getClassLoader,
+      Option(this.getClass.getClassLoader).map(_.getParent).orNull,
+      ClassLoader.getSystemClassLoader,
+      ClassLoader.getPlatformClassLoader
+    ).filter(_ != null).distinct
+  }
+
+  private def loadBridgeClass(): Option[Class[_]] =
+    candidates.view.flatMap { cl =>
+      try Some(Class.forName(Bridge, /*initialize*/ false, cl))
+      catch { case _: Throwable => None }
+    }.headOption
+
+  def available: Boolean = loadBridgeClass().isDefined
 
   def getInstance: Option[AnyRef] =
-    try {
-      Option(onClass(bridgeClass).call("get").get[AnyRef])
-    } catch { case _: Throwable => None }
+    loadBridgeClass().flatMap { cls =>
+      try Option(onClass(cls).call("get").get[AnyRef])
+      catch { case _: Throwable => None }
+    }
 
   def clear(): Unit =
-    try onClass(bridgeClass).call("clear") catch { case _: Throwable => () }
+    loadBridgeClass().foreach { cls =>
+      try onClass(cls).call("clear") catch { case _: Throwable => () }
+    }
 
-  def callExample(svc: AnyRef): Unit = {
-    // val result = Reflect.on(svc).call("someMethod", arg1, arg2, java.lang.Boolean.TRUE).get[AnyRef]
+  def debugProbe(): String = {
+    val resPath = "org/elasticsearch/xpack/security/ServiceAccountServiceBridge.class"
+    val hits = candidates.flatMap { cl =>
+      Option(cl.getResource(resPath)).map(u => s"${cl.getClass.getName} -> $u")
+    }
+    if (hits.nonEmpty) hits.mkString("FOUND in:\n  ", "\n  ", "") else "NOT FOUND in any candidate"
   }
 }
