@@ -203,31 +203,6 @@ private[ror] object AuditSerializationHelper {
 
     def apply(head: String, tail: List[String]): AuditFieldPath =
       AuditFieldPath(head :: tail)
-
-    def fields(values: ((AuditFieldPath, AuditFieldValueDescriptor) | Map[AuditFieldPath, AuditFieldValueDescriptor])*): Map[AuditFieldPath, AuditFieldValueDescriptor] =
-      values.flatMap(toMap).toMap
-
-    def withPrefix(prefix: String)(
-      values: ((AuditFieldPath, AuditFieldValueDescriptor) | Map[AuditFieldPath, AuditFieldValueDescriptor])*
-    ): Map[AuditFieldPath, AuditFieldValueDescriptor] =
-      withPrefix(prefix, values.flatMap(toMap).toMap)
-
-    private def withPrefix(prefix: String,
-                           values: Map[AuditFieldPath, AuditFieldValueDescriptor]): Map[AuditFieldPath, AuditFieldValueDescriptor] = {
-      values.map { case (path, desc) =>
-        val newPath = AuditFieldPath(prefix, path.path)
-        newPath -> desc
-      }
-    }
-
-    private def toMap(value: (AuditFieldPath, AuditFieldValueDescriptor) | Map[AuditFieldPath, AuditFieldValueDescriptor]): Map[AuditFieldPath, AuditFieldValueDescriptor] = {
-      value match {
-        case (path: AuditFieldPath, value: AuditFieldValueDescriptor) =>
-          Map(path -> value)
-        case values: Map[AuditFieldPath, AuditFieldValueDescriptor] =>
-          values
-      }
-    }
   }
 
   sealed trait AuditFieldValueDescriptor

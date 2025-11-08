@@ -17,7 +17,8 @@
 package tech.beshu.ror.accesscontrol.audit.ecs
 
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer.fields
+import tech.beshu.ror.accesscontrol.audit.AuditFieldUtils.*
+import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer.*
 import tech.beshu.ror.audit.utils.AuditSerializationHelper
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
@@ -25,57 +26,57 @@ import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode) extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
-    AuditSerializationHelper.serialize(responseContext, fields, allowedEventMode)
+    AuditSerializationHelper.serialize(responseContext, auditFields, allowedEventMode)
   }
 
 }
 
 object EcsV1AuditLogSerializer {
-  private val fields: Map[AuditFieldPath, AuditFieldValueDescriptor] = AuditFieldPath.fields(
-    AuditFieldPath.withPrefix("ecs")(
+  private val auditFields: Map[AuditFieldPath, AuditFieldValueDescriptor] = fields(
+    withPrefix("ecs")(
       // Schema defined by EcsV1AuditLogSerializer is ECS 1.6.0 compliant and does not use newer features
       // introduced by later versions (https://www.elastic.co/guide/en/ecs/1.6/ecs-field-reference.html)
       AuditFieldPath("version") -> AuditFieldValueDescriptor.StaticText("1.6.0"),
     ),
-    AuditFieldPath.withPrefix("trace")(
+    withPrefix("trace")(
       AuditFieldPath("id") -> AuditFieldValueDescriptor.CorrelationId,
     ),
-    AuditFieldPath.withPrefix("url")(
+    withPrefix("url")(
       AuditFieldPath("path") -> AuditFieldValueDescriptor.HttpPath,
     ),
-    AuditFieldPath.withPrefix("source")(
+    withPrefix("source")(
       AuditFieldPath("address") -> AuditFieldValueDescriptor.RemoteAddress,
     ),
-    AuditFieldPath.withPrefix("destination")(
+    withPrefix("destination")(
       AuditFieldPath("address") -> AuditFieldValueDescriptor.LocalAddress,
     ),
-    AuditFieldPath.withPrefix("http")(
-      AuditFieldPath.withPrefix("request")(
+    withPrefix("http")(
+      withPrefix("request")(
         AuditFieldPath("method") -> AuditFieldValueDescriptor.HttpMethod,
-        AuditFieldPath.withPrefix("body")(
+        withPrefix("body")(
           AuditFieldPath("content") -> AuditFieldValueDescriptor.Content,
           AuditFieldPath("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
         ),
       ),
     ),
-    AuditFieldPath.withPrefix("user")(
+    withPrefix("user")(
       AuditFieldPath("name") -> AuditFieldValueDescriptor.User,
-      AuditFieldPath.withPrefix("effective")(
+      withPrefix("effective")(
         AuditFieldPath("name") -> AuditFieldValueDescriptor.ImpersonatedByUser,
       ),
     ),
-    AuditFieldPath.withPrefix("event")(
+    withPrefix("event")(
       AuditFieldPath("id") -> AuditFieldValueDescriptor.Id,
       AuditFieldPath("duration") -> AuditFieldValueDescriptor.ProcessingDurationNanos,
       AuditFieldPath("action") -> AuditFieldValueDescriptor.Action,
       AuditFieldPath("reason") -> AuditFieldValueDescriptor.Type,
       AuditFieldPath("outcome") -> AuditFieldValueDescriptor.EcsEventOutcome,
     ),
-    AuditFieldPath.withPrefix("error")(
+    withPrefix("error")(
       AuditFieldPath("type") -> AuditFieldValueDescriptor.ErrorType,
       AuditFieldPath("message") -> AuditFieldValueDescriptor.ErrorMessage,
     ),
-    AuditFieldPath.withPrefix("labels")(
+    withPrefix("labels")(
       AuditFieldPath("x_forwarded_for") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
       AuditFieldPath("es_cluster_name") -> AuditFieldValueDescriptor.EsClusterName,
       AuditFieldPath("es_node_name") -> AuditFieldValueDescriptor.EsNodeName,

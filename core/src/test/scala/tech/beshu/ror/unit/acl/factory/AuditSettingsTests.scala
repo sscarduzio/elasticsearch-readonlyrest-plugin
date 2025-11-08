@@ -25,6 +25,7 @@ import org.json.JSONObject
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.audit.AuditFieldUtils
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
@@ -419,14 +420,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             val configuredSerializer = serializer(config).asInstanceOf[ConfigurableAuditLogSerializer]
 
             configuredSerializer.allowedEventMode shouldBe AllowedEventMode.Include(Set(Verbosity.Info))
-            configuredSerializer.fields shouldBe AuditFieldPath.fields(
-              AuditFieldPath.withPrefix("custom_section")(
+            configuredSerializer.fields shouldBe AuditFieldUtils.fields(
+              AuditFieldUtils.withPrefix("custom_section")(
                 AuditFieldPath("nested_text") -> AuditFieldValueDescriptor.StaticText("nt"),
                 AuditFieldPath("nested_number") -> AuditFieldValueDescriptor.NumericValue(123),
                 AuditFieldPath("nested_boolean") -> AuditFieldValueDescriptor.BooleanValue(true),
-                AuditFieldPath.withPrefix("double_nested")(
+                AuditFieldUtils.withPrefix("double_nested")(
                   AuditFieldPath("double_nested_next") -> AuditFieldValueDescriptor.StaticText("dnt"),
-                  AuditFieldPath.withPrefix("triple_nested")(
+                  AuditFieldUtils.withPrefix("triple_nested")(
                     Map(
                       AuditFieldPath("triple_nested_next") -> AuditFieldValueDescriptor.StaticText("tnt"),
                     )
