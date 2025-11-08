@@ -176,6 +176,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
       Block.Name(name),
       policy,
       Block.Verbosity.Info,
+      Block.Audit.Enabled,
       NonEmptyList.of(
         new RegularRule {
           override val name: Rule.Name = Rule.Name("auth")

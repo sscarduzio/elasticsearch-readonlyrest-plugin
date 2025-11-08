@@ -161,25 +161,49 @@ class LocalClusterAuditingToolsSuite
       "using ConfigurableQueryAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
+        // Change config to use configurable serializer and perform the request
         updateRorConfig(
           originalString = """type: "static"""",
           newString = """type: "configurable"""",
         )
         performAndAssertExampleSearchRequest(indexManager)
 
+        // Assert, that there is a single audit entry
         forEachAuditManager { adminAuditManager =>
           eventually {
             val auditEntries = adminAuditManager.getEntries.force().jsons
             auditEntries.size shouldBe 1
 
             auditEntries.exists(entry =>
-              entry("node_name_with_static_suffix").str == "ROR_SINGLE_1 with suffix" &&
+              entry("block").str.contains("name: 'Rule 1'") &&
+                entry("node_name_with_static_suffix").str == "ROR_SINGLE_1 with suffix" &&
                 entry("another_field").str == "ROR_SINGLE GET" &&
                 entry("tid").numOpt.isDefined &&
                 entry("bytes").num == 0
             ) shouldBe true
           }
         }
+
+        // Disable audit for Rule 1, clean managers, perform second request
+        updateRorConfig(
+          "enabled: true ## twitter audit toggle",
+          "enabled: false ## twitter audit toggle",
+        )
+        adminAuditManagers.values.foreach(_.truncate())
+        performAndAssertExampleSearchRequest(indexManager)
+
+        // Wait for 2s and assert, that there is no serialized event
+        Thread.sleep(2000)
+        forEachAuditManager { adminAuditManager =>
+          val auditEntries = adminAuditManager.getEntries.force().jsons
+          auditEntries.size shouldBe 0
+        }
+
+        // Restore the default config
+        updateRorConfig(
+          "enabled: false ## twitter audit toggle",
+          "enabled: true ## twitter audit toggle",
+        )
         updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
       }
       "using ECS serializer" in {
