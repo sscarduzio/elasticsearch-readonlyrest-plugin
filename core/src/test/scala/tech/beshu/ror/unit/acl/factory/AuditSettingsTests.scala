@@ -18,15 +18,18 @@ package tech.beshu.ror.unit.acl.factory
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.{Json, parser}
 import io.lemonlabs.uri.Uri
 import monix.execution.Scheduler.Implicits.global
 import org.json.JSONObject
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.audit.AuditFieldUtils
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
+import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{LocalAuditCluster, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditLoggerName, RorConfigurationIndex}
@@ -37,7 +40,7 @@ import tech.beshu.ror.audit.*
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.adapters.{DeprecatedAuditLogSerializerAdapter, EnvironmentAwareAuditLogSerializerAdapter}
 import tech.beshu.ror.audit.instances.*
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
@@ -388,6 +391,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |        type: configurable
                 |        verbosity_level_serialization_mode: [INFO]
                 |        fields:
+                |          custom_section:
+                |            nested_text: "nt"
+                |            nested_number: 123
+                |            nested_boolean: true
+                |            double_nested:
+                |              double_nested_next: "dnt"
+                |              triple_nested:
+                |                triple_nested_next: "tnt"
                 |          node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
                 |          another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
                 |          tid: "{TASK_ID}"
@@ -409,11 +420,24 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             val configuredSerializer = serializer(config).asInstanceOf[ConfigurableAuditLogSerializer]
 
             configuredSerializer.allowedEventMode shouldBe AllowedEventMode.Include(Set(Verbosity.Info))
-            configuredSerializer.fields shouldBe Map(
-              AuditFieldName("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
-              AuditFieldName("another_field") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsClusterName, AuditFieldValueDescriptor.StaticText(" "), AuditFieldValueDescriptor.HttpMethod)),
-              AuditFieldName("tid") -> AuditFieldValueDescriptor.TaskId,
-              AuditFieldName("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
+            configuredSerializer.fields shouldBe AuditFieldUtils.fields(
+              AuditFieldUtils.withPrefix("custom_section")(
+                AuditFieldPath("nested_text") -> AuditFieldValueDescriptor.StaticText("nt"),
+                AuditFieldPath("nested_number") -> AuditFieldValueDescriptor.NumericValue(123),
+                AuditFieldPath("nested_boolean") -> AuditFieldValueDescriptor.BooleanValue(true),
+                AuditFieldUtils.withPrefix("double_nested")(
+                  AuditFieldPath("double_nested_next") -> AuditFieldValueDescriptor.StaticText("dnt"),
+                  AuditFieldUtils.withPrefix("triple_nested")(
+                    Map(
+                      AuditFieldPath("triple_nested_next") -> AuditFieldValueDescriptor.StaticText("tnt"),
+                    )
+                  ),
+                ),
+              ),
+              AuditFieldPath("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
+              AuditFieldPath("another_field") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsClusterName, AuditFieldValueDescriptor.StaticText(" "), AuditFieldValueDescriptor.HttpMethod)),
+              AuditFieldPath("tid") -> AuditFieldValueDescriptor.TaskId,
+              AuditFieldPath("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
             )
           }
         }
@@ -633,6 +657,89 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             serializedResponse shouldBe defined
             serializedResponse.get.get("custom_field_for_es_node_name") shouldBe "testEsNode"
             serializedResponse.get.get("custom_field_for_es_cluster_name") shouldBe "testEsCluster"
+          }
+          "ECS serializer is set" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: index
+                |      serializer:
+                |        type: ecs
+                |        verbosity_level_serialization_mode: [INFO]
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+                 """.stripMargin)
+
+            assertIndexBasedAuditSinkSettingsPresent[EcsV1AuditLogSerializer](
+              config,
+              expectedIndexName = "readonlyrest_audit-2018-12-31",
+              expectedAuditCluster = LocalAuditCluster
+            )
+            val createdSerializer = serializer(config)
+            val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+
+            val expectedJsonStr =
+              """{
+                |  "trace" : {
+                |    "id" : "corr_id_123"
+                |  },
+                |  "@timestamp" : "IGNORED",
+                |  "ecs" : {
+                |    "version" : "1.6.0"
+                |  },
+                |  "destination" : {
+                |    "address" : "192.168.0.124"
+                |  },
+                |  "http" : {
+                |    "request" : {
+                |      "method" : "GET",
+                |      "body" : {
+                |        "bytes" : 123,
+                |        "content" : "Full content of the request"
+                |      }
+                |    }
+                |  },
+                |  "source" : {
+                |    "address" : "192.168.0.123"
+                |  },
+                |  "event" : {
+                |    "duration" : 5000000000,
+                |    "reason" : "RRTestConfigRequest",
+                |    "action" : "cluster:internal_ror/user_metadata/get",
+                |    "id" : "trace_id_123",
+                |    "outcome" : "failure"
+                |  },
+                |  "error" : {},
+                |  "user" : {
+                |    "effective" : {
+                |      "name" : "impersonated_by_user"
+                |    },
+                |    "name" : "logged_user"
+                |  },
+                |  "url" : {
+                |    "path" : "/path/to/resource"
+                |  },
+                |  "labels" : {
+                |    "es_cluster_name" : "testEsCluster",
+                |    "es_task_id" : 123,
+                |    "es_node_name" : "testEsNode",
+                |    "ror_acl_history" : "historyEntry1, historyEntry2",
+                |    "ror_detailed_reason" : "default",
+                |    "ror_involved_indices" : [],
+                |    "ror_final_state" : "FORBIDDEN"
+                |  }
+                |}""".stripMargin
+            val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
+            val expectedJson = circeJsonWithIgnoredTimestamp(new JSONObject(expectedJsonStr))
+            actualJson should be(expectedJson)
           }
           "deprecated custom serializer is set" in {
             val config = rorConfigFromUnsafe(
@@ -2022,6 +2129,21 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
+  private def circeJsonWithIgnoredTimestamp(json: JSONObject): Option[Json] = {
+    json
+      .withTimestampValue("IGNORED")
+      .circeJsonE
+      .toOption
+  }
+
+  extension (jsonObject: JSONObject) {
+    private def withTimestampValue(value: String): JSONObject = {
+      jsonObject.put("@timestamp", value)
+    }
+    private def circeJsonE: Either[String, Json] =
+      parser.parse(jsonObject.toString(0)).left.map(_.getMessage)
+  }
+
 }
 
 private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAuditLogSerializer {
@@ -2037,39 +2159,39 @@ private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAud
 
 private class DummyAuditRequestContext(override val loggedInUserName: Option[String] = Some("logged_user"),
                                        override val attemptedUserName: Option[String] = Some("basic auth user")) extends AuditRequestContext {
-  override def timestamp: Instant = Instant.now()
+  override def timestamp: Instant = Instant.now().minusSeconds(5)
 
-  override def id: String = ""
+  override def id: String = "trace_id_123"
 
-  override def correlationId: String = ""
+  override def correlationId: String = "corr_id_123"
 
-  override def indices: Set[String] = Set.empty
+  override def indices: Set[String] = Set("a1", "a2", "b1", "b2")
 
-  override def action: String = ""
+  override def action: String = "cluster:internal_ror/user_metadata/get"
 
-  override def headers: Map[String, String] = Map.empty
+  override def headers: Map[String, String] = Map("HEADER1" -> "HVALUE1", "HEADER2" -> "HVALUE2")
 
-  override def requestHeaders: Headers = Headers(Map.empty)
+  override def requestHeaders: Headers = Headers(headers.view.mapValues(v => Set(v)).toMap)
 
-  override def uriPath: String = ""
+  override def uriPath: String = "/path/to/resource"
 
-  override def history: String = ""
+  override def history: String = "historyEntry1, historyEntry2"
 
-  override def content: String = ""
+  override def content: String = "Full content of the request"
 
-  override def contentLength: Integer = 0
+  override def contentLength: Integer = 123
 
-  override def remoteAddress: String = ""
+  override def remoteAddress: String = "192.168.0.123"
 
-  override def localAddress: String = ""
+  override def localAddress: String = "192.168.0.124"
 
-  override def `type`: String = ""
+  override def `type`: String = "RRTestConfigRequest"
 
-  override def taskId: Long = 0
+  override def taskId: Long = 123
 
-  override def httpMethod: String = ""
+  override def httpMethod: String = "GET"
 
-  override def impersonatedByUserName: Option[String] = None
+  override def impersonatedByUserName: Option[String] = Some("impersonated_by_user")
 
   override def involvesIndices: Boolean = false
 

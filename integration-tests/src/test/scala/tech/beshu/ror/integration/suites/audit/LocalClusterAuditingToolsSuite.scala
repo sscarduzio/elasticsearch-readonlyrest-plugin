@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import tech.beshu.ror.utils.misc.Version
 
@@ -206,6 +206,61 @@ class LocalClusterAuditingToolsSuite
         )
         updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
       }
+      "using ECS serializer" in {
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
+        // We need to create a new index with a different name for this test, because the ECS schema
+        // is not compatible with the Json object created by other serializers in previous tests.
+        val ecsAuditIndexName = "ecs_audit_index"
+        updateRorConfig(
+          replacements = Map(
+            """type: "static"""" -> """type: "ecs"""",
+            "audit_index" -> ecsAuditIndexName,
+          )
+        )
+        val auditIndexManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, ecsAuditIndexName)
+        performAndAssertExampleSearchRequest(indexManager)
+        eventually {
+          val auditEntries = auditIndexManager.getEntries.force().jsons
+          auditEntries.exists { entry =>
+            // ecs
+            entry("ecs")("version").str == "1.6.0" &&
+              // trace
+              entry("trace")("id").strOpt.isDefined &&
+              // timestamp (exists, not verified for exact value)
+              entry("@timestamp").strOpt.isDefined &&
+              // destination
+              entry("destination")("address").strOpt.isDefined &&
+              // source
+              entry("source")("address").strOpt.isDefined &&
+              // http request
+              entry("http")("request")("method").str == "GET" &&
+              entry("http")("request")("body")("bytes").num == 0 &&
+              entry("http")("request")("body")("content").str == "" &&
+              // event
+              entry("event")("id").strOpt.isDefined &&
+              entry("event")("duration").numOpt.isDefined &&
+              entry("event")("action").str == "indices:admin/get" &&
+              entry("event")("reason").str == "GetIndexRequest" &&
+              entry("event")("outcome").str == "success" &&
+              // error (empty object)
+              entry("error").obj.isEmpty &&
+              // user
+              entry("user")("name").str == "username" &&
+              entry("user")("effective").obj.isEmpty &&
+              // url
+              entry("url")("path").str == "/twitter/" &&
+              // labels
+              entry("labels")("es_cluster_name").str == "ROR_SINGLE" &&
+              entry("labels")("es_node_name").str == "ROR_SINGLE_1" &&
+              entry("labels")("es_task_id").numOpt.isDefined &&
+              entry("labels")("ror_involved_indices").arrOpt.isDefined &&
+              entry("labels")("ror_acl_history").str == "[CONTAINER ADMIN-> RULES:[auth_key->false] RESOLVED:[indices=twitter]], [Rule 1-> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]" &&
+              entry("labels")("ror_final_state").str == "ALLOWED" &&
+              entry("labels")("ror_detailed_reason").str == "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices]"
+          } shouldBe true
+        }
+        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+      }
     }
   }
 
@@ -219,9 +274,14 @@ class LocalClusterAuditingToolsSuite
     newString = s"""class_name: "$serializer""""
   )
 
-  private def updateRorConfig(originalString: String, newString: String) = {
+  private def updateRorConfig(originalString: String, newString: String): Unit =
+    updateRorConfig(Map(originalString -> newString))
+
+  private def updateRorConfig(replacements: Map[String, String]): Unit = {
     val initialConfig = getResourceContent(rorConfigFileName)
-    val modifiedConfig = initialConfig.replace(originalString, newString)
+    val modifiedConfig = replacements.foldLeft(initialConfig) { case (soFar, (originalString, newString)) =>
+      soFar.replace(originalString, newString)
+    }
     rorApiManager.updateRorInIndexConfig(modifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
     rorApiManager.reloadRorConfig().force()
   }
