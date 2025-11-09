@@ -17,8 +17,8 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
+import io.circe.*
 import io.circe.Decoder.*
-import io.circe.{Decoder, DecodingFailure, Json, HCursor, KeyDecoder}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
 import tech.beshu.ror.accesscontrol.audit.configurable.{AuditFieldValueDescriptorParser, ConfigurableAuditLogSerializer}
+import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -33,10 +34,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{AclCreationErrorCoders, DecodingFailureOps}
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
-import tech.beshu.ror.audit.AuditResponseContext.Verbosity
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
-import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.AuditLogSerializer
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.audit.adapters.*
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
@@ -217,15 +218,32 @@ object AuditingSettingsDecoder extends Logging {
           c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxStaticSerializerDecoder)
         case SerializerType.ExtendedSyntaxConfigurableSerializer =>
           c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxConfigurableSerializerDecoder)
+        case SerializerType.EcsSerializer =>
+          c.downField("serializer").as[Option[AuditLogSerializer]](ecsSerializerDecoder)
       }
     } yield result
+  }
+
+  private def ecsSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
+    for {
+      version <- c.downField("version").as[Option[EcsSerializerVersion]]
+        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"ECS serializer 'version' is invalid: $msg"))
+      allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
+        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"ECS serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
+      serializer = version match {
+        case None =>
+          new EcsV1AuditLogSerializer(allowedEventMode)
+        case Some(EcsSerializerVersion.V1) =>
+          new EcsV1AuditLogSerializer(allowedEventMode)
+      }
+    } yield Some(serializer)
   }
 
   private def extendedSyntaxConfigurableSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
     for {
       allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
-      fields <- c.downField("fields").as[Map[AuditFieldName, AuditFieldValueDescriptor]]
+      fields <- c.downField("fields").as[Map[AuditFieldPath, AuditFieldValueDescriptor]]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'fields' setting is missing or invalid: $msg"))
       serializer = new ConfigurableAuditLogSerializer(allowedEventMode, fields)
     } yield Some(serializer)
@@ -265,9 +283,11 @@ object AuditingSettingsDecoder extends Logging {
             Right(SerializerType.ExtendedSyntaxStaticSerializer)
           case "configurable" =>
             Right(SerializerType.ExtendedSyntaxConfigurableSerializer)
+          case "ecs" =>
+            Right(SerializerType.EcsSerializer)
           case other =>
             Left(DecodingFailure(AclCreationErrorCoders.stringify(
-              AuditingSettingsCreationError(Message(s"Invalid serializer type '$other', allowed values [static, configurable]"))
+              AuditingSettingsCreationError(Message(s"Invalid serializer type '$other', allowed values [static, configurable, ecs]"))
             ), Nil))
         }
       case Some(_) | None =>
@@ -283,6 +303,19 @@ object AuditingSettingsDecoder extends Logging {
     case object ExtendedSyntaxStaticSerializer extends SerializerType
 
     case object ExtendedSyntaxConfigurableSerializer extends SerializerType
+
+    case object EcsSerializer extends SerializerType
+  }
+
+  private given ecsSerializerVersionDecoder: Decoder[EcsSerializerVersion] = Decoder.decodeString.map(_.toLowerCase).emap {
+    case "v1" => Right(EcsSerializerVersion.V1)
+    case other => Left(s"Invalid ECS serializer version $other")
+  }
+
+  private sealed trait EcsSerializerVersion
+
+  private object EcsSerializerVersion {
+    case object V1 extends EcsSerializerVersion
   }
 
   private def withAuditingSettingsCreationErrorMessage(message: String => String)(decodingFailure: DecodingFailure) = {
@@ -337,16 +370,45 @@ object AuditingSettingsDecoder extends Logging {
       .decoder
   }
 
-  given auditFieldNameDecoder: KeyDecoder[AuditFieldName] = {
-    KeyDecoder.decodeKeyString.map(AuditFieldName.apply)
-  }
+  private given auditFieldsDecoder: Decoder[Map[AuditFieldPath, AuditFieldValueDescriptor]] =
+    Decoder.instance { cursor =>
+      def decodeJson(json: Json,
+                     path: List[String]): Decoder.Result[Map[List[String], AuditFieldValueDescriptor]] = {
+        json.fold(
+          jsonNull =
+            Left(DecodingFailure("Expected AuditFieldValueDescriptor, got null", cursor.history)),
+          jsonBoolean = b =>
+            Right(Map(path -> AuditFieldValueDescriptor.BooleanValue(b))),
+          jsonNumber = n =>
+            n.toBigDecimal
+              .map(bd => Map(path -> AuditFieldValueDescriptor.NumericValue(bd)))
+              .toRight(DecodingFailure("Cannot decode number", cursor.history)),
+          jsonString = s =>
+            AuditFieldValueDescriptorParser
+              .parse(s)
+              .map(desc => Map(path -> desc))
+              .left.map(err => DecodingFailure(err, cursor.history)),
+          jsonArray = _ =>
+            Left(DecodingFailure("AuditFieldValueDescriptor cannot be an array", cursor.history)),
+          jsonObject = obj =>
+            obj.toList
+              .traverse { case (k, v) => decodeJson(v, path :+ k) }
+              .map(_.foldLeft(Map.empty[List[String], AuditFieldValueDescriptor])(_ ++ _))
+        )
+      }
 
-  given auditFieldValueDecoder: Decoder[AuditFieldValueDescriptor] = {
-    SyncDecoderCreator
-      .from(Decoder.decodeString)
-      .emap(AuditFieldValueDescriptorParser.parse)
-      .decoder
-  }
+      for {
+        rawResult <- decodeJson(cursor.value, Nil)
+        result = rawResult.view.map{ case (path, value) =>
+          NonEmptyList.fromList(path) match {
+            case Some(nonEmptyPath) =>
+              AuditFieldPath(nonEmptyPath.head, nonEmptyPath.tail) -> value
+            case None =>
+              throw new IllegalStateException(s"Empty audit field path encountered when decoding configurable audit fields definition.")
+          }
+        }.toMap
+      } yield result
+    }
 
   given verbosityDecoder: Decoder[Verbosity] = {
     SyncDecoderCreator
