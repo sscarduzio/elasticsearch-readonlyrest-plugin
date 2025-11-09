@@ -19,7 +19,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.*
@@ -124,7 +124,7 @@ class JwtAuthRuleSettingsTests
               rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.authentication.settings.jwt.userClaim should be(None)
               rule.authentication.settings.jwt.groupsConfig should be(None)
-              rule.authorization.settings.groupsLogic should be(GroupsLogic.AnyOf(GroupIds(
+              rule.authorization.asInstanceOf[JwtAuthorizationRule].settings.groupsLogic should be(GroupsLogic.AnyOf(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               )))
             }
@@ -157,7 +157,7 @@ class JwtAuthRuleSettingsTests
               rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.authentication.settings.jwt.userClaim should be(None)
               rule.authentication.settings.jwt.groupsConfig should be(None)
-              rule.authorization.settings.groupsLogic should be(GroupsLogic.AllOf(GroupIds(
+              rule.authorization.asInstanceOf[JwtAuthorizationRule].settings.groupsLogic should be(GroupsLogic.AllOf(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               )))
             }

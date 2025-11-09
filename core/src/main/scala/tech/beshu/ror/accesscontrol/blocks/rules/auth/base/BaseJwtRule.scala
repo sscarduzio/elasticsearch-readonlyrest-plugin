@@ -24,7 +24,6 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod.{Ec, Hmac, NoCheck, Rsa}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseJwtRule.*
@@ -38,12 +37,11 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.util.Try
 
-trait JwtRule extends Rule
-
 trait BaseJwtRule extends Logging {
 
   protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
-                                                        jwt: JwtDef)
+                                                        jwt: JwtDef,
+                                                        disabledCallsToExternalAuthenticationService: Boolean = false)
                                                        (operation: JwtData => Either[Unit, B]): Task[RuleResult[B]] = {
     implicit val jwtImpl: JwtDef = jwt
     jwtTokenFrom(blockContext.requestContext) match {
@@ -65,37 +63,13 @@ trait BaseJwtRule extends Logging {
                 Task.now(Rejected())
               case Right(modifiedBlockContext) =>
                 jwt.checkMethod match {
-                  case NoCheck(service) =>
+                  case NoCheck(service) if !disabledCallsToExternalAuthenticationService =>
                     service
                       .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
                       .map(RuleResult.resultBasedOnCondition(modifiedBlockContext)(_))
-                  case Hmac(_) | Rsa(_) | Ec(_) =>
+                  case _ =>
                     Task.now(Fulfilled(modifiedBlockContext))
                 }
-            }
-        }
-    }
-  }
-
-  protected def finalize[B <: BlockContext](result: RuleResult[B],
-                                            jwt: JwtDef): Task[RuleResult[B]] = {
-    implicit val jwtImpl: JwtDef = jwt
-    result match {
-      case rejected: Rejected[B] =>
-        Task.now(rejected)
-      case Fulfilled(blockContext) =>
-        jwtTokenFrom(blockContext.requestContext) match {
-          case None =>
-            Task.now(Rejected())
-          case Some(token) =>
-            implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-            jwt.checkMethod match {
-              case NoCheck(service) =>
-                service
-                  .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
-                  .map(RuleResult.resultBasedOnCondition(blockContext)(_))
-              case Hmac(_) | Rsa(_) | Ec(_) =>
-                Task.now(Fulfilled(blockContext))
             }
         }
     }

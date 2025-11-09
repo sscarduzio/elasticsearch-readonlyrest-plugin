@@ -17,15 +17,12 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import io.circe.Decoder
-import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthorizationImpersonationCustomSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule, JwtPseudoAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -33,35 +30,29 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.JwtDefinitionsDecoder.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.JwtAuthRuleDecoder.cannotFindJwtDefinition
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.JwtAuthRuleHelper.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 
-private implicit val ruleName: RuleName[Rule] = new RuleName[Rule] {
-  override def name: Rule.Name = JwtAuthRule.Name.name
-}
+class JwtAuthenticationRuleDecoder(jwtDefinitions: Definitions[JwtDef],
+                                   globalSettings: GlobalSettings)
+  extends RuleBaseDecoderWithoutAssociatedFields[JwtAuthenticationRule] with Logging {
 
-class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
-                         globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[JwtAuthRule | JwtAuthenticationRule] with Logging {
-
-  override protected def decoder: Decoder[RuleDefinition[JwtAuthRule | JwtAuthenticationRule]] = {
-    JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
-      .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
+  override protected def decoder: Decoder[RuleDefinition[JwtAuthenticationRule]] = {
+    nameAndGroupsSimpleDecoder
+      .or(nameAndGroupsExtendedDecoder[JwtAuthenticationRule])
       .toSyncDecoder
-      .emapE[RuleDefinition[JwtAuthRule | JwtAuthenticationRule]] { case (name, groupsLogicOpt) =>
-        val foundKbnDef = jwtDefinitions.items.find(_.id === name)
-        (foundKbnDef, groupsLogicOpt) match {
-          case (Some(jwtDef), Some(groupsLogic)) =>
-            val authentication = new JwtAuthenticationRule(JwtAuthenticationRule.Settings(jwtDef), globalSettings.userIdCaseSensitivity)
-            val authorization = new JwtAuthorizationRule(JwtAuthorizationRule.Settings(jwtDef, groupsLogic))
-            val rule = new JwtAuthRule(authentication, authorization)
-            Right(RuleDefinition.create(rule))
+      .emapE { case (name, groupsLogicOpt) =>
+        val foundJwtDef = jwtDefinitions.items.find(_.id === name)
+        (foundJwtDef, groupsLogicOpt) match {
+          case (Some(_), Some(_)) =>
+            Left(RulesLevelCreationError(Message(s"Cannot create ${JwtAuthenticationRule.Name.name.show}, because there are superfluous groups settings. Remove the groups settings, or use ${JwtAuthorizationRule.Name.name.show} or ${JwtAuthRule.Name.name.show} rule, if group settings are required.")))
           case (Some(jwtDef), None) =>
-            val rule = new JwtAuthenticationRule(JwtAuthenticationRule.Settings(jwtDef), globalSettings.userIdCaseSensitivity)
-            Right(RuleDefinition.create(rule): RuleDefinition[JwtAuthenticationRule])
+            val settings = JwtAuthenticationRule.Settings(jwtDef)
+            val rule = new JwtAuthenticationRule(settings, globalSettings.userIdCaseSensitivity)
+            Right(RuleDefinition.create(rule))
           case (None, _) =>
             Left(cannotFindJwtDefinition(name))
         }
@@ -70,23 +61,83 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
   }
 }
 
-private object JwtAuthRuleDecoder {
+class JwtAuthorizationRuleDecoder(jwtDefinitions: Definitions[JwtDef])
+  extends RuleBaseDecoderWithoutAssociatedFields[JwtAuthorizationRule] with Logging {
+
+  override protected def decoder: Decoder[RuleDefinition[JwtAuthorizationRule]] = {
+    nameAndGroupsSimpleDecoder
+      .or(nameAndGroupsExtendedDecoder[JwtAuthorizationRule])
+      .toSyncDecoder
+      .emapE { case (name, groupsLogicOpt) =>
+        val foundJwtDef = jwtDefinitions.items.find(_.id === name)
+        (foundJwtDef, groupsLogicOpt) match {
+          case (Some(jwtDef), Some(groupsLogic)) =>
+            val settings = JwtAuthorizationRule.Settings(jwtDef, groupsLogic)
+            val rule = new JwtAuthorizationRule(settings)
+            Right(RuleDefinition.create[JwtAuthorizationRule](rule))
+          case (Some(_), None) =>
+            Left(RulesLevelCreationError(Message(s"Cannot create ${JwtAuthorizationRule.Name.name.show} - missing groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic)")))
+          case (None, _) =>
+            Left(cannotFindJwtDefinition(name))
+        }
+      }
+      .decoder
+  }
+}
+
+class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
+                         globalSettings: GlobalSettings)
+  extends RuleBaseDecoderWithoutAssociatedFields[JwtAuthRule] with Logging {
+
+  override protected def decoder: Decoder[RuleDefinition[JwtAuthRule]] = {
+    nameAndGroupsSimpleDecoder
+      .or(nameAndGroupsExtendedDecoder[JwtAuthRule])
+      .toSyncDecoder
+      .emapE { case (name, groupsLogicOpt) =>
+        val foundJwtDef = jwtDefinitions.items.find(_.id === name)
+        foundJwtDef match {
+          case Some(jwtDef) =>
+            val authentication = new JwtAuthenticationRule(JwtAuthenticationRule.Settings(jwtDef), globalSettings.userIdCaseSensitivity)
+            val authorization: JwtAuthorizationRule | JwtPseudoAuthorizationRule = groupsLogicOpt match {
+              case Some(groupsLogic) =>
+                new JwtAuthorizationRule(JwtAuthorizationRule.Settings(jwtDef, groupsLogic))
+              case None =>
+                logger.warn(
+                  s"""Missing groups logic settings in ${JwtAuthRule.Name.name.show} rule.
+                     |For old configs, ROR treats this as `groups_any_of: ["*"]`.
+                     |This syntax is deprecated. Add groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic),
+                     |or use ${JwtAuthRule.Name.name.show} if you only need authentication.
+                     |""".stripMargin
+                )
+                new JwtPseudoAuthorizationRule(JwtPseudoAuthorizationRule.Settings(jwtDef))
+            }
+            val rule = new JwtAuthRule(authentication, authorization)
+            Right(RuleDefinition.create(rule))
+          case None =>
+            Left(cannotFindJwtDefinition(name))
+        }
+      }
+      .decoder
+  }
+}
+
+private object JwtAuthRuleHelper {
 
   def cannotFindJwtDefinition(name: JwtDef.Name) =
     RulesLevelCreationError(Message(s"Cannot find JWT definition with name: ${name.show}"))
 
-  private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Option[GroupsLogic])] =
+  val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Option[GroupsLogic])] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .map(JwtDef.Name.apply)
       .map((_, None))
 
-  private val nameAndGroupsExtendedDecoder: Decoder[(JwtDef.Name, Option[GroupsLogic])] =
+  def nameAndGroupsExtendedDecoder[T <: Rule](implicit ruleName: RuleName[T]): Decoder[(JwtDef.Name, Option[GroupsLogic])] =
     Decoder
       .instance { c =>
         for {
           jwtDefName <- c.downField("name").as[JwtDef.Name]
-          groupsLogicDecodingResult <- GroupsLogicDecoder.decoder[JwtAuthRule].apply(c)
+          groupsLogicDecodingResult <- GroupsLogicDecoder.decoder[T].apply(c)
         } yield (jwtDefName, groupsLogicDecodingResult)
       }
       .toSyncDecoder

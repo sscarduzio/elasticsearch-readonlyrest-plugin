@@ -20,16 +20,17 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtPseudoAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseJwtRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthorizationImpersonationCustomSupport
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIds, GroupsLogic}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIds}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-final class JwtAuthorizationRule(val settings: Settings)
+// Pseudo-authorization rule should be used exclusively as part of the JwtAuthRule, when there are is no groups logic defined.
+final class JwtPseudoAuthorizationRule(val settings: Settings)
   extends AuthorizationRule
     with AuthorizationImpersonationCustomSupport
     with BaseJwtRule {
@@ -37,38 +38,31 @@ final class JwtAuthorizationRule(val settings: Settings)
   override val name: Rule.Name = JwtAuthorizationRule.Name.name
 
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    settings.groupsLogic match {
-      case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
-        processUsingJwtToken(blockContext, settings.jwt) { tokenData =>
-          authorize(blockContext, tokenData.groups, groupsLogic)
-        }
-      case _ =>
-        Task.now(RuleResult.Rejected())
+    processUsingJwtToken(blockContext, settings.jwt) { tokenData =>
+      pseudoAuthorize(blockContext, tokenData.groups)
     }
   }
 
-  private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                 result: Option[ClaimSearchResult[UniqueList[Group]]],
-                                                                 groupsLogic: GroupsLogic) = {
+  private def pseudoAuthorize[B <: BlockContext](blockContext: B,
+                                                 result: Option[ClaimSearchResult[UniqueList[Group]]]) = {
     result match {
       case None | Some(NotFound) =>
-        Left(())
+        Right(blockContext)
       case Some(Found(groups)) =>
         (for {
           nonEmptyGroups <- UniqueNonEmptyList.from(groups)
-          matchedGroups <- groupsLogic.availableGroupsFrom(nonEmptyGroups)
-          if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))
-        } yield blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))).toRight(())
+          if blockContext.isCurrentGroupEligible(GroupIds.from(nonEmptyGroups))
+        } yield blockContext).toRight(())
     }
   }
 
 }
 
-object JwtAuthorizationRule {
+object JwtPseudoAuthorizationRule {
 
   implicit case object Name extends RuleName[JwtAuthorizationRule] {
     override val name = Rule.Name("jwt_authorization")
   }
 
-  final case class Settings(jwt: JwtDef, groupsLogic: GroupsLogic)
+  final case class Settings(jwt: JwtDef)
 }

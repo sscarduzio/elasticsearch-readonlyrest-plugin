@@ -31,7 +31,8 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 
 final class JwtAuthenticationRule(val settings: Settings,
-                                  override val userIdCaseSensitivity: CaseSensitivity)
+                                  override val userIdCaseSensitivity: CaseSensitivity,
+                                  disabledCallsToExternalAuthenticationService: Boolean = false)
   extends AuthenticationRule
     with AuthenticationImpersonationCustomSupport
     with BaseJwtRule {
@@ -41,9 +42,9 @@ final class JwtAuthenticationRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    processUsingJwtToken(blockContext, settings.jwt) { tokenData =>
+    processUsingJwtToken(blockContext, settings.jwt, disabledCallsToExternalAuthenticationService) { tokenData =>
       authenticate(blockContext, tokenData.userId, tokenData.payload)
-    }.flatMap(finalize(_, settings.jwt))
+    }
   }
 
   private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
@@ -55,6 +56,9 @@ final class JwtAuthenticationRule(val settings: Settings,
       case Some(Found(userId)) => Right(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(userId))))
     }).map(_.withUserMetadata(_.withJwtToken(payload)))
   }
+
+  def withDisabledCallsToExternalAuthenticationService =
+    new JwtAuthenticationRule(settings, userIdCaseSensitivity, disabledCallsToExternalAuthenticationService = true)
 
 }
 

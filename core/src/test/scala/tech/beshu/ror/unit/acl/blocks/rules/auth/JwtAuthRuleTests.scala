@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationSer
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule, JwtPseudoAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -741,15 +741,14 @@ class JwtAuthRuleTests
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = configuredGroups match {
-      case Some(groupsLogic) =>
-        new JwtAuthRule(
-          new JwtAuthenticationRule(JwtAuthenticationRule.Settings(configuredJwtDef), CaseSensitivity.Enabled),
-          new JwtAuthorizationRule(JwtAuthorizationRule.Settings(configuredJwtDef, groupsLogic)),
-        )
-      case None =>
-        new JwtAuthenticationRule(JwtAuthenticationRule.Settings(configuredJwtDef), CaseSensitivity.Enabled)
+    val authorization: JwtAuthorizationRule | JwtPseudoAuthorizationRule = configuredGroups match {
+      case Some(groupsLogic) => new JwtAuthorizationRule(JwtAuthorizationRule.Settings(configuredJwtDef, groupsLogic))
+      case None => new JwtPseudoAuthorizationRule(JwtPseudoAuthorizationRule.Settings(configuredJwtDef))
     }
+    val rule = new JwtAuthRule(
+      new JwtAuthenticationRule(JwtAuthenticationRule.Settings(configuredJwtDef), CaseSensitivity.Enabled),
+      authorization,
+    )
 
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroup.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
