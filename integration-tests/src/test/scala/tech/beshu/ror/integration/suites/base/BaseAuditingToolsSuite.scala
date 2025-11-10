@@ -56,7 +56,7 @@ trait BaseAuditingToolsSuite
   protected lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
   private lazy val dataStreamManager = new DataStreamManager(destNodeClientProvider.adminClient, esVersionUsed)
 
-  private lazy val adminAuditManagers =
+  protected lazy val adminAuditManagers =
     (List(baseAuditIndexName) ++ baseAuditDataStreamName.toList)
       .map { indexName =>
         (indexName, new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, indexName))

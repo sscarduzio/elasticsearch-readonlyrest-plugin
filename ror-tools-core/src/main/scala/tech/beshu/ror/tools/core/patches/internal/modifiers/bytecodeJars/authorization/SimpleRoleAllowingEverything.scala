@@ -27,7 +27,7 @@ private [patches] object SimpleRoleAllowingEverything extends BytecodeJarModifie
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
-      filePathString = "org/elasticsearch/xpack/security/authz/permission/SimpleRole.class",
+      filePathString = "org/elasticsearch/xpack/core/security/authz/permission/SimpleRole.class",
       processFileContent = doCreatePermissiveSimpleRole
     )
   }

@@ -14,6 +14,7 @@ readonlyrest:
             another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
             tid: "{TASK_ID}"
             bytes: "{CONTENT_LENGTH_IN_BYTES}"
+            block: "{REASON}"
       - type: data_stream
         data_stream: "audit_data_stream"
         serializer:
@@ -25,6 +26,7 @@ readonlyrest:
             another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
             tid: "{TASK_ID}"
             bytes: "{CONTENT_LENGTH_IN_BYTES}"
+            block: "{REASON}"
 
   access_control_rules:
 
@@ -37,6 +39,8 @@ readonlyrest:
       methods: GET
       auth_key: username:dev
       indices: ["twitter"]
+      audit:
+        enabled: true ## twitter audit toggle
 
     - name: "Rule 2"
       verbosity: error
