@@ -18,7 +18,7 @@ package tech.beshu.ror.utils.containers.images
 
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps.emptyPluginInstallationSteps
-import tech.beshu.ror.utils.containers.images.Elasticsearch.fromResourceBy
+import tech.beshu.ror.utils.containers.images.Elasticsearch.{esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.misc.Version
@@ -126,14 +126,14 @@ class XpackSecurityPlugin(esVersion: String,
         )
     }
 
-    private def createKeystoreCommand(esConfig: Elasticsearch.Config) = s"${esConfig.serializedEsDir}/bin/elasticsearch-keystore create"
+    private def createKeystoreCommand(esConfig: Elasticsearch.Config) = s"${esConfig.esDir.toString()}/bin/elasticsearch-keystore create"
 
     private def addToKeystoreLinuxCommand(esConfig: Elasticsearch.Config, key: String, value: String) = {
-      s"printf '$value\\n' | ${esConfig.serializedEsDir}/bin/elasticsearch-keystore add --force $key"
+      s"printf '$value\\n' | ${esConfig.esDir.toString()}/bin/elasticsearch-keystore add --force $key"
     }
 
     private def addToKeystoreWindowsCommand(esConfig: Elasticsearch.Config, key: String, value: String) = {
-      s"""cmd /c "echo|set /p="$value" | "${esConfig.serializedEsDir}\\bin\\elasticsearch-keystore.bat" add --force $key" """
+      s"""cmd /c "echo|set /p="$value" | "${esConfig.esDir}\\bin\\elasticsearch-keystore.bat" add --force $key" """
     }
   }
 }

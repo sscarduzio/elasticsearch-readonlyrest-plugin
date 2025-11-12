@@ -45,11 +45,13 @@ object Elasticsearch {
         WindowsEsDirectoryManager.configPath(config.clusterName, config.nodeName)
     }
 
-    def serializedEsDir: String = config.esInstallationType match {
-      case EsInstallationType.EsDockerImage | EsInstallationType.UbuntuDockerImageWithEsFromApt =>
-        (os.root / "usr" / "share" / "elasticsearch").toString
+    def esDir: Path = config.esInstallationType match {
+      case EsInstallationType.EsDockerImage =>
+        os.root / "usr" / "share" / "elasticsearch"
+      case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
+        os.root / "usr" / "share" / "elasticsearch"
       case EsInstallationType.NativeWindowsProcess =>
-        WindowsEsDirectoryManager.esPath(config.clusterName, config.nodeName).toString.replace("\\", "/")
+        WindowsEsDirectoryManager.esPath(config.clusterName, config.nodeName)
     }
 
     def tempFilePath: Path = config.esInstallationType match {
@@ -211,7 +213,7 @@ class Elasticsearch(val esVersion: String,
       .user("root")
       // ES is started as Docker CMD, so elasticsearch user must have permission to read ES files.
       // In standard Ubuntu with ES from apt it is not necessary, because ES is executed from systemd
-      .run(s"chown -R elasticsearch:elasticsearch ${config.serializedEsDir}")
+      .run(s"chown -R elasticsearch:elasticsearch ${config.esDir.toString()}")
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .run("rm /etc/elasticsearch/elasticsearch.keystore")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
