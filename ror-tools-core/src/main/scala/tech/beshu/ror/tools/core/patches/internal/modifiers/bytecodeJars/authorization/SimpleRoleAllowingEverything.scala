@@ -50,8 +50,8 @@ private [patches] object SimpleRoleAllowingEverything extends BytecodeJarModifie
       name match {
         case "checkIndicesAction" =>
           new CheckIndicesActionMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
-        case "checkIndicesPrivileges" =>
-          new CheckIndicesPrivilegesMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
+//        case "checkIndicesPrivileges" =>
+//          new CheckIndicesPrivilegesMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
         case "checkClusterAction" =>
           new CheckClusterActionMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
         case "grants" =>
