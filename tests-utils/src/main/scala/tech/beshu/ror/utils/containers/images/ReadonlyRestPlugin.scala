@@ -121,8 +121,8 @@ class ReadonlyRestPlugin(esVersion: String,
     def installRorPlugin(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
       pluginInstallationSteps
         .run(
-          linuxCommand = s"${esConfig.esDir.toString()}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
-          windowsCommand = s"${esConfig.esDir.toString()}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
+          linuxCommand = s"${esConfig.serializedEsDir}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
+          windowsCommand = s"${esConfig.serializedEsDir}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
         )
     }
 
@@ -130,12 +130,12 @@ class ReadonlyRestPlugin(esVersion: String,
       pluginInstallationSteps
         .user("root")
         .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
-          linuxCommand = s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
-          windowsCommand = s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+          linuxCommand = s"${esConfig.serializedEsDir}/jdk/bin/java -jar ${esConfig.serializedEsDir}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+          windowsCommand = s"${esConfig.serializedEsDir}/jdk/bin/java -jar ${esConfig.serializedEsDir}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
         )
         .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
-          linuxCommand = s"$$JAVA_HOME/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
-          windowsCommand =  s"""%JAVA_HOME%\\bin\\java -jar "${esConfig.esDir}\\plugins\\readonlyrest\\ror-tools.jar" patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes""",
+          linuxCommand = s"$$JAVA_HOME/bin/java -jar ${esConfig.serializedEsDir}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+          windowsCommand =  s"""%JAVA_HOME%\\bin\\java -jar "${esConfig.serializedEsDir}\\plugins\\readonlyrest\\ror-tools.jar" patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes""",
         )
         .user("elasticsearch")
     }
@@ -150,8 +150,8 @@ class ReadonlyRestPlugin(esVersion: String,
           .copyFile(esConfig.esConfigDir / "ror-truststore.bcfks", fromResourceBy(name = "ror-truststore.bcfks"))
           .copyFile(esConfig.esConfigDir / "elastic-certificates.bcfks", fromResourceBy(name = "elastic-certificates.bcfks"))
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 10, 0),
-            linuxCommand = s"cat ${esConfig.esConfigDir.toString()}/additional-permissions.policy >> ${esConfig.esDir.toString()}/jdk/conf/security/java.policy",
-            windowsCommand = s"type \"${esConfig.esConfigDir.toString()}\\additional-permissions.policy\" >> \"${esConfig.esDir.toString()}\\jdk\\conf\\security\\java.policy\"",
+            linuxCommand = s"cat ${esConfig.esConfigDir.toString()}/additional-permissions.policy >> ${esConfig.serializedEsDir}/jdk/conf/security/java.policy",
+            windowsCommand = s"type \"${esConfig.esConfigDir.toString()}\\additional-permissions.policy\" >> \"${esConfig.serializedEsDir}\\jdk\\conf\\security\\java.policy\"",
           )
       }
       else {
