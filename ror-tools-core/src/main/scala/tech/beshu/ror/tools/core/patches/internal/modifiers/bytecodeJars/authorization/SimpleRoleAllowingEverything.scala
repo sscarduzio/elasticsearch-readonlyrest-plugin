@@ -27,7 +27,7 @@ private [patches] object SimpleRoleAllowingEverything extends BytecodeJarModifie
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
-      filePathString = "org/elasticsearch/xpack/security/authz/permission/SimpleRole.class",
+      filePathString = "org/elasticsearch/xpack/core/security/authz/permission/SimpleRole.class",
       processFileContent = doCreatePermissiveSimpleRole
     )
   }
@@ -50,8 +50,6 @@ private [patches] object SimpleRoleAllowingEverything extends BytecodeJarModifie
       name match {
         case "checkIndicesAction" =>
           new CheckIndicesActionMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
-//        case "checkIndicesPrivileges" =>
-//          new CheckIndicesPrivilegesMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
         case "checkClusterAction" =>
           new CheckClusterActionMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
         case "grants" =>
@@ -78,27 +76,6 @@ private [patches] object SimpleRoleAllowingEverything extends BytecodeJarModifie
       underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/SimpleRole;", null, label0, label1, 0)
       underlying.visitLocalVariable("action", "Ljava/lang/String;", null, label0, label1, 1)
       underlying.visitMaxs(1, 2)
-      underlying.visitEnd()
-    }
-  }
-
-  private class CheckIndicesPrivilegesMethodReturningTrue(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
-
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      val label0 = new Label()
-      underlying.visitLabel(label0)
-      underlying.visitInsn(Opcodes.ICONST_1)
-      underlying.visitInsn(Opcodes.IRETURN)
-      val label1 = new Label()
-      underlying.visitLabel(label1)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/SimpleRole;", null, label0, label1, 0)
-      underlying.visitLocalVariable("checkForIndexPatterns", "Ljava/util/Set;", "Ljava/util/Set<Ljava/lang/String;>;", label0, label1, 1)
-      underlying.visitLocalVariable("allowRestrictedIndices", "Z", null, label0, label1, 2)
-      underlying.visitLocalVariable("checkForPrivileges", "Ljava/util/Set;", "Ljava/util/Set<Ljava/lang/String;>;", label0, label1, 3)
-      underlying.visitLocalVariable("resourcePrivilegesMapBuilder", "Lorg/elasticsearch/xpack/core/security/authz/permission/ResourcePrivilegesMap$Builder;", null, label0, label1, 4)
-      underlying.visitMaxs(1, 5)
       underlying.visitEnd()
     }
   }
