@@ -19,7 +19,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthorizationRule, JwtPseudoAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.*
@@ -66,7 +66,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(None)
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -94,7 +94,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(None)
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -189,7 +189,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(None)
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -218,7 +218,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(None)
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -246,7 +246,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(None)
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -275,7 +275,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(None)
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -303,7 +303,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(Some(domain.Jwt.ClaimName(jsonPathFrom("user"))))
             rule.authentication.settings.jwt.groupsConfig should be(None)
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -333,7 +333,7 @@ class JwtAuthRuleSettingsTests
               rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.authentication.settings.jwt.userClaim should be(None)
               rule.authentication.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)))
-              //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+              rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
             }
           )
         }
@@ -366,7 +366,7 @@ class JwtAuthRuleSettingsTests
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups")),
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("group_names")))
             )))
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -394,7 +394,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("https://{domain}/claims/roles")), None)))
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -424,7 +424,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)))
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -453,7 +453,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)))
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -484,7 +484,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)))
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -514,7 +514,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Ec]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)))
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -549,7 +549,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")),None)))
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }
@@ -587,7 +587,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.authentication.settings.jwt.userClaim should be(None)
             rule.authentication.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")),None)))
-            //rule.authorization.settings.groupsLogic should be(Groups.NotDefined)
+            rule.authorization.asInstanceOf[JwtPseudoAuthorizationRule]
           }
         )
       }

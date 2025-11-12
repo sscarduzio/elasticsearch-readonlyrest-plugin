@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 // Pseudo-authorization rule should be used exclusively as part of the JwtAuthRule, when there are is no groups logic defined.
+// It preserves the kbn_auth rule behavior from before introducing separate authn and authz rules.
 final class JwtPseudoAuthorizationRule(val settings: Settings)
   extends AuthorizationRule
     with AuthorizationImpersonationCustomSupport
