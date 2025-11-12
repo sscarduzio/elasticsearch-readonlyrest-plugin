@@ -54,8 +54,6 @@ private [patches] object SimpleRoleAllowingEverything extends BytecodeJarModifie
           new CheckClusterActionMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
         case "grants" =>
           new GrantsMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
-        case "checkApplicationResourcePrivileges" =>
-          new CheckApplicationResourcePrivilegesMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
@@ -114,28 +112,6 @@ private [patches] object SimpleRoleAllowingEverything extends BytecodeJarModifie
       underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/SimpleRole;", null, label0, label1, 0)
       underlying.visitLocalVariable("clusterPrivilege", "Lorg/elasticsearch/xpack/core/security/authz/privilege/ClusterPrivilege;", null, label0, label1, 1)
       underlying.visitMaxs(1, 2)
-      underlying.visitEnd()
-    }
-  }
-
-  private class CheckApplicationResourcePrivilegesMethodReturningTrue(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
-
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      val label0 = new Label()
-      underlying.visitLabel(label0)
-      underlying.visitInsn(Opcodes.ICONST_1)
-      underlying.visitInsn(Opcodes.IRETURN)
-      val label1 = new Label()
-      underlying.visitLabel(label1)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/SimpleRole;", null, label0, label1, 0)
-      underlying.visitLocalVariable("applicationName", "Ljava/lang/String;", null, label0, label1, 1)
-      underlying.visitLocalVariable("checkForResources", "Ljava/util/Set;", "Ljava/util/Set<Ljava/lang/String;>;", label0, label1, 2)
-      underlying.visitLocalVariable("checkForPrivilegeNames", "Ljava/util/Set;", "Ljava/util/Set<Ljava/lang/String;>;", label0, label1, 3)
-      underlying.visitLocalVariable("storedPrivileges", "Ljava/util/Collection;", "Ljava/util/Collection<Lorg/elasticsearch/xpack/core/security/authz/privilege/ApplicationPrivilegeDescriptor;>;", label0, label1, 4)
-      underlying.visitLocalVariable("resourcePrivilegesMapBuilder", "Lorg/elasticsearch/xpack/core/security/authz/permission/ResourcePrivilegesMap$Builder;", null, label0, label1, 5)
-      underlying.visitMaxs(1, 6)
       underlying.visitEnd()
     }
   }
