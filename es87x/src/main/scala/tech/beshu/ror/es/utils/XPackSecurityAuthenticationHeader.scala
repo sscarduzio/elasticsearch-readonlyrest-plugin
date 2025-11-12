@@ -30,7 +30,7 @@ object XPackSecurityAuthenticationHeader {
 
   def createXpackUserAuthenticationHeader(nodeName: String) = new Header(
     Header.Name(nes("_xpack_security_authentication")),
-    getAuthenticationHeaderValue(nodeName, "_xpack", isInternal = false)
+    getAuthenticationHeaderValue(nodeName, "ROR", isInternal = false)
   )
 
   def createXpackSecurityAuthenticationHeader(nodeName: String) = new Header(
