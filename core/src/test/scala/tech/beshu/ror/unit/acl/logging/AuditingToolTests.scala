@@ -128,6 +128,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 Block.Name("mock-block"),
                 Block.Policy.Forbid(),
                 Block.Verbosity.Info,
+                Block.Audit.Enabled,
                 NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
               ),
               GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
@@ -248,6 +249,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         Block.Name("mock-block"),
         policy,
         verbosity,
+        Block.Audit.Enabled,
         NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
       ),
       GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
