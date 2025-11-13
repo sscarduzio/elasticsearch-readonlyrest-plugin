@@ -66,8 +66,9 @@ object WindowsEsSetup extends LazyLogging {
       val destBetterFile = File(destination.toNIO)
       file.copyTo(destBetterFile, overwrite = true)
     case PluginInstallationStep.RunCommand(_, windowsCommand) =>
-      logger.info(s"Step ${index + 1}/$numberOfSteps: run command $windowsCommand")
-      os.proc("cmd", "/c", windowsCommand).call(
+      val commandWithSanitizedPaths = windowsCommand.replace("\\", "/")
+      logger.info(s"Step ${index + 1}/$numberOfSteps: run command $commandWithSanitizedPaths")
+      os.proc("cmd", "/c", commandWithSanitizedPaths).call(
         cwd = esPath(elasticsearch.config.clusterName, elasticsearch.config.nodeName),
         stdout = os.ProcessOutput.Readlines(line => logger.info(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
         stderr = os.ProcessOutput.Readlines(line => logger.error(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),

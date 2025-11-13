@@ -102,7 +102,7 @@ class CrossClusterCallsSuite
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
         "he queries local and remote indices" in eventually {
-          val result = user3SearchManager.search("private1:audit*", "metrics*")
+          val result = user3SearchManager.search("private1:audit*" :: "metrics*" :: Nil)
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(
             Set("metrics_2020-03-26", "metrics_2020-03-27", "private1:audit_2020-03-26", "private1:audit_2020-03-27")
@@ -186,7 +186,7 @@ class CrossClusterCallsSuite
     "return empty response" when {
       "user has no permission to do so" when {
         "he queries local and remote indices patterns" in {
-          val result = user2SearchManager.search("private1:audit*", "metrics*")
+          val result = user2SearchManager.search("private1:audit*" :: "metrics*" :: Nil)
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
@@ -206,7 +206,7 @@ class CrossClusterCallsSuite
     "return 404" when {
       "user has no permission to do so" when {
         "he queries local and remote indices" in {
-          val result = user2SearchManager.search("private:audit_2020-03-26", "metrics_2020-03-26")
+          val result = user2SearchManager.search("private:audit_2020-03-26" :: "metrics_2020-03-26" :: Nil)
           result should have statusCode 404
         }
         "he queries remote indices only" in {

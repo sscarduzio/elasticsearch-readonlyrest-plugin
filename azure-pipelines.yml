@@ -46,9 +46,26 @@ pool:
 
 stages:
 
+  - stage: ES_S3_UP
+    displayName: 'Upload missing ROR ES dependencies'
+    dependsOn: [ ]
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
+    jobs:
+      - job:
+        steps:
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              ci/upload_es_artifacts.sh
+            continueOnError: true
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
-    dependsOn: [ ]
+    dependsOn: [ ES_S3_UP ]
     condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: CVE_CHECK
@@ -97,7 +114,7 @@ stages:
 
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
-    dependsOn: [ ]
+    dependsOn: [ ES_S3_UP ]
     condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: 
@@ -121,7 +138,7 @@ stages:
 
   - stage: TEST
     displayName: 'Run all tests'
-    dependsOn: [ ]
+    dependsOn: [ ES_S3_UP ]
     condition:
       and(
         succeeded(),
