@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, EnhancedDataStreamManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, EsModule, Version}
 
 import java.time.Instant
 
@@ -85,35 +85,35 @@ class SearchApiSuite
         }
       }
       "data stream is being searched" when {
-        "full name passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "full name passed" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search("test_logs_ds")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "name with wildcard passed" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search("test*")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "full alias name passed" excludeES (allEs6x, allEs7xBelowEs714x) in {
+        "full alias name passed" excludeES(allEs6x, allEs7xBelowEs714x) in {
           val result = user1SearchManager.search("alias_ds")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "alias name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs714x) in {
+        "alias name with wildcard passed" excludeES(allEs6x, allEs7xBelowEs714x) in {
           val result = user1SearchManager.search("alias*")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "backing index name passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "backing index name passed" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val backingIndices =
             adminIndexManager.resolve("test_logs_ds")
               .dataStreams
@@ -130,7 +130,7 @@ class SearchApiSuite
             }
           results.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "backing index name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "backing index name with wildcard passed" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val backingIndices =
             adminIndexManager.resolve("test_logs_ds")
               .dataStreams
@@ -149,7 +149,7 @@ class SearchApiSuite
         }
       }
       "all requested indices are allowed" in {
-        val result = user2SearchManager.search("sys_logs*", "-*old")
+        val result = user2SearchManager.search("sys_logs*" :: "-*old" :: Nil)
 
         result should have statusCode 200
         val searchResults = result.searchHits.map(_("_source").obj("message").str)
@@ -161,13 +161,46 @@ class SearchApiSuite
         val result = user2SearchManager.search("business_logs*")
 
         result should have statusCode 200
-        result.searchHits should be (List.empty)
+        result.searchHits should be(List.empty)
       }
       "excluded index is not allowed" in {
-        val result = user2SearchManager.search("*logs*", "-sys_logs*")
+        val result = user2SearchManager.search("*logs*" :: "-sys_logs*" :: Nil)
 
         result should have statusCode 200
         result.searchHits should be(List.empty)
+      }
+    }
+    if (EsModule.doesCurrentModuleMatch(allEs6x, allEs7xBelowEs74x)) {
+      "return 500" when {
+        "invalid JSON is passed in body" in {
+          val result = user2SearchManager.search(
+            indexName = "*logs*",
+            queryString =
+              """{
+                |  "query": { BAD_JSON
+                |    "match_all": {}
+                |  }
+                |}""".stripMargin
+          )
+
+          result should have statusCode 500
+        }
+      }
+    } else {
+      "return 400" when {
+        "invalid JSON is passed in body" in {
+          val result = user2SearchManager.search(
+            indexName = "*logs*",
+            queryString =
+              """{
+                |  "query": { BAD_JSON
+                |    "match_all": {}
+                |  }
+                |}""".stripMargin
+          )
+
+          result should have statusCode 400
+        }
       }
     }
   }
@@ -320,7 +353,7 @@ object SearchApiSuite {
   }
 
   private def createSearchEndpointIndicesAndExampleDocs(indexManager: IndexManager,
-                                           documentManager: DocumentManager) = {
+                                                        documentManager: DocumentManager) = {
     documentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
     documentManager.createDoc("logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
     documentManager.createDoc("logs-0002", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))

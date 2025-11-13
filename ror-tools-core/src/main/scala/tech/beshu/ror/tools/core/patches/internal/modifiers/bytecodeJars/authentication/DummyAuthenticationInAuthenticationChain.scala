@@ -79,93 +79,48 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
     private class SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual8120(underlying: MethodVisitor)
       extends MethodVisitor(Opcodes.ASM9) {
 
+      // todo: comments and port this to other versions
       override def visitCode(): Unit = {
         underlying.visitCode()
-
         val label0 = new Label()
         underlying.visitLabel(label0)
-
-        // context.getThreadContext().addResponseHeader("X-elastic-product", "Elasticsearch");
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
-        underlying.visitMethodInsn(
-          Opcodes.INVOKEVIRTUAL,
-          "org/elasticsearch/xpack/security/authc/Authenticator$Context",
-          "getThreadContext",
-          "()Lorg/elasticsearch/common/util/concurrent/ThreadContext;",
-          false
-        )
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/authc/Authenticator$Context", "getThreadContext", "()Lorg/elasticsearch/common/util/concurrent/ThreadContext;", false)
         underlying.visitLdcInsn("X-elastic-product")
         underlying.visitLdcInsn("Elasticsearch")
-        underlying.visitMethodInsn(
-          Opcodes.INVOKEVIRTUAL,
-          "org/elasticsearch/common/util/concurrent/ThreadContext",
-          "addResponseHeader",
-          "(Ljava/lang/String;Ljava/lang/String;)V",
-          false
-        )
-
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/common/util/concurrent/ThreadContext", "addResponseHeader", "(Ljava/lang/String;Ljava/lang/String;)V", false)
         val label1 = new Label()
         underlying.visitLabel(label1)
-
-        // final Authentication auth = Authentication.newInternalAuthentication(InternalUsers.XPACK_USER, TransportVersion.current(), "any");
-        underlying.visitFieldInsn(
-          Opcodes.GETSTATIC,
-          "org/elasticsearch/xpack/core/security/user/InternalUsers",
-          "XPACK_USER",
-          "Lorg/elasticsearch/xpack/core/security/user/InternalUser;"
-        )
+        underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/xpack/core/security/user/User")
+        underlying.visitInsn(Opcodes.DUP)
+        underlying.visitLdcInsn("ROR")
+        underlying.visitInsn(Opcodes.ICONST_0)
+        underlying.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
+        underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "org/elasticsearch/xpack/core/security/user/User", "<init>", "(Ljava/lang/String;[Ljava/lang/String;)V", false)
+        underlying.visitLdcInsn("any")
         val label2 = new Label()
         underlying.visitLabel(label2)
-        underlying.visitMethodInsn(
-          Opcodes.INVOKESTATIC,
-          "org/elasticsearch/TransportVersion",
-          "current",
-          "()Lorg/elasticsearch/TransportVersion;",
-          false
-        )
-        underlying.visitLdcInsn("any")
+        underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/core/security/authc/Authentication$RealmRef", "newAnonymousRealmRef", "(Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;", false)
         val label3 = new Label()
         underlying.visitLabel(label3)
-        underlying.visitMethodInsn(
-          Opcodes.INVOKESTATIC,
-          "org/elasticsearch/xpack/core/security/authc/Authentication",
-          "newInternalAuthentication",
-          "(Lorg/elasticsearch/xpack/core/security/user/InternalUser;Lorg/elasticsearch/TransportVersion;Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
-          false
-        )
+        underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/core/security/authc/Authentication", "newRealmAuthentication", "(Lorg/elasticsearch/xpack/core/security/user/User;Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;", false)
         underlying.visitVarInsn(Opcodes.ASTORE, 3)
-
         val label4 = new Label()
         underlying.visitLabel(label4)
-
-        // this.maybeLookupRunAsUser(context, auth, listener);
         underlying.visitVarInsn(Opcodes.ALOAD, 0)
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
         underlying.visitVarInsn(Opcodes.ALOAD, 3)
         underlying.visitVarInsn(Opcodes.ALOAD, 2)
-        underlying.visitMethodInsn(
-          Opcodes.INVOKEVIRTUAL,
-          "org/elasticsearch/xpack/security/authc/AuthenticatorChain",
-          "maybeLookupRunAsUser",
-          "(Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;Lorg/elasticsearch/xpack/core/security/authc/Authentication;Lorg/elasticsearch/action/ActionListener;)V",
-          false
-        )
-
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/authc/AuthenticatorChain", "maybeLookupRunAsUser", "(Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;Lorg/elasticsearch/xpack/core/security/authc/Authentication;Lorg/elasticsearch/action/ActionListener;)V", false)
         val label5 = new Label()
         underlying.visitLabel(label5)
-
-        // return;
         underlying.visitInsn(Opcodes.RETURN)
-
         val label6 = new Label()
         underlying.visitLabel(label6)
-
-        // locals
         underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;", null, label0, label6, 0)
         underlying.visitLocalVariable("context", "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;", null, label0, label6, 1)
         underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;", label0, label6, 2)
         underlying.visitLocalVariable("auth", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label4, label6, 3)
-
         underlying.visitMaxs(4, 4)
         underlying.visitEnd()
       }
@@ -180,7 +135,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         val label0 = new Label()
         underlying.visitLabel(label0)
 
-        // context.getThreadContext().addResponseHeader("X-elastic-product", "Elasticsearch");
+        // context.getThreadContext().addResponseHeader("X-elastic-product", "Elasticsearch")
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
         underlying.visitMethodInsn(
           Opcodes.INVOKEVIRTUAL,
@@ -203,7 +158,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         underlying.visitLabel(label1)
 
         // final Authentication auth =
-        //   Authentication.newInternalAuthentication(InternalUsers.XPACK_USER, TransportVersion.current(), "any");
+        //   Authentication.newInternalAuthentication(InternalUsers.XPACK_USER, TransportVersion.current(), "any")
         underlying.visitFieldInsn(
           Opcodes.GETSTATIC,
           "org/elasticsearch/xpack/core/security/user/InternalUsers",
@@ -230,7 +185,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         val label2 = new Label()
         underlying.visitLabel(label2)
 
-        // this.maybeLookupRunAsUser(context, auth, listener);
+        // this.maybeLookupRunAsUser(context, auth, listener)
         underlying.visitVarInsn(Opcodes.ALOAD, 0)
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
         underlying.visitVarInsn(Opcodes.ALOAD, 4)
@@ -273,7 +228,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         val label0 = new Label()
         underlying.visitLabel(label0)
 
-        // context.getThreadContext().addResponseHeader("X-elastic-product", "Elasticsearch");
+        // context.getThreadContext().addResponseHeader("X-elastic-product", "Elasticsearch")
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
         underlying.visitMethodInsn(
           Opcodes.INVOKEVIRTUAL,
@@ -296,7 +251,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         underlying.visitLabel(label1)
 
         // final Authentication auth =
-        //   Authentication.newInternalAuthentication(XPackUser.INSTANCE, TransportVersion.CURRENT, "any");
+        //   Authentication.newInternalAuthentication(XPackUser.INSTANCE, TransportVersion.CURRENT, "any")
         underlying.visitFieldInsn(
           Opcodes.GETSTATIC,
           "org/elasticsearch/xpack/core/security/user/XPackUser",
@@ -322,7 +277,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         val label2 = new Label()
         underlying.visitLabel(label2)
 
-        // this.maybeLookupRunAsUser(context, auth, listener);
+        // this.maybeLookupRunAsUser(context, auth, listener)
         underlying.visitVarInsn(Opcodes.ALOAD, 0)
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
         underlying.visitVarInsn(Opcodes.ALOAD, 4)
@@ -365,7 +320,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         val label0 = new Label()
         underlying.visitLabel(label0)
 
-        // context.getThreadContext().addResponseHeader("X-elastic-product", "Elasticsearch");
+        // context.getThreadContext().addResponseHeader("X-elastic-product", "Elasticsearch")
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
         underlying.visitMethodInsn(
           Opcodes.INVOKEVIRTUAL,
@@ -388,7 +343,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         underlying.visitLabel(label1)
 
         // final Authentication auth =
-        //   Authentication.newInternalAuthentication(XPackUser.INSTANCE, Version.CURRENT, "any");
+        //   Authentication.newInternalAuthentication(XPackUser.INSTANCE, Version.CURRENT, "any")
         underlying.visitFieldInsn(
           Opcodes.GETSTATIC,
           "org/elasticsearch/xpack/core/security/user/XPackUser",
@@ -414,7 +369,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         val label2 = new Label()
         underlying.visitLabel(label2)
 
-        // this.maybeLookupRunAsUser(context, auth, listener);
+        // this.maybeLookupRunAsUser(context, auth, listener)
         underlying.visitVarInsn(Opcodes.ALOAD, 0)
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
         underlying.visitVarInsn(Opcodes.ALOAD, 4)
@@ -457,7 +412,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         val label0 = new Label()
         underlying.visitLabel(label0)
 
-        // context.getThreadContext().addResponseHeader("X-elastic-product", "Elasticsearch");
+        // context.getThreadContext().addResponseHeader("X-elastic-product", "Elasticsearch")
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
         underlying.visitMethodInsn(
           Opcodes.INVOKEVIRTUAL,
@@ -479,7 +434,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         val label1 = new Label()
         underlying.visitLabel(label1)
 
-        // final Authentication.RealmRef authenticatedBy = new RealmRef("__attach", "__attach", this.nodeName);
+        // final Authentication.RealmRef authenticatedBy = new RealmRef("__attach", "__attach", this.nodeName)
         underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/xpack/core/security/authc/Authentication$RealmRef")
         underlying.visitInsn(Opcodes.DUP)
         underlying.visitLdcInsn("__attach")
@@ -504,7 +459,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         underlying.visitLabel(label2)
 
         // final Authentication auth =
-        //   new Authentication(XPackUser.INSTANCE, authenticatedBy, null, Version.CURRENT);
+        //   new Authentication(XPackUser.INSTANCE, authenticatedBy, null, Version.CURRENT)
         underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/xpack/core/security/authc/Authentication")
         underlying.visitInsn(Opcodes.DUP)
         underlying.visitFieldInsn(
@@ -533,7 +488,7 @@ private[patches] class DummyAuthenticationInAuthenticationChain(esVersion: SemVe
         val label3 = new Label()
         underlying.visitLabel(label3)
 
-        // this.maybeLookupRunAsUser(context, auth, listener);
+        // this.maybeLookupRunAsUser(context, auth, listener)
         underlying.visitVarInsn(Opcodes.ALOAD, 0)
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
         underlying.visitVarInsn(Opcodes.ALOAD, 5)
