@@ -60,7 +60,7 @@ object EcsV1AuditLogSerializer {
       ),
     ),
     withPrefix("user")(
-      AuditFieldPath("name") -> AuditFieldValueDescriptor.User,
+      AuditFieldPath("name") -> AuditFieldValueDescriptor.LoggedUser,
       withPrefix("effective")(
         AuditFieldPath("name") -> AuditFieldValueDescriptor.ImpersonatedByUser,
       ),
