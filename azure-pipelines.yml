@@ -4,6 +4,7 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
+  isNewES: $[or(contains(variables['Build.SourceBranch'], 'newes/'), contains(variables['System.PullRequest.SourceBranch'], 'newes/'))]
   dependencyCheckCacheKey: $[format('dependency-check-v1-{0:yyyyMM}', pipeline.startTime)]
   dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
 
@@ -49,7 +50,7 @@ stages:
   - stage: ES_S3_UP
     displayName: 'Upload missing ROR ES dependencies'
     dependsOn: [ ]
-    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'), eq(variables.isNewES, true))
     jobs:
       - job:
         steps:
@@ -66,7 +67,7 @@ stages:
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
     dependsOn: [ ES_S3_UP ]
-    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
+    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: CVE_CHECK
         steps:
@@ -115,7 +116,7 @@ stages:
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
     dependsOn: [ ES_S3_UP ]
-    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'))
+    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: 
         steps:
@@ -141,7 +142,7 @@ stages:
     dependsOn: [ ES_S3_UP ]
     condition:
       and(
-        succeeded(),
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
         or(
           ne(variables['Build.Reason'], 'Manual'),
           and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
