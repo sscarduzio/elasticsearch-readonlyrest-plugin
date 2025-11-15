@@ -40,7 +40,7 @@ object WindowsEsSetup extends LazyLogging {
 
   def prepareEs(elasticsearch: Elasticsearch): Unit = {
     // The ES zip file sometimes cannot be unzipped when running CI job. In that case we delete the downloaded file and try again.
-    withRetries(maxRetries = 3, cleanBeforeRetrying = cleanDownloadsDirectory(elasticsearch.esVersion)) {
+    withRetries(maxRetries = 3, cleanBeforeRetrying = cleanDownloadsDirectory()) {
       downloadEsZipFileWithProgress(elasticsearch.esVersion)
       unzipEs(elasticsearch.esVersion, elasticsearch.config)
     }

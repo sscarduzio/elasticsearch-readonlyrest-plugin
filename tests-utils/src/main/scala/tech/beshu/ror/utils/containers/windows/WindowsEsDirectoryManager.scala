@@ -63,7 +63,7 @@ object WindowsEsDirectoryManager extends LazyLogging {
     }
   }
 
-  def cleanDownloadsDirectory(esVersion: String): Unit = {
+  def cleanDownloadsDirectory(): Unit = {
     logger.info(s"Removing all files from Windows ES downloads directory")
     os.remove.all(downloadsPath)
   }
