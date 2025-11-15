@@ -63,6 +63,11 @@ object WindowsEsDirectoryManager extends LazyLogging {
     }
   }
 
+  def cleanDownloadsDirectory(esVersion: String): Unit = {
+    logger.info(s"Removing all files from Windows ES downloads directory")
+    os.remove.all(downloadsPath)
+  }
+
   private def doDownloadEsZipFileWithProgress(esVersion: String): Unit = {
     val url = downloadUrl(esVersion)
     val dest = zipFilePath(esVersion)

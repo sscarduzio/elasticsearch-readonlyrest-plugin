@@ -39,8 +39,11 @@ object WindowsEsSetup extends LazyLogging {
   }
 
   def prepareEs(elasticsearch: Elasticsearch): Unit = {
-    downloadEsZipFileWithProgress(elasticsearch.esVersion)
-    withRetries(times = 3)(unzipEs(elasticsearch.esVersion, elasticsearch.config))
+    // The ES zip file sometimes cannot be unzipped when running CI job. In that case we delete the downloaded file and try again.
+    withRetries(times = 3, cleanBeforeRetrying = cleanDownloadsDirectory(elasticsearch.esVersion)) {
+      downloadEsZipFileWithProgress(elasticsearch.esVersion)
+      unzipEs(elasticsearch.esVersion, elasticsearch.config)
+    }
     replaceConfigFile(elasticsearch)
     installPlugins(elasticsearch)
   }
@@ -108,7 +111,7 @@ object WindowsEsSetup extends LazyLogging {
       val updated = file.lines.map(line => if (line.startsWith(prefix)) newLine else line)
       file.overwrite(updated.mkString("\n"))
 
-  private def withRetries(times: Int)(block: => Unit): Unit = {
+  private def withRetries(times: Int, cleanBeforeRetrying: => Unit)(block: => Unit): Unit = {
     @tailrec
     def loop(attempt: Int): Unit = {
       try {
@@ -119,7 +122,10 @@ object WindowsEsSetup extends LazyLogging {
           if (nextAttempt > times) {
             throw e
           } else {
-            logger.error(s"Attempt $attempt failed: ${e.getMessage}, retrying...", e)
+            logger.error(s"Attempt $attempt failed: ${e.getMessage}", e)
+            logger.warn(s"Starting cleaning after failed attempt")
+            cleanBeforeRetrying
+            logger.warn(s"Retrying...")
             loop(nextAttempt)
           }
       }
