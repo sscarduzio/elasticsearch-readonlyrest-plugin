@@ -771,7 +771,6 @@ stages:
       - TEST
     condition: |
       and(
-        succeeded(), 
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         eq(variables.isPullRequest, true),
@@ -817,7 +816,6 @@ stages:
       - TEST
     condition: |
       and(
-        succeeded(), 
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
@@ -842,7 +840,7 @@ stages:
       - TEST
     condition: |
       and(
-        succeeded(),
+        succeeded('DETERMINE_CI_TYPE'),
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
@@ -892,7 +890,7 @@ stages:
       - TEST
     condition: |
       and(
-        succeeded(),
+        succeeded('DETERMINE_CI_TYPE'),
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
@@ -954,7 +952,7 @@ stages:
       - TEST
     condition: |
       and(
-        succeeded(),
+        succeeded('DETERMINE_CI_TYPE'),
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         eq(variables.isMaster, true),
