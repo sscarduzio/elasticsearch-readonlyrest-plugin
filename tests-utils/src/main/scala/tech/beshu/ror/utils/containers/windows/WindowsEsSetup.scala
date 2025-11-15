@@ -111,7 +111,7 @@ object WindowsEsSetup extends LazyLogging {
       val updated = file.lines.map(line => if (line.startsWith(prefix)) newLine else line)
       file.overwrite(updated.mkString("\n"))
 
-  private def withRetries(times: Int, cleanBeforeRetrying: => Unit)(block: => Unit): Unit = {
+  private def withRetries(maxRetries: Int, cleanBeforeRetrying: => Unit)(block: => Unit): Unit = {
     @tailrec
     def loop(attempt: Int): Unit = {
       try {
@@ -119,7 +119,8 @@ object WindowsEsSetup extends LazyLogging {
       } catch {
         case e: Throwable =>
           val nextAttempt = attempt + 1
-          if (nextAttempt > times) {
+          if (nextAttempt > maxRetries) {
+            logger.error(s"Attempt $attempt failed: ${e.getMessage}. Retries exhausted, failing with exception.")
             throw e
           } else {
             logger.error(s"Attempt $attempt failed: ${e.getMessage}", e)
