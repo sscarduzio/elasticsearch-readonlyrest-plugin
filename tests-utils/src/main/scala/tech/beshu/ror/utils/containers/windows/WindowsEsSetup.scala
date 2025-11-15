@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.containers.windows.WindowsEsPortProvider.*
 import tech.beshu.ror.utils.containers.windows.WindowsEsRunner.{WindowsEsProcess, startEs}
 
 import java.util.function.Consumer
+import scala.annotation.tailrec
 import scala.language.postfixOps
 
 object WindowsEsSetup extends LazyLogging {
@@ -39,7 +40,7 @@ object WindowsEsSetup extends LazyLogging {
 
   def prepareEs(elasticsearch: Elasticsearch): Unit = {
     downloadEsZipFileWithProgress(elasticsearch.esVersion)
-    unzipEs(elasticsearch.esVersion, elasticsearch.config)
+    withRetries(times = 3)(unzipEs(elasticsearch.esVersion, elasticsearch.config))
     replaceConfigFile(elasticsearch)
     installPlugins(elasticsearch)
   }
@@ -106,5 +107,25 @@ object WindowsEsSetup extends LazyLogging {
     private def replaceLineWithPrefix(prefix: String, newLine: String): File =
       val updated = file.lines.map(line => if (line.startsWith(prefix)) newLine else line)
       file.overwrite(updated.mkString("\n"))
+
+  private def withRetries(times: Int)(block: => Unit): Unit = {
+    @tailrec
+    def loop(attempt: Int): Unit = {
+      try {
+        block
+      } catch {
+        case e: Throwable =>
+          val nextAttempt = attempt + 1
+          if (nextAttempt > times) {
+            throw e
+          } else {
+            logger.error(s"Attempt $attempt failed: ${e.getMessage}, retrying...", e)
+            loop(nextAttempt)
+          }
+      }
+    }
+
+    loop(1)
+  }
 
 }
