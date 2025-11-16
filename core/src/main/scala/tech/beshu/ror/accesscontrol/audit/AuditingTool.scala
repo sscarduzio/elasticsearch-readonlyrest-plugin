@@ -42,8 +42,9 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
 
   def audit[B <: BlockContext](response: ResponseContext[B], auditEnvironmentContext: AuditEnvironmentContext): Task[Unit] = {
     val auditResponseContext = toAuditResponse(response, auditEnvironmentContext)
+    val requestId = response.requestContext.id.toRequestId
     auditSinks
-      .parTraverse(_.submit(auditResponseContext))
+      .parTraverse(_.submit(auditResponseContext)(requestId))
       .map((_: NonEmptyList[Unit]) => ())
   }
 

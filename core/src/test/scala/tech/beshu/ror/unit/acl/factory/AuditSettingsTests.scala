@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.C
 import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.domain.AuditCluster.{LocalAuditCluster, RemoteAuditCluster}
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.*
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditLoggerName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -45,6 +45,7 @@ import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, RorConfig}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import scala.reflect.ClassTag
@@ -786,7 +787,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
               config,
               expectedIndexName = "readonlyrest_audit-2018-12-31",
-              expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+              expectedAuditCluster = RemoteAuditCluster(
+                UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                ClusterMode.RoundRobin,
+                credentials = None
+              )
             )
           }
           "all audit settings are custom" in {
@@ -812,7 +817,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
               config,
               expectedIndexName = "custom_template_20181231",
-              expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+              expectedAuditCluster = RemoteAuditCluster(
+                UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                ClusterMode.RoundRobin,
+                credentials = None
+              )
             )
           }
         }
@@ -961,29 +970,125 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedAuditCluster = LocalAuditCluster
             )
           }
-          "custom audit cluster is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    enabled: true
-                |    outputs:
-                |    - type: data_stream
-                |      cluster: ["1.1.1.1"]
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            assertDataStreamAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
-              config,
-              expectedDataStreamName = "readonlyrest_audit",
-              expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
-            )
+          "custom audit cluster is set" when {
+            "array syntax for cluster" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      cluster: ["1.1.1.1"]
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+              assertDataStreamAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
+                config,
+                expectedDataStreamName = "readonlyrest_audit",
+                expectedAuditCluster = RemoteAuditCluster(
+                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  ClusterMode.RoundRobin,
+                  credentials = None
+                )
+              )
+            }
+            "array syntax for cluster with credentials" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      cluster: [ "https://user:pass@1.1.1.1:9200" ]
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+              assertDataStreamAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
+                config,
+                expectedDataStreamName = "readonlyrest_audit",
+                expectedAuditCluster = RemoteAuditCluster(
+                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("https://user:pass@1.1.1.1:9200"))),
+                  ClusterMode.RoundRobin,
+                  Some(NodeCredentials("user", "pass"))
+                )
+              )
+            }
+            "extended syntax for cluster" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      cluster:
+                  |        nodes: ["1.1.1.1"]
+                  |        mode: round-robin
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+              assertDataStreamAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
+                config,
+                expectedDataStreamName = "readonlyrest_audit",
+                expectedAuditCluster = RemoteAuditCluster(
+                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  ClusterMode.RoundRobin,
+                  credentials = None
+                )
+              )
+            }
+            "extended syntax for cluster with credentials" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      cluster:
+                  |        nodes: ["1.1.1.1", "2.2.2.2", "3.3.3.3"]
+                  |        mode: round-robin
+                  |        username: "user"
+                  |        password: "pass"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+              assertDataStreamAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
+                config,
+                expectedDataStreamName = "readonlyrest_audit",
+                expectedAuditCluster = RemoteAuditCluster(
+                  UniqueNonEmptyList.of(
+                    AuditClusterNode(Uri.parse("1.1.1.1")),
+                    AuditClusterNode(Uri.parse("2.2.2.2")),
+                    AuditClusterNode(Uri.parse("3.3.3.3"))
+                  ),
+                  ClusterMode.RoundRobin,
+                  Some(NodeCredentials("user", "pass"))
+                )
+              )
+            }
           }
           "all audit settings are custom" in {
             val config = rorConfigFromUnsafe(
@@ -995,7 +1100,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    - type: data_stream
                 |      data_stream: "custom_audit_data_stream"
                 |      serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
-                |      cluster: ["1.1.1.1"]
+                |      cluster:
+                |        nodes: ["1.1.1.1", "2.2.2.2"]
+                |        mode: round-robin
+                |        username: "user"
+                |        password: "pass"
                 |
                 |  access_control_rules:
                 |
@@ -1008,7 +1117,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             assertDataStreamAuditSinkSettingsPresent[QueryAuditLogSerializer](
               config,
               expectedDataStreamName = "custom_audit_data_stream",
-              expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+              expectedAuditCluster = RemoteAuditCluster(
+                UniqueNonEmptyList.of(
+                  AuditClusterNode(Uri.parse("1.1.1.1")),
+                  AuditClusterNode(Uri.parse("2.2.2.2")),
+                ),
+                ClusterMode.RoundRobin,
+                Some(NodeCredentials("user", "pass"))
+              )
             )
           }
           "ES version is greater than or equal 7.9.0" in {
@@ -1046,7 +1162,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               assertDataStreamAuditSinkSettingsPresent[QueryAuditLogSerializer](
                 config,
                 expectedDataStreamName = "custom_audit_data_stream",
-                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1"))),
+                expectedAuditCluster = RemoteAuditCluster(
+                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  ClusterMode.RoundRobin,
+                  credentials = None
+                ),
                 esVersion = esVersion
               )
             }
@@ -1252,7 +1372,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedErrorMessage = "Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
-            "remote cluster is empty list" in {
+            "remote cluster is empty list (array syntax)" in {
               val config = rorConfigFromUnsafe(
                 """
                   |readonlyrest:
@@ -1273,6 +1393,89 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               assertInvalidSettings(
                 config,
                 expectedErrorMessage = "Non empty list of valid URI is required"
+              )
+            }
+            "remote cluster has nodes with inconsistent credentials" in {
+              val tests = List(
+                List("http://user1:password@1.1.1.1", "http://user2:password@1.1.1.1"),
+                List("http://user1:password1@1.1.1.1", "http://user1:password2@1.1.1.1"),
+                List("http://1.1.1.1", "http://user2:password@1.1.1.1"),
+                List("http://user1:password@1.1.1.1", "http://1.1.1.1"),
+              )
+
+              tests.foreach { auditNodes =>
+                val config = rorConfigFromUnsafe(
+                  s"""
+                     |readonlyrest:
+                     |  audit:
+                     |    enabled: true
+                     |    outputs:
+                     |    - type: index
+                     |      cluster:
+                     |        nodes: ${auditNodes.map(n => s"\"$n\"").mkString("[", ",", "]")}
+                     |        mode: round-robin
+                     |
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block
+                     |    type: allow
+                     |    auth_key: admin:container
+                  """.stripMargin)
+
+                assertInvalidSettings(
+                  config,
+                  expectedErrorMessage = s"One or more audit cluster nodes have inconsistent credentials: ${auditNodes.mkString(", ")}"
+                )
+              }
+            }
+
+            "remote cluster is empty list (extended syntax)" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      cluster:
+                  |        nodes: []
+                  |        mode: round-robin
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Error for field 'nodes': Non empty list of valid URI is required"
+              )
+            }
+            "remote cluster has invalid mode" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      cluster:
+                  |        nodes: ["1.1.1.1"]
+                  |        mode: not-existing-mode
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Error for field 'mode': Unknown cluster mode [not-existing-mode], allowed values are: [round-robin]"
               )
             }
           }
@@ -1320,7 +1523,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 config,
-                expectedErrorMessage = "Illegal format for ROR audit 'data_stream' name - Data stream '.ds-INVALID-data-stream-name#' has an invalid format. Cause: " +
+                expectedErrorMessage = "Error for field 'data_stream': Illegal format for ROR audit 'data_stream' name - Data stream '.ds-INVALID-data-stream-name#' has an invalid format. Cause: " +
                   "name must be lowercase, " +
                   "name must not contain forbidden characters '\\', '/', '*', '?', '\"', '<', '>', '|', ',', '#', ':', ' ', " +
                   "name must not start with '-', '_', '+', '.ds-'."
@@ -1347,7 +1550,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 config,
-                expectedErrorMessage = "Non empty list of valid URI is required"
+                expectedErrorMessage = "Error for field 'cluster': Non empty list of valid URI is required"
               )
             }
             "es version is lower than 7.9.0" in {
@@ -1381,7 +1584,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               esVersions.foreach { esVersion =>
                 assertInvalidSettings(
                   config,
-                  expectedErrorMessage = s"Data stream audit output is supported from Elasticsearch version 7.9.0, " +
+                  expectedErrorMessage = s"Error for field 'type': Data stream audit output is supported from Elasticsearch version 7.9.0, " +
                     s"but your version is ${esVersion.major}.${esVersion.minor}.${esVersion.revision}. Use 'index' type or upgrade to 7.9.0 or later.",
                   esVersion = esVersion
                 )
@@ -1407,7 +1610,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               config,
-              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [data_stream, index, log]"
+              expectedErrorMessage = "Error for field 'type': Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
             )
           }
           "unknown output type is set when using simple format" in {
@@ -1428,12 +1631,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               config,
-              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [data_stream, index, log]"
+              expectedErrorMessage = "Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
             )
 
             assertInvalidSettings(
               config,
-              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [index, log]",
+              expectedErrorMessage = "Unsupported type of audit output: custom_type. Supported types: [index, log]",
               esVersion = EsVersion(7, 8, 0)
             )
           }
@@ -1685,7 +1888,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
                 config,
                 expectedIndexName = "readonlyrest_audit-2018-12-31",
-                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+                expectedAuditCluster = RemoteAuditCluster(
+                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  ClusterMode.RoundRobin,
+                  credentials = None
+                )
               )
             }
             "all audit settings are custom" in {
@@ -1709,7 +1916,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
                 config,
                 expectedIndexName = "custom_template_20181231",
-                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+                expectedAuditCluster = RemoteAuditCluster(
+                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  ClusterMode.RoundRobin,
+                  credentials = None
+                )
               )
             }
           }
@@ -1815,7 +2026,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
                 config,
                 expectedIndexName = "readonlyrest_audit-2018-12-31",
-                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("user:test@1.1.1.1")))
+                expectedAuditCluster = RemoteAuditCluster(
+                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("user:test@1.1.1.1"))),
+                  ClusterMode.RoundRobin,
+                  credentials = None
+                )
               )
             }
             "all audit settings are custom" in {
@@ -1838,7 +2053,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
                 config,
                 expectedIndexName = "custom_template_20181231",
-                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+                expectedAuditCluster = RemoteAuditCluster(
+                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  ClusterMode.RoundRobin,
+                  None
+                )
               )
             }
 

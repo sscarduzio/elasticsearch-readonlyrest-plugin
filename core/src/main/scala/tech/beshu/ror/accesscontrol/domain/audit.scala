@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.Show
-import cats.data.{NonEmptyList, Validated}
+import cats.data.Validated
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
@@ -26,6 +26,7 @@ import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
@@ -132,7 +133,33 @@ object RorAuditDataStream {
 sealed trait AuditCluster
 object AuditCluster {
   case object LocalAuditCluster extends AuditCluster
-  final case class RemoteAuditCluster(uris: NonEmptyList[Uri]) extends AuditCluster
+  final case class RemoteAuditCluster(nodes: UniqueNonEmptyList[AuditClusterNode],
+                                      mode: ClusterMode,
+                                      credentials: Option[NodeCredentials]) extends AuditCluster
+
+  final case class AuditClusterNode(uri: Uri) {
+    def hostname: String = uri.toUrl.hostOption.map(_.value).getOrElse("localhost")
+
+    def port: Int = uri.toUrl.port.getOrElse(9200)
+
+    def scheme: String = uri.schemeOption.getOrElse("http")
+
+    def credentials: Option[NodeCredentials] = uri.toUrl.user.map { user =>
+      NodeCredentials(user, uri.toUrl.password)
+    }
+  }
+
+  final case class NodeCredentials(username: String, password: String)
+  object NodeCredentials {
+    def apply(username: String, password: Option[String]): NodeCredentials = {
+      NodeCredentials(username, password.getOrElse(""))
+    }
+  }
+
+  sealed trait ClusterMode
+  object ClusterMode {
+    case object RoundRobin extends ClusterMode
+  }
 }
 
 final case class RorAuditLoggerName(value: NonEmptyString)
