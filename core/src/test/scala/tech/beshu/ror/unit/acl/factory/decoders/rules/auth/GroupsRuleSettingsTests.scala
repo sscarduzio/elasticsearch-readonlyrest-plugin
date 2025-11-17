@@ -255,7 +255,7 @@ class GroupsRuleSettingsTests
                   localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group4")))
                   authRule shouldBe an[TokenAuthenticationRule]
                   authRule.asInstanceOf[TokenAuthenticationRule].settings should be {
-                    TokenAuthenticationRule.Settings(userId("morgan"), Token("Bearer abc123XYZ"), Header.Name.authorization)
+                    TokenAuthenticationRule.Settings(userId("morgan"), StaticToken("Bearer abc123XYZ"), Header.Name.authorization)
                   }
                 }
               }

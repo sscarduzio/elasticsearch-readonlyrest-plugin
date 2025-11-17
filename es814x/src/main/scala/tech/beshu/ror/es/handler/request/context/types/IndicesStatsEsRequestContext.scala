@@ -21,7 +21,6 @@ import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
@@ -31,9 +30,8 @@ import tech.beshu.ror.utils.ScalaOps.*
 class IndicesStatsEsRequestContext(actionRequest: IndicesStatsRequest,
                                    esContext: EsContext,
                                    aclContext: AccessControlStaticContext,
-                                   clusterService: RorClusterService,
                                    override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[IndicesStatsRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[IndicesStatsRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: IndicesStatsRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request.indices.asSafeSet.flatMap(RequestedIndex.fromString)

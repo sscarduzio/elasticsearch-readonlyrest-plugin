@@ -14,12 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.handler.request.context.types
+package tech.beshu.ror.es
 
-import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-
-final case class ReflectionBasedActionRequest(esContext: EsContext,
-                                              aclContext: AccessControlStaticContext,
-                                              threadPool: ThreadPool)
+class EsServices(val clusterService: RorClusterService,
+                 val serviceAccountTokenService: ServiceAccountTokenService)

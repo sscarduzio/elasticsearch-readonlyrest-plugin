@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -39,10 +38,9 @@ import tech.beshu.ror.syntax.*
 class GetEsRequestContext(actionRequest: GetRequest,
                           esContext: EsContext,
                           aclContext: AccessControlStaticContext,
-                          clusterService: RorClusterService,
                           override val threadPool: ThreadPool)
                          (implicit scheduler: Scheduler)
-  extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
@@ -80,7 +78,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
 
   private def handleExistingResponse(response: GetResponse,
                                      definedFilter: Filter) = {
-    clusterService.verifyDocumentAccessibility(response.asDocumentWithIndex, definedFilter, id)
+    esContext.esServices.clusterService.verifyDocumentAccessibility(response.asDocumentWithIndex, definedFilter, id)
       .map {
         case Inaccessible => GetApi.doesNotExistResponse(response)
         case Accessible => response

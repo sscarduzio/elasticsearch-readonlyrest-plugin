@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization
 
+import better.files.*
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 // todo: add desc
 private [patches] object ApplicationPermissionAllowingEverything extends BytecodeJarModifier {
@@ -74,5 +75,4 @@ private [patches] object ApplicationPermissionAllowingEverything extends Bytecod
       underlying.visitEnd()
     }
   }
-
 }

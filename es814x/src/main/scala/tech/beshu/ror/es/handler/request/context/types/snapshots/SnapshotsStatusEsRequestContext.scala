@@ -25,7 +25,6 @@ import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -39,9 +38,8 @@ import scala.jdk.CollectionConverters.*
 class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequest,
                                               allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]],
                                               esContext: EsContext,
-                                              clusterService: RorClusterService,
                                               override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[SnapshotsStatusRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseSnapshotEsRequestContext[SnapshotsStatusRequest](actionRequest, esContext, threadPool) {
 
   override protected def snapshotsFrom(request: SnapshotsStatusRequest): Set[SnapshotName] =
     request
@@ -180,13 +178,12 @@ object SnapshotsStatusEsRequestContext {
 
   def create(actionRequest: SnapshotsStatusRequest,
              esContext: EsContext,
-             clusterService: RorClusterService,
              threadPool: ThreadPool): Task[SnapshotsStatusEsRequestContext] = {
-    clusterService.allSnapshots
+    esContext.esServices.clusterService.allSnapshots
       .map { case (repository, getSnapshots) => getSnapshots.map((repository, _)) }
       .toList.sequence
       .map { allSnapshots =>
-        new SnapshotsStatusEsRequestContext(actionRequest, allSnapshots.toMap, esContext, clusterService, threadPool)
+        new SnapshotsStatusEsRequestContext(actionRequest, allSnapshots.toMap, esContext, threadPool)
       }
   }
 }

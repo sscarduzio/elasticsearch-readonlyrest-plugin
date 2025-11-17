@@ -43,7 +43,7 @@ object BasicAuth extends Logging {
   def fromCredentials(credentials: Credentials) = {
     BasicAuth(credentials)
   }
-  
+
   def fromHeader(header: Header): Option[BasicAuth] = {
     header.name match {
       case name if name === Header.Name.authorization => parse(header.value)
@@ -88,8 +88,14 @@ object PlainTextSecret {
   implicit val eqAuthKey: Eq[PlainTextSecret] = Eq.fromUniversalEquals
 }
 
-final case class Token(value: NonEmptyString)
+// todo: rename
+sealed trait TokenDefinition
+object TokenDefinition {
+  case object DynamicToken extends TokenDefinition
+  final case class StaticToken(value: NonEmptyString) extends TokenDefinition
+}
 
+// todo: refactor this (it looks like we could reuse this class)
 final case class AuthorizationToken(value: NonEmptyString)
 
 object Jwt {

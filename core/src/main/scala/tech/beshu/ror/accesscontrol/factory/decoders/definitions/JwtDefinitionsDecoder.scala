@@ -21,6 +21,7 @@ import io.circe.{Decoder, HCursor, Json}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.Prefix
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Header, Jwt}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
@@ -59,7 +60,10 @@ object JwtDefinitionsDecoder {
           id = name,
           authorizationTokenDef = AuthorizationTokenDef(
             headerName.getOrElse(Header.Name.authorization),
-            authTokenPrefix.getOrElse("Bearer ")
+            authTokenPrefix match {
+              case Some(value) => Prefix.Exact(value)
+              case None => Prefix.Exact("Bearer")
+            }
           ),
           checkMethod = checkMethod,
           userClaim = userClaim,

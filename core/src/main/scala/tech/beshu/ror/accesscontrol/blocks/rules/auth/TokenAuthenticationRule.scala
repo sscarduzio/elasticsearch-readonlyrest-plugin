@@ -30,8 +30,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Imperso
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.Prefix
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContextOps.from
 import tech.beshu.ror.syntax.*
 
 final class TokenAuthenticationRule(val settings: Settings,
@@ -50,24 +51,25 @@ final class TokenAuthenticationRule(val settings: Settings,
     else UserExistence.NotExist
   }
 
-  override protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    Task
-      .unit
-      .map { _ =>
-        val requestContext = blockContext.requestContext
-        if (verifyTokenFromHeader(requestContext)) {
-          Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
-        } else {
-          Rejected()
+  override protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    val requestContext = blockContext.requestContext
+    val verification = settings.token match {
+      case TokenDefinition.StaticToken(configuredToken) =>
+        Task.delay {
+          requestContext
+            .authorizationToken(AuthorizationTokenDef(settings.tokenHeaderName, Prefix.Any))
+            .exists { token => token.value == configuredToken } // todo: prefix not verified
         }
-      }
-
-  private def verifyTokenFromHeader(requestContext: RequestContext) = {
-    requestContext
-      .restRequest
-      .allHeaders
-      .find(_.name === settings.tokenHeaderName)
-      .exists(_.value == settings.token.value)
+      case TokenDefinition.DynamicToken =>
+        requestContext.authorizationToken(AuthorizationTokenDef(settings.tokenHeaderName, Prefix.Exact("Bearer"))) match {
+          case None => Task.now(false)
+          case Some(token) => requestContext.serviceAccountTokenService.validateToken(token)
+        }
+    }
+    verification.map {
+      case true => Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
+      case false => Rejected()
+    }
   }
 }
 
@@ -77,12 +79,12 @@ object TokenAuthenticationRule {
   }
 
   final case class Settings(user: User.Id,
-                            token: Token,
+                            token: TokenDefinition,
                             tokenHeaderName: Header.Name)
 
   object Settings {
     def apply(user: User.Id,
-              token: Token,
+              token: TokenDefinition,
               customHeaderName: Option[Header.Name]): Settings = {
       Settings(
         user = user,

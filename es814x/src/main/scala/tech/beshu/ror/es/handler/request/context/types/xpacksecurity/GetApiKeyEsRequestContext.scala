@@ -21,7 +21,6 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.Error.RequestCannotBeHandled
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.types.ReflectionBasedActionRequest
@@ -33,10 +32,8 @@ import java.util.function.Supplier
 
 class GetApiKeyEsRequestContext private[xpacksecurity](actionRequest: ActionRequest,
                                                        esContext: EsContext,
-                                                       clusterService: RorClusterService,
-                                                       esApiKeyService: EsApiKeyService,
                                                        override implicit val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext)
     with EsRequest[GeneralNonIndexRequestBlockContext] {
 
   override def initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
@@ -47,7 +44,6 @@ class GetApiKeyEsRequestContext private[xpacksecurity](actionRequest: ActionRequ
   )
 
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = {
-    esApiKeyService.toString
     actionRequest.toString
 //    UpdateResponse.using { response =>
 //      // todo: filter api key by name
@@ -74,8 +70,8 @@ class GetApiKeyEsRequestContextCreator private[xpacksecurity](request: Reflectio
 
   def create(esApiKeyServiceSupplier: Supplier[Option[EsApiKeyService]]): Either[RequestCannotBeHandled, GetApiKeyEsRequestContext] = {
     esApiKeyServiceSupplier.get() match
-      case Some(esApiKeyService) =>
-        Right(new GetApiKeyEsRequestContext(request.esContext.actionRequest, request.esContext, request.clusterService, esApiKeyService, request.threadPool))
+      case Some(_) =>
+        Right(new GetApiKeyEsRequestContext(request.esContext.actionRequest, request.esContext, request.threadPool))
       case None =>
         Left(RequestCannotBeHandled("No ApiKeyService available"))
   }

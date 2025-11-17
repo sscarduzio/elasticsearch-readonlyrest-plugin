@@ -25,7 +25,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -35,9 +34,8 @@ import tech.beshu.ror.syntax.*
 abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                   esContext: EsContext,
                                                                   aclContext: AccessControlStaticContext,
-                                                                  clusterService: RorClusterService,
                                                                   override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[FilterableRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[FilterableRequestBlockContext](esContext)
     with EsRequest[FilterableRequestBlockContext] {
 
   override val initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(

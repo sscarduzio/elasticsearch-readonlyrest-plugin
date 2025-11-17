@@ -25,7 +25,6 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, IndexAttribute, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
@@ -37,9 +36,8 @@ import tech.beshu.ror.utils.ScalaOps.*
 class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
                                              esContext: EsContext,
                                              aclContext: AccessControlStaticContext,
-                                             clusterService: RorClusterService,
                                              override implicit val threadPool: ThreadPool)
-  extends BaseFilterableEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseFilterableEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   private lazy val searchRequest = searchRequestFrom(actionRequest)
 
@@ -96,7 +94,7 @@ object XpackAsyncSearchRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[XpackAsyncSearchRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("SubmitAsyncSearchRequest")) {
-      Some(new XpackAsyncSearchRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
+      Some(new XpackAsyncSearchRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.threadPool))
     } else {
       None
     }

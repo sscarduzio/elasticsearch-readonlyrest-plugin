@@ -22,7 +22,6 @@ import org.elasticsearch.action.termvectors.{MultiTermVectorsRequest, TermVector
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -34,9 +33,8 @@ import scala.jdk.CollectionConverters.*
 class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
                                        esContext: EsContext,
                                        aclContext: AccessControlStaticContext,
-                                       clusterService: RorClusterService,
                                        override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[MultiTermVectorsRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[MultiTermVectorsRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: MultiTermVectorsRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request.getRequests.asScala.flatMap(r => RequestedIndex.fromString(r.index())).toCovariantSet
@@ -56,7 +54,7 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
 
   private def removeOrAlter(request: TermVectorsRequest,
                             filteredIndices: Set[RequestedIndex[ClusterIndexName]]): Boolean = {
-    val expandedIndicesOfRequest = clusterService.expandLocalIndices(ClusterIndexName.fromString(request.index()).toCovariantSet)
+    val expandedIndicesOfRequest = esContext.esServices.clusterService.expandLocalIndices(ClusterIndexName.fromString(request.index()).toCovariantSet)
     val remaining = expandedIndicesOfRequest.intersect(filteredIndices.includedOnly).toList
     remaining match {
       case Nil =>

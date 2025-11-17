@@ -364,8 +364,8 @@ object TestsUtils {
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to ApiKey")
   }
 
-  def tokenFrom(value: String): Token = NonEmptyString.from(value) match {
-    case Right(v) => Token(v)
+  def tokenFrom(value: String): StaticToken = NonEmptyString.from(value) match {
+    case Right(v) => StaticToken(v)
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Token")
   }
 

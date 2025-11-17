@@ -21,7 +21,6 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.Error.RequestCannotBeHandled
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
@@ -34,9 +33,8 @@ import java.util.function.Supplier
 
 class GrantApiKeyEsRequestContext private[xpacksecurity](actionRequest: ActionRequest,
                                                          esContext: EsContext,
-                                                         clusterService: RorClusterService,
                                                          override implicit val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext)
     with EsRequest[GeneralNonIndexRequestBlockContext] {
 
   override def initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
@@ -49,8 +47,6 @@ class GrantApiKeyEsRequestContext private[xpacksecurity](actionRequest: ActionRe
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = {
     UpdateResponse.sync { resp =>
       actionRequest.toString
-      val instance = ServiceAccountServiceRef.getInstance
-      instance.toString
       resp
     }
   }
@@ -70,10 +66,6 @@ object GrantApiKeyEsRequestContext extends Logging {
 class GrantApiKeyEsRequestContextCreator private[xpacksecurity](request: ReflectionBasedActionRequest) {
 
   def create(esApiKeyServiceSupplier: Supplier[Option[EsApiKeyService]]): Either[RequestCannotBeHandled, GrantApiKeyEsRequestContext] = {
-    ServiceAccountServiceRef.getInstance match
-      case Some(_) =>
-        Right(new GrantApiKeyEsRequestContext(request.esContext.actionRequest, request.esContext, request.clusterService, request.threadPool))
-      case None =>
-        Left(RequestCannotBeHandled("No ApiKeyService available"))
+    Right(new GrantApiKeyEsRequestContext(request.esContext.actionRequest, request.esContext, request.threadPool))
   }
 }

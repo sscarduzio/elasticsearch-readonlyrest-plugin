@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
 import tech.beshu.ror.implicits.*
@@ -31,9 +30,8 @@ import tech.beshu.ror.syntax.*
 
 abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                    esContext: EsContext,
-                                                                   clusterService: RorClusterService,
                                                                    override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[DataStreamRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[DataStreamRequestBlockContext](esContext)
     with EsRequest[DataStreamRequestBlockContext] {
 
   override val initialBlockContext: DataStreamRequestBlockContext = DataStreamRequestBlockContext(

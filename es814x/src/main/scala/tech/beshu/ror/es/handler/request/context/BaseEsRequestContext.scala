@@ -24,19 +24,18 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.{RorRestRequest, ServiceAccountTokenService}
 import tech.beshu.ror.syntax.*
 
 import java.time.Instant
 
-abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
-                                                       clusterService: RorClusterService)
+abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
   extends RequestContext with Logging {
 
   override type BLOCK_CONTEXT = B
 
-  override val restRequest = esContext.channel.restRequest
+  override val restRequest: RorRestRequest = esContext.channel.restRequest
 
   override val rorKibanaSessionId: CorrelationId = esContext.correlationId.value
 
@@ -68,18 +67,18 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   }
 
   override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
-    clusterService.allIndicesAndAliases
+    esContext.esServices.clusterService.allIndicesAndAliases
 
   override lazy val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
-    clusterService.allRemoteIndicesAndAliases.memoize
+    esContext.esServices.clusterService.allRemoteIndicesAndAliases.memoize
 
   override lazy val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] =
-    clusterService.allDataStreamsAndAliases
+    esContext.esServices.clusterService.allDataStreamsAndAliases
 
   override lazy val allRemoteDataStreamsAndAliases: Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
-    clusterService.allRemoteDataStreamsAndAliases.memoize
+    esContext.esServices.clusterService.allRemoteDataStreamsAndAliases.memoize
 
-  override lazy val allTemplates: Set[Template] = clusterService.allTemplates
+  override lazy val allTemplates: Set[Template] = esContext.esServices.clusterService.allTemplates
 
   override lazy val isCompositeRequest: Boolean = esContext.actionRequest.isInstanceOf[CompositeIndicesRequest]
 
@@ -91,6 +90,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       case _ => true
     }
   }
+  override val serviceAccountTokenService: ServiceAccountTokenService = esContext.esServices.serviceAccountTokenService
 
   protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
     val wildcardOptions = request
@@ -100,4 +100,5 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     Option.when(wildcardOptions.matchOpen())(IndexAttribute.Opened: IndexAttribute).toCovariantSet ++
       Option.when(wildcardOptions.matchClosed())(IndexAttribute.Closed: IndexAttribute).toCovariantSet
   }
+
 }

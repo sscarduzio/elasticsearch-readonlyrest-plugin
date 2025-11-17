@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
@@ -37,9 +36,8 @@ import scala.jdk.CollectionConverters.*
 
 class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
                                    esContext: EsContext,
-                                   clusterService: RorClusterService,
                                    override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[GetSnapshotsRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseSnapshotEsRequestContext[GetSnapshotsRequest](actionRequest, esContext, threadPool) {
 
   override protected def snapshotsFrom(request: GetSnapshotsRequest): Set[SnapshotName] = {
     request

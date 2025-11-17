@@ -82,8 +82,8 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
-  private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(
+  private val esServices = EsServices(
+    clusterService = new EsServerBasedRorClusterService(
       nodeName,
       clusterService,
       remoteClusterServiceSupplier,
@@ -91,6 +91,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
       client,
       threadPool
     ),
+    serviceAccountTokenService = new ReflectionBasedServiceAccountTokenService()
+  )
+  private val aclAwareRequestFilter = new AclAwareRequestFilter(
     esApiKeyServiceSupplier,
     clusterService.getSettings,
     threadPool
@@ -171,7 +174,8 @@ class IndexLevelActionFilter(clusterService: ClusterService,
               request,
               rorActionListener,
               chain,
-              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet
+              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet,
+              esServices
             )
           )
         } recover {

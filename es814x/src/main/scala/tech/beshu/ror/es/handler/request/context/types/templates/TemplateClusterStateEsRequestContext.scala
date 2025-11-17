@@ -27,8 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{GettingIndexTemplates, GettingLegacyAndIndexTemplates, GettingLegacyTemplates}
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
-import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern, UriPath}
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
@@ -43,12 +42,11 @@ object TemplateClusterStateEsRequestContext {
 
   def from(actionRequest: ClusterStateRequest,
            esContext: EsContext,
-           clusterService: RorClusterService,
            settings: Settings,
            threadPool: ThreadPool): Option[TemplateClusterStateEsRequestContext] = {
     esContext.channel.restRequest.path match {
       case TemplatePath(_) | CatTemplatePath(_) =>
-        Some(new TemplateClusterStateEsRequestContext(actionRequest, esContext, clusterService, settings, threadPool))
+        Some(new TemplateClusterStateEsRequestContext(actionRequest, esContext, settings, threadPool))
       case _ =>
         None
     }
@@ -57,11 +55,10 @@ object TemplateClusterStateEsRequestContext {
 
 class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRequest,
                                                    esContext: EsContext,
-                                                   clusterService: RorClusterService,
                                                    settings: Settings,
                                                    override val threadPool: ThreadPool)
   extends BaseTemplatesEsRequestContext[ClusterStateRequest, GettingLegacyAndIndexTemplates](
-    actionRequest, esContext, clusterService, threadPool
+    actionRequest, esContext, threadPool
   ) {
 
   private lazy val allTemplatesNamePattern = TemplateNamePattern(nes("*"))

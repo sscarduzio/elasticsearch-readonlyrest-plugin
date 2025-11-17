@@ -29,9 +29,11 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWi
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.Prefix
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
+import tech.beshu.ror.es.ServiceAccountTokenService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -88,6 +90,8 @@ trait RequestContext extends Logging {
   def isAllowedForDLS: Boolean
 
   def generalAuditEvents: JSONObject = new JSONObject()
+
+  def serviceAccountTokenService: ServiceAccountTokenService
 
 }
 
@@ -229,21 +233,34 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
 
   def bearerToken: Option[AuthorizationToken] = authorizationToken {
-    AuthorizationTokenDef(Header.Name.authorization, "Bearer ")
+    AuthorizationTokenDef(Header.Name.authorization, Prefix.Exact("Bearer"))
   }
 
+  // todo: refactor
   def authorizationToken(config: AuthorizationTokenDef): Option[AuthorizationToken] = {
     requestContext
       .restRequest
       .allHeaders
       .find(_.name === config.headerName)
       .flatMap { h =>
-        if (h.value.value.startsWith(config.prefix)) {
-          NonEmptyString
-            .unapply(h.value.value.substring(config.prefix.length))
-            .map(AuthorizationToken.apply)
-        } else {
-          None
+        config.prefix match {
+          case Prefix.Exact(prefix) =>
+            if (h.value.value.startsWith(s"$prefix ")) {
+              NonEmptyString
+                .unapply(h.value.value.substring(prefix.length + 1))
+                .map(AuthorizationToken.apply)
+            } else {
+              None
+            }
+          case Prefix.Any =>
+            h.value.value.split(" ").toList match {
+              case Nil => None
+              case _ :: Nil => None
+              case prefix :: _ =>
+                NonEmptyString
+                  .unapply(h.value.value.substring(prefix.length + 1))
+                  .map(AuthorizationToken.apply)
+            }
         }
       }
   }
