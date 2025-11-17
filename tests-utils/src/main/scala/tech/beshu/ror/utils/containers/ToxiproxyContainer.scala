@@ -62,7 +62,7 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     innerContainer.start()
     super.start()
 
-    val toxiproxyClient = new ToxiproxyClient("localhost", container.getMappedPort(httpApiPort))
+    val toxiproxyClient = new ToxiproxyClient(container.getHost, container.getMappedPort(httpApiPort))
     innerContainerProxy = Some(toxiproxyClient.getProxy("proxy"))
   }
 
@@ -78,7 +78,7 @@ object ToxiproxyContainer {
   private class ToxiproxyWaitStrategy(innerContainer: SingleContainer[_], innerServicePort: Int) extends WaitWithRetriesStrategy("toxiproxy") {
     override protected def isReady: Boolean = {
       try {
-        val toxiproxyClient = new ToxiproxyClient("localhost", waitStrategyTarget.getMappedPort(httpApiPort))
+        val toxiproxyClient = new ToxiproxyClient(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(httpApiPort))
         toxiproxyClient.createProxy("proxy", s"[::]:$proxiedPort", s"${innerContainer.containerInfo.getConfig.getHostName}:$innerServicePort")
         true
       } catch {
