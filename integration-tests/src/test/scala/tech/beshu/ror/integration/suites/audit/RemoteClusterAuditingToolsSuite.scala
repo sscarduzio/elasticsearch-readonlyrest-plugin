@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration.suites.audit
 
 import cats.data.NonEmptyList
-import org.scalatest.time.{Millis, Seconds, Span}
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
@@ -88,8 +87,6 @@ class RemoteClusterAuditingToolsSuite
     }
   }
 
-  override implicit val patienceConfig: PatienceConfig = PatienceConfig(timeout = scaled(Span(120, Seconds)), interval = scaled(Span(100, Millis)))
-
   override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.fromListUnsafe(auditEsContainers)
 
   override protected def baseRorConfig: String = resolvedRorConfigFile.contentAsString
@@ -148,11 +145,11 @@ class RemoteClusterAuditingToolsSuite
       forEachAuditManager { adminAuditManager =>
         eventually {
           val auditEntries = adminAuditManager.getEntries.force().jsons
-          val expectedEntriesCount = List.concat(traceIds1, traceIds2, traceIds2).size
+          val expectedEntriesCount = List.concat(traceIds1, traceIds2, traceIds3).size
           auditEntries.size shouldEqual expectedEntriesCount
 
-          traceIds4.foreach { q =>
-            checkNoEntriesWithTraceId(auditEntries, q)
+          traceIds4.foreach { traceId =>
+            checkNoEntriesWithTraceId(auditEntries, traceId)
           }
         }
       }
@@ -161,11 +158,16 @@ class RemoteClusterAuditingToolsSuite
 
       val traceIds5 = queryTweeterIndexWithRandomTraceId(times = 5)
 
-      val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds2, traceIds5)
+      val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds3, traceIds5)
       forEachAuditManager { adminAuditManager =>
         eventually {
           val auditEntries = adminAuditManager.getEntries.force().jsons
           auditEntries.size shouldEqual allExpectedTraceIds.size
+
+          allExpectedTraceIds.foreach { traceId =>
+            val entry = findAuditEntryWithTraceId(auditEntries, traceId)
+            assertForEveryAuditEntry(entry)
+          }
         }
       }
     }

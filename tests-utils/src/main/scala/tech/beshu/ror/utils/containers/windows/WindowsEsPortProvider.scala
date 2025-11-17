@@ -54,6 +54,7 @@ object WindowsEsPortProvider {
     "ROR_3_1" -> WindowsEsPorts(9229, 9329),
     "ROR_3_2" -> WindowsEsPorts(9230, 9330),
     "ror_xpack_cluster_3" -> WindowsEsPorts(9231, 9331),
+    "AUDIT_3" -> WindowsEsPorts(9232, 9332), // todo rearrange
   )
 
   def get(nodeName: String): WindowsEsPorts =
