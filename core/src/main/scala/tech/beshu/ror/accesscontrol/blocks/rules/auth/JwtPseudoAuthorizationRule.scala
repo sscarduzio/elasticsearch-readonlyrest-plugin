@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtPseudoAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseJwtRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthorizationImpersonationCustomSupport
@@ -60,10 +60,5 @@ final class JwtPseudoAuthorizationRule(val settings: Settings)
 }
 
 object JwtPseudoAuthorizationRule {
-
-  implicit case object Name extends RuleName[JwtAuthorizationRule] {
-    override val name = Rule.Name("jwt_authorization")
-  }
-
   final case class Settings(jwt: JwtDef)
 }

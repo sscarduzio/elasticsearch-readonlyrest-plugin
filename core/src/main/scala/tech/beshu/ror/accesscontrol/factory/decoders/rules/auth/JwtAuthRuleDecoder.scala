@@ -106,7 +106,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
                   s"""Missing groups logic settings in ${JwtAuthRule.Name.name.show} rule.
                      |For old configs, ROR treats this as `groups_any_of: ["*"]`.
                      |This syntax is deprecated. Add groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic),
-                     |or use ${JwtAuthRule.Name.name.show} if you only need authentication.
+                     |or use ${JwtAuthenticationRule.Name.name.show} if you only need authentication.
                      |""".stripMargin
                 )
                 new JwtPseudoAuthorizationRule(JwtPseudoAuthorizationRule.Settings(jwtDef))

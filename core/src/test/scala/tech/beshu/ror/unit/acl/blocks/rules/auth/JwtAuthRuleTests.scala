@@ -548,6 +548,24 @@ class JwtAuthRuleTests
             )(blockContext)
         }
       }
+      "preferred group is not on the groups list from JWT" in {
+        val key: Key = Jwts.SIG.HS256.key().build()
+        val jwt = Jwt(key, claims = List(
+          "userId" := "user1",
+          "groups" := List("group1", "group2")
+        ))
+        assertNotMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+          ),
+          tokenHeader = bearerHeader(jwt),
+          preferredGroupId = Some(GroupId("group3"))
+        )
+      }
     }
     "not match" when {
       "token has invalid HS256 signature" in {
@@ -679,24 +697,6 @@ class JwtAuthRuleTests
             UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3"))
           ))),
           tokenHeader = bearerHeader(jwt)
-        )
-      }
-      "preferred group is not on the groups list from JWT" in {
-        val key: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(key, claims = List(
-          "userId" := "user1",
-          "groups" := List("group1", "group2")
-        ))
-        assertNotMatchRule(
-          configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
-          ),
-          tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group3"))
         )
       }
       "preferred group is not on the permitted groups list" in {
