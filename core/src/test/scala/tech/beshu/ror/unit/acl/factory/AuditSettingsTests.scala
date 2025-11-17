@@ -2013,7 +2013,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 """
                   |readonlyrest:
                   |  audit_collector: true
-                  |  audit_cluster: ["user:test@1.1.1.1"]
+                  |  audit_cluster: ["http://user:test@1.1.1.1"]
                   |
                   |  access_control_rules:
                   |
@@ -2027,9 +2027,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 config,
                 expectedIndexName = "readonlyrest_audit-2018-12-31",
                 expectedAuditCluster = RemoteAuditCluster(
-                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("user:test@1.1.1.1"))),
+                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("http://user:test@1.1.1.1"))),
                   ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = Some(NodeCredentials("user", "test"))
                 )
               )
             }
@@ -2066,19 +2066,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         "not be able to be loaded from config" when {
           "'audit' section is defined" when {
             "not supported custom serializer is set" in {
-              val config = rorConfigFromUnsafe(
+              val config = rorConfigWithAudit(
                 """
-                  |readonlyrest:
-                  |  audit:
-                  |    collector: true
-                  |    serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block
-                  |    type: allow
-                  |    auth_key: admin:container
-                  |
+                  |audit:
+                  |  collector: true
+                  |  serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
               """.stripMargin)
 
               assertInvalidSettings(
@@ -2087,19 +2079,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
             }
             "custom audit index name pattern is invalid" in {
-              val config = rorConfigFromUnsafe(
+              val config = rorConfigWithAudit(
                 """
-                  |readonlyrest:
-                  |  audit:
-                  |    collector: true
-                  |    index_template: "invalid pattern"
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block
-                  |    type: allow
-                  |    auth_key: admin:container
-                  |
+                  |audit:
+                  |  collector: true
+                  |  index_template: "invalid pattern"
               """.stripMargin)
 
               assertInvalidSettings(
@@ -2108,20 +2092,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
             }
             "remote cluster is empty list" in {
-              val config = rorConfigFromUnsafe(
+              val config = rorConfigWithAudit(
                 """
-                  |readonlyrest:
-                  |  audit:
-                  |    collector: true
-                  |    cluster: []
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block
-                  |    type: allow
-                  |    auth_key: admin:container
-                  |
-              """.stripMargin)
+                  |audit:
+                  |  collector: true
+                  |  cluster: []
+                """.stripMargin)
 
               assertInvalidSettings(
                 config,
@@ -2131,18 +2107,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           }
           "'audit' section is not defined" when {
             "not supported custom serializer is set" in {
-              val config = rorConfigFromUnsafe(
+              val config = rorConfigWithAudit(
                 """
-                  |readonlyrest:
-                  |  audit_collector: true
-                  |  audit_serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block
-                  |    type: allow
-                  |    auth_key: admin:container
-                  |
+                  |audit_collector: true
+                  |audit_serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
               """.stripMargin)
 
               assertInvalidSettings(
@@ -2151,19 +2119,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
             }
             "custom audit index name pattern is invalid" in {
-              val config = rorConfigFromUnsafe(
+              val config = rorConfigWithAudit(
                 """
-                  |readonlyrest:
-                  |  audit_collector: true
-                  |  audit_index_template: "invalid pattern"
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block
-                  |    type: allow
-                  |    auth_key: admin:container
-                  |
-              """.stripMargin)
+                  |audit_collector: true
+                  |audit_index_template: "invalid pattern"
+                """.stripMargin)
 
               assertInvalidSettings(
                 config,
@@ -2171,20 +2131,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
             }
             "remote cluster is empty list" in {
-              val config = rorConfigFromUnsafe(
+              val config = rorConfigWithAudit(
                 """
-                  |readonlyrest:
-                  |  audit_collector: true
-                  |  audit_cluster: []
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block
-                  |    type: allow
-                  |    auth_key: admin:container
-                  |
-              """.stripMargin)
-
+                  |audit_collector: true
+                  |audit_cluster: []
+                """.stripMargin)
               assertInvalidSettings(
                 config,
                 expectedErrorMessage = "Non empty list of valid URI is required"
@@ -2194,6 +2145,26 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         }
       }
     }
+  }
+
+  private def rorConfigWithAudit(auditSection: String) = {
+    def indent(n: Int)(str: String): String = {
+      val indent =  " " * n
+      str.linesIterator.map(indent + _).mkString("\n")
+    }
+
+    val rawConfig =
+      s"""
+         |readonlyrest:
+         |  ${indent(2)(auditSection)}
+         |  access_control_rules:
+         |
+         |  - name: test_block
+         |    type: allow
+         |    auth_key: admin:container
+    """.stripMargin
+    println(rawConfig)
+    rorConfigFromUnsafe(rawConfig)
   }
 
   private def assertSettingsNoPresent(config: RawRorConfig): Unit = {
