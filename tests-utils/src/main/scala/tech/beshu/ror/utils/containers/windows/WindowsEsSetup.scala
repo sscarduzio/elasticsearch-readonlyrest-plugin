@@ -25,9 +25,9 @@ import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstall
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager.*
 import tech.beshu.ror.utils.containers.windows.WindowsEsPortProvider.*
 import tech.beshu.ror.utils.containers.windows.WindowsEsRunner.{WindowsEsProcess, startEs}
+import tech.beshu.ror.utils.misc.ScalaUtils.retry
 
 import java.util.function.Consumer
-import scala.annotation.tailrec
 import scala.language.postfixOps
 
 object WindowsEsSetup extends LazyLogging {
@@ -40,7 +40,7 @@ object WindowsEsSetup extends LazyLogging {
 
   def prepareEs(elasticsearch: Elasticsearch): Unit = {
     // The ES zip file sometimes cannot be unzipped when running CI job. In that case we delete the downloaded file and try again.
-    withRetries(maxRetries = 3, cleanBeforeRetrying = cleanDownloadsDirectory()) {
+    retry(times = 3, cleanBeforeRetrying = cleanDownloadsDirectory()) {
       downloadEsZipFileWithProgress(elasticsearch.esVersion)
       unzipEs(elasticsearch.esVersion, elasticsearch.config)
     }
@@ -110,29 +110,5 @@ object WindowsEsSetup extends LazyLogging {
     private def replaceLineWithPrefix(prefix: String, newLine: String): File =
       val updated = file.lines.map(line => if (line.startsWith(prefix)) newLine else line)
       file.overwrite(updated.mkString("\n"))
-
-  private def withRetries(maxRetries: Int, cleanBeforeRetrying: => Unit)(block: => Unit): Unit = {
-    @tailrec
-    def loop(attempt: Int): Unit = {
-      try {
-        block
-      } catch {
-        case e: Throwable =>
-          val nextAttempt = attempt + 1
-          if (nextAttempt > maxRetries) {
-            logger.error(s"Attempt $attempt failed: ${e.getMessage}. Retries exhausted, failing with exception.")
-            throw e
-          } else {
-            logger.error(s"Attempt $attempt failed: ${e.getMessage}", e)
-            logger.warn(s"Starting cleaning after failed attempt")
-            cleanBeforeRetrying
-            logger.warn(s"Retrying...")
-            loop(nextAttempt)
-          }
-      }
-    }
-
-    loop(1)
-  }
 
 }
