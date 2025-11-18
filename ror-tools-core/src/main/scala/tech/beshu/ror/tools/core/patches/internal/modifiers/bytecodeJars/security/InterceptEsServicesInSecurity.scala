@@ -24,7 +24,7 @@ import tech.beshu.ror.tools.core.utils.EsUtil.{es8140, es900}
 
 import java.io.InputStream
 
-private[patches] class InterceptServiceAccountServiceInSecurity(esVersion: SemVer)
+private[patches] class InterceptEsServicesInSecurity(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -54,11 +54,12 @@ private[patches] class InterceptServiceAccountServiceInSecurity(esVersion: SemVe
         case "createComponents" if (access & Opcodes.ACC_PUBLIC) != 0 =>
           esVersion match {
             case v if v >= es900 =>
-              new InterceptServiceAccountServiceInCreateComponentsMethodForEsGreaterOrEqual900(
+              // todo: add api key sevice interception
+              new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual900(
                 super.visitMethod(access, name, descriptor, signature, exceptions)
               )
             case v if v >= es8140 =>
-              new InterceptServiceAccountServiceInCreateComponentsMethodForEsGreaterOrEqual8140(
+              new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual8140(
                 super.visitMethod(access, name, descriptor, signature, exceptions)
               )
             case _ =>
@@ -70,7 +71,7 @@ private[patches] class InterceptServiceAccountServiceInSecurity(esVersion: SemVe
     }
   }
 
-  private class InterceptServiceAccountServiceInCreateComponentsMethodForEsGreaterOrEqual900(underlying: MethodVisitor)
+  private class InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual900(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
@@ -203,7 +204,7 @@ private[patches] class InterceptServiceAccountServiceInSecurity(esVersion: SemVe
     }
   }
 
-  private class InterceptServiceAccountServiceInCreateComponentsMethodForEsGreaterOrEqual8140(underlying: MethodVisitor)
+  private class InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual8140(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
@@ -287,12 +288,25 @@ private[patches] class InterceptServiceAccountServiceInSecurity(esVersion: SemVe
       val label20 = new Label()
       underlying.visitLabel(label20)
       underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
+      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/security/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
       val label21 = new Label()
       underlying.visitLabel(label21)
       underlying.visitJumpInsn(Opcodes.GOTO, label17)
       underlying.visitLabel(label19)
-      underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
+      underlying.visitFrame(Opcodes.F_APPEND, 1, Array("java/lang/Object"), 0, null)
+      underlying.visitVarInsn(Opcodes.ALOAD, 4)
+      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/ApiKeyService")
+      val label22 = new Label()
+      underlying.visitJumpInsn(Opcodes.IFEQ, label22)
+      val label23 = new Label()
+      underlying.visitLabel(label23)
+      underlying.visitVarInsn(Opcodes.ALOAD, 4)
+      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ApiKeyServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
+      val label24 = new Label()
+      underlying.visitLabel(label24)
+      underlying.visitJumpInsn(Opcodes.GOTO, label17)
+      underlying.visitLabel(label22)
+      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
       underlying.visitJumpInsn(Opcodes.GOTO, label16)
       underlying.visitLabel(label17)
       underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
@@ -302,21 +316,21 @@ private[patches] class InterceptServiceAccountServiceInSecurity(esVersion: SemVe
       underlying.visitLabel(label2)
       underlying.visitFrame(Opcodes.F_FULL, 2, Array("org/elasticsearch/xpack/security/Security", "org/elasticsearch/plugins/Plugin$PluginServices"), 1, Array("java/lang/Exception"))
       underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label22 = new Label()
-      underlying.visitLabel(label22)
+      val label25 = new Label()
+      underlying.visitLabel(label25)
       underlying.visitTypeInsn(Opcodes.NEW, "java/lang/IllegalStateException")
       underlying.visitInsn(Opcodes.DUP)
       underlying.visitLdcInsn("security initialization failed")
       underlying.visitVarInsn(Opcodes.ALOAD, 2)
       underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/IllegalStateException", "<init>", "(Ljava/lang/String;Ljava/lang/Throwable;)V", false)
       underlying.visitInsn(Opcodes.ATHROW)
-      val label23 = new Label()
-      underlying.visitLabel(label23)
-      underlying.visitLocalVariable("c", "Ljava/lang/Object;", null, label18, label19, 4)
+      val label26 = new Label()
+      underlying.visitLabel(label26)
+      underlying.visitLocalVariable("c", "Ljava/lang/Object;", null, label18, label22, 4)
       underlying.visitLocalVariable("components", "Ljava/util/Collection;", "Ljava/util/Collection<Ljava/lang/Object;>;", label15, label2, 2)
-      underlying.visitLocalVariable("e", "Ljava/lang/Exception;", null, label22, label23, 2)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/Security;", null, label0, label23, 0)
-      underlying.visitLocalVariable("services", "Lorg/elasticsearch/plugins/Plugin$PluginServices;", null, label0, label23, 1)
+      underlying.visitLocalVariable("e", "Ljava/lang/Exception;", null, label25, label26, 2)
+      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/Security;", null, label0, label26, 0)
+      underlying.visitLocalVariable("services", "Lorg/elasticsearch/plugins/Plugin$PluginServices;", null, label0, label26, 1)
       underlying.visitMaxs(12, 5)
       underlying.visitEnd()
     }

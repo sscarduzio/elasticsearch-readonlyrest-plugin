@@ -25,7 +25,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{ApplicationPermissionAllowingEverything, DummyAuthorizeInAuthorizationService, SimpleRoleAllowingEverything}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyBootstrapPolicyUtilClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{CreateServiceAccountServiceBridgeClass, DeactivateGetRequestCacheKeyDifferentiatorInSecurity, InterceptServiceAccountServiceInSecurity}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{CreateApiKeyServiceBridgeClass, CreateServiceAccountServiceBridgeClass, DeactivateGetRequestCacheKeyDifferentiatorInSecurity, InterceptEsServicesInSecurity}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
 
@@ -38,6 +38,7 @@ private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
         createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
+      CreateApiKeyServiceBridgeClass,
       CreateServiceAccountServiceBridgeClass,
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
@@ -54,7 +55,7 @@ private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      new InterceptServiceAccountServiceInSecurity(esVersion),
+      new InterceptEsServicesInSecurity(esVersion),
       DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       new DummyAuthenticationInAuthenticationChain(esVersion),
       new DummyAuthorizeInAuthorizationService(esVersion),

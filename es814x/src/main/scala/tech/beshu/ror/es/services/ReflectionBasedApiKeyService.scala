@@ -17,52 +17,23 @@
 package tech.beshu.ror.es.services
 
 import monix.eval.Task
-import org.elasticsearch.ElasticsearchSecurityException
-import org.elasticsearch.common.settings.SecureString
-import org.joor.Reflect.{on, onClass}
+import org.joor.Reflect.onClass
 import tech.beshu.ror.accesscontrol.domain.AuthorizationToken
-import tech.beshu.ror.es.ServiceAccountTokenService
-import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
+import tech.beshu.ror.es.ApiKeyService
 import tech.beshu.ror.utils.AccessControllerHelper
 
-class ReflectionBasedServiceAccountTokenService extends ServiceAccountTokenService {
+class ReflectionBasedApiKeyService extends ApiKeyService {
 
   private lazy val instance = ApiKeyServiceRef.getInstance.get
 
   override def validateToken(token: AuthorizationToken): Task[Boolean] = {
-    tryParseToken(token)
-      .map(authenticateToken)
-      .getOrElse(Task.now(false))
-  }
-
-  private def tryParseToken(token: AuthorizationToken) = {
-    Option {
-      on(instance)
-        .call("tryParseToken", new SecureString(token.value.value.toArray))
-        .get[AnyRef]
-    }
-  }
-
-  private def authenticateToken(serviceAccountToken: AnyRef) = {
-    val listener = new ActionListenerToTaskAdapter[AnyRef]
-    on(instance).call("authenticateToken", serviceAccountToken, "any", listener)
-    listener
-      .result
-      .map { ref =>
-        Option(ref) match {
-          case Some(_) => true
-          case None => false
-        }
-      }
-      .onErrorRecover {
-        case ex: ElasticsearchSecurityException => false
-        case ex => throw ex
-      }
+    instance.toString
+    Task.now(true)
   }
 }
 
-object ServiceAccountServiceRef {
-  private val Bridge = "org.elasticsearch.plugins.ServiceAccountServiceBridge"
+object ApiKeyServiceRef {
+  private val Bridge = "org.elasticsearch.plugins.ApiKeyServiceBridge"
 
   private def candidates: List[ClassLoader] = AccessControllerHelper.doPrivileged {
     List(
@@ -100,7 +71,7 @@ object ServiceAccountServiceRef {
     }
 
   def debugProbe(): String = {
-    val resPath = "org/elasticsearch/xpack/plugins/ServiceAccountServiceBridge.class"
+    val resPath = "org/elasticsearch/xpack/plugins/ApiKeyServiceBridge.class"
     val hits = candidates.flatMap { cl =>
       Option(cl.getResource(resPath)).map(u => s"${cl.getClass.getName} -> $u")
     }

@@ -24,7 +24,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.{ModifyEntitlementInitializationClass, ModifyEntitlementRuntimePolicyParserClass, ModifyFilesEntitlementsValidationClass}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{CreateServiceAccountServiceBridgeClass, DeactivateGetRequestCacheKeyDifferentiatorInSecurity, InterceptServiceAccountServiceInSecurity}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{CreateServiceAccountServiceBridgeClass, DeactivateGetRequestCacheKeyDifferentiatorInSecurity, InterceptEsServicesInSecurity}
 import tech.beshu.ror.tools.core.utils.EsUtil.es902
 
 import scala.language.postfixOps
@@ -49,7 +49,7 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new XPackSecurityJarPatchCreator(
       OpenModule,
       CreateServiceAccountServiceBridgeClass,
-      new InterceptServiceAccountServiceInSecurity(esVersion),
+      new InterceptEsServicesInSecurity(esVersion),
       DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       new DummyAuthenticationInAuthenticationChain(esVersion),
       new DummyAuthorizeInAuthorizationService(esVersion),
