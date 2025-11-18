@@ -26,7 +26,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.request.context.types.ReflectionBasedActionRequest
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.es.services.{EsApiKeyService, ReflectionBasedApiKeyService}
+import tech.beshu.ror.es.services.EsApiKeyService
 import tech.beshu.ror.syntax.Set
 
 import java.util.function.Supplier
@@ -46,7 +46,6 @@ class GrantApiKeyEsRequestContext private[xpacksecurity](actionRequest: ActionRe
 
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = {
     UpdateResponse.sync { resp =>
-      new ReflectionBasedApiKeyService().validateToken(null)
       actionRequest.toString
       resp
     }

@@ -100,7 +100,7 @@ object ServiceAccountServiceRef {
     }
 
   def debugProbe(): String = {
-    val resPath = "org/elasticsearch/xpack/plugins/ServiceAccountServiceBridge.class"
+    val resPath = "org/elasticsearch/plugins/ServiceAccountServiceBridge.class"
     val hits = candidates.flatMap { cl =>
       Option(cl.getResource(resPath)).map(u => s"${cl.getClass.getName} -> $u")
     }

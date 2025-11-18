@@ -17,18 +17,56 @@
 package tech.beshu.ror.es.services
 
 import monix.eval.Task
-import org.joor.Reflect.onClass
+import org.elasticsearch.ElasticsearchSecurityException
+import org.elasticsearch.common.settings.SecureString
+import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.accesscontrol.domain.AuthorizationToken
 import tech.beshu.ror.es.ApiKeyService
+import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 import tech.beshu.ror.utils.AccessControllerHelper
 
-class ReflectionBasedApiKeyService extends ApiKeyService {
+class ReflectionBasedApiKeyService(threadPool: ThreadPool) extends ApiKeyService {
 
   private lazy val instance = ApiKeyServiceRef.getInstance.get
 
+  private lazy val apiKeyType = {
+    val classLoader = instance.getClass.getClassLoader
+    val apiKeyTypeClass = Class.forName("org.elasticsearch.xpack.core.security.action.apikey.ApiKey$Type", true, classLoader)
+    onClass(apiKeyTypeClass)
+      .call("valueOf", "REST")
+      .get[AnyRef]
+  }
+
   override def validateToken(token: AuthorizationToken): Task[Boolean] = {
-    instance.toString
-    Task.now(true)
+    parseApiKey(token)
+      .map(authenticateApiKey)
+      .getOrElse(Task.now(false))
+  }
+
+  private def parseApiKey(token: AuthorizationToken): Option[AnyRef] = {
+    Option {
+      on(instance)
+        .call("parseApiKey", new SecureString(token.value.value.toArray), apiKeyType)
+        .get[AnyRef]
+    }
+  }
+
+  private def authenticateApiKey(apiKeyCredentials: AnyRef): Task[Boolean] = {
+    val listener = new ActionListenerToTaskAdapter[AnyRef]
+    on(instance).call("tryAuthenticate", threadPool.getThreadContext, apiKeyCredentials, listener)
+    listener
+      .result
+      .map(isAuthenticated)
+      .onErrorRecover {
+        case ex: ElasticsearchSecurityException => false
+        case ex => throw ex
+      }
+  }
+
+  private def isAuthenticated(authenticationResult: AnyRef): Boolean = {
+    Option(authenticationResult)
+      .exists(result => on(result).call("isAuthenticated").get[Boolean])
   }
 }
 
@@ -71,7 +109,7 @@ object ApiKeyServiceRef {
     }
 
   def debugProbe(): String = {
-    val resPath = "org/elasticsearch/xpack/plugins/ApiKeyServiceBridge.class"
+    val resPath = "org/elasticsearch/plugins/ApiKeyServiceBridge.class"
     val hits = candidates.flatMap { cl =>
       Option(cl.getResource(resPath)).map(u => s"${cl.getClass.getName} -> $u")
     }
