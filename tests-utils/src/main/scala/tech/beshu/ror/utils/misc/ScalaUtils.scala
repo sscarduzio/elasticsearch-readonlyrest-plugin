@@ -27,6 +27,7 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
+import scala.util.control.NonFatal
 
 object ScalaUtils extends LazyLogging {
 
@@ -81,7 +82,7 @@ object ScalaUtils extends LazyLogging {
       try {
         action
       } catch {
-        case e: Throwable =>
+        case NonFatal(e) =>
           val nextAttempt = attempt + 1
           if (nextAttempt > times) {
             logger.error(s"Attempt $attempt failed: ${e.getMessage}. Retries exhausted, failing with exception.")
