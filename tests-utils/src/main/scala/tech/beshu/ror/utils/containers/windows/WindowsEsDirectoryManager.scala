@@ -17,14 +17,11 @@
 package tech.beshu.ror.utils.containers.windows
 
 import com.typesafe.scalalogging.LazyLogging
-import os.*
-import tech.beshu.ror.utils.containers.images.Elasticsearch
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Config
 
 import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, StandardCopyOption}
 import java.util.zip.ZipInputStream
-import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 import scala.util.Using
 
@@ -35,9 +32,6 @@ object WindowsEsDirectoryManager extends LazyLogging {
 
   def basePath: os.Path =
     os.pwd / "windows-es"
-
-  def tempPath: os.Path =
-    os.pwd / "temp"
 
   def downloadsPath: os.Path =
     basePath / "downloads"
@@ -67,6 +61,11 @@ object WindowsEsDirectoryManager extends LazyLogging {
     } else {
       logger.info(s"ES $esVersion for Windows already downloaded")
     }
+  }
+
+  def cleanDownloadsDirectory(): Unit = {
+    logger.info(s"Removing all files from Windows ES downloads directory")
+    os.remove.all(downloadsPath)
   }
 
   private def doDownloadEsZipFileWithProgress(esVersion: String): Unit = {
