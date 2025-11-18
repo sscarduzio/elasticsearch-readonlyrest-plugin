@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
-import tech.beshu.ror.accesscontrol.domain.TokenDefinition.{DynamicToken, StaticToken}
+import tech.beshu.ror.accesscontrol.domain.TokenDefinition.{ApiKey, ServiceToken, StaticToken}
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
@@ -56,7 +56,8 @@ private object TokenAuthenticationRuleDecoder {
         // todo: improve this
         token <- c.downField("token").as[NonEmptyString].map { tokenStr =>
           tokenStr.value match {
-            case "dynamic" => DynamicToken
+            case "service-token" => ServiceToken
+            case "api-key" => ApiKey
             case _ => StaticToken(tokenStr)
           }
         }

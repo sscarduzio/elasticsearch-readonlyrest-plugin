@@ -60,10 +60,15 @@ final class TokenAuthenticationRule(val settings: Settings,
             .authorizationToken(AuthorizationTokenDef(settings.tokenHeaderName, Prefix.Any))
             .exists { token => token.value == configuredToken } // todo: prefix not verified
         }
-      case TokenDefinition.DynamicToken =>
+      case TokenDefinition.ServiceToken =>
         requestContext.authorizationToken(AuthorizationTokenDef(settings.tokenHeaderName, Prefix.Exact("Bearer"))) match {
           case None => Task.now(false)
           case Some(token) => requestContext.serviceAccountTokenService.validateToken(token)
+        }
+      case TokenDefinition.ApiKey =>
+        requestContext.authorizationToken(AuthorizationTokenDef(settings.tokenHeaderName, Prefix.Exact("ApiKey"))) match {
+          case None => Task.now(false)
+          case Some(token) => requestContext.apiKeyService.validateToken(token)
         }
     }
     verification.map {

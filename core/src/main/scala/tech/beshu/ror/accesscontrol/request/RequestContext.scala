@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.Prefix
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
-import tech.beshu.ror.es.ServiceAccountTokenService
+import tech.beshu.ror.es.{ApiKeyService, ServiceAccountTokenService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -93,6 +93,7 @@ trait RequestContext extends Logging {
 
   def serviceAccountTokenService: ServiceAccountTokenService
 
+  def apiKeyService: ApiKeyService
 }
 
 object RequestContext extends Logging {
@@ -245,6 +246,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       .flatMap { h =>
         config.prefix match {
           case Prefix.Exact(prefix) =>
+            // todo: case sensivity
             if (h.value.value.startsWith(s"$prefix ")) {
               NonEmptyString
                 .unapply(h.value.value.substring(prefix.length + 1))

@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.{RorRestRequest, ServiceAccountTokenService}
+import tech.beshu.ror.es.{ApiKeyService, RorRestRequest, ServiceAccountTokenService}
 import tech.beshu.ror.syntax.*
 
 import java.time.Instant
@@ -91,6 +91,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
     }
   }
   override val serviceAccountTokenService: ServiceAccountTokenService = esContext.esServices.serviceAccountTokenService
+
+  override val apiKeyService: ApiKeyService = esContext.esServices.apiKeyService
 
   protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
     val wildcardOptions = request

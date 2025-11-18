@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.AccessControllerHelper
 
 class ReflectionBasedServiceAccountTokenService extends ServiceAccountTokenService {
 
-  private lazy val instance = ApiKeyServiceRef.getInstance.get
+  private lazy val instance = ServiceAccountServiceRef.getInstance.get
 
   override def validateToken(token: AuthorizationToken): Task[Boolean] = {
     tryParseToken(token)
@@ -35,7 +35,7 @@ class ReflectionBasedServiceAccountTokenService extends ServiceAccountTokenServi
       .getOrElse(Task.now(false))
   }
 
-  private def tryParseToken(token: AuthorizationToken) = {
+  private def tryParseToken(token: AuthorizationToken): Option[AnyRef] = {
     Option {
       on(instance)
         .call("tryParseToken", new SecureString(token.value.value.toArray))
@@ -43,7 +43,7 @@ class ReflectionBasedServiceAccountTokenService extends ServiceAccountTokenServi
     }
   }
 
-  private def authenticateToken(serviceAccountToken: AnyRef) = {
+  private def authenticateToken(serviceAccountToken: AnyRef): Task[Boolean] = {
     val listener = new ActionListenerToTaskAdapter[AnyRef]
     on(instance).call("authenticateToken", serviceAccountToken, "any", listener)
     listener

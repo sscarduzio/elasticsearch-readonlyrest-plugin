@@ -91,7 +91,8 @@ object PlainTextSecret {
 // todo: rename
 sealed trait TokenDefinition
 object TokenDefinition {
-  case object DynamicToken extends TokenDefinition
+  case object ServiceToken extends TokenDefinition
+  case object ApiKey extends TokenDefinition
   final case class StaticToken(value: NonEmptyString) extends TokenDefinition
 }
 
