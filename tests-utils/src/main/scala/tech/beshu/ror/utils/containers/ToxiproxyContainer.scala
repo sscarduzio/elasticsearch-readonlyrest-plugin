@@ -27,8 +27,8 @@ import scala.language.postfixOps
 
 class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerServicePort: Int)
   extends GenericContainer(
-    dockerImage =  "ghcr.io/shopify/toxiproxy:2.12.0",
-    exposedPorts =  Seq(httpApiPort, proxiedPort),
+    dockerImage = "ghcr.io/shopify/toxiproxy:2.12.0",
+    exposedPorts = Seq(httpApiPort, proxiedPort),
     waitStrategy = Some(new ToxiproxyWaitStrategy(innerContainer, innerServicePort))
   ) {
 
@@ -75,7 +75,9 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
 
 object ToxiproxyContainer {
 
-  private class ToxiproxyWaitStrategy(innerContainer: SingleContainer[_], innerServicePort: Int) extends WaitWithRetriesStrategy("toxiproxy") {
+  private class ToxiproxyWaitStrategy(innerContainer: SingleContainer[_], innerServicePort: Int)
+    extends WaitWithRetriesStrategy("toxiproxy") {
+
     override protected def isReady: Boolean = {
       try {
         val toxiproxyClient = new ToxiproxyClient(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(httpApiPort))

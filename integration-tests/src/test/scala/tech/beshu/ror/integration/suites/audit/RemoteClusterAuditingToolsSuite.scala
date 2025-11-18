@@ -99,6 +99,11 @@ class RemoteClusterAuditingToolsSuite
     entry("es_cluster_name").str shouldBe "ROR_SINGLE"
   }
 
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    proxiedContainers.foreach(_.enableNetwork())
+  }
+
   // This test suite does not execute on Windows: there is currently no Windows version of ToxiproxyContainer
   ignoreOnWindows {
     "Should report audit events in round-robin mode, even when some nodes are unreachable" in {
@@ -135,7 +140,7 @@ class RemoteClusterAuditingToolsSuite
       auditNode3.disableNetwork()
 
       // all nodes disabled
-      Thread.sleep(1000)
+      Thread.sleep(3000)
 
       val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
 
@@ -145,12 +150,13 @@ class RemoteClusterAuditingToolsSuite
       forEachAuditManager { adminAuditManager =>
         eventually {
           val auditEntries = adminAuditManager.getEntries.force().jsons
-          val expectedEntriesCount = List.concat(traceIds1, traceIds2, traceIds3).size
-          auditEntries.size shouldEqual expectedEntriesCount
 
           traceIds4.foreach { traceId =>
             checkNoEntriesWithTraceId(auditEntries, traceId)
           }
+
+          val expectedEntriesCount = List.concat(traceIds1, traceIds2, traceIds3).size
+          auditEntries.size shouldEqual expectedEntriesCount
         }
       }
 
@@ -162,12 +168,13 @@ class RemoteClusterAuditingToolsSuite
       forEachAuditManager { adminAuditManager =>
         eventually {
           val auditEntries = adminAuditManager.getEntries.force().jsons
-          auditEntries.size shouldEqual allExpectedTraceIds.size
 
           allExpectedTraceIds.foreach { traceId =>
             val entry = findAuditEntryWithTraceId(auditEntries, traceId)
             assertForEveryAuditEntry(entry)
           }
+
+          auditEntries.size shouldEqual allExpectedTraceIds.size
         }
       }
     }
@@ -192,8 +199,10 @@ class RemoteClusterAuditingToolsSuite
 
   private def findAuditEntryWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String) = {
     val foundEntries = findAuditEntriesWithTraceId(auditEntries, traceId)
-    foundEntries.size shouldBe 1
-    foundEntries.head
+    withClue(s"Didn't found expected audit entry with traceId [$traceId] in audit entries ${auditEntries}") {
+      foundEntries.size shouldBe 1
+      foundEntries.head
+    }
   }
 
   private def checkNoEntriesWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String): Unit = {
