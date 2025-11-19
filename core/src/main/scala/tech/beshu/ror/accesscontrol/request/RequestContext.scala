@@ -247,7 +247,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
         config.prefix match {
           case Prefix.Exact(prefix) =>
             // todo: case sensivity
-            if (h.value.value.startsWith(s"$prefix ")) {
+            if (h.value.value.toLowerCase.startsWith(s"${prefix.toLowerCase} ")) {
               NonEmptyString
                 .unapply(h.value.value.substring(prefix.length + 1))
                 .map(AuthorizationToken.apply)
