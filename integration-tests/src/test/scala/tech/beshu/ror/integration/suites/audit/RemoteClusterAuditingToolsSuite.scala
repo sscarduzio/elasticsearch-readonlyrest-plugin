@@ -76,12 +76,12 @@ class RemoteClusterAuditingToolsSuite
       case CurrentOs.Windows =>
         // Windows does not support the toxiproxy container
         auditEsContainers.zipWithIndex.map { case (auditEsContainer, index) =>
-          val name = s"AUDIT_$index"
+          val name = s"AUDIT_${index + 1}"
           es(name, auditEsContainer)
         }
       case CurrentOs.OtherThanWindows =>
         proxiedContainers.zipWithIndex.map { case (proxiedContainer, index) =>
-          val name = s"AUDIT_$index"
+          val name = s"AUDIT_${index + 1}"
           toxiproxy(name, proxiedContainer)
         }
     }
@@ -121,6 +121,14 @@ class RemoteClusterAuditingToolsSuite
               assertForEveryAuditEntry(entry)
             }
           }
+        }
+      }
+
+      adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate())}
+
+      forEachAuditManager { adminAuditManager =>
+        eventually {
+          adminAuditManager.hasNoEntries
         }
       }
 

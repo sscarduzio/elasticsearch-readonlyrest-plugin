@@ -882,8 +882,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 config,
                 expectedDataStreamName = "readonlyrest_audit",
                 expectedAuditCluster = RemoteAuditCluster(
-                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
-                  ClusterMode.RoundRobin,
+                  nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  mode = ClusterMode.RoundRobin,
                   credentials = None
                 )
               )
@@ -903,9 +903,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 config,
                 expectedDataStreamName = "readonlyrest_audit",
                 expectedAuditCluster = RemoteAuditCluster(
-                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("https://user:pass@1.1.1.1:9200"))),
-                  ClusterMode.RoundRobin,
-                  Some(NodeCredentials("user", "pass"))
+                  nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("https://user:pass@1.1.1.1:9200"))),
+                  mode = ClusterMode.RoundRobin,
+                  credentials = Some(NodeCredentials("user", "pass"))
                 )
               )
             }
@@ -926,8 +926,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 config,
                 expectedDataStreamName = "readonlyrest_audit",
                 expectedAuditCluster = RemoteAuditCluster(
-                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
-                  ClusterMode.RoundRobin,
+                  nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  mode = ClusterMode.RoundRobin,
                   credentials = None
                 )
               )
@@ -951,13 +951,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 config,
                 expectedDataStreamName = "readonlyrest_audit",
                 expectedAuditCluster = RemoteAuditCluster(
-                  UniqueNonEmptyList.of(
+                  nodes = UniqueNonEmptyList.of(
                     AuditClusterNode(Uri.parse("1.1.1.1")),
                     AuditClusterNode(Uri.parse("2.2.2.2")),
                     AuditClusterNode(Uri.parse("3.3.3.3"))
                   ),
-                  ClusterMode.RoundRobin,
-                  Some(NodeCredentials("user", "pass"))
+                  mode = ClusterMode.RoundRobin,
+                  credentials = Some(NodeCredentials("user", "pass"))
                 )
               )
             }
@@ -984,12 +984,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               config,
               expectedDataStreamName = "custom_audit_data_stream",
               expectedAuditCluster = RemoteAuditCluster(
-                UniqueNonEmptyList.of(
+                nodes = UniqueNonEmptyList.of(
                   AuditClusterNode(Uri.parse("1.1.1.1")),
                   AuditClusterNode(Uri.parse("2.2.2.2")),
                 ),
-                ClusterMode.RoundRobin,
-                Some(NodeCredentials("user", "pass"))
+                mode = ClusterMode.RoundRobin,
+                credentials = Some(NodeCredentials("user", "pass"))
               )
             )
           }
@@ -1023,8 +1023,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 config,
                 expectedDataStreamName = "custom_audit_data_stream",
                 expectedAuditCluster = RemoteAuditCluster(
-                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
-                  ClusterMode.RoundRobin,
+                  nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  mode = ClusterMode.RoundRobin,
                   credentials = None
                 ),
                 esVersion = esVersion
@@ -1711,8 +1711,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 config,
                 expectedIndexName = "readonlyrest_audit-2018-12-31",
                 expectedAuditCluster = RemoteAuditCluster(
-                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("http://user:test@1.1.1.1"))),
-                  ClusterMode.RoundRobin,
+                  nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("http://user:test@1.1.1.1"))),
+                  mode = ClusterMode.RoundRobin,
                   credentials = Some(NodeCredentials("user", "test"))
                 )
               )
@@ -1732,9 +1732,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 config,
                 expectedIndexName = "custom_template_20181231",
                 expectedAuditCluster = RemoteAuditCluster(
-                  UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
-                  ClusterMode.RoundRobin,
-                  None
+                  nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  mode = ClusterMode.RoundRobin,
+                  credentials = None
                 )
               )
             }

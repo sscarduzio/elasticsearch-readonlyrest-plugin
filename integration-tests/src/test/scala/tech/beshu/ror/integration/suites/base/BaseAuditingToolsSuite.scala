@@ -34,6 +34,7 @@ import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 import java.util.UUID
+import scala.collection.immutable.ListMap
 
 trait BaseAuditingToolsSuite
   extends AnyWordSpec
@@ -59,16 +60,19 @@ trait BaseAuditingToolsSuite
   protected lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
   private lazy val dataStreamManager = new DataStreamManager(destNodesClientProviders.head.adminClient, esVersionUsed)
 
-  protected lazy val adminAuditManagers: Map[String, NonEmptyList[AuditIndexManager]] =
-    (List(baseAuditIndexName) ++ baseAuditDataStreamName.toList)
-      .map { indexName =>
-        (indexName, destNodesClientProviders.map(_.adminClient).map(new AuditIndexManager(_, esVersionUsed, indexName)))
-      }
-      .toMap
+  protected lazy val adminAuditManagers: ListMap[String, NonEmptyList[AuditIndexManager]] = {
+    ListMap.from(
+      (List(baseAuditIndexName) ++ baseAuditDataStreamName.toList)
+        .map { indexName =>
+          (indexName, destNodesClientProviders.map(_.adminClient).map(new AuditIndexManager(_, esVersionUsed, indexName)))
+        }
+    )
+  }
+
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    adminAuditManagers.values.foreach(_.head.truncate())
+    adminAuditManagers.values.foreach(_.toList.foreach(_.truncate()))
   }
 
   protected def forEachAuditManager[A](test: => AuditIndexManager => A): Unit =
