@@ -25,6 +25,7 @@ import org.apache.http.client.methods.HttpGet
 import tech.beshu.ror.utils.httpclient.HttpResponseHelper.deserializeJsonBody
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.EsStartupChecker.{ClusterNotReady, Mode}
+import tech.beshu.ror.utils.misc.ScalaUtils.retryBackoff
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -35,22 +36,10 @@ class EsStartupChecker private(name: String,
   extends LazyLogging {
 
   def waitForStart(): Boolean = {
-    retryBackoff(clusterIsReady(client), maxRetries = 150, interval = 2 seconds)
+    retryBackoff(clusterIsReady(client), maxRetries = 150, firstDelay = 2 seconds, backOffScaler = 1)
       .map((_: Unit) => true)
       .onErrorRecover(_ => false)
       .runSyncUnsafe(5 minutes)
-  }
-
-  private def retryBackoff[A](source: Task[A],
-                              maxRetries: Int,
-                              interval: FiniteDuration): Task[A] = {
-    source.onErrorHandleWith {
-      case ex: Exception =>
-        if (maxRetries > 0)
-          retryBackoff(source, maxRetries - 1, interval).delayExecution(interval)
-        else
-          Task.raiseError(ex)
-    }
   }
 
   private def clusterIsReady(client: RestClient): Task[Unit] = {
