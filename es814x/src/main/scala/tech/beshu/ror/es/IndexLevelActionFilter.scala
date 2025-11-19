@@ -59,7 +59,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
-                             esApiKeyServiceSupplier: Supplier[Option[EsApiKeyService]],
                              esInitListener: EsInitListener,
                              rorEsConfig: ReadonlyRestEsConfig)
                             (implicit environmentConfig: EnvironmentConfig)
@@ -95,7 +94,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     apiKeyService = new ReflectionBasedApiKeyService(threadPool)
   )
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    esApiKeyServiceSupplier,
     clusterService.getSettings,
     threadPool
   )

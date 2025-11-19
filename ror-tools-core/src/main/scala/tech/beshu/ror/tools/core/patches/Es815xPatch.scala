@@ -23,9 +23,9 @@ import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{ApplicationPermissionAllowingEverything, DummyAuthorizeInAuthorizationService, SimpleRoleAllowingEverything}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{ModifyBootstrapPolicyUtilClass, SecurityManagerShouldAllowReadingEsConfigFile}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.DeactivateGetRequestCacheKeyDifferentiatorInSecurity
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{CreateApiKeyServiceBridgeClass, CreateServiceAccountServiceBridgeClass, DeactivateGetRequestCacheKeyDifferentiatorInSecurity, InterceptEsServicesInSecurity}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
 
@@ -38,6 +38,8 @@ private[patches] class Es815xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
         createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
+      CreateApiKeyServiceBridgeClass,
+      CreateServiceAccountServiceBridgeClass,
       new SecurityManagerShouldAllowReadingEsConfigFile(esVersion),
       new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
@@ -48,10 +50,13 @@ private[patches] class Es815xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new XPackCoreJarPatchCreator(
       OpenModule,
-      DisabledAsyncSearchSecurity
+      DisabledAsyncSearchSecurity,
+      SimpleRoleAllowingEverything,
+      ApplicationPermissionAllowingEverything
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
+      new InterceptEsServicesInSecurity(esVersion),
       DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
       new DummyAuthenticationInAuthenticationChain(esVersion),
       new DummyAuthorizeInAuthorizationService(esVersion),

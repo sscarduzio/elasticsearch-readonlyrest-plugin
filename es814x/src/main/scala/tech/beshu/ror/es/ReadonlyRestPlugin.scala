@@ -63,7 +63,6 @@ import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, Transport
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
-import tech.beshu.ror.es.services.EsApiKeyService
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
@@ -108,7 +107,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener
   private val groupFactory = new SetOnce[SharedGroupFactory]
-  private val esApiKeyServiceSupplier = new EsApiKeyServiceSupplier()
 
   private var ilaf: IndexLevelActionFilter = _
 
@@ -126,7 +124,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         environment,
         new RemoteClusterServiceSupplier(repositoriesServiceSupplier),
         () => Some(repositoriesServiceSupplier.get()),
-        esApiKeyServiceSupplier,
         esInitListener,
         rorEsConfig
       )
@@ -145,10 +142,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def onIndexModule(indexModule: IndexModule): Unit = {
     import tech.beshu.ror.es.utils.IndexModuleOps.*
     indexModule.overwrite(RoleIndexSearcherWrapper.instance)
-  }
-
-  def onApiKeyService(apiKeyService: AnyRef): Unit = {
-    esApiKeyServiceSupplier.set(new EsApiKeyService(apiKeyService))
   }
 
   override def getSettings: util.List[Setting[_]] = {

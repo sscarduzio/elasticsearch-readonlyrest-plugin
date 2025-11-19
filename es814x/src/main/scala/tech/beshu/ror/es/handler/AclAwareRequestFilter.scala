@@ -76,17 +76,13 @@ import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.es.handler.request.context.types.xpacksecurity.*
-import tech.beshu.ror.es.services.EsApiKeyService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
 import java.time.Instant
-import java.util.function.Supplier
 import scala.reflect.ClassTag
 
-class AclAwareRequestFilter(esApiKeyServiceSupplier: Supplier[Option[EsApiKeyService]],
-                            settings: Settings,
+class AclAwareRequestFilter(settings: Settings,
                             threadPool: ThreadPool)
                            (implicit generator: UniqueIdentifierGenerator,
                             scheduler: Scheduler)
@@ -262,18 +258,6 @@ class AclAwareRequestFilter(esApiKeyServiceSupplier: Supplier[Option[EsApiKeySer
       case _ =>
         ReflectionBasedActionRequest(esContext, aclContext, threadPool) match {
           case XpackAsyncSearchRequestContext(request) => regularRequestHandler.handle(request)
-          // xpack security
-          case CreateApiKeyEsRequestContext(request) => regularRequestHandler.handle(request)
-          case GetApiKeyEsRequestContext(creator) =>
-            creator
-              .create(esApiKeyServiceSupplier)
-              .map(regularRequestHandler.handle)
-              .sequence
-          case GrantApiKeyEsRequestContext(creator) =>
-            creator
-              .create(esApiKeyServiceSupplier)
-              .map(regularRequestHandler.handle)
-              .sequence
           // rollup
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)

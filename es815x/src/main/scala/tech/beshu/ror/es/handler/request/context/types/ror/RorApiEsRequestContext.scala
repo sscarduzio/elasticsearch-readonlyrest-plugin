@@ -19,7 +19,6 @@ package tech.beshu.ror.es.handler.request.context.types.ror
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RorApiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
@@ -28,9 +27,8 @@ import tech.beshu.ror.syntax.*
 
 class RorApiEsRequestContext(actionRequest: RorActionRequest,
                              esContext: EsContext,
-                             clusterService: RorClusterService,
                              override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[RorApiRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[RorApiRequestBlockContext](esContext)
     with EsRequest[RorApiRequestBlockContext] {
 
   override val initialBlockContext: RorApiRequestBlockContext = RorApiRequestBlockContext(

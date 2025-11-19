@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, TemplateNamePattern, TemplateOperation}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -36,24 +35,22 @@ import tech.beshu.ror.utils.ScalaOps.*
 object SimulateTemplateRequestEsRequestContext {
   def from(actionRequest: SimulateTemplateAction.Request,
            esContext: EsContext,
-           clusterService: RorClusterService,
            threadPool: ThreadPool)
           (implicit generator: UniqueIdentifierGenerator): SimulateTemplateRequestEsRequestContext[_ <: TemplateOperation] = {
     Option(actionRequest.getTemplateName).flatMap(TemplateNamePattern.fromString) match {
       case Some(templateName) =>
-        new SimulateExistingTemplateRequestEsRequestContext(templateName, actionRequest, esContext, clusterService, threadPool)
+        new SimulateExistingTemplateRequestEsRequestContext(templateName, actionRequest, esContext, threadPool)
       case None =>
-        new SimulateNewTemplateRequestEsRequestContext(actionRequest, esContext, clusterService, threadPool)
+        new SimulateNewTemplateRequestEsRequestContext(actionRequest, esContext, threadPool)
     }
   }
 }
 
 class SimulateNewTemplateRequestEsRequestContext(actionRequest: SimulateTemplateAction.Request,
                                                  esContext: EsContext,
-                                                 clusterService: RorClusterService,
                                                  override val threadPool: ThreadPool)
   extends SimulateTemplateRequestEsRequestContext[AddingIndexTemplateAndGetAllowedOnes](
-    actionRequest, esContext, clusterService, threadPool
+    actionRequest, esContext, threadPool
   ) {
 
   override protected def templateOperationFrom(actionRequest: SimulateTemplateAction.Request): AddingIndexTemplateAndGetAllowedOnes = {
@@ -88,10 +85,9 @@ class SimulateNewTemplateRequestEsRequestContext(actionRequest: SimulateTemplate
 class SimulateExistingTemplateRequestEsRequestContext(existingTemplateName: TemplateNamePattern,
                                                       actionRequest: SimulateTemplateAction.Request,
                                                       esContext: EsContext,
-                                                      clusterService: RorClusterService,
                                                       override val threadPool: ThreadPool)
                                                      (implicit generator: UniqueIdentifierGenerator)
-  extends SimulateTemplateRequestEsRequestContext[GettingIndexTemplates](actionRequest, esContext, clusterService, threadPool) {
+  extends SimulateTemplateRequestEsRequestContext[GettingIndexTemplates](actionRequest, esContext, threadPool) {
 
   override protected def templateOperationFrom(actionRequest: SimulateTemplateAction.Request): GettingIndexTemplates =
     GettingIndexTemplates(NonEmptyList.of(existingTemplateName))
@@ -123,9 +119,8 @@ class SimulateExistingTemplateRequestEsRequestContext(existingTemplateName: Temp
 
 abstract class SimulateTemplateRequestEsRequestContext[O <: TemplateOperation](actionRequest: SimulateTemplateAction.Request,
                                                                                esContext: EsContext,
-                                                                               clusterService: RorClusterService,
                                                                                override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[SimulateTemplateAction.Request, O](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseTemplatesEsRequestContext[SimulateTemplateAction.Request, O](actionRequest, esContext, threadPool) {
 
   protected def updateResponse(allowedTemplates: List[TemplateNamePattern],
                                allowedIndices: List[ClusterIndexName]): ModificationResult.UpdateResponse = {

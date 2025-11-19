@@ -44,8 +44,8 @@ private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new RorSecurityPolicyPatchCreator(
       AddAdditionalPermissions(NonEmptyList.of(
-        createClassLoaderRuntimePermission, getPropertySecurityPermission)
-      ),
+        createClassLoaderRuntimePermission, getPropertySecurityPermission
+      )),
     ),
     new XPackCoreJarPatchCreator(
       OpenModule,

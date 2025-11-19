@@ -23,7 +23,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -32,9 +31,8 @@ import tech.beshu.ror.syntax.*
 
 abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                     esContext: EsContext,
-                                                                    clusterService: RorClusterService,
                                                                     override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[RepositoryRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[RepositoryRequestBlockContext](esContext)
     with EsRequest[RepositoryRequestBlockContext] {
 
   override val initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
