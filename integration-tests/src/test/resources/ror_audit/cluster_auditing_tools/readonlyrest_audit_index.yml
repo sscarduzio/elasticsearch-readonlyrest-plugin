@@ -5,7 +5,9 @@ readonlyrest:
     outputs:
       - type: index
         index_template: "'audit_index'"
-        cluster: [ "http://{AUDIT_0_HOST}:{AUDIT_0_PORT}", "http://{AUDIT_1_HOST}:{AUDIT_1_PORT}", "http://{AUDIT_2_HOST}:{AUDIT_2_PORT}" ]
+        cluster:
+          nodes: [ "http://{AUDIT_0_HOST}:{AUDIT_0_PORT}", "http://{AUDIT_1_HOST}:{AUDIT_1_PORT}", "http://{AUDIT_2_HOST}:{AUDIT_2_PORT}" ]
+          mode: round-robin
 
   access_control_rules:
 

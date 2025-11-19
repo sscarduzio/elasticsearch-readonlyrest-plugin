@@ -199,7 +199,7 @@ object AuditingSettingsDecoder extends Logging {
           .map {
             case CreationError.ParsingError(msg) =>
               auditSettingsError(
-                s"Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: ${patternStr.show} error: ${msg.show}"
+                s"Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: ${patternStr.show} error: ${msg.show}"
               )
           }
       }
@@ -447,10 +447,9 @@ object AuditingSettingsDecoder extends Logging {
       if (nodesWithoutCredentials.size == nodes.size) {
         Right(None)
       } else {
-        // some node has credentials set
         // check if all nodes have the same credentials - if not, it's possible that different clusters are used
         lazy val inconsistentCredentialsError =
-          auditSettingsError(s"One or more audit cluster nodes have inconsistent credentials: ${nodes.map(_.uri.show).toList.show}")
+          auditSettingsError(s"One or more audit cluster nodes have inconsistent credentials. Please configure the same credentials. Nodes: ${nodes.map(_.uri.show).toList.show}")
         for {
           _ <- Either.cond(nodesWithoutCredentials.isEmpty, (), inconsistentCredentialsError)
           credentials <- {
@@ -579,10 +578,10 @@ object AuditingSettingsDecoder extends Logging {
     }
 
     private def decodeOptionalSetting[T: Decoder](cursor: HCursor)(key: String, fallbackKey: String): Decoder.Result[Option[T]] = {
-      cursor.downField("audit").get[Option[T]](key)
+      cursor.downField("audit").downFieldAs[Option[T]](key)
         .flatMap {
           case Some(value) => Right(Some(value))
-          case None => cursor.get[Option[T]](fallbackKey)
+          case None => cursor.downFieldAs[Option[T]](fallbackKey)
         }
     }
   }
