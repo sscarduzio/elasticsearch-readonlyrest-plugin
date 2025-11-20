@@ -25,6 +25,7 @@ import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.windows.WindowsEsPortProvider
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -66,7 +67,7 @@ class RemoteReindexSuite
       clusterName = "ROR_DEST_ES",
       containerSpecification = ContainerSpecification(
         environmentVariables = Map.empty,
-        additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "[\"*:9200\", \"*:9215\"]")
+        additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> s"[\"*:9200\", \"*:${WindowsEsPortProvider.get("ROR_SOURCE_ES_1").esPort}\"]")
       ),
       securityType = securityType
     )

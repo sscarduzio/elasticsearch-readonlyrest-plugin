@@ -17,18 +17,20 @@
 package tech.beshu.ror.es
 
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
 
 sealed trait AuditSinkService {
   def close(): Unit
 }
 
 trait IndexBasedAuditSinkService extends AuditSinkService {
-  def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit
+  def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)
+            (implicit requestId: RequestId): Unit
 }
 
 trait DataStreamBasedAuditSinkService extends AuditSinkService {
-  def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit
+  def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)
+            (implicit requestId: RequestId): Unit
 
   def dataStreamCreator: AuditDataStreamCreator
 }

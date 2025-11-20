@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.suites.audit
 
+import cats.data.NonEmptyList
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
@@ -45,7 +46,7 @@ class LocalClusterAuditingToolsSuite
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
-  override lazy val destNodeClientProvider: ClientProvider = this
+  override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.of(this)
 
   override def baseRorConfig: String = resolvedRorConfigFile.contentAsString
 
@@ -189,7 +190,7 @@ class LocalClusterAuditingToolsSuite
           "enabled: true ## twitter audit toggle",
           "enabled: false ## twitter audit toggle",
         )
-        adminAuditManagers.values.foreach(_.truncate())
+        adminAuditManagers.values.foreach(_.head.truncate())
         performAndAssertExampleSearchRequest(indexManager)
 
         // Wait for 2s and assert, that there is no serialized event

@@ -27,7 +27,7 @@ import org.elasticsearch.common.xcontent.XContentType
 import org.elasticsearch.core.TimeValue
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
 import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
@@ -52,11 +52,13 @@ final class NodeClientBasedAuditSinkService(client: NodeClient,
       .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))
       .build
 
-  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)
+                     (implicit requestId: RequestId): Unit = {
     submitDocument(indexName.name.value, documentId, jsonRecord)
   }
 
-  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit = {
+  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)
+                     (implicit requestId: RequestId): Unit = {
     submitDocument(dataStreamName.value.value, documentId, jsonRecord)
   }
 
