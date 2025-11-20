@@ -15,18 +15,19 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
+
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthorizationRule, JwtPseudoAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -795,153 +796,6 @@ class JwtAuthRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Header name cannot be empty string")))
-          }
-        )
-      }
-      "no signature key is defined for default HMAC algorithm" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """- name: "jwt1"
-                |""".stripMargin
-            )))
-          }
-        )
-      }
-      "RSA algorithm is defined but on signature key" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "RSA"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """- name: "jwt1"
-                |  signature_algo: "RSA"
-                |""".stripMargin
-            )))
-          }
-        )
-      }
-      "unrecognized algorithm is used" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "UNKNOWN"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Unrecognised algorithm family 'UNKNOWN'. Should be either of: HMAC, EC, RSA, NONE")))
-          }
-        )
-      }
-      "RSA signature key is malformed" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "RSA"
-              |    signature_key: "malformed_key"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Key 'malformed_key' seems to be invalid")))
-          }
-        )
-      }
-      "RSA signature key cannot be read from system env" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "RSA"
-              |    signature_key: "@{env:SECRET}"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(GeneralReadonlyrestSettingsError(Message("Cannot resolve ENV variable 'SECRET'")))
-          }
-        )
-      }
-      "EC signature key is malformed" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "EC"
-              |    signature_key: "malformed_key"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Key 'malformed_key' seems to be invalid")))
           }
         )
       }

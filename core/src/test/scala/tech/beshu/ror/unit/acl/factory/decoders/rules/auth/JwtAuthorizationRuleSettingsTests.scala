@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -239,6 +239,88 @@ class JwtAuthorizationRuleSettingsTests
               }
             )
           }
+      }
+      "no JWT definition name is defined" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_authorization: jwt1
+              |
+              |  jwt:
+              |  - signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
+              """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                |""".stripMargin
+            )))
+          }
+        )
+      }
+      "both 'groups or' key and 'groups and' key used" in {
+        List(
+          ("roles", "roles_and"),
+          ("groups", "groups_and")
+        )
+          .foreach { case (groupsAnyOfKey, groupsAllOfKey) =>
+            assertDecodingFailure(
+              yaml =
+                s"""
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    jwt_authorization:
+                   |      name: "jwt1"
+                   |      $groupsAnyOfKey: ["group1", "group2"]
+                   |      $groupsAllOfKey: ["groups1", "groups2"]
+                   |  jwt:
+                   |  - name: jwt2
+                   |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                   |
+                   |""".stripMargin,
+              assertion = errors => {
+                errors should have size 1
+                errors.head should be(RulesLevelCreationError(Message(
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for JWT authorization rule 'jwt1'")
+                ))
+              }
+            )
+          }
+      }
+      "two JWT definitions have the same names" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_authorization: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+              |
+              |  - name: jwt1
+              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("jwt definitions must have unique identifiers. Duplicates: jwt1")))
+          }
+        )
       }
     }
   }

@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -89,116 +89,6 @@ class JwtAuthenticationRuleSettingsTests
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
-            rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsConfig should be(None)
-          }
-        )
-      }
-      "token header name can be changes in JWT definition" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_authentication: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    header_name: X-JWT-Custom-Header
-              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), "Bearer "))
-            rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsConfig should be(None)
-          }
-        )
-      }
-      "token prefix can be changes in JWT definition for custom token header" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_authentication: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    header_name: X-JWT-Custom-Header
-              |    header_prefix: "MyPrefix "
-              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), "MyPrefix "))
-            rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsConfig should be(None)
-          }
-        )
-      }
-      "token prefix can be changes in JWT definition for standard token header" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_authentication: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    header_prefix: "MyPrefix "
-              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "MyPrefix "))
-            rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsConfig should be(None)
-          }
-        )
-      }
-      "custom prefix attribute is empty" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_authentication: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    header_name: X-JWT-Custom-Header
-              |    header_prefix: ""
-              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), ""))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsConfig should be(None)
@@ -320,6 +210,8 @@ class JwtAuthenticationRuleSettingsTests
           }
         )
       }
+    }
+    "be able to be loaded from config (token-related)" when {
       "RSA family algorithm can be used in JWT signature" in {
         val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
         assertDecodingSuccess(
@@ -572,6 +464,153 @@ class JwtAuthenticationRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot find JWT definition with name: jwt1")))
+          }
+        )
+      }
+      "no signature key is defined for default HMAC algorithm" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_authentication: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
+              """- name: "jwt1"
+                |""".stripMargin
+            )))
+          }
+        )
+      }
+      "RSA algorithm is defined but on signature key" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_authentication: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    signature_algo: "RSA"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
+              """- name: "jwt1"
+                |  signature_algo: "RSA"
+                |""".stripMargin
+            )))
+          }
+        )
+      }
+      "unrecognized algorithm is used" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_authentication: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    signature_algo: "UNKNOWN"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Unrecognised algorithm family 'UNKNOWN'. Should be either of: HMAC, EC, RSA, NONE")))
+          }
+        )
+      }
+      "RSA signature key is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_authentication: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    signature_algo: "RSA"
+              |    signature_key: "malformed_key"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Key 'malformed_key' seems to be invalid")))
+          }
+        )
+      }
+      "RSA signature key cannot be read from system env" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_authentication: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    signature_algo: "RSA"
+              |    signature_key: "@{env:SECRET}"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(GeneralReadonlyrestSettingsError(Message("Cannot resolve ENV variable 'SECRET'")))
+          }
+        )
+      }
+      "EC signature key is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_authentication: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    signature_algo: "EC"
+              |    signature_key: "malformed_key"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Key 'malformed_key' seems to be invalid")))
           }
         )
       }

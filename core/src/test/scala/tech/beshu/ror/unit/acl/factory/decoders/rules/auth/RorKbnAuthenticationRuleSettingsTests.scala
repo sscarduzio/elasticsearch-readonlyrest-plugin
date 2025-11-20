@@ -82,6 +82,8 @@ class RorKbnAuthenticationRuleSettingsTests
           }
         )
       }
+    }
+    "be able to be loaded from config (token-related)" when {
       "RSA family algorithm can be used in token signature" in {
         val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
         assertDecodingSuccess(
@@ -360,7 +362,7 @@ class RorKbnAuthenticationRuleSettingsTests
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for ROR Kibana rule 'kbn1'")
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for ROR Kibana authorization rule 'kbn1'")
                 ))
               }
             )
@@ -392,6 +394,8 @@ class RorKbnAuthenticationRuleSettingsTests
           }
         )
       }
+    }
+    "not be able to be loaded from config (token-related)" when {
       "no signature key is defined for default HMAC algorithm" in {
         assertDecodingFailure(
           yaml =
