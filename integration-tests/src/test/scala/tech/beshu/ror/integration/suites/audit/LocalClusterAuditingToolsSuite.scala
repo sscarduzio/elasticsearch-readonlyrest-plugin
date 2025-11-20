@@ -261,6 +261,7 @@ class LocalClusterAuditingToolsSuite
           } shouldBe true
         }
         updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+        Thread.sleep(Long.MaxValue)
       }
     }
   }

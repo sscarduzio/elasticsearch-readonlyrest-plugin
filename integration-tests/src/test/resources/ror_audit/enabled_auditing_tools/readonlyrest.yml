@@ -15,6 +15,11 @@ readonlyrest:
             tid: "{TASK_ID}"
             bytes: "{CONTENT_LENGTH_IN_BYTES}"
             block: "{REASON}"
+      - type: log
+        logger_name: readonlyrest_audit
+        serializer:
+          type: "ecs"
+          verbosity_level_serialization_mode: [INFO]
       - type: data_stream
         data_stream: "audit_data_stream"
         serializer:
