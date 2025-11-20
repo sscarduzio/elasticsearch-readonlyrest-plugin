@@ -133,6 +133,10 @@ object ruleDecoders {
         Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case JwtAuthRule.Name.name =>
         Some(new JwtAuthRuleDecoder(jwtDefinitions, globalSettings))
+      case JwtAuthenticationRule.Name.name =>
+        Some(new JwtAuthenticationRuleDecoder(jwtDefinitions, globalSettings))
+      case JwtAuthorizationRule.Name.name =>
+        Some(new JwtAuthorizationRuleDecoder(jwtDefinitions))
       case LdapAuthorizationRule.Name.name =>
         Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case LdapAuthRule.Name.name =>
