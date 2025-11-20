@@ -21,7 +21,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingIndexTemplate
 import tech.beshu.ror.accesscontrol.domain.{IndexPattern, RequestedIndex, TemplateName}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -33,10 +32,9 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class PutComposableIndexTemplateEsRequestContext(actionRequest: TransportPutComposableIndexTemplateAction.Request,
                                                  esContext: EsContext,
-                                                 clusterService: RorClusterService,
                                                  override val threadPool: ThreadPool)
   extends BaseTemplatesEsRequestContext[TransportPutComposableIndexTemplateAction.Request, AddingIndexTemplate](
-    actionRequest, esContext, clusterService, threadPool
+    actionRequest, esContext, threadPool
   ) {
 
   override protected def templateOperationFrom(request: TransportPutComposableIndexTemplateAction.Request): AddingIndexTemplate = {

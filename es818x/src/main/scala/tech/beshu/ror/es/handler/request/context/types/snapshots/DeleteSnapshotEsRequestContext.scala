@@ -22,7 +22,6 @@ import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotReq
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -33,9 +32,8 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
                                      esContext: EsContext,
-                                     clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[DeleteSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseSnapshotEsRequestContext[DeleteSnapshotRequest](actionRequest, esContext, threadPool) {
 
   override protected def snapshotsFrom(request: DeleteSnapshotRequest): Set[SnapshotName] = {
     request

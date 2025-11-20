@@ -23,7 +23,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -33,9 +32,8 @@ import tech.beshu.ror.syntax.*
 class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
                                            esContext: EsContext,
                                            aclContext: AccessControlStaticContext,
-                                           clusterService: RorClusterService,
                                            override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   private lazy val originIndices = {
     val config = on(actionRequest).call("getConfig").get[AnyRef]()
@@ -62,7 +60,7 @@ object PutRollupJobEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[PutRollupJobEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getName.endsWith("PutRollupJobAction$Request")) {
-      Some(new PutRollupJobEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
+      Some(new PutRollupJobEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.threadPool))
     } else {
       None
     }

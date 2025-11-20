@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -35,9 +34,8 @@ import tech.beshu.ror.utils.ScalaOps.*
 class SearchEsRequestContext(actionRequest: SearchRequest,
                              esContext: EsContext,
                              aclContext: AccessControlStaticContext,
-                             clusterService: RorClusterService,
                              override implicit val threadPool: ThreadPool)
-  extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
 

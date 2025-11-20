@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.domain.Template.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingIndexTemplates
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
@@ -44,11 +43,10 @@ import scala.jdk.CollectionConverters.*
 
 class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableIndexTemplateAction.Request,
                                                  esContext: EsContext,
-                                                 clusterService: RorClusterService,
                                                  override val threadPool: ThreadPool)
                                                 (implicit generator: UniqueIdentifierGenerator)
   extends BaseTemplatesEsRequestContext[GetComposableIndexTemplateAction.Request, GettingIndexTemplates](
-    actionRequest, esContext, clusterService, threadPool
+    actionRequest, esContext, threadPool
   ) {
 
   private lazy val requestTemplateNamePatterns = NonEmptyList
