@@ -21,7 +21,6 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -32,9 +31,8 @@ import tech.beshu.ror.syntax.*
 
 class CleanupRepositoryEsRequestContext(actionRequest: CleanupRepositoryRequest,
                                         esContext: EsContext,
-                                        clusterService: RorClusterService,
                                         override val threadPool: ThreadPool)
-  extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseRepositoriesEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def repositoriesFrom(request: CleanupRepositoryRequest): Set[RepositoryName] = Set {
     RepositoryName

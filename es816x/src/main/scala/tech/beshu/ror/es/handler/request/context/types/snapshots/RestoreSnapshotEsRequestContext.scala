@@ -23,7 +23,6 @@ import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotR
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.RequestedIndex.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
@@ -40,9 +39,8 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
                                               requestedSnapshot: SnapshotName.Full,
                                               requestedIndices: Set[RequestedIndex[ClusterIndexName]],
                                               esContext: EsContext,
-                                              clusterService: RorClusterService,
                                               override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, threadPool) {
 
   override protected def snapshotsFrom(request: RestoreSnapshotRequest): Set[SnapshotName] =
     Set(requestedSnapshot)
@@ -114,19 +112,17 @@ object RestoreSnapshotEsRequestContext {
 
   def create(actionRequest: RestoreSnapshotRequest,
              esContext: EsContext,
-             clusterService: RorClusterService,
              threadPool: ThreadPool): Task[RestoreSnapshotEsRequestContext] = {
     for {
       requestedRepository <- Task(repositoryFrom(actionRequest))
       requestedSnapshot <- Task(snapshotFrom(actionRequest))
-      requestedIndices <- requestedIndicesFrom(actionRequest, requestedRepository, requestedSnapshot, clusterService)
+      requestedIndices <- requestedIndicesFrom(actionRequest, requestedRepository, requestedSnapshot, esContext.esServices.clusterService)
     } yield RestoreSnapshotEsRequestContext(
       actionRequest,
       requestedRepository,
       requestedSnapshot,
       requestedIndices,
       esContext,
-      clusterService,
       threadPool
     )
   }

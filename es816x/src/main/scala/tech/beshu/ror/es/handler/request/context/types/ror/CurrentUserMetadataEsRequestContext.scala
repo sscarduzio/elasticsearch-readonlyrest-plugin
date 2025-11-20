@@ -19,7 +19,6 @@ package tech.beshu.ror.es.handler.request.context.types.ror
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
@@ -30,9 +29,8 @@ import scala.annotation.unused
 
 class CurrentUserMetadataEsRequestContext(@unused actionRequest: RRUserMetadataRequest,
                                           esContext: EsContext,
-                                          clusterService: RorClusterService,
                                           override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[CurrentUserMetadataRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[CurrentUserMetadataRequestBlockContext](esContext)
     with EsRequest[CurrentUserMetadataRequestBlockContext] {
 
   override lazy val isReadOnlyRequest: Boolean = true

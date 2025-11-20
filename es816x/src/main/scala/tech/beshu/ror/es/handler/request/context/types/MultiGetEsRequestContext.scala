@@ -26,12 +26,10 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -46,10 +44,9 @@ import scala.jdk.CollectionConverters.*
 
 class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                esContext: EsContext,
-                               clusterService: RorClusterService,
                                override val threadPool: ThreadPool)
                               (implicit scheduler: Scheduler)
-  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
   private val requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
@@ -155,7 +152,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
     NonEmptyList.fromList(identifyDocumentsToVerifyUsing(originalResponses)) match {
       case Some(existingDocumentsToVerify) =>
-        clusterService.verifyDocumentsAccessibilities(existingDocumentsToVerify, definedFilter, id)
+        esContext.esServices.clusterService.verifyDocumentsAccessibilities(existingDocumentsToVerify, definedFilter, id)
           .map { results =>
             prepareNewResponse(originalResponses, results)
           }

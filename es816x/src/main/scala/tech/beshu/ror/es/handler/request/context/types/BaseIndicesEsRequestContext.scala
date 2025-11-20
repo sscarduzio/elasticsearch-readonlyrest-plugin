@@ -24,8 +24,6 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.accesscontrol.orders.*
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -35,9 +33,8 @@ import tech.beshu.ror.syntax.*
 abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                esContext: EsContext,
                                                                aclContext: AccessControlStaticContext,
-                                                               clusterService: RorClusterService,
                                                                override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralIndexRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[GeneralIndexRequestBlockContext](esContext)
     with EsRequest[GeneralIndexRequestBlockContext] {
 
   override val initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(

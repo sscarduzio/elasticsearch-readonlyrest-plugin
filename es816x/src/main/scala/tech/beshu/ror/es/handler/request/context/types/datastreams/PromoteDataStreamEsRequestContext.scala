@@ -21,7 +21,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
@@ -29,9 +28,8 @@ import tech.beshu.ror.syntax.*
 
 class PromoteDataStreamEsRequestContext(actionRequest: PromoteDataStreamAction.Request,
                                         esContext: EsContext,
-                                        clusterService: RorClusterService,
                                         override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   private lazy val originDataStreams =
     Option(actionRequest.getName)

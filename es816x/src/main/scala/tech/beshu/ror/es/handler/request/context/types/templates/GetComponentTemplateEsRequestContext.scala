@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.domain.Template.ComponentTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingComponentTemplates
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, Template, TemplateName, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
@@ -41,11 +40,10 @@ import scala.jdk.CollectionConverters.*
 
 class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAction.Request,
                                            esContext: EsContext,
-                                           clusterService: RorClusterService,
                                            override val threadPool: ThreadPool)
                                           (implicit generator: UniqueIdentifierGenerator)
   extends BaseTemplatesEsRequestContext[GetComponentTemplateAction.Request, GettingComponentTemplates](
-    actionRequest, esContext, clusterService, threadPool
+    actionRequest, esContext, threadPool
   ) {
 
   private lazy val requestTemplateNamePatterns = NonEmptyList

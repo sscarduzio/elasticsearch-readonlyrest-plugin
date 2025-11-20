@@ -20,7 +20,6 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -30,9 +29,8 @@ import scala.annotation.unused
 
 class GeneralNonIndexEsRequestContext(@unused actionRequest: ActionRequest,
                                       esContext: EsContext,
-                                      clusterService: RorClusterService,
                                       override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext)
     with EsRequest[GeneralNonIndexRequestBlockContext] {
 
   override val initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
