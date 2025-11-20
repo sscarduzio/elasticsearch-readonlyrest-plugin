@@ -21,6 +21,9 @@ import scala.collection.immutable.ListMap
 
 object WindowsEsPortProvider {
 
+  private val httpPortGenerator = new BoundedAtomicInt(9200, 9299)
+  private val transportPortGenerator = new BoundedAtomicInt(9300, 9399)
+
   // Node ports need to be predefined, because each ES process must be aware on startup time of ports used by all other cluster nodes.
   // In testcontainers implementation all nodes are identifiable by host name in docker network, with all using the same port. 
   // On Windows, each ES is a process running on the same host, with unique ports.
@@ -71,12 +74,9 @@ object WindowsEsPortProvider {
       )
     )
 
+  private def nextPorts = WindowsEsPorts(httpPortGenerator.next(), transportPortGenerator.next())
+
   final case class WindowsEsPorts(esPort: Int, transportPort: Int)
-
-  private val httpPortGenerator = new BoundedAtomicInt(9200, 9299)
-  private val transportPortGenerator = new BoundedAtomicInt(9300, 9399)
-
-  def nextPorts = WindowsEsPorts(httpPortGenerator.next(), transportPortGenerator.next())
 
   private class BoundedAtomicInt(start: Int, max: Int) {
     private val atomic = new AtomicInteger(start)
