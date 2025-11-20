@@ -25,6 +25,7 @@ import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstall
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager.*
 import tech.beshu.ror.utils.containers.windows.WindowsEsPortProvider.*
 import tech.beshu.ror.utils.containers.windows.WindowsEsRunner.{WindowsEsProcess, startEs}
+import tech.beshu.ror.utils.misc.ScalaUtils.retry
 
 import java.util.function.Consumer
 import scala.language.postfixOps
@@ -38,8 +39,11 @@ object WindowsEsSetup extends LazyLogging {
   }
 
   def prepareEs(elasticsearch: Elasticsearch): Unit = {
-    downloadEsZipFileWithProgress(elasticsearch.esVersion)
-    unzipEs(elasticsearch.esVersion, elasticsearch.config)
+    // The ES zip file sometimes cannot be unzipped when running CI job. In that case we delete the downloaded file and try again.
+    retry(times = 3, cleanBeforeRetrying = cleanDownloadsDirectory()) {
+      downloadEsZipFileWithProgress(elasticsearch.esVersion)
+      unzipEs(elasticsearch.esVersion, elasticsearch.config)
+    }
     replaceConfigFile(elasticsearch)
     installPlugins(elasticsearch)
   }
