@@ -21,7 +21,7 @@ import cats.data.EitherT
 import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorConfigurationIndex}
 import tech.beshu.ror.api.ConfigApi.*
 import tech.beshu.ror.api.ConfigApi.ConfigRequest.Type
@@ -41,7 +41,7 @@ class ConfigApi(rorInstance: RorInstance,
                 fileConfigLoader: FileConfigLoader,
                 rorConfigurationIndex: RorConfigurationIndex)
                (implicit val EnvironmentConfig: EnvironmentConfig)
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   import ConfigApi.Utils.*
   import ConfigApi.Utils.decoders.*

@@ -19,7 +19,7 @@ package tech.beshu.ror.configuration.loader
 import cats.data.EitherT
 import cats.~>
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
@@ -33,13 +33,13 @@ import tech.beshu.ror.configuration.{ConfigLoading, EnvironmentConfig, EsConfig}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
-object ConfigLoadingInterpreter extends Logging {
+object ConfigLoadingInterpreter extends RequestIdAwareLogging {
 
   def create(indexConfigManager: IndexConfigManager)
             (implicit environmentConfig: EnvironmentConfig): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
     override def apply[A](fa: LoadConfigAction[A]): Task[A] = fa match {
       case ConfigLoading.LoadConfigAction.LoadEsConfig(env) =>
-        logger.info(s"Loading Elasticsearch settings from file: ${env.elasticsearchConfig.show}")
+        noRequestIdLogger.info(s"Loading Elasticsearch settings from file: ${env.elasticsearchConfig.show}")
         EsConfig
           .from(env)
           .map(_.left.map {
@@ -56,27 +56,27 @@ object ConfigLoadingInterpreter extends Logging {
               )
           })
       case ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(path) =>
-        logger.info(s"Loading ReadonlyREST settings forced loading from file from: ${path.show}")
+        noRequestIdLogger.info(s"Loading ReadonlyREST settings forced loading from file from: ${path.show}")
         EitherT(new FileConfigLoader(path).load())
           .bimap(convertFileError, ForcedFileConfig(_))
           .leftMap { error =>
-            logger.error(s"Loading ReadonlyREST from file failed: ${error.toString}")
+            noRequestIdLogger.error(s"Loading ReadonlyREST from file failed: ${error.toString}")
             error
           }.value
       case ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(path) =>
-        logger.info(s"Loading ReadonlyREST settings from file from: ${path.show}, because index not exist")
+        noRequestIdLogger.info(s"Loading ReadonlyREST settings from file from: ${path.show}, because index not exist")
         EitherT(new FileConfigLoader(path).load())
           .bimap(convertFileError, FileConfig(_))
           .leftMap { error =>
-            logger.error(s"Loading ReadonlyREST from file failed: ${error.toString}")
+            noRequestIdLogger.error(s"Loading ReadonlyREST from file failed: ${error.toString}")
             error
           }
           .value
       case ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(configIndex, inIndexLoadingDelay) =>
-        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${configIndex.index.show}) ...")
+        noRequestIdLogger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${configIndex.index.show}) ...")
         loadFromIndex(indexConfigManager, configIndex, inIndexLoadingDelay)
           .map { rawRorConfig =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw config from index: ${rawRorConfig.raw.show}")
+            noRequestIdLogger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw config from index: ${rawRorConfig.raw.show}")
             rawRorConfig
           }
           .bimap(convertIndexError, IndexConfig(configIndex, _))
@@ -90,11 +90,11 @@ object ConfigLoadingInterpreter extends Logging {
   private def logIndexLoadingError[A](error: LoadedRorConfig.LoadingIndexError): Unit = {
     error match {
       case IndexParsingError(message) =>
-        logger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
+        noRequestIdLogger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
       case LoadedRorConfig.IndexUnknownStructure =>
-        logger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
+        noRequestIdLogger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
       case LoadedRorConfig.IndexNotExist =>
-        logger.info(s"Loading ReadonlyREST settings from index failed: cannot find index")
+        noRequestIdLogger.info(s"Loading ReadonlyREST settings from index failed: cannot find index")
     }
   }
 

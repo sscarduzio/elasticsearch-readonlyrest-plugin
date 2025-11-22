@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
@@ -43,7 +43,7 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
                                 variableCreator: RuntimeResolvableVariableCreator)
                                (implicit jsCompiler: JsCompiler)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule]
-    with Logging {
+    with RequestIdAwareLogging {
 
   private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
   private implicit val uniqueNonEmptyListOfKibanaAppsDecoder: Decoder[Set[KibanaApp]] =
@@ -128,7 +128,7 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
         case Success(regex) =>
           Right(regex)
         case Failure(exception) =>
-          logger.error(s"Cannot compile regex from string: [${str.show}]", exception)
+          noRequestIdLogger.error(s"Cannot compile regex from string: [${str.show}]", exception)
           Left(ValueLevelCreationError(Message(s"Cannot create Kibana allowed API path regex from [${str.show}]")))
       }
     } else {

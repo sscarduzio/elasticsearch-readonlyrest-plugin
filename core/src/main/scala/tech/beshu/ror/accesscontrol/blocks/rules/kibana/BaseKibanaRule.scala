@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import cats.Id
 import cats.data.ReaderT
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.*
@@ -39,7 +39,7 @@ trait KibanaRelatedRule {
 }
 
 abstract class BaseKibanaRule(val settings: Settings)
-  extends RegularRule with KibanaRelatedRule with Logging {
+  extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
 
   import BaseKibanaRule.*
 
@@ -58,13 +58,13 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private def isUnrestrictedAccessConfigured = ProcessingContext.create { (r, _) =>
     val result = settings.access === KibanaAccess.Unrestricted
-    logger.debug(s"[${r.id.show}] Is unrestricted access configured? ${result.show}")
+    logger.debug(s"Is unrestricted access configured? ${result.show}")(r)
     result
   }
 
   private def isCurrentUserMetadataRequest = ProcessingContext.create { (r, _) =>
     val result = r.restRequest.path.isCurrentUserMetadataPath
-    logger.debug(s"[${r.id.show}] Is is a current user metadata request? ${result.show}")
+    logger.debug(s"Is is a current user metadata request? ${result.show}")(r)
     result
   }
 
@@ -80,7 +80,7 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private def isAdminAccessConfigured = ProcessingContext.create { (r, _) =>
     val result = settings.access === KibanaAccess.Admin
-    logger.debug(s"[${r.id.show}] Is the admin access configured in the rule? ${result.show}")
+    logger.debug(s"Is the admin access configured in the rule? ${result.show}")(r)
     result
   }
 
@@ -93,7 +93,7 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private def doesRequestContainNoIndices = ProcessingContext.create { (r, _) =>
     val result = r.initialBlockContext.indices.isEmpty
-    logger.debug(s"[${r.id.show}] Does request contain no indices? ${result.show}")
+    logger.debug(s"Does request contain no indices? ${result.show}")(r)
     result
   }
 
@@ -107,7 +107,7 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private def isAccessOtherThanRoStrictConfigured = ProcessingContext.create { (r, _) =>
     val result = settings.access =!= ROStrict
-    logger.debug(s"[${r.id.show}] Is access other than ROStrict configured? ${result.show}")
+    logger.debug(s"Is access other than ROStrict configured? ${result.show}")(r)
     result
   }
 
@@ -133,7 +133,7 @@ abstract class BaseKibanaRule(val settings: Settings)
       case Some(paths) => paths.matcher(path.value.value).find()
       case None => false
     }
-    logger.debug(s"[${requestContext.id.show}] Is non strict allowed path? ${result.show}")
+    logger.debug(s"Is non strict allowed path? ${result.show}")(requestContext)
     result
   }
 
@@ -143,7 +143,7 @@ abstract class BaseKibanaRule(val settings: Settings)
     } else {
       false
     }
-    logger.debug(s"[${requestContext.id.show}] Is targeting Kibana? ${result.show}")
+    logger.debug(s"Is targeting Kibana? ${result.show}")(requestContext)
     result
   }
 
@@ -165,7 +165,7 @@ abstract class BaseKibanaRule(val settings: Settings)
       .allHeaders
       .find(_.name === Header.Name.kibanaRequestPath)
       .exists(_.value.value.contains(s"/$pathPart/"))
-    logger.debug(s"[${requestContext.id.show}] Does kibana request contains '${pathPart.show}' in path? ${result.show}")
+    logger.debug(s"Does kibana request contains '${pathPart.show}' in path? ${result.show}")(requestContext)
     result
   }
 
@@ -178,7 +178,7 @@ abstract class BaseKibanaRule(val settings: Settings)
     val result = requestContext.initialBlockContext.indices.headOption match
       case Some(requestedIndex) if requestedIndex.name == index => true
       case Some(_) | None => false
-    logger.debug(s"[${requestContext.id.show}] Is related to single index '${index.nonEmptyStringify}'? ${result.show}")
+    logger.debug(s"Is related to single index '${index.nonEmptyStringify}'? ${result.show}")(requestContext)
     result
   }
 
@@ -188,7 +188,7 @@ abstract class BaseKibanaRule(val settings: Settings)
       case head :: Nil => kibanaSampleDataIndexMatcher.`match`(head.name)
       case _ => false
     }
-    logger.debug(s"[${requestContext.id.show}] Is related to Kibana sample data index? ${result.show}")
+    logger.debug(s"Is related to Kibana sample data index? ${result.show}")(requestContext)
     result
   }
 
@@ -198,43 +198,43 @@ abstract class BaseKibanaRule(val settings: Settings)
       case head :: Nil => kibanaSampleDataStreamMatcher.`match`(head)
       case _ => false
     }
-    logger.debug(s"[${requestContext.id.show}] Is related to Kibana sample data index? ${result.show}")
+    logger.debug(s"Is related to Kibana sample data index? ${result.show}")(requestContext)
     result
   }
 
   private def isRoAction = ProcessingContext.create { (requestContext, _) =>
     val result = roActionPatternsMatcher.`match`(requestContext.action)
-    logger.debug(s"[${requestContext.id.show}] Is RO action? ${result.show}")
+    logger.debug(s"Is RO action? ${result.show}")(requestContext)
     result
   }
 
   private def isClusterAction = ProcessingContext.create { (requestContext, _) =>
     val result = clusterActionPatternsMatcher.`match`(requestContext.action)
-    logger.debug(s"[${requestContext.id.show}] Is Cluster action? ${result.show}")
+    logger.debug(s"Is Cluster action? ${result.show}")(requestContext)
     result
   }
 
   private def isRwAction = ProcessingContext.create { (requestContext, _) =>
     val result = rwActionPatternsMatcher.`match`(requestContext.action)
-    logger.debug(s"[${requestContext.id.show}] Is RW action? ${result.show}")
+    logger.debug(s"Is RW action? ${result.show}")(requestContext)
     result
   }
 
   private def isAdminAction = ProcessingContext.create { (requestContext, _) =>
     val result = adminActionPatternsMatcher.`match`(requestContext.action)
-    logger.debug(s"[${requestContext.id.show}] Is Admin action? ${result.show}")
+    logger.debug(s"Is Admin action? ${result.show}")(requestContext)
     result
   }
 
   private def isNonStrictAction = ProcessingContext.create { (requestContext, _) =>
     val result = nonStrictActions.`match`(requestContext.action)
-    logger.debug(s"[${requestContext.id.show}] Is non strict action? ${result.show}")
+    logger.debug(s"Is non strict action? ${result.show}")(requestContext)
     result
   }
 
   private def isIndicesWriteAction = ProcessingContext.create { (requestContext, _) =>
     val result = indicesWriteAction.`match`(requestContext.action)
-    logger.debug(s"[${requestContext.id.show}] Is indices write action? ${result.show}")
+    logger.debug(s"Is indices write action? ${result.show}")(requestContext)
     result
   }
 
@@ -245,7 +245,7 @@ abstract class BaseKibanaRule(val settings: Settings)
       case RO | ROStrict | ApiOnly => false
       case RW | Admin | Unrestricted => true
     }
-    logger.debug(s"[${r.id.show}] Can Kibana be modified? ${result.show}")
+    logger.debug(s"Can Kibana be modified? ${result.show}")(r)
     result
   }
 

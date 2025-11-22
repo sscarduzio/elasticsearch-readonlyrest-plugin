@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -46,7 +46,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport
-    with Logging {
+    with RequestIdAwareLogging {
 
   override val name: Rule.Name = JwtAuthRule.Name.name
 
@@ -80,7 +80,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   private def authorizeUsingJwtToken[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     jwtTokenFrom(blockContext.requestContext) match {
       case None =>
-        logger.debug(s"[${blockContext.requestContext.id.show}] Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
+        logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")(blockContext)
         Task.now(Rejected())
       case Some(token) =>
         process(token, blockContext)
@@ -129,7 +129,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
                                    (implicit requestId: RequestId): Unit = {
     (settings.jwt.userClaim, user) match {
       case (Some(userClaim), Some(u)) =>
-        logger.debug(s"[${requestId.show}] JWT resolved user for claim ${userClaim.name.rawPath}: ${u.show}")
+        logger.debug(s"JWT resolved user for claim ${userClaim.name.rawPath}: ${u.show}")
       case _ =>
     }
     (settings.jwt.groupsConfig, groups) match {
@@ -138,7 +138,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
           case Some(namesClaim) => s"claims (id:'${groupsConfig.idsClaim.name.show}',name:'${namesClaim.name.show}')"
           case None => s"claim '${groupsConfig.idsClaim.name.show}'"
         }
-        logger.debug(s"[${requestId.show}] JWT resolved groups for ${claimsDescription.show}: ${g.show}")
+        logger.debug(s"JWT resolved groups for ${claimsDescription.show}: ${g.show}")
       case _ =>
     }
   }
@@ -160,7 +160,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     else {
       token.show
     }
-    logger.debug(s"[${requestId.show}] JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
+    logger.debug(s"JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
   }
 
   private def claimsFrom(token: Jwt.Token)
@@ -188,7 +188,8 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     settings.jwt.userClaim.map(payload.claims.userIdClaim)
   }
 
-  private def groupsFrom(payload: Jwt.Payload) = {
+  private def groupsFrom(payload: Jwt.Payload)
+                        (implicit requestId: RequestId) = {
     settings.jwt.groupsConfig.map(groupsConfig =>
       payload.claims.groupsClaim(groupsConfig.idsClaim, groupsConfig.namesClaim)
     )

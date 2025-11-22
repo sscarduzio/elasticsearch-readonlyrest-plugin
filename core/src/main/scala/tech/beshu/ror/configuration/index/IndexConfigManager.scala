@@ -17,7 +17,7 @@
 package tech.beshu.ror.configuration.index
 
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.configuration.index.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
@@ -29,7 +29,7 @@ import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, Cann
 final class IndexConfigManager(indexJsonContentService: IndexJsonContentService)
                               (implicit environmentConfig: EnvironmentConfig)
   extends BaseIndexConfigManager[RawRorConfig]
-  with Logging {
+  with RequestIdAwareLogging {
 
   override def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
     indexJsonContentService

@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks
 import cats.data.{NonEmptyList, Validated, WriterT}
 import cats.{Eq, Show}
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
@@ -43,7 +43,7 @@ class Block(val name: Name,
             val audit: Audit,
             val rules: NonEmptyList[Rule])
            (implicit val loggingContext: LoggingContext)
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   import Lifter.*
 
@@ -73,7 +73,7 @@ class Block(val name: Name,
     val ruleResult = rule
       .check[B](blockContext)
       .recover { case e =>
-        logger.error(s"[${blockContext.requestContext.id.show}] ${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
+        logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)(blockContext)
         RuleResult.Rejected[B]()
       }
     lift[B](ruleResult)

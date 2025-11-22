@@ -21,7 +21,7 @@ import cats.Show
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.NonNegative
 import eu.timepit.refined.types.string.NonEmptyString
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import squants.information.{Information, Megabytes}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
@@ -34,7 +34,7 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-object RorProperties extends Logging {
+object RorProperties extends RequestIdAwareLogging {
 
   object defaults {
     val refreshInterval: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
@@ -99,7 +99,7 @@ object RorProperties extends Logging {
       name,
       fromString,
       {
-        logger.info(s"No '${name.show}' property found. Using default: ${default.show}")
+        noRequestIdLogger.info(s"No '${name.show}' property found. Using default: ${default.show}")
         default
       }
     )

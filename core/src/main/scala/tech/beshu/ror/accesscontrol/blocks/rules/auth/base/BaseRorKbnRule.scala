@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 import cats.implicits.toShow
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
@@ -35,7 +35,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.util.Try
 
-trait BaseRorKbnRule extends Logging {
+trait BaseRorKbnRule extends RequestIdAwareLogging {
 
   protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
                                                         rorKbnDef: RorKbnDef)
@@ -43,7 +43,7 @@ trait BaseRorKbnRule extends Logging {
     val authHeaderName = Header.Name.authorization
     blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {
       case None =>
-        logger.debug(s"[${blockContext.requestContext.id.show}] Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
+        logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")(blockContext)
         Rejected()
       case Some(token) =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
@@ -80,7 +80,7 @@ trait BaseRorKbnRule extends Logging {
     Try(parser(rorKbn).parseSignedClaims(token.value.value).getPayload)
       .toEither
       .map(Jwt.Payload.apply)
-      .left.map { ex => logger.debug(s"[${requestId.show}] JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
+      .left.map { ex => logger.debug(s"JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
   }
 
   private def parser(rorKbn: RorKbnDef) = rorKbn.checkMethod match {

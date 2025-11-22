@@ -18,14 +18,20 @@ package tech.beshu.ror.accesscontrol.domain
 
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.utils.js.JsCompiler
 
 import java.util.regex
 import scala.util.{Failure, Success, Try}
 
-final case class RequestId(value: String)
+trait HasRequestId {
+  def requestId: RequestId
+}
+
+final case class RequestId(value: String) extends HasRequestId {
+  override def requestId: RequestId = this
+}
 
 sealed trait CaseSensitivity
 object CaseSensitivity {
@@ -65,7 +71,7 @@ object JavaRegex {
 }
 
 final case class JsRegex private(value: NonEmptyString)
-object JsRegex extends Logging {
+object JsRegex extends RequestIdAwareLogging {
   private val extractRawRegex = """\/(.*)\/""".r
 
   def compile(str: NonEmptyString)
@@ -77,7 +83,7 @@ object JsRegex extends Logging {
             case Success(_) =>
               Right(new JsRegex(str))
             case Failure(ex) =>
-              logger.error("JS compiler error", ex)
+              noRequestIdLogger.error("JS compiler error", ex)
               Left(CompilationResult.SyntaxError)
           }
         case _ =>

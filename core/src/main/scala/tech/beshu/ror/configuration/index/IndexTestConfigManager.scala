@@ -22,7 +22,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder}
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
@@ -52,7 +52,7 @@ import scala.util.Try
 final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService)
                                   (implicit environmentConfig: EnvironmentConfig)
   extends BaseIndexConfigManager[TestRorConfig]
-    with Logging {
+    with RequestIdAwareLogging {
 
   type Error = ConfigLoaderError[IndexConfigError]
 

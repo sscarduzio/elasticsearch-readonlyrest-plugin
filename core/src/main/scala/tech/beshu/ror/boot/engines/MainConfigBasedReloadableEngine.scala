@@ -52,7 +52,7 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
   def forceReloadAndSave(config: RawRorConfig)
                         (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
     for {
-      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of provided settings was forced (new engine id=${config.hashString()}) ..."))
+      _ <- Task.delay(logger.info(s"Reloading of provided settings was forced (new engine id=${config.hashString()}) ..."))
       reloadResult <- reloadInProgress.withPermit {
         value {
           for {
@@ -63,18 +63,18 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
       }
       _ <- Task.delay(reloadResult match {
         case Right(_) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${config.hashString().show}) settings reloaded!")
+          logger.info(s"ROR ${name.show} engine (id=${config.hashString().show}) settings reloaded!")
         case Left(ReloadError(ConfigUpToDate(oldConfig))) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${oldConfig.hashString().show}) already loaded!")
+          logger.info(s"ROR ${name.show} engine (id=${oldConfig.hashString().show}) already loaded!")
         case Left(ReloadError(ReloadingFailed(StartingFailure(message, Some(ex))))) =>
-          logger.error(s"[${requestId.show}] [${config.hashString()}] Cannot reload ROR settings - failure: ${message.show}", ex)
+          logger.error(s"[${config.hashString()}] Cannot reload ROR settings - failure: ${message.show}", ex)
         case Left(ReloadError(ReloadingFailed(StartingFailure(message, None)))) =>
-          logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${message.show}")
+          logger.error(s"Cannot reload ROR settings - failure: ${message.show}")
         case Left(ReloadError(RorInstanceStopped)) =>
-          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
+          logger.warn(s"ROR is being stopped! Loading main settings skipped!")
         case Left(IndexConfigSavingError(CannotSaveConfig)) =>
           // todo: invalidate created core?
-          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
+          logger.warn(s"ROR is being stopped! Loading main settings skipped!")
       })
     } yield reloadResult
   }
@@ -82,21 +82,21 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
   def forceReloadFromIndex()
                           (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, Unit]] = {
     for {
-      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of in-index settings was forced ..."))
+      _ <- Task.delay(logger.info(s"Reloading of in-index settings was forced ..."))
       reloadResult <- reloadEngineUsingIndexConfig()
       _ <- Task.delay(reloadResult match {
         case Right(config) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${config.hashString().show}) settings reloaded!")
+          logger.info(s"ROR ${name.show} engine (id=${config.hashString().show}) settings reloaded!")
         case Left(IndexConfigReloadError.ReloadError(ConfigUpToDate(config))) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${config.hashString().show}) already loaded!")
+          logger.info(s"ROR ${name.show} engine (id=${config.hashString().show}) already loaded!")
         case Left(IndexConfigReloadError.ReloadError(ReloadingFailed(StartingFailure(message, Some(ex))))) =>
-          logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${message.show}", ex)
+          logger.error(s"Cannot reload ROR settings - failure: ${message.show}", ex)
         case Left(IndexConfigReloadError.ReloadError(ReloadingFailed(StartingFailure(message, None)))) =>
-          logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${message.show}")
+          logger.error(s"Cannot reload ROR settings - failure: ${message.show}")
         case Left(IndexConfigReloadError.ReloadError(RorInstanceStopped)) =>
-          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
+          logger.warn(s"ROR is being stopped! Loading main settings skipped!")
         case Left(IndexConfigReloadError.LoadingConfigError(error)) =>
-          logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${error.show}")
+          logger.error(s"Cannot reload ROR settings - failure: ${error.show}")
       })
     } yield reloadResult.map(_ => ())
   }

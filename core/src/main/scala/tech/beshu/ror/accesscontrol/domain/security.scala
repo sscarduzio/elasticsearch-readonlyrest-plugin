@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.domain
 import cats.Eq
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.StringOps
 import tech.beshu.ror.utils.json.JsonPath
@@ -39,7 +39,7 @@ final case class BasicAuth private(credentials: Credentials) {
     NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${credentials.user.value}:${credentials.secret.value}".getBytes(UTF_8))}")
   )
 }
-object BasicAuth extends Logging {
+object BasicAuth extends RequestIdAwareLogging {
   def fromCredentials(credentials: Credentials) = {
     BasicAuth(credentials)
   }
@@ -58,7 +58,7 @@ object BasicAuth extends Logging {
       val basicAuth = fromBase64(rawValue.substring(authMethodName.length))
       basicAuth match {
         case None =>
-          logger.warn(s"Cannot decode value '${headerValue.show}' to Basic Auth")
+          noRequestIdLogger.warn(s"Cannot decode value '${headerValue.show}' to Basic Auth")
         case Some(_) =>
       }
       basicAuth

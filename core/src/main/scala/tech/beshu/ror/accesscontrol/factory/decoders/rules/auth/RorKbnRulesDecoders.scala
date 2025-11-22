@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import io.circe.Decoder
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.{GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.decoders.AuditingSettingsDecoder.noRequestIdLogger
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.RorKbnDefinitionsDecoder.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
@@ -41,7 +42,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class RorKbnAuthenticationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                                       globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthenticationRule] with Logging {
+  extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthenticationRule] with RequestIdAwareLogging {
 
   override protected def decoder: Decoder[RuleDefinition[RorKbnAuthenticationRule]] = {
     nameAndGroupsSimpleDecoder
@@ -65,7 +66,7 @@ class RorKbnAuthenticationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
 }
 
 class RorKbnAuthorizationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
-  extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthorizationRule] with Logging {
+  extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthorizationRule] with RequestIdAwareLogging {
 
   override protected def decoder: Decoder[RuleDefinition[RorKbnAuthorizationRule]] = {
     nameAndGroupsSimpleDecoder
@@ -90,7 +91,7 @@ class RorKbnAuthorizationRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                             globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthRule] with Logging {
+  extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthRule] with RequestIdAwareLogging {
 
   override protected def decoder: Decoder[RuleDefinition[RorKbnAuthRule]] = {
     nameAndGroupsSimpleDecoder
@@ -104,7 +105,7 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
               case Some(groupsLogic) =>
                 groupsLogic
               case None =>
-                logger.warn(
+                noRequestIdLogger.warn(
                   s"""Missing groups logic settings in ${RorKbnAuthRule.Name.name.show} rule.
                      |For old configs, ROR treats this as `groups_any_of: ["*"]`.
                      |This syntax is deprecated. Add groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic),

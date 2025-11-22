@@ -88,7 +88,7 @@ class KibanaUserDataRule(override val settings: Settings)
           case Right(resolvedKibanaIndexTemplate) =>
             Some(resolvedKibanaIndexTemplate)
           case Left(error) =>
-            logger.warn(s"[${context.requestContext.id.show}] Cannot resolve variable(s) used in Kibana template index name; error: ${error.show}")
+            logger.warn(s"Cannot resolve variable(s) used in Kibana template index name; error: ${error.show}")(context)
             None
         }
       }
@@ -107,7 +107,7 @@ class KibanaUserDataRule(override val settings: Settings)
           case Right(resolvedKibanaMetadata) =>
             Some(resolvedKibanaMetadata)
           case Left(error) =>
-            logger.warn(s"[${context.requestContext.id.show}] Cannot resolve variable(s) used in Kibana metadata; error: ${error.show}")
+            logger.warn(s"Cannot resolve variable(s) used in Kibana metadata; error: ${error.show}")(context)
             None
         }
       }

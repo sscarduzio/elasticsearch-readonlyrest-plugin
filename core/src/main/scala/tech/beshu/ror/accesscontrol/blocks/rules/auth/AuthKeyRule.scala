@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -33,7 +33,7 @@ final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[
                         override implicit val userIdCaseSensitivity: CaseSensitivity,
                         override val impersonation: Impersonation)
   extends BasicAuthenticationRule(settings)
-    with Logging {
+    with RequestIdAwareLogging {
 
   override val name: Rule.Name = AuthKeyRule.Name.name
 

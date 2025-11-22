@@ -19,7 +19,7 @@ package tech.beshu.ror.configuration
 import better.files.*
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration}
 import tech.beshu.ror.configuration.loader.FileConfigLoader
@@ -33,7 +33,7 @@ import java.nio.file.{Path, Paths}
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
                         interNodeSsl: Option[InternodeSslConfiguration])
 
-object RorSsl extends Logging {
+object RorSsl extends RequestIdAwareLogging {
 
   val noSsl: RorSsl = RorSsl(None, None)
 
@@ -46,7 +46,7 @@ object RorSsl extends Logging {
         error => Left(error),
         {
           case RorSsl(None, None) =>
-            logger.info(s"Cannot find SSL configuration in ${esConfig.show} ...")
+            noRequestIdLogger.info(s"Cannot find SSL configuration in ${esConfig.show} ...")
             fallbackToRorConfig(esEnv.configPath)
           case ssl =>
             Right(ssl)
@@ -58,7 +58,7 @@ object RorSsl extends Logging {
                                  (implicit rorSslDecoder: Decoder[RorSsl],
                                   environmentConfig: EnvironmentConfig) = {
     val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
-    logger.info(s"... trying: ${rorConfig.show}")
+    noRequestIdLogger.info(s"... trying: ${rorConfig.show}")
     if (rorConfig.exists) {
       loadSslConfigFromFile(rorConfig)
     } else {
@@ -133,7 +133,7 @@ object SslConfiguration {
     extends SslConfiguration
 }
 
-private object SslDecoders extends Logging {
+private object SslDecoders extends RequestIdAwareLogging {
   import tech.beshu.ror.configuration.SslConfiguration.*
 
   object consts {
@@ -187,7 +187,7 @@ private object SslDecoders extends Logging {
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
       if (presentKeys.intersect(truststoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
         val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${truststoreBasedKeys.show}] could not be present in the same configuration section"
-        logger.error(errorMessage)
+        noRequestIdLogger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       } else if (presentKeys.intersect(truststoreBasedKeys).nonEmpty) {
         truststoreBasedClientCertificateConfigurationDecoder(c)
@@ -198,7 +198,7 @@ private object SslDecoders extends Logging {
             .map(Option.apply)
         } else {
           val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
-          logger.error(errorMessage)
+          noRequestIdLogger.error(errorMessage)
           Left(DecodingFailure(errorMessage, List.empty))
         }
       } else {
@@ -222,7 +222,7 @@ private object SslDecoders extends Logging {
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
       if (presentKeys.intersect(keystoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
         val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${keystoreBasedKeys.show}] could not be present in the same configuration section"
-        logger.error(errorMessage)
+        noRequestIdLogger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       } else if (presentKeys.intersect(keystoreBasedKeys).nonEmpty) {
         keystoreBasedServerCertificateConfigurationDecoder(c)
@@ -231,12 +231,12 @@ private object SslDecoders extends Logging {
           fileBasedServerCertificateConfigurationDecoder(c)
         } else {
           val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
-          logger.error(errorMessage)
+          noRequestIdLogger.error(errorMessage)
           Left(DecodingFailure(errorMessage, List.empty))
         }
       } else {
         val errorMessage = "There was no SSL configuration present for server"
-        logger.error(errorMessage)
+        noRequestIdLogger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       }
     }

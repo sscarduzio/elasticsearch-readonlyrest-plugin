@@ -18,9 +18,14 @@ package tech.beshu.ror.accesscontrol.logging
 
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.domain.{HasRequestId, RequestId}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-sealed trait ResponseContext[B <: BlockContext]
+sealed trait ResponseContext[B <: BlockContext] extends HasRequestId {
+  def requestContext: RequestContext.Aux[B]
+  override def requestId: RequestId = requestContext.requestId
+}
+
 object ResponseContext {
 
   final case class AllowedBy[B <: BlockContext](requestContext: RequestContext.Aux[B],

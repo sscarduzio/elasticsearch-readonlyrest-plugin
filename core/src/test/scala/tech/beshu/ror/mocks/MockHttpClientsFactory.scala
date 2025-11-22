@@ -17,12 +17,14 @@
 package tech.beshu.ror.mocks
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 
 object MockHttpClientsFactory extends HttpClientsFactory {
   override def create(config: HttpClientsFactory.Config): HttpClient = new SimpleHttpClient[Task] {
-    override def send(request: HttpClient.Request): Task[HttpClient.Response] =
+    override def send(request: HttpClient.Request)
+                     (implicit requestId: RequestId): Task[HttpClient.Response] =
       throw new IllegalStateException("Cannot use it. It's just a mock")
 
     override def close(): Task[Unit] = Task.unit
