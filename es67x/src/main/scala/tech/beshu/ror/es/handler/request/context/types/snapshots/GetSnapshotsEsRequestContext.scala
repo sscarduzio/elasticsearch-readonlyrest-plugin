@@ -69,7 +69,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
           case r => r
         }
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }

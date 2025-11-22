@@ -51,7 +51,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
+      logger.error(s"Cannot update ${actionRequest.getClass.show} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
       ShouldBeInterrupted
     }
   }

@@ -18,16 +18,15 @@ package tech.beshu.ror.es.actions.rradmin
 
 import cats.implicits.toShow
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.ConfigApi.ConfigResponse
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.RorInstanceSupplier
+import tech.beshu.ror.utils.{RequestIdAwareLogging, RorInstanceSupplier}
 
-class RRAdminActionHandler extends Logging {
+class RRAdminActionHandler extends RequestIdAwareLogging {
 
   private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
@@ -52,7 +51,7 @@ class RRAdminActionHandler extends Logging {
     case Right(response) =>
       listener.onResponse(new RRAdminResponse(response))
     case Left(ex) =>
-      logger.error(s"[${requestId.show}] RRAdminAction internal error", ex)
+      logger.error("RRAdminAction internal error", ex)
       listener.onFailure(new Exception(ex))
   }
 

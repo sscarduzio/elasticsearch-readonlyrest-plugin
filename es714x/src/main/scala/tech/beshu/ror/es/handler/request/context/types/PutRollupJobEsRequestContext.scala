@@ -52,7 +52,7 @@ class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
     if(originIndices == filteredIndices.toList.toCovariantSet) {
       Modified
     } else {
-      logger.error(s"[${id.show}] Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")
+      logger.error(s"Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")
       ShouldBeInterrupted
     }
   }

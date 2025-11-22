@@ -45,14 +45,14 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
     getRequestedIndexFrom(request) match {
       case Some(_) =>
         if (filteredIndices.tail.nonEmpty) {
-          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
+          logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
         }
         updateIndexIn(request, filteredIndices.head)
         Modified
       case None if filteredIndices.exists(_.name === ClusterIndexName.Local.wildcard) =>
         Modified
       case None =>
-        logger.error(s"[${id.show}] Cluster allocation explain request without index name is unavailable when block contains `indices` rule")
+        logger.error(s"Cluster allocation explain request without index name is unavailable when block contains `indices` rule")
         ShouldBeInterrupted
     }
   }

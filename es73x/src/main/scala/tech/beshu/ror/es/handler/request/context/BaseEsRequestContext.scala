@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context
 
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -32,7 +31,7 @@ import java.time.Instant
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
-  extends RequestContext with Logging {
+  extends RequestContext {
 
   override type BLOCK_CONTEXT = B
 

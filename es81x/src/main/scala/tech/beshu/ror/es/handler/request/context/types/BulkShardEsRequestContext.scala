@@ -60,7 +60,7 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
 
   private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     if (indices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
+      logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
     }
     val singleIndex = indices.head
     val uuid = clusterService.indexOrAliasUuids(singleIndex.name).toList.head
