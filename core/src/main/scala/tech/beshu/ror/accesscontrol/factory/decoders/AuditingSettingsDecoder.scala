@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
@@ -481,18 +482,25 @@ object AuditingSettingsDecoder extends Logging {
         } yield AuditCluster.RemoteAuditCluster(clusterNodes, ClusterMode.RoundRobin, maybeCredentials)
       case c =>
         // extended syntax
+        val usernameKey = "username"
+        val passwordKey = "password"
         for {
           clusterNodes <- c.downFieldAs[UniqueNonEmptyList[AuditClusterNode]]("nodes")
           mode <- c.downFieldAs[ClusterMode]("mode")
-          username <- c.downFieldAs[Option[String]]("username")
-          password <- c.downFieldAs[Option[String]]("password")
+          username <- c.downFieldAs[Option[NonEmptyString]](usernameKey)
+          password <- c.downFieldAs[Option[NonEmptyString]](passwordKey)
           maybeCredentials <- {
-            val maybeClusterCredentials = username.map(u => NodeCredentials(u, password))
-            maybeClusterCredentials.fold(
-              clusterCredentialsFromNodesUris(clusterNodes)
-                .leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
-            )(credentials => Right(Some(credentials)))
-          }
+            (username, password) match {
+              case (Some(user), Some(pass)) =>
+                Right(Some(NodeCredentials(user, pass)))
+              case (None, None) =>
+                clusterCredentialsFromNodesUris(clusterNodes)
+              case (Some(user), None) =>
+                Left(auditSettingsError(s"Audit output configuration is missing the ‘$passwordKey’ field."))
+              case (None, Some(pass)) =>
+                Left(auditSettingsError(s"Audit output configuration is missing the ‘$usernameKey’ field."))
+            }
+          }.leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
         } yield AuditCluster.RemoteAuditCluster(clusterNodes, mode, maybeCredentials)
     }
   }

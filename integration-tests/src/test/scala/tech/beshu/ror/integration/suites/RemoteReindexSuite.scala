@@ -67,7 +67,9 @@ class RemoteReindexSuite
       clusterName = "ROR_DEST_ES",
       containerSpecification = ContainerSpecification(
         environmentVariables = Map.empty,
-        additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> s"[\"*:9200\", \"*:${WindowsEsPortProvider.get("ROR_SOURCE_ES_1").esPort}\"]")
+        additionalElasticsearchYamlEntries = Map(
+          "reindex.remote.whitelist" -> s"[\"*:9200\", \"*:${WindowsEsPortProvider.get(nodeName = "ROR_SOURCE_ES_1").esPort}\"]"
+        )
       ),
       securityType = securityType
     )

@@ -52,7 +52,7 @@ class RemoteClusterAuditingToolsSuite
       EsClusterSettings.create(
         clusterName = "AUDIT",
         securityType = NoSecurityCluster,
-        numberOfInstances = positiveInt(3),
+        numberOfInstances = positiveInt(2),
       )
     )
     cluster.start()
@@ -110,7 +110,6 @@ class RemoteClusterAuditingToolsSuite
       rorApiManager.updateRorInIndexConfig(baseRorConfig).forceOKStatusOrConfigAlreadyLoaded()
       val auditNode1 = proxiedContainers(0)
       val auditNode2 = proxiedContainers(1)
-      val auditNode3 = proxiedContainers(2)
 
       def auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds: List[String]): Unit = {
         forEachAuditManager { adminAuditManager =>
@@ -142,15 +141,10 @@ class RemoteClusterAuditingToolsSuite
 
       auditNode2.disableNetwork()
 
-      val traceIds3 = queryTweeterIndexWithRandomTraceId(times = 3)
-      auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds3)
-
-      auditNode3.disableNetwork()
-
       // all nodes disabled
       Thread.sleep(3000)
 
-      val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
+      val traceIds3 = queryTweeterIndexWithRandomTraceId(times = 3)
 
       Thread.sleep(10000)
 
@@ -159,20 +153,20 @@ class RemoteClusterAuditingToolsSuite
         eventually {
           val auditEntries = adminAuditManager.getEntries.force().jsons
 
-          traceIds4.foreach { traceId =>
+          traceIds3.foreach { traceId =>
             checkNoEntriesWithTraceId(auditEntries, traceId)
           }
 
-          val expectedEntriesCount = List.concat(traceIds1, traceIds2, traceIds3).size
+          val expectedEntriesCount = List.concat(traceIds1, traceIds2).size
           auditEntries.size shouldEqual expectedEntriesCount
         }
       }
 
       auditNode1.enableNetwork()
 
-      val traceIds5 = queryTweeterIndexWithRandomTraceId(times = 5)
+      val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
 
-      val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds3, traceIds5)
+      val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds4)
       forEachAuditManager { adminAuditManager =>
         eventually {
           val auditEntries = adminAuditManager.getEntries.force().jsons

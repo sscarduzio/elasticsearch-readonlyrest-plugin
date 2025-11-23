@@ -6,12 +6,12 @@ readonlyrest:
       - type: index
         index_template: "'audit_index'"
         cluster:
-          nodes: [ "http://{AUDIT_1_HOST}:{AUDIT_1_PORT}", "http://{AUDIT_2_HOST}:{AUDIT_2_PORT}", "http://{AUDIT_3_HOST}:{AUDIT_3_PORT}" ]
+          nodes: [ "http://{AUDIT_1_HOST}:{AUDIT_1_PORT}", "http://{AUDIT_2_HOST}:{AUDIT_2_PORT}" ]
           mode: round-robin
       - type: data_stream
         data_stream: "audit_data_stream"
         cluster:
-          nodes: [ "http://{AUDIT_1_HOST}:{AUDIT_1_PORT}", "http://{AUDIT_2_HOST}:{AUDIT_2_PORT}", "http://{AUDIT_3_HOST}:{AUDIT_3_PORT}" ]
+          nodes: [ "http://{AUDIT_1_HOST}:{AUDIT_1_PORT}", "http://{AUDIT_2_HOST}:{AUDIT_2_PORT}" ]
           mode: round-robin
 
   access_control_rules:

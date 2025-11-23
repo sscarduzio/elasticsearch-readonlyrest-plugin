@@ -1298,6 +1298,48 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedErrorMessage = "Error for field 'mode': Unknown cluster mode [not-existing-mode], allowed values are: [round-robin]"
               )
             }
+            "remote cluster credentials malformed" when {
+              "password not provided" in {
+                val config = rorConfigWithAuditUnsafe(
+                  """
+                    |readonlyrest:
+                    |  audit:
+                    |    enabled: true
+                    |    outputs:
+                    |    - type: index
+                    |      cluster:
+                    |        nodes: ["1.1.1.1"]
+                    |        mode: round-robin
+                    |        username: user
+                  """.stripMargin
+                )
+
+                assertInvalidSettings(
+                  config,
+                  expectedErrorMessage = "Audit output configuration is missing the ‘password’ field."
+                )
+              }
+              "username not provided" in {
+                val config = rorConfigWithAuditUnsafe(
+                  """
+                    |readonlyrest:
+                    |  audit:
+                    |    enabled: true
+                    |    outputs:
+                    |    - type: index
+                    |      cluster:
+                    |        nodes: ["1.1.1.1"]
+                    |        mode: round-robin
+                    |        password: pass
+                  """.stripMargin
+                )
+
+                assertInvalidSettings(
+                  config,
+                  expectedErrorMessage = "Audit output configuration is missing the ‘username’ field."
+                )
+              }
+            }
           }
           "'data_stream' output type" when {
             "not supported custom serializer is set" in {

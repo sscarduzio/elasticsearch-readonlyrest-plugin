@@ -144,17 +144,15 @@ object AuditCluster {
 
     def scheme: String = uri.schemeOption.getOrElse("http")
 
-    def credentials: Option[NodeCredentials] = uri.toUrl.user.map { user =>
-      NodeCredentials(user, uri.toUrl.password)
+    def credentials: Option[NodeCredentials] = {
+      for {
+        username <- uri.toUrl.user.flatMap(NonEmptyString.unapply)
+        password <- uri.toUrl.password.flatMap(NonEmptyString.unapply)
+      } yield NodeCredentials(username, password)
     }
   }
 
-  final case class NodeCredentials(username: String, password: String)
-  object NodeCredentials {
-    def apply(username: String, password: Option[String]): NodeCredentials = {
-      NodeCredentials(username, password.getOrElse(""))
-    }
-  }
+  final case class NodeCredentials(username: NonEmptyString, password: NonEmptyString)
 
   sealed trait ClusterMode
   object ClusterMode {

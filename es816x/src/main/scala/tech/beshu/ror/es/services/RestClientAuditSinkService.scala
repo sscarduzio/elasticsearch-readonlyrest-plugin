@@ -77,7 +77,7 @@ final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient]
       override def onSuccess(response: Response): Unit = {
         response.getStatusLine.getStatusCode / 100 match {
           case 2 => // 2xx
-            logger.debug(s"[${requestId.show}] Audit event handled by ${response.getHost.getHostName}:${response.getHost.getPort}")
+            logger.debug(s"[${requestId.show}] Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
           case _ =>
             logger.error(s"[${requestId.show}] Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}")
         }
@@ -109,7 +109,7 @@ object RestClientAuditSinkService extends Logging {
     val credentials =
       remoteCluster
         .credentials
-        .map(c => new UsernamePasswordCredentials(c.username, c.password))
+        .map(c => new UsernamePasswordCredentials(c.username.value, c.password.value))
 
     RestClient
       .builder(hosts.toSeq: _*)
@@ -122,7 +122,9 @@ object RestClientAuditSinkService extends Logging {
       .setFailureListener(
         new FailureListener {
           override def onFailure(node: Node): Unit = {
-            logger.debug(s"Dead node ${node.getHost.getHostName}:${node.getHost.getPort}")
+            logger.debug(
+              s"[AUDIT] Node marked dead: ${node.getHost.getSchemeName}://${node.getHost.getHostName}:${node.getHost.getPort}. The client will attempt failover.",
+            )
           }
         }
       )

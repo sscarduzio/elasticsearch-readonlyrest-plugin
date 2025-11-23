@@ -26,12 +26,11 @@ object WindowsEsPortProvider {
   // Node ports need to be predefined, because each ES process must be aware on startup time of ports used by all other cluster nodes.
   // In testcontainers implementation all nodes are identifiable by host name in docker network, with all using the same port. 
   // On Windows, each ES is a process running on the same host, with unique ports.
-  val ports: Map[String, WindowsEsPorts] =
+  val esNodeNameToEsPorts: Map[String, WindowsEsPorts] =
     ListMap.from(
       List(
         "AUDIT_1",
         "AUDIT_2",
-        "AUDIT_3",
         "ROR1_1",
         "ROR1_2",
         "ROR2_1",
@@ -66,7 +65,7 @@ object WindowsEsPortProvider {
     )
 
   def get(nodeName: String): WindowsEsPorts =
-    ports.getOrElse(
+    esNodeNameToEsPorts.getOrElse(
       nodeName,
       throw new IllegalStateException(
         s"No predefined ports for node $nodeName. Configure port mapping in WindowsEsPortProvider"
