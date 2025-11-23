@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
@@ -45,7 +45,7 @@ import scala.util.{Failure, Success, Try}
 
 class CurrentUserMetadataRequestHandler(engine: Engine,
                                         esContext: EsContext)
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
     engine.core.accessControl
@@ -86,13 +86,13 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     ))
   }
 
-  private def onPassThrough(requestContext: RequestContext): Unit = {
-    logger.warn(s"[${requestContext.id.toRequestId.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST plugin was disabled in settings")
+  private def onPassThrough(implicit requestContext: RequestContext): Unit = {
+    logger.warn(s"Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST plugin was disabled in settings")
     esContext.listener.onFailure(createRorNotEnabledResponse())
   }
 
-  private def logRequestProcessingTime(requestContext: RequestContext): Unit = {
-    logger.debug(s"[${requestContext.id.toRequestId.show}] Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
+  private def logRequestProcessingTime(implicit requestContext: RequestContext): Unit = {
+    logger.debug(s"Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
   }
 
 }

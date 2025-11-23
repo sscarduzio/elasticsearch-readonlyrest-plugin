@@ -91,7 +91,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
       case Some(definedFields) =>
         definedFields.strategy match {
           case FlsAtLuceneLevelApproach =>
-            FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions, id)
+            FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions)
             request
           case BasedOnBlockContextOnly.NotAllowedFieldsUsed(_) | BasedOnBlockContextOnly.EverythingAllowed =>
             request

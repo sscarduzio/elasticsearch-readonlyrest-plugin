@@ -20,7 +20,7 @@ import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
@@ -37,7 +37,7 @@ sealed abstract class RorActionListener[T](val underlying: ActionListener[T]) ex
 
 final class HidingInternalErrorDetailsRorActionListener[T](underlying: ActionListener[T],
                                                            correlationId: Eval[CorrelationId])
-  extends RorActionListener[T](underlying) with Logging {
+  extends RorActionListener[T](underlying) with RequestIdAwareLogging {
 
   override def onFailure(e: Exception): Unit = {
     super.onFailure(adaptExceptionIfNeeded(e))
@@ -47,7 +47,7 @@ final class HidingInternalErrorDetailsRorActionListener[T](underlying: ActionLis
     ex match {
       case esException: ElasticsearchException => esException
       case other =>
-        logger.error(s"[${correlationId.value.show}] Internal error.", other)
+        noRequestIdLogger.error(s"[${correlationId.value.show}] Internal error.", other)
         new ElasticsearchException(s"[${correlationId.value.show}] Internal error. See logs for details.")
     }
   }

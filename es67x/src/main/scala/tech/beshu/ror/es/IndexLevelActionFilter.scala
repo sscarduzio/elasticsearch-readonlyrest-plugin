@@ -17,7 +17,7 @@
 package tech.beshu.ror.es
 
 import monix.execution.atomic.Atomic
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
@@ -60,7 +60,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              esInitListener: EsInitListener,
                              rorEsConfig: ReadonlyRestEsConfig)
                             (implicit environmentConfig: EnvironmentConfig)
-  extends ActionFilter with Logging {
+  extends ActionFilter with RequestIdAwareLogging {
 
   private implicit val generator: UniqueIdentifierGenerator = environmentConfig.uniqueIdentifierGenerator
 
@@ -201,12 +201,12 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {
-    logger.warn(s"[${esContext.correlationId.value.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet")
+    noRequestIdLogger.warn(s"[${esContext.correlationId.value.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet")
     rorNotAvailableRequestHandler.handleRorNotReadyYet(esContext)
   }
 
   private def handleRorFailedToStart(esContext: EsContext): Unit = {
-    logger.error(s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST failed to start")
+    noRequestIdLogger.error(s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST failed to start")
     rorNotAvailableRequestHandler.handleRorFailedToStart(esContext)
   }
 
@@ -228,7 +228,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def logAndSetStartingFailureState(failure: StartingFailure): Unit = {
-    logger.error(s"ROR starting failure: ${failure.message}", failure.throwable.orNull)
+    noRequestIdLogger.error(s"ROR starting failure: ${failure.message}", failure.throwable.orNull)
     rorInstanceState.set(RorInstanceStartingState.NotStarted(failure))
   }
 }

@@ -115,7 +115,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
             .runAsync {
               case Right(_) =>
               case Left(ex) =>
-                logger.warn(s"[${responseContext.requestContext.id.show}] Auditing issue", ex)(responseContext)
+                logger.warn(s"Auditing issue", ex)(responseContext)
             }
         }
     }

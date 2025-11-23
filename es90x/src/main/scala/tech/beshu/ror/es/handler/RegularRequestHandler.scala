@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
@@ -49,7 +49,7 @@ class RegularRequestHandler(engine: Engine,
                             esContext: EsContext,
                             threadPool: ThreadPool)
                            (implicit scheduler: Scheduler)
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
     engine.core.accessControl
@@ -99,7 +99,7 @@ class RegularRequestHandler(engine: Engine,
       case ModificationResult.ShouldBeInterrupted =>
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.CannotModify =>
-        logger.error(s"[${request.id.toRequestId.show}] Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
+        noRequestIdLogger.error(s"Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
       case CustomResponse(response) =>
         respond(request, response)
@@ -247,7 +247,7 @@ class RegularRequestHandler(engine: Engine,
     esContext.listener.onResponse(response)
   }
 
-  private def logRequestProcessingTime(requestContext: RequestContext): Unit = {
-    logger.debug(s"[${requestContext.id.toRequestId.show}] Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
+  private def logRequestProcessingTime(implicit requestContext: RequestContext): Unit = {
+    logger.debug(s"Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
   }
 }

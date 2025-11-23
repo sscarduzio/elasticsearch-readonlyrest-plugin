@@ -23,7 +23,7 @@ import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials
 import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.client.{Request, Response, ResponseListener, RestClient}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName}
 import tech.beshu.ror.es.IndexBasedAuditSinkService
@@ -34,7 +34,7 @@ import scala.collection.parallel.CollectionConverters.*
 
 final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
   extends IndexBasedAuditSinkService
-    with Logging {
+    with RequestIdAwareLogging {
 
   override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
     submitDocument(indexName.name.value, documentId, jsonRecord)
@@ -70,12 +70,12 @@ final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient]
         response.getStatusLine.getStatusCode / 100 match {
           case 2 => // 2xx
           case _ =>
-            logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}")
+            noRequestIdLogger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}")
         }
       }
 
       override def onFailure(ex: Exception): Unit = {
-        logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
+        noRequestIdLogger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
       }
     }
 }

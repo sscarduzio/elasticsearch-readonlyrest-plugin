@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types
 import cats.data.NonEmptyList
 import cats.implicits.*
 import com.google.common.collect.Sets
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
@@ -66,7 +66,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
   }
 }
 
-object ReflectionBasedIndicesEsRequestContext extends Logging {
+object ReflectionBasedIndicesEsRequestContext extends RequestIdAwareLogging {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[ReflectionBasedIndicesEsRequestContext] = {
     requestedIndicesFrom(arg.esContext.actionRequest)

@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{AbstractQueryBuilder, QueryBuilder, QueryBuilders}
 import org.elasticsearch.search.aggregations.AggregatorFactories
@@ -40,7 +40,7 @@ import tech.beshu.ror.implicits.*
 import java.util.UUID
 import scala.jdk.CollectionConverters.*
 
-object SearchRequestOps extends Logging {
+object SearchRequestOps extends RequestIdAwareLogging {
 
   implicit class QueryBuilderOps(val builder: Option[QueryBuilder]) extends AnyVal {
 
@@ -92,7 +92,7 @@ object SearchRequestOps extends Logging {
         case Some(definedFields) =>
           definedFields.strategy match {
             case FlsAtLuceneLevelApproach =>
-              FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions, requestId)
+              FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions)
               disableCaching(requestId)
             case BasedOnBlockContextOnly.NotAllowedFieldsUsed(notAllowedFields) =>
               modifyNotAllowedFieldsInRequest(notAllowedFields)
@@ -138,8 +138,8 @@ object SearchRequestOps extends Logging {
       }
     }
 
-    private def disableCaching(requestId: RequestContext.Id) = {
-      logger.debug(s"[${requestId.show}] ACL uses context header for fields rule, will disable request cache for SearchRequest")
+    private def disableCaching(implicit requestId: RequestContext.Id) = {
+      logger.debug(s"ACL uses context header for fields rule, will disable request cache for SearchRequest")
       request.requestCache(false)
     }
   }

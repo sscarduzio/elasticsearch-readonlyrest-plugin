@@ -68,12 +68,12 @@ object RequestIdAwareLogging {
     def error(msg: => String, t: Throwable)(implicit rid: HasRequestId): Unit =
       if (log.delegate.isErrorEnabled) log.error(buildMsg(msg, rid), t)
 
-    def errorEx(message: String, throwable: Throwable): Unit = {
+    def errorEx(message: => String, throwable: Throwable): Unit = {
       if (log.delegate.isDebugEnabled) log.error(message, throwable)
       else log.error(s"$message; ${throwable.getMessage}")
     }
 
-    def warnEx(message: String, throwable: Throwable): Unit = {
+    def warnEx(message: => String, throwable: Throwable): Unit = {
       if (log.delegate.isDebugEnabled) log.warn(message, throwable)
       else log.warn(s"$message; ${throwable.getMessage}")
     }
