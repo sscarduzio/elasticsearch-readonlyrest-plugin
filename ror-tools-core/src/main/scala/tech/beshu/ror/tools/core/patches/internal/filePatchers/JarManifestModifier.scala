@@ -21,7 +21,7 @@ import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.FileUtils.{getFilePermissionsAndOwner, setFilePermissionsAndOwner}
 
 import java.util.UUID
-import java.util.jar.{JarFile, JarOutputStream}
+import java.util.jar.{JarEntry, JarFile, JarOutputStream}
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.util.Using
 
@@ -67,7 +67,9 @@ object JarManifestModifier {
     originalJarFile.entries().asIterator().asScala.foreach { entry =>
       val name = entry.getName
       if (!name.equalsIgnoreCase("META-INF/MANIFEST.MF")) {
-        jarOutput.putNextEntry(entry)
+        val newEntry = new JarEntry(name)
+        newEntry.setTime(entry.getTime)
+        jarOutput.putNextEntry(newEntry)
         Using(originalJarFile.getInputStream(entry))(_.transferTo(jarOutput)).fold(
           ex => throw IllegalStateException(s"Could not copy content of ${entry.getName} because of [${ex.getMessage}]", ex),
           (_: Long) => ()

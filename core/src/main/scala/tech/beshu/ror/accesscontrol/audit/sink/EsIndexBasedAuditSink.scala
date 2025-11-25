@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
+import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditIndexTemplate}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.IndexBasedAuditSinkService
 
@@ -30,7 +30,8 @@ private[audit] final class EsIndexBasedAuditSink private(serializer: AuditLogSer
                                                         (implicit clock: Clock)
   extends BaseAuditSink(serializer) {
 
-  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Task[Unit] = Task {
+  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
+                               (implicit requestId: RequestId): Task[Unit] = Task {
     auditSinkService.submit(
       indexName = rorAuditIndexTemplate.indexName(clock.instant()),
       documentId = event.requestContext.id,
