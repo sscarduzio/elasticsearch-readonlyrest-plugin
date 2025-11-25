@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.audit.sink.*
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
@@ -42,6 +42,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
 
   def audit[B <: BlockContext](response: ResponseContext[B], auditEnvironmentContext: AuditEnvironmentContext): Task[Unit] = {
     val auditResponseContext = toAuditResponse(response, auditEnvironmentContext)
+    implicit val requestId: RequestId = response.requestContext.id.toRequestId
     auditSinks
       .parTraverse(_.submit(auditResponseContext))
       .map((_: NonEmptyList[Unit]) => ())
