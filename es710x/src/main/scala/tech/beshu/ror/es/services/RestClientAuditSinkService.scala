@@ -91,7 +91,7 @@ final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient]
   override val dataStreamCreator: AuditDataStreamCreator = new AuditDataStreamCreator(clients.map(new RestClientDataStreamService(_)))
 }
 
-object RestClientAuditSinkService extends Logging {
+object RestClientAuditSinkService extends RequestIdAwareLogging {
 
   def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditSinkService = {
     remoteCluster.mode match {
@@ -122,7 +122,7 @@ object RestClientAuditSinkService extends Logging {
       .setFailureListener(
         new FailureListener {
           override def onFailure(node: Node): Unit = {
-                        logger.debug(
+                        noRequestIdLogger.debug(
               s"[AUDIT] Node marked dead: ${node.getHost.getSchemeName}://${node.getHost.getHostName}:${node.getHost.getPort}. The client will attempt failover.",
             )
           }
