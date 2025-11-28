@@ -61,4 +61,12 @@ object dependencies {
         )
     }
   }
+
+  def toxiproxy(name: String, container: ToxiproxyContainer[_]): DependencyDef = {
+    DependencyDef(
+      name = name,
+      container = container,
+      originalPort = ToxiproxyContainer.proxiedPort
+    )
+  }
 }

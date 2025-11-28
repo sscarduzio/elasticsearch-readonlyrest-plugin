@@ -38,6 +38,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
@@ -56,12 +57,13 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.time.Clock
 import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 class ReadonlyRestStartingTests
   extends AnyWordSpec
@@ -1318,7 +1320,7 @@ class ReadonlyRestStartingTests
 
         val dataStreamSinkConfig1 = AuditSink.Config.EsDataStreamBasedSink.default
         val dataStreamSinkConfig2 = dataStreamSinkConfig1.copy(
-          auditCluster = AuditCluster.RemoteAuditCluster(NonEmptyList.one(Uri.parse("0.0.0.0")))
+          auditCluster = AuditCluster.RemoteAuditCluster(UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("0.0.0.0"))), ClusterMode.RoundRobin, None)
         )
 
         val coreFactory = mockCoreFactory(

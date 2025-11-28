@@ -94,7 +94,7 @@ object WindowsEsSetup extends LazyLogging {
     // Replace all names of other ES hosts with 127.0.0.1 address with correct transport port
     val lines = file.contentAsString.linesIterator.toList
     val updatedContent = lines.head + "\n" +
-      ports.foldLeft(lines.tail.mkString("\n")) {
+      esNodeNameToEsPorts.foldLeft(lines.tail.mkString("\n")) {
         case (content, (oldValue, WindowsEsPorts(_, transportPort))) =>
           content.replace(oldValue, s"127.0.0.1:$transportPort")
       }
