@@ -75,7 +75,7 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
         Left(())
       case snapshot :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.show}]")
+          logger.warn(s"Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.show}]")
         }
         Right(snapshot)
     }
@@ -88,7 +88,7 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+          logger.warn(s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
         }
         Right(repository)
     }

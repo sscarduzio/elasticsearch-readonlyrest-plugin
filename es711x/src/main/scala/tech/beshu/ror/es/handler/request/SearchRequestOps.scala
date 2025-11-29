@@ -52,7 +52,7 @@ object SearchRequestOps extends RequestIdAwareLogging {
           val modifiedQuery: AbstractQueryBuilder[_] = provideNewQueryWithAppliedFilter(builder, filterQuery)
           Some(modifiedQuery)
         case None =>
-          logger.debug(s"[${requestId.show}] No filter applied to query.")
+          logger.debug(s"No filter applied to query.")
           builder
       }
     }

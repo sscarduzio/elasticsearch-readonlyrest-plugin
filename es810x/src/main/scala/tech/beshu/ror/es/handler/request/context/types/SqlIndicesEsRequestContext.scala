@@ -74,7 +74,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
           request
         }
       case Left(_) =>
-        logger.debug(s"[${id.show}] Cannot parse SQL statement - we can pass it though, because ES is going to reject it")
+        logger.debug(s"Cannot parse SQL statement - we can pass it though, because ES is going to reject it")
         request
     }
   }

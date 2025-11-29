@@ -79,7 +79,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
           request
         }
       case Left(ClassificationError.ParsingException(ex)) =>
-        logger.debug(s"[${id.show}] Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:", ex)
+        logger.debug(s"Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:", ex)
         request
     }
   }

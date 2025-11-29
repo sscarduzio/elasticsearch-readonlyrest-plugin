@@ -85,7 +85,7 @@ class RegularRequestHandler(engine: Engine,
     } match {
       case Success(_) =>
       case Failure(ex) =>
-        logger.errorEx(s"[${request.id.toRequestId.show}] ACL committing result failure", ex)
+        logger.errorEx(s"ACL committing result failure", ex)(request)
         esContext.listener.onFailure(new Exception(ex))
     }
   }

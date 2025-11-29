@@ -70,14 +70,14 @@ final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient]
       override def onSuccess(response: Response): Unit = {
         response.getStatusLine.getStatusCode / 100 match {
           case 2 => // 2xx
-            logger.debug(s"[${requestId.show}] Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
+            logger.debug(s"Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
           case _ =>
-            noRequestIdLogger.error(s"[${requestId.show}] Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}")
+            logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}")
         }
       }
 
       override def onFailure(ex: Exception): Unit = {
-        noRequestIdLogger.error(s"[${requestId.show}] Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
+        logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
       }
     }
 }

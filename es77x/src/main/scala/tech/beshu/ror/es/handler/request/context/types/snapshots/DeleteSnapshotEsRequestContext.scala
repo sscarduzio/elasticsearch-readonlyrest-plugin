@@ -64,27 +64,27 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
     }
   }
 
-  private def snapshotFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def snapshotFrom(implicit blockContext: SnapshotRequestBlockContext) = {
     val snapshots = blockContext.snapshots.toList
     snapshots match {
       case Nil =>
         Left(())
       case snapshot :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. The whole set of snapshots [${snapshots.show}]")
+          logger.warn(s"Filtered result contains more than one snapshot. First was taken. The whole set of snapshots [${snapshots.show}]")
         }
         Right(snapshot)
     }
   }
 
-  private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def repositoryFrom(implicit blockContext: SnapshotRequestBlockContext) = {
     val repositories = blockContext.repositories.toList
     repositories match {
       case Nil =>
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+          logger.warn(s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
         }
         Right(repository)
     }

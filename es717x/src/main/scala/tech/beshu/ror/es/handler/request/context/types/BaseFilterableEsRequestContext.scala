@@ -85,7 +85,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
       case Some(indices) =>
         update(actionRequest, indices, blockContext.filter, blockContext.fieldLevelSecurity)
       case None =>
-        logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
+        logger.warn(s"empty list of indices produced, so we have to interrupt the request processing")
         ShouldBeInterrupted
     }
   }
@@ -101,7 +101,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
 
   private def discoverIndices() = {
     val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
-    logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
+    logger.debug(s"Discovered indices: ${indices.show}")
     indices
   }
 }

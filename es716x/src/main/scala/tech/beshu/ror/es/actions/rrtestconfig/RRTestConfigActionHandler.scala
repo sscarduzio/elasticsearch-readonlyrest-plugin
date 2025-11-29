@@ -52,7 +52,7 @@ class RRTestConfigActionHandler extends RequestIdAwareLogging {
     case Right(response) =>
       listener.onResponse(new RRTestConfigResponse(response))
     case Left(ex) =>
-      logger.error(s"[${requestId.show}] RRTestConfig internal error", ex)
+      logger.error(s"RRTestConfig internal error", ex)
       listener.onFailure(new Exception(ex))
   }
 

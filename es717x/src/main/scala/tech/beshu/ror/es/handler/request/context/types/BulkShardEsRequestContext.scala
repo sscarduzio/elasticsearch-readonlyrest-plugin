@@ -53,7 +53,7 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
       case Success(_) =>
         Modified
       case Failure(ex) =>
-        logger.error(s"[${id.show}] Cannot modify BulkShardRequest", ex)
+        logger.error(s"Cannot modify BulkShardRequest", ex)
         CannotModify
     }
   }

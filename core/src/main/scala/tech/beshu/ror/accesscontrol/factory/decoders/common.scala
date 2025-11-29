@@ -287,7 +287,7 @@ object common extends RequestIdAwareLogging {
           .toEither
           .left
           .map { ex =>
-            logger.errorEx("JSON path compilation failed", ex)
+            noRequestIdLogger.errorEx("JSON path compilation failed", ex)
             DefinitionsLevelCreationError(Message(s"Cannot compile '${jsonPathStr.show}' to JSON path"))
           }
       }
