@@ -132,17 +132,21 @@ object ruleDecoders {
       case ExternalAuthorizationRule.Name.name =>
         Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case JwtAuthRule.Name.name =>
-        Some(new JwtAuthRuleDecoder(jwtDefinitions, globalSettings))
+        Some(new JwtAuthRulesDecoders.AuthRuleDecoder(jwtDefinitions, globalSettings))
+      case JwtAuthenticationRule.Name.name =>
+        Some(new JwtAuthRulesDecoders.AuthenticationRuleDecoder(jwtDefinitions, globalSettings))
+      case JwtAuthorizationRule.Name.name =>
+        Some(new JwtAuthRulesDecoders.AuthorizationRuleDecoder(jwtDefinitions))
       case LdapAuthorizationRule.Name.name =>
         Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case LdapAuthRule.Name.name =>
         Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case RorKbnAuthRule.Name.name =>
-        Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, globalSettings))
+        Some(new RorKbnRulesDecoders.AuthRuleDecoder(rorKbnDefinitions, globalSettings))
       case RorKbnAuthenticationRule.Name.name =>
-        Some(new RorKbnAuthenticationRuleDecoder(rorKbnDefinitions, globalSettings))
+        Some(new RorKbnRulesDecoders.AuthenticationRuleDecoder(rorKbnDefinitions, globalSettings))
       case RorKbnAuthorizationRule.Name.name =>
-        Some(new RorKbnAuthorizationRuleDecoder(rorKbnDefinitions))
+        Some(new RorKbnRulesDecoders.AuthorizationRuleDecoder(rorKbnDefinitions))
       case _ =>
         authenticationRuleDecoderBy(
           name,

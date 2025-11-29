@@ -16,66 +16,67 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
-import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.security.KeyPairGenerator
 import java.util.Base64
 
-class RorKbnAuthRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] {
+class JwtAuthorizationRuleSettingsTests
+  extends BaseRuleSettingsDecoderTest[JwtAuthorizationRule]
+    with MockFactory {
 
-  "A RorKbnAuthRule" should {
+  "A JwtAuthorizationRule" should {
     "be able to be loaded from config" when {
-      "rule is defined using extended version with groups or logic and minimal request set of fields in ROR kbn definition" in {
-        val rolesKeys = List("roles", "groups", "groups_or")
-        rolesKeys.foreach { roleKey =>
+      "rule is defined using extended version with groups 'or' logic and minimal request set of fields in JWT definition" in {
+        val ruleKeys = List("roles", "groups", "groups_or")
+        ruleKeys.foreach { ruleKey =>
           assertDecodingSuccess(
             yaml =
               s"""
                  |readonlyrest:
-                 |
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    ror_kbn_auth:
-                 |      name: "kbn1"
-                 |      $roleKey: ["group1*","group2"]
+                 |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+                 |    jwt_authorization:
+                 |      name: "jwt1"
+                 |      $ruleKey: ["group1*","group2"]
                  |
-                 |  ror_kbn:
+                 |  jwt:
                  |
-                 |  - name: kbn1
+                 |  - name: jwt1
                  |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                  |
                  |""".stripMargin,
             assertion = rule => {
-              rule.authentication.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
-              rule.authentication.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
-              rule.authorization.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
-              rule.authorization.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
-              rule.authorization.settings.groupsLogic should be(
-                GroupsLogic.AnyOf(GroupIds(
-                  UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
-                ))
-              )
+              rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
+              rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+              rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
+              rule.settings.jwt.userClaim should be(None)
+              rule.settings.jwt.groupsConfig should be(None)
+              rule.settings.groupsLogic should be(GroupsLogic.AnyOf(GroupIds(
+                UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
+              )))
             }
           )
         }
       }
-      "rule is defined using extended version with groups and logic and minimal request set of fields in ROR kbn definition" in {
-        val rolesKeys = List("roles_and", "groups_and")
-        rolesKeys.foreach { roleKey =>
+      "rule is defined using extended version with groups 'and' logic and minimal request set of fields in JWT definition" in {
+        val ruleKeys = List("roles_and", "groups_and")
+        ruleKeys.foreach { ruleKey =>
           assertDecodingSuccess(
             yaml =
               s"""
@@ -83,33 +84,33 @@ class RorKbnAuthRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    ror_kbn_auth:
-                 |      name: "kbn1"
-                 |      $roleKey: ["group1*","group2"]
+                 |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+                 |    jwt_authorization:
+                 |      name: "jwt1"
+                 |      $ruleKey: ["group1*","group2"]
                  |
-                 |  ror_kbn:
+                 |  jwt:
                  |
-                 |  - name: kbn1
+                 |  - name: jwt1
                  |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                  |
                  |""".stripMargin,
             assertion = rule => {
-              rule.authentication.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
-              rule.authentication.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
-              rule.authorization.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
-              rule.authorization.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
-              rule.authorization.settings.groupsLogic should be(
-                GroupsLogic.AllOf(GroupIds(
-                  UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
-                ))
-              )
+              rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
+              rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+              rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
+              rule.settings.jwt.userClaim should be(None)
+              rule.settings.jwt.groupsConfig should be(None)
+              rule.settings.groupsLogic should be(GroupsLogic.AllOf(GroupIds(
+                UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
+              )))
             }
           )
         }
       }
     }
     "not be able to be loaded from config" when {
-      "no ROR kbn definition name is defined in rule setting" in {
+      "no JWT definition name is defined in rule setting" in {
         assertDecodingFailure(
           yaml =
             """
@@ -118,24 +119,24 @@ class RorKbnAuthRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    ror_kbn_auth:
+              |    jwt_authorization:
               |
-              |  ror_kbn:
+              |  jwt:
               |
-              |  - name: kbn1
+              |  - name: jwt1
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """ror_kbn_auth: null
+              """jwt_authorization: null
                 |""".stripMargin
             )))
           }
         )
       }
-      "ROR kbn definition with given name is not found" in {
+      "JWT definition with given name is not found" in {
         assertDecodingFailure(
           yaml =
             """
@@ -144,21 +145,21 @@ class RorKbnAuthRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    ror_kbn_auth: kbn1
+              |    jwt_authorization: jwt2
               |
-              |  ror_kbn:
+              |  jwt:
               |
-              |  - name: kbn2
+              |  - name: jwt1
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find ROR Kibana definition with name: kbn1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find JWT definition with name: jwt2")))
           }
         )
       }
-      "no ROR kbn definition is defined" in {
+      "no JWT definition is defined" in {
         assertDecodingFailure(
           yaml =
             """
@@ -167,15 +168,15 @@ class RorKbnAuthRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    ror_kbn_auth: kbn1
+              |    jwt_authorization: jwt1
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find ROR Kibana definition with name: kbn1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find JWT definition with name: jwt1")))
           }
         )
       }
-      "extended version of rule settings is used, but no ROR kbn definition name attribute is used" in {
+      "extended version of rule settings is used, but no JWT definition name attribute is used" in {
         assertDecodingFailure(
           yaml =
             """
@@ -184,19 +185,19 @@ class RorKbnAuthRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    ror_kbn_auth:
+              |    jwt_authorization:
               |      roles: ["group1","group2"]
               |
-              |  ror_kbn:
+              |  jwt:
               |
-              |  - name: kbn1
+              |  - name: jwt1
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """ror_kbn_auth:
+              """jwt_authorization:
                 |  roles:
                 |  - "group1"
                 |  - "group2"
@@ -205,7 +206,41 @@ class RorKbnAuthRuleSettingsTests
           }
         )
       }
-      "no ROR kbn definition name is defined" in {
+      "extended version of rule settings is used, but both 'groups or' key and 'groups and' key used" in {
+        List(
+          ("roles", "roles_and"),
+          ("groups", "groups_and")
+        )
+          .foreach { case (groupsAnyOfKey, groupsAllOfKey) =>
+            assertDecodingFailure(
+              yaml =
+                s"""
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    jwt_authorization:
+                   |      name: "jwt1"
+                   |      $groupsAnyOfKey: ["group1","group2"]
+                   |      $groupsAllOfKey: ["group1","group2"]
+                   |
+                   |  jwt:
+                   |
+                   |  - name: jwt1
+                   |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                   |
+                   |""".stripMargin,
+              assertion = errors => {
+                errors should have size 1
+                errors.head should be(RulesLevelCreationError(Message(
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for JWT authorization rule 'jwt1'"
+                )))
+              }
+            )
+          }
+      }
+      "no JWT definition name is defined" in {
         assertDecodingFailure(
           yaml =
             """
@@ -214,10 +249,9 @@ class RorKbnAuthRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    ror_kbn_auth: kbn1
+              |    jwt_authorization: jwt1
               |
-              |  ror_kbn:
-              |
+              |  jwt:
               |  - signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin,
@@ -244,26 +278,25 @@ class RorKbnAuthRuleSettingsTests
                    |  access_control_rules:
                    |
                    |  - name: test_block1
-                   |    ror_kbn_auth:
-                   |      name: "kbn1"
+                   |    jwt_authorization:
+                   |      name: "jwt1"
                    |      $groupsAnyOfKey: ["group1", "group2"]
                    |      $groupsAllOfKey: ["groups1", "groups2"]
-                   |  ror_kbn:
-                   |
-                   |  - name: kbn2
+                   |  jwt:
+                   |  - name: jwt2
                    |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                    |
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for ROR Kibana authorization rule 'kbn1'")
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for JWT authorization rule 'jwt1'")
                 ))
               }
             )
           }
       }
-      "two ROR kbn definitions have the same names" in {
+      "two JWT definitions have the same names" in {
         assertDecodingFailure(
           yaml =
             """
@@ -272,20 +305,20 @@ class RorKbnAuthRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    ror_kbn_auth: kbn1
+              |    jwt_authorization: jwt1
               |
-              |  ror_kbn:
+              |  jwt:
               |
-              |  - name: kbn1
+              |  - name: jwt1
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
-              |  - name: kbn1
+              |  - name: jwt1
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("ror_kbn definitions must have unique identifiers. Duplicates: kbn1")))
+            errors.head should be(DefinitionsLevelCreationError(Message("jwt definitions must have unique identifiers. Duplicates: jwt1")))
           }
         )
       }
