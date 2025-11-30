@@ -21,7 +21,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
@@ -48,7 +48,7 @@ import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 import scala.annotation.nowarn
 import scala.util.{Failure, Success, Try}
 
-object AuditingSettingsDecoder extends Logging {
+object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   def instance(esVersion: EsVersion): Decoder[Option[AuditingTool.AuditSettings]] = {
     for {
@@ -351,7 +351,7 @@ object AuditingSettingsDecoder extends Logging {
       }
     } match {
       case Success(Some(customSerializer)) =>
-        logger.info(s"Using custom serializer: ${customSerializer.getClass.getName}")
+        noRequestIdLogger.info(s"Using custom serializer: ${customSerializer.getClass.getName}")
         Right(customSerializer)
       case Success(None) => Left(auditSettingsError(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}"))
       case Failure(ex) => Left(auditSettingsError(s"Cannot create instance of class '${fullClassName.show}', error: ${ex.getMessage.show}"))

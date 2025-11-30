@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request.queries
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.index.query.*
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
@@ -32,7 +32,7 @@ trait QueryFieldsUsage[QUERY <: QueryBuilder] {
   def fieldsIn(query: QUERY): RequestFieldsUsage
 }
 
-object QueryFieldsUsage extends Logging {
+object QueryFieldsUsage extends RequestIdAwareLogging {
   def apply[QUERY <: QueryBuilder](implicit ev: QueryFieldsUsage[QUERY]): QueryFieldsUsage[QUERY] = ev
 
   implicit class Ops[QUERY <: QueryBuilder : QueryFieldsUsage](val query: QUERY) {
@@ -65,7 +65,7 @@ object QueryFieldsUsage extends Logging {
       Option(on(query).call("getFieldName").get[String]) match {
         case Some(fieldName: String) => UsingFields(NonEmptyList.one(UsedField(fieldName)))
         case _ =>
-          logger.debug(s"Cannot extract fields for terms set query")
+          noRequestIdLogger.debug(s"Cannot extract fields for terms set query")
           CannotExtractFields
       }
     }
@@ -93,7 +93,7 @@ object QueryFieldsUsage extends Logging {
       case builder: TermsSetQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder: WildcardQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder =>
-        logger.debug(s"Cannot extract fields for query: ${builder.getName}")
+        noRequestIdLogger.debug(s"Cannot extract fields for query: ${builder.getName}")
         CannotExtractFields
     }
 

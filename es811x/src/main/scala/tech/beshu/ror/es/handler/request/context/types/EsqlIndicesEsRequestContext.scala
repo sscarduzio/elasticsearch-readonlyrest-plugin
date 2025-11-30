@@ -79,7 +79,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
           request
         }
       case Left(ClassificationError.ParsingException(ex)) =>
-        logger.debug(s"[${id.show}] Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:", ex)
+        logger.debug(s"Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:", ex)
         request
     }
   }
@@ -90,7 +90,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
       case Some(definedFields) =>
         definedFields.strategy match {
           case FlsAtLuceneLevelApproach =>
-            FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions, id)
+            FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions)
             request
           case BasedOnBlockContextOnly.NotAllowedFieldsUsed(_) | BasedOnBlockContextOnly.EverythingAllowed =>
             request

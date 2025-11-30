@@ -21,7 +21,7 @@ import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import com.comcast.ip4s.Host
 import com.comcast.ip4s.Host.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -33,7 +33,7 @@ import tech.beshu.ror.utils.TaskOps.*
 import scala.util.Success
 
 private[rules] abstract class BaseHostsRule(resolver: HostnameResolver)
-  extends RegularRule with Logging {
+  extends RegularRule with RequestIdAwareLogging {
 
   protected def checkAllowedAddresses(blockContext: BlockContext)
                                      (allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
@@ -63,7 +63,7 @@ private[rules] abstract class BaseHostsRule(resolver: HostnameResolver)
       allowedHostIps <- OptionT(parallelyResolved.map(_.allowedHost))
       addressIps <- OptionT(parallelyResolved.map(_.address))
       isMatching = addressIps.exists(ip => allowedHostIps.exists(_.contains(ip)))
-      _ = logger.debug(s"[${blockContext.requestContext.id.show}] address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=${isMatching.show}")
+      _ = logger.debug(s"address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=${isMatching.show}")(blockContext)
     } yield isMatching
     result.value.map(_.getOrElse(false))
   }
@@ -79,7 +79,7 @@ private[rules] abstract class BaseHostsRule(resolver: HostnameResolver)
         resolver
           .resolve(address)
           .andThen {
-            case Success(None) => logger.warn(s"[${requestId.show}] Cannot resolve hostname: ${Show[Host].show(address.value)}")
+            case Success(None) => logger.warn(s"Cannot resolve hostname: ${Show[Host].show(address.value)}")
           }
     }
 }

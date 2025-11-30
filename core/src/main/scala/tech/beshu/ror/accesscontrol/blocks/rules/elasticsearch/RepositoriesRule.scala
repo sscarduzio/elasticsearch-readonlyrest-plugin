@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -37,7 +37,7 @@ import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class RepositoriesRule(val settings: Settings)
   extends RegularRule
-    with Logging {
+    with RequestIdAwareLogging {
 
   override val name: Rule.Name = RepositoriesRule.Name.name
 
@@ -95,12 +95,12 @@ class RepositoriesRule(val settings: Settings)
         case CheckResult.Ok(processedRepositories) =>
           val filteredOutRepositories = repositoriesToCheck.diff(processedRepositories).map(_.show)
           logger.debug(
-            s"[${requestContext.id.show}] Write request with repositories cannot proceed because some of the repositories " +
+            s"Write request with repositories cannot proceed because some of the repositories " +
               s"[${filteredOutRepositories.show}] were filtered out by ACL. The request will be rejected.."
-          )
+          )(requestContext)
           Left(())
         case CheckResult.Failed =>
-          logger.debug(s"[${requestContext.id.show}] The processed repositories do not match the allowed repositories. The request will be rejected..")
+          logger.debug(s"The processed repositories do not match the allowed repositories. The request will be rejected..")(requestContext)
           Left(())
       }
     }

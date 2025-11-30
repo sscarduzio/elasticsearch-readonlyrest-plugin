@@ -20,7 +20,7 @@ import cats.Show
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.json.JSONObject
 import squants.information.Bytes
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -39,7 +39,7 @@ import tech.beshu.ror.utils.ScalaOps.*
 import java.time.Instant
 import scala.language.implicitConversions
 
-trait RequestContext extends Logging {
+trait RequestContext extends RequestIdAwareLogging with HasRequestId {
 
   type BLOCK_CONTEXT <: BlockContext
 
@@ -89,14 +89,16 @@ trait RequestContext extends Logging {
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
+  override def requestId: RequestId = id.toRequestId
 }
 
-object RequestContext extends Logging {
+object RequestContext extends RequestIdAwareLogging {
 
   type Aux[B <: BlockContext] = RequestContext { type BLOCK_CONTEXT = B }
 
-  final case class Id private(value: String) {
+  final case class Id private(value: String) extends HasRequestId {
     def toRequestId: RequestId = RequestId(value)
+    override def requestId: RequestId = toRequestId
   }
   object Id {
     def fromString(value: String): Id = Id(value)

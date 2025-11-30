@@ -66,7 +66,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
         updateAliases(actionRequest, aliases)
         UpdateResponse.sync(updateAliasesResponse(aliases.includedOnly, _))
       case None =>
-        logger.error(s"[${id.show}] At least one alias and one index has to be allowed. " +
+        logger.error(s"At least one alias and one index has to be allowed. " +
           s"Found allowed indices: [${blockContext.indices.show}]." +
           s"Found allowed aliases: [${blockContext.aliases.show}]")
         ShouldBeInterrupted
@@ -114,7 +114,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
       .indices().asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
-    logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
+    logger.debug(s"Discovered indices: ${indices.show}")
     indices
   }
 
@@ -122,7 +122,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     val aliases = rawRequestAliasesSet(request)
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
-    logger.debug(s"[${id.show}] Discovered aliases: ${aliases.show}")
+    logger.debug(s"Discovered aliases: ${aliases.show}")
     aliases
   }
 

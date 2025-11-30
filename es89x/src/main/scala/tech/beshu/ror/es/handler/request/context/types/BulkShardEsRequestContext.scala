@@ -53,14 +53,14 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
       case Success(_) =>
         Modified
       case Failure(ex) =>
-        logger.error(s"[${id.show}] Cannot modify BulkShardRequest", ex)
+        logger.error(s"Cannot modify BulkShardRequest", ex)
         CannotModify
     }
   }
 
   private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     if (indices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
+      logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
     }
     val singleIndex = indices.head
     val uuid = clusterService.indexOrAliasUuids(singleIndex.name).toList.head

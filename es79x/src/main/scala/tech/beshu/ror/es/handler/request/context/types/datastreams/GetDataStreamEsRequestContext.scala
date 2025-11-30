@@ -64,7 +64,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
           r
       }
     } else {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
+      logger.error(s"Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
       ModificationResult.ShouldBeInterrupted
     }
   }

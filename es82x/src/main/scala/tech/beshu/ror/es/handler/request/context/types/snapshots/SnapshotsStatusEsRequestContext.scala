@@ -100,12 +100,12 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }
 
-  private def repositoryFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, RepositoryName] = {
+  private def repositoryFrom(implicit blockContext: SnapshotRequestBlockContext): Either[Unit, RepositoryName] = {
     val repositories = blockContext.repositories
     if (allRepositoriesRequested(repositories)) {
       Right(RepositoryName.All)
@@ -115,7 +115,7 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
           Left(())
         case repository :: rest =>
           if (rest.nonEmpty) {
-            logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+            logger.warn(s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
           }
           Right(repository)
       }

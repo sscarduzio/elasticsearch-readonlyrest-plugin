@@ -20,7 +20,7 @@ import better.files.File
 import cats.data.NonEmptyList
 import io.circe.Decoder
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 final case class RorBootConfiguration(rorNotStartedResponse: RorNotStartedResponse,
                                       rorFailedToStartResponse: RorFailedToStartResponse)
 
-object RorBootConfiguration extends Logging {
+object RorBootConfiguration extends RequestIdAwareLogging {
 
   def load(env: EsEnv)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorBootConfiguration]] = Task {
@@ -62,7 +62,7 @@ object RorBootConfiguration extends Logging {
   }
 }
 
-private object Decoders extends Logging {
+private object Decoders extends RequestIdAwareLogging {
 
   object consts {
     val rorSection = "readonlyrest"

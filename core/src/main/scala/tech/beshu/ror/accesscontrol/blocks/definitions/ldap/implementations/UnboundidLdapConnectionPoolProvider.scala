@@ -26,7 +26,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{BindingTestError, CannotConnectError, HostResolvingError, UnexpectedConnectionError}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
@@ -84,7 +84,7 @@ class UnboundidLdapConnectionPoolProvider {
 
 }
 
-object UnboundidLdapConnectionPoolProvider extends Logging {
+object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
 
   final case class LdapConnectionConfig(poolName: LdapService.Name,
                                         connectionMethod: ConnectionMethod,
@@ -246,7 +246,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
           .map(conn => Resource.make(Task(conn))(c => Task.delay(c.close())))
           .left
           .map { ex =>
-            logger.warnEx("Problem during getting LDAP connection", ex)
+            noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
             CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod)
           }
       }.timeout(connectionTimeout)

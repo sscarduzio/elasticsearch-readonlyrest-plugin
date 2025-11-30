@@ -20,7 +20,7 @@ import cats.data.{NonEmptyList, State, Validated}
 import cats.kernel.Monoid
 import io.circe.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
@@ -69,7 +69,7 @@ trait CoreFactory {
 
 class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
                                   (implicit environmentConfig: EnvironmentConfig)
-  extends CoreFactory with Logging {
+  extends CoreFactory with RequestIdAwareLogging {
 
   override def createCoreFrom(config: RawRorConfig,
                               rorIndexNameConfiguration: RorConfigurationIndex,
@@ -387,7 +387,7 @@ class RawRorConfigBasedCoreFactory(esVersion: EsVersion)
         }
       } yield {
         val blocks = blocksNel.map(_.block)
-        blocks.toList.foreach { block => logger.info(s"ADDING BLOCK:\t ${block.show}") }
+        blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
         val localUsers: LocalUsers = {
           val fromUserDefs = localUsersFromUserDefs(userDefs)
           val fromImpersonatorDefs = localUsersFromImpersonatorDefs(impersonationDefs)

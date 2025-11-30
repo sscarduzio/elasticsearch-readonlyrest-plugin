@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -37,7 +37,7 @@ import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class DataStreamsRule(val settings: Settings)
   extends RegularRule
-    with Logging {
+    with RequestIdAwareLogging {
 
   override val name: Rule.Name = DataStreamsRule.Name.name
 
@@ -83,12 +83,12 @@ class DataStreamsRule(val settings: Settings)
         case CheckResult.Ok(processedDataStreams) =>
           val filteredOutDataStreams = dataStreamsToCheck.diff(processedDataStreams)
           logger.debug(
-            s"[${requestContext.id.show}] Write request with data streams cannot proceed because some of the data streams " +
+            s"Write request with data streams cannot proceed because some of the data streams " +
               s"[${filteredOutDataStreams.show}] were filtered out by ACL. The request will be rejected.."
-          )
+          )(requestContext)
           Left(())
         case CheckResult.Failed =>
-          logger.debug(s"[${requestContext.id.show}] The processed data streams do not match the allowed data streams. The request will be rejected..")
+          logger.debug(s"The processed data streams do not match the allowed data streams. The request will be rejected..")(requestContext)
           Left(())
       }
     }

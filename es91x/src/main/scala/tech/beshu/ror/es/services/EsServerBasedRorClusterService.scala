@@ -22,7 +22,7 @@ import cats.kernel.Monoid
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.{CancelablePromise, Scheduler}
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
@@ -65,7 +65,7 @@ class EsServerBasedRorClusterService(nodeName: String,
                                      threadPool: ThreadPool)
                                     (implicit val scheduler: Scheduler)
   extends RorClusterService
-    with Logging {
+    with RequestIdAwareLogging {
 
   import EsServerBasedRorClusterService.*
 
@@ -159,7 +159,7 @@ class EsServerBasedRorClusterService(nodeName: String,
       .call(extractAccessibilityFrom)
       .onErrorRecover {
         case ex =>
-          logger.error(s"[${id.show}] Could not verify get request. Blocking document", ex)
+          logger.error(s"Could not verify get request. Blocking document", ex)(id)
           Inaccessible
       }
   }
@@ -171,7 +171,7 @@ class EsServerBasedRorClusterService(nodeName: String,
       .call(extractResultsFromSearchResponse)
       .onErrorRecover {
         case ex =>
-          logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", ex)
+          logger.error(s"Could not verify documents returned by multi get response. Blocking all returned documents", ex)(id)
           blockAllDocsReturned(documents)
       }
       .map(results => zip(results, documents))
@@ -280,7 +280,7 @@ class EsServerBasedRorClusterService(nodeName: String,
                                           remoteClusterService: RemoteClusterService): Task[List[FullRemoteDataStreamWithAliases]] = {
     getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
       case Failure(_) =>
-        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        noRequestIdLogger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
         Task.now(List.empty)
       case Success(client) =>
         resolveRemoteIndicesUsing(client)
@@ -336,7 +336,7 @@ class EsServerBasedRorClusterService(nodeName: String,
                                       remoteClusterService: RemoteClusterService) = {
     getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
       case Failure(_) =>
-        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        noRequestIdLogger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
         Task.now(List.empty)
       case Success(client) =>
         resolveRemoteIndicesUsing(client)
@@ -427,7 +427,7 @@ class EsServerBasedRorClusterService(nodeName: String,
             }
           }
       case None =>
-        logger.error("Cannot supply Snapshots Service. Please, report the issue!!!")
+        noRequestIdLogger.error("Cannot supply Snapshots Service. Please, report the issue!!!")
         Task.now(Set.empty[Snapshot])
     }
   }

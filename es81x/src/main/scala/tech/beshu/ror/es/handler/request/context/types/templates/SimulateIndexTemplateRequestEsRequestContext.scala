@@ -55,7 +55,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
+      logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
     }
     updateRequest(request, filteredIndices.head, allAllowedIndices)
   }

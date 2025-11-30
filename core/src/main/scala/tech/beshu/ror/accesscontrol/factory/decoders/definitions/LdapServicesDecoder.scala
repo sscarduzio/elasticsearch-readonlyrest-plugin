@@ -23,7 +23,7 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
@@ -50,7 +50,7 @@ import java.time.Clock
 import java.util.concurrent.TimeUnit
 import scala.language.postfixOps
 
-object LdapServicesDecoder extends Logging {
+object LdapServicesDecoder extends RequestIdAwareLogging {
 
   given nameDecoder: Decoder[LdapService.Name] = DecoderHelpers.decodeNonEmptyStringField.map(LdapService.Name.apply)
 
@@ -267,7 +267,7 @@ object LdapServicesDecoder extends Logging {
       case BindingTestError(ldap) =>
         connectionErrorFrom(s"There was a problem with test binding in case of '${ldap.show}' LDAP connector}")
       case UnexpectedConnectionError(ldap, cause) =>
-        logger.error(s"Unexpected '${ldap.show}' LDAP connection error", cause)
+        noRequestIdLogger.error(s"Unexpected '${ldap.show}' LDAP connection error", cause)
         connectionErrorFrom(s"Unexpected '${ldap.show}' LDAP connection error: '${cause.getMessage.show}'}")
   }
 

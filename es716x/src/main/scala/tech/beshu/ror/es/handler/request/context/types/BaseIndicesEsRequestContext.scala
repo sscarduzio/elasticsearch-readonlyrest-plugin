@@ -73,7 +73,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     } yield update(actionRequest, filteredIndices, allAllowedIndices)
 
     result.getOrElse {
-      logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
+      logger.warn(s"empty list of indices produced, so we have to interrupt the request processing")
       ShouldBeInterrupted
     }
   }
@@ -86,7 +86,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   private def discoverIndices() = {
     val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
-    logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
+    logger.debug(s"Discovered indices: ${indices.show}")
     indices
   }
 }

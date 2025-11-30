@@ -19,7 +19,7 @@ package tech.beshu.ror.es.dlsfls
 import cats.data.StateT
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.apache.lucene.index.DirectoryReader
 import org.elasticsearch.common.CheckedFunction
 import org.elasticsearch.common.util.concurrent.ThreadContext
@@ -31,7 +31,7 @@ import java.io.IOException
 import java.util.function.{Function => JavaFunction}
 import scala.util.{Failure, Success, Try}
 
-object RoleIndexSearcherWrapper extends Logging {
+object RoleIndexSearcherWrapper extends RequestIdAwareLogging {
 
   val instance: JavaFunction[IndexService, CheckedFunction[DirectoryReader, DirectoryReader, IOException]] =
     new JavaFunction[IndexService, CheckedFunction[DirectoryReader, DirectoryReader, IOException]] {
@@ -54,7 +54,7 @@ object RoleIndexSearcherWrapper extends Logging {
                 }
                 .map(r => (r, r))
             case None =>
-              logger.debug(s"FLS: ${constants.FIELDS_TRANSIENT} not found in threadContext")
+              noRequestIdLogger.debug(s"FLS: ${constants.FIELDS_TRANSIENT} not found in threadContext")
               Success((reader, reader))
           }
         }
@@ -66,13 +66,13 @@ object RoleIndexSearcherWrapper extends Logging {
           nel <- NonEmptyString.from(value) match {
             case Right(nel) => Success(nel)
             case Left(_) =>
-              logger.debug("FLS: empty header value")
+              noRequestIdLogger.debug("FLS: empty header value")
               failure
           }
           fields <- transientFieldsFromHeaderValue.fromRawValue(nel) match {
             case result@Success(_) => result
             case Failure(ex) =>
-              logger.debug(s"FLS: Cannot decode fields from ${constants.FIELDS_TRANSIENT} header value", ex)
+              noRequestIdLogger.debug(s"FLS: Cannot decode fields from ${constants.FIELDS_TRANSIENT} header value", ex)
               failure
           }
         } yield fields

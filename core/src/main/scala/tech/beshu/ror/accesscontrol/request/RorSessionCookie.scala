@@ -21,7 +21,7 @@ import com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.parser.*
 import io.circe.{Decoder, Encoder}
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain.Header.Name.setCookie
 import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
@@ -37,7 +37,7 @@ import scala.util.Try
 
 final case class RorSessionCookie(userId: User.Id, expiryDate: Instant)
 
-object RorSessionCookie extends Logging {
+object RorSessionCookie extends RequestIdAwareLogging {
   private val rorCookieName = "ReadonlyREST_Session"
 
   sealed trait ExtractingError
@@ -56,7 +56,7 @@ object RorSessionCookie extends Logging {
       httpCookie <- extractRorHttpCookie(context).toRight(Absent)
       cookieAndSignature <- parseRorSessionCookieAndSignature(httpCookie).left.map(_ => Invalid: ExtractingError)
       (cookie, signature) = cookieAndSignature
-      _ <- checkCookie(cookie, signature, user)
+      _ <- checkCookie(context, cookie, signature, user)
     } yield cookie
   }
 
@@ -83,7 +83,8 @@ object RorSessionCookie extends Logging {
     } yield decoded
   }
 
-  private def checkCookie(cookie: RorSessionCookie,
+  private def checkCookie(requestContext: RequestContext,
+                          cookie: RorSessionCookie,
                           signature: Signature,
                           loggedUser: LoggedUser)
                          (implicit clock: Clock,
@@ -91,13 +92,13 @@ object RorSessionCookie extends Logging {
                           userIdEq: Eq[User.Id]): Either[ExtractingError, Unit] = {
     val now = Instant.now(clock)
     if (cookie.userId =!= loggedUser.id) {
-      logger.warn(s"this cookie does not belong to the user logged in as. Found in Cookie: ${cookie.userId.show} whilst in Authentication: ${loggedUser.id.show}")
+      logger.warn(s"this cookie does not belong to the user logged in as. Found in Cookie: ${cookie.userId.show} whilst in Authentication: ${loggedUser.id.show}")(requestContext)
       Left(Invalid)
     } else if (!signature.check(cookie)) {
-      logger.warn(s"'${signature.value}' is not valid signature for ${cookie.show}")
+      logger.warn(s"'${signature.value}' is not valid signature for ${cookie.show}")(requestContext)
       Left(Invalid)
     } else if (now.isAfter(cookie.expiryDate)) {
-      logger.info(s"cookie was present but expired. Found: ${cookie.expiryDate.show}, now it's ${now.show}")
+      logger.info(s"cookie was present but expired. Found: ${cookie.expiryDate.show}, now it's ${now.show}")(requestContext)
       Left(Expired)
     } else {
       Right({})

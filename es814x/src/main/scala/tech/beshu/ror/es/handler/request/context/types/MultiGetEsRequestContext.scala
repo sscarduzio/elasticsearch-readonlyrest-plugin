@@ -120,7 +120,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       case Nil => updateItemWithNonExistingIndex(item)
       case index :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
+          logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
         }
         item.index(index.stringify)
     }

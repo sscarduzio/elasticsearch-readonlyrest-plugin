@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptyList
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
@@ -42,7 +42,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class FieldsRule(val settings: Settings)
   extends RegularRule
-    with Logging {
+    with RequestIdAwareLogging {
 
   override val name: Rule.Name = FieldsRule.Name.name
 
@@ -76,7 +76,7 @@ class FieldsRule(val settings: Settings)
       case Some(resolvedFields) =>
         processBlockContextUsingDefinedFLSMode(blockContext, resolvedFields)
       case None =>
-        logger.warn(s"[${blockContext.requestContext.id.show}] Could not resolve any variable for field rule.")
+        logger.warn(s"Could not resolve any variable for field rule.")(blockContext)
         RuleResult.Rejected()
     }
   }
@@ -101,7 +101,7 @@ class FieldsRule(val settings: Settings)
       case basedOnBlockContext: BasedOnBlockContextOnly =>
         fulfillRuleWithResolvedStrategy(blockContext, fieldsRestrictions, resolvedStrategy = basedOnBlockContext)
       case Strategy.FlsAtLuceneLevelApproach =>
-        logger.warn(s"[${blockContext.requestContext.id.show}] Could not use fls at lucene level with ES engine. Rejected.")
+        logger.warn(s"Could not use fls at lucene level with ES engine. Rejected.")(blockContext)
         RuleResult.Rejected()
     }
   }

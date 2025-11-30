@@ -19,7 +19,7 @@ package tech.beshu.ror.configuration
 import better.files.File
 import io.circe.Decoder
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode.NonFips
 import tech.beshu.ror.configuration.loader.FileConfigLoader
@@ -30,7 +30,7 @@ import java.nio.file.Path
 
 final case class FipsConfiguration(fipsMode: FipsMode)
 
-object FipsConfiguration extends Logging {
+object FipsConfiguration extends RequestIdAwareLogging {
 
   def load(esEnv: EsEnv)
           (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
@@ -40,7 +40,7 @@ object FipsConfiguration extends Logging {
         error => Left(error),
         {
           case FipsConfiguration(FipsMode.NonFips) =>
-            logger.info(s"Cannot find FIPS configuration in ${esConfig.show} ...")
+            noRequestIdLogger.info(s"Cannot find FIPS configuration in ${esConfig.show} ...")
             fallbackToRorConfig(esEnv.configPath)
           case ssl =>
             Right(ssl)
@@ -51,7 +51,7 @@ object FipsConfiguration extends Logging {
   private def fallbackToRorConfig(esConfigFolderPath: Path)
                                  (implicit environmentConfig: EnvironmentConfig) = {
     val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
-    logger.info(s"... trying: ${rorConfig.show}")
+    noRequestIdLogger.info(s"... trying: ${rorConfig.show}")
     if (rorConfig.exists) {
       loadFipsConfigFromFile(rorConfig)
     } else {

@@ -18,7 +18,7 @@ package tech.beshu.ror.es.services
 
 import cats.implicits.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.ResourceNotFoundException
 import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 import org.elasticsearch.client.node.NodeClient
@@ -38,7 +38,7 @@ import scala.jdk.CollectionConverters.*
 class EsIndexJsonContentService(client: NodeClient,
                                 @unused constructorDiscriminator: Unit)
   extends IndexJsonContentService
-    with Logging {
+    with RequestIdAwareLogging {
 
   @Inject
   def this(client: NodeClient) = {
@@ -63,14 +63,14 @@ class EsIndexJsonContentService(client: NodeClient,
           Option(response.getSourceAsMap) match {
             case Some(map) =>
               val source = map.asScala.toMap.asStringMap
-              logger.debug(s"Document [${index.show} ID=$id] _source: ${showSource(source)}")
+              noRequestIdLogger.debug(s"Document [${index.show} ID=$id] _source: ${showSource(source)}")
               Right(source)
             case None =>
-              logger.warn(s"Document [${index.show} ID=$id] _source is not available. Assuming it's empty")
+              noRequestIdLogger.warn(s"Document [${index.show} ID=$id] _source is not available. Assuming it's empty")
               Right(Map.empty[String, String])
           }
         } else {
-          logger.debug(s"Document [${index.show} ID=$id] not exist")
+          noRequestIdLogger.debug(s"Document [${index.show} ID=$id] not exist")
           Left(ContentNotFound)
         }
       }
@@ -78,7 +78,7 @@ class EsIndexJsonContentService(client: NodeClient,
       .onErrorRecover {
         case _: ResourceNotFoundException => Left(ContentNotFound)
         case ex =>
-          logger.error(s"Cannot get source of document [${index.show} ID=$id]", ex)
+          noRequestIdLogger.error(s"Cannot get source of document [${index.show} ID=$id]", ex)
           Left(CannotReachContentSource)
       }
   }
@@ -105,14 +105,14 @@ class EsIndexJsonContentService(client: NodeClient,
           case status if status / 100 == 2 =>
             Right(())
           case status =>
-            logger.error(s"Cannot write to document [${index.show} ID=$id]. Unexpected response: HTTP $status, response: ${response.toString}")
+            noRequestIdLogger.error(s"Cannot write to document [${index.show} ID=$id]. Unexpected response: HTTP $status, response: ${response.toString}")
             Left(CannotWriteToIndex)
         }
       }
       .executeOn(RorSchedulers.blockingScheduler)
       .onErrorRecover {
         case ex =>
-          logger.error(s"Cannot write to document [${index.show} ID=$id]", ex)
+          noRequestIdLogger.error(s"Cannot write to document [${index.show} ID=$id]", ex)
           Left(CannotWriteToIndex)
       }
   }

@@ -21,7 +21,7 @@ import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Url
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.*
@@ -62,7 +62,7 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
                                              val config: HttpExternalAuthorizationService.Config,
                                              httpClient: HttpClient)
   extends ExternalAuthorizationService
-    with Logging {
+    with RequestIdAwareLogging {
 
   override def grantsFor(userId: User.Id)
                         (implicit requestId: RequestId): Task[UniqueList[Group]] = {
@@ -106,10 +106,10 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
     val groupsFromBody = groupsFrom(body)
     groupsFromBody match {
       case Success(groups) =>
-        logger.debug(s"[${requestId.show}] Groups returned by groups provider '${id.show}': ${groups.show}")
+        logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.show}")
         UniqueList.from(groups)
       case Failure(ex) =>
-        logger.debug(s"[${requestId.show}] Group based authorization response exception - provider '${id.show}'", ex)
+        logger.debug(s"Group based authorization response exception - provider '${id.show}'", ex)
         UniqueList.empty
     }
   }

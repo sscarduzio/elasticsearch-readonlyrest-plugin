@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks
 
 import cats.Order
 import cats.implicits.*
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
@@ -29,20 +29,20 @@ import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
 import tech.beshu.ror.accesscontrol.orders.*
 
-class RuleOrdering extends Ordering[Rule] with Logging {
+class RuleOrdering extends Ordering[Rule] with RequestIdAwareLogging {
 
   override def compare(rule1: Rule, rule2: Rule): Int = {
     val rule1TypeIndex = RuleOrdering.orderedListOrRuleType.indexOf(rule1.getClass)
     val rule2TypeIndex = RuleOrdering.orderedListOrRuleType.indexOf(rule2.getClass)
     (rule1TypeIndex, rule2TypeIndex) match {
       case (-1, -1) =>
-        logger.warn(s"No order defined for rules: ${rule1.name.show}, ${rule1.name.show}")
+        noRequestIdLogger.warn(s"No order defined for rules: ${rule1.name.show}, ${rule1.name.show}")
         implicitly[Order[Rule.Name]].compare(rule1.name, rule2.name)
       case (-1, _) =>
-        logger.warn(s"No order defined for rule: ${rule1.name.show}")
+        noRequestIdLogger.warn(s"No order defined for rule: ${rule1.name.show}")
         1
       case (_, -1) =>
-        logger.warn(s"No order defined for rule: ${rule2.name.show}")
+        noRequestIdLogger.warn(s"No order defined for rule: ${rule2.name.show}")
         -1
       case (i1, i2) =>
         i1 compareTo i2

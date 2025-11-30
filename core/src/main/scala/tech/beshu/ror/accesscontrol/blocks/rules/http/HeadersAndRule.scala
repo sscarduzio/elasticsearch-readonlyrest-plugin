@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.http
 import cats.Show
 import cats.data.NonEmptySet
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersAndRule.Settings
@@ -32,7 +32,7 @@ import tech.beshu.ror.implicits.*
   * We match headers in a way that the header name is case-insensitive, and the header value is case-sensitive
   **/
 class HeadersAndRule(val settings: Settings)
-  extends BaseHeaderRule with Logging {
+  extends BaseHeaderRule with RequestIdAwareLogging {
 
   override val name: Rule.Name = HeadersAndRule.Name.name
 
@@ -52,7 +52,7 @@ class HeadersAndRule(val settings: Settings)
   private def logAccessRequirementNotFulfilled(accessRequirement: AccessRequirement[Header],
                                                requestContext: RequestContext): Unit = {
     implicit val headerShowImplicit: Show[Header] = headerShow
-    logger.debug(s"[${requestContext.id.show}] Request headers don't fulfil given header access requirement: ${accessRequirement.show}")
+    logger.debug(s"Request headers don't fulfil given header access requirement: ${accessRequirement.show}")(requestContext)
   }
 }
 

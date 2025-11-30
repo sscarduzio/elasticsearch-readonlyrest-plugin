@@ -18,7 +18,7 @@ package tech.beshu.ror.es.utils
 
 import cats.Show
 import cats.implicits.*
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.rest.*
@@ -37,7 +37,7 @@ import java.util
 import scala.util.Try
 
 class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler)
-  extends RestHandler with Logging {
+  extends RestHandler with RequestIdAwareLogging {
 
   private val wrapped = doPrivileged {
     wrapSomeActions(underlying)
@@ -101,11 +101,11 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   private def logError(error: AuthorizationValueError): Unit = {
     {
       implicit val show: Show[AuthorizationValueError] = authorizationValueErrorSanitizedShow
-      logger.warn(s"The incoming request was malformed. Cause: ${error.show}")
+      noRequestIdLogger.warn(s"The incoming request was malformed. Cause: ${error.show}")
     }
     if (logger.delegate.isDebugEnabled()) {
       implicit val show: Show[AuthorizationValueError] = authorizationValueErrorWithDetailsShow
-      logger.debug(s"Malformed request detailed cause: ${error.show}")
+      noRequestIdLogger.debug(s"Malformed request detailed cause: ${error.show}")
     }
   }
 

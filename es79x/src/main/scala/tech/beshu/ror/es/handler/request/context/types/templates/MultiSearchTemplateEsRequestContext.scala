@@ -72,7 +72,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
         }
       ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
     } else {
-      logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
+      logger.error(s"Cannot alter MultiSearchRequest request, because origin request contained different number of" +
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
       ShouldBeInterrupted
     }

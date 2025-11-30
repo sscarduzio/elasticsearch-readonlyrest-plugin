@@ -20,7 +20,7 @@ import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
@@ -87,7 +87,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                             threadPool: ThreadPool)
                            (implicit generator: UniqueIdentifierGenerator,
                             scheduler: Scheduler)
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   def handle(engines: Engines,
              esContext: EsContext): Task[Either[Error, Unit]] = {
@@ -242,7 +242,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case _ =>
-            logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.show}")
+            noRequestIdLogger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.show}")
             regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
         }
       // rest

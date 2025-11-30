@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.utils
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine, RemovalCause}
 import monix.catnap.Semaphore
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -33,7 +33,7 @@ class CacheableAction[K, V](ttl: PositiveFiniteDuration,
 
 class CacheableActionWithKeyMapping[K, K1, V](ttl: PositiveFiniteDuration,
                                               action: (K, RequestId) => Task[V],
-                                              keyMap: K => K1) extends Logging {
+                                              keyMap: K => K1) extends RequestIdAwareLogging {
 
   private val keySemaphoresMap = new ConcurrentHashMap[K1, Semaphore[Task]]()
 

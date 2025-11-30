@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.logging
 import cats.Show
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
@@ -42,12 +42,12 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
                                        (implicit loggingContext: LoggingContext,
                                         auditEnvironmentContext: AuditEnvironmentContext,
                                         scheduler: Scheduler)
-  extends AccessControlList with Logging {
+  extends AccessControlList with RequestIdAwareLogging {
 
   override def description: String = underlying.description
 
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {
-    logger.debug(s"[${requestContext.id.show}] checking request ${requestContext.restRequest.method.show} ${requestContext.restRequest.path.show} ...")
+    logger.debug(s"checking request ${requestContext.restRequest.method.show} ${requestContext.restRequest.path.show} ...")(requestContext)
     underlying
       .handleRegularRequest(requestContext)
       .andThen {
@@ -71,13 +71,13 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
             // ignore
           }
         case Failure(ex) =>
-          logger.error(s"[${requestContext.id.show}] Request handling unexpected failure", ex)
+          logger.error(s"Request handling unexpected failure", ex)(requestContext)
       }
   }
 
   // todo: logging metadata should be a little bit different
   override def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] = {
-    logger.debug(s"[${requestContext.id.show}] checking user metadata request ...")
+    logger.debug(s"checking user metadata request ...")(requestContext)
     underlying
       .handleMetadataRequest(requestContext)
       .andThen {
@@ -93,7 +93,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
             // ignore
           }
         case Failure(ex) =>
-          logger.error(s"[${requestContext.id.show}] Request handling unexpected failure", ex)
+          logger.error(s"Request handling unexpected failure", ex)(requestContext)
       }
   }
 
@@ -103,7 +103,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
         if (logger.delegate.isDebugEnabled()) headerShow
         else obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator.responseContextShow
-      logger.info(responseContextShow[B].show(responseContext))
+      logger.info(responseContextShow[B].show(responseContext))(responseContext)
     }
     blockAuditSettings(responseContext) match {
       case Some(Block.Audit.Disabled) =>
@@ -115,7 +115,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
             .runAsync {
               case Right(_) =>
               case Left(ex) =>
-                logger.warn(s"[${responseContext.requestContext.id.show}] Auditing issue", ex)
+                logger.warn(s"Auditing issue", ex)(responseContext)
             }
         }
     }

@@ -21,7 +21,7 @@ import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.*
 import tech.beshu.ror.es.EsEnv
@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 final case class RorIndexNameConfiguration(index: RorConfigurationIndex)
 
-object RorIndexNameConfiguration extends Logging {
+object RorIndexNameConfiguration extends RequestIdAwareLogging {
 
   private val defaultIndexName = IndexName.Full(nes(".readonlyrest"))
 

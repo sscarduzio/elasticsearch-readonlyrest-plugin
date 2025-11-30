@@ -67,7 +67,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
                                   ttl: PositiveFiniteDuration)
                                  (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestConfig.Present]] = {
     for {
-      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of ROR test settings was forced (TTL of test engine is ${ttl.show}) ..."))
+      _ <- Task.delay(logger.info(s"Reloading of ROR test settings was forced (TTL of test engine is ${ttl.show}) ..."))
       reloadResult <- reloadInProgress.withPermit {
         value {
           for {
@@ -95,17 +95,17 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
       }
       _ <- Task.delay(reloadResult match {
         case Right(_) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${config.hashString().show}) reloaded!")
+          logger.info(s"ROR ${name.show} engine (id=${config.hashString().show}) reloaded!")
         case Left(ReloadError(RawConfigReloadError.ConfigUpToDate(oldConfig))) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${oldConfig.hashString().show}) already loaded!")
+          logger.info(s"ROR ${name.show} engine (id=${oldConfig.hashString().show}) already loaded!")
         case Left(ReloadError(RawConfigReloadError.ReloadingFailed(StartingFailure(message, Some(ex))))) =>
-          logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: ${message.show}", ex)
+          logger.error(s"Cannot reload ROR test settings - failure: ${message.show}", ex)
         case Left(ReloadError(RawConfigReloadError.ReloadingFailed(StartingFailure(message, None)))) =>
-          logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: ${message.show}")
+          logger.error(s"Cannot reload ROR test settings - failure: ${message.show}")
         case Left(ReloadError(RawConfigReloadError.RorInstanceStopped)) =>
-          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
+          logger.warn(s"ROR is being stopped! Loading tests settings skipped!")
         case Left(IndexConfigSavingError(SavingIndexConfigError.CannotSaveConfig)) =>
-          logger.error(s"[${requestId.show}] Saving ROR test settings in index failed")
+          logger.error(s"Saving ROR test settings in index failed")
       })
     } yield reloadResult
   }

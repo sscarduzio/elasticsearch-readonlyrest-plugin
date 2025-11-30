@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule.Settings
@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.implicits.*
 
 class ActionsRule(val settings: Settings)
-  extends RegularRule with Logging {
+  extends RegularRule with RequestIdAwareLogging {
 
   override val name: Rule.Name = ActionsRule.Name.name
 
@@ -40,7 +40,7 @@ class ActionsRule(val settings: Settings)
       RuleResult.Fulfilled(blockContext)
     } else {
       implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-      logger.debug(s"[${requestId.show}] This request uses the action '${requestContext.action.show}' and none of them is on the list.")
+      logger.debug(s"This request uses the action '${requestContext.action.show}' and none of them is on the list.")
       RuleResult.Rejected()
     }
   }

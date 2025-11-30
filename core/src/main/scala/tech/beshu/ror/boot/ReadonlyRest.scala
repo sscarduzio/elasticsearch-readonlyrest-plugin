@@ -19,7 +19,7 @@ package tech.beshu.ror.boot
 import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -51,7 +51,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                    val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
                    val esEnv: EsEnv)
                   (implicit environmentConfig: EnvironmentConfig,
-                   scheduler: Scheduler) extends Logging {
+                   scheduler: Scheduler) extends RequestIdAwareLogging {
 
   def start(): Task[Either[StartingFailure, RorInstance]] = {
     (for {
@@ -134,13 +134,13 @@ class ReadonlyRest(coreFactory: CoreFactory,
     EitherT(action.foldMap(compiler))
       .leftMap {
         case LoadedTestRorConfig.IndexParsingError(message) =>
-          logger.error(s"Loading ReadonlyREST test settings from index failed: ${message.show}. No test settings will be loaded.")
+          noRequestIdLogger.error(s"Loading ReadonlyREST test settings from index failed: ${message.show}. No test settings will be loaded.")
           LoadedTestRorConfig.FallbackConfig(notSetTestRorConfig)
         case LoadedTestRorConfig.IndexUnknownStructure =>
-          logger.error("Loading ReadonlyREST test settings from index failed: index content malformed. No test settings will be loaded.")
+          noRequestIdLogger.error("Loading ReadonlyREST test settings from index failed: index content malformed. No test settings will be loaded.")
           LoadedTestRorConfig.FallbackConfig(notSetTestRorConfig)
         case LoadedTestRorConfig.IndexNotExist =>
-          logger.info("Loading ReadonlyREST test settings from index failed: cannot find index. No test settings will be loaded.")
+          noRequestIdLogger.info("Loading ReadonlyREST test settings from index failed: cannot find index. No test settings will be loaded.")
           LoadedTestRorConfig.FallbackConfig(notSetTestRorConfig)
       }
       .merge
@@ -179,7 +179,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
               expiration = expirationConfig(testConfig.expiration)
             )
           case Left(startingFailure) =>
-            logger.error(s"Unable to start test engine. Cause: ${startingFailure.message.show}. Test settings engine will be marked as invalidated.")
+            noRequestIdLogger.error(s"Unable to start test engine. Cause: ${startingFailure.message.show}. Test settings engine will be marked as invalidated.")
             TestEngine.Invalidated(testConfig.rawConfig, expirationConfig(testConfig.expiration))
         }
     } yield testEngine
@@ -270,9 +270,9 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def inspectFlsEngine(engine: Engine): Unit = {
     engine.core.accessControl.staticContext.usedFlsEngineInFieldsRule.foreach {
       case FlsEngine.Lucene | FlsEngine.ESWithLucene =>
-        logger.warn("Defined fls engine relies on lucene. To make it work well, all nodes should have ROR plugin installed.")
+        noRequestIdLogger.warn("Defined fls engine relies on lucene. To make it work well, all nodes should have ROR plugin installed.")
       case FlsEngine.ES =>
-        logger.warn("Defined fls engine relies on ES only. This engine doesn't provide full FLS functionality hence some requests may be rejected.")
+        noRequestIdLogger.warn("Defined fls engine relies on ES only. This engine doesn't provide full FLS functionality hence some requests may be rejected.")
     }
   }
 

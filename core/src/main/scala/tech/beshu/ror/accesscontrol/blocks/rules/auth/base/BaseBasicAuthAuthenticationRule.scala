@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule.Settings
@@ -29,7 +29,7 @@ import tech.beshu.ror.implicits.*
 
 private [auth] abstract class BaseBasicAuthAuthenticationRule
   extends BaseAuthenticationRule
-    with Logging {
+    with RequestIdAwareLogging {
 
   protected def authenticateUsing(credentials: Credentials)
                                  (implicit requestId: RequestId): Task[Boolean]
@@ -42,14 +42,14 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
         implicit val requestId: RequestId = requestContext.id.toRequestId
         requestContext.basicAuth.map(_.credentials) match {
           case Some(credentials) =>
-            logger.debug(s"[${requestId.show}] Attempting Login as: ${credentials.user.show}")
+            logger.debug(s"Attempting Login as: ${credentials.user.show}")
             authenticateUsing(credentials)
               .map {
                 case true => Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(credentials.user))))
                 case false => Rejected()
               }
           case None =>
-            logger.debug(s"[${requestId.show}] No basic auth")
+            logger.debug(s"No basic auth")
             Task.now(Rejected())
         }
       }

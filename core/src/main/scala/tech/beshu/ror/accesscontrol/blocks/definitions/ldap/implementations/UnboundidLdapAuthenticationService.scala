@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk.{LDAPBindException, ResultCode, SimpleBindRequest}
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapService, LdapUser, LdapUsersService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, RequestId, User}
@@ -33,13 +33,13 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
                                                  connectionPool: UnboundidLdapConnectionPool,
                                                  override val serviceTimeout: PositiveFiniteDuration)
                                                 (implicit clock: Clock)
-  extends LdapAuthenticationService with Logging {
+  extends LdapAuthenticationService with RequestIdAwareLogging {
 
   override def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
     Task.measure(
       doAuthenticate(user, secret),
       measurement => Task.delay {
-        logger.debug(s"[${requestId.show}] LDAP authentication took ${measurement.show}")
+        logger.debug(s"LDAP authentication took ${measurement.show}")
       }
     )
   }
@@ -56,12 +56,12 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
   }
 
   private def ldapAuthenticate(user: LdapUser, password: PlainTextSecret)(implicit requestId: RequestId) = {
-    logger.debug(s"[${requestId.show}] LDAP simple bind [user DN: ${user.dn.show}]")
+    logger.debug(s"LDAP simple bind [user DN: ${user.dn.show}]")
     connectionPool
       .asyncBind(new SimpleBindRequest(user.dn.value.value, password.value.value))
       .map(_.getResultCode == ResultCode.SUCCESS)
       .onError { case ex =>
-        Task(logger.error(s"[${requestId.show}] LDAP authenticate operation failed - cause [${ex.getMessage.show}]", ex))
+        Task(logger.error(s"LDAP authenticate operation failed - cause [${ex.getMessage.show}]", ex))
       }
       .recover {
         case ex: LDAPBindException if ex.getResultCode == ResultCode.INVALID_CREDENTIALS =>

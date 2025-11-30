@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import cats.data.{NonEmptyList, OptionT}
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
@@ -42,7 +42,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport
-    with Logging {
+    with RequestIdAwareLogging {
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
@@ -158,7 +158,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
           None
       }
       .onErrorRecover { case ex =>
-        logger.debug(s"[${blockContext.requestContext.id.show}] Authentication error", ex)
+        logger.debug(s"Authentication error", ex)(blockContext)
         None
       }
   }
@@ -182,7 +182,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
           None
       }
       .onErrorRecover { case ex =>
-        logger.debug(s"[${blockContext.requestContext.id.show}] Authentication & Authorization error", ex)
+        logger.debug(s"Authentication & Authorization error", ex)(blockContext)
         None
       }
   }
@@ -218,7 +218,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
           None
       }
       .onErrorRecover { case ex =>
-        logger.debug(s"[${blockContext.requestContext.id.show}] Authentication & Authorization error", ex)
+        logger.debug(s"Authentication & Authorization error", ex)(blockContext)
         Option.empty[B]
       }
   }

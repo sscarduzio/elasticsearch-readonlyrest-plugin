@@ -17,20 +17,20 @@
 package tech.beshu.ror.boot
 
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.concurrent.Promise
 
-class EsInitListener extends Logging {
+class EsInitListener extends RequestIdAwareLogging {
 
   private val readyPromise = Promise[Unit]()
 
-  logger.info("ReadonlyREST is waiting for full Elasticsearch init")
+  noRequestIdLogger.info("ReadonlyREST is waiting for full Elasticsearch init")
 
   def waitUntilReady: Task[Unit] = Task.fromFuture(readyPromise.future)
 
   def onEsReady(): Unit = {
-    logger.info("Elasticsearch fully initiated. ReadonlyREST can continue ...")
+    noRequestIdLogger.info("Elasticsearch fully initiated. ReadonlyREST can continue ...")
     readyPromise.trySuccess(())
   }
 }

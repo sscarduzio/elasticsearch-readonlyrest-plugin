@@ -19,7 +19,7 @@ package tech.beshu.ror.configuration.loader
 import cats.data.EitherT
 import cats.~>
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.TestConfigLoading.LoadTestConfigAction
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexTestConfigManager}
@@ -30,19 +30,19 @@ import tech.beshu.ror.configuration.{TestConfigLoading, TestRorConfig}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.NonNegativeFiniteDuration
 
-object TestConfigLoadingInterpreter extends Logging {
+object TestConfigLoadingInterpreter extends RequestIdAwareLogging {
 
   def create(indexConfigManager: IndexTestConfigManager): LoadTestConfigAction ~> Task = new (LoadTestConfigAction ~> Task) {
     override def apply[A](fa: LoadTestConfigAction[A]): Task[A] = fa match {
       case TestConfigLoading.LoadTestConfigAction.LoadRorConfigFromIndex(configIndex, loadingDelay) =>
-        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${configIndex.index.show}) ...")
+        noRequestIdLogger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST test settings from index (${configIndex.index.show}) ...")
         loadFromIndex(indexConfigManager, configIndex, loadingDelay)
           .map { testConfig =>
             testConfig match {
               case TestRorConfig.Present(rawConfig, _, _) =>
-                logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw test config from index: ${rawConfig.raw.show}")
+                noRequestIdLogger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw test config from index: ${rawConfig.raw.show}")
               case TestRorConfig.NotSet =>
-                logger.debug("[CLUSTERWIDE SETTINGS] There was no test settings in index. Test settings engine will be not initialized.")
+                noRequestIdLogger.debug("[CLUSTERWIDE SETTINGS] There was no test settings in index. Test settings engine will be not initialized.")
             }
             testConfig
           }
@@ -57,11 +57,11 @@ object TestConfigLoadingInterpreter extends Logging {
   private def logIndexLoadingError(error: LoadedTestRorConfig.LoadingIndexError): Unit = {
     error match {
       case IndexParsingError(message) =>
-        logger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
+        noRequestIdLogger.error(s"Loading ReadonlyREST settings from index failed: ${message.show}")
       case LoadedTestRorConfig.IndexUnknownStructure =>
-        logger.info("Loading ReadonlyREST test settings from index failed: index content malformed")
+        noRequestIdLogger.info("Loading ReadonlyREST test settings from index failed: index content malformed")
       case LoadedTestRorConfig.IndexNotExist =>
-        logger.info("Loading ReadonlyREST test settings from index failed: cannot find index")
+        noRequestIdLogger.info("Loading ReadonlyREST test settings from index failed: cannot find index")
     }
   }
 

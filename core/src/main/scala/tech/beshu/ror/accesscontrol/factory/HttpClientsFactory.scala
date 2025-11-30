@@ -23,10 +23,11 @@ import io.lemonlabs.uri.Url
 import io.netty.util.HashedWheelTimer
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.asynchttpclient.Dsl.asyncHttpClient
 import org.asynchttpclient.netty.channel.DefaultChannelPool
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient.Method
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
 import tech.beshu.ror.implicits.*
@@ -118,9 +119,10 @@ class AsyncHttpClientsFactory extends HttpClientsFactory {
 }
 
 private class LoggingSimpleHttpClient[F[_] : Async](delegate: SimpleHttpClient[F])
-  extends SimpleHttpClient[F] with Logging {
+  extends SimpleHttpClient[F] with RequestIdAwareLogging {
 
-  override def send(request: HttpClient.Request): F[HttpClient.Response] = {
+  override def send(request: HttpClient.Request)
+                   (implicit requestId: RequestId): F[HttpClient.Response] = {
     delegate
       .send(request)
       .recoverWith { case e: Throwable =>
@@ -142,7 +144,8 @@ private class LoggingSimpleHttpClient[F[_] : Async](delegate: SimpleHttpClient[F
 
 class AsyncBasedSimpleHttpClient(asyncHttpClient: AsyncHttpClient) extends SimpleHttpClient[Task] {
 
-  override def send(request: HttpClient.Request): Task[HttpClient.Response] = {
+  override def send(request: HttpClient.Request)
+                   (implicit requestId: RequestId): Task[HttpClient.Response] = {
     val asyncRequestBase = request.method match {
       case Method.Get => asyncHttpClient.prepareGet(request.url.toStringRaw)
       case Method.Post => asyncHttpClient.preparePost(request.url.toStringRaw)
@@ -164,6 +167,7 @@ class AsyncBasedSimpleHttpClient(asyncHttpClient: AsyncHttpClient) extends Simpl
 }
 
 trait SimpleHttpClient[F[_]] {
-  def send(request: HttpClient.Request): F[HttpClient.Response]
+  def send(request: HttpClient.Request)
+          (implicit requestId: RequestId): F[HttpClient.Response]
   def close(): F[Unit]
 }

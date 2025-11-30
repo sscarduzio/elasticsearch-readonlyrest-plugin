@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.admin.indices.template.get.GetComposableIndexTemplateAction
 import org.elasticsearch.cluster.metadata
 import org.elasticsearch.cluster.metadata.ComposableIndexTemplate
@@ -108,7 +108,7 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
 
 }
 
-private[templates] object GetComposableIndexTemplateEsRequestContext extends Logging {
+private[templates] object GetComposableIndexTemplateEsRequestContext extends RequestIdAwareLogging {
 
   def filter(templates: Map[String, ComposableIndexTemplate],
              usingTemplate: Set[Template] => Set[Template])

@@ -21,7 +21,7 @@ import cats.instances.either.*
 import cats.instances.list.*
 import cats.syntax.traverse.*
 import eu.timepit.refined.types.string.NonEmptyString
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token.Transformation
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
@@ -38,7 +38,7 @@ import tech.beshu.ror.utils.json.JsonPath
 import scala.util.matching.Regex
 import scala.util.{Failure, Success}
 
-class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCompiler) extends Logging {
+class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCompiler) extends RequestIdAwareLogging {
 
   def createSingleResolvableVariableFrom[T: Convertible](text: NonEmptyString): Either[CreationError, RuntimeSingleResolvableVariable[T]] = {
     singleExtactablesFrom(Tokenizer.tokenize(text))
@@ -141,7 +141,7 @@ class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCom
       case Success(compiledPath) =>
         Right(`type`.createJwtVariableExtractable(compiledPath, maybeTransformation))
       case Failure(ex) =>
-        logger.debug("Compiling JSON path failed", ex)
+        noRequestIdLogger.debug("Compiling JSON path failed", ex)
         Left(CreationError.InvalidVariableDefinition(s"cannot compile '${jsonPathStr.show}' to JsonPath"))
     }
   }
