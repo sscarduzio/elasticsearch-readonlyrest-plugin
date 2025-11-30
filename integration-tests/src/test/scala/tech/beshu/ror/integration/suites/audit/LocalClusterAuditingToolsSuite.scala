@@ -236,7 +236,7 @@ class LocalClusterAuditingToolsSuite
               // http request
               entry("http")("request")("method").str == "GET" &&
               entry("http")("request")("body")("bytes").num == 0 &&
-              entry("http")("request")("body")("content").str == "" &&
+              entry("http")("request")("body")("content").strOpt.isEmpty
               // event
               entry("event")("id").strOpt.isDefined &&
               entry("event")("duration").numOpt.isDefined &&
