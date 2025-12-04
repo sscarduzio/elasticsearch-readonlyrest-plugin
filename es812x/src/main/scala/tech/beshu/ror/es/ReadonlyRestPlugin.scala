@@ -36,8 +36,8 @@ import org.elasticsearch.http.{HttpPreRequest, HttpServerTransport}
 import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.IgnoredFieldMapper
 import org.elasticsearch.indices.breaker.CircuitBreakerService
-import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins.*
+import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.telemetry.tracing.Tracer
 import org.elasticsearch.threadpool.ThreadPool

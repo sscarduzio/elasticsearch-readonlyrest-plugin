@@ -22,10 +22,11 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyAuthorizationServiceClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{ModifyPolicyUtilClass, SecurityManagerShouldAllowReadingEsConfigFile}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifySecurityClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifySecurityClass, ModifySecurityContextClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
@@ -39,8 +40,8 @@ private[patches] class Es815xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       new ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
         createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
+      new ModifyRepositoriesServiceClass(esVersion),
       new SecurityManagerShouldAllowReadingEsConfigFile(esVersion),
-      new ModifyRepositoriesServiceClass(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
       AddAdditionalPermissions(NonEmptyList.of(
@@ -49,12 +50,16 @@ private[patches] class Es815xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new XPackCoreJarPatchCreator(
       OpenModule,
-      ModifyAsyncSearchSecurityClass
+      ModifyAsyncSearchSecurityClass,
+      ModifySecurityContextClass,
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
+      new CreateRorAuthorizationInfoProviderClass(esVersion),
       new ModifyAuthenticationChainClass(esVersion),
       new ModifyAuthorizationServiceClass(esVersion),
+      ModifyRBACEngineClass,
+      ModifyRestHasPrivilegesActionClass,
       ModifySecurityClass,
     ),
     new XPackIlmJarPatchCreator(

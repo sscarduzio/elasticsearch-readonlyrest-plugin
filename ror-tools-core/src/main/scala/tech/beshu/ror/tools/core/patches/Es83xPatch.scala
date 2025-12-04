@@ -49,12 +49,15 @@ private[patches] class Es83xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new XPackCoreJarPatchCreator(
       OpenModule,
       ModifyApplicationPermissionClass,
+      ModifySecurityContextClass,
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
-      new DummyAuthenticationInAuthenticationChain(esVersion),
-      new DummyAuthorizeInAuthorizationService(esVersion),
-      RestHasPrivilegesActionAlwaysInContextOfXpackUser,
+      new CreateRorAuthorizationInfoProviderClass(esVersion),
+      new ModifyAuthenticationChainClass(esVersion),
+      new ModifyAuthorizationServiceClass(esVersion),
+      ModifyRBACEngineClass,
+      ModifyRestHasPrivilegesActionClass,
+      ModifySecurityClass,
     )
   )

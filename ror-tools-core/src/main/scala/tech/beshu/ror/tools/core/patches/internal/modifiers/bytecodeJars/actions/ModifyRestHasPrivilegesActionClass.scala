@@ -14,14 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions
 
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 
-private [patches] object RestHasPrivilegesActionAlwaysInContextOfXpackUser extends BytecodeJarModifier {
+/*
+  It replaces the implementation of the getUsername(...) method so that it always returns the constant string "_xpack",
+  forcing the “has privileges” REST action to execute as if it were requested in the context of the internal X-Pack user,
+  regardless of the actual incoming request/user.
+*/
+private [patches] object ModifyRestHasPrivilegesActionClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(

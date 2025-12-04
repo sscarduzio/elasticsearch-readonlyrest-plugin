@@ -40,8 +40,8 @@ import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.IgnoredFieldMapper
 import org.elasticsearch.indices.IndicesService
 import org.elasticsearch.indices.breaker.CircuitBreakerService
-import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins.*
+import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService

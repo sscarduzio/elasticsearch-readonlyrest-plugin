@@ -236,10 +236,8 @@ class RegularRequestHandler(engine: Engine,
   private def addProperHeader(): Unit = {
     if (esContext.action.isFieldCapsAction || esContext.action.isRollupAction || esContext.action.isGetSettingsAction)
       threadPool.getThreadContext.addSystemAuthenticationHeader(esContext.nodeName)
-    else if (esContext.action.isXpackSecurityAction)
-      threadPool.getThreadContext.addXpackUserAuthenticationHeader(esContext.nodeName)
     else
-      threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(esContext.nodeName)
+      threadPool.getThreadContext.addXpackUserAuthenticationHeader(esContext.nodeName)
   }
 
   private def respond(requestContext: RequestContext, response: ActionResponse): Unit = {
