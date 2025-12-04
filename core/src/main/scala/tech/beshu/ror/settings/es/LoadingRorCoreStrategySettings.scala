@@ -24,6 +24,7 @@ import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.settings.RorProperties
 import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
@@ -35,7 +36,7 @@ import scala.language.{implicitConversions, postfixOps}
 sealed trait LoadingRorCoreStrategySettings
 object LoadingRorCoreStrategySettings extends YamlFileBasedSettingsLoaderSupport {
 
-  case object ForceLoadingFromFile$Settings extends LoadingRorCoreStrategySettings
+  case object ForceLoadingFromFileSettings extends LoadingRorCoreStrategySettings
   final case class LoadFromIndexWithFileFallback(indexLoadingRetrySettings: LoadingRetryStrategySettings,
                                                  coreRefreshSettings: CoreRefreshSettings)
     extends LoadingRorCoreStrategySettings
@@ -85,7 +86,7 @@ object LoadingRorCoreStrategySettings extends YamlFileBasedSettingsLoaderSupport
         default = false
       ) flatMap {
         case true =>
-          Decoder.const(LoadingRorCoreStrategySettings.ForceLoadingFromFile$Settings)
+          Decoder.const(LoadingRorCoreStrategySettings.ForceLoadingFromFileSettings)
         case false =>
           for {
             loadingRetryStrategySettings <- loadLoadingRetryStrategySettings(systemContext.propertiesProvider)

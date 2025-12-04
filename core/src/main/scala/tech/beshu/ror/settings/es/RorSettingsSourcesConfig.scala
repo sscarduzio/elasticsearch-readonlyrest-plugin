@@ -25,6 +25,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsFile, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.settings.RorProperties
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
