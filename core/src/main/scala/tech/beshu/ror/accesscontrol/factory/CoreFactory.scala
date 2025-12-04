@@ -223,12 +223,21 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'.")))
         }
         .decoder
+    implicit val blockAuditDecoder: Decoder[Block.Audit] =
+      Decoder.instance { c =>
+        for {
+          enabled <- c.downField("enabled").as[Boolean]
+        } yield {
+          if (enabled) Block.Audit.Enabled else Block.Audit.Disabled
+        }
+      }
     Decoder
       .instance { c =>
         val result = for {
           name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
+          audit <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
           rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider)
             .toSyncDecoder
             .decoder
@@ -236,9 +245,11 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
               _.mapObject(_
                 .remove(Attributes.Block.name)
                 .remove(Attributes.Block.policy)
-                .remove(Attributes.Block.verbosity))
+                .remove(Attributes.Block.verbosity)
+                .remove(Attributes.Block.audit)
+              )
             ))
-          block <- Block.createFrom(name, policy, verbosity, rules).left.map(DecodingFailureOps.fromError(_))
+          block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(DecodingFailureOps.fromError(_))
         } yield BlockDecodingResult(
           block = block,
           localUsers = rules.map(localUsersForRule).combineAll,
@@ -541,6 +552,7 @@ object RawRorSettingsBasedCoreFactory {
       val name = "name"
       val policy = "type"
       val verbosity = "verbosity"
+      val audit = "audit"
     }
 
   }

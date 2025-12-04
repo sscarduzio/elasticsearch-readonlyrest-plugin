@@ -40,7 +40,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 
 class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
-  "ROR config impersonation warnings" should {
+  "ROR settings impersonation warnings" should {
     "return no warnings" when {
       "auth key block" in {
         val settings =

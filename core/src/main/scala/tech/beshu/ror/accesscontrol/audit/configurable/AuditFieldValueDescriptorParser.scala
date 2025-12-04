@@ -28,7 +28,7 @@ object AuditFieldValueDescriptorParser extends Logging {
   private val key = P.charsWhile(c => c != '{' && c != '}')
 
   private val placeholder: P[Either[String, AuditFieldValueDescriptor]] =
-    (lbrace *> key <* rbrace).map(k => deserializerAuditFieldValueDescriptor(k.trim.toUpperCase).toRight(k))
+    (lbrace *> key <* rbrace).map(k => deserializerAuditFieldValueDescriptor(k.trim).toRight(k))
 
   private val text: P[AuditFieldValueDescriptor] =
     P.charsWhile(_ != '{').map(AuditFieldValueDescriptor.StaticText.apply)
@@ -59,6 +59,7 @@ object AuditFieldValueDescriptorParser extends Logging {
     str.toUpperCase match {
       case "IS_MATCHED" => Some(AuditFieldValueDescriptor.IsMatched)
       case "FINAL_STATE" => Some(AuditFieldValueDescriptor.FinalState)
+      case "ECS_EVENT_OUTCOME" => Some(AuditFieldValueDescriptor.EcsEventOutcome)
       case "REASON" => Some(AuditFieldValueDescriptor.Reason)
       case "USER" =>
         logger.warn(
@@ -75,6 +76,7 @@ object AuditFieldValueDescriptorParser extends Logging {
       case "INVOLVED_INDICES" => Some(AuditFieldValueDescriptor.InvolvedIndices)
       case "ACL_HISTORY" => Some(AuditFieldValueDescriptor.AclHistory)
       case "PROCESSING_DURATION_MILLIS" => Some(AuditFieldValueDescriptor.ProcessingDurationMillis)
+      case "PROCESSING_DURATION_NANOS" => Some(AuditFieldValueDescriptor.ProcessingDurationNanos)
       case "TIMESTAMP" => Some(AuditFieldValueDescriptor.Timestamp)
       case "ID" => Some(AuditFieldValueDescriptor.Id)
       case "CORRELATION_ID" => Some(AuditFieldValueDescriptor.CorrelationId)

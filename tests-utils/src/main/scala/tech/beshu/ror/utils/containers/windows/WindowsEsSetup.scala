@@ -25,6 +25,7 @@ import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstall
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager.*
 import tech.beshu.ror.utils.containers.windows.WindowsEsPortProvider.*
 import tech.beshu.ror.utils.containers.windows.WindowsEsRunner.{WindowsEsProcess, startEs}
+import tech.beshu.ror.utils.misc.ScalaUtils.retry
 
 import java.util.function.Consumer
 import scala.language.postfixOps
@@ -38,8 +39,11 @@ object WindowsEsSetup extends LazyLogging {
   }
 
   def prepareEs(elasticsearch: Elasticsearch): Unit = {
-    downloadEsZipFileWithProgress(elasticsearch.esVersion)
-    unzipEs(elasticsearch.esVersion, elasticsearch.config)
+    // The ES zip file sometimes cannot be unzipped when running CI job. In that case we delete the downloaded file and try again.
+    retry(times = 3, cleanBeforeRetrying = cleanDownloadsDirectory()) {
+      downloadEsZipFileWithProgress(elasticsearch.esVersion)
+      unzipEs(elasticsearch.esVersion, elasticsearch.config)
+    }
     replaceConfigFile(elasticsearch)
     installPlugins(elasticsearch)
   }
@@ -66,8 +70,9 @@ object WindowsEsSetup extends LazyLogging {
       val destBetterFile = File(destination.toNIO)
       file.copyTo(destBetterFile, overwrite = true)
     case PluginInstallationStep.RunCommand(_, windowsCommand) =>
-      logger.info(s"Step ${index + 1}/$numberOfSteps: run command $windowsCommand")
-      os.proc("cmd", "/c", windowsCommand).call(
+      val commandWithSanitizedPaths = windowsCommand.replace("\\", "/")
+      logger.info(s"Step ${index + 1}/$numberOfSteps: run command $commandWithSanitizedPaths")
+      os.proc("cmd", "/c", commandWithSanitizedPaths).call(
         cwd = esPath(elasticsearch.config.clusterName, elasticsearch.config.nodeName),
         stdout = os.ProcessOutput.Readlines(line => logger.info(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
         stderr = os.ProcessOutput.Readlines(line => logger.error(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
@@ -89,7 +94,7 @@ object WindowsEsSetup extends LazyLogging {
     // Replace all names of other ES hosts with 127.0.0.1 address with correct transport port
     val lines = file.contentAsString.linesIterator.toList
     val updatedContent = lines.head + "\n" +
-      ports.foldLeft(lines.tail.mkString("\n")) {
+      esNodeNameToEsPorts.foldLeft(lines.tail.mkString("\n")) {
         case (content, (oldValue, WindowsEsPorts(_, transportPort))) =>
           content.replace(oldValue, s"127.0.0.1:$transportPort")
       }

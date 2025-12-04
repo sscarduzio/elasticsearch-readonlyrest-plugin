@@ -17,8 +17,9 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.*
 import io.circe.Decoder.*
-import io.circe.{Decoder, DecodingFailure, HCursor, Json, KeyDecoder}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
@@ -26,19 +27,22 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
 import tech.beshu.ror.accesscontrol.audit.configurable.{AuditFieldValueDescriptorParser, ConfigurableAuditLogSerializer}
+import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode, NodeCredentials, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{AuditingSettingsCreationError, Reason}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{AclCreationErrorCoders, DecodingFailureOps}
+import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
-import tech.beshu.ror.audit.AuditResponseContext.Verbosity
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldName, AuditFieldValueDescriptor}
-import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.AuditLogSerializer
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.audit.adapters.*
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.annotation.nowarn
 import scala.util.{Failure, Success, Try}
@@ -87,7 +91,7 @@ object AuditingSettingsDecoder extends Logging {
           NonEmptyList
             .fromList(outputs.distinct)
             .map(AuditingTool.AuditSettings(_, esNodeSettings))
-            .toRight(AuditingSettingsCreationError(Message(s"The audit 'outputs' array cannot be empty")))
+            .toRight(auditSettingsError(s"The audit 'outputs' array cannot be empty"))
         case None =>
           AuditingTool.AuditSettings(
             NonEmptyList.of(AuditSink.Enabled(EsIndexBasedSink.default)),
@@ -115,7 +119,7 @@ object AuditingSettingsDecoder extends Logging {
       SyncDecoderCreator
         .from(nonEmptyStringDecoder)
         .map(RorAuditLoggerName.apply)
-        .withError(AuditingSettingsCreationError(Message("The audit 'logger_name' cannot be empty")))
+        .withError(auditSettingsError("The audit 'logger_name' cannot be empty"))
         .decoder
     }
 
@@ -143,9 +147,9 @@ object AuditingSettingsDecoder extends Logging {
 
     given Decoder[EsDataStreamBasedSink] = Decoder.instance { c =>
       for {
-        rorAuditDataStream <- c.downField("data_stream").as[Option[RorAuditDataStream]]
+        rorAuditDataStream <- c.downFieldAs[Option[RorAuditDataStream]]("data_stream")
         logSerializer <- c.as[Option[AuditLogSerializer]]
-        remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
+        remoteAuditCluster <- c.downFieldAs[Option[AuditCluster.RemoteAuditCluster]]("cluster")
       } yield EsDataStreamBasedSink(
         logSerializer.getOrElse(EsDataStreamBasedSink.default.logSerializer),
         rorAuditDataStream.getOrElse(EsDataStreamBasedSink.default.rorAuditDataStream),
@@ -156,16 +160,13 @@ object AuditingSettingsDecoder extends Logging {
     Decoder
       .instance[AuditSink] { c =>
         for {
-          sinkType <- c.downField("type").as[AuditSinkType]
+          sinkType <- c.downFieldAs[AuditSinkType]("type")
           sinkConfig <- sinkType match {
-            case AuditSinkType.DataStream =>
-
-
-              c.as[EsDataStreamBasedSink]
+            case AuditSinkType.DataStream => c.as[EsDataStreamBasedSink]
             case AuditSinkType.Index => c.as[EsIndexBasedSink]
             case AuditSinkType.Log => c.as[LogBasedSink]
           }
-          isSinkEnabled <- c.downField("enabled").as[Option[Boolean]]
+          isSinkEnabled <- c.downFieldAs[Option[Boolean]]("enabled")
         } yield {
           if (isSinkEnabled.getOrElse(true)) {
             AuditSink.Enabled(sinkConfig)
@@ -183,9 +184,7 @@ object AuditingSettingsDecoder extends Logging {
         RorAuditDataStream(patternStr)
           .leftMap {
             case RorAuditDataStream.CreationError.FormatError(msg) =>
-              AuditingSettingsCreationError(Message(
-                s"Illegal format for ROR audit 'data_stream' name - ${msg.show}"
-              ))
+              auditSettingsError(s"Illegal format for ROR audit 'data_stream' name - ${msg.show}")
           }
       }
       .decoder
@@ -199,9 +198,9 @@ object AuditingSettingsDecoder extends Logging {
           .left
           .map {
             case CreationError.ParsingError(msg) =>
-              AuditingSettingsCreationError(Message(
-                s"Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: ${patternStr.show} error: ${msg.show}"
-              ))
+              auditSettingsError(
+                s"Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: ${patternStr.show} error: ${msg.show}"
+              )
           }
       }
       .decoder
@@ -216,15 +215,32 @@ object AuditingSettingsDecoder extends Logging {
           c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxStaticSerializerDecoder)
         case SerializerType.ExtendedSyntaxConfigurableSerializer =>
           c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxConfigurableSerializerDecoder)
+        case SerializerType.EcsSerializer =>
+          c.downField("serializer").as[Option[AuditLogSerializer]](ecsSerializerDecoder)
       }
     } yield result
+  }
+
+  private def ecsSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
+    for {
+      version <- c.downField("version").as[Option[EcsSerializerVersion]]
+        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"ECS serializer 'version' is invalid: $msg"))
+      allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
+        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"ECS serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
+      serializer = version match {
+        case None =>
+          new EcsV1AuditLogSerializer(allowedEventMode)
+        case Some(EcsSerializerVersion.V1) =>
+          new EcsV1AuditLogSerializer(allowedEventMode)
+      }
+    } yield Some(serializer)
   }
 
   private def extendedSyntaxConfigurableSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
     for {
       allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
-      fields <- c.downField("fields").as[Map[AuditFieldName, AuditFieldValueDescriptor]]
+      fields <- c.downField("fields").as[Map[AuditFieldPath, AuditFieldValueDescriptor]]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'fields' setting is missing or invalid: $msg"))
       serializer = new ConfigurableAuditLogSerializer(allowedEventMode, fields)
     } yield Some(serializer)
@@ -264,9 +280,11 @@ object AuditingSettingsDecoder extends Logging {
             Right(SerializerType.ExtendedSyntaxStaticSerializer)
           case "configurable" =>
             Right(SerializerType.ExtendedSyntaxConfigurableSerializer)
+          case "ecs" =>
+            Right(SerializerType.EcsSerializer)
           case other =>
             Left(DecodingFailure(AclCreationErrorCoders.stringify(
-              AuditingSettingsCreationError(Message(s"Invalid serializer type '$other', allowed values [static, configurable]"))
+              auditSettingsError(s"Invalid serializer type '$other', allowed values [static, configurable, ecs]")
             ), Nil))
         }
       case Some(_) | None =>
@@ -282,10 +300,23 @@ object AuditingSettingsDecoder extends Logging {
     case object ExtendedSyntaxStaticSerializer extends SerializerType
 
     case object ExtendedSyntaxConfigurableSerializer extends SerializerType
+
+    case object EcsSerializer extends SerializerType
+  }
+
+  private given ecsSerializerVersionDecoder: Decoder[EcsSerializerVersion] = Decoder.decodeString.map(_.toLowerCase).emap {
+    case "v1" => Right(EcsSerializerVersion.V1)
+    case other => Left(s"Invalid ECS serializer version $other")
+  }
+
+  private sealed trait EcsSerializerVersion
+
+  private object EcsSerializerVersion {
+    case object V1 extends EcsSerializerVersion
   }
 
   private def withAuditingSettingsCreationErrorMessage(message: String => String)(decodingFailure: DecodingFailure) = {
-    decodingFailure.withMessage(AclCreationErrorCoders.stringify(AuditingSettingsCreationError(Message(message(decodingFailure.message)))))
+    decodingFailure.withMessage(AclCreationErrorCoders.stringify(auditSettingsError(message(decodingFailure.message))))
   }
 
   @nowarn("cat=deprecation")
@@ -321,8 +352,8 @@ object AuditingSettingsDecoder extends Logging {
       case Success(Some(customSerializer)) =>
         logger.info(s"Using custom serializer: ${customSerializer.getClass.getName}")
         Right(customSerializer)
-      case Success(None) => Left(AuditingSettingsCreationError(Message(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}")))
-      case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '${fullClassName.show}', error: ${ex.getMessage.show}")))
+      case Success(None) => Left(auditSettingsError(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}"))
+      case Failure(ex) => Left(auditSettingsError(s"Cannot create instance of class '${fullClassName.show}', error: ${ex.getMessage.show}"))
     }
   }
 
@@ -336,16 +367,45 @@ object AuditingSettingsDecoder extends Logging {
       .decoder
   }
 
-  given auditFieldNameDecoder: KeyDecoder[AuditFieldName] = {
-    KeyDecoder.decodeKeyString.map(AuditFieldName.apply)
-  }
+  private given auditFieldsDecoder: Decoder[Map[AuditFieldPath, AuditFieldValueDescriptor]] =
+    Decoder.instance { cursor =>
+      def decodeJson(json: Json,
+                     path: List[String]): Decoder.Result[Map[List[String], AuditFieldValueDescriptor]] = {
+        json.fold(
+          jsonNull =
+            Left(DecodingFailure("Expected AuditFieldValueDescriptor, got null", cursor.history)),
+          jsonBoolean = b =>
+            Right(Map(path -> AuditFieldValueDescriptor.BooleanValue(b))),
+          jsonNumber = n =>
+            n.toBigDecimal
+              .map(bd => Map(path -> AuditFieldValueDescriptor.NumericValue(bd)))
+              .toRight(DecodingFailure("Cannot decode number", cursor.history)),
+          jsonString = s =>
+            AuditFieldValueDescriptorParser
+              .parse(s)
+              .map(desc => Map(path -> desc))
+              .left.map(err => DecodingFailure(err, cursor.history)),
+          jsonArray = _ =>
+            Left(DecodingFailure("AuditFieldValueDescriptor cannot be an array", cursor.history)),
+          jsonObject = obj =>
+            obj.toList
+              .traverse { case (k, v) => decodeJson(v, path :+ k) }
+              .map(_.foldLeft(Map.empty[List[String], AuditFieldValueDescriptor])(_ ++ _))
+        )
+      }
 
-  given auditFieldValueDecoder: Decoder[AuditFieldValueDescriptor] = {
-    SyncDecoderCreator
-      .from(Decoder.decodeString)
-      .emap(AuditFieldValueDescriptorParser.parse)
-      .decoder
-  }
+      for {
+        rawResult <- decodeJson(cursor.value, Nil)
+        result = rawResult.view.map{ case (path, value) =>
+          NonEmptyList.fromList(path) match {
+            case Some(nonEmptyPath) =>
+              AuditFieldPath(nonEmptyPath.head, nonEmptyPath.tail) -> value
+            case None =>
+              throw new IllegalStateException(s"Empty audit field path encountered when decoding configurable audit fields definition.")
+          }
+        }.toMap
+      } yield result
+    }
 
   given verbosityDecoder: Decoder[Verbosity] = {
     SyncDecoderCreator
@@ -358,13 +418,91 @@ object AuditingSettingsDecoder extends Logging {
       .decoder
   }
 
-  private given Decoder[AuditCluster.RemoteAuditCluster] =
-    SyncDecoderCreator
-      .from(Decoder.decodeNonEmptyList[Uri])
-      .withError(AuditingSettingsCreationError(Message("Non empty list of valid URI is required")))
-      .map(AuditCluster.RemoteAuditCluster.apply)
-      .decoder
+  private def auditSettingsError(message: String) = AuditingSettingsCreationError(Message(message))
 
+  private given Decoder[AuditCluster.RemoteAuditCluster] = {
+    given Decoder[UniqueNonEmptyList[AuditClusterNode]] = {
+      SyncDecoderCreator
+        .from(Decoder.decodeNonEmptyList[Uri])
+        .withError(auditSettingsError("Non empty list of valid URI is required"))
+        .map(_.map(AuditClusterNode.apply))
+        .map(UniqueNonEmptyList.fromNonEmptyList)
+        .decoder
+    }
+
+    given Decoder[ClusterMode] =
+      SyncDecoderCreator
+        .from(Decoder.decodeString)
+        .emapE[ClusterMode] {
+          case "round-robin" => Right(ClusterMode.RoundRobin)
+          case other => Left(auditSettingsError(s"Unknown cluster mode [$other], allowed values are: [round-robin]"))
+        }
+        .decoder
+
+    def clusterCredentialsFromNodesUris(nodes: UniqueNonEmptyList[AuditClusterNode]): Either[AuditingSettingsCreationError, Option[NodeCredentials]] = {
+      val (nodesWithoutCredentials: Iterable[AuditClusterNode],
+      nodesWithCredentials: Iterable[(AuditClusterNode, NodeCredentials)]) =
+        nodes.partitionMap(n => n.credentials.map(c => (n, c)).toRight(n))
+
+      if (nodesWithoutCredentials.size == nodes.size) {
+        Right(None)
+      } else {
+        // check if all nodes have the same credentials - if not, it's possible that different clusters are used
+        lazy val inconsistentCredentialsError =
+          auditSettingsError(s"One or more audit cluster nodes have inconsistent credentials. Please configure the same credentials. Nodes: ${nodes.map(_.uri.show).toList.show}")
+        for {
+          _ <- Either.cond(nodesWithoutCredentials.isEmpty, (), inconsistentCredentialsError)
+          credentials <- {
+            nodesWithCredentials match {
+              case (_, firstNodeCredentials) :: Nil =>
+                Right(Some(firstNodeCredentials))
+              case (_, firstNodeCredentials) :: otherNodes =>
+                val nodesWithOtherCredentials = otherNodes.collect {
+                  case (node, credentials) if credentials != firstNodeCredentials => node
+                }
+                Either.cond(
+                  nodesWithOtherCredentials.isEmpty,
+                  Some(firstNodeCredentials),
+                  inconsistentCredentialsError
+                )
+            }
+          }
+        } yield credentials
+      }
+    }
+
+    Decoder.instance[RemoteAuditCluster] {
+      case c if c.values.isDefined =>
+        // array syntax - use remote cluster with default mode - round-robin
+        for {
+          clusterNodes <- c.as[UniqueNonEmptyList[AuditClusterNode]]
+          maybeCredentials <- clusterCredentialsFromNodesUris(clusterNodes)
+            .leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
+        } yield AuditCluster.RemoteAuditCluster(clusterNodes, ClusterMode.RoundRobin, maybeCredentials)
+      case c =>
+        // extended syntax
+        val usernameKey = "username"
+        val passwordKey = "password"
+        for {
+          clusterNodes <- c.downFieldAs[UniqueNonEmptyList[AuditClusterNode]]("nodes")
+          mode <- c.downFieldAs[ClusterMode]("mode")
+          username <- c.downFieldAs[Option[NonEmptyString]](usernameKey)
+          password <- c.downFieldAs[Option[NonEmptyString]](passwordKey)
+          maybeCredentials <- {
+            (username, password) match {
+              case (Some(user), Some(pass)) =>
+                Right(Some(NodeCredentials(user, pass)))
+              case (None, None) =>
+                clusterCredentialsFromNodesUris(clusterNodes)
+              case (Some(user), None) =>
+                Left(auditSettingsError(s"Audit output configuration is missing the ‘$passwordKey’ field."))
+              case (None, Some(pass)) =>
+                Left(auditSettingsError(s"Audit output configuration is missing the ‘$usernameKey’ field."))
+            }
+          }.leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
+        } yield AuditCluster.RemoteAuditCluster(clusterNodes, mode, maybeCredentials)
+    }
+  }
 
   private sealed trait AuditSinkType
 
@@ -401,9 +539,9 @@ object AuditingSettingsDecoder extends Logging {
 
     private def unsupportedOutputTypeError(unsupportedType: String,
                                            supportedTypes: NonEmptyList[String]) = {
-      AuditingSettingsCreationError(Message(
-        s"Unsupported 'type' of audit output: ${unsupportedType.show}. Supported types: [${supportedTypes.toList.show}]"
-      ))
+      auditSettingsError(
+        s"Unsupported type of audit output: ${unsupportedType.show}. Supported types: [${supportedTypes.toList.show}]"
+      )
     }
 
     given auditSinkTypeDecoder(using esVersion: EsVersion): Decoder[AuditSinkType] = {
@@ -448,10 +586,10 @@ object AuditingSettingsDecoder extends Logging {
     }
 
     private def decodeOptionalSetting[T: Decoder](cursor: HCursor)(key: String, fallbackKey: String): Decoder.Result[Option[T]] = {
-      cursor.downField("audit").get[Option[T]](key)
+      cursor.downField("audit").downFieldAs[Option[T]](key)
         .flatMap {
           case Some(value) => Right(Some(value))
-          case None => cursor.get[Option[T]](fallbackKey)
+          case None => cursor.downFieldAs[Option[T]](fallbackKey)
         }
     }
   }

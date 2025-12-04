@@ -91,10 +91,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         }
         "submit audit entry" when {
           "request was allowed and verbosity level was INFO" in {
+            val requestId = RequestId("mock-1")
             val indexAuditSink = mock[IndexBasedAuditSinkService]
-            (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
+            (indexAuditSink.submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
-            (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
+            (dataStreamAuditSink.submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, RequestId("mock-1")).returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
@@ -107,10 +110,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
           }
           "request was matched by forbidden rule" in {
+            val requestId = RequestId("mock-1")
             val indexAuditSink = mock[IndexBasedAuditSinkService]
-            (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
+            (indexAuditSink.submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
-            (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
+            (dataStreamAuditSink.submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId).returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
@@ -128,6 +134,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 Block.Name("mock-block"),
                 Block.Policy.Forbid(),
                 Block.Verbosity.Info,
+                Block.Audit.Enabled,
                 NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
               ),
               GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
@@ -137,10 +144,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             auditingTool.audit(responseContext).runSyncUnsafe()
           }
           "request was forbidden" in {
+            val requestId = RequestId("mock-1")
             val indexAuditSink = mock[IndexBasedAuditSinkService]
-            (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
+            (indexAuditSink.submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
-            (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
+            (dataStreamAuditSink.submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId).returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
@@ -157,10 +167,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             auditingTool.audit(responseContext).runSyncUnsafe()
           }
           "request was finished with error" in {
+            val requestId = RequestId("mock-1")
             val indexAuditSink = mock[IndexBasedAuditSinkService]
-            (indexAuditSink.submit _).expects(fullIndexName("test_2018-12-31"), "mock-1", *).returning(())
+            (indexAuditSink.submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId).returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
-            (dataStreamAuditSink.submit _).expects(fullDataStreamName("test_ds"), "mock-1", *).returning(())
+            (dataStreamAuditSink.submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId).returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool.create(
               settings = auditSettings(new DefaultAuditLogSerializer),
@@ -252,6 +265,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         Block.Name("mock-block"),
         policy,
         verbosity,
+        Block.Audit.Enabled,
         NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
       ),
       GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),

@@ -34,14 +34,21 @@ class SearchManager(client: RestClient,
                     override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client, esVersion, esNativeApi = true) {
 
-  def search(indexName: String, query: JSON): SearchResult =
-    call(createSearchRequest(Some(indexName), query), new SearchResult(_))
+  def search(): SearchResult = search(List.empty)
+
+  def search(indexName: String): SearchResult = search(indexName :: Nil)
+
+  def search(indexNames: List[String]): SearchResult =
+    call(createSearchRequest(indexNames), new SearchResult(_))
 
   def search(query: JSON): SearchResult =
-    call(createSearchRequest(None, query), new SearchResult(_))
+    call(createSearchRequest(None, ujson.write(query)), new SearchResult(_))
 
-  def search(indexNames: String*): SearchResult =
-    call(createSearchRequest(indexNames.toList), new SearchResult(_))
+  def search(indexName: String, query: JSON): SearchResult =
+    call(createSearchRequest(Some(indexName), ujson.write(query)), new SearchResult(_))
+
+  def search(indexName: String, queryString: String): SearchResult =
+    call(createSearchRequest(Some(indexName), queryString), new SearchResult(_))
 
   def searchScroll(size: Int, scroll: FiniteDuration, indexNames: String*): SearchResult =
     call(createSearchRequest(indexNames.toList, Some(size), Some(scroll)), new SearchResult(_))
@@ -72,7 +79,7 @@ class SearchManager(client: RestClient,
   def asyncSearchStatus(searchId: String): SimpleResponse = {
     call(createAsyncSearchStatusRequest(searchId), new SimpleResponse(_))
   }
-  
+
   def mSearchUnsafe(lines: String*): MSearchResult = {
     lines.toList match {
       case Nil => throw new IllegalArgumentException("At least one line should be passed to mSearch query")
@@ -101,7 +108,7 @@ class SearchManager(client: RestClient,
   def renderTemplate(query: String): JsonResponse =
     call(createRenderTemplateRequest(query), new JsonResponse(_))
 
-  private def createSearchRequest(indexName: Option[String], query: JSON) = {
+  private def createSearchRequest(indexName: Option[String], queryJsonString: String) = {
     val request = new HttpPost(client.from(
       indexName match {
         case Some(name) => s"/$name/_search"
@@ -110,7 +117,7 @@ class SearchManager(client: RestClient,
       Map("size" -> "100")
     ))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(query)))
+    request.setEntity(new StringEntity(queryJsonString))
     request
   }
 
@@ -165,7 +172,7 @@ class SearchManager(client: RestClient,
     }
     request
   }
-  
+
   private def createAsyncSearchStatusRequest(searchId: String) = {
     new HttpGet(client.from(s"/_async_search/status/$searchId"))
   }
@@ -222,7 +229,6 @@ class SearchManager(client: RestClient,
     lazy val totalHits: Int = force().responseJson("hits")("total")("value").num.toInt
     lazy val scrollId: String = responseJson("_scroll_id").str
   }
-
 
   class AsyncSearchResult(response: HttpResponse) extends BaseSearchResult(response) {
     override lazy val searchHitsWithSettings: Value = force().responseJson("response")("hits")("hits")

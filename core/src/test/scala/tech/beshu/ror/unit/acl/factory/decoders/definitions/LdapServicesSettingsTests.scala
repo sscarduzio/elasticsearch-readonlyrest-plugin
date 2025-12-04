@@ -1677,7 +1677,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
-      "groups related param is malformed when deprecated config format is used" in {
+      "groups related param is malformed when deprecated settings format is used" in {
         assertDecodingSuccess(
           yamls = NonEmptyList.of(
             // empty search_groups_base_DN which is required
@@ -1751,7 +1751,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
       }
     }
     "not be able to be loaded from settings" when {
-      "circuit breaker config is malformed" in {
+      "circuit breaker settings are malformed" in {
         assertDecodingFailure(
           yaml =
             s"""

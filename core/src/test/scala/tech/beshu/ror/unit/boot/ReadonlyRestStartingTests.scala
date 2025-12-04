@@ -42,6 +42,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RorDependencies.NoOpImpersonationWarningsReader
@@ -65,6 +66,7 @@ import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.time.Clock
 import java.util.UUID
@@ -153,7 +155,7 @@ class ReadonlyRestStartingTests
         }
       }
       "be able to be reloaded" when {
-        "new config is different than old one" in withReadonlyRest({
+        "new settings are different than old one" in withReadonlyRest({
           val resourcesPath = "/boot_tests/config_reloading/"
           val initialIndexSettingsFile = "readonlyrest_initial.yml"
           val newIndexSettingsFile = "readonlyrest_first.yml"
@@ -811,8 +813,8 @@ class ReadonlyRestStartingTests
             (mockedIndexDocumentManager.saveDocumentJson _)
               .expects(
                 where {
-                  (config: IndexName.Full, id: String, document: Json) =>
-                    config == fullIndexName(".readonlyrest") &&
+                  (index: IndexName.Full, id: String, document: Json) =>
+                    index == fullIndexName(".readonlyrest") &&
                       id == "2" &&
                       document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
                       document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("300000") &&
@@ -1271,8 +1273,8 @@ class ReadonlyRestStartingTests
         (mockedIndexDocumentManager.saveDocumentJson _)
           .expects(
             where {
-              (config: IndexName.Full, id: String, document: Json) =>
-                config == fullIndexName(".readonlyrest") &&
+              (index: IndexName.Full, id: String, document: Json) =>
+                index == fullIndexName(".readonlyrest") &&
                   id == "2" &&
                   document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
                   document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("60000") &&
@@ -1380,7 +1382,7 @@ class ReadonlyRestStartingTests
       "unable to setup data stream audit output" in {
         val dataStreamSinkConfig1 = AuditSink.Config.EsDataStreamBasedSink.default
         val dataStreamSinkConfig2 = dataStreamSinkConfig1.copy(
-          auditCluster = AuditCluster.RemoteAuditCluster(NonEmptyList.one(Uri.parse("0.0.0.0")))
+          auditCluster = AuditCluster.RemoteAuditCluster(UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("0.0.0.0"))), ClusterMode.RoundRobin, None)
         )
 
         val coreFactory = mockCoreFactory(

@@ -123,14 +123,18 @@ class MatcherWithWildcardsScalaTest
   "filter result" should {
     "reject not related haystack" in {
       forAll("matchers", "haystack") { (matchers: List[String], haystack: Set[String]) =>
-        val matcher = PatternsMatcher.create(matchers)(caseSensitiveStringMatchable)
+        // Filter out wildcard characters to ensure literal string matching
+        val literalMatchers = matchers.filter(m => !m.contains('*') && !m.contains('?'))
+        val matcher = PatternsMatcher.create(literalMatchers)(caseSensitiveStringMatchable)
         val result = matcher.filter(haystack)
-        result shouldBe haystack.intersect(matchers.toCovariantSet)
+        result shouldBe haystack.intersect(literalMatchers.toCovariantSet)
       }
     }
     "contain all haystack if haystack is in matchers" in {
       forAll("matchers", "haystack") { (matchers: List[String], haystack: Set[String]) =>
-        val matcher = PatternsMatcher.create(matchers ++ haystack)(caseSensitiveStringMatchable)
+        // Filter out wildcard characters to ensure literal string matching
+        val literalMatchers = matchers.filter(m => !m.contains('*') && !m.contains('?'))
+        val matcher = PatternsMatcher.create(literalMatchers ++ haystack)(caseSensitiveStringMatchable)
         val result = matcher.filter(haystack)
         result shouldBe haystack
       }
