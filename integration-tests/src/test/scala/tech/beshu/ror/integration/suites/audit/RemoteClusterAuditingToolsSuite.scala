@@ -107,7 +107,7 @@ class RemoteClusterAuditingToolsSuite
   // This test suite does not execute on Windows: there is currently no Windows version of ToxiproxyContainer
   ignoreOnWindows {
     "Should report audit events in round-robin mode, even when some nodes are unreachable" in {
-      rorApiManager.updateRorInIndexConfig(baseRorConfig).forceOKStatusOrConfigAlreadyLoaded()
+      rorApiManager.updateRorInIndexSettings(baseRorConfig).forceOKStatusOrSettingsAlreadyLoaded()
       val auditNode1 = proxiedContainers(0)
       val auditNode2 = proxiedContainers(1)
 
