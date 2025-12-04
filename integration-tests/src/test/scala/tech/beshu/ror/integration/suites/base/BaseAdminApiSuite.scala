@@ -75,7 +75,7 @@ trait BaseAdminApiSuite
           rorWithNoIndexConfigAdminActionManager
             .insertInIndexSettingsDirectlyToRorIndex(
               rorIndex = readonlyrestIndexName,
-              Settings = getResourceContent("/admin_api/readonlyrest_index.yml")
+              settings = getResourceContent("/admin_api/readonlyrest_index.yml")
             )
             .force()
 
@@ -96,7 +96,7 @@ trait BaseAdminApiSuite
           rorWithNoIndexConfigAdminActionManager
             .insertInIndexSettingsDirectlyToRorIndex(
               rorIndex = readonlyrestIndexName,
-              Settings = getResourceContent("/admin_api/readonlyrest.yml")
+              settings = getResourceContent("/admin_api/readonlyrest.yml")
             )
             .force()
 
@@ -131,7 +131,7 @@ trait BaseAdminApiSuite
           rorWithNoIndexConfigAdminActionManager
             .insertInIndexSettingsDirectlyToRorIndex(
               rorIndex = readonlyrestIndexName,
-              Settings = getResourceContent("/admin_api/readonlyrest_with_ldap.yml")
+              settings = getResourceContent("/admin_api/readonlyrest_with_ldap.yml")
             )
             .force()
 
@@ -1257,7 +1257,6 @@ trait BaseAdminApiSuite
          |}""".stripMargin
     ))
   }
-
 
   private def operationNotAllowed(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
