@@ -28,7 +28,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
   "Yaml parser" should {
     "return parsing failure error" when {
-      "readonlyrest config has duplicated 'readonlyrest' section" in {
+      "ROR settings has duplicated 'readonlyrest' section" in {
         val result = rorSettingFrom(
           """
             |readonlyrest:
@@ -56,7 +56,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             failure.message should be("Duplicated key: 'readonlyrest'")
         }
       }
-      "readonlyrest config has duplicated 'access_control_rules' section" in {
+      "ROR settings has duplicated 'access_control_rules' section" in {
         val result = rorSettingFrom(
           """
             |readonlyrest:
@@ -82,7 +82,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             failure.message should be("Duplicated key: 'access_control_rules'")
         }
       }
-      "readonlyrest config has duplicated definition" in {
+      "ROR settings has duplicated definition" in {
         val result = rorSettingFrom(
           """
             |readonlyrest:
@@ -163,7 +163,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
         val result = rorSettingFrom(rawConfig)
 
         inside(result) {
-          case Right(config) => config.rawYaml shouldBe rawConfig
+          case Right(settings) => settings.rawYaml shouldBe rawConfig
         }
       }
     }

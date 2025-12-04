@@ -40,6 +40,7 @@ import tech.beshu.ror.implicits.*
 class Block(val name: Name,
             val policy: Policy,
             val verbosity: Verbosity,
+            val audit: Audit,
             val rules: NonEmptyList[Rule])
            (implicit val loggingContext: LoggingContext)
   extends Logging {
@@ -101,12 +102,13 @@ object Block {
   def createFrom(name: Name,
                  policy: Option[Policy],
                  verbosity: Option[Verbosity],
+                 audit: Option[Audit],
                  rules: NonEmptyList[RuleDefinition[Rule]])
                 (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
     val sortedRules = rules.sorted
     BlockValidator.validate(name, sortedRules) match {
       case Validated.Valid(_) =>
-        Right(createBlockInstance(name, policy, verbosity, sortedRules))
+        Right(createBlockInstance(name, policy, verbosity, audit, sortedRules))
       case Validated.Invalid(errors) =>
         implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
         Left(BlocksLevelCreationError(Message(errors.toList.map(_.show).mkString("\n"))))
@@ -116,12 +118,14 @@ object Block {
   private def createBlockInstance(name: Name,
                                   policy: Option[Policy],
                                   verbosity: Option[Verbosity],
+                                  audit: Option[Audit],
                                   rules: NonEmptyList[RuleDefinition[Rule]])
                                  (implicit loggingContext: LoggingContext) =
     new Block(
       name,
       policy.getOrElse(Block.Policy.Allow),
       verbosity.getOrElse(Block.Verbosity.Info),
+      audit.getOrElse(Block.Audit.Enabled),
       rules.map(_.rule)
     )
 
@@ -179,6 +183,16 @@ object Block {
     case object Error extends Verbosity
 
     implicit val eq: Eq[Verbosity] = Eq.fromUniversalEquals
+  }
+
+  sealed trait Audit
+
+  object Audit {
+    case object Enabled extends Audit
+
+    case object Disabled extends Audit
+
+    implicit val eq: Eq[Audit] = Eq.fromUniversalEquals
   }
 
   private class Lifter[B <: BlockContext] {

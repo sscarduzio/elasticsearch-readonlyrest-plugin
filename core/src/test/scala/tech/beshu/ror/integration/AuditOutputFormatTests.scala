@@ -201,7 +201,8 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private class MockedIndexAuditSinkService extends IndexBasedAuditSinkService {
     private val submittedIndexAndJson: Promise[(IndexName.Full, String)] = Promise()
 
-    override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+    override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)
+                       (implicit requestId: RequestId): Unit = {
       submittedIndexAndJson.trySuccess(indexName, jsonRecord)
     }
 
@@ -213,7 +214,8 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private class MockedDataStreamBasedAuditSinkService extends DataStreamBasedAuditSinkService {
     private val submittedDataStreamAndJson: Promise[(DataStreamName.Full, String)] = Promise()
 
-    override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String): Unit = {
+    override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)
+                       (implicit requestId: RequestId): Unit = {
       submittedDataStreamAndJson.trySuccess(dataStreamName, jsonRecord)
     }
 
