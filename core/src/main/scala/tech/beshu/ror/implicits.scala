@@ -443,8 +443,8 @@ trait LogsShowInstances
   }
 
   implicit val indexSettingsSourceLoadingErrorShow: Show[IndexSettingsSource.LoadingError] = Show.show {
-    case IndexSettingsSource.LoadingError.IndexNotFound => "cannot find ReadonlyREST settings index"
-    case IndexSettingsSource.LoadingError.DocumentNotFound => "cannot found document with ReadonlyREST settings"
+    case IndexSettingsSource.LoadingError.IndexNotFound => "Cannot find ReadonlyREST settings index"
+    case IndexSettingsSource.LoadingError.DocumentNotFound => "Cannot found document with ReadonlyREST settings"
   }
 
   implicit val indexSettingsSourceSavingErrorShow: Show[IndexSettingsSource.SavingError] = Show.show {

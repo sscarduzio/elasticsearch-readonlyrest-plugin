@@ -120,7 +120,7 @@ trait BaseAdminApiSuite
             s"""
                |{
                |  "status": "ko",
-               |  "message": "Cannot find settings index"
+               |  "message": "Cannot find ReadonlyREST settings index"
                |}
                |""".stripMargin
           ))
@@ -1101,7 +1101,7 @@ trait BaseAdminApiSuite
       """
         |{
         |  "status": "empty",
-        |  "message": "Cannot find settings index"
+        |  "message": "Cannot find ReadonlyREST settings index"
         |}
         |""".stripMargin
     ))
