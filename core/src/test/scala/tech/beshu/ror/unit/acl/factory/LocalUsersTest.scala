@@ -16,26 +16,29 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
+import better.files.File
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.domain.{IndexName, LocalUsers, RorConfigurationIndex, User}
-import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, LocalUsers, RorSettingsIndex, User}
+import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorSettingsBasedCoreFactory}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
+import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.*
 
 class LocalUsersTest extends AnyWordSpec with Inside {
 
-  "ROR config local users" should {
+  "ROR setting local users" should {
     "return info that all users are resolved" when {
       "auth key block" in {
-        assertLocalUsersFromConfig(
+        assertLocalUsersFromSettings(
           s"""
              |readonlyrest:
              |  access_control_rules:
@@ -46,7 +49,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         )
       }
       "username used in two rules" in {
-        assertLocalUsersFromConfig(
+        assertLocalUsersFromSettings(
           s"""
              |readonlyrest:
              |  access_control_rules:
@@ -59,7 +62,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         )
       }
       "different users defined in rules" in {
-        assertLocalUsersFromConfig(
+        assertLocalUsersFromSettings(
           s"""
              |readonlyrest:
              |  access_control_rules:
@@ -72,7 +75,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         )
       }
       "hashed is only password" in {
-        assertLocalUsersFromConfig(
+        assertLocalUsersFromSettings(
           s"""
              |readonlyrest:
              |  access_control_rules:
@@ -85,7 +88,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         )
       }
       "'proxy_auth' rule" in {
-        val config =
+        val settings =
           s"""
              |readonlyrest:
              |    access_control_rules:
@@ -131,14 +134,14 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |        connection_pool_size: 10                               # default 30
              |""".stripMargin
 
-        assertLocalUsersFromConfig(
-          config,
+        assertLocalUsersFromSettings(
+          settings,
           allUsersResolved(Set(User.Id("admin"), User.Id("dev")))
         )
       }
       "users section defined without wildcard patterns" when {
         "auth_key rules used" in {
-          val config =
+          val settings =
             s"""
                |readonlyrest:
                |  access_control_rules:
@@ -159,12 +162,12 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |    auth_key: "user4:pass"
                |""".stripMargin
 
-          assertLocalUsersFromConfig(config, allUsersResolved(Set(
+          assertLocalUsersFromSettings(settings, allUsersResolved(Set(
             User.Id("user1"), User.Id("user2"), User.Id("user4"), User.Id("admin")
           )))
         }
         "ldap_authentication rule used" in {
-          val config =
+          val settings = rorSettingsFromUnsafe {
             s"""
                |readonlyrest:
                |  access_control_rules:
@@ -198,17 +201,17 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |     groups:
                |       search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin
+          }
 
-          val rorConfig = rorConfigFromUnsafe(config)
-          inside(createCore(rorConfig, new UnboundidLdapConnectionPoolProvider())) {
+          inside(createCore(settings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
-              core.rorConfig.localUsers should be(allUsersResolved(Set(
+              core.dependencies.localUsers should be(allUsersResolved(Set(
                 User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
               )))
           }
         }
         "ror_kbn_auth rule used" in {
-          val config =
+          val settings =
             s"""
                |readonlyrest:
                |  access_control_rules:
@@ -249,10 +252,10 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |      signature_key: "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
                |""".stripMargin
 
-          val rorConfig = rorConfigFromUnsafe(config)
-          inside(createCore(rorConfig, new UnboundidLdapConnectionPoolProvider())) {
+          val rorSettings = rorSettingsFromUnsafe(settings)
+          inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
-              core.rorConfig.localUsers should be(allUsersResolved(Set(
+              core.dependencies.localUsers should be(allUsersResolved(Set(
                 User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
               )))
             case Left(error) =>
@@ -260,7 +263,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           }
         }
         "ror_kbn_authentication rule used" in {
-          val config =
+          val settings =
             s"""
                |readonlyrest:
                |  access_control_rules:
@@ -301,10 +304,10 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |      signature_key: "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
                |""".stripMargin
 
-          val rorConfig = rorConfigFromUnsafe(config)
-          inside(createCore(rorConfig, new UnboundidLdapConnectionPoolProvider())) {
+          val rorSettings = rorSettingsFromUnsafe(settings)
+          inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
-              core.rorConfig.localUsers should be(allUsersResolved(Set(
+              core.dependencies.localUsers should be(allUsersResolved(Set(
                 User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
               )))
             case Left(error) =>
@@ -313,7 +316,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         }
       }
       "impersonators section defined with users" in {
-        val config =
+        val settings =
           s"""
              |readonlyrest:
              |  access_control_rules:
@@ -331,14 +334,14 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |     auth_key: devAdmin3:pass
              |     users: ["*", "user*"]
              |""".stripMargin
-        assertLocalUsersFromConfig(config, expected = allUsersResolved(Set(
+        assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(
           User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user3")
         )))
       }
     }
-    "return info that unknown users in config" when {
+    "return info that unknown users in settings" when {
       "hashed username and password" in {
-        val config =
+        val settings =
           s"""
              |readonlyrest:
              |  access_control_rules:
@@ -349,10 +352,10 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |  - name: test_block3
              |    auth_key: admin:container
              |""".stripMargin
-        assertLocalUsersFromConfig(config, expected = withUnknownUsers(Set(User.Id("admin"))))
+        assertLocalUsersFromSettings(settings, expected = withUnknownUsers(Set(User.Id("admin"))))
       }
       "there is some user with hashed credentials" in {
-        val config =
+        val settings =
           s"""
              |readonlyrest:
              |  access_control_rules:
@@ -361,10 +364,10 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |  - name: test_block2
              |    auth_key: admin:container
              |""".stripMargin
-        assertLocalUsersFromConfig(config, withUnknownUsers(Set(User.Id("admin"))))
+        assertLocalUsersFromSettings(settings, withUnknownUsers(Set(User.Id("admin"))))
       }
       "users section defined with wildcard patterns" in {
-        val config =
+        val settings =
           s"""
              |readonlyrest:
              |  access_control_rules:
@@ -388,7 +391,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |    groups: ["group5", "group6"]
              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
              |""".stripMargin
-        assertLocalUsersFromConfig(config, expected = withUnknownUsers(Set(
+        assertLocalUsersFromSettings(settings, expected = withUnknownUsers(Set(
           User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
         )))
       }
@@ -399,21 +402,21 @@ class LocalUsersTest extends AnyWordSpec with Inside {
 
   private def allUsersResolved(users: Set[User.Id]) = LocalUsers(users, unknownUsers = false)
 
-  private def assertLocalUsersFromConfig(config: String, expected: LocalUsers) = {
-    val rorConfig = rorConfigFromUnsafe(config)
-    inside(createCore(rorConfig)) {
+  private def assertLocalUsersFromSettings(settingsString: String, expected: LocalUsers) = {
+    val settings = rorSettingsFromUnsafe(settingsString)
+    inside(createCore(settings)) {
       case Right(core) =>
-        core.rorConfig.localUsers should be(expected)
+        core.dependencies.localUsers should be(expected)
     }
   }
 
-  private def createCore(config: RawRorConfig,
+  private def createCore(settings: RawRorSettings,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider,
                          clientsFactory: HttpClientsFactory = MockHttpClientsFactory) = {
     factory
       .createCoreFrom(
-        config,
-        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        settings,
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
         ldapConnectionPoolProvider,
         NoOpMocksProvider
@@ -422,8 +425,9 @@ class LocalUsersTest extends AnyWordSpec with Inside {
   }
 
   private val factory = {
-    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
-    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
+    implicit val systemContext: SystemContext = SystemContext.default
+    val esEnv = EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
+    new RawRorSettingsBasedCoreFactory(esEnv)
   }
 
 }

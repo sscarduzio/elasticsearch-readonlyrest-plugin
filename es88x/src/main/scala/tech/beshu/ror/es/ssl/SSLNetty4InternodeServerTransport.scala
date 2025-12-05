@@ -29,7 +29,8 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.ConnectionProfile
 import org.elasticsearch.transport.netty4.{Netty4Transport, SharedGroupFactory}
-import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
+import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
+import tech.beshu.ror.settings.es.SslSettings.InternodeSslSettings
 import tech.beshu.ror.utils.SSLCertHelper
 import tech.beshu.ror.utils.SSLCertHelper.HostAndPort
 
@@ -42,14 +43,13 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                                         circuitBreakerService: CircuitBreakerService,
                                         namedWriteableRegistry: NamedWriteableRegistry,
                                         networkService: NetworkService,
-                                        ssl: InternodeSslConfiguration,
-                                        sharedGroupFactory: SharedGroupFactory,
-                                        fipsCompliant: Boolean)
+                                        ssl: InternodeSslSettings,
+                                        sharedGroupFactory: SharedGroupFactory)
   extends Netty4Transport(settings, TransportVersion.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService, sharedGroupFactory)
     with Logging {
 
-  private val clientSslContext = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
-  private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false)
+  private val clientSslContext = SSLCertHelper.prepareClientSSLContext(ssl)
+  private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, clientAuthenticationEnabled = false)
 
   override def getClientChannelInitializer(node: DiscoveryNode,
                                            connectionProfile: ConnectionProfile): ChannelHandler = new ClientChannelInitializer {
@@ -68,7 +68,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
             channelHandlerContext = ctx,
             serverName = Option(node.getAttributes.get("server_name")).map(new SNIHostName(_)),
             enableHostnameVerification = ssl.hostnameVerificationEnabled,
-            fipsCompliant = fipsCompliant
+            fipsCompliant = ssl.fipsMode.isSslFipsCompliant
           )
           ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
           super.connect(ctx, remoteAddress, localAddress, promise)

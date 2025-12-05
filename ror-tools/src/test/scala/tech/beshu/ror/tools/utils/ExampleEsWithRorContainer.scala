@@ -26,7 +26,6 @@ import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
-import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.containers.windows.{WindowsEsDirectoryManager, WindowsEsSetup}
@@ -67,7 +66,7 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
     val nodeName = s"${clusterName}_1"
     val attributes = ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
       rorConfigReloading = Enabled.No,
-      rorConfigFileName = "/basic/readonlyrest.yml",
+      rorSettingsFileName = "/basic/readonlyrest.yml",
     )
     createCustomES(
       nodeSettings = EsNodeSettings(
@@ -91,7 +90,7 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
                              startedClusterDependencies: StartedClusterDependencies) = {
     val project = RorPluginGradleProject.fromSystemProperty
     val pluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
-    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
+    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorSettingsFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
       source = rawRorConfigFile.toScala,

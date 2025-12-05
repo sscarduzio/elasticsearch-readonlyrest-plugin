@@ -48,7 +48,6 @@ class RoleIndexSearcherWrapper(indexService: IndexService) extends IndexSearcher
             }
             .map(r => (r, r))
         case None =>
-          logger.debug(s"FLS: ${constants.FIELDS_TRANSIENT} not found in threadContext")
           Success((reader, reader))
       }
     }

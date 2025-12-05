@@ -42,7 +42,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     SingletonLdapContainers.ldap2
   )
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     s"""readonlyrest:
        |
        |  access_control_rules:

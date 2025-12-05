@@ -57,8 +57,18 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.CoreRefreshSettings
+import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSource}
+import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.set.CovariantSet
@@ -400,5 +410,59 @@ trait LogsShowInstances
   implicit def accessShow[T: Show]: Show[AccessRequirement[T]] = Show.show {
     case MustBePresent(value) => value.show
     case MustBeAbsent(value) => s"~${value.show}"
+  }
+
+  implicit val coreRefreshSettingsShow: Show[CoreRefreshSettings] = Show.show {
+    case CoreRefreshSettings.Disabled => "0 sec"
+    case CoreRefreshSettings.Enabled(interval) => interval.value.toString()
+  }
+
+  implicit val esConfigFileShow: Show[EsConfigFile] = Show.show(_.file.show)
+
+  implicit val loadingDelayShow: Show[LoadingDelay] = Show[FiniteDuration].contramap(_.value.value)
+
+  implicit val loadingAttemptsCountShow: Show[LoadingAttemptsCount] = Show[Int].contramap(_.value.value)
+
+  implicit val loadingAttemptsIntervalShow: Show[LoadingAttemptsInterval] = Show[FiniteDuration].contramap(_.value.value)
+
+  implicit val testRorSettingsShow: Show[TestRorSettings] = Show.show(_.rawSettings.rawYaml)
+
+  implicit val mainRorSettingsShow: Show[MainRorSettings] = Show.show(_.rawSettings.rawYaml)
+
+  implicit val esConfigBasedRorSettingsLoadingErrorShow: Show[YamlFileBasedSettingsLoader.LoadingError] = Show.show {
+    case YamlFileBasedSettingsLoader.LoadingError.FileNotFound(file) =>
+      s"Cannot find settings file: [${file.show}]"
+    case YamlFileBasedSettingsLoader.LoadingError.MalformedSettings(file, message) =>
+      s"Settings file is malformed: [${file.show}], ${message.show}"
+  }
+
+  implicit val parsingRorSettingsErrorShow: Show[ParsingRorSettingsError] = Show.show {
+    case NoRorSection => "Cannot find any 'readonlyrest' section in settings"
+    case MoreThanOneRorSection => "Only one 'readonlyrest' section is required"
+    case InvalidContent(ex) => s"Settings content is malformed. Details: ${ex.getMessage.show}"
+  }
+
+  implicit val indexSettingsSourceLoadingErrorShow: Show[IndexSettingsSource.LoadingError] = Show.show {
+    case IndexSettingsSource.LoadingError.IndexNotFound => "Cannot find ReadonlyREST settings index"
+    case IndexSettingsSource.LoadingError.DocumentNotFound => "Cannot found document with ReadonlyREST settings"
+  }
+
+  implicit val indexSettingsSourceSavingErrorShow: Show[IndexSettingsSource.SavingError] = Show.show {
+    case IndexSettingsSource.SavingError.CannotSaveSettings => "Cannot save settings in the ReadonlyREST index"
+  }
+
+  implicit val fileSettingsSourceLoadingErrorShow: Show[FileSettingsSource.LoadingError] = Show.show {
+    case FileSettingsSource.LoadingError.FileNotExist(file) => s"Cannot find settings file: ${file.pathAsString}"
+  }
+
+  implicit val startingFailureShow: Show[StartingFailure] = Show.show(_.message)
+
+  implicit def loadingSettingsErrorShow[ERROR: Show]: Show[LoadingSettingsError[ERROR]] = Show.show {
+    case LoadingSettingsError.SettingsMalformed(cause) => s"ROR settings are malformed: $cause"
+    case LoadingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
+  }
+
+  implicit def savingSettingsErrorShow[ERROR: Show]: Show[SavingSettingsError[ERROR]] = Show.show {
+    case SavingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
   }
 }

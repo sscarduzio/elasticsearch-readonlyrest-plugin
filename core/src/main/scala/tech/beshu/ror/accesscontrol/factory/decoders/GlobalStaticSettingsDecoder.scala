@@ -17,11 +17,11 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.optionalDecoder
 
@@ -29,7 +29,7 @@ object GlobalStaticSettingsDecoder {
 
   private val globalSettingsSectionName = "global_settings"
 
-  def instance(rorConfigurationIndex: RorConfigurationIndex): Decoder[GlobalSettings] = {
+  def instance(settingsIndex: RorSettingsIndex): Decoder[GlobalSettings] = {
     for {
       showBasicAuthPrompt <- decoderFor[Boolean]("prompt_for_basic_auth")
       forbiddenRequestMessage <- decoderFor[String]("response_if_req_forbidden")
@@ -40,7 +40,7 @@ object GlobalStaticSettingsDecoder {
       showBasicAuthPrompt.getOrElse(false),
       forbiddenRequestMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
       flsEngine.getOrElse(GlobalSettings.FlsEngine.ESWithLucene),
-      rorConfigurationIndex,
+      settingsIndex,
       userIdCaseSensitivity.getOrElse(CaseSensitivity.Enabled),
       usersDefinitionDuplicateUsernamesValidationEnabled.getOrElse(true)
     )

@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 class RRAdminActionType extends ActionType[RRAdminResponse](RRAdminActionType.name)
 
 object RRAdminActionType {
-  val name: String = RorAction.RorOldConfigAction.value
+  val name: String = RorAction.RorRefreshSettingsAction.value
   val instance = new RRAdminActionType()
   case object RRAdminActionCannotBeTransported extends Exception
   def exceptionReader[A]: Writeable.Reader[A] =

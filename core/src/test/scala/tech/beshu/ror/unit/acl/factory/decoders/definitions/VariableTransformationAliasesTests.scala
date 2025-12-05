@@ -19,8 +19,8 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function.{FunctionChain, ReplaceFirst}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionName
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.VariableTransformationAliasesDefinitionsDecoder
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
@@ -28,7 +28,7 @@ class VariableTransformationAliasesTests
   extends BaseDecoderTest(VariableTransformationAliasesDefinitionsDecoder.create(SupportedVariablesFunctions.default)) {
 
   "A variable transformation aliases definition" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one alias is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -99,7 +99,7 @@ class VariableTransformationAliasesTests
       )
     }
   }
-  "not be able to be loaded from config" when {
+  "not be able to be loaded from settings" when {
     "aliases section is empty" in {
       assertDecodingFailure(
         yaml =

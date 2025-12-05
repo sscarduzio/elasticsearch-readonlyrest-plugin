@@ -64,7 +64,6 @@ dependencies {
     api group: 'io.circe',                      name: 'circe-parser_3',                      version: '0.14.6'
     api group: 'io.circe',                      name: 'circe-refined_3',                     version: '0.14.6'
     api group: 'commons-codec',                 name: 'commons-codec',                       version: '1.15'
-    api group: 'org.typelevel',                 name: 'cats-free_3',                         version: '2.12.0'
     api group: 'com.beachape',                  name: 'enumeratum_3',                        version: '1.7.5'
     api group: 'com.hrakaroo',                  name: 'glob',                                version: '0.9.0'
     api group: 'com.comcast',                   name: 'ip4s-core_3',                         version: '2.0.4'

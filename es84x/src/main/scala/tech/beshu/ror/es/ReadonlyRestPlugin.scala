@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es
 
+import cats.implicits.*
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
@@ -37,8 +38,8 @@ import org.elasticsearch.http.HttpServerTransport
 import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.IgnoredFieldMapper
 import org.elasticsearch.indices.breaker.CircuitBreakerService
-import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins.*
+import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
@@ -50,27 +51,26 @@ import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
-import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
-import tech.beshu.ror.constants
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
 import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
 import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
-import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
-import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
-import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
-import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
+import tech.beshu.ror.es.actions.rrtestsettings.{RRTestSettingsActionType, TransportRRTestSettingsAction}
+import tech.beshu.ror.es.actions.rrtestsettings.rest.RestRRTestSettingsAction
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsEnvProvider, EsPatchVerifier, RemoteClusterServiceSupplier}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
+import tech.beshu.ror.{SystemContext, constants}
 
 import java.nio.file.Path
 import java.util
@@ -99,20 +99,20 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     Netty4Utils.setAvailableProcessors(EsExecutors.NODE_PROCESSORS_SETTING.get(s))
   }
 
-  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
+  private implicit val systemContext: SystemContext = SystemContext.default
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
-  private val rorEsConfig = ReadonlyRestEsConfig
-    .load(EsEnvProvider.create(environment))
-    .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
+  private val esConfigBasedRorSettings = EsConfigBasedRorSettings
+    .from(EsEnvProvider.create(environment))
+    .map(_.fold(e => throw new ElasticsearchException(e.show), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener
   private val groupFactory = new SetOnce[SharedGroupFactory]
 
   private var ilaf: IndexLevelActionFilter = _
 
-  SecurityProviderConfiguratorForFips.configureIfRequired(rorEsConfig.fipsConfig)
+  esConfigBasedRorSettings.ssl.foreach(SecurityProviderConfiguratorForFips.configureIfRequired)
 
   override def createComponents(client: Client,
                                 clusterService: ClusterService,
@@ -136,7 +136,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         new RemoteClusterServiceSupplier(repositoriesServiceSupplier),
         () => Some(repositoriesServiceSupplier.get()),
         esInitListener,
-        rorEsConfig
+        esConfigBasedRorSettings
       )
     }
     List.empty[AnyRef].asJava
@@ -169,14 +169,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                  dispatcher: HttpServerTransport.Dispatcher,
                                  clusterSettings: ClusterSettings,
                                  tracer: Tracer): util.Map[String, Supplier[HttpServerTransport]] = {
-    rorEsConfig
-      .sslConfig
-      .externalSsl
-      .map(ssl =>
+    esConfigBasedRorSettings
+      .ssl.flatMap(_.externalSsl)
+      .map { ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings), tracer, rorEsConfig.fipsConfig.isSslFipsCompliant)
+          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings), tracer)
         }
-      )
+      }
       .toMap
       .asJava
   }
@@ -187,14 +186,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                              circuitBreakerService: CircuitBreakerService,
                              namedWriteableRegistry: NamedWriteableRegistry,
                              networkService: NetworkService): util.Map[String, Supplier[Transport]] = {
-    rorEsConfig
-      .sslConfig
-      .interNodeSsl
-      .map(ssl =>
+    esConfigBasedRorSettings
+      .ssl.flatMap(_.internodeSsl)
+      .map { ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, ssl, getSharedGroupFactory(settings), rorEsConfig.fipsConfig.isSslFipsCompliant)
+          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, ssl, getSharedGroupFactory(settings))
         }
-      )
+      }
       .toMap
       .asJava
   }
@@ -212,8 +210,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
       new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
-      new ActionHandler(RRTestConfigActionType.instance, classOf[TransportRRTestConfigAction]),
-      new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
+      new ActionHandler(RRTestSettingsActionType.instance, classOf[TransportRRTestSettingsAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
       // wrappers
@@ -234,8 +231,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),
-      new RestRRTestConfigAction(),
-      new RestRRConfigAction(nodesInCluster),
+      new RestRRTestSettingsAction(),
       new RestRRUserMetadataAction(),
       new RestRRAuditEventAction()
     ).asJava

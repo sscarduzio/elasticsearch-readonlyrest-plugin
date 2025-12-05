@@ -55,7 +55,7 @@ class ImpersonationSuite
     super.beforeAll()
     loadTestSettings()
     rorApiManager
-      .updateRorInIndexConfig( // In a test, the main engine config should be different from the test config to prevent accidental use of the main engine
+      .updateRorInIndexSettings( // In a test, the main engine config should be different from the test config to prevent accidental use of the main engine
         s"""
            |readonlyrest:
            |  access_control_rules:
@@ -555,7 +555,7 @@ class ImpersonationSuite
     }
     "test engine is not configured" in {
       impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
-        rorApiManager.invalidateRorTestConfig().forceOkStatus()
+        rorApiManager.invalidateRorTestSettings().forceOkStatus()
         loadTestSettings()
 
         rorApiManager
@@ -593,7 +593,7 @@ class ImpersonationSuite
         val result1 = searchManager.search("test3_index")
         result1 should have statusCode 200
 
-        rorApiManager.invalidateRorTestConfig().forceOkStatus()
+        rorApiManager.invalidateRorTestSettings().forceOkStatus()
 
         val result2 = searchManager.search("test3_index")
         result2 should have statusCode 403
@@ -699,7 +699,7 @@ class ImpersonationSuite
 
   private def loadTestSettings(): Unit = {
     rorApiManager
-      .updateRorTestConfig(resolvedRorConfigFile.contentAsString)
+      .updateRorTestSettings(resolvedRorConfigFile.contentAsString)
       .forceOkStatus()
   }
 

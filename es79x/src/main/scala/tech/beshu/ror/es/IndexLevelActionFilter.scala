@@ -28,6 +28,7 @@ import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
@@ -35,12 +36,12 @@ import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.configuration.{EnvironmentConfig, ReadonlyRestEsConfig}
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
-import tech.beshu.ror.es.services.{EsIndexJsonContentService, EsServerBasedRorClusterService, NodeClientBasedAuditSinkService, RestClientAuditSinkService}
+import tech.beshu.ror.es.services.{EsIndexDocumentManager, EsServerBasedRorClusterService, NodeClientBasedAuditSinkService, RestClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.implicits.*
@@ -60,20 +61,20 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
                              esInitListener: EsInitListener,
-                             rorEsConfig: ReadonlyRestEsConfig)
-                            (implicit environmentConfig: EnvironmentConfig)
+                             esConfigBasedRorSettings: EsConfigBasedRorSettings)
+                            (implicit systemContext: SystemContext)
   extends ActionFilter with Logging {
 
-  private implicit val generator: UniqueIdentifierGenerator = environmentConfig.uniqueIdentifierGenerator
+  private implicit val generator: UniqueIdentifierGenerator = systemContext.uniqueIdentifierGenerator
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
-    new RorNotAvailableRequestHandler(rorEsConfig.bootConfig)
+    new RorNotAvailableRequestHandler(esConfigBasedRorSettings.boot)
 
   private val esEnv = EsEnvProvider.create(env)
   private val nodeName = esEnv.esNodeSettings.nodeName
 
   private val ror = ReadonlyRest.create(
-    new EsIndexJsonContentService(client),
+    new EsIndexDocumentManager(client),
     auditSinkServiceCreator,
     esEnv,
   )
@@ -110,7 +111,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
             client,
             threadPool,
             new XContentJsonParserFactory(xContentRegistry)
-          )(using environmentConfig.clock)
+          )(using systemContext.clock)
         case remote: AuditCluster.RemoteAuditCluster =>
           RestClientAuditSinkService.create(remote)
       }
@@ -224,7 +225,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- ror.start()
+      result <- ror.start(esConfigBasedRorSettings)
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>

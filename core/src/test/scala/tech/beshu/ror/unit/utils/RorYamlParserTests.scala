@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.unit.utils
 
-import io.circe.{Json, ParsingFailure}
+import io.circe.Json
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import squants.information.{Bytes, Kilobytes}
 import tech.beshu.ror.utils.TestsUtils.*
-import tech.beshu.ror.utils.yaml.RorYamlParser
+import tech.beshu.ror.utils.yaml.YamlParser
 
 class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
   "Yaml parser" should {
     "return parsing failure error" when {
-      "readonlyrest config has duplicated 'readonlyrest' section" in {
-        val result = rorConfigFrom(
+      "ROR settings has duplicated 'readonlyrest' section" in {
+        val result = rorSettingFrom(
           """
             |readonlyrest:
             |
@@ -56,8 +56,8 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             failure.message should be("Duplicated key: 'readonlyrest'")
         }
       }
-      "readonlyrest config has duplicated 'access_control_rules' section" in {
-        val result = rorConfigFrom(
+      "ROR settings has duplicated 'access_control_rules' section" in {
+        val result = rorSettingFrom(
           """
             |readonlyrest:
             |
@@ -82,8 +82,8 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             failure.message should be("Duplicated key: 'access_control_rules'")
         }
       }
-      "readonlyrest config has duplicated definition" in {
-        val result = rorConfigFrom(
+      "ROR settings has duplicated definition" in {
+        val result = rorSettingFrom(
           """
             |readonlyrest:
             |
@@ -112,7 +112,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
         }
       }
       "block has duplicated rule" in {
-        val result = rorConfigFrom(
+        val result = rorSettingFrom(
           """
             |readonlyrest:
             |
@@ -132,7 +132,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
         }
       }
     }
-    "return valid ror config" when {
+    "return valid ror settings" when {
       "none of the keys is duplicated within its scope" in {
         val rawConfig =
           """
@@ -160,10 +160,10 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             |
             |""".stripMargin
 
-        val result = rorConfigFrom(rawConfig)
+        val result = rorSettingFrom(rawConfig)
 
         inside(result) {
-          case Right(config) => config.raw shouldBe rawConfig
+          case Right(settings) => settings.rawYaml shouldBe rawConfig
         }
       }
     }
@@ -196,7 +196,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
           |      auth_key: "admin:container"
           |""".stripMargin
 
-      val result = new RorYamlParser(Bytes(10)).parse(yamlContent)
+      val result = new YamlParser(Some(Bytes(10))).parse(yamlContent)
       inside(result) {
         case Left(parsingFailure) =>
           parsingFailure.message should be("The incoming YAML document exceeds the limit: 10 code points.")
@@ -205,5 +205,5 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
   }
 
   private def parseYaml(yamlContent: String): Json =
-    new RorYamlParser(Kilobytes(100)).parse(yamlContent).toTry.get
+    new YamlParser(Some(Kilobytes(100))).parse(yamlContent).toTry.get
 }

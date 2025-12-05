@@ -69,17 +69,17 @@ trait BaseAdminApiSuite
   override lazy val clusterContainers = NonEmptyList.of(rorWithIndexConfig, rorWithNoIndexConfig)
 
   "An admin REST API" should {
-    "provide a method for force refresh ROR config" which {
+    "provide a method for force refresh ROR settings" which {
       "is going to reload ROR core" when {
         "in-index config is newer than current one" in {
           rorWithNoIndexConfigAdminActionManager
-            .insertInIndexConfigDirectlyToRorIndex(
-              rorConfigIndex = readonlyrestIndexName,
-              config = getResourceContent("/admin_api/readonlyrest_index.yml")
+            .insertInIndexSettingsDirectlyToRorIndex(
+              rorIndex = readonlyrestIndexName,
+              settings = getResourceContent("/admin_api/readonlyrest_index.yml")
             )
             .force()
 
-          val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
+          val result = rorWithNoIndexConfigAdminActionManager.reloadRorSettings()
           result should have statusCode 200
           result.responseJson should be(ujson.read(
             """
@@ -94,13 +94,13 @@ trait BaseAdminApiSuite
       "return info that config is up to date" when {
         "in-index config is the same as current one" in {
           rorWithNoIndexConfigAdminActionManager
-            .insertInIndexConfigDirectlyToRorIndex(
-              rorConfigIndex = readonlyrestIndexName,
-              config = getResourceContent("/admin_api/readonlyrest.yml")
+            .insertInIndexSettingsDirectlyToRorIndex(
+              rorIndex = readonlyrestIndexName,
+              settings = getResourceContent("/admin_api/readonlyrest.yml")
             )
             .force()
 
-          val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
+          val result = rorWithNoIndexConfigAdminActionManager.reloadRorSettings()
           result should have statusCode 200
           result.responseJson should be(ujson.read(
             """
@@ -114,28 +114,28 @@ trait BaseAdminApiSuite
       }
       "return info that in-index config does not exist" when {
         "there is no in-index settings configured yet" in {
-          val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
+          val result = rorWithNoIndexConfigAdminActionManager.reloadRorSettings()
           result should have statusCode 200
           result.responseJson should be(ujson.read(
             s"""
                |{
                |  "status": "ko",
-               |  "message": "Cannot find settings index"
+               |  "message": "Cannot find ReadonlyREST settings index"
                |}
                |""".stripMargin
           ))
         }
       }
-      "return info that cannot reload config" when {
+      "return info that cannot reload settings" when {
         "config cannot be reloaded (eg. because LDAP is not achievable)" in {
           rorWithNoIndexConfigAdminActionManager
-            .insertInIndexConfigDirectlyToRorIndex(
-              rorConfigIndex = readonlyrestIndexName,
-              config = getResourceContent("/admin_api/readonlyrest_with_ldap.yml")
+            .insertInIndexSettingsDirectlyToRorIndex(
+              rorIndex = readonlyrestIndexName,
+              settings = getResourceContent("/admin_api/readonlyrest_with_ldap.yml")
             )
             .force()
 
-          val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
+          val result = rorWithNoIndexConfigAdminActionManager.reloadRorSettings()
           result should have statusCode 200
           result.responseJson should be(ujson.read(
             """
@@ -148,11 +148,11 @@ trait BaseAdminApiSuite
         }
       }
     }
-    "provide a method for update in-index config" which {
-      "is going to reload ROR core and store new in-index config" when {
+    "provide a method for update in-index settings" which {
+      "is going to reload ROR core and store new in-index settings" when {
         "configuration is new and correct" in {
           def forceReload(rorSettingsResource: String) = {
-            val result = ror1WithIndexConfigAdminActionManager.updateRorInIndexConfig(getResourceContent(rorSettingsResource))
+            val result = ror1WithIndexConfigAdminActionManager.updateRorInIndexSettings(getResourceContent(rorSettingsResource))
             result should have statusCode 200
             result.responseJson should be(ujson.read(
               """
@@ -214,7 +214,7 @@ trait BaseAdminApiSuite
       "return info that config is up to date" when {
         "in-index config is the same as provided one" in {
           val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+            .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_index.yml"))
           assertSettingsInIndex(getResourceContent("/admin_api/readonlyrest_index.yml"))
 
           result should have statusCode 200
@@ -231,7 +231,7 @@ trait BaseAdminApiSuite
       "return info that config is malformed" when {
         "invalid YAML is provided" in {
           val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
+            .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
 
           result should have statusCode 200
           result.responseJson("status").str should be("ko")
@@ -241,7 +241,7 @@ trait BaseAdminApiSuite
       "return info that request is malformed" when {
         "settings key missing" in {
           val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfigRaw(rawRequestBody = "{}")
+            .updateRorInIndexSettingsRaw(rawRequestBody = "{}")
 
           result should have statusCode 400
           result.responseJson should be(ujson.read(
@@ -257,7 +257,7 @@ trait BaseAdminApiSuite
       "return info that cannot reload" when {
         "ROR core cannot be reloaded" in {
           val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
+            .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -271,11 +271,11 @@ trait BaseAdminApiSuite
         }
       }
     }
-    "provide a method for fetching current in-index config" which {
-      "return current config" when {
+    "provide a method for fetching current in-index settings" which {
+      "return current settings" when {
         "there is one in index" in {
           val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
+            .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -289,7 +289,7 @@ trait BaseAdminApiSuite
 
           assertSettingsInIndex(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
 
-          val getIndexConfigResult = ror1WithIndexConfigAdminActionManager.getRorInIndexConfig
+          val getIndexConfigResult = ror1WithIndexConfigAdminActionManager.getRorInIndexSettings
           result should have statusCode 200
           getIndexConfigResult.responseJson("status").str should be("ok")
           getIndexConfigResult.responseJson("message").str should be {
@@ -297,13 +297,13 @@ trait BaseAdminApiSuite
           }
         }
       }
-      "return info that there is no in-index config" when {
+      "return info that there is no in-index settings" when {
         "there is no index" in {
           assertNoRorConfigInIndex(rorWithNoIndexConfigAdminActionManager)
         }
         "there is no config document in index" in {
           val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
+            .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -324,9 +324,9 @@ trait BaseAdminApiSuite
         }
       }
     }
-    "provide a method for fetching current file config" which {
-      "return current config" in {
-        val result = ror1WithIndexConfigAdminActionManager.getRorFileConfig
+    "provide a method for fetching current file settings" which {
+      "return current settings" in {
+        val result = ror1WithIndexConfigAdminActionManager.getRorFileSettings
         result should have statusCode 200
         result.responseJson("status").str should be("ok")
         result.responseJson("message").str should be(getResourceContent("/admin_api/readonlyrest.yml"))
@@ -495,7 +495,7 @@ trait BaseAdminApiSuite
 
             eventually { // await until all nodes load config
               rorClients.foreach { rorApiManager =>
-                val response = rorApiManager.currentRorTestConfig
+                val response = rorApiManager.currentRorTestSettings
                 response should have statusCode 200
                 response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
               }
@@ -608,7 +608,7 @@ trait BaseAdminApiSuite
 
         eventually {
           rorClients.foreach { rorApiManager =>
-            val response = rorApiManager.currentRorTestConfig
+            val response = rorApiManager.currentRorTestSettings
             response should have statusCode 200
             response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
             response.responseJson("message").str should be("ROR Test settings are invalidated")
@@ -739,7 +739,7 @@ trait BaseAdminApiSuite
 
           val timestamps =
             rorClients
-              .map(_.currentRorTestConfig.responseJson("valid_to").str)
+              .map(_.currentRorTestSettings.responseJson("valid_to").str)
               .map(Instant.parse).toSet
 
           timestamps.size should be(1)
@@ -758,7 +758,7 @@ trait BaseAdminApiSuite
 
           val timestampsAfterReload =
             rorClients
-              .map(_.currentRorTestConfig.responseJson("valid_to").str)
+              .map(_.currentRorTestSettings.responseJson("valid_to").str)
               .map(Instant.parse)
               .toSet
           timestampsAfterReload.size should be(1)
@@ -773,7 +773,7 @@ trait BaseAdminApiSuite
 
           rorClients.foreach { rorApiManager =>
             val result = rorApiManager
-              .updateRorTestConfigRaw(rawRequestBody = requestBody)
+              .updateRorTestSettingsRaw(rawRequestBody = requestBody)
 
             result should have statusCode 400
             result.responseJson should be(ujson.read(
@@ -790,7 +790,7 @@ trait BaseAdminApiSuite
           val requestBody = s"""{"ttl": "30 m"}"""
           rorClients.foreach { rorApiManager =>
             val result = rorApiManager
-              .updateRorTestConfigRaw(rawRequestBody = requestBody)
+              .updateRorTestSettingsRaw(rawRequestBody = requestBody)
 
             result should have statusCode 400
             result.responseJson should be(ujson.read(
@@ -809,7 +809,7 @@ trait BaseAdminApiSuite
 
           rorClients.foreach { rorApiManager =>
             val result = rorApiManager
-              .updateRorTestConfigRaw(rawRequestBody = requestBody)
+              .updateRorTestSettingsRaw(rawRequestBody = requestBody)
 
             result should have statusCode 400
             result.responseJson should be(ujson.read(
@@ -827,7 +827,7 @@ trait BaseAdminApiSuite
         "invalid YAML is provided" in {
           rorClients.foreach { rorApiManager =>
             val result = rorApiManager
-              .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
+              .updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
 
             result should have statusCode 200
             result.responseJson("status").str should be("FAILED")
@@ -839,7 +839,7 @@ trait BaseAdminApiSuite
         "ROR core cannot be reloaded" in {
           rorClients.foreach { rorApiManager =>
             val result = rorApiManager
-              .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
+              .updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
 
             result should have statusCode 200
             result.responseJson should be(ujson.read(
@@ -931,8 +931,8 @@ trait BaseAdminApiSuite
       }
     }
     "main ROR config and test ROR config coexistence check" when {
-      "get main ROR index config" should {
-        "return no index config" when {
+      "get main ROR index settings" should {
+        "return no index settings" when {
           "no main and test config in the index" in {
             adminIndexManager.removeIndex(readonlyrestIndexName)
             rorClients.foreach { rorApiManager =>
@@ -970,7 +970,7 @@ trait BaseAdminApiSuite
             }
           }
         }
-        "return index config" when {
+        "return index settings" when {
           "only main config in the index" in {
             def forceReloadMainSettings(config: String) = {
               updateRorMainConfig(rorClients.head, config)
@@ -1031,7 +1031,7 @@ trait BaseAdminApiSuite
   override protected def beforeEach(): Unit = {
     // back to configuration loaded on container start
     rorWithNoIndexConfigAdminActionManager
-      .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest.yml"))
+      .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest.yml"))
       .force()
 
     new IndexManager(ror2_1Node.adminClient, esVersionUsed).removeIndex(readonlyrestIndexName)
@@ -1039,7 +1039,7 @@ trait BaseAdminApiSuite
     adminIndexManager.removeIndex(readonlyrestIndexName)
 
     ror1WithIndexConfigAdminActionManager
-      .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+      .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_index.yml"))
       .force()
 
     eventually { // await until all nodes invalidate the config
@@ -1095,27 +1095,27 @@ trait BaseAdminApiSuite
   }
 
   private def assertNoRorConfigInIndex(rorApiManager: RorApiManager) = {
-    val result = rorApiManager.getRorInIndexConfig
+    val result = rorApiManager.getRorInIndexSettings
     result should have statusCode 200
     result.responseJson should be(ujson.read(
       """
         |{
         |  "status": "empty",
-        |  "message": "Cannot find settings index"
+        |  "message": "Cannot find ReadonlyREST settings index"
         |}
         |""".stripMargin
     ))
   }
 
   private def assertInIndexConfigPresent(rorApiManager: RorApiManager, config: String) = {
-    val getIndexConfigResult = rorApiManager.getRorInIndexConfig
+    val getIndexConfigResult = rorApiManager.getRorInIndexSettings
     getIndexConfigResult should have statusCode 200
     getIndexConfigResult.responseJson("status").str should be("ok")
     getIndexConfigResult.responseJson("message").str should be(config)
   }
 
   private def assertTestSettingsNotConfigured(rorApiManager: RorApiManager) = {
-    val response = rorApiManager.currentRorTestConfig
+    val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
     response.responseJson should be(ujson.read(
       """
@@ -1131,7 +1131,7 @@ trait BaseAdminApiSuite
                                         testConfig: String,
                                         expectedTtl: String,
                                         expectedWarningsJson: Value = ujson.read("[]")) = {
-    val response = rorApiManager.currentRorTestConfig
+    val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
     response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
     response.responseJson("settings").str should be(testConfig)
@@ -1143,7 +1143,7 @@ trait BaseAdminApiSuite
   private def assertTestSettingsInvalidated(rorApiManager: RorApiManager,
                                             testConfig: String,
                                             expectedTtl: String) = {
-    val response = rorApiManager.currentRorTestConfig
+    val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
     response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
     response.responseJson("message").str should be("ROR Test settings are invalidated")
@@ -1155,7 +1155,7 @@ trait BaseAdminApiSuite
                                   testConfig: String,
                                   configTtl: FiniteDuration,
                                   expectedWarningsJson: Value = ujson.read("[]")) = {
-    val response = rorApiManager.updateRorTestConfig(testConfig, configTtl)
+    val response = rorApiManager.updateRorTestSettings(testConfig, configTtl)
     response should have statusCode 200
     response.responseJson("status").str should be("OK")
     response.responseJson("message").str should be("updated settings")
@@ -1164,7 +1164,7 @@ trait BaseAdminApiSuite
   }
 
   private def updateRorMainConfig(rorApiManager: RorApiManager, config: String) = {
-    val result = rorApiManager.updateRorInIndexConfig(config)
+    val result = rorApiManager.updateRorInIndexSettings(config)
     result should have statusCode 200
     result.responseJson should be(ujson.read(
       """
@@ -1177,7 +1177,7 @@ trait BaseAdminApiSuite
   }
 
   private def invalidateRorTestConfig(rorApiManager: RorApiManager) = {
-    val response = rorApiManager.invalidateRorTestConfig()
+    val response = rorApiManager.invalidateRorTestSettings()
     response should have statusCode 200
     response.responseJson should be(ujson.read(
       """
@@ -1257,7 +1257,6 @@ trait BaseAdminApiSuite
          |}""".stripMargin
     ))
   }
-
 
   private def operationNotAllowed(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)

@@ -19,8 +19,8 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyPBKDF2WithHmacSHA512Rule
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
@@ -28,7 +28,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
   extends BaseRuleSettingsDecoderTest[AuthKeyPBKDF2WithHmacSHA512Rule] {
 
   "An AuthKeyPBKDF2WithHmacSHA512Rule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "PBKDF2 auth key is defined (all hashed syntax)" in {
         assertDecodingSuccess(
           yaml =
@@ -68,7 +68,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no PBKDF2 auth key is defined" in {
         assertDecodingFailure(
           yaml =

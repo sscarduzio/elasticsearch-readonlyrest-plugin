@@ -31,8 +31,8 @@ import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode, NodeCredentials, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{AuditingSettingsCreationError, Reason}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{AuditingSettingsCreationError, Reason}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
@@ -40,7 +40,7 @@ import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
-import tech.beshu.ror.es.EsVersion
+import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
@@ -50,40 +50,41 @@ import scala.util.{Failure, Success, Try}
 
 object AuditingSettingsDecoder extends Logging {
 
-  def instance(esVersion: EsVersion): Decoder[Option[AuditingTool.AuditSettings]] = {
+  def instance(esEnv: EsEnv): Decoder[Option[AuditingTool.AuditSettings]] = {
     for {
-      auditSettings <- auditSettingsDecoder(esVersion)
-      deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance
+      auditSettings <- auditSettingsDecoder(esEnv)
+      deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance(esEnv)
     } yield auditSettings.orElse(deprecatedAuditSettings)
   }
 
-  private def auditSettingsDecoder(esVersion: EsVersion): Decoder[Option[AuditingTool.AuditSettings]] = Decoder.instance { c =>
+  private def auditSettingsDecoder(esEnv: EsEnv): Decoder[Option[AuditingTool.AuditSettings]] = Decoder.instance { c =>
     for {
       isAuditEnabled <- YamlKeyDecoder[Boolean](
-        segments = NonEmptyList.of("audit", "enabled"),
+        path = NonEmptyList.of("audit", "enabled"),
         default = false
       ).apply(c)
       result <- if (isAuditEnabled) {
-        decodeAuditSettings(using esVersion)(c).map(Some.apply)
+        decodeAuditSettings(esEnv)(c).map(Some.apply)
       } else {
         Right(None)
       }
     } yield result
   }
 
-  private def decodeAuditSettings(using EsVersion) = {
-    decodeAuditSettingsWith(using auditSinkConfigSimpleDecoder)
+  private def decodeAuditSettings(esEnv: EsEnv) = {
+    decodeAuditSettingsWith(esEnv.esNodeSettings)(using auditSinkConfigSimpleDecoder(using esEnv.esVersion))
       .handleErrorWith { error =>
         if (error.aclCreationError.isDefined) {
           // the schema was valid, but the config not
           Decoder.failed(error)
         } else {
-          decodeAuditSettingsWith(using auditSinkConfigExtendedDecoder)
+          decodeAuditSettingsWith(esEnv.esNodeSettings)(using auditSinkConfigExtendedDecoder(using esEnv.esVersion))
         }
       }
   }
 
-  private def decodeAuditSettingsWith(using Decoder[AuditSink]) = {
+  private def decodeAuditSettingsWith(esNodeSettings: EsNodeSettings)
+                                     (using Decoder[AuditSink]) = {
     SyncDecoderCreator
       .instance {
         _.downField("audit").downField("outputs").as[Option[List[AuditSink]]]
@@ -92,11 +93,12 @@ object AuditingSettingsDecoder extends Logging {
         case Some(outputs) =>
           NonEmptyList
             .fromList(outputs.distinct)
-            .map(AuditingTool.AuditSettings.apply)
+            .map(AuditingTool.AuditSettings(_, esNodeSettings))
             .toRight(auditSettingsError(s"The audit 'outputs' array cannot be empty"))
         case None =>
           AuditingTool.AuditSettings(
-            NonEmptyList.of(AuditSink.Enabled(EsIndexBasedSink.default))
+            NonEmptyList.of(AuditSink.Enabled(EsIndexBasedSink.default)),
+            esNodeSettings
           ).asRight
       }
       .decoder
@@ -558,7 +560,7 @@ object AuditingSettingsDecoder extends Logging {
   }
 
   private object DeprecatedAuditSettingsDecoder {
-    def instance: Decoder[Option[AuditingTool.AuditSettings]] = Decoder.instance { c =>
+    def instance(esEnv: EsEnv): Decoder[Option[AuditingTool.AuditSettings]] = Decoder.instance { c =>
       whenEnabled(c) {
         for {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)("index_template", fallbackKey = "audit_index_template")
@@ -575,7 +577,8 @@ object AuditingSettingsDecoder extends Logging {
                 auditCluster = remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
               )
             )
-          )
+          ),
+          esEnv.esNodeSettings
         )
       }
     }

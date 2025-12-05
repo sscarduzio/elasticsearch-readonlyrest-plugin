@@ -55,7 +55,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
   private lazy val (pub, secret) = Random.generateRsaRandomKeys
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     s"""
        |readonlyrest:
        |
@@ -373,7 +373,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                   .from(request)
                   .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
                   .withKibanaAccess(KibanaAccess.RO)
-                  .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+                  .withKibanaIndex(KibanaIndexName.default)
                   .withKibanaMetadata(
                     JsonTree.Object(Map(
                       "a" -> JsonTree.Value(JsonValue.StringValue("jwt_value_j0,j3")),

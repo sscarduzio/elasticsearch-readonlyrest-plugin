@@ -18,18 +18,18 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.matchers.should.Matchers.*
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.GeneralReadonlyrestSettingsError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.GeneralReadonlyrestSettingsError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.GlobalStaticSettingsDecoder
 import tech.beshu.ror.accesscontrol.utils.{SyncDecoder, SyncDecoderCreator}
 
 class GlobalSettingsTests
   extends BaseDecoderTest(GlobalSettingsTests.decoder) {
 
-  "A global settings should be able to be loaded from config (in the 'readonlyrest.global_settings' section level)" when {
+  "A global settings should be able to be loaded from settings (in the 'readonlyrest.global_settings' section level)" when {
     "'prompt_for_basic_auth'" should {
       "be decoded with success" when {
         "enabled" in {
@@ -39,8 +39,8 @@ class GlobalSettingsTests
                  | global_settings:
                  |   prompt_for_basic_auth: true
                """.stripMargin,
-            assertion = config =>
-              config.showBasicAuthPrompt should be(true)
+            assertion = settings =>
+              settings.showBasicAuthPrompt should be(true)
           )
         }
         "disabled" in {
@@ -50,15 +50,15 @@ class GlobalSettingsTests
                  | global_settings:
                  |   prompt_for_basic_auth: false
                """.stripMargin,
-            assertion = config =>
-              config.showBasicAuthPrompt should be(false)
+            assertion = settings =>
+              settings.showBasicAuthPrompt should be(false)
           )
         }
         "not defined" in {
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
-            assertion = config =>
-              config.showBasicAuthPrompt should be(false)
+            assertion = settings =>
+              settings.showBasicAuthPrompt should be(false)
           )
         }
       }
@@ -72,15 +72,15 @@ class GlobalSettingsTests
                  | global_settings:
                  |   response_if_req_forbidden: custom_forbidden_response
                """.stripMargin,
-            assertion = config =>
-              config.forbiddenRequestMessage should be("custom_forbidden_response")
+            assertion = settings =>
+              settings.forbiddenRequestMessage should be("custom_forbidden_response")
           )
         }
         "not defined" in {
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
-            assertion = config =>
-              config.forbiddenRequestMessage should be("Forbidden by ReadonlyREST")
+            assertion = settings =>
+              settings.forbiddenRequestMessage should be("Forbidden by ReadonlyREST")
           )
         }
       }
@@ -94,8 +94,8 @@ class GlobalSettingsTests
                  | global_settings:
                  |   fls_engine: lucene
                """.stripMargin,
-            assertion = config =>
-              config.flsEngine should be(FlsEngine.Lucene)
+            assertion = settings =>
+              settings.flsEngine should be(FlsEngine.Lucene)
           )
         }
         "es_with_lucene" in {
@@ -105,8 +105,8 @@ class GlobalSettingsTests
                  | global_settings:
                  |   fls_engine: es_with_lucene
                """.stripMargin,
-            assertion = config =>
-              config.flsEngine should be(FlsEngine.ESWithLucene)
+            assertion = settings =>
+              settings.flsEngine should be(FlsEngine.ESWithLucene)
           )
         }
         "es" in {
@@ -116,15 +116,15 @@ class GlobalSettingsTests
                  | global_settings:
                  |   fls_engine: es
                """.stripMargin,
-            assertion = config =>
-              config.flsEngine should be(FlsEngine.ES)
+            assertion = settings =>
+              settings.flsEngine should be(FlsEngine.ES)
           )
         }
         "not defined" in {
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
-            assertion = config =>
-              config.flsEngine should be(FlsEngine.ESWithLucene)
+            assertion = settings =>
+              settings.flsEngine should be(FlsEngine.ESWithLucene)
           )
         }
       }
@@ -154,8 +154,8 @@ class GlobalSettingsTests
                  | global_settings:
                  |   username_case_sensitivity: case_sensitive
                """.stripMargin,
-            assertion = config =>
-              config.userIdCaseSensitivity should be(CaseSensitivity.Enabled)
+            assertion = settings =>
+              settings.userIdCaseSensitivity should be(CaseSensitivity.Enabled)
           )
         }
         "case insensitive" in {
@@ -165,15 +165,15 @@ class GlobalSettingsTests
                  | global_settings:
                  |   username_case_sensitivity: case_insensitive
                """.stripMargin,
-            assertion = config =>
-              config.userIdCaseSensitivity should be(CaseSensitivity.Disabled)
+            assertion = settings =>
+              settings.userIdCaseSensitivity should be(CaseSensitivity.Disabled)
           )
         }
         "no defined" in {
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
-            assertion = config =>
-              config.userIdCaseSensitivity should be(CaseSensitivity.Enabled)
+            assertion = settings =>
+              settings.userIdCaseSensitivity should be(CaseSensitivity.Enabled)
           )
         }
       }
@@ -203,8 +203,8 @@ class GlobalSettingsTests
                  | global_settings:
                  |   users_section_duplicate_usernames_detection: true
                      """.stripMargin,
-            assertion = config =>
-              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
+            assertion = settings =>
+              settings.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
           )
         }
         "disabled" in {
@@ -214,22 +214,22 @@ class GlobalSettingsTests
                  | global_settings:
                  |   users_section_duplicate_usernames_detection: false
                      """.stripMargin,
-            assertion = config =>
-              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(false)
+            assertion = settings =>
+              settings.usersDefinitionDuplicateUsernamesValidationEnabled should be(false)
           )
         }
         "no defined" in {
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
-            assertion = config =>
-              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
+            assertion = settings =>
+              settings.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
           )
         }
       }
     }
   }
 
-  "A global settings should be able to be loaded from config (in the 'readonlyrest' section level)" when {
+  "A global settings should be able to be loaded from settings (in the 'readonlyrest' section level)" when {
     "'prompt_for_basic_auth'" should {
       "be decoded with success" when {
         "enabled" in {
@@ -238,8 +238,8 @@ class GlobalSettingsTests
               s"""
                  | prompt_for_basic_auth: true
                """.stripMargin,
-            assertion = config =>
-              config.showBasicAuthPrompt should be(true)
+            assertion = settings =>
+              settings.showBasicAuthPrompt should be(true)
           )
         }
         "disabled" in {
@@ -248,15 +248,15 @@ class GlobalSettingsTests
               s"""
                  | prompt_for_basic_auth: false
                """.stripMargin,
-            assertion = config =>
-              config.showBasicAuthPrompt should be(false)
+            assertion = settings =>
+              settings.showBasicAuthPrompt should be(false)
           )
         }
         "not defined" in {
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
-            assertion = config =>
-              config.showBasicAuthPrompt should be(false)
+            assertion = settings =>
+              settings.showBasicAuthPrompt should be(false)
           )
         }
       }
@@ -269,15 +269,15 @@ class GlobalSettingsTests
               s"""
                  | response_if_req_forbidden: custom_forbidden_response
                """.stripMargin,
-            assertion = config =>
-              config.forbiddenRequestMessage should be("custom_forbidden_response")
+            assertion = settings =>
+              settings.forbiddenRequestMessage should be("custom_forbidden_response")
           )
         }
         "not defined" in {
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
-            assertion = config =>
-              config.forbiddenRequestMessage should be("Forbidden by ReadonlyREST")
+            assertion = settings =>
+              settings.forbiddenRequestMessage should be("Forbidden by ReadonlyREST")
           )
         }
       }
@@ -290,8 +290,8 @@ class GlobalSettingsTests
               s"""
                  | fls_engine: lucene
                """.stripMargin,
-            assertion = config =>
-              config.flsEngine should be(FlsEngine.Lucene)
+            assertion = settings =>
+              settings.flsEngine should be(FlsEngine.Lucene)
           )
         }
         "es_with_lucene" in {
@@ -300,8 +300,8 @@ class GlobalSettingsTests
               s"""
                  | fls_engine: es_with_lucene
                """.stripMargin,
-            assertion = config =>
-              config.flsEngine should be(FlsEngine.ESWithLucene)
+            assertion = settings =>
+              settings.flsEngine should be(FlsEngine.ESWithLucene)
           )
         }
         "es" in {
@@ -310,15 +310,15 @@ class GlobalSettingsTests
               s"""
                  | fls_engine: es
                """.stripMargin,
-            assertion = config =>
-              config.flsEngine should be(FlsEngine.ES)
+            assertion = settings =>
+              settings.flsEngine should be(FlsEngine.ES)
           )
         }
         "not defined" in {
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
-            assertion = config =>
-              config.flsEngine should be(FlsEngine.ESWithLucene)
+            assertion = settings =>
+              settings.flsEngine should be(FlsEngine.ESWithLucene)
           )
         }
       }
@@ -346,8 +346,8 @@ class GlobalSettingsTests
               s"""
                  | username_case_sensitivity: case_sensitive
                """.stripMargin,
-            assertion = config =>
-              config.userIdCaseSensitivity should be(CaseSensitivity.Enabled)
+            assertion = settings =>
+              settings.userIdCaseSensitivity should be(CaseSensitivity.Enabled)
           )
         }
         "case insensitive" in {
@@ -356,15 +356,15 @@ class GlobalSettingsTests
               s"""
                  | username_case_sensitivity: case_insensitive
                """.stripMargin,
-            assertion = config =>
-              config.userIdCaseSensitivity should be(CaseSensitivity.Disabled)
+            assertion = settings =>
+              settings.userIdCaseSensitivity should be(CaseSensitivity.Disabled)
           )
         }
         "no defined" in {
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
-            assertion = config =>
-              config.userIdCaseSensitivity should be(CaseSensitivity.Enabled)
+            assertion = settings =>
+              settings.userIdCaseSensitivity should be(CaseSensitivity.Enabled)
           )
         }
       }
@@ -392,8 +392,8 @@ class GlobalSettingsTests
               s"""
                  | users_section_duplicate_usernames_detection: true
                    """.stripMargin,
-            assertion = config =>
-              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
+            assertion = settings =>
+              settings.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
           )
         }
         "disabled" in {
@@ -402,15 +402,15 @@ class GlobalSettingsTests
               s"""
                  | users_section_duplicate_usernames_detection: false
                    """.stripMargin,
-            assertion = config =>
-              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(false)
+            assertion = settings =>
+              settings.usersDefinitionDuplicateUsernamesValidationEnabled should be(false)
           )
         }
         "not defined" in {
           assertDecodingSuccess(
             yaml = noCustomSettingsYaml,
-            assertion = config =>
-              config.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
+            assertion = settings =>
+              settings.usersDefinitionDuplicateUsernamesValidationEnabled should be(true)
           )
         }
       }
@@ -504,6 +504,6 @@ class GlobalSettingsTests
 
 private object GlobalSettingsTests {
   val decoder: SyncDecoder[GlobalSettings] = SyncDecoderCreator.from(
-    GlobalStaticSettingsDecoder.instance(RorConfigurationIndex(IndexName.Full(NonEmptyString.unsafeFrom(".readonlyrest"))))
+    GlobalStaticSettingsDecoder.instance(RorSettingsIndex(IndexName.Full(NonEmptyString.unsafeFrom(".readonlyrest"))))
   )
 }

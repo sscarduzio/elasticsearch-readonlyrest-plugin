@@ -1,0 +1,4 @@
+readonlyrest:
+  access_control_rules:
+    - name: "Admin block"
+      auth_key: admin:admin

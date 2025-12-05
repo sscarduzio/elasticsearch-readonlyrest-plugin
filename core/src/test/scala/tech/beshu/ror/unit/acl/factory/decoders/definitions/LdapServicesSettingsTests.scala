@@ -30,8 +30,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
 import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
 import tech.beshu.ror.utils.RefinedUtils.*
@@ -74,7 +74,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
   )
 
   "An LdapService" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one LDAP service is declared (without server_side_groups_filtering)" in {
         assertDecodingSuccess(
           yamls = NonEmptyList.of(
@@ -1677,7 +1677,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
-      "groups related param is malformed when deprecated config format is used" in {
+      "groups related param is malformed when deprecated settings format is used" in {
         assertDecodingSuccess(
           yamls = NonEmptyList.of(
             // empty search_groups_base_DN which is required
@@ -1750,8 +1750,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
         )
       }
     }
-    "not be able to be loaded from config" when {
-      "circuit breaker config is malformed" in {
+    "not be able to be loaded from settings" when {
+      "circuit breaker settings are malformed" in {
         assertDecodingFailure(
           yaml =
             s"""

@@ -282,7 +282,7 @@ class LocalClusterAuditingToolsSuite
     val modifiedConfig = replacements.foldLeft(initialConfig) { case (soFar, (originalString, newString)) =>
       soFar.replace(originalString, newString)
     }
-    rorApiManager.updateRorInIndexConfig(modifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
-    rorApiManager.reloadRorConfig().force()
+    rorApiManager.updateRorInIndexSettings(modifiedConfig).forceOKStatusOrSettingsAlreadyLoaded()
+    rorApiManager.reloadRorSettings().force()
   }
 }

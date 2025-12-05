@@ -22,11 +22,11 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationSe
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{AuthKeyRule, AuthKeySha1Rule}
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorConfigurationIndex, User, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorSettingsIndex, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ImpersonationDefinitionsDecoderCreator}
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -37,7 +37,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
       showBasicAuthPrompt = true,
       forbiddenRequestMessage = "Forbidden by ReadonlyREST",
       flsEngine = FlsEngine.ES,
-      configurationIndex = RorConfigurationIndex(fullIndexName(".readonlyrest")),
+      settingsIndex = RorSettingsIndex(fullIndexName(".readonlyrest")),
       userIdCaseSensitivity = CaseSensitivity.Enabled,
       usersDefinitionDuplicateUsernamesValidationEnabled = true
     ),
@@ -49,7 +49,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
 ) {
 
   "An impersonation definition" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one impersonator is defined" which {
         "using auth key as authentication method" in {
           assertDecodingSuccess(
@@ -110,7 +110,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "impersonation section is empty" in {
         assertDecodingFailure(
           yaml =

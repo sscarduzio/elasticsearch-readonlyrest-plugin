@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 import cats.data.NonEmptySet
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.ApiKeysRule
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.*
@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] {
 
   "An ApiKeysRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one api key is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -64,7 +64,7 @@ class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] 
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no api key is defined" in {
         assertDecodingFailure(
           yaml =

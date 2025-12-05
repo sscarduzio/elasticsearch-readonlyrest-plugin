@@ -1,9 +1,4 @@
 readonlyrest:
-
   access_control_rules:
-
-    # ES container initializer need this rule to configure ES instance after startup
-    - name: "CONTAINER ADMIN"
-      verbosity: error
-      type: allow
-      unknown_rule: admin:container
+    - name: "ADMIN"
+      unknown_rule: admin:admin

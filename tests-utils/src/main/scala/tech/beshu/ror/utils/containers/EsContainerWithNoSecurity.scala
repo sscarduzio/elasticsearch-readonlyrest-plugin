@@ -46,7 +46,8 @@ object EsContainerWithNoSecurity extends StrictLogging {
              esConfig: Elasticsearch.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
-             additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
+             additionalLogConsumer: Option[Consumer[OutputFrame]],
+             awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
     new EsContainerWithNoSecurity(
       esConfig,
       esVersion,
@@ -54,6 +55,7 @@ object EsContainerWithNoSecurity extends StrictLogging {
       esImageFromDockerfile(esVersion, esConfig),
       initializer,
       additionalLogConsumer,
+      awaitingReadyStrategy
     )
   }
 

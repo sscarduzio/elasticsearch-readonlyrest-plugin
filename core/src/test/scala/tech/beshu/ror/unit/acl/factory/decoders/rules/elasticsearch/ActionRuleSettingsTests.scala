@@ -20,15 +20,15 @@ import cats.data.NonEmptySet
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
 import tech.beshu.ror.accesscontrol.domain.Action
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 
 class ActionRuleSettingsTests extends BaseRuleSettingsDecoderTest[ActionsRule] {
 
   "An ActionRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one action is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -64,7 +64,7 @@ class ActionRuleSettingsTests extends BaseRuleSettingsDecoderTest[ActionsRule] {
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no action is defined" in {
         assertDecodingFailure(
           yaml =

@@ -38,7 +38,7 @@ import java.util.Base64
 class RegularRequestAccessControlTests
   extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
-  protected def configYaml: String =
+  protected def settingsYaml: String =
     """
       |other_non_ror_settings:
       |

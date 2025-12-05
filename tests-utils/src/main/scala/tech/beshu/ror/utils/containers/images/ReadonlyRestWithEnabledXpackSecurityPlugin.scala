@@ -35,7 +35,7 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
                                 rorCustomSettingsIndex: Option[String],
                                 restSsl: Enabled[RestSsl],
                                 internodeSsl: Enabled[InternodeSsl],
-                                rorConfigFileName: String)
+                                rorSettingsFileName: String)
     object Attributes {
       val default: Attributes = Attributes(
         rorConfigReloading = ReadonlyRestPlugin.Config.Attributes.default.rorConfigReloading,
@@ -43,7 +43,7 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
         rorCustomSettingsIndex = ReadonlyRestPlugin.Config.Attributes.default.rorCustomSettingsIndex,
         restSsl = if(XpackSecurityPlugin.Config.Attributes.default.restSslEnabled) Enabled.Yes(RestSsl.Xpack) else Enabled.No,
         internodeSsl = if(XpackSecurityPlugin.Config.Attributes.default.internodeSslEnabled) Enabled.Yes(InternodeSsl.Xpack) else Enabled.No,
-        rorConfigFileName = "/basic/readonlyrest.yml"
+        rorSettingsFileName = "/basic/readonlyrest.yml"
       )
     }
 
@@ -101,7 +101,7 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
         config.attributes.rorCustomSettingsIndex,
         restSsl = createRorRestSsl(),
         internodeSsl = createRorInternodeSsl(),
-        config.attributes.rorConfigFileName
+        config.attributes.rorSettingsFileName
       )
     )
   }

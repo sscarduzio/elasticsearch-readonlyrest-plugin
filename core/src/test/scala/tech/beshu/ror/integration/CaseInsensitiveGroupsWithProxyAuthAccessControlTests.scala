@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest with Inside {
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     """
       |readonlyrest:
       |  global_settings:

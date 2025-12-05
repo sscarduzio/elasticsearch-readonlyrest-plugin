@@ -81,7 +81,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     val rorApiManager = new RorApiManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
 
     val updateResult = rorApiManager
-      .updateRorInIndexConfig(getResourceContent("/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_update.yml"))
+      .updateRorInIndexSettings(getResourceContent("/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_update.yml"))
 
     updateResult should have statusCode 200
     updateResult.responseJson("status").str should be("ok")

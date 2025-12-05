@@ -11,9 +11,5 @@ readonlyrest:
     hostname_verification: true
 
   access_control_rules:
-
-    # ES container initializer need this rule to configure ES instance after startup
-    - name: "CONTAINER ADMIN"
-      verbosity: error
-      type: allow
-      auth_key: admin:container
+    - name: "ADMIN"
+      auth_key: admin:admin

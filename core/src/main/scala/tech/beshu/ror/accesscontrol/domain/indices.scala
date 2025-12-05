@@ -22,6 +22,8 @@ import cats.implicits.*
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
+import better.files.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
@@ -73,6 +75,9 @@ object IndexName {
 
 final case class KibanaIndexName(underlying: ClusterIndexName.Local)
 object KibanaIndexName {
+
+  val devNullKibana: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana-devnull"))))
+  val default: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana"))))
 
   private val kibanaIndicesRegexesCache: Cache[KibanaIndexName, Vector[Regex]] =
     Caffeine.newBuilder()
@@ -184,7 +189,7 @@ object ClusterIndexName {
   object Local {
 
     val wildcard: ClusterIndexName.Local = Local(IndexName.wildcard)
-    val devNullKibana: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana-devnull"))))
+
     val kibanaDefault: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana"))))
 
     def fromString(value: String): Option[ClusterIndexName.Local] = {
@@ -522,8 +527,4 @@ sealed trait IndexAttribute
 object IndexAttribute {
   case object Opened extends IndexAttribute
   case object Closed extends IndexAttribute
-}
-
-final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal {
-  def toLocal: ClusterIndexName.Local = ClusterIndexName.Local(index)
 }

@@ -41,7 +41,7 @@ class RorDisabledSuite
     EsClusterSettings.create(
       clusterName = "ROR1",
       securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName,
+        rorSettingsFileName = rorConfigFileName,
       )),
     )
   )

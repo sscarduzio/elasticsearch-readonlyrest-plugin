@@ -45,7 +45,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
     case _ => 1234 // Just some random value - this test suite is ignored on Windows and the container is not started. But we still have to define port - required by configuration below.
   }
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     s"""readonlyrest:
        |
        |  access_control_rules:

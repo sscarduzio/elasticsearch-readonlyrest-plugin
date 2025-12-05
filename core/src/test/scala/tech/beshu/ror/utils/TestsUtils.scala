@@ -19,14 +19,14 @@ package tech.beshu.ror.utils
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.ParsingFailure
+import io.circe.{Json, ParsingFailure, parser}
 import io.jsonwebtoken.JwtBuilder
 import io.lemonlabs.uri.Url
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.matchers.should.Matchers.*
 import squants.information.Megabytes
-import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, LoggingContext}
+import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
@@ -50,15 +50,14 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.audit.AuditEnvironmentContext
-import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.es.{EsNodeSettings, EsVersion}
+import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
-import tech.beshu.ror.utils.yaml.RorYamlParser
+import tech.beshu.ror.utils.yaml.YamlParser
 
 import java.nio.file.Path
 import java.time.Duration
@@ -70,11 +69,11 @@ import scala.util.{Failure, Success}
 object TestsUtils {
 
   implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-  val rorYamlParser = new RorYamlParser(Megabytes(3))
+  val rorYamlParser = new YamlParser(Some(Megabytes(3)))
 
   val defaultEsVersionForTests: EsVersion = EsVersion(8, 17, 0)
 
-  inline def nes(str : String): NonEmptyString = RefinedUtils.nes(str)
+  inline def nes(str: String): NonEmptyString = RefinedUtils.nes(str)
 
   def basicAuthHeader(value: String): Header =
     new Header(
@@ -85,26 +84,23 @@ object TestsUtils {
   def bearerHeader(jwt: JwtUtils.Jwt): Header =
     bearerHeader(Header.Name.authorization.value, jwt)
 
-  def bearerHeader(headerName: NonEmptyString, jwt: JwtUtils.Jwt): Header =
-    new Header(
-      Header.Name(headerName),
-      NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
-    )
+  def bearerHeader(headerName: NonEmptyString, jwt: JwtUtils.Jwt): Header = new Header(
+    Header.Name(headerName),
+    NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
+  )
 
-  def bearerHeader(jwt: JwtBuilder): Header =
-    new Header(
-      Header.Name.authorization,
-      NonEmptyString.unsafeFrom(s"Bearer ${jwt.compact}")
-    )
+  def bearerHeader(jwt: JwtBuilder): Header = new Header(
+    Header.Name.authorization,
+    NonEmptyString.unsafeFrom(s"Bearer ${jwt.compact}")
+  )
 
   def impersonationHeader(username: NonEmptyString): Header =
     new Header(Header.Name.impersonateAs, username)
 
-  def header(name: String, value: String): Header =
-    new Header(
-      Name(NonEmptyString.unsafeFrom(name)),
-      NonEmptyString.unsafeFrom(value)
-    )
+  def header(name: String, value: String): Header = new Header(
+    Name(NonEmptyString.unsafeFrom(name)),
+    NonEmptyString.unsafeFrom(value)
+  )
 
   def currentGroupHeader(value: String): Header =
     header("x-ror-current-group", value)
@@ -380,18 +376,18 @@ object TestsUtils {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)
   }
 
-  def rorConfigFromUnsafe(yamlContent: String): RawRorConfig = {
-    rorConfigFrom(yamlContent).toOption.get
+  def rorSettingsFromUnsafe(yamlContent: String): RawRorSettings = {
+    rorSettingFrom(yamlContent).toOption.get
   }
 
-  def rorConfigFrom(yamlContent: String): Either[ParsingFailure, RawRorConfig] = {
+  def rorSettingFrom(yamlContent: String): Either[ParsingFailure, RawRorSettings] = {
     rorYamlParser
       .parse(yamlContent)
-      .map(json => RawRorConfig(json, yamlContent))
+      .map(json => RawRorSettings(json, yamlContent))
   }
 
-  def rorConfigFromResource(resource: String): RawRorConfig = {
-    rorConfigFromUnsafe {
+  def rorSettingsFromResource(resource: String): RawRorSettings = {
+    rorSettingsFromUnsafe {
       getResourceContent(resource)
     }
   }
@@ -404,12 +400,14 @@ object TestsUtils {
     File(getResourcePath(resource)).contentAsString
   }
 
+  def circeJsonFrom(jsonString: String): Json = {
+    parser.parse(jsonString).toTry.get
+  }
+
   def testEsNodeSettings: EsNodeSettings = EsNodeSettings(
     clusterName = "testEsCluster",
     nodeName = "testEsNode"
   )
-
-  def testAuditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(testEsNodeSettings)
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 
@@ -420,7 +418,7 @@ object TestsUtils {
       }
     }
   }
-  
+
   implicit def unsafeNes(str: String): NonEmptyString = NonEmptyString.unsafeFrom(str)
 
   def userIdPatterns(id: String, ids: String*): UserIdPatterns = {

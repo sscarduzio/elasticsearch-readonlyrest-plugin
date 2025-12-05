@@ -1,11 +1,7 @@
 readonlyrest:
-
   access_control_rules:
 
-    # ES container initializer need this rule to configure ES instance after startup
-    - name: "INDEX MODIFIED: CONTAINER ADMIN"
-      verbosity: error
-      type: allow
+    - name: "INDEX MODIFIED: ADMIN"
       auth_key: admin:container
 
     - name: "User 2"

@@ -154,7 +154,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
           showBasicAuthPrompt = true,
           forbiddenRequestMessage = "Forbidden",
           flsEngine = FlsEngine.default,
-          configurationIndex = RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+          settingsIndex = RorSettingsIndex(IndexName.Full(".readonlyrest")),
           userIdCaseSensitivity = CaseSensitivity.Enabled,
           usersDefinitionDuplicateUsernamesValidationEnabled = true
         ),
