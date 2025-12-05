@@ -35,13 +35,13 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
 
-class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike {
+class RorStartingResponseCodeSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike {
 
-  import RorStartingSuite.*
+  import RorStartingResponseCodeSuite.*
 
   implicit val scheduler: Scheduler = Scheduler.computation(10)
 
-  private val validRorConfigFile = "/basic/readonlyrest.yml"
+  private val validRorConfigFile = "/ror_starting_response_code/readonlyrest.yml"
 
   private val notStartedResponseCodeKey = "readonlyrest.not_started_response_code"
 
@@ -108,7 +108,7 @@ class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
   }
 }
 
-private object RorStartingSuite extends EsModulePatterns {
+private object RorStartingResponseCodeSuite extends EsModulePatterns {
   final case class TestResponse(responseCode: Int, responseJson: JSON)
 
   private val uniqueClusterId: AtomicInt = AtomicInt(1)
