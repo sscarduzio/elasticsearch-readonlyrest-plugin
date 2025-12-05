@@ -538,7 +538,162 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               serializedResponse.get.get("custom_field_for_es_node_name") shouldBe "testEsNode"
               serializedResponse.get.get("custom_field_for_es_cluster_name") shouldBe "testEsCluster"
             }
-            "ECS serializer is set" in {
+            "ECS serializer is set (including request content)" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      serializer:
+                  |        type: ecs
+                  |        verbosity_level_serialization_mode: [INFO]
+                  |        include_full_request_content: true
+                """.stripMargin
+              )
+
+              assertIndexBasedAuditSinkSettingsPresent[EcsV1AuditLogSerializer](
+                settings,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+              val createdSerializer = serializer(settings)
+              val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+
+              val expectedJsonStr =
+                """{
+                  |  "trace" : {
+                  |    "id" : "corr_id_123"
+                  |  },
+                  |  "@timestamp" : "IGNORED",
+                  |  "ecs" : {
+                  |    "version" : "1.6.0"
+                  |  },
+                  |  "destination" : {
+                  |    "address" : "192.168.0.124"
+                  |  },
+                  |  "http" : {
+                  |    "request" : {
+                  |      "method" : "GET",
+                  |      "body" : {
+                  |        "bytes" : 123,
+                  |        "content" : "Full content of the request"
+                  |      }
+                  |    }
+                  |  },
+                  |  "source" : {
+                  |    "address" : "192.168.0.123"
+                  |  },
+                  |  "event" : {
+                  |    "duration" : 5000000000,
+                  |    "reason" : "RRTestConfigRequest",
+                  |    "action" : "cluster:internal_ror/user_metadata/get",
+                  |    "id" : "trace_id_123",
+                  |    "outcome" : "failure"
+                  |  },
+                  |  "error" : {},
+                  |  "user" : {
+                  |    "effective" : {
+                  |      "name" : "impersonated_by_user"
+                  |    },
+                  |    "name" : "logged_user"
+                  |  },
+                  |  "url" : {
+                  |    "path" : "/path/to/resource"
+                  |  },
+                  |  "labels" : {
+                  |    "es_cluster_name" : "testEsCluster",
+                  |    "es_task_id" : 123,
+                  |    "es_node_name" : "testEsNode",
+                  |    "ror_acl_history" : "historyEntry1, historyEntry2",
+                  |    "ror_detailed_reason" : "default",
+                  |    "ror_involved_indices" : [],
+                  |    "ror_final_state" : "FORBIDDEN"
+                  |  }
+                  |}""".stripMargin
+              val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
+              val expectedJson = circeJsonWithIgnoredTimestamp(new JSONObject(expectedJsonStr))
+              actualJson should be(expectedJson)
+            }
+            "ECS serializer is set (not including request content)" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      serializer:
+                  |        type: ecs
+                  |        verbosity_level_serialization_mode: [INFO]
+                  |        include_full_request_content: false
+                """.stripMargin
+              )
+
+              assertIndexBasedAuditSinkSettingsPresent[EcsV1AuditLogSerializer](
+                settings,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+              val createdSerializer = serializer(settings)
+              val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+
+              val expectedJsonStr =
+                """{
+                  |  "trace" : {
+                  |    "id" : "corr_id_123"
+                  |  },
+                  |  "@timestamp" : "IGNORED",
+                  |  "ecs" : {
+                  |    "version" : "1.6.0"
+                  |  },
+                  |  "destination" : {
+                  |    "address" : "192.168.0.124"
+                  |  },
+                  |  "http" : {
+                  |    "request" : {
+                  |      "method" : "GET",
+                  |      "body" : {
+                  |        "bytes" : 123,
+                  |      }
+                  |    }
+                  |  },
+                  |  "source" : {
+                  |    "address" : "192.168.0.123"
+                  |  },
+                  |  "event" : {
+                  |    "duration" : 5000000000,
+                  |    "reason" : "RRTestConfigRequest",
+                  |    "action" : "cluster:internal_ror/user_metadata/get",
+                  |    "id" : "trace_id_123",
+                  |    "outcome" : "failure"
+                  |  },
+                  |  "error" : {},
+                  |  "user" : {
+                  |    "effective" : {
+                  |      "name" : "impersonated_by_user"
+                  |    },
+                  |    "name" : "logged_user"
+                  |  },
+                  |  "url" : {
+                  |    "path" : "/path/to/resource"
+                  |  },
+                  |  "labels" : {
+                  |    "es_cluster_name" : "testEsCluster",
+                  |    "es_task_id" : 123,
+                  |    "es_node_name" : "testEsNode",
+                  |    "ror_acl_history" : "historyEntry1, historyEntry2",
+                  |    "ror_detailed_reason" : "default",
+                  |    "ror_involved_indices" : [],
+                  |    "ror_final_state" : "FORBIDDEN"
+                  |  }
+                  |}""".stripMargin
+              val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
+              val expectedJson = circeJsonWithIgnoredTimestamp(new JSONObject(expectedJsonStr))
+              actualJson should be(expectedJson)
+            }
+            "ECS serializer is set (not including request content by default)" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
                   |readonlyrest:
@@ -577,7 +732,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |      "method" : "GET",
                   |      "body" : {
                   |        "bytes" : 123,
-                  |        "content" : "Full content of the request"
                   |      }
                   |    }
                   |  },

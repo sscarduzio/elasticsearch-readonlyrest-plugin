@@ -4,4 +4,4 @@ readonlyrest:
     - name: "CONTAINER ADMIN - basic"
       verbosity: "error"
       type: "allow"
-      auth_key: "admin:container"
+      auth_key1: "admin:container"

@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.containers
 import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
 import org.testcontainers.containers.ContainerLaunchException
-import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
+import org.testcontainers.containers.wait.strategy.{AbstractWaitStrategy, HttpWaitStrategy}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{EsStartupChecker, Version}
@@ -29,33 +29,57 @@ import scala.util.Try
 class ElasticsearchNodeWaitingStrategy(esVersion: String,
                                        containerName: String,
                                        restClient: Coeval[RestClient],
-                                       initializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+                                       initializer: ElasticsearchNodeDataInitializer,
                                        strategy: AwaitingReadyStrategy)
   extends AbstractWaitStrategy
     with StrictLogging {
 
   override def waitUntilReady(): Unit = {
-    val client = restClient.runAttempt().fold(throw _, identity)
-    val checker =
-      if (Version.greaterOrEqualThan(esVersion, 8, 3, 0)) {
-        EsStartupChecker.greenEsClusterChecker(containerName, client)
-      } else {
-        EsStartupChecker.accessibleEsChecker(containerName, client)
-      }
-    val started = strategy match {
-      case AwaitingReadyStrategy.WaitForEsReadiness =>
-        checker.waitForStart()
-      case AwaitingReadyStrategy.ImmediatelyTreatAsReady =>
-        true
-    }
-    if (!started) {
+    val client = createRestClient()
+    if (!waitForStart(client)) {
       throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]")
     }
+    initialize(client)
+  }
+
+  private def waitForStart(client: RestClient) = {
+    strategy match {
+      case AwaitingReadyStrategy.WaitForEsReadiness =>
+        createChecker(client).waitForStart()
+      case AwaitingReadyStrategy.ImmediatelyTreatAsReady =>
+        true
+      case AwaitingReadyStrategy.WaitForEsRestApiResponsive =>
+        waitForRestEsApi()
+    }
+  }
+
+  private def initialize(client: RestClient): Unit = {
     Try(initializer.initialize(esVersion, client))
       .fold(
         ex => throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]", ex),
         identity
       )
+  }
+
+  private def createRestClient() = {
+    restClient.runAttempt().fold(throw _, identity)
+  }
+
+  private def createChecker(client: RestClient) = {
+    if (Version.greaterOrEqualThan(esVersion, 8, 3, 0)) {
+      EsStartupChecker.greenEsClusterChecker(containerName, client)
+    } else {
+      EsStartupChecker.accessibleEsChecker(containerName, client)
+    }
+  }
+
+  private def waitForRestEsApi() = {
+    val esRestApiWaitStrategy = new HttpWaitStrategy()
+      .usingTls().allowInsecure()
+      .forPort(9200)
+      .forPath("/")
+      .forStatusCodeMatching(_ => true)
+    Try(esRestApiWaitStrategy.waitUntilReady(waitStrategyTarget)).isSuccess
   }
 }
 
@@ -63,7 +87,8 @@ object ElasticsearchNodeWaitingStrategy {
   sealed trait AwaitingReadyStrategy
 
   object AwaitingReadyStrategy {
-     case object WaitForEsReadiness extends AwaitingReadyStrategy
-     case object ImmediatelyTreatAsReady extends AwaitingReadyStrategy
+    case object WaitForEsReadiness extends AwaitingReadyStrategy
+    case object ImmediatelyTreatAsReady extends AwaitingReadyStrategy
+    case object WaitForEsRestApiResponsive extends AwaitingReadyStrategy
   }
 }

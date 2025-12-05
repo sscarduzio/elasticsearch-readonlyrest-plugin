@@ -22,8 +22,9 @@ import monix.execution.Scheduler
 import monix.execution.atomic.AtomicInt
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy.WaitForEsRestApiResponsive
+import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
@@ -32,7 +33,7 @@ import tech.beshu.ror.utils.misc.EsModulePatterns
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike {
 
@@ -68,13 +69,9 @@ class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
       rorConfigFile = validRorConfigFile,
       additionalEsYamlEntries = additionalEsYamlEntries
     )
+    esContainer.start().runSyncUnsafe(5 minutes)
     try {
-      Task
-        .parSequence(List(
-          testCode(esContainer),
-          esContainer.start(),
-        ))
-        .runSyncUnsafe(5 minutes)
+      testCode(esContainer)
     } finally {
       esContainer.stop().runSyncUnsafe()
     }
@@ -83,65 +80,30 @@ class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
   private def testRorStartup(usingManager: TestEsContainerManager, expectedResponseCode: Int): Task[Unit] = {
     for {
       restClient <- usingManager.createRestClient
-      searchTestResults <- searchTest(client = restClient, searchAttemptsCount = 200)
-      result <- handleResults(searchTestResults, expectedResponseCode)
+      searchTestResult <- searchTest(client = restClient)
+      result <- handleResult(searchTestResult, expectedResponseCode)
     } yield result
   }
 
-  private def searchTest(client: RestClient, searchAttemptsCount: Int): Task[Seq[TestResponse]] = {
-    searchAndWait(new SearchManager(client, esVersionUsed), searchAttemptsCount).map(_.distinct)
+  private def searchTest(client: RestClient): Task[TestResponse] = Task.delay {
+    val searchManager = new SearchManager(client, esVersionUsed)
+    val response = searchManager.searchAll("*")
+    TestResponse(response.responseCode, response.responseJson)
   }
 
-  private def searchAndWait(manager: SearchManager, attemptLeft: Int): Task[List[TestResponse]] = {
-    if (attemptLeft == 0)
-      Task.now(List.empty)
-    else {
-      for {
-        currentResponses <- search(manager)
-        responses <- currentResponses match {
-          case Right(responses) => for {
-            _ <- Task.sleep(1 second)
-            otherResponses <- searchAndWait(manager, attemptLeft - 1)
-          } yield responses ::: otherResponses
-          case Left(responses) =>
-            Task.now(responses)
-        }
-      } yield responses
-    }
-  }
-
-  private def search(manger: SearchManager): Task[Either[List[TestResponse], List[TestResponse]]] = Task.delay {
-    Try(manger.searchAll("*")) match {
-      case Success(response) if response.isSuccess =>
-        Left(List(TestResponse(response.responseCode, response.responseJson)))
-      case Success(response) =>
-        Right(List(TestResponse(response.responseCode, response.responseJson)))
-      case Failure(_) =>
-        Right(List.empty)
-    }
-  }
-
-  private def handleResults(results: Seq[TestResponse], expectedResponseCode: Int): Task[Unit] = {
-    val hasEsRespondedWithNotStartedResponse = results
-      .filter { response =>
-        response.responseCode == expectedResponseCode
+  private def handleResult(result: TestResponse, expectedResponseCode: Int): Task[Unit] = {
+    val isResponseCodeOk = result.responseCode == expectedResponseCode
+    val isResponseErrorOk = result
+      .responseJson("error")
+      .obj("root_cause")
+      .arr.exists { json =>
+        json("reason").str == "Forbidden by ReadonlyREST" &&
+          json("due_to").str == "READONLYREST_NOT_READY_YET"
       }
-      .exists { response =>
-        response
-          .responseJson("error")
-          .obj("root_cause")
-          .arr.exists { json =>
-          json("reason").str == "Forbidden by ReadonlyREST" &&
-            json("due_to").str == "READONLYREST_NOT_READY_YET"
-        }
-      }
-
-    val hasEsRespondedWithSuccess = results.exists(_.responseCode == 200)
-
-    if (hasEsRespondedWithNotStartedResponse && hasEsRespondedWithSuccess) {
+    if (isResponseCodeOk && isResponseErrorOk) {
       Task.unit
     } else {
-      Task.raiseError(new IllegalStateException(s"Test failed. Expected success response and ROR failed to start response but was: [$results]"))
+      Task.raiseError(new IllegalStateException(s"Test failed. Expected success response and ROR failed to start response but was: [$result]"))
     }
   }
 }
@@ -192,7 +154,8 @@ private object RorStartingSuite extends EsModulePatterns {
         ),
         allNodeNames = NonEmptyList.of(nodeName),
         nodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-        startedClusterDependencies = StartedClusterDependencies(List.empty)
+        startedClusterDependencies = StartedClusterDependencies(List.empty),
+        awaitingReadyStrategy = WaitForEsRestApiResponsive
       )
     }
   }
