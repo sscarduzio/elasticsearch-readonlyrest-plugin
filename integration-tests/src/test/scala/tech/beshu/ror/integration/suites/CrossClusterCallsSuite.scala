@@ -54,7 +54,7 @@ class CrossClusterCallsSuite
     esClusterSettings = EsClusterSettings.create(
       clusterName = "ROR_L1",
       securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName,
+        rorSettingsFileName = rorConfigFileName,
         internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
       )),
       nodeDataInitializer = localClusterNodeDataInitializer(),
@@ -80,7 +80,7 @@ class CrossClusterCallsSuite
     EsClusterSettings.create(
       clusterName = name,
       securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName,
+        rorSettingsFileName = rorConfigFileName,
         internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
       )),
       nodeDataInitializer = nodeDataInitializer

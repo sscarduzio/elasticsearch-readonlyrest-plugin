@@ -211,7 +211,7 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
           clusterName = clusterName,
           securityType = SecurityType.RorWithXpackSecurity(
             ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-              rorConfigFileName = rorConfigFile
+              rorSettingsFileName = rorConfigFile
             )
           ),
           containerSpecification = ContainerSpecification.empty,

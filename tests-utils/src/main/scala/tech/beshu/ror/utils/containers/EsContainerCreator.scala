@@ -82,7 +82,7 @@ trait EsContainerCreator {
                                                        additionalLogConsumer: Option[Consumer[OutputFrame]],
                                                        awaitingReadyStrategy: AwaitingReadyStrategy) = {
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
-    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
+    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorSettingsFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
       source = rawRorConfigFile.toScala,

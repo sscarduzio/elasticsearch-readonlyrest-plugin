@@ -54,7 +54,7 @@ class DynamicVariablesSuite
     createLocalClusterContainer(
       esClusterSettingsCreator(
         SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName
+          rorSettingsFileName = rorConfigFileName
         ))
       )
     )

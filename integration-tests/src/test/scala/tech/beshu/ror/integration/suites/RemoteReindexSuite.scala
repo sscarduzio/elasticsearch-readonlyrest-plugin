@@ -77,7 +77,7 @@ class RemoteReindexSuite
       clusterSettingsCreator {
         SecurityType.RorWithXpackSecurity(
           ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-            rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
+            rorSettingsFileName = RemoteReindexSuite.this.rorConfigFileName,
             restSsl = Enabled.No
           )
         )

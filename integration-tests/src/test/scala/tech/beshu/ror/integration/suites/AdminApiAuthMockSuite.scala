@@ -71,7 +71,7 @@ class AdminApiAuthMockSuite
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
           rorConfigReloading = Enabled.Yes(2 seconds),
           rorCustomSettingsIndex = Some(readonlyrestIndexName),
-          rorConfigFileName = rorConfigFileName
+          rorSettingsFileName = rorConfigFileName
         ))
       ),
     )

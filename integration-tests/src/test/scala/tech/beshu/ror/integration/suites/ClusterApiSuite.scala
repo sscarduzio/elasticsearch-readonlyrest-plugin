@@ -50,7 +50,7 @@ class ClusterApiSuite
     createLocalClusterContainer(
       esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName
+          rorSettingsFileName = rorConfigFileName
         ))
       )
     )

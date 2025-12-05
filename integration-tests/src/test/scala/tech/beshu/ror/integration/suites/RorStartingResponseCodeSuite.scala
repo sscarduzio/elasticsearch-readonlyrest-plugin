@@ -41,7 +41,7 @@ class RorStartingResponseCodeSuite extends AnyWordSpec with ESVersionSupportForA
 
   implicit val scheduler: Scheduler = Scheduler.computation(10)
 
-  private val validRorConfigFile = "/ror_starting_response_code/readonlyrest.yml"
+  private val validRorConfigFile = "/ror_starting_response_code/malformed_readonlyrest.yml"
 
   private val notStartedResponseCodeKey = "readonlyrest.not_started_response_code"
 
@@ -143,7 +143,7 @@ private object RorStartingResponseCodeSuite extends EsModulePatterns {
           clusterName = clusterName,
           securityType = SecurityType.RorWithXpackSecurity(
             ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-              rorConfigFileName = rorConfigFile,
+              rorSettingsFileName = rorConfigFile,
               rorInIndexConfigLoadingDelay = 5 seconds
             )
           ),

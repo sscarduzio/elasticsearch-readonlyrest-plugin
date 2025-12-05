@@ -29,7 +29,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
   override protected def rorClusterSecurityType: SecurityType =
     SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-      rorConfigFileName = rorConfigFileName,
+      rorSettingsFileName = rorConfigFileName,
       restSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.RestSsl.Xpack),
       internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
     ))
