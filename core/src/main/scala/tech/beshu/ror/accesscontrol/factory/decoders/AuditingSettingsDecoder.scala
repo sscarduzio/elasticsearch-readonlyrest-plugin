@@ -228,11 +228,13 @@ object AuditingSettingsDecoder extends Logging {
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"ECS serializer 'version' is invalid: $msg"))
       allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"ECS serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
+      includeFullRequestContentOpt <- c.downField("include_full_request_content").as[Option[Boolean]]
+      includeFullRequestContent = includeFullRequestContentOpt.getOrElse(false)
       serializer = version match {
         case None =>
-          new EcsV1AuditLogSerializer(allowedEventMode)
+          new EcsV1AuditLogSerializer(allowedEventMode, includeFullRequestContent)
         case Some(EcsSerializerVersion.V1) =>
-          new EcsV1AuditLogSerializer(allowedEventMode)
+          new EcsV1AuditLogSerializer(allowedEventMode, includeFullRequestContent)
       }
     } yield Some(serializer)
   }
