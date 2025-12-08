@@ -35,13 +35,14 @@ function upload_to_ror_data_bucket {
 }
 
 function upload_to_ror_data_xdelta_bucket {
+  set -x
   BUCKET="readonlyrest-data-xdelta"
   LOCAL_FILE="$1"
-  S3_PATH="$2"
+  S3_PATH=$(echo "$2" | sed 's:/*$::')
   FILE_NAME=$(basename $LOCAL_FILE)
 
   docker run --rm -e AWS_ACCESS_KEY_ID=$aws_access_key_id -e AWS_SECRET_ACCESS_KEY=$aws_secret_access_key \
     -v $LOCAL_FILE:/tmp/$FILE_NAME:ro \
-    beshultd/deltaglider \
-    cp /tmp/$FILE_NAME s3://$BUCKET/$S3_PATH
+    beshultd/deltaglider:main-012662c \
+    cp /tmp/$FILE_NAME s3://$BUCKET/${S3_PATH}/${FILE_NAME}
 }
