@@ -13,7 +13,7 @@ for ((i = 1; i < $#; i++)); do
   FILE="${!i}"
 
   echo "Uploading $FILE to $DEST ..."
-  #upload_to_ror_data_bucket "$FILE" "$DEST"
+  upload_to_ror_data_bucket "$FILE" "$DEST"
   upload_to_ror_data_xdelta_bucket "$FILE" "$DEST"
 done
 

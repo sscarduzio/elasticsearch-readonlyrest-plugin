@@ -27,22 +27,24 @@ function tag {
 }
 
 function upload_to_ror_data_bucket {
-  BUCKET="readonlyrest-data"
   LOCAL_FILE="$1"
   S3_PATH="$2"
+  
+  BUCKET="readonlyrest-data"
   # shellcheck disable=SC2154
   "$CI_DIR"/s3-uploader.sh "$aws_access_key_id" "$aws_secret_access_key" "$BUCKET@eu-west-1" "$LOCAL_FILE" "$S3_PATH"
 }
 
 function upload_to_ror_data_xdelta_bucket {
-  set -x
-  BUCKET="readonlyrest-data-xdelta"
   LOCAL_FILE="$1"
   S3_PATH=$(echo "$2" | sed 's:/*$::')
   FILE_NAME=$(basename $LOCAL_FILE)
 
+  BUCKET="readonlyrest-data-xdelta"
+  DELTA_GLIDER_VERSION="main-012662c"
+
   docker run --rm -e AWS_ACCESS_KEY_ID=$aws_access_key_id -e AWS_SECRET_ACCESS_KEY=$aws_secret_access_key \
     -v $LOCAL_FILE:/tmp/$FILE_NAME:ro \
-    beshultd/deltaglider:main-012662c \
+    beshultd/deltaglider:$DELTA_GLIDER_VERSION \
     cp /tmp/$FILE_NAME s3://$BUCKET/${S3_PATH}/${FILE_NAME}
 }
