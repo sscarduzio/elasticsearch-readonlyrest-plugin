@@ -82,9 +82,10 @@ tasks.withType(ScalaCompile).configureEach {
     ]
 }
 
-tasks.withType(Zip).configureEach { task ->
-    task.doLast {
-        ant.checksum file: it.archivePath, algorithm: 'sha1'
+tasks.withType(AbstractArchiveTask).configureEach { t ->
+    t.doLast {
+        def f = t.archiveFile.get().asFile
+        ant.checksum(file: f, algorithm: 'SHA-1', fileext: '.sha1')
     }
 }
 

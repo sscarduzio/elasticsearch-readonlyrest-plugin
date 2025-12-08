@@ -53,7 +53,7 @@ run_integration_tests() {
 
   ES_MODULE=$1
 
-  echo ">>> $ES_MODULE => Running testcontainers.."
+  echo ">>> $ES_MODULE => Running integration tests.."
   ./gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 

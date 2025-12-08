@@ -47,7 +47,7 @@ Currently eshome support debugging only es8x modules.
 
 **⚠️Required tools:**
 * OpenJDK 21
-* Gradle 8.4
+* Gradle
 
 ### Using Docker
 * `./docker-based-builder/build.sh [ES_VERSION_1] [ES_VERSION_1] ... [ES_VERSION_N]`
