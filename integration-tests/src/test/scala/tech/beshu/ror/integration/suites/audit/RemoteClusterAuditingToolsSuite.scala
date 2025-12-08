@@ -39,7 +39,7 @@ class RemoteClusterAuditingToolsSuite
 
   private val isDataStreamSupported = Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)
 
-  override implicit val rorConfigFileName: String = {
+  override implicit val rorSettingsFileName: String = {
     if (isDataStreamSupported) {
       "/ror_audit/cluster_auditing_tools/readonlyrest.yml"
     } else {
@@ -89,7 +89,7 @@ class RemoteClusterAuditingToolsSuite
 
   override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.fromListUnsafe(auditEsContainers)
 
-  override protected def baseRorConfig: String = resolvedRorConfigFile.contentAsString
+  override protected def baseRorConfig: String = resolvedRorSettingsFile.contentAsString
 
   override protected def baseAuditDataStreamName: Option[String] = Option.when(isDataStreamSupported)("audit_data_stream")
 

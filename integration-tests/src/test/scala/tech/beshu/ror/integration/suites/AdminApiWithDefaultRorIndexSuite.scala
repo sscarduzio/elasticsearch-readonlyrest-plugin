@@ -28,7 +28,7 @@ class AdminApiWithDefaultRorIndexSuite
   extends BaseAdminApiSuite
     with PluginTestSupport {
 
-  override implicit val rorConfigFileName: String = "/admin_api/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/admin_api/readonlyrest.yml"
   override protected val readonlyrestIndexName: String = ".readonlyrest"
 
   override protected lazy val rorWithIndexConfig: EsClusterContainer = {
@@ -43,8 +43,8 @@ class AdminApiWithDefaultRorIndexSuite
     createLocalClusterContainer(
       esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorSettingsFileName = rorConfigFileName,
-          rorConfigReloading = Enabled.Yes(settingsReloadInterval)
+          rorSettingsFileName = rorSettingsFileName,
+          rorSettingsReloading = Enabled.Yes(settingsReloadInterval)
         ))
       )
     )
@@ -60,7 +60,7 @@ class AdminApiWithDefaultRorIndexSuite
     createLocalClusterContainer(
       esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorSettingsFileName = rorConfigFileName
+          rorSettingsFileName = rorSettingsFileName
         ))
       )
     )

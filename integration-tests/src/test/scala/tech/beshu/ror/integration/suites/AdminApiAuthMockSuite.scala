@@ -52,7 +52,7 @@ class AdminApiAuthMockSuite
   override lazy val clusterContainers = NonEmptyList.of(esCluster)
   override lazy val esTargets = NonEmptyList.fromListUnsafe(esCluster.nodes)
 
-  override implicit val rorConfigFileName: String = "/admin_api_mocks/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/admin_api_mocks/readonlyrest.yml"
 
   private val readonlyrestIndexName = ".readonlyrest"
 
@@ -69,9 +69,9 @@ class AdminApiAuthMockSuite
     createLocalClusterContainer(
       esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorConfigReloading = Enabled.Yes(2 seconds),
+          rorSettingsReloading = Enabled.Yes(2 seconds),
           rorCustomSettingsIndex = Some(readonlyrestIndexName),
-          rorSettingsFileName = rorConfigFileName
+          rorSettingsFileName = rorSettingsFileName
         ))
       ),
     )
@@ -1241,15 +1241,18 @@ class AdminApiAuthMockSuite
 
     eventually { // await until all nodes load config
       rorClients.foreach {
-        assertTestSettings(_, expectedStatus = "TEST_SETTINGS_INVALIDATED")
+        assertCurrentTestSettings(_, expectedStatus = "TEST_SETTINGS_INVALIDATED")
       }
     }
   }
 
-  private def assertTestSettings(rorApiManager: RorApiManager, expectedStatus: String) = {
+  private def assertCurrentTestSettings(rorApiManager: RorApiManager, expectedStatus: String, otherExpectedStatuses: String*) = {
     val response = rorApiManager.currentRorTestSettings
+    val expectedStatuses = expectedStatus :: otherExpectedStatuses.toList
     response should have statusCode 200
-    response.responseJson("status").str should be(expectedStatus)
+
+    val status = response.responseJson("status").str
+    expectedStatuses should contain (status)
   }
 
   private def updateMocksPayload(payloadServices: Value) = {
@@ -1263,7 +1266,7 @@ class AdminApiAuthMockSuite
     )
   }
 
-  private def testEngineConfig(): String = esCluster.resolvedRorConfig(getResourceContent(rorConfigFileName))
+  private def testEngineSettings(): String = esCluster.resolvedRorSettings(getResourceContent(rorSettingsFileName))
 
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = testEngineReloadInterval.plus(10 second), interval = 500 millis)
@@ -1279,19 +1282,19 @@ class AdminApiAuthMockSuite
   }
 
   private def removeRorIndexAndAwaitForNotSetTestConfig(): Unit = {
-    // remove index storing test config
+    // remove index storing test settings
     new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
       .removeIndex(readonlyrestIndexName)
 
-    eventually { // await until node invalidate the test config
+    eventually { // await until node invalidate the test settings
       rorClients.foreach {
-        assertTestSettings(_, expectedStatus = "TEST_SETTINGS_NOT_CONFIGURED")
+        assertCurrentTestSettings(_, expectedStatus = "TEST_SETTINGS_NOT_CONFIGURED", otherExpectedStatuses = "TEST_SETTINGS_INVALIDATED")
       }
     }
   }
 
   private def setupTestSettingsInIndex(mocksJson: Value) = {
-    val testSettings = testEngineConfig()
+    val testSettings = testEngineSettings()
     val expirationTtl = 30 minutes
     val expirationTime = Instant.now().plus(expirationTtl.toMillis, ChronoUnit.MILLIS)
     val testSettingsJson = ujson.read(
@@ -1316,22 +1319,24 @@ class AdminApiAuthMockSuite
     indexSearchResponse should have statusCode 200
     val indexSearchHits = indexSearchResponse.responseJson("hits")("hits").arr.toList
     indexSearchHits.size should be >= 1 // at least main document or test document should be present
-    val testSettingsDocumentHit = indexSearchHits.find { searchResult =>
-      (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
-    }.value
+    val testSettingsDocumentHit = indexSearchHits
+      .find { searchResult =>
+        (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
+      }
+      .value
 
-    val mocksContent = ujson.read(testSettingsDocumentHit("_source")("auth_services_mocks").str)
+    val mocksContent = testSettingsDocumentHit("_source")("auth_services_mocks")
     mocksContent should be(expectedMocks)
   }
 
   private def setupTestSettingsOnAllNodes(): Unit = {
     rorClients.head
-      .updateRorTestSettings(testEngineConfig())
+      .updateRorTestSettings(testEngineSettings())
       .forceOkStatus()
 
-    eventually { // await until all nodes load config
+    eventually { // await until all nodes load settings
       rorClients.foreach {
-        assertTestSettings(_, expectedStatus = "TEST_SETTINGS_PRESENT")
+        assertCurrentTestSettings(_, expectedStatus = "TEST_SETTINGS_PRESENT")
       }
     }
   }

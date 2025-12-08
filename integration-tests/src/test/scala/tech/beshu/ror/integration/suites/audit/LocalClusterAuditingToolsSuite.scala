@@ -36,7 +36,7 @@ class LocalClusterAuditingToolsSuite
 
   private val isDataStreamSupported = Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)
 
-  override implicit val rorConfigFileName: String = {
+  override implicit val rorSettingsFileName: String = {
     if (isDataStreamSupported) {
       "/ror_audit/enabled_auditing_tools/readonlyrest.yml"
     } else {
@@ -48,7 +48,7 @@ class LocalClusterAuditingToolsSuite
 
   override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.of(this)
 
-  override def baseRorConfig: String = resolvedRorConfigFile.contentAsString
+  override def baseRorConfig: String = resolvedRorSettingsFile.contentAsString
 
   override protected def baseAuditDataStreamName: Option[String] =
     Option.when(Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0))("audit_data_stream")
@@ -278,7 +278,7 @@ class LocalClusterAuditingToolsSuite
     updateRorConfig(Map(originalString -> newString))
 
   private def updateRorConfig(replacements: Map[String, String]): Unit = {
-    val initialConfig = getResourceContent(rorConfigFileName)
+    val initialConfig = getResourceContent(rorSettingsFileName)
     val modifiedConfig = replacements.foldLeft(initialConfig) { case (soFar, (originalString, newString)) =>
       soFar.replace(originalString, newString)
     }

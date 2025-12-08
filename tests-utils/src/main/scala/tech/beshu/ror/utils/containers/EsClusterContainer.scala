@@ -70,8 +70,8 @@ class EsClusterContainer private[containers](val esClusterSettings: EsClusterSet
       .runSyncUnsafe()
   }
 
-  def resolvedRorConfig(config: String): String = {
-    RorConfigAdjuster.adjustUsingDependencies(config, aStartedDependencies)
+  def resolvedRorSettings(config: String): String = {
+    RorSettingsAdjuster.adjustUsingDependencies(config, aStartedDependencies)
   }
 }
 

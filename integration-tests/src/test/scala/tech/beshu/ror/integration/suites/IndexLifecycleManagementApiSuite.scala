@@ -47,7 +47,7 @@ class IndexLifecycleManagementApiSuite
     with CustomScalaTestMatchers
     with Eventually {
 
-  override implicit val rorConfigFileName: String = "/index_lifecycle_management_api/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/index_lifecycle_management_api/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
 
@@ -62,7 +62,7 @@ class IndexLifecycleManagementApiSuite
     createLocalClusterContainer(
       esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorSettingsFileName = rorConfigFileName
+          rorSettingsFileName = rorSettingsFileName
         ))
       )
     )

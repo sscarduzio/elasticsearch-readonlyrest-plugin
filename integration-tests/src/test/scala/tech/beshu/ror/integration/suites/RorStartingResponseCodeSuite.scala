@@ -144,7 +144,7 @@ private object RorStartingResponseCodeSuite extends EsModulePatterns {
           securityType = SecurityType.RorWithXpackSecurity(
             ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
               rorSettingsFileName = rorConfigFile,
-              rorInIndexConfigLoadingDelay = 5 seconds
+              rorInIndexSettingsLoadingDelay = 5 seconds
             )
           ),
           containerSpecification = ContainerSpecification.empty.copy(

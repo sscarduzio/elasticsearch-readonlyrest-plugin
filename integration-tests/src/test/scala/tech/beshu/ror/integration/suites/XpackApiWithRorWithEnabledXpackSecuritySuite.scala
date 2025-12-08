@@ -25,11 +25,11 @@ import tech.beshu.ror.utils.misc.Version
 
 class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
-  override implicit val rorConfigFileName: String = "/xpack_api/readonlyrest_without_ror_ssl.yml"
+  override implicit val rorSettingsFileName: String = "/xpack_api/readonlyrest_without_ror_ssl.yml"
 
   override protected def rorClusterSecurityType: SecurityType =
     SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-      rorSettingsFileName = rorConfigFileName,
+      rorSettingsFileName = rorSettingsFileName,
       restSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.RestSsl.Xpack),
       internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
     ))

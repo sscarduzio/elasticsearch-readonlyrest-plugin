@@ -33,7 +33,7 @@ class RorDisabledSuite
     with SingleClientSupport
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/plugin_disabled/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/plugin_disabled/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
 
@@ -41,7 +41,7 @@ class RorDisabledSuite
     EsClusterSettings.create(
       clusterName = "ROR1",
       securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-        rorSettingsFileName = rorConfigFileName,
+        rorSettingsFileName = rorSettingsFileName,
       )),
     )
   )

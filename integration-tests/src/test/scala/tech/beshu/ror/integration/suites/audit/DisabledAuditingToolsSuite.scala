@@ -31,7 +31,7 @@ class DisabledAuditingToolsSuite
     with BeforeAndAfterEach
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/ror_audit/disabled_auditing_tools/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/ror_audit/disabled_auditing_tools/readonlyrest.yml"
 
   override val nodeDataInitializer = Some(ElasticsearchTweetsInitializer)
 

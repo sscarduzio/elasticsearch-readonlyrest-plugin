@@ -53,7 +53,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
       nodeTypes = NonEmptyList.of(
         NodeType(
           securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
-            rorConfigFileName = rorConfigFileName,
+            rorSettingsFileName = rorSettingsFileName,
             restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)),
             internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile))
           )),

@@ -53,9 +53,9 @@ object SingletonEsContainerWithRorSecurity
     logOnFailure(snapshotManager.deleteAllRepositories().force())
   }
 
-  def updateConfig(rorConfig: String): Unit = {
+  def updateSettings(rorSettings: String): Unit = {
     rorApiManager
-      .updateRorInIndexSettings(rorConfig)
+      .updateRorInIndexSettings(rorSettings)
       .forceOKStatusOrSettingsAlreadyLoaded()
   }
 
