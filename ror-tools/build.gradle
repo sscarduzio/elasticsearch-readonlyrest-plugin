@@ -43,6 +43,9 @@ sourceSets {
 }
 
 test {
+    // Run tests with Java 17+ (required by Gradle Tooling API used in tests)
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+    
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')
     if (enabled) {

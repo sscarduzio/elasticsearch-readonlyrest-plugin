@@ -123,6 +123,15 @@ abstract class EsContainer(val esVersion: String,
     case None => new RestClient(sslEnabled, ip, port, Option.empty)
   }
 
+  override def start(): Unit = {
+    try {
+      super.start()
+    } catch {
+      case ex: Throwable =>
+        logger.error("Container starting error", ex)
+        throw ex
+    }
+  }
 }
 
 object EsContainer {

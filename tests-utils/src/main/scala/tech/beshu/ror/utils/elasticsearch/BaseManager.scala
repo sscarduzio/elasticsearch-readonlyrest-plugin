@@ -93,6 +93,13 @@ abstract class BaseManager(client: RestClient,
       this
     }
 
+    def successOrNotFound(): this.type = {
+      if (!(isSuccess || isNotFound)) throw new IllegalStateException(
+        s"Expected success or not found but got HTTP $responseCode, body: $body"
+      )
+      this
+    }
+
     override def toString: String = response.toString
 
     private def checkResponseAssertions(): Unit = {

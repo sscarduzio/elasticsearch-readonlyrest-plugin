@@ -46,7 +46,7 @@ Currently eshome support debugging only es8x modules.
 * ROR plugin binaries can be found in `es70x/build/distributions/`
 
 **⚠️Required tools:**
-* OpenJDK 21
+* Java 17
 * Gradle
 
 ### Using Docker
