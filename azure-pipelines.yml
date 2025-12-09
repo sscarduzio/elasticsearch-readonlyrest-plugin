@@ -264,8 +264,7 @@ stages:
 #######################################################
 ##### Integration tests for ES 9.x on master/develop
 #######################################################
-      - job: IT_ES9x_MAIN
-        displayName: 'Integration tests ES 9.x (master/develop)'
+      - job:
         condition:
           and(
             succeeded(),
@@ -322,8 +321,7 @@ stages:
 #######################################################
 ##### Integration tests for ES 8.x on master/develop
 #######################################################
-      - job: IT_ES8x_MAIN
-        displayName: 'Integration tests ES 8.x (master/develop)'
+      - job:
         condition:
           and(
             succeeded(),
@@ -425,6 +423,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
@@ -435,6 +442,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -474,8 +482,7 @@ stages:
 #######################################################
 ##### Integration tests for ES 9.x on PRs
 #######################################################
-      - job: IT_ES9x_PR
-        displayName: 'Integration tests ES 9.x (PRs)'
+      - job:
         condition:
           and(
             succeeded(),
@@ -528,8 +535,7 @@ stages:
 #######################################################
 ##### Integration tests for ES 8.x on PRs
 #######################################################
-      - job: IT_ES8x_PR
-        displayName: 'Integration tests ES 8.x (PRs)'
+      - job:
         condition:
           and(
             succeeded(),
@@ -601,6 +607,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
@@ -611,6 +626,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
