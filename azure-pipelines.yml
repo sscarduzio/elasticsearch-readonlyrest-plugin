@@ -7,6 +7,7 @@ variables:
   isNewEsBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'newes/'), contains(variables['System.PullRequest.SourceBranch'], 'newes/'))]
   dependencyCheckCacheKey: $[format('dependency-check-v1-{0:yyyyMM}', pipeline.startTime)]
   dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
+  GRADLE_USER_HOME: '$(Pipeline.Workspace)/.gradle'
 
 trigger:
   batch: false
@@ -64,10 +65,50 @@ stages:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
 
+  - stage: GRADLE_WARMUP
+    displayName: 'Warm up Gradle cache'
+    dependsOn: [ ]
+    condition:
+      and(
+        succeeded(),
+        or(
+          ne(variables['Build.Reason'], 'Manual'),
+          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
+        )
+      )
+    jobs:
+      - job: WARMUP
+        displayName: 'Download Gradle and toolchains'
+        container: openjdk:22-jdk-slim
+        timeoutInMinutes: 30
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
+          - bash: |
+              set +e
+              apt-get update && apt-get install -y git curl
+              echo "Warming up Gradle and toolchains..."
+              ./gradlew --no-daemon -q help
+              exit 0
+            displayName: 'Download Gradle and toolchains (best effort)'
+            condition: ne(variables.GRADLE_CACHE_HIT, 'true')
+            env:
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
-    dependsOn: [ ES_S3_UP ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
+    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
+    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: CVE_CHECK
         steps:
@@ -75,6 +116,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - task: Cache@2
             displayName: 'Restore CVE DB from cache'
             inputs:
@@ -105,6 +155,7 @@ stages:
               var_is_fork: $(System.PullRequest.IsFork)
               var_oss_index_username: $(OSS_INDEX_USERNAME)
               var_oss_index_password: $(OSS_INDEX_PASSWORD)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: Cache@2
             displayName: 'Save updated CVE DB in cache'
             inputs:
@@ -115,8 +166,13 @@ stages:
 
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
-    dependsOn: [ ES_S3_UP ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
+    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
+    condition: 
+      and(
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), 
+        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), 
+        ne(variables['Build.Reason'], 'Manual')
+      )
     jobs:
       - job: 
         steps:
@@ -124,9 +180,20 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               echo "[REQUIRED_CHECKS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
+            env:
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
         strategy:
           maxParallel: 99
           matrix:
@@ -139,10 +206,11 @@ stages:
 
   - stage: TEST
     displayName: 'Run all tests'
-    dependsOn: [ ES_S3_UP ]
+    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
     condition:
       and(
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
+        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         or(
           ne(variables['Build.Reason'], 'Manual'),
           and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
@@ -165,6 +233,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
@@ -176,6 +253,7 @@ stages:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
               ROR_TASK: core_tests
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -186,7 +264,8 @@ stages:
 #######################################################
 ##### Integration tests for ES 9.x on master/develop
 #######################################################
-      - job:
+      - job: IT_ES9x_MAIN
+        displayName: 'Integration tests ES 9.x (master/develop)'
         condition:
           and(
             succeeded(),
@@ -204,6 +283,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
@@ -214,6 +302,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -233,7 +322,8 @@ stages:
 #######################################################
 ##### Integration tests for ES 8.x on master/develop
 #######################################################
-      - job:
+      - job: IT_ES8x_MAIN
+        displayName: 'Integration tests ES 8.x (master/develop)'
         condition:
           and(
             succeeded(),
@@ -251,6 +341,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
@@ -261,6 +360,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -374,7 +474,8 @@ stages:
 #######################################################
 ##### Integration tests for ES 9.x on PRs
 #######################################################
-      - job:
+      - job: IT_ES9x_PR
+        displayName: 'Integration tests ES 9.x (PRs)'
         condition:
           and(
             succeeded(),
@@ -390,6 +491,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
@@ -400,6 +510,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -417,7 +528,8 @@ stages:
 #######################################################
 ##### Integration tests for ES 8.x on PRs
 #######################################################
-      - job:
+      - job: IT_ES8x_PR
+        displayName: 'Integration tests ES 8.x (PRs)'
         condition:
           and(
             succeeded(),
@@ -433,6 +545,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
@@ -443,6 +564,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -783,7 +905,15 @@ stages:
           - checkout: self
             fetchDepth: 1
             clean: false
-
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               set -e
 
@@ -796,6 +926,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
         strategy:
           maxParallel: 99
@@ -855,7 +986,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
-
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               set -e
 
@@ -869,6 +1008,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
         strategy:
           maxParallel: 99
@@ -906,7 +1046,15 @@ stages:
             clean: false
             persistCredentials: true
             timeoutInMinutes: 180
-
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               set -e
 
@@ -931,6 +1079,7 @@ stages:
               var_aws_secret_access_key: $(aws_secret_access_key)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
         strategy:
           maxParallel: 99
@@ -966,7 +1115,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
-
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
           # Populate the global variable mvn_status for later
           - script: |
               PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
@@ -1013,6 +1170,7 @@ stages:
               VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
               VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
               VAR_GPG_KEY_ID: $(GPG_KEY_ID)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
             condition: eq(404, variables.mvn_status)
 
   - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING

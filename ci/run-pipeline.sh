@@ -4,43 +4,32 @@ source "$(dirname "$0")/ci-lib.sh"
 
 trap 'echo "Termination signal received. Exiting..."; exit 1' SIGTERM SIGINT
 
-echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION"
-
-export TRAVIS_BRANCH=$(git symbolic-ref --short -q HEAD)
-
-if [ "$BUILD_SOURCEBRANCHNAME" ]; then
-  export TRAVIS=true
-  export TRAVIS_BRANCH=$BUILD_SOURCEBRANCHNAME
-fi
-echo ">> FOUND BUILD PARAMETERS: task? $ROR_TASK; is CI? $TRAVIS; branch? $TRAVIS_BRANCH"
+echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task? $ROR_TASK"
 
 # Log file friendly Gradle output
 export TERM=dumb
 
-# Adaptation for Azure
-([ ! -z $BUILD_BUILDNUMBER ] || [ "$TRAVIS" ]) && TRAVIS="true"
-
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "license_check" ]]; then
+if [[ $ROR_TASK == "license_check" ]]; then
   echo ">>> Check all license headers are in place"
   ./gradlew --no-daemon license
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "cve_check" ]]; then
+if [[ $ROR_TASK == "cve_check" ]]; then
   echo ">>> Running CVE checks.."
   ./gradlew --no-daemon dependencyCheckAnalyze
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "compile_codebase_check" ]]; then
+if [[ $ROR_TASK == "compile_codebase_check" ]]; then
   echo ">>> Running compile codebase.."
   ./gradlew --no-daemon classes
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "audit_build_check" ]]; then
+if [[ $ROR_TASK == "audit_build_check" ]]; then
   echo ">>> Running audit module cross build.."
   ./gradlew --no-daemon --stacktrace audit:crossBuildAssemble
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "core_tests" ]]; then
+if [[ $ROR_TASK == "core_tests" ]]; then
   echo ">>> Running unit tests.."
   ./gradlew --no-daemon --stacktrace core:test audit:test
 fi
@@ -57,141 +46,136 @@ run_integration_tests() {
   ./gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es92x" ]]; then
+if [[ $ROR_TASK == "integration_es92x" ]]; then
   run_integration_tests "es92x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es91x" ]]; then
+if [[ $ROR_TASK == "integration_es91x" ]]; then
   run_integration_tests "es91x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es90x" ]]; then
+if [[ $ROR_TASK == "integration_es90x" ]]; then
   run_integration_tests "es90x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es818x" ]]; then
+if [[ $ROR_TASK == "integration_es818x" ]]; then
   run_integration_tests "es818x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es816x" ]]; then
+if [[ $ROR_TASK == "integration_es816x" ]]; then
   run_integration_tests "es816x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es815x" ]]; then
+if [[ $ROR_TASK == "integration_es815x" ]]; then
   run_integration_tests "es815x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es814x" ]]; then
+if [[ $ROR_TASK == "integration_es814x" ]]; then
   run_integration_tests "es814x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es813x" ]]; then
+if [[ $ROR_TASK == "integration_es813x" ]]; then
   run_integration_tests "es813x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es812x" ]]; then
+if [[ $ROR_TASK == "integration_es812x" ]]; then
   run_integration_tests "es812x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es811x" ]]; then
+if [[ $ROR_TASK == "integration_es811x" ]]; then
   run_integration_tests "es811x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es810x" ]]; then
+if [[ $ROR_TASK == "integration_es810x" ]]; then
   run_integration_tests "es810x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es89x" ]]; then
+if [[ $ROR_TASK == "integration_es89x" ]]; then
   run_integration_tests "es89x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es88x" ]]; then
+if [[ $ROR_TASK == "integration_es88x" ]]; then
   run_integration_tests "es88x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es87x" ]]; then
+if [[ $ROR_TASK == "integration_es87x" ]]; then
   run_integration_tests "es87x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es85x" ]]; then
+if [[ $ROR_TASK == "integration_es85x" ]]; then
   run_integration_tests "es85x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es84x" ]]; then
+if [[ $ROR_TASK == "integration_es84x" ]]; then
   run_integration_tests "es84x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es83x" ]]; then
+if [[ $ROR_TASK == "integration_es83x" ]]; then
   run_integration_tests "es83x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es82x" ]]; then
+if [[ $ROR_TASK == "integration_es82x" ]]; then
   run_integration_tests "es82x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es81x" ]]; then
+if [[ $ROR_TASK == "integration_es81x" ]]; then
   run_integration_tests "es81x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es80x" ]]; then
+if [[ $ROR_TASK == "integration_es80x" ]]; then
   run_integration_tests "es80x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es717x" ]]; then
+if [[ $ROR_TASK == "integration_es717x" ]]; then
   run_integration_tests "es717x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es716x" ]]; then
+if [[ $ROR_TASK == "integration_es716x" ]]; then
   run_integration_tests "es716x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es714x" ]]; then
+if [[ $ROR_TASK == "integration_es714x" ]]; then
   run_integration_tests "es714x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es711x" ]]; then
+if [[ $ROR_TASK == "integration_es711x" ]]; then
   run_integration_tests "es711x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es710x" ]]; then
+if [[ $ROR_TASK == "integration_es710x" ]]; then
   run_integration_tests "es710x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es79x" ]]; then
+if [[ $ROR_TASK == "integration_es79x" ]]; then
   run_integration_tests "es79x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es78x" ]]; then
+if [[ $ROR_TASK == "integration_es78x" ]]; then
   run_integration_tests "es78x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es77x" ]]; then
+if [[ $ROR_TASK == "integration_es77x" ]]; then
   run_integration_tests "es77x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es74x" ]]; then
+if [[ $ROR_TASK == "integration_es74x" ]]; then
   run_integration_tests "es74x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es73x" ]]; then
+if [[ $ROR_TASK == "integration_es73x" ]]; then
   run_integration_tests "es73x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es72x" ]]; then
+if [[ $ROR_TASK == "integration_es72x" ]]; then
   run_integration_tests "es72x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es70x" ]]; then
+if [[ $ROR_TASK == "integration_es70x" ]]; then
   run_integration_tests "es70x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es67x" ]]; then
+if [[ $ROR_TASK == "integration_es67x" ]]; then
   run_integration_tests "es67x"
-fi
-
-if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then
-  echo ">>> won't try to create builds because this is a PR"
-  exit 0
 fi
 
 build_ror_plugins() {
@@ -220,19 +204,19 @@ build_ror_plugin() {
   ./gradlew buildRorPlugin "-PesVersion=$ROR_VERSION" </dev/null
 }
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es9xx" ]]; then
+if [[ $ROR_TASK == "build_es9xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es9x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es8xx" ]]; then
+if [[ $ROR_TASK == "build_es8xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es7xx" ]]; then
+if [[ $ROR_TASK == "build_es7xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es7x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es6xx" ]]; then
+if [[ $ROR_TASK == "build_es6xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
@@ -266,19 +250,19 @@ upload_pre_ror_plugin() {
   ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
 }
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es9xx" ]]; then
+if [[ $ROR_TASK == "upload_pre_es9xx" ]]; then
   upload_pre_ror_plugins "ci/supported-es-versions/es9x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es8xx" ]]; then
+if [[ $ROR_TASK == "upload_pre_es8xx" ]]; then
   upload_pre_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es7xx" ]]; then
+if [[ $ROR_TASK == "upload_pre_es7xx" ]]; then
   upload_pre_ror_plugins "ci/supported-es-versions/es7x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es6xx" ]]; then
+if [[ $ROR_TASK == "upload_pre_es6xx" ]]; then
   upload_pre_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
@@ -370,19 +354,19 @@ public_ror_prebuild_plugin() {
   $DOCKER system prune -fa
 }
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es9xx" ]]; then
+if [[ $ROR_TASK == "release_es9xx" ]]; then
   release_ror_plugins "ci/supported-es-versions/es9x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es8xx" ]]; then
+if [[ $ROR_TASK == "release_es8xx" ]]; then
   release_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es7xx" ]]; then
+if [[ $ROR_TASK == "release_es7xx" ]]; then
   release_ror_plugins "ci/supported-es-versions/es7x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es6xx" ]]; then
+if [[ $ROR_TASK == "release_es6xx" ]]; then
   release_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
@@ -407,7 +391,7 @@ check_maven_artifacts_exist() {
   fi
 }
 
-if [[ $ROR_TASK == "publish_maven_artifacts" ]] && [[ $TRAVIS_BRANCH == "master" ]]; then
+if [[ $ROR_TASK == "publish_maven_artifacts" ]]; then
   # .travis/secret.pgp is downloaded via Azure secret files, see azure-pipelines.yml
   CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
   PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
@@ -425,7 +409,7 @@ if [[ $ROR_TASK == "publish_maven_artifacts" ]] && [[ $TRAVIS_BRANCH == "master"
   fi
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
+if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
 
   IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
   for VERSION in "${VERSIONS[@]}"; do
