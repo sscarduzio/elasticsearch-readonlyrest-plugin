@@ -43,8 +43,8 @@ sourceSets {
 }
 
 test {
-    // Run tests with Java 17+ (required by Gradle Tooling API used in tests)
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+    // Run tests with Java 21 (required by Gradle Tooling API used in tests, matches CI environment)
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
     
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')
