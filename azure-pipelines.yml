@@ -79,7 +79,7 @@ stages:
     jobs:
       - job: WARMUP
         displayName: 'Download Gradle and toolchains'
-        container: openjdk:22-jdk-slim
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 30
         steps:
           - checkout: self
@@ -111,6 +111,7 @@ stages:
     condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: CVE_CHECK
+        container: eclipse-temurin:17-jdk
         steps:
           - checkout: self
             fetchDepth: 1
@@ -175,6 +176,7 @@ stages:
       )
     jobs:
       - job: 
+        container: eclipse-temurin:17-jdk
         steps:
           - checkout: self
             fetchDepth: 1
@@ -227,6 +229,7 @@ stages:
             not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows')))
           )
         displayName: 'Unit tests'
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 30
         steps:
           - checkout: self
@@ -275,7 +278,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: openjdk:22-jdk-slim
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -332,7 +335,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: openjdk:22-jdk-slim
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -417,6 +420,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -491,7 +495,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: openjdk:22-jdk-slim
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -544,7 +548,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: openjdk:22-jdk-slim
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -601,6 +605,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -916,6 +921,7 @@ stages:
       )
     jobs:
       - job:
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 180
         steps:
           - checkout: self
@@ -996,6 +1002,7 @@ stages:
       )
     jobs:
       - job:
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 600
         steps:
           - checkout: self
@@ -1055,6 +1062,7 @@ stages:
       )
     jobs:
       - job:
+        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 180
         steps:
           - checkout: self
@@ -1075,7 +1083,7 @@ stages:
               set -e
 
               echo ">>>> Installing dependencies with apt-get"
-              sudo apt-get update && sudo apt-get install -y git file
+              apt-get update && apt-get install -y git file
               git status && echo ">>> Git installed correctly!"
 
               # Translate back env vars to avoid cyclical reference :/
@@ -1126,6 +1134,7 @@ stages:
       )
     jobs:
       - job:
+        container: eclipse-temurin:17-jdk
         steps:
           - checkout: self
             fetchDepth: 1
