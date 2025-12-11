@@ -356,7 +356,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
     warning(
       blockName,
       ruleName,
-      message = "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
+      message = "The rule contains fully hashed username and password. It doesn't support impersonation in this use case.",
       hint = s"You can use second version of the rule and use not hashed username. Like that: `$ruleName: USER_NAME:hash(PASSWORD)"
     )
   }

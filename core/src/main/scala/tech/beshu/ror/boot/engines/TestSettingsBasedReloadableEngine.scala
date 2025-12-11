@@ -221,7 +221,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     EitherT(testSettingsSource.load())
       .map(Some(_))
       .leftFlatMap {
-        case LoadingSettingsError.SourceSpecificError(LoadingError.DocumentNotFound) =>
+        case LoadingSettingsError.SourceSpecificError(LoadingError.DocumentNotFound | LoadingError.IndexNotFound) =>
           EitherT.rightT(None)
         case error =>
           EitherT.leftT(IndexSettingsReloadError.IndexLoadingSettingsError(error): IndexSettingsReloadError)

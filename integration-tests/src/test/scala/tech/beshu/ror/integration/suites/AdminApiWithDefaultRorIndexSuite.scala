@@ -31,7 +31,7 @@ class AdminApiWithDefaultRorIndexSuite
   override implicit val rorSettingsFileName: String = "/admin_api/readonlyrest.yml"
   override protected val readonlyrestIndexName: String = ".readonlyrest"
 
-  override protected lazy val rorWithIndexConfig: EsClusterContainer = {
+  override protected lazy val rorWithIndexSettings: EsClusterContainer = {
     def esClusterSettingsCreator(securityType: SecurityType) =
       EsClusterSettings.create(
         clusterName = "ROR1",
@@ -50,7 +50,7 @@ class AdminApiWithDefaultRorIndexSuite
     )
   }
 
-  override protected lazy val rorWithNoIndexConfig: EsClusterContainer = {
+  override protected lazy val rorWithNoIndexSettings: EsClusterContainer = {
     def esClusterSettingsCreator(securityType: SecurityType) =
       EsClusterSettings.create(
         clusterName = "ROR2",

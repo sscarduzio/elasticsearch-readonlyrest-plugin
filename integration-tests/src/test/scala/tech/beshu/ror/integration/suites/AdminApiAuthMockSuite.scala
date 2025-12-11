@@ -34,8 +34,8 @@ import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApi
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
-import java.time.{Instant, ZoneOffset}
 import java.time.temporal.ChronoUnit
+import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -62,7 +62,7 @@ class AdminApiAuthMockSuite
     def esClusterSettingsCreator(securityType: SecurityType) =
       EsClusterSettings.create(
         clusterName = "ROR1",
-        numberOfInstances = positiveInt(3),
+        numberOfInstances = positiveInt(2),
         securityType = securityType,
         nodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
         dependentServicesContainers = clusterDependencies
@@ -92,7 +92,7 @@ class AdminApiAuthMockSuite
         rorClients.foreach { rorApiManager =>
           val response = rorApiManager.currentMockedServices()
           response should have statusCode 200
-          response.responseJson should be(testSettingsNotConfiguredJson)
+          response.responseJson should be (testSettingsNotConfiguredJson)
         }
       }
       "update mocks" in {
@@ -111,7 +111,7 @@ class AdminApiAuthMockSuite
         rorClients.foreach { rorApiManager =>
           val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
           response should have statusCode 200
-          response.responseJson should be(testSettingsNotConfiguredJson)
+          response.responseJson should be (testSettingsNotConfiguredJson)
         }
       }
     }
@@ -200,7 +200,7 @@ class AdminApiAuthMockSuite
                  |  {
                  |    "block_name": "test2 (1)",
                  |    "rule_name": "auth_key_sha1",
-                 |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
+                 |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this use case.",
                  |    "hint": "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
                  |  },
                  |  {
@@ -649,7 +649,7 @@ class AdminApiAuthMockSuite
              |""".stripMargin
         ))
 
-        eventually { // await until all nodes load config
+        eventually { // await until all nodes load settings
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.currentMockedServices()
             response should have statusCode 200
@@ -668,7 +668,7 @@ class AdminApiAuthMockSuite
                |  {
                |    "block_name": "test2 (1)",
                |    "rule_name": "auth_key_sha1",
-               |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
+               |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this use case.",
                |    "hint": "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
                |  }
                |]
@@ -676,11 +676,11 @@ class AdminApiAuthMockSuite
           ))
         }
       }
-      "return info that all mocks are configured when old config version stored in index" in {
+      "return info that all mocks are configured when old settings version stored in index" in {
         setupTestSettingsOnAllNodes()
         invalidateTestSettingsOnAllNodes()
 
-        setupTestSettingsInIndex(
+        setupTestSettingsInIndex(ujson.read(
           s"""
              |{
              |  "ldapMocks": {
@@ -761,7 +761,7 @@ class AdminApiAuthMockSuite
              |  }
              |}
              |""".stripMargin
-        )
+        ))
 
         val payloadServices = ujson.read(
           s"""
@@ -885,7 +885,7 @@ class AdminApiAuthMockSuite
              |""".stripMargin
         )
 
-        eventually { // await until all nodes load config
+        eventually { // await until all nodes load settings
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.currentMockedServices()
             response should have statusCode 200
@@ -897,7 +897,7 @@ class AdminApiAuthMockSuite
     }
     "provide a method for reload mocked services" which {
       "is going to reload mocked services" when {
-        "configuration is correct" when {
+        "settings are correct" when {
           "all services are passed" in {
             setupTestSettingsOnAllNodes()
 
@@ -1238,7 +1238,7 @@ class AdminApiAuthMockSuite
       _.invalidateImpersonationMocks().force()
     }
 
-    removeRorIndexAndAwaitForNotSetTestConfig()
+    removeRorIndexAndAwaitForNotSetTestSettings()
   }
 
   private def invalidateTestSettingsOnAllNodes(): Unit = {
@@ -1246,20 +1246,17 @@ class AdminApiAuthMockSuite
       .invalidateRorTestSettings()
       .forceOkStatus()
 
-    eventually { // await until all nodes load config
+    eventually { // await until all nodes load settings
       rorClients.foreach {
         assertCurrentTestSettings(_, expectedStatus = "TEST_SETTINGS_INVALIDATED")
       }
     }
   }
 
-  private def assertCurrentTestSettings(rorApiManager: RorApiManager, expectedStatus: String, otherExpectedStatuses: String*) = {
+  private def assertCurrentTestSettings(rorApiManager: RorApiManager, expectedStatus: String) = {
     val response = rorApiManager.currentRorTestSettings
-    val expectedStatuses = expectedStatus :: otherExpectedStatuses.toList
     response should have statusCode 200
-
-    val status = response.responseJson("status").str
-    expectedStatuses should contain(status)
+    response.responseJson("status").str should be(expectedStatus)
   }
 
   private def updateMocksPayload(payloadServices: Value) = {
@@ -1278,7 +1275,7 @@ class AdminApiAuthMockSuite
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = settingsReloadInterval.plus(10 second), interval = 500 millis)
 
-  private def removeRorIndexAndAwaitForNotSetTestConfig(): Unit = {
+  private def removeRorIndexAndAwaitForNotSetTestSettings(): Unit = {
     // remove index storing test settings
     new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
       .removeIndex(readonlyrestIndexName)
@@ -1286,7 +1283,7 @@ class AdminApiAuthMockSuite
 
     eventually { // wait until node invalidate the test settings
       rorClients.foreach {
-        assertCurrentTestSettings(_, expectedStatus = "TEST_SETTINGS_NOT_CONFIGURED", otherExpectedStatuses = "TEST_SETTINGS_INVALIDATED")
+        assertCurrentTestSettings(_, expectedStatus = "TEST_SETTINGS_NOT_CONFIGURED")
       }
     }
   }
@@ -1295,7 +1292,7 @@ class AdminApiAuthMockSuite
     val testSettings = testSettingsFromFile()
     val expirationTtl = 30 minutes
     val expirationTime = Instant.now().plus(expirationTtl.toMillis, ChronoUnit.MILLIS)
-    val testSettingsJson = ujson.read(
+    val testSettingsRelatedDocument = ujson.read(
       s"""
          |{
          |  "settings": ${ujson.write(testSettings)},
@@ -1307,8 +1304,9 @@ class AdminApiAuthMockSuite
     )
     val documentType = "settings"
     val documentManager = new DocumentManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
-    val createDocResponse = documentManager.createDoc(readonlyrestIndexName, documentType, testSettingsEsDocumentId, testSettingsJson)
-    createDocResponse.isSuccess should be(true)
+    val createDocResponse = documentManager.createDoc(readonlyrestIndexName, documentType, testSettingsEsDocumentId, testSettingsRelatedDocument)
+
+    createDocResponse should have statusCode 200
   }
 
   private def assertAuthMocksInIndex(expectedMocks: Value) = {
