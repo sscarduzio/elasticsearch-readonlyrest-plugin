@@ -115,7 +115,7 @@ class SearchApiSuite
         }
         "backing index name passed" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val backingIndices =
-            adminIndexManager.resolve("test_logs_ds")
+            adminIndexManager.resolveIndex("test_logs_ds")
               .dataStreams
               .find(_.name == "test_logs_ds")
               .toList
@@ -132,7 +132,7 @@ class SearchApiSuite
         }
         "backing index name with wildcard passed" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val backingIndices =
-            adminIndexManager.resolve("test_logs_ds")
+            adminIndexManager.resolveIndex("test_logs_ds")
               .dataStreams
               .find(_.name == "test_logs_ds")
               .toList

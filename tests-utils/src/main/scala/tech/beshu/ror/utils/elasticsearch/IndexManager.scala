@@ -150,8 +150,8 @@ class IndexManager(client: RestClient,
     call(createRolloverRequest(target, None), new JsonResponse(_))
   }
 
-  def resolve(indexPattern: String, otherIndexPatterns: String*): ResolveResponse = {
-    call(createResolveRequest(indexPattern :: otherIndexPatterns.toList), new ResolveResponse(_))
+  def resolveIndex(indexPattern: String, otherIndexPatterns: String*): ResolveResponse = {
+    call(createResolveIndexRequest(indexPattern :: otherIndexPatterns.toList), new ResolveResponse(_))
   }
 
   def reindex(source: ReindexSource, destIndexName: String): JsonResponse = {
@@ -285,7 +285,7 @@ class IndexManager(client: RestClient,
     request
   }
 
-  private def createResolveRequest(indicesPatterns: List[String]) = {
+  private def createResolveIndexRequest(indicesPatterns: List[String]) = {
     new HttpGet(client.from(s"/_resolve/index/${indicesPatterns.mkString(",")}"))
   }
 

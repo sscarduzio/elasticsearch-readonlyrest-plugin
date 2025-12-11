@@ -126,7 +126,7 @@ class CrossClusterCallsSuite
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote data streams only by data stream backing indices when data stream configured" excludeES (allEs6x, allEs7xBelowEs79x) in {
-          val resolveIndexResponse = user1IndexManager.resolve("private2:test1_ds")
+          val resolveIndexResponse = user1IndexManager.resolveIndex("private2:test1_ds")
           resolveIndexResponse.dataStreams.size should be(1)
           val dataStream = resolveIndexResponse.dataStreams.head
           val searchResults = dataStream.backingIndices.flatMap { backingIndex =>
@@ -214,7 +214,7 @@ class CrossClusterCallsSuite
           result should have statusCode 404
         }
         "he queries remote data streams backing indices when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
-          val resolveIndexResponse = adminIndexManager.resolve("private2:test_alias")
+          val resolveIndexResponse = adminIndexManager.resolveIndex("private2:test_alias")
           val backingIndices = resolveIndexResponse.aliases.flatMap(_.indices)
           backingIndices should have size 5
           backingIndices.foreach { backingIndex =>
@@ -294,7 +294,7 @@ class CrossClusterCallsSuite
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
         "he queries remote data streams only by data stream backing indices" excludeES (allEs6x, allEs7xBelowEs79x) in {
-          val resolveIndexResponse = user1IndexManager.resolve("private2:test1_ds")
+          val resolveIndexResponse = user1IndexManager.resolveIndex("private2:test1_ds")
           resolveIndexResponse.dataStreams.size should be(1)
           val dataStream = resolveIndexResponse.dataStreams.head
           val searchResults = dataStream.backingIndices.flatMap { backingIndex =>
@@ -366,7 +366,7 @@ class CrossClusterCallsSuite
           result should have statusCode 404
         }
         "he queries remote data streams backing indices when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
-          val resolveIndexResponse = adminIndexManager.resolve("private2:test_alias")
+          val resolveIndexResponse = adminIndexManager.resolveIndex("private2:test_alias")
           val backingIndices = resolveIndexResponse.aliases.flatMap(_.indices)
           backingIndices should have size 5
           backingIndices.foreach { backingIndex =>
@@ -577,6 +577,10 @@ class CrossClusterCallsSuite
         }
       }
     }
+  }
+
+  "A /_resolve/cluster call" should {
+
   }
 }
 

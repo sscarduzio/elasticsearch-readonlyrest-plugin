@@ -210,7 +210,6 @@ object ClusterIndexName {
       object Full {
         def fromString(value: String): Option[Full] =
           NonEmptyString.unapply(value).map(Full.apply)
-
       }
 
       final case class Pattern private(value: NonEmptyString) extends ClusterName
