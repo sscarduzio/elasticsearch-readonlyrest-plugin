@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWi
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
@@ -93,14 +94,14 @@ trait RequestContext extends Logging {
 
 object RequestContext extends Logging {
 
-  type Aux[B <: BlockContext] = RequestContext { type BLOCK_CONTEXT = B }
+  type Aux[B <: BlockContext] = RequestContext {type BLOCK_CONTEXT = B}
 
   final case class Id private(value: String) {
     def toRequestId: RequestId = RequestId(value)
   }
   object Id {
     def fromString(value: String): Id = Id(value)
-    
+
     def from(sessionCorrelationId: CorrelationId, requestId: String): Id =
       new Id(s"${sessionCorrelationId.value.value}-$requestId")
   }
@@ -136,7 +137,6 @@ object RequestContext extends Logging {
           case None => "<N/A>"
         }
       }
-
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
@@ -159,28 +159,58 @@ object RequestContext extends Logging {
 
   val readActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
+      RorAction.RorUserMetadataAction.value,
       "cluster:monitor/*",
       "cluster:*get*",
-      "cluster:*search*",
       "cluster:admin/*/get",
       "cluster:admin/*/status",
-      "indices:admin/*/get",
+      "cluster:admin/*/verify",
+      "cluster:admin/idp/saml/metadata",
+      "cluster:admin/ingest/pipeline/simulate",
+      "cluster:admin/slm/stats",
+      "cluster:admin/transform/node_stats",
+      "cluster:admin/transform/preview",
+      "cluster:admin/xpack/application/*/get",
+      "cluster:admin/xpack/application/search_application/list",
+      "cluster:admin/xpack/application/search_application/render_query",
+      "cluster:admin/xpack/connector/list",
+      "cluster:admin/xpack/connector/sync_job/list",
+      "cluster:admin/xpack/deprecation/info",
+      "cluster:admin/xpack/deprecation/nodes/info",
+      "cluster:admin/xpack/license/basic_status",
+      "cluster:admin/xpack/license/trial_status",
+      "cluster:admin/xpack/ml/data_frame/analytics/explain",
+      "cluster:admin/xpack/ml/data_frame/analytics/preview",
+      "cluster:admin/xpack/ml/datafeeds/preview",
+      "cluster:admin/xpack/query_rules/list",
+      "cluster:admin/xpack/security/api_key/query",
+      "cluster:admin/xpack/security/user/list_privileges",
+      "cluster:admin/xpack/searchable_snapshots/cache/stats",
+      "cluster:admin/xpack/security/*/get",
+      "cluster:admin/xpack/security/*/query",
+      "cluster:monitor/async_search/status",
       "indices:admin/*/explain",
+      "indices:admin/*/get",
       "indices:admin/aliases/exists",
       "indices:admin/aliases/get",
+      "indices:admin/analyze",
       "indices:admin/exists*",
       "indices:admin/get*",
+      "indices:admin/index_template/simulate",
+      "indices:admin/index_template/simulate_index",
       "indices:admin/mappings/fields/get*",
       "indices:admin/mappings/get*",
+      "indices:admin/migration/reindex_status",
       "indices:admin/refresh*",
+      "indices:admin/search/search_shards",
+      "indices:admin/template/get",
       "indices:admin/types/exists",
       "indices:admin/validate/*",
-      "indices:admin/template/get",
       "indices:data/read/*",
-      "indices:monitor/*",
+      "indices:admin/index_template/get",
+      "indices:admin/resolve/*",
       "indices:admin/xpack/rollup/search",
-      "indices:admin/resolve/index",
-      "indices:admin/index_template/get"
+      "indices:monitor/*",
     ).map(Action.apply)
   }
 
