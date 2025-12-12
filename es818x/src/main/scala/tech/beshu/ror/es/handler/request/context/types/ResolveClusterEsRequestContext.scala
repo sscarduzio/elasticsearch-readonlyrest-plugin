@@ -17,7 +17,8 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.admin.indices.resolve.ResolveClusterActionRequest
+import org.elasticsearch.action.ActionResponse
+import org.elasticsearch.action.admin.indices.resolve.{ResolveClusterActionRequest, ResolveClusterActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
@@ -46,12 +47,21 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
-    ModificationResult.Modified
+    ModificationResult.UpdateResponse.sync(resp => filterResponse(resp, allAllowedIndices))
   }
 
   override def modifyWhenIndexNotFound: ModificationResult = {
     val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
     update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
     Modified
+  }
+
+  private def filterResponse(response: ActionResponse, allAllowedIndices: NonEmptyList[ClusterIndexName]): ActionResponse = {
+    response match {
+      case r: ResolveClusterActionResponse =>
+        allAllowedIndices.toString
+        r
+      case r => r
+    }
   }
 }
