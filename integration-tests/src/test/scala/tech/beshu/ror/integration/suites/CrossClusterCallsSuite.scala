@@ -97,9 +97,9 @@ class CrossClusterCallsSuite
   private lazy val user4SearchManager = new SearchManager(basicAuthClient("dev4", "test"), esVersionUsed)
   private lazy val user5SearchManager = new SearchManager(basicAuthClient("dev5", "test"), esVersionUsed)
   private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
-  private lazy val user2IndexManager = new IndexManager(basicAuthClient("dev3", "test"), esVersionUsed)
+  private lazy val user2IndexManager = new IndexManager(basicAuthClient("dev2", "test"), esVersionUsed)
   private lazy val user3IndexManager = new IndexManager(basicAuthClient("dev3", "test"), esVersionUsed)
-  private lazy val user5IndexManager = new IndexManager(basicAuthClient("dev3", "test"), esVersionUsed)
+  private lazy val user5IndexManager = new IndexManager(basicAuthClient("dev5", "test"), esVersionUsed)
   private lazy val user6IndexManager = new IndexManager(basicAuthClient("dev6", "test"), esVersionUsed)
   private lazy val user7IndexManager = new IndexManager(basicAuthClient("dev7", "test"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
@@ -701,7 +701,7 @@ class CrossClusterCallsSuite
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
-            "(local)" -> MatchingIndices.False
+            "(local)" -> MatchingIndices.NoSuchIndex
           )
         )
       }
@@ -713,7 +713,7 @@ class CrossClusterCallsSuite
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
-            "private1" -> MatchingIndices.False
+            "private1" -> MatchingIndices.NoSuchIndex
           )
         )
       }
@@ -722,16 +722,16 @@ class CrossClusterCallsSuite
           "metrics_2020-03-26" // existing local index
         )
 
-        result should have statusCode 200
-        result.clusterToMatchingIndices shouldBe Map.empty
+        result should have statusCode 404
+        result.responseJson("error")("type").str should be("no_such_remote_cluster_exception") // todo: should be no_such_local_cluster_exception
       }
       "requested indices are on a cluster that does exist, but no allowed indices patterns mention that cluster at all" in {
         val result = user1IndexManager.resolveCluster(
           "public:service3-logs" // existing remote index
         )
 
-        result should have statusCode 200
-        result.clusterToMatchingIndices shouldBe Map.empty
+        result should have statusCode 404
+        result.responseJson("error")("type").str should be("no_such_remote_cluster_exception")
       }
       "requested indices refer to a remote cluster where the user has allowed indices patterns, but the requested index name does not exist there" in {
         val result = user3IndexManager.resolveCluster(
@@ -753,6 +753,7 @@ class CrossClusterCallsSuite
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
+            "(local)"-> MatchingIndices.NotApplicable,
             "private2" -> MatchingIndices.NotApplicable
           )
         )
@@ -763,6 +764,7 @@ class CrossClusterCallsSuite
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
+            "(local)"-> MatchingIndices.NotApplicable,
             "private2" -> MatchingIndices.NotApplicable
           )
         )
