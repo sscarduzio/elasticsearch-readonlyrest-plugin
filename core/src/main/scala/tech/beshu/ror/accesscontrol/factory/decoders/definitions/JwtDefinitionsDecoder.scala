@@ -47,7 +47,7 @@ object JwtDefinitionsDecoder {
   private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
                             variableCreator: RuntimeResolvableVariableCreator): Decoder[JwtDef] = {
     SyncDecoderCreator
-      .instance[JwtDef] { c =>
+      .instance { c =>
         for {
           name <- c.downField("name").as[Name]
           checkMethod <- signatureCheckMethod(c)

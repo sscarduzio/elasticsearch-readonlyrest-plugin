@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 import cats.Show
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 
 final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  users: Definitions[UserDef],
@@ -31,8 +30,9 @@ final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  impersonators: Definitions[ImpersonatorDef],
                                  variableTransformationAliases: Definitions[VariableTransformationAliasDef])
 
-final case class Definitions[+ITEM <: Item](items: List[ITEM]) extends AnyVal
+final case class Definitions[Item](items: List[Item]) extends AnyVal
 object Definitions {
+
   trait Item {
     type Id
     def id: Id

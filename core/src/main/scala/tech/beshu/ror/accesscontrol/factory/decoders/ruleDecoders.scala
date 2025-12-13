@@ -128,7 +128,7 @@ object ruleDecoders {
                                             impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                             mocksProvider: MocksProvider,
                                             globalSettings: GlobalSettings): Option[RuleDecoder[Rule]] = {
-    lazy val optionalRuleDecoder = name match {
+    val optionalRuleDecoder = name match {
       case ExternalAuthorizationRule.Name.name =>
         Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case JwtAuthRule.Name.name =>

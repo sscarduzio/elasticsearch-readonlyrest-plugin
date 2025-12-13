@@ -346,7 +346,7 @@ class JwtAuthRuleSettingsTests
               rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
               rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-              assertGroupsConfig(rule, GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+              rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
             }
           )
         }
@@ -376,7 +376,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            assertGroupsConfig(rule, GroupsConfig(
+            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups")),
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("group_names")))
             ))
@@ -407,7 +407,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            assertGroupsConfig(rule, GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("https://{domain}/claims/roles")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("https://{domain}/claims/roles")), None))
           }
         )
       }
@@ -437,7 +437,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            assertGroupsConfig(rule, GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           }
         )
       }
@@ -466,7 +466,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            assertGroupsConfig(rule, GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           }
         )
       }
@@ -497,7 +497,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            assertGroupsConfig(rule, GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           }
         )
       }
@@ -527,7 +527,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Ec]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            assertGroupsConfig(rule, GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           }
         )
       }
@@ -562,7 +562,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
             rule.authentication.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            assertGroupsConfig(rule, GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")),None))
+            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           }
         )
       }
@@ -600,7 +600,7 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
             rule.authentication.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            assertGroupsConfig(rule, GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")),None))
+            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           }
         )
       }
@@ -1100,9 +1100,5 @@ class JwtAuthRuleSettingsTests
   private val mockedHttpClientsFactory: HttpClientsFactory = {
     val httpClientMock = mock[HttpClient]
     new MockHttpClientsFactoryWithFixedHttpClient(httpClientMock)
-  }
-
-  private def assertGroupsConfig(rule: JwtAuthRule, expected: GroupsConfig) = {
-    rule.authorization.settings.jwt.groupsConfig should be(expected)
   }
 }
