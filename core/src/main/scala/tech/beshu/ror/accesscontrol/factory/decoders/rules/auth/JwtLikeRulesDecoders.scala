@@ -157,7 +157,7 @@ trait JwtLikeRulesDecoders[
       case None =>
         val message = definitionOfOtherTypeOpt match {
           case Some(_) =>
-            s"The $ruleTypePrefix definition with name $name exists, but cannot be used for ${ruleName.name.show} rule." +
+            s"The $ruleTypePrefix definition with name $name exists, but cannot be used for ${ruleName.name.show} rule. " +
               s"Please check in the documentation ($docsUrl) how to adjust the $ruleTypePrefix definition to use it for both authentication and authorization"
           case None =>
             s"Cannot find $ruleTypePrefix definition with name: $name"

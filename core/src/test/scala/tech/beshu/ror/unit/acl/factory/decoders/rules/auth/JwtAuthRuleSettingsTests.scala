@@ -659,6 +659,54 @@ class JwtAuthRuleSettingsTests
           }
         )
       }
+      "JWT definition found, but it is definition only for authentication and cannot be used for auth" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_auth: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    user_claim: "user"
+              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(Message("The jwt definition with name jwt1 exists, but cannot be used for jwt_auth rule. Please check in the documentation (https://docs.readonlyrest.com/elasticsearch#json-web-token-jwt-auth) how to adjust the jwt definition to use it for both authentication and authorization")))
+          }
+        )
+      }
+      "JWT definition found, but it is definition only for authorization and cannot be used for auth" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_auth: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    group_ids_claim: groups
+              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(Message("The jwt definition with name jwt1 exists, but cannot be used for jwt_auth rule. Please check in the documentation (https://docs.readonlyrest.com/elasticsearch#json-web-token-jwt-auth) how to adjust the jwt definition to use it for both authentication and authorization")))
+          }
+        )
+      }
       "no JWT definition is defined" in {
         assertDecodingFailure(
           yaml =
