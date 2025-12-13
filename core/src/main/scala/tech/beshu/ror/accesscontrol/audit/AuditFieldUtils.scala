@@ -19,11 +19,17 @@ package tech.beshu.ror.accesscontrol.audit
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AuditFieldPath, AuditFieldValueDescriptor}
 
 object AuditFieldUtils {
-  def fields(values: ((AuditFieldPath, AuditFieldValueDescriptor) | Map[AuditFieldPath, AuditFieldValueDescriptor])*): Map[AuditFieldPath, AuditFieldValueDescriptor] =
+
+  private type AUDIT_VALUE = (AuditFieldPath, AuditFieldValueDescriptor) | Map[AuditFieldPath, AuditFieldValueDescriptor]
+
+  def optional(cond: Boolean)(value: AUDIT_VALUE): AUDIT_VALUE =
+    Option.when(cond)(value).getOrElse(Map.empty)
+
+  def fields(values: AUDIT_VALUE*): Map[AuditFieldPath, AuditFieldValueDescriptor] =
     values.flatMap(toMap).toMap
 
   def withPrefix(prefix: String)(
-    values: ((AuditFieldPath, AuditFieldValueDescriptor) | Map[AuditFieldPath, AuditFieldValueDescriptor])*
+    values: AUDIT_VALUE*
   ): Map[AuditFieldPath, AuditFieldValueDescriptor] =
     withPrefix(prefix, values.flatMap(toMap).toMap)
 
@@ -35,7 +41,7 @@ object AuditFieldUtils {
     }
   }
 
-  private def toMap(value: (AuditFieldPath, AuditFieldValueDescriptor) | Map[AuditFieldPath, AuditFieldValueDescriptor]): Map[AuditFieldPath, AuditFieldValueDescriptor] = {
+  private def toMap(value: AUDIT_VALUE): Map[AuditFieldPath, AuditFieldValueDescriptor] = {
     value match {
       case (path: AuditFieldPath, value: AuditFieldValueDescriptor) =>
         Map(path -> value)

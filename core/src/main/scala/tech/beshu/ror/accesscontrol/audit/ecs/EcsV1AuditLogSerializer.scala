@@ -23,16 +23,17 @@ import tech.beshu.ror.audit.utils.AuditSerializationHelper
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode) extends AuditLogSerializer {
+class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode,
+                              includeFullRequestContent: Boolean) extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
-    AuditSerializationHelper.serialize(responseContext, auditFields, allowedEventMode)
+    AuditSerializationHelper.serialize(responseContext, auditFields(includeFullRequestContent), allowedEventMode)
   }
 
 }
 
 object EcsV1AuditLogSerializer {
-  private val auditFields: Map[AuditFieldPath, AuditFieldValueDescriptor] = fields(
+  private def auditFields(includeFullRequestContent: Boolean): Map[AuditFieldPath, AuditFieldValueDescriptor] = fields(
     withPrefix("ecs")(
       // Schema defined by EcsV1AuditLogSerializer is ECS 1.6.0 compliant and does not use newer features
       // introduced by later versions (https://www.elastic.co/guide/en/ecs/1.6/ecs-field-reference.html)
@@ -54,7 +55,7 @@ object EcsV1AuditLogSerializer {
       withPrefix("request")(
         AuditFieldPath("method") -> AuditFieldValueDescriptor.HttpMethod,
         withPrefix("body")(
-          AuditFieldPath("content") -> AuditFieldValueDescriptor.Content,
+          optional(includeFullRequestContent)(AuditFieldPath("content") -> AuditFieldValueDescriptor.Content),
           AuditFieldPath("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
         ),
       ),
