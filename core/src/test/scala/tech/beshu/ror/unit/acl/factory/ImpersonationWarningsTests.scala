@@ -290,6 +290,8 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
               |  jwt:
               |
               |  - name: jwt1
+              |    user_claim: "user"
+              |    group_ids_claim: groups
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin

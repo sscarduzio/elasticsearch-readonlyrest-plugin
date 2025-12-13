@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseComposedAuthentic
 import tech.beshu.ror.accesscontrol.domain.*
 
 final class JwtAuthRule(val authentication: JwtAuthenticationRule,
-                        val authorization: JwtAuthorizationRule | JwtPseudoAuthorizationRule)
+                        val authorization: JwtAuthorizationRule)
   extends BaseComposedAuthenticationAndAuthorizationRule(
     authenticationRule = authentication.withDisabledCallsToExternalAuthenticationService,
     authorizationRule = authorization

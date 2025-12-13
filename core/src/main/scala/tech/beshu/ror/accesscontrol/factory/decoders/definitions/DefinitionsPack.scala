@@ -31,7 +31,7 @@ final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  impersonators: Definitions[ImpersonatorDef],
                                  variableTransformationAliases: Definitions[VariableTransformationAliasDef])
 
-final case class Definitions[ITEM <: Item](items: List[ITEM]) extends AnyVal
+final case class Definitions[+ITEM <: Item](items: List[ITEM]) extends AnyVal
 object Definitions {
   trait Item {
     type Id

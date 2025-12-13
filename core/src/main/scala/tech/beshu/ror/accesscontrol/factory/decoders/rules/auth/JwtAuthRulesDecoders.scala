@@ -17,38 +17,38 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule, JwtPseudoAuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.definitions.*
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 
 object JwtAuthRulesDecoders
   extends JwtLikeRulesDecoders[
+    JwtDef,
+    JwtDefForAuthentication,
+    JwtDefForAuthorization,
+    JwtDefForAuth,
     JwtAuthenticationRule,
     JwtAuthorizationRule,
-    JwtPseudoAuthorizationRule,
     JwtAuthRule,
-    JwtDef,
   ] with Logging {
 
-  override def humanReadableName: String = "JWT"
+  override protected def ruleTypePrefix: String = "jwt"
 
-  override def createAuthenticationRule(definition: JwtDef, globalSettings: GlobalSettings): JwtAuthenticationRule =
+  override protected def docsUrl: String = "https://docs.readonlyrest.com/elasticsearch#json-web-token-jwt-auth"
+
+  override protected def createAuthenticationRule(definition: JwtDefForAuthentication,
+                                                  globalSettings: GlobalSettings): JwtAuthenticationRule =
     new JwtAuthenticationRule(JwtAuthenticationRule.Settings(definition), globalSettings.userIdCaseSensitivity)
 
-  override def createAuthorizationRule(definition: JwtDef, groupsLogic: GroupsLogic): JwtAuthorizationRule =
+  override protected def createAuthorizationRule(definition: JwtDefForAuthorization,
+                                                 groupsLogic: GroupsLogic): JwtAuthorizationRule =
     new JwtAuthorizationRule(JwtAuthorizationRule.Settings(definition, groupsLogic))
-
-  override def createAuthorizationRuleWithoutGroups(definition: JwtDef): JwtPseudoAuthorizationRule =
-    new JwtPseudoAuthorizationRule(JwtPseudoAuthorizationRule.Settings(definition))
 
   override def createAuthRule(authnRule: JwtAuthenticationRule, authzRule: JwtAuthorizationRule): JwtAuthRule =
     new JwtAuthRule(authnRule, authzRule)
 
-  override def createAuthRuleWithoutGroups(authnRule: JwtAuthenticationRule, authzRule: JwtPseudoAuthorizationRule): JwtAuthRule =
-    new JwtAuthRule(authnRule, authzRule)
-
-  override def serializeDefinitionId(definition: JwtDef): String =
+  override protected def serializeDefinitionId(definition: JwtDef): String =
     definition.id.value.value
 
 }

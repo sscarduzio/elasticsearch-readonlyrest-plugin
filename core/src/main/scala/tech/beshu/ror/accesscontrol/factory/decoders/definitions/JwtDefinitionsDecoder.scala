@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import io.circe.{Decoder, HCursor, Json}
+import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Name, SignatureCheckMethod}
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Header, Jwt}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps.fromError
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.fromError
 import tech.beshu.ror.accesscontrol.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
@@ -47,24 +47,57 @@ object JwtDefinitionsDecoder {
   private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
                             variableCreator: RuntimeResolvableVariableCreator): Decoder[JwtDef] = {
     SyncDecoderCreator
-      .instance { c =>
+      .instance[JwtDef] { c =>
         for {
           name <- c.downField("name").as[Name]
           checkMethod <- signatureCheckMethod(c)
           headerName <- c.downField("header_name").as[Option[Header.Name]]
           authTokenPrefix <- c.downField("header_prefix").as[Option[String]]
-          userClaim <- c.downField("user_claim").as[Option[Jwt.ClaimName]]
-          groupsConfig <- c.as[Option[GroupsConfig]]
-        } yield JwtDef(
-          id = name,
-          authorizationTokenDef = AuthorizationTokenDef(
-            headerName.getOrElse(Header.Name.authorization),
-            authTokenPrefix.getOrElse("Bearer ")
-          ),
-          checkMethod = checkMethod,
-          userClaim = userClaim,
-          groupsConfig = groupsConfig
-        )
+          userClaimOpt <- c.downField("user_claim").as[Option[Jwt.ClaimName]]
+          groupsConfigOpt <- c.as[Option[GroupsConfig]](groupsConfigOptDecoder)
+          jwtDef <- (userClaimOpt, groupsConfigOpt) match {
+            case (Some(userClaim), Some(groupsConfig)) =>
+              Right(
+                AuthJwtDef(
+                  id = name,
+                  authorizationTokenDef = AuthorizationTokenDef(
+                    headerName.getOrElse(Header.Name.authorization),
+                    authTokenPrefix.getOrElse("Bearer ")
+                  ),
+                  checkMethod = checkMethod,
+                  userClaim = userClaim,
+                  groupsConfig = groupsConfig,
+                ): JwtDef
+              )
+            case (Some(userClaim), None) =>
+              Right(
+                AuthenticationJwtDef(
+                  id = name,
+                  authorizationTokenDef = AuthorizationTokenDef(
+                    headerName.getOrElse(Header.Name.authorization),
+                    authTokenPrefix.getOrElse("Bearer ")
+                  ),
+                  checkMethod = checkMethod,
+                  userClaim = userClaim,
+                ): JwtDef
+              )
+            case (None, Some(groupsConfig)) =>
+              Right(
+                AuthorizationJwtDef(
+                  id = name,
+                  authorizationTokenDef = AuthorizationTokenDef(
+                    headerName.getOrElse(Header.Name.authorization),
+                    authTokenPrefix.getOrElse("Bearer ")
+                  ),
+                  checkMethod = checkMethod,
+                  groupsConfig = groupsConfig,
+                ): JwtDef
+              )
+            case (None, None) =>
+              val message = s"JWT definition ${name.show} must contain 'user_claim' setting to be used with jwt_authentication rule, 'group_ids_claim' to be used with jwt_authorization rule, or both of them in order to be used with jwt_auth rule."
+              Left(fromError(CoreCreationError.DefinitionsLevelCreationError(Message(message))))
+          }
+        } yield jwtDef
       }
       .mapError(DefinitionsLevelCreationError.apply)
       .decoder
@@ -137,7 +170,7 @@ object JwtDefinitionsDecoder {
 
   private implicit val claimDecoder: Decoder[Jwt.ClaimName] = jsonPathDecoder.map(Jwt.ClaimName.apply)
 
-  private implicit val groupsConfigDecoder: Decoder[Option[GroupsConfig]] = Decoder.instance { c =>
+  val groupsConfigOptDecoder: Decoder[Option[GroupsConfig]] = Decoder.instance { c =>
     for {
       groupIdsClaim
         <- c.downFields("roles_claim", "groups_claim", "group_ids_claim").as[Option[Jwt.ClaimName]]

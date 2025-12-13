@@ -19,16 +19,18 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
-import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.Jwt.ClaimName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.security.KeyPairGenerator
@@ -58,6 +60,7 @@ class JwtAuthorizationRuleSettingsTests
                  |  jwt:
                  |
                  |  - name: jwt1
+                 |    group_ids_claim: groups
                  |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                  |
                  |""".stripMargin,
@@ -65,8 +68,7 @@ class JwtAuthorizationRuleSettingsTests
               rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
               rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
               rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
-              rule.settings.jwt.userClaim should be(None)
-              rule.settings.jwt.groupsConfig should be(None)
+              rule.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
               rule.settings.groupsLogic should be(GroupsLogic.AnyOf(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               )))
@@ -92,6 +94,7 @@ class JwtAuthorizationRuleSettingsTests
                  |  jwt:
                  |
                  |  - name: jwt1
+                 |    group_ids_claim: groups
                  |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                  |
                  |""".stripMargin,
@@ -99,8 +102,7 @@ class JwtAuthorizationRuleSettingsTests
               rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
               rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
               rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
-              rule.settings.jwt.userClaim should be(None)
-              rule.settings.jwt.groupsConfig should be(None)
+              rule.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
               rule.settings.groupsLogic should be(GroupsLogic.AllOf(GroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               )))
@@ -124,6 +126,7 @@ class JwtAuthorizationRuleSettingsTests
               |  jwt:
               |
               |  - name: jwt1
+              |    group_ids_claim: groups
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin,
@@ -150,12 +153,13 @@ class JwtAuthorizationRuleSettingsTests
               |  jwt:
               |
               |  - name: jwt1
+              |    user_claim: "userId"
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find JWT definition with name: jwt2")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find jwt definition with name: jwt2")))
           }
         )
       }
@@ -172,7 +176,7 @@ class JwtAuthorizationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find JWT definition with name: jwt1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find jwt definition with name: jwt1")))
           }
         )
       }
@@ -191,6 +195,7 @@ class JwtAuthorizationRuleSettingsTests
               |  jwt:
               |
               |  - name: jwt1
+              |    group_ids_claim: groups
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin,
@@ -228,13 +233,14 @@ class JwtAuthorizationRuleSettingsTests
                    |  jwt:
                    |
                    |  - name: jwt1
+                   |    group_ids_claim: groups
                    |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                    |
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for JWT authorization rule 'jwt1'"
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for jwt_authorization rule 'jwt1'"
                 )))
               }
             )
@@ -249,7 +255,8 @@ class JwtAuthorizationRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    jwt_authorization: jwt1
+              |    jwt:
+              |      - name jwt1
               |
               |  jwt:
               |  - signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
@@ -284,13 +291,14 @@ class JwtAuthorizationRuleSettingsTests
                    |      $groupsAllOfKey: ["groups1", "groups2"]
                    |  jwt:
                    |  - name: jwt2
+                   |    group_ids_claim: groups
                    |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                    |
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for JWT authorization rule 'jwt1'")
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for jwt_authorization rule 'jwt1'")
                 ))
               }
             )
@@ -305,14 +313,18 @@ class JwtAuthorizationRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    jwt_authorization: jwt1
+              |    jwt_authorization:
+              |      name: "jwt1"
+              |      groups_any: ["group1","group2"]
               |
               |  jwt:
               |
               |  - name: jwt1
+              |    group_ids_claim: groups
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |  - name: jwt1
+              |    group_ids_claim: groups
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin,

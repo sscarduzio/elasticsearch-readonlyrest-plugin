@@ -259,7 +259,7 @@ class RorKbnAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find ROR Kibana definition with name: kbn1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find ror_kbn definition with name: kbn1")))
           }
         )
       }
@@ -276,7 +276,7 @@ class RorKbnAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find ROR Kibana definition with name: kbn1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find ror_kbn definition with name: kbn1")))
           }
         )
       }
@@ -362,7 +362,7 @@ class RorKbnAuthenticationRuleSettingsTests
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for ROR Kibana authorization rule 'kbn1'")
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for ror_kbn_authorization rule 'kbn1'")
                 ))
               }
             )
@@ -421,7 +421,7 @@ class RorKbnAuthenticationRuleSettingsTests
           }
         )
       }
-      "RSA algorithm is defined but on signature key" in {
+      "RSA algorithm is defined but no signature key" in {
         assertDecodingFailure(
           yaml =
             """

@@ -60,15 +60,14 @@ class JwtAuthorizationRuleTests
           ).asJava)
         ))
         assertMatchRule(
-          configuredJwtDef = JwtDef(
+          configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(
+            groupsConfig = GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
-            ))
+            )
           ),
           configuredGroups = GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
@@ -92,15 +91,14 @@ class JwtAuthorizationRuleTests
           ).asJava)
         ))
         assertMatchRule(
-          configuredJwtDef = JwtDef(
+          configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(
+            groupsConfig = GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
-            ))
+            )
           ),
           configuredGroups = GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("*2"))
@@ -124,15 +122,14 @@ class JwtAuthorizationRuleTests
           ).asJava)
         ))
         assertMatchRule(
-          configuredJwtDef = JwtDef(
+          configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(
+            groupsConfig = GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
-            ))
+            )
           ),
           configuredGroups = GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group1"), GroupId("group2"))
@@ -156,15 +153,14 @@ class JwtAuthorizationRuleTests
           ).asJava)
         ))
         assertMatchRule(
-          configuredJwtDef = JwtDef(
+          configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(
+            groupsConfig = GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
-            ))
+            )
           ),
           configuredGroups = GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupIdLike.from("*1"), GroupIdLike.from("*2"))
@@ -187,12 +183,11 @@ class JwtAuthorizationRuleTests
           "groups" := List("group1", "group2")
         ))
         assertNotMatchRule(
-          configuredJwtDef = JwtDef(
+          configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups.subgroups")), None))
+            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups.subgroups")), None)
           ),
           configuredGroups = GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group1"))
@@ -207,12 +202,11 @@ class JwtAuthorizationRuleTests
           "groups" := List("group1", "group2")
         ))
         assertNotMatchRule(
-          configuredJwtDef = JwtDef(
+          configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
           configuredGroups = GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4"))
@@ -227,12 +221,11 @@ class JwtAuthorizationRuleTests
           "groups" := List("group1", "group2")
         ))
         assertNotMatchRule(
-          configuredJwtDef = JwtDef(
+          configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
           configuredGroups = GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3"))
@@ -247,12 +240,11 @@ class JwtAuthorizationRuleTests
           "groups" := List("group1", "group2")
         ))
         assertNotMatchRule(
-          configuredJwtDef = JwtDef(
+          configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
           configuredGroups = GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group2"))
@@ -264,20 +256,20 @@ class JwtAuthorizationRuleTests
     }
   }
 
-  private def assertMatchRule(configuredJwtDef: JwtDef,
+  private def assertMatchRule(configuredJwtDef: AuthorizationJwtDef,
                               configuredGroups: GroupsLogic,
                               tokenHeader: Header,
                               preferredGroupId: Option[GroupId] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, Some(blockContextAssertion))
 
-  private def assertNotMatchRule(configuredJwtDef: JwtDef,
+  private def assertNotMatchRule(configuredJwtDef: AuthorizationJwtDef,
                                  configuredGroups: GroupsLogic,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None): Unit =
     assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, blockContextAssertion = None)
 
-  private def assertRule(configuredJwtDef: JwtDef,
+  private def assertRule(configuredJwtDef: AuthorizationJwtDef,
                          configuredGroups: GroupsLogic,
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],

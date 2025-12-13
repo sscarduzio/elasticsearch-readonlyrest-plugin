@@ -315,7 +315,11 @@ object CirceOps {
   }
 
   object DecodingFailureOps {
+    def fromError(error: CoreCreationError): DecodingFailure =
+      DecodingFailureUtils.fromError(error)
+  }
 
+  object DecodingFailureUtils {
     import AclCreationErrorCoders.*
 
     def fromError(error: CoreCreationError): DecodingFailure =
