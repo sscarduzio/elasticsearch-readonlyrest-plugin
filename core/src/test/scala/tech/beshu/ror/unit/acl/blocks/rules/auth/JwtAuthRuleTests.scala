@@ -592,6 +592,8 @@ class JwtAuthRuleTests
             )(blockContext)
         }
       }
+    }
+    "not match" when {
       "preferred group is not on the groups list from JWT" in {
         val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
@@ -610,8 +612,6 @@ class JwtAuthRuleTests
           preferredGroupId = Some(GroupId("group3"))
         )
       }
-    }
-    "not match" when {
       "token has invalid HS256 signature" in {
         val key1: Key = Jwts.SIG.HS256.key().build()
         val key2: Key = Jwts.SIG.HS256.key().build()
