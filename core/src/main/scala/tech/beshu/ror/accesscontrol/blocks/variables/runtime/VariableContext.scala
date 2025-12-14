@@ -144,6 +144,8 @@ object VariableContext {
         rulesBefore
           .collect {
             case rule: JwtAuthRule => rule
+            case rule: JwtAuthenticationRule => rule
+            case rule: JwtAuthorizationRule => rule
             case rule: RorKbnAuthRule => rule
             case rule: RorKbnAuthenticationRule => rule
             case rule: RorKbnAuthorizationRule => rule
