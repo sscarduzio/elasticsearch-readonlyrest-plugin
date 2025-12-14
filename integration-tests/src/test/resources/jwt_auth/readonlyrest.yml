@@ -7,11 +7,11 @@ readonlyrest:
 
     - name: Valid JWT token is present
       type: allow
-      jwt_auth: "jwt1"
+      jwt_authentication: "jwt1"
 
     - name: Valid JWT token is present in custom header
       type: allow
-      jwt_auth: "jwt2"
+      jwt_authentication: "jwt2"
 
     - name: Valid JWT token is present with roles
       type: allow
@@ -21,7 +21,7 @@ readonlyrest:
 
     - name: Valid JWT token is present in custom header and header prefix
       type: allow
-      jwt_auth: "jwt4"
+      jwt_authentication: "jwt4"
 
   jwt:
     - name: jwt1

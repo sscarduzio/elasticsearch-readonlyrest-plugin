@@ -22,7 +22,7 @@ readonlyrest:
 
     - name: "Access for data of selected users"
       filter: '{"bool": { "must": { "terms": { "user_id": [@{jwt:user_id_list}] }}}}'
-      jwt_auth: "jwt1"
+      jwt_authentication: "jwt1"
       indices: ["index1"]
 
   jwt:
