@@ -9,10 +9,6 @@ ALL-UNNAMED:
         mode: "read"
       - path: "/proc/sys/net/core/somaxconn"
         mode: read
-      - path: "/usr/share/elasticsearch/.aws/config"
-        mode: read
-      - path: "/usr/share/elasticsearch/.aws/credentials"
-        mode: read
   - manage_threads
   - inbound_network
   - outbound_network
