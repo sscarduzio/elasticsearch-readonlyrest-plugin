@@ -25,8 +25,8 @@ import tech.beshu.ror.es.IndexDocumentManager.CannotWriteToIndex
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.{DocumentNotFound, IndexNotFound}
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.{IndexSettingsLoadingError, IndexSettingsSavingError, LoadingError, SavingError}
-import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
 
 class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: IndexDocumentManager,
                                                        val settingsIndex: IndexName.Full,
@@ -40,7 +40,7 @@ class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: Ind
         case Right(document) =>
           document.as[SETTINGS]
             .left.map { decodingFailure =>
-              LoadingSettingsError.SettingsMalformed(decodingFailure.message)
+              SettingsLoadingError.SettingsMalformed(decodingFailure.message)
             }
         case Left(IndexDocumentManager.IndexNotFound) =>
           settingsLoaderError(IndexNotFound)
@@ -53,17 +53,17 @@ class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: Ind
     indexDocumentManager
       .saveDocumentJson(settingsIndex, documentId, settings.asJson)
       .map {
-        _.left.map { case CannotWriteToIndex => SavingSettingsError.SourceSpecificError(CannotSaveSettings) }
+        _.left.map { case CannotWriteToIndex => SettingsSavingError.SourceSpecificError(CannotSaveSettings) }
       }
   }
 
   private def settingsLoaderError(error: LoadingError) =
-    Left(LoadingSettingsError.SourceSpecificError(error))
+    Left(SettingsLoadingError.SourceSpecificError(error))
 
 }
 object IndexSettingsSource {
 
-  type IndexSettingsLoadingError = LoadingSettingsError[LoadingError]
+  type IndexSettingsLoadingError = SettingsLoadingError[LoadingError]
 
   sealed trait LoadingError
   object LoadingError {
@@ -71,7 +71,7 @@ object IndexSettingsSource {
     case object DocumentNotFound extends LoadingError
   }
 
-  type IndexSettingsSavingError = SavingSettingsError[SavingError]
+  type IndexSettingsSavingError = SettingsSavingError[SavingError]
 
   sealed trait SavingError
   object SavingError {

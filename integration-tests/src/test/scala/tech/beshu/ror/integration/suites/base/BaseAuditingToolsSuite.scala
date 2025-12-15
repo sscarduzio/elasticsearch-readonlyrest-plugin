@@ -51,7 +51,7 @@ trait BaseAuditingToolsSuite
 
   protected def assertForEveryAuditEntry(entry: JSON): Unit
 
-  protected def baseRorConfig: String
+  protected def baseRorSettingsYaml: String
 
   protected def baseAuditDataStreamName: Option[String]
 
@@ -375,7 +375,7 @@ trait BaseAuditingToolsSuite
       disableAudit()
 
       val newIndex = s"audit-index-${UUID.randomUUID().toString}"
-      rorApiManager.updateRorInIndexSettings(rorConfigWithIndexAudit(newIndex)).forceOkStatus()
+      rorApiManager.updateRorInIndexSettings(rorSettingsWithIndexAudit(newIndex)).forceOkStatus()
 
       val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newIndex)
       auditEventAssertion(adminAuditManager)
@@ -392,7 +392,7 @@ trait BaseAuditingToolsSuite
 
       assertDataStreamNotExists(newDataStream)
 
-      rorApiManager.updateRorInIndexSettings(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+      rorApiManager.updateRorInIndexSettings(rorSettingsWithDataStreamAudit(newDataStream)).forceOkStatus()
 
       eventually {
         val response = dataStreamManager.getAllDataStreams()
@@ -427,7 +427,7 @@ trait BaseAuditingToolsSuite
         val indexLifecycleManager = new IndexLifecycleManager(destNodeClientProvider.adminClient, esVersionUsed)
         indexLifecycleManager.putPolicyAndWaitForIndexing(id = s"$newDataStream-lifecycle-policy", policy)
 
-        rorApiManager.updateRorInIndexSettings(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+        rorApiManager.updateRorInIndexSettings(rorSettingsWithDataStreamAudit(newDataStream)).forceOkStatus()
 
         eventually {
           assertDataStreamExists(newDataStream)
@@ -462,7 +462,7 @@ trait BaseAuditingToolsSuite
         val templateManager = new ComponentTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
         templateManager.putTemplateAndWaitForIndexing(templateName = s"$newDataStream-mappings", body = template)
 
-        rorApiManager.updateRorInIndexSettings(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+        rorApiManager.updateRorInIndexSettings(rorSettingsWithDataStreamAudit(newDataStream)).forceOkStatus()
 
         eventually {
           assertDataStreamExists(newDataStream)
@@ -490,7 +490,7 @@ trait BaseAuditingToolsSuite
         val templateManager = new ComponentTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
         templateManager.putTemplateAndWaitForIndexing(templateName = s"$newDataStream-settings", body = template)
 
-        rorApiManager.updateRorInIndexSettings(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+        rorApiManager.updateRorInIndexSettings(rorSettingsWithDataStreamAudit(newDataStream)).forceOkStatus()
 
         eventually {
           assertDataStreamExists(newDataStream)
@@ -519,7 +519,7 @@ trait BaseAuditingToolsSuite
             )
           )
 
-        rorApiManager.updateRorInIndexSettings(rorConfigWithDataStreamAudit(newDataStream)).forceOkStatus()
+        rorApiManager.updateRorInIndexSettings(rorSettingsWithDataStreamAudit(newDataStream)).forceOkStatus()
 
         eventually {
           assertDataStreamExists(newDataStream)
@@ -536,7 +536,7 @@ trait BaseAuditingToolsSuite
 
       createAuditDataStream(dataStreamName)
 
-      rorApiManager.updateRorInIndexSettings(rorConfigWithDataStreamAudit(dataStreamName)).forceOkStatus()
+      rorApiManager.updateRorInIndexSettings(rorSettingsWithDataStreamAudit(dataStreamName)).forceOkStatus()
 
       val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, dataStreamName)
       auditEventAssertion(adminAuditManager)
@@ -554,11 +554,11 @@ trait BaseAuditingToolsSuite
   }
 
   private def disableAudit(): Unit = {
-    val initialConfig = getResourceContent("/ror_audit/disabled_auditing_tools/readonlyrest.yml")
-    rorApiManager.updateRorInIndexSettings(initialConfig).forceOKStatusOrSettingsAlreadyLoaded()
+    val initialSettings = getResourceContent("/ror_audit/disabled_auditing_tools/readonlyrest.yml")
+    rorApiManager.updateRorInIndexSettings(initialSettings).forceOKStatusOrSettingsAlreadyLoaded()
   }
 
-  private def auditEventAssertion(adminAuditManager: AuditIndexManager) = {
+  private def auditEventAssertion(adminAuditManager: AuditIndexManager): Unit = {
     val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
     val indexResponse = indexManager.getIndex("twitter")
     indexResponse should have statusCode 200
@@ -574,15 +574,15 @@ trait BaseAuditingToolsSuite
     }
   }
 
-  private def rorConfigWithIndexAudit(indexName: String) = {
-    baseRorConfig.replace(
+  private def rorSettingsWithIndexAudit(indexName: String) = {
+    baseRorSettingsYaml.replace(
       baseAuditIndexName,
       indexName
     )
   }
 
-  private def rorConfigWithDataStreamAudit(dataStreamName: String) = {
-    baseRorConfig.replace(
+  private def rorSettingsWithDataStreamAudit(dataStreamName: String) = {
+    baseRorSettingsYaml.replace(
       baseAuditDataStreamName.getOrElse(throw new IllegalStateException("Data stream name should be set for Data Stream audit test")),
       dataStreamName
     )

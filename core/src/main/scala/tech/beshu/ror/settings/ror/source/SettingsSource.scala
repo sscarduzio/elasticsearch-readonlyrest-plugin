@@ -18,30 +18,30 @@ package tech.beshu.ror.settings.ror.source
 
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
-import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
 
 sealed trait SettingsSource[SETTINGS]
 
 trait ReadOnlySettingsSource[SETTINGS: Decoder, ERROR] extends SettingsSource[SETTINGS] {
-  def load(): Task[Either[LoadingSettingsError[ERROR], SETTINGS]]
+  def load(): Task[Either[SettingsLoadingError[ERROR], SETTINGS]]
 }
 object ReadOnlySettingsSource {
-  sealed trait LoadingSettingsError[+ERROR]
-  object LoadingSettingsError {
-    final case class SettingsMalformed(cause: String) extends LoadingSettingsError[Nothing]
-    final case class SourceSpecificError[ERROR](error: ERROR) extends LoadingSettingsError[ERROR]
+  sealed trait SettingsLoadingError[+ERROR]
+  object SettingsLoadingError {
+    final case class SettingsMalformed(cause: String) extends SettingsLoadingError[Nothing]
+    final case class SourceSpecificError[ERROR](error: ERROR) extends SettingsLoadingError[ERROR]
   }
 }
 
 trait ReadWriteSettingsSource[SETTINGS: Encoder : Decoder, READ_SPECIFIC_ERROR, WRITE_SPECIFIC_ERROR]
   extends ReadOnlySettingsSource[SETTINGS, READ_SPECIFIC_ERROR] {
 
-  def save(settings: SETTINGS): Task[Either[SavingSettingsError[WRITE_SPECIFIC_ERROR], Unit]]
+  def save(settings: SETTINGS): Task[Either[SettingsSavingError[WRITE_SPECIFIC_ERROR], Unit]]
 }
 object ReadWriteSettingsSource {
-  sealed trait SavingSettingsError[+ERROR]
-  object SavingSettingsError {
-    final case class SourceSpecificError[ERROR](error: ERROR) extends SavingSettingsError[ERROR]
+  sealed trait SettingsSavingError[+ERROR]
+  object SettingsSavingError {
+    final case class SourceSpecificError[ERROR](error: ERROR) extends SettingsSavingError[ERROR]
   }
 }

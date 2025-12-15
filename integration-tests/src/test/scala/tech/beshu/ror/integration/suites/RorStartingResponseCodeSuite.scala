@@ -41,7 +41,7 @@ class RorStartingResponseCodeSuite extends AnyWordSpec with ESVersionSupportForA
 
   implicit val scheduler: Scheduler = Scheduler.computation(10)
 
-  private val validRorConfigFile = "/ror_starting_response_code/malformed_readonlyrest.yml"
+  private val validRorSettingsFile = "/ror_starting_response_code/malformed_readonlyrest.yml"
 
   private val notStartedResponseCodeKey = "readonlyrest.not_started_response_code"
 
@@ -66,7 +66,7 @@ class RorStartingResponseCodeSuite extends AnyWordSpec with ESVersionSupportForA
   private def withTestEsContainerManager(additionalEsYamlEntries: Map[String, String])
                                         (testCode: TestEsContainerManager => Task[Unit]): Unit = {
     val esContainer = new TestEsContainerManager(
-      rorConfigFile = validRorConfigFile,
+      rorSettingsFile = validRorSettingsFile,
       additionalEsYamlEntries = additionalEsYamlEntries
     )
     esContainer.start().runSyncUnsafe(5 minutes)
@@ -113,7 +113,7 @@ private object RorStartingResponseCodeSuite extends EsModulePatterns {
 
   private val uniqueClusterId: AtomicInt = AtomicInt(1)
 
-  final class TestEsContainerManager(rorConfigFile: String,
+  final class TestEsContainerManager(rorSettingsFile: String,
                                      additionalEsYamlEntries: Map[String, String]) extends EsContainerCreator {
 
     private val esContainer = createEsContainer
@@ -143,7 +143,7 @@ private object RorStartingResponseCodeSuite extends EsModulePatterns {
           clusterName = clusterName,
           securityType = SecurityType.RorWithXpackSecurity(
             ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-              rorSettingsFileName = rorConfigFile,
+              rorSettingsFileName = rorSettingsFile,
               rorInIndexSettingsLoadingDelay = 5 seconds
             )
           ),

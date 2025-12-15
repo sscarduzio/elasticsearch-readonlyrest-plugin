@@ -59,7 +59,7 @@ import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
-import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.utils.WithReadonlyrestBootSupport
 import tech.beshu.ror.utils.DurationOps.*
@@ -88,7 +88,7 @@ class ReadonlyRestStartingTests
     "support the main engine" should {
       "be loaded from file" when {
         "index is not available but file settings is provided" in withReadonlyRest({
-          val resourcePath = "/boot_tests/no_index_config_file_config_provided"
+          val resourcePath = "/boot_tests/no_index_settings_file_settings_provided"
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
           mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, error = IndexNotFound)
           mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, error = IndexNotFound)
@@ -120,7 +120,7 @@ class ReadonlyRestStartingTests
       }
       "be loaded from index" when {
         "index is available and file settings is provided" in withReadonlyRest({
-          val resourcesPath = "/boot_tests/index_config_available_file_config_provided/"
+          val resourcesPath = "/boot_tests/index_settings_available_file_settings_provided/"
           val indexSettingsFile = "readonlyrest_index.yml"
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
           mockGettingMainSettings(mockedIndexDocumentManager, resourcesPath + indexSettingsFile)
@@ -137,7 +137,7 @@ class ReadonlyRestStartingTests
           acl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
         "index is available and file settings is not provided" in withReadonlyRest({
-          val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+          val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
           val indexSettingsFile = "readonlyrest_index.yml"
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
           mockGettingMainSettings(mockedIndexDocumentManager, resourcesPath + indexSettingsFile)
@@ -156,7 +156,7 @@ class ReadonlyRestStartingTests
       }
       "be able to be reloaded" when {
         "new settings are different than old one" in withReadonlyRest({
-          val resourcesPath = "/boot_tests/config_reloading/"
+          val resourcesPath = "/boot_tests/settings_reloading/"
           val initialIndexSettingsFile = "readonlyrest_initial.yml"
           val newIndexSettingsFile = "readonlyrest_first.yml"
 
@@ -180,14 +180,14 @@ class ReadonlyRestStartingTests
           mainEngine.core.accessControl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
 
           val reload1Result = rorInstance
-            .forceReloadAndSave(rorSettingsFromResource("/boot_tests/config_reloading/readonlyrest_first.yml"))(newRequestId())
+            .forceReloadAndSave(rorSettingsFromResource("/boot_tests/settings_reloading/readonlyrest_first.yml"))(newRequestId())
             .runSyncUnsafe()
 
           reload1Result should be(Right(()))
           assert(mainEngine != rorInstance.engines.value.mainEngine, "Engine was not reloaded")
         }
         "two parallel force reloads are invoked" in withReadonlyRestExt({
-          val resourcesPath = "/boot_tests/config_reloading/"
+          val resourcesPath = "/boot_tests/settings_reloading/"
           val initialIndexSettingsFile = "readonlyrest_initial.yml"
           val firstNewIndexSettingsFile = "readonlyrest_first.yml"
           val secondNewIndexSettingsFile = "readonlyrest_second.yml"
@@ -219,7 +219,7 @@ class ReadonlyRestStartingTests
             mockedIndexDocumentManager
           )
         }) { case (rorInstance, mockedIndexDocumentManager) =>
-          val resourcesPath = "/boot_tests/config_reloading/"
+          val resourcesPath = "/boot_tests/settings_reloading/"
           val firstNewIndexSettingsFile = "readonlyrest_first.yml"
           val secondNewIndexSettingsFile = "readonlyrest_second.yml"
 
@@ -249,7 +249,7 @@ class ReadonlyRestStartingTests
         }
       }
       "be reloaded if index settings change" in withReadonlyRest({
-        val resourcesPath = "/boot_tests/index_config_reloading/"
+        val resourcesPath = "/boot_tests/index_settings_reloading/"
         val originIndexSettingsFile = "readonlyrest.yml"
         val updatedIndexSettingsFile = "updated_readonlyrest.yml"
 
@@ -285,7 +285,7 @@ class ReadonlyRestStartingTests
       }
       "failed to load" when {
         "force load from file is set and settings file is malformed yaml" in {
-          val resourcesPath = "/boot_tests/forced_file_loading_malformed_config/"
+          val resourcesPath = "/boot_tests/forced_file_loading_malformed_settings/"
           implicit val systemContext: SystemContext = createSystemContext()
           val result = createEsConfigBasedRorSettings(resourcesPath)
 
@@ -294,7 +294,7 @@ class ReadonlyRestStartingTests
           }
         }
         "force load from file is set and core cannot be loaded" in {
-          val resourcesPath = "/boot_tests/forced_file_loading_bad_config/"
+          val resourcesPath = "/boot_tests/forced_file_loading_bad_settings/"
           val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + "readonlyrest.yml")
 
           implicit val systemContext: SystemContext = createSystemContext()
@@ -308,7 +308,7 @@ class ReadonlyRestStartingTests
           }
         }
         "index settings don't exist and settings file is malformed yaml" in {
-          val resourcesPath = "/boot_tests/index_config_not_exists_malformed_file_config/"
+          val resourcesPath = "/boot_tests/index_settings_not_exists_malformed_file_settings/"
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
           mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, error = IndexNotFound)
           mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, error = IndexNotFound)
@@ -326,7 +326,7 @@ class ReadonlyRestStartingTests
           }
         }
         "index settings don't exist and core cannot be loaded" in {
-          val resourcePath = "/boot_tests/index_config_not_exists_bad_file_config/"
+          val resourcePath = "/boot_tests/index_settings_not_exists_bad_file_settings/"
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
           mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
           mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
@@ -344,7 +344,7 @@ class ReadonlyRestStartingTests
           }
         }
         "index settings are malformed" in {
-          val resourcesPath = "/boot_tests/malformed_index_config/"
+          val resourcesPath = "/boot_tests/malformed_index_settings/"
           val indexSettingsFile = "readonlyrest_index.yml"
 
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -365,7 +365,7 @@ class ReadonlyRestStartingTests
           }
         }
         "index settings cannot be loaded" in {
-          val resourcesPath = "/boot_tests/bad_index_config/"
+          val resourcesPath = "/boot_tests/bad_index_settings/"
           val indexSettingsFile = "readonlyrest_index.yml"
 
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -412,7 +412,7 @@ class ReadonlyRestStartingTests
     "support the test engine" which {
       "can be initialized" when {
         "there is no settings in index" in withReadonlyRest({
-          val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+          val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
           val indexSettingsFile = "readonlyrest_index.yml"
 
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -436,7 +436,7 @@ class ReadonlyRestStartingTests
         "there is some settings stored in index" should {
           "load test engine as active" when {
             "settings are still valid" in withReadonlyRestExt({
-              val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+              val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
               val indexSettingsFile = "readonlyrest_index.yml"
               val expirationTimestamp = testClock.instant().plusSeconds(100)
 
@@ -503,7 +503,7 @@ class ReadonlyRestStartingTests
           }
           "load test engine as invalidated" when {
             "the expiration timestamp exceeded" in withReadonlyRest({
-              val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+              val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
               val indexSettingsFile = "readonlyrest_index.yml"
               lazy val expirationTimestamp = testClock.instant().minusSeconds(100)
 
@@ -543,7 +543,7 @@ class ReadonlyRestStartingTests
         }
         "index is not accessible" should {
           "fallback to not configured" in withReadonlyRest({
-            val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+            val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
             val indexSettingsFile = "readonlyrest_index.yml"
 
             val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -566,7 +566,7 @@ class ReadonlyRestStartingTests
         }
         "settings structure is not valid" should {
           "fallback to not configured" in withReadonlyRest({
-            val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+            val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
             val indexSettingsFile = "readonlyrest_index.yml"
             lazy val expirationTimestamp = testClock.instant().minusSeconds(100)
 
@@ -600,7 +600,7 @@ class ReadonlyRestStartingTests
         }
         "settings structure is valid, rule is malformed and cannot start engine" should {
           "fallback to invalidated settings" in withReadonlyRest({
-            val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+            val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
             val indexSettingsFile = "readonlyrest_index.yml"
 
             val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -639,7 +639,7 @@ class ReadonlyRestStartingTests
       }
       "can be loaded on demand" when {
         "there is no previous engine" in withReadonlyRestExt({
-          val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+          val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
           val indexSettingsFile = "readonlyrest_index.yml"
 
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -691,7 +691,7 @@ class ReadonlyRestStartingTests
         }
         "there is previous engine" when {
           "same settings and ttl" in withReadonlyRestExt({
-            val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+            val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
             val indexSettingsFile = "readonlyrest_index.yml"
 
             val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -760,7 +760,7 @@ class ReadonlyRestStartingTests
             testEngine2Expiration.isAfter(testEngine1Expiration) should be(true)
           }
           "different ttl" in withReadonlyRestExt({
-            val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+            val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
             val indexSettingsFile = "readonlyrest_index.yml"
 
             val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -843,7 +843,7 @@ class ReadonlyRestStartingTests
           }
         }
         "different settings is being loaded" in withReadonlyRestExt({
-          val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+          val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
           val indexSettingsFile = "readonlyrest_index.yml"
 
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -929,7 +929,7 @@ class ReadonlyRestStartingTests
       }
       "can be reloaded if index settings changes" when {
         "new settings and expiration time has not exceeded" in withReadonlyRestExt({
-          val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+          val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
           val indexSettingsFile = "readonlyrest_index.yml"
 
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -978,7 +978,7 @@ class ReadonlyRestStartingTests
           )
         }
         "same settings and the ttl has changed" in withReadonlyRestExt({
-          val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+          val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
           val indexSettingsFile = "readonlyrest_index.yml"
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
 
@@ -1042,7 +1042,7 @@ class ReadonlyRestStartingTests
           )
         }
         "same settings and the expiration time has changed" in withReadonlyRestExt({
-          val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+          val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
           val indexSettingsFile = "readonlyrest_index.yml"
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
 
@@ -1108,7 +1108,7 @@ class ReadonlyRestStartingTests
           )
         }
         "new settings and has already expired" in withReadonlyRestExt({
-          val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+          val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
           val indexSettingsFile = "readonlyrest_index.yml"
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
 
@@ -1174,7 +1174,7 @@ class ReadonlyRestStartingTests
       }
       "should be automatically unloaded" when {
         "engine ttl has reached" in withReadonlyRestExt({
-          val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+          val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
           val indexSettingsFile = "readonlyrest_index.yml"
 
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -1227,7 +1227,7 @@ class ReadonlyRestStartingTests
         }
       }
       "can be invalidated by user" in withReadonlyRestExt({
-        val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+        val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
         val indexSettingsFile = "readonlyrest_index.yml"
 
         val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -1295,7 +1295,7 @@ class ReadonlyRestStartingTests
       "should return error for invalidation" when {
         "cannot save invalidation timestamp in index" in withReadonlyRestExt(
           {
-            val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+            val resourcesPath = "/boot_tests/index_settings_available_file_settings_not_provided/"
             val indexSettingsFile = "readonlyrest_index.yml"
             lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
 
@@ -1352,7 +1352,7 @@ class ReadonlyRestStartingTests
             .returns(Task.now(Left(CannotWriteToIndex)))
 
           rorInstance.invalidateTestSettingsEngine()(newRequestId()).runSyncUnsafe() should be(
-            Left(IndexSettingsInvalidationError.IndexSettingsSavingError(SavingSettingsError.SourceSpecificError(CannotSaveSettings)))
+            Left(IndexSettingsInvalidationError.IndexSettingsSavingError(SettingsSavingError.SourceSpecificError(CannotSaveSettings)))
           )
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)

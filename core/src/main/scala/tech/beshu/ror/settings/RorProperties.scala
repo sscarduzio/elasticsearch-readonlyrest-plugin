@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.CoreRefreshSettings
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSettings
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 
@@ -39,7 +39,7 @@ import scala.util.{Failure, Success, Try}
 
 object RorProperties extends Logging {
 
-  object defaults {
+  private object defaults {
     val refreshInterval: PositiveFiniteDuration = (5 second).toRefinedPositiveUnsafe
     val loadingDelay: NonNegativeFiniteDuration = (5 second).toRefinedNonNegativeUnsafe
     val loadingAttemptsCount: Int Refined NonNegative = Refined.unsafeApply(5)
@@ -47,7 +47,7 @@ object RorProperties extends Logging {
     val rorSettingsMaxSize: Information = Megabytes(3)
   }
 
-  object keys {
+  private object keys {
     val rorSettingsFilePath: NonEmptyString = nes("com.readonlyrest.settings.file.path")
     val rorSettingsRefreshInterval: NonEmptyString = nes("com.readonlyrest.settings.refresh.interval")
     val startupIndexLoadingDelay: NonEmptyString = nes("com.readonlyrest.settings.loading.delay")

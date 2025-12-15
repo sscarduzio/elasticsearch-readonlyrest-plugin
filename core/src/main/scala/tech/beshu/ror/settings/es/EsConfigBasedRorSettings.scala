@@ -27,7 +27,7 @@ import scala.language.{implicitConversions, postfixOps}
 final case class EsConfigBasedRorSettings(settingsSource: RorSettingsSourcesConfig,
                                           boot: RorBootSettings,
                                           ssl: Option[RorSslSettings],
-                                          loadingRorCoreStrategy: LoadingRorCoreStrategySettings)
+                                          rorCoreSettingsLoadingStrategy: RorCoreSettingsLoadingStrategy)
 
 object EsConfigBasedRorSettings {
 
@@ -37,7 +37,7 @@ object EsConfigBasedRorSettings {
       settingsSource <- EitherT(RorSettingsSourcesConfig.from(esEnv))
       bootSettings <- EitherT(RorBootSettings.load(esEnv))
       sslSettings <- EitherT(RorSslSettings.load(esEnv, settingsSource.settingsFile))
-      loadingRorCoreStrategy <- EitherT(LoadingRorCoreStrategySettings.load(esEnv))
+      loadingRorCoreStrategy <- EitherT(RorCoreSettingsLoadingStrategy.load(esEnv))
     } yield EsConfigBasedRorSettings(settingsSource, bootSettings, sslSettings, loadingRorCoreStrategy)
     result.value
   }

@@ -48,7 +48,7 @@ class LocalClusterAuditingToolsSuite
 
   override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.of(this)
 
-  override def baseRorConfig: String = resolvedRorSettingsFile.contentAsString
+  override def baseRorSettingsYaml: String = resolvedRorSettingsFile.contentAsString
 
   override protected def baseAuditDataStreamName: Option[String] =
     Option.when(Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0))("audit_data_stream")
@@ -279,11 +279,11 @@ class LocalClusterAuditingToolsSuite
     updateRorSettings(Map(originalString -> newString))
 
   private def updateRorSettings(replacements: Map[String, String]): Unit = {
-    val initialConfig = getResourceContent(rorSettingsFileName)
-    val modifiedConfig = replacements.foldLeft(initialConfig) { case (soFar, (originalString, newString)) =>
+    val initialSettings = getResourceContent(rorSettingsFileName)
+    val modifiedSettings = replacements.foldLeft(initialSettings) { case (soFar, (originalString, newString)) =>
       soFar.replace(originalString, newString)
     }
-    rorApiManager.updateRorInIndexSettings(modifiedConfig).forceOKStatusOrSettingsAlreadyLoaded()
+    rorApiManager.updateRorInIndexSettings(modifiedSettings).forceOKStatusOrSettingsAlreadyLoaded()
     rorApiManager.reloadRorSettings().force()
   }
 }

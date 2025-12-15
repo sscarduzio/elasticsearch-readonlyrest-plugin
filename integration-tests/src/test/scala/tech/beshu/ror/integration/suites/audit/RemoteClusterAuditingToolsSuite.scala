@@ -89,7 +89,7 @@ class RemoteClusterAuditingToolsSuite
 
   override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.fromListUnsafe(auditEsContainers)
 
-  override protected def baseRorConfig: String = resolvedRorSettingsFile.contentAsString
+  override protected def baseRorSettingsYaml: String = resolvedRorSettingsFile.contentAsString
 
   override protected def baseAuditDataStreamName: Option[String] = Option.when(isDataStreamSupported)("audit_data_stream")
 
@@ -107,7 +107,7 @@ class RemoteClusterAuditingToolsSuite
   // This test suite does not execute on Windows: there is currently no Windows version of ToxiproxyContainer
   ignoreOnWindows {
     "Should report audit events in round-robin mode, even when some nodes are unreachable" in {
-      rorApiManager.updateRorInIndexSettings(baseRorConfig).forceOKStatusOrSettingsAlreadyLoaded()
+      rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml).forceOKStatusOrSettingsAlreadyLoaded()
       val auditNode1 = proxiedContainers(0)
       val auditNode2 = proxiedContainers(1)
 

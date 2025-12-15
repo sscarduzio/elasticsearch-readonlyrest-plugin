@@ -25,7 +25,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.RorProperties
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
@@ -33,13 +33,13 @@ import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.{implicitConversions, postfixOps}
 
-sealed trait LoadingRorCoreStrategySettings
-object LoadingRorCoreStrategySettings extends YamlFileBasedSettingsLoaderSupport {
+sealed trait RorCoreSettingsLoadingStrategy
+object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport {
 
-  case object ForceLoadingFromFileSettings extends LoadingRorCoreStrategySettings
+  case object ForceLoadingFromFileSettings extends RorCoreSettingsLoadingStrategy
   final case class LoadFromIndexWithFileFallback(indexLoadingRetrySettings: LoadingRetryStrategySettings,
                                                  coreRefreshSettings: CoreRefreshSettings)
-    extends LoadingRorCoreStrategySettings
+    extends RorCoreSettingsLoadingStrategy
 
   final case class LoadingRetryStrategySettings(attemptsInterval: LoadingAttemptsInterval,
                                                 attemptsCount: LoadingAttemptsCount,
@@ -73,25 +73,25 @@ object LoadingRorCoreStrategySettings extends YamlFileBasedSettingsLoaderSupport
   }
 
   def load(esEnv: EsEnv)
-          (implicit systemContext: SystemContext): Task[Either[LoadingError, LoadingRorCoreStrategySettings]] = {
-    implicit val decoder: Decoder[LoadingRorCoreStrategySettings] = decoders.loadRorCoreStrategyDecoder(esEnv)
-    loadSetting[LoadingRorCoreStrategySettings](esEnv, "ROR loading core strategy settings")
+          (implicit systemContext: SystemContext): Task[Either[LoadingError, RorCoreSettingsLoadingStrategy]] = {
+    implicit val decoder: Decoder[RorCoreSettingsLoadingStrategy] = decoders.loadRorCoreStrategyDecoder(esEnv)
+    loadSetting[RorCoreSettingsLoadingStrategy](esEnv, "ROR loading core strategy settings")
   }
 
   private object decoders {
     implicit def loadRorCoreStrategyDecoder(esEnv: EsEnv)
-                                           (implicit systemContext: SystemContext): Decoder[LoadingRorCoreStrategySettings] = {
+                                           (implicit systemContext: SystemContext): Decoder[RorCoreSettingsLoadingStrategy] = {
       YamlKeyDecoder[Boolean](
         path = NonEmptyList.of("readonlyrest", "force_load_from_file"),
         default = false
       ) flatMap {
         case true =>
-          Decoder.const(LoadingRorCoreStrategySettings.ForceLoadingFromFileSettings)
+          Decoder.const(RorCoreSettingsLoadingStrategy.ForceLoadingFromFileSettings)
         case false =>
           for {
             loadingRetryStrategySettings <- loadLoadingRetryStrategySettings(systemContext.propertiesProvider)
             coreRefreshIntervalSettings <- loadCoreRefreshSettings(systemContext.propertiesProvider)
-          } yield LoadingRorCoreStrategySettings.LoadFromIndexWithFileFallback(
+          } yield RorCoreSettingsLoadingStrategy.LoadFromIndexWithFileFallback(
             loadingRetryStrategySettings, coreRefreshIntervalSettings
           )
       }
