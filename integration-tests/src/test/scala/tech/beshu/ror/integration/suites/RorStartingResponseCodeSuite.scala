@@ -135,7 +135,7 @@ private object RorStartingResponseCodeSuite extends EsModulePatterns {
     }
 
     private def createEsContainer: EsContainer = {
-      val clusterName = s"testEsCluster_${uniqueClusterId.getAndIncrement()}"
+      val clusterName = s"startingTest_EsCluster_${uniqueClusterId.getAndIncrement()}"
       val nodeName = clusterName
       create(
         nodeSettings = EsNodeSettings(

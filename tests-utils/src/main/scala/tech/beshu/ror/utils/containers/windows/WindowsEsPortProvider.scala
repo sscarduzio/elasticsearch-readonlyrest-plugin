@@ -61,7 +61,9 @@ object WindowsEsPortProvider {
         "ror_xpack_cluster_3",
         "testEsCluster_1",
         "testEsCluster_2",
-        "testEsCluster_3",
+        "startingTest_EsCluster_1",
+        "startingTest_EsCluster_2",
+        "startingTest_EsCluster_3",
       ).map(nodeName => (nodeName, nextPorts))
     )
 
