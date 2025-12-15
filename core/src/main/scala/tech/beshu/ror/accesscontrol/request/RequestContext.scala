@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
@@ -71,6 +72,8 @@ trait RequestContext extends Logging {
   def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]]
 
   def allTemplates: Set[Template]
+
+  def allClusterNames: Set[ClusterName.Full]
 
   lazy val legacyTemplates: Set[Template.LegacyTemplate] =
     allTemplates.collect { case t: Template.LegacyTemplate => t }

@@ -109,7 +109,7 @@ class IndicesRule(override val settings: Settings,
                   blockContext.userMetadata.kibanaIndex
                 ) map {
                   case ProcessResult.Ok(narrowedIndices) => Right(currentList :+ Indices.Found(narrowedIndices))
-                  case ProcessResult.Failed(Some(Cause.IndexNotFound)) => Right(currentList :+ Indices.NotFound)
+                  case ProcessResult.Failed(Some(Cause.IndexNotFound(_))) => Right(currentList :+ Indices.NotFound)
                   case ProcessResult.Failed(cause) => Left(cause)
                 }
               case Indices.NotFound =>
@@ -121,7 +121,9 @@ class IndicesRule(override val settings: Settings,
         }
         .map {
           case Right(indices) if atLeastOneFound(indices) => Fulfilled(blockContext.withIndicesPacks(indices.toList))
-          case Right(_) => Rejected(Cause.IndexNotFound)
+          case Right(_) => Rejected(Cause.IndexNotFound(
+            getAllowedClusterNames(blockContext.requestContext.allClusterNames, resolvedAllowedIndices)
+          ))
           case Left(cause) => Rejected(cause)
         }
     }
@@ -140,7 +142,7 @@ class IndicesRule(override val settings: Settings,
           case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
             Fulfilled(blockContext.withIndices(indices).withAliases(aliases))
           case (ProcessResult.Failed(cause), _) => Rejected(cause)
-          case (_, ProcessResult.Failed(Some(Cause.IndexNotFound))) => Rejected(Some(Cause.AliasNotFound))
+          case (_, ProcessResult.Failed(Some(Cause.IndexNotFound(_)))) => Rejected(Some(Cause.AliasNotFound))
           case (_, ProcessResult.Failed(cause)) => Rejected(cause)
         }
       }
