@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.misc.{EsStartupChecker, Version}
 import scala.util.Try
 
 class ElasticsearchNodeWaitingStrategy(esVersion: String,
+                                       esPort: Int,
                                        containerName: String,
                                        restClient: Coeval[RestClient],
                                        initializer: ElasticsearchNodeDataInitializer,
@@ -76,7 +77,7 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
   private def waitForRestEsApi() = {
     val esRestApiWaitStrategy = new HttpWaitStrategy()
       .usingTls().allowInsecure()
-      .forPort(9200)
+      .forPort(esPort)
       .forPath("/")
       .forStatusCodeMatching(_ => true)
     Try(esRestApiWaitStrategy.waitUntilReady(waitStrategyTarget)).isSuccess

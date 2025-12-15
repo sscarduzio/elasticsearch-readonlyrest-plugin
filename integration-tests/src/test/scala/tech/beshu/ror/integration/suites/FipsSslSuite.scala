@@ -26,8 +26,8 @@ import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.elasticsearch.CatManager
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
-import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, OsUtils}
 
 class FipsSslSuite
   extends AnyWordSpec

@@ -46,7 +46,7 @@ class RorStartingResponseCodeSuite extends AnyWordSpec with ESVersionSupportForA
   private val notStartedResponseCodeKey = "readonlyrest.not_started_response_code"
 
   "ES" when {
-    "ROR does not started yet" should {
+    "ROR is not started yet" should {
       "return not started response with http code 403" when {
         "403 configured" in withTestEsContainerManager(Map(notStartedResponseCodeKey -> "403")) { esContainer =>
           testRorStartup(usingManager = esContainer, expectedResponseCode = 403)
@@ -135,12 +135,12 @@ private object RorStartingResponseCodeSuite extends EsModulePatterns {
     }
 
     private def createEsContainer: EsContainer = {
-      val clusterName = s"ROR_${uniqueClusterId.getAndIncrement()}"
-      val nodeName = s"${clusterName}_1"
+      val clusterName = s"testEsCluster_${uniqueClusterId.getAndIncrement()}"
+      val nodeName = clusterName
       create(
         nodeSettings = EsNodeSettings(
-          nodeName = nodeName,
           clusterName = clusterName,
+          nodeName = nodeName,
           securityType = SecurityType.RorWithXpackSecurity(
             ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
               rorSettingsFileName = rorSettingsFile,
