@@ -42,7 +42,7 @@ class RemoteReindexSuite
     with CustomScalaTestMatchers {
 
   override implicit val rorSettingsFileName: String = "/reindex_multi_containers/readonlyrest_dest_es.yml"
-  private val sourceEsRorConfigFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"
+  private val sourceEsRorSettingsFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"
 
   private lazy val sourceEsCluster = createLocalClusterContainer(
     EsClusterSettings.create(
@@ -56,7 +56,7 @@ class RemoteReindexSuite
       },
       securityType = SecurityType.RorSecurity(
         ReadonlyRestPlugin.Config.Attributes.default.copy(
-          rorSettingsFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName,
+          rorSettingsFileName = RemoteReindexSuite.this.sourceEsRorSettingsFileName,
           restSsl = Enabled.No
         ))
     )

@@ -93,7 +93,7 @@ class RemoteClusterAuditingToolsSuite
 
   override protected def baseAuditDataStreamName: Option[String] = Option.when(isDataStreamSupported)("audit_data_stream")
 
-  // Adding the ES cluster fields is enabled in the /cluster_auditing_tools/readonlyrest.yml config file (`DefaultAuditLogSerializerV2` is used)
+  // Adding the ES cluster fields is enabled in the /cluster_auditing_tools/readonlyrest.yml settings file (`DefaultAuditLogSerializerV2` is used)
   override def assertForEveryAuditEntry(entry: JSON): Unit = {
     entry("es_node_name").str shouldBe "ROR_SINGLE_1"
     entry("es_cluster_name").str shouldBe "ROR_SINGLE"

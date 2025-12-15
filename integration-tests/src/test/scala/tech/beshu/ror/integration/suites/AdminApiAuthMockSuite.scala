@@ -191,9 +191,9 @@ class AdminApiAuthMockSuite
         ))
 
         rorClients.foreach { rorApiManager =>
-          val testConfigResponse = rorApiManager.currentRorTestSettings
-          testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
-          testConfigResponse.responseJson("warnings") should be(
+          val testSettingsResponse = rorApiManager.currentRorTestSettings
+          testSettingsResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
+          testSettingsResponse.responseJson("warnings") should be(
             ujson.read(
               s"""
                  |[

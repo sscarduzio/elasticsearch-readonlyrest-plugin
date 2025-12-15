@@ -77,7 +77,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
 
     response should have statusCode 200
   }
-  "ROR config reload can be done" in {
+  "ROR settings reload can be done" in {
     val rorApiManager = new RorApiManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
 
     val updateResult = rorApiManager
