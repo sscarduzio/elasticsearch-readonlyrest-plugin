@@ -22,6 +22,7 @@ import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
@@ -80,6 +81,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     clusterService.allRemoteDataStreamsAndAliases.memoize
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
+
+  override lazy val allClusterNames: Set[ClusterName.Full] = clusterService.allClusterNames
 
   override lazy val isCompositeRequest: Boolean = esContext.actionRequest.isInstanceOf[CompositeIndicesRequest]
 

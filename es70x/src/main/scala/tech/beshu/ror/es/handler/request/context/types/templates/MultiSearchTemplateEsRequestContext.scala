@@ -147,7 +147,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
     }
   }
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]) = {
     multiSearchTemplateRequest.requests.foreach(updateRequestWithNonExistingIndex)
     Modified
   }

@@ -49,7 +49,7 @@ class GetSettingsEsRequestContext(actionRequest: GetSettingsRequest,
     Modified
   }
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]) = {
     restRequest.path match {
       case CatIndicesPath(_) =>
         ModificationResult.CustomResponse(emptyCatIndicesResponse)

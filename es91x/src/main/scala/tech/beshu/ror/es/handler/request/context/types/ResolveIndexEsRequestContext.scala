@@ -23,6 +23,7 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{Resolv
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -55,7 +56,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
     ModificationResult.UpdateResponse.sync(resp => filterResponse(resp, allAllowedIndices))
   }
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
     update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
     Modified
@@ -120,5 +121,4 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
       .create(alias, indices.toArray)
       .get[ResolvedAlias]()
   }
-
 }

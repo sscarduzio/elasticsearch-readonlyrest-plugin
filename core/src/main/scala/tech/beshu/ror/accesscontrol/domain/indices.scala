@@ -211,7 +211,7 @@ object ClusterIndexName {
         def fromString(value: String): Option[Full] =
           NonEmptyString.unapply(value).map(Full.apply)
 
-        val local: Full = Full("(local)")
+        val local: Full = Full(NonEmptyString.unsafeFrom("(local)"))
       }
 
       final case class Pattern private(value: NonEmptyString) extends ClusterName

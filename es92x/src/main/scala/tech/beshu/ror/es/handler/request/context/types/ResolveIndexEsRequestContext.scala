@@ -56,7 +56,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
     ModificationResult.UpdateResponse.sync(resp => filterResponse(resp, allAllowedIndices))
   }
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]) = {
     val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
     update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
     Modified

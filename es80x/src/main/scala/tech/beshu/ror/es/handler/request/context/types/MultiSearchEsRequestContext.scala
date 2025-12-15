@@ -113,7 +113,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
   }
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]) = {
     val requests = actionRequest.requests().asScala.toList
     requests.foreach(updateRequestWithNonExistingIndex)
     Modified

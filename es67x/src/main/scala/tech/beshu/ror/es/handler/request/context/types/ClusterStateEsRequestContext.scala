@@ -54,7 +54,7 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
     }
   }
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]) = {
     restRequest.path match {
       case CatIndicesPath(_) =>
         val randomNonExistentIndices = NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.filteredIndices))

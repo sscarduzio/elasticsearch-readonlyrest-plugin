@@ -37,8 +37,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.syntax.*
 
@@ -68,6 +70,17 @@ class IndicesRule(override val settings: Settings,
       case TemplateRequestBlockContextUpdater => processTemplateRequest(blockContext)
       case RorApiRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
     }
+  }
+
+  protected def getAllowedClusterNames(requestContext: RequestContext,
+                                       allAllowedIndices: Set[ClusterIndexName]): Set[ClusterName.Full] = {
+    val clusterNamesFromIndices = allAllowedIndices.map {
+      case ClusterIndexName.Local(_) => ClusterName.Full.local
+      case ClusterIndexName.Remote(_, cluster) => cluster
+    }
+    val allClusterNames = requestContext.allClusterNames
+    val matcher = PatternsMatcher.create(clusterNamesFromIndices)
+    matcher.filter(allClusterNames)
   }
 
   private def processRequestWithoutIndices[B <: BlockContext](blockContext: B): Task[RuleResult[B]] = Task.now {
@@ -122,7 +135,7 @@ class IndicesRule(override val settings: Settings,
         .map {
           case Right(indices) if atLeastOneFound(indices) => Fulfilled(blockContext.withIndicesPacks(indices.toList))
           case Right(_) => Rejected(Cause.IndexNotFound(
-            getAllowedClusterNames(blockContext.requestContext.allClusterNames, resolvedAllowedIndices)
+            getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
           ))
           case Left(cause) => Rejected(cause)
         }

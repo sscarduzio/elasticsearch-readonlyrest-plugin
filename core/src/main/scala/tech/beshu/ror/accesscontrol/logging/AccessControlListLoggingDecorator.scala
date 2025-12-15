@@ -59,7 +59,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
               log(ForbiddenBy(requestContext, forbiddenBy.block, forbiddenBy.blockContext, resultWithHistory.history))
             case RegularRequestResult.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, resultWithHistory.history))
-            case RegularRequestResult.IndexNotFound() =>
+            case RegularRequestResult.IndexNotFound(_) =>
               log(RequestedIndexNotExist(requestContext, resultWithHistory.history))
             case RegularRequestResult.AliasNotFound() =>
               log(RequestedIndexNotExist(requestContext, resultWithHistory.history))

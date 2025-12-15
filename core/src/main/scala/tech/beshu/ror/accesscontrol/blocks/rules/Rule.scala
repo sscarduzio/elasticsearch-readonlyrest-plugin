@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.Show
-import cats.data.NonEmptyList
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRequestBlockContextUpdater

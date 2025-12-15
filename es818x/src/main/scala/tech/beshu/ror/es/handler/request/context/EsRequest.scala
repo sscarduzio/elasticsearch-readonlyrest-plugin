@@ -22,7 +22,9 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.Set
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.util.Try
@@ -42,7 +44,7 @@ trait EsRequest[B <: BlockContext] extends Logging {
       )
   }
 
-  def modifyWhenIndexNotFound: ModificationResult = ModificationResult.CannotModify
+  def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = ModificationResult.CannotModify
 
   def modifyWhenAliasNotFound: ModificationResult = ModificationResult.CannotModify
 

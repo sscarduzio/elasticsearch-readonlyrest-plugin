@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRu
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.ProcessResult
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -58,23 +57,11 @@ trait AllClusterIndices extends BaseIndicesProcessor {
         } else {
           Task.now(ProcessResult.Failed(Some(
             Cause.IndexNotFound(
-              getAllowedClusterNames(requestContext.allClusterNames, allAllowedIndices)
+              getAllowedClusterNames(requestContext, allAllowedIndices)
             )
           )))
         }
     }
-  }
-
-  protected def getAllowedClusterNames(allClusterNames: Set[ClusterName.Full],
-                                       allAllowedIndices: Set[ClusterIndexName]): Set[ClusterName.Full] = {
-    val clusterNamesFromIndices = allAllowedIndices.map {
-      case ClusterIndexName.Local(_) => ClusterName.Full.local
-      case ClusterIndexName.Remote(_, cluster) => cluster
-    }
-    implicit val conversion: PatternsMatcher[ClusterName]#Conversion[ClusterName.Full] =
-      PatternsMatcher.Conversion.from[ClusterName.Full, ClusterName](identity)
-    val matcher = PatternsMatcher.create(clusterNamesFromIndices)
-    matcher.filter(allClusterNames)
   }
 
   private def processLocalIndices(requestContext: RequestContext,
@@ -92,7 +79,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
           ProcessResult.Ok(narrowedIndices)
         case CanPass.No(Some(Reason.IndexNotExist)) =>
           ProcessResult.Failed(Some(Cause.IndexNotFound(
-            getAllowedClusterNames(requestContext.allClusterNames, allAllowedIndices)
+            getAllowedClusterNames(requestContext, allAllowedIndices)
           )))
         case CanPass.No(_) =>
           ProcessResult.Failed(None)
@@ -114,7 +101,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
           ProcessResult.Ok(narrowedIndices)
         case CanPass.No(Some(Reason.IndexNotExist)) =>
           ProcessResult.Failed(Some(Cause.IndexNotFound(
-            getAllowedClusterNames(requestContext.allClusterNames, allAllowedIndices)
+            getAllowedClusterNames(requestContext, allAllowedIndices)
           )))
         case CanPass.No(_) =>
           ProcessResult.Failed(None)

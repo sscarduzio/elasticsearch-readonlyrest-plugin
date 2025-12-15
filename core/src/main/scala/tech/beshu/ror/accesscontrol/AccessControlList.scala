@@ -23,6 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -51,7 +52,7 @@ object AccessControlList {
       extends RegularRequestResult[B]
     final case class ForbiddenByMismatched[B <: BlockContext](causes: NonEmptySet[ForbiddenCause])
       extends RegularRequestResult[B]
-    final case class IndexNotFound[B <: BlockContext]()
+    final case class IndexNotFound[B <: BlockContext](allowedClusters: Set[ClusterName.Full])
       extends RegularRequestResult[B]
     final case class AliasNotFound[B <: BlockContext]()
       extends RegularRequestResult[B]
