@@ -22,8 +22,10 @@ import org.testcontainers.containers.ContainerLaunchException
 import org.testcontainers.containers.wait.strategy.{AbstractWaitStrategy, HttpWaitStrategy}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.{EsStartupChecker, Version}
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
+import tech.beshu.ror.utils.misc.{EsStartupChecker, OsUtils, Version}
 
+import scala.language.postfixOps
 import scala.util.Try
 
 class ElasticsearchNodeWaitingStrategy(esVersion: String,
@@ -46,11 +48,11 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
   private def waitForStart(client: RestClient) = {
     strategy match {
       case AwaitingReadyStrategy.WaitForEsReadiness =>
-        createChecker(client).waitForStart()
+        createWaitForReadinessChecker(client).waitForStart()
       case AwaitingReadyStrategy.ImmediatelyTreatAsReady =>
         true
       case AwaitingReadyStrategy.WaitForEsRestApiResponsive =>
-        waitForRestEsApi()
+        waitForRestEsApi(client)
     }
   }
 
@@ -66,7 +68,7 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
     restClient.runAttempt().fold(throw _, identity)
   }
 
-  private def createChecker(client: RestClient) = {
+  private def createWaitForReadinessChecker(client: RestClient) = {
     if (Version.greaterOrEqualThan(esVersion, 8, 3, 0)) {
       EsStartupChecker.greenEsClusterChecker(containerName, client)
     } else {
@@ -74,13 +76,20 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
     }
   }
 
-  private def waitForRestEsApi() = {
-    val esRestApiWaitStrategy = new HttpWaitStrategy()
-      .usingTls().allowInsecure()
-      .forPort(esPort)
-      .forPath("/")
-      .forStatusCodeMatching(_ => true)
-    Try(esRestApiWaitStrategy.waitUntilReady(waitStrategyTarget)).isSuccess
+  private def waitForRestEsApi(client: RestClient) = {
+    OsUtils.currentOs match {
+      case CurrentOs.Windows =>
+        EsStartupChecker
+          .reachableEsChecker(containerName, client)
+          .waitForStart()
+      case CurrentOs.OtherThanWindows =>
+        val esRestApiWaitStrategy = new HttpWaitStrategy()
+          .usingTls().allowInsecure()
+          .forPort(esPort)
+          .forPath("/")
+          .forStatusCodeMatching(_ => true)
+        Try(esRestApiWaitStrategy.waitUntilReady(waitStrategyTarget)).isSuccess
+    }
   }
 }
 

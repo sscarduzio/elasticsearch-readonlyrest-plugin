@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.httpclient
 
+import cats.effect.Resource
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.apache.http.auth.UsernamePasswordCredentials
@@ -60,7 +61,27 @@ class RestClient(ssl: Boolean,
 
   def from(path: String): URI = buildUri(path, Map.empty)
 
-  def execute(req: HttpUriRequest): CloseableHttpResponse = {
+  def executeAsync(request: HttpUriRequest): Resource[Task, HttpResponse] = {
+    Resource
+      .make(
+        Task.delay(callExecute(request))
+      )(
+        response => Task.delay(response.close())
+      )
+  }
+
+  def executeSync[T](request: HttpUriRequest): Unit = {
+    handle(request)(identity)
+  }
+
+  def handle[T](request: HttpUriRequest)
+               (fromResponse: HttpResponse => T): T = {
+    executeAsync(request)
+      .use(response => Task.delay(fromResponse(response)))
+      .runSyncUnsafe()
+  }
+
+  private def callExecute(req: HttpUriRequest): CloseableHttpResponse = {
     Task(underlying.execute(req))
       .onErrorRestartLoop(0) {
         case (ex: HttpHostConnectException, 10, _) =>
