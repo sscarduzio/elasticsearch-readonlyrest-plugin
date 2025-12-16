@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers
 
+import better.files.FileExtensions
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 
 import java.io.{ByteArrayInputStream, File, InputStream}
@@ -31,7 +32,7 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
   protected def modifyFileInJar(jar: File,
                                 filePathString: String,
                                 processFileContent: InputStream => Array[Byte]): Unit = {
-    val originalFilePermissionsAndOwner = jar.getFilePermissionsAndOwner
+    val originalFilePermissionsAndOwner = jar.toScala.getFilePermissionsAndOwner
     val modifiedFileContent = loadAndProcessFileFromJar(
       jar = jar,
       filePathString = filePathString,
@@ -42,7 +43,7 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
       destinationPathSting = filePathString,
       newContent = modifiedFileContent
     )
-    jar.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
+    jar.toScala.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
   }
 
   private def loadAndProcessFileFromJar(jar: File,

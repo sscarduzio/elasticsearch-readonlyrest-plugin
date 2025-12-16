@@ -20,6 +20,7 @@ import com.dimafeng.testcontainers.{GenericContainer, SingleContainer}
 import eu.rekawek.toxiproxy.model.{ToxicDirection, toxic}
 import eu.rekawek.toxiproxy.{Proxy, ToxiproxyClient}
 import org.testcontainers.containers.Network
+import org.testcontainers.Testcontainers
 import tech.beshu.ror.utils.containers.ToxiproxyContainer.{ToxiproxyWaitStrategy, httpApiPort, proxiedPort}
 
 import scala.concurrent.duration.*
@@ -32,8 +33,8 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     waitStrategy = Some(new ToxiproxyWaitStrategy(innerContainer, innerServicePort))
   ) {
 
-  innerContainer.underlyingUnsafeContainer.setNetwork(Network.SHARED)
   container.setNetwork(Network.SHARED)
+  container.withAccessToHost(true)
 
   private var innerContainerProxy: Option[Proxy] = None
   private var timeoutToxic: Option[toxic.Timeout] = None
@@ -81,8 +82,15 @@ object ToxiproxyContainer {
 
     override protected def isReady: Boolean = {
       try {
+        val innerMappedPort = innerContainer.mappedPort(innerServicePort)
+        // Expose the inner container's mapped port on the host so toxiproxy can reach it
+        // This is required for testcontainers 2.0 to work on Linux
+        Testcontainers.exposeHostPorts(innerMappedPort)
+        
         val toxiproxyClient = new ToxiproxyClient(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(httpApiPort))
-        toxiproxyClient.createProxy("proxy", s"[::]:$proxiedPort", s"${innerContainer.containerInfo.getConfig.getHostName}:$innerServicePort")
+        // Use host.testcontainers.internal to reference the host machine from within the toxiproxy container
+        // This works cross-platform (Mac, Windows, Linux) in testcontainers 2.0
+        toxiproxyClient.createProxy("proxy", s"[::]:$proxiedPort", s"host.testcontainers.internal:$innerMappedPort")
         true
       } catch {
         case _: Exception => false

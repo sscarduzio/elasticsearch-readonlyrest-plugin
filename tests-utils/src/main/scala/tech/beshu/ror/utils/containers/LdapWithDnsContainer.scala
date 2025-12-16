@@ -17,17 +17,12 @@
 package tech.beshu.ror.utils.containers
 
 import com.dimafeng.testcontainers.Container
-import org.testcontainers.containers.Network
 import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
 
 class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource)
   extends Container {
 
-  private val ldapContainer = {
-    val c = OpenLdapContainer.create(name, ldapInitScript)
-    c.underlyingUnsafeContainer.setNetwork(Network.SHARED)
-    c
-  }
+  private val ldapContainer = OpenLdapContainer.create(name, ldapInitScript)
 
   private var dnsContainer: Option[DnsServerContainer] = None
 
@@ -35,19 +30,12 @@ class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource)
 
   override def start(): Unit = {
     ldapContainer.start()
-
-    dnsContainer = Option(createDnsServerContainer())
+    dnsContainer = Option(new DnsServerContainer(ldapContainer.ldapPort))
     dnsContainer.foreach(_.start())
   }
 
   override def stop(): Unit = {
     ldapContainer.stop()
     dnsContainer.foreach(_.stop())
-  }
-
-  private def createDnsServerContainer() = {
-    val dns = new DnsServerContainer(ldapContainer.ldapPort)
-    dns.underlyingUnsafeContainer.setNetwork(Network.SHARED)
-    dns
   }
 }
