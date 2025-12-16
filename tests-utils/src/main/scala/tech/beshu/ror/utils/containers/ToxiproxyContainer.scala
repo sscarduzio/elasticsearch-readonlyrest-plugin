@@ -90,11 +90,13 @@ object ToxiproxyContainer {
         val innerMappedPort = innerContainer.mappedPort(innerServicePort)
         val toxiproxyClient = new ToxiproxyClient(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(httpApiPort))
         val proxyUpstream = s"host.testcontainers.internal:$innerMappedPort"
-        println(s"[TOXIPROXY DEBUG] Creating proxy: listen=[::]:$proxiedPort upstream=$proxyUpstream")
+        val proxyListen = s"0.0.0.0:$proxiedPort"
+        println(s"[TOXIPROXY DEBUG] Creating proxy: listen=$proxyListen upstream=$proxyUpstream")
         // Use host.testcontainers.internal to reference the host machine from within the toxiproxy container
         // This works cross-platform (Mac, Windows, Linux) in testcontainers 2.0
         // Note: exposeHostPorts must be called before container start (done in start() method)
-        toxiproxyClient.createProxy("proxy", s"[::]:$proxiedPort", proxyUpstream)
+        // Use 0.0.0.0 instead of [::] for better Linux compatibility
+        toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
         println(s"[TOXIPROXY DEBUG] Proxy created successfully")
         true
       } catch {
