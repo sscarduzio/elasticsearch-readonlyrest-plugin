@@ -42,8 +42,8 @@ class DnsServerContainer(srvServicePort: Int)
       new ExposedPort(53, InternetProtocol.UDP) :: cmd.getExposedPorts.toList: _*
     )
 
-    val ports = cmd.getPortBindings
-    ports.bind(ExposedPort.udp(53), Ports.Binding.empty())
+    val ports = new Ports()
+    ports.bind(ExposedPort.udp(53), Ports.Binding.bindPort(0))
     cmd.withPortBindings(ports)
   }
 
