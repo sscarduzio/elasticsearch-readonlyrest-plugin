@@ -627,7 +627,6 @@ trait BaseAdminApiSuite
     "provide a method for reload test settings engine" which {
       "is going to reload ROR test core with TTL" when {
         "settings are new and correct" in {
-          // todo: do we need settingsTtlString?
           def forceReload(rorSettingsResource: String, settingsTtl: FiniteDuration, settingsTtlString: String): Unit = {
             val testSettings = getResourceContent(rorSettingsResource)
             updateRorTestSettings(rorClients.head, testSettings, settingsTtl)
