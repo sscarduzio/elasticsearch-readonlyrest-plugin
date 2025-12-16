@@ -62,6 +62,11 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
 
   override def start(): Unit = {
     innerContainer.start()
+    // Expose the inner container's mapped port BEFORE starting toxiproxy
+    // This is required for host.testcontainers.internal to work on Linux
+    val innerMappedPort = innerContainer.mappedPort(innerServicePort)
+    Testcontainers.exposeHostPorts(innerMappedPort)
+    
     super.start()
 
     val toxiproxyClient = new ToxiproxyClient(container.getHost, container.getMappedPort(httpApiPort))
@@ -83,13 +88,10 @@ object ToxiproxyContainer {
     override protected def isReady: Boolean = {
       try {
         val innerMappedPort = innerContainer.mappedPort(innerServicePort)
-        // Expose the inner container's mapped port on the host so toxiproxy can reach it
-        // This is required for testcontainers 2.0 to work on Linux
-        Testcontainers.exposeHostPorts(innerMappedPort)
-        
         val toxiproxyClient = new ToxiproxyClient(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(httpApiPort))
         // Use host.testcontainers.internal to reference the host machine from within the toxiproxy container
         // This works cross-platform (Mac, Windows, Linux) in testcontainers 2.0
+        // Note: exposeHostPorts must be called before container start (done in start() method)
         toxiproxyClient.createProxy("proxy", s"[::]:$proxiedPort", s"host.testcontainers.internal:$innerMappedPort")
         true
       } catch {
