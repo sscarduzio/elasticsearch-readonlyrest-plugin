@@ -32,6 +32,7 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     waitStrategy = Some(new ToxiproxyWaitStrategy(innerContainer, innerServicePort))
   ) {
 
+  innerContainer.underlyingUnsafeContainer.setNetwork(Network.SHARED)
   container.setNetwork(Network.SHARED)
 
   private var innerContainerProxy: Option[Proxy] = None

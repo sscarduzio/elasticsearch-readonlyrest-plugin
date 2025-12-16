@@ -17,7 +17,6 @@
 package tech.beshu.ror.tools.core.patches.internal.modifiers
 
 import tech.beshu.ror.tools.core.utils.FileUtils.*
-import tech.beshu.ror.tools.core.utils.FileUtils.javaFileToFile
 
 import java.io.{ByteArrayInputStream, File, InputStream}
 import java.net.URI

@@ -48,8 +48,10 @@ class DnsServerContainer(srvServicePort: Int)
   }
 
   def dnsPort: Int = {
-    // This is hack to obtain mapping of UDP port as testcontainers doesn't allow explicit mapping of UDP ports
+    // This is hack to obtain mapping of UDP port as testcontainers doesn't allow explicit mapping of UDP ports,
     // although it is mapping each port exposed by container(even UDP).
+    // Wait a bit to ensure port binding is ready
+    Thread.sleep(500)
     this.containerInfo
       .getNetworkSettings
       .getPorts
