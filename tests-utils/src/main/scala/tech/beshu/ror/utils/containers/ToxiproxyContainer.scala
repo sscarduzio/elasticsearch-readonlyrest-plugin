@@ -95,33 +95,44 @@ object ToxiproxyContainer {
         val innerMappedPort = innerContainer.mappedPort(innerServicePort)
         val toxiproxyClient = new ToxiproxyClient(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(httpApiPort))
         val proxyUpstream = s"host.testcontainers.internal:$innerMappedPort"
+        // Use format "HOST:PORT" - toxiproxy will parse and bind correctly
         val proxyListen = s"0.0.0.0:$proxiedPort"
         println(s"[TOXIPROXY DEBUG] Creating proxy: listen=$proxyListen upstream=$proxyUpstream")
         println(s"[TOXIPROXY DEBUG] Inner container service port: $innerServicePort, mapped to: $innerMappedPort")
         // Use host.testcontainers.internal to reference the host machine from within the toxiproxy container
         // This works cross-platform (Mac, Windows, Linux) in testcontainers 2.0
         // Note: exposeHostPorts must be called before container start (done in start() method)
-        // Use 0.0.0.0 instead of [::] for better Linux compatibility
         val proxy = toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
         println(s"[TOXIPROXY DEBUG] Proxy created successfully. Proxy details: ${proxy.getName}, listen=${proxy.getListen}, upstream=${proxy.getUpstream}")
         
-        // Test connectivity from toxiproxy to upstream by enabling the proxy
+        // Enable the proxy
         proxy.enable()
         println(s"[TOXIPROXY DEBUG] Proxy enabled")
         
-        // Test if we can list proxies
-        val allProxies = toxiproxyClient.getProxies
-        println(s"[TOXIPROXY DEBUG] All proxies count: ${allProxies.size()}")
+        // Give toxiproxy a moment to start listening
+        Thread.sleep(200)
         
         // Test actual connectivity through the proxy by trying to connect to the mapped port
+        val mappedPort = waitStrategyTarget.getMappedPort(proxiedPort)
+        println(s"[TOXIPROXY DEBUG] Testing connection to localhost:$mappedPort")
         try {
           val socket = new java.net.Socket()
-          socket.connect(new java.net.InetSocketAddress("localhost", waitStrategyTarget.getMappedPort(proxiedPort)), 1000)
+          socket.connect(new java.net.InetSocketAddress("127.0.0.1", mappedPort), 2000)
           socket.close()
-          println(s"[TOXIPROXY DEBUG] Successfully connected to toxiproxy mapped port: ${waitStrategyTarget.getMappedPort(proxiedPort)}")
+          println(s"[TOXIPROXY DEBUG] Successfully connected to toxiproxy mapped port: $mappedPort")
         } catch {
           case ex: Exception =>
-            println(s"[TOXIPROXY DEBUG] Failed to connect to toxiproxy mapped port: ${ex.getMessage}")
+            println(s"[TOXIPROXY DEBUG] Failed to connect to toxiproxy mapped port $mappedPort: ${ex.getClass.getName}: ${ex.getMessage}")
+            // Try IPv6
+            try {
+              val socket6 = new java.net.Socket()
+              socket6.connect(new java.net.InetSocketAddress("::1", mappedPort), 2000)
+              socket6.close()
+              println(s"[TOXIPROXY DEBUG] Successfully connected via IPv6 to toxiproxy mapped port: $mappedPort")
+            } catch {
+              case ex6: Exception =>
+                println(s"[TOXIPROXY DEBUG] Failed to connect via IPv6 to toxiproxy mapped port $mappedPort: ${ex6.getClass.getName}: ${ex6.getMessage}")
+            }
         }
         
         true
