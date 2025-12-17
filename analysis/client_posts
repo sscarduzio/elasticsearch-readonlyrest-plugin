@@ -1,0 +1,14 @@
+LDAP connection timeout leads to authentication error
+I’m using LDAP backend in readonlyrest config. Once for a while users are unable to login into kibana. Logs indicates, that readonlyrest cannot access connection to LDAP backend due to timeout. After several attempts plugin reestablish connection to LDAP and user has granted access. This frustrates users, because situation repeats itself every day.
+I assemble testing environment to replicate that behaviour. It apperars that readonlyrest plugin established connection at during initialization - after elasticsearch starts, or when configuration of plugin is changed. Then, after a while (I tested 1h period), when connection are not used, they timeout. When user tries to authenticate, at frst, plugin in elasticsearch tires to use timeouted connection, and get exception. Then after a white it tries to reconnect, but in the meantime plugin in kibana gets info about forbiden access.
+I’ve tried to fiddle with avaliable timeout and cache parameters in readonlyrest config to remediate this behaviour, but without success.
+
+I’ve include k8s yaml file with testing deployment and log files of all pods (elasticsearch, kibana and openldap)
+
+Expected behaviour
+Elasticsearch plugin should try to reconnect to auth backend before returning “access denied” info to client (kibana plugin).
+
+Technical details
+ROR Version: 1.67.3
+
+Elasticsearch Version: 7.17.1

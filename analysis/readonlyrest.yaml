@@ -1,0 +1,219 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rortest
+---
+# Documentation for ldap image: https://github.com/rroemhild/docker-test-openldap
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openldap
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openldap
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openldap
+    spec:
+      containers:
+        - name: openldap
+          image: ghcr.io/rroemhild/docker-test-openldap:master
+          ports:
+            - containerPort: 10389
+              name: ldap
+              protocol: TCP
+            - containerPort: 10636
+              name: ldaps
+              protocol: TCP
+      dnsPolicy: ClusterFirst
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openldap
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: ldaps
+    port: 10636
+    protocol: TCP
+    targetPort: 10636
+  - name: ldap
+    port: 10389
+    protocol: TCP
+    targetPort: 10389
+  selector:
+    app.kubernetes.io/name: openldap
+  type: ClusterIP
+---
+# https://docs.readonlyrest.com/eck#kibana-node-with-readonlyrest-plugin
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: rortest
+spec:
+  version: 7.17.1
+  image: beshultd/kibana-readonlyrest:7.17.1-ror-1.67.3
+  count: 1
+  elasticsearchRef:
+    name: rortest
+    namespace: rortest
+  config:
+#    # define ROR Kibana settings 
+#    # readonlyrest_kbn.store_sessions_in_index: true # we have to set it to true when we define more than one node
+    readonlyrest_kbn.cookiePass: "12345678901234567890123456789012345678901234567890"
+  podTemplate:
+    spec:
+#      # we have to run our image as root (id: 0) - after the required patching step Kibana will be run using "kibana" user (id: 1000)
+      containers:
+        - name: kibana
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+          env:
+            # we have to explicitly agree to patch the KBN binaries (the patching step will be done only once)
+            - name: I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING
+              value: "yes"
+            # we have to provide a ROR license if we want to use ROR Pro or Enterprise (if the license is not provided, then ROR Free is used)
+            - name: ROR_ACTIVATION_KEY
+              value: "****************"
+---
+# https://docs.readonlyrest.com/eck#elasticsearch-node-with-readonlyrest-plugin
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: rortest
+spec:
+  version: 7.17.1
+  # check https://hub.docker.com/r/beshultd/elasticsearch-readonlyrest
+  image: beshultd/elasticsearch-readonlyrest:7.17.1-ror-1.67.3
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50M
+        storageClassName: local-path
+    podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              # we have to run our image as root (id: 0) - after the required patching step Elasticsearch will be run using "elasticsearch" user (id: 1000)
+              securityContext:
+                runAsNonRoot: false
+                runAsUser: 0
+                runAsGroup: 0
+              env:
+                # we have to explicitly agree to patch the ES binaries (the patching step will be done only once)
+                - name: I_UNDERSTAND_AND_ACCEPT_ES_PATCHING
+                  value: "yes"
+                # these two passwords are used by "elastic-internal" and "elastic-internal-probe" users - these users are used by ECK
+                - name: INTERNAL_USR_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: rortest-es-internal-users
+                      key: elastic-internal
+                - name: INTERNAL_PROBE_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: rortest-es-internal-users
+                      key: elastic-internal-probe
+                # Kibana service account to handle internal Kibana requests 
+                - name: KIBANA_SERVICE_ACCOUNT_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: rortest-kibana-user
+                      key: token
+              # the initial readonlyrest.yml file loaded by ROR plugin during ES startup
+              volumeMounts:
+                - name: config-ror
+                  mountPath: /usr/share/elasticsearch/config/readonlyrest.yml
+                  subPath: readonlyrest.yml
+          volumes:
+            - name: config-ror
+              configMap:
+                name: config-readonlyrest.yml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-readonlyrest.yml
+data:
+   readonlyrest.yml: |
+     readonlyrest:
+       response_if_req_forbidden: "Forbidden by ReadonlyREST ES plugin."
+       audit_collector: true
+       audit_index_template: "'readonlyrest_audit'-yyyy-MM"
+       prompt_for_basic_auth: false
+       access_control_rules:
+
+       - name: "ELASTIC-INTERNAL"
+         verbosity: error
+         auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
+
+       - name: "ELASTIC INTERNAL PROBE"
+         verbosity: error
+         auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
+
+       - name: "Kibana service account"
+         verbosity: error
+         token_authentication:
+           token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}" 
+           username: service_account
+
+       - name: "Admin access"
+         type: allow
+         auth_key: "admin:admin"
+
+       - name: "ldap_group: admin_staff"
+         type: allow
+         ldap_auth:
+           name: "ldap"
+           groups: ["admin_staff"]
+         kibana:
+           access: admin
+         verbosity: info
+
+       - name: "ldap_group: ship_crew"
+         type: allow
+         ldap_auth:
+           name: "ldap"
+           groups: ["ship_crew"]
+         kibana:
+           access: admin
+         verbosity: info
+
+     ldaps:
+     - name: "ldap"
+       servers:
+       - "ldaps://openldap:10636"
+       bind_dn: "cn=admin,dc=planetexpress,dc=com"
+       bind_password: "GoodNewsEveryone"
+       search_user_base_DN: "ou=people,dc=planetexpress,dc=com"
+       user_id_attribute: "uid"
+       search_groups_base_DN: "ou=people,dc=planetexpress,dc=com"
+       unique_member_attribute: "member"
+       ssl_trust_all_certs: true
+       #connection_pool_size: 3
+       #connection_timeout_in_sec: 10
+       #request_timeout_in_sec: 10
+       #cache_ttl_in_sec: 30
+
+# access kibana:
+# kubectl port-forward service/rortest-kb-http 5601
+# https://127.0.0.1:5601
