@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.utils.containers
 
-import better.files.Dispose
 import better.files.Dispose.FlatMap.Implicits
 import com.dimafeng.testcontainers.GenericContainer
 import com.typesafe.scalalogging.LazyLogging

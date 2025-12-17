@@ -31,8 +31,8 @@ class EsContainerWithXpackSecurity private(esVersion: String,
                                            elasticsearch: Elasticsearch,
                                            override val sslEnabled: Boolean,
                                            initializer: ElasticsearchNodeDataInitializer,
-                                           additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
-                                           awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
+                                           additionalLogConsumer: Option[Consumer[OutputFrame]],
+                                           awaitingReadyStrategy: AwaitingReadyStrategy)
   extends EsContainer(esVersion, esConfig, startedClusterDependencies, elasticsearch, initializer, additionalLogConsumer, awaitingReadyStrategy) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with X-Pack plugin installed container ...")
@@ -58,6 +58,7 @@ object EsContainerWithXpackSecurity extends StrictLogging {
       xpackSecurityConfig.attributes.restSslEnabled,
       initializer,
       additionalLogConsumer,
+      AwaitingReadyStrategy.WaitForEsReadiness
     )
   }
 

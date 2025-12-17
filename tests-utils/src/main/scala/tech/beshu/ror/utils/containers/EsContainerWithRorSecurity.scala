@@ -31,8 +31,8 @@ class EsContainerWithRorSecurity private(esVersion: String,
                                          elasticsearch: Elasticsearch,
                                          override val sslEnabled: Boolean,
                                          initializer: ElasticsearchNodeDataInitializer,
-                                         additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
-                                         awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
+                                         additionalLogConsumer: Option[Consumer[OutputFrame]],
+                                         awaitingReadyStrategy: AwaitingReadyStrategy)
   extends EsContainer(esVersion, esConfig, startedClusterDependencies, elasticsearch, initializer, additionalLogConsumer, awaitingReadyStrategy) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with ROR plugin installed container ...")
@@ -64,6 +64,7 @@ object EsContainerWithRorSecurity extends StrictLogging {
       },
       initializer,
       additionalLogConsumer,
+      AwaitingReadyStrategy.WaitForEsReadiness
     )
   }
 
