@@ -23,7 +23,6 @@ import eu.rekawek.toxiproxy.{Proxy, ToxiproxyClient}
 import org.testcontainers.containers.Network
 import tech.beshu.ror.utils.containers.ToxiproxyContainer.{ToxiproxyWaitStrategy, httpApiPort, proxiedPort}
 
-import scala.annotation.nowarn
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -81,25 +80,24 @@ object ToxiproxyContainer {
     extends WaitWithRetriesStrategy("toxiproxy")
       with LazyLogging {
 
-    @nowarn("cat=deprecation")
     override protected def isReady: Boolean = {
       try {
-        val innerMappedPort = innerContainer.mappedPort(innerServicePort)
         val toxiproxyClient = new ToxiproxyClient(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(httpApiPort))
         
-        // Get the gateway IP from the toxiproxy container's network settings
-        // This is the IP address that toxiproxy can use to reach the host machine
-        val networks = waitStrategyTarget.getContainerInfo.getNetworkSettings.getNetworks
-        val gatewayIp = if (networks.isEmpty) {
-          waitStrategyTarget.getContainerInfo.getNetworkSettings.getGateway
+        // Get inner container's IP address on the shared network
+        val innerNetworks = innerContainer.underlyingUnsafeContainer.getContainerInfo.getNetworkSettings.getNetworks
+        val innerContainerIp = if (innerNetworks.isEmpty) {
+          // Fallback to hostname if network info is not available
+          innerContainer.containerInfo.getConfig.getHostName
         } else {
-          networks.values().iterator().next().getGateway
+          // Get IP address from the first network (should be Network.SHARED)
+          innerNetworks.values().iterator().next().getIpAddress
         }
         
-        val proxyUpstream = s"$gatewayIp:$innerMappedPort"
+        val proxyUpstream = s"$innerContainerIp:$innerServicePort"
         val proxyListen = s"0.0.0.0:$proxiedPort"
         
-        logger.debug(s"[TOXIPROXY] Creating proxy: listen=$proxyListen, upstream=$proxyUpstream (gateway IP)")
+        logger.debug(s"[TOXIPROXY] Creating proxy: listen=$proxyListen, upstream=$proxyUpstream (container IP)")
         toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
         logger.debug(s"[TOXIPROXY] Proxy created successfully")
         
