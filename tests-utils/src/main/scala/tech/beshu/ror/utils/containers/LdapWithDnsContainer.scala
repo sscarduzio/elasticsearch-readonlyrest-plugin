@@ -26,6 +26,8 @@ class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource)
 
   private var dnsContainer: Option[DnsServerContainer] = None
 
+  def dnsHost: String = dnsContainer.getOrElse(throw new Exception("DNS container hasn't been started yet")).dnsHost
+  
   def dnsPort: Int = dnsContainer.getOrElse(throw new Exception("DNS container hasn't been started yet")).dnsPort
 
   override def start(): Unit = {

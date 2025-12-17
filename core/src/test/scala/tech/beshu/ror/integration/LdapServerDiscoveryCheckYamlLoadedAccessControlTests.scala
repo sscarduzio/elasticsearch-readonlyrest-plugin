@@ -40,7 +40,12 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
 
   override val container: Container = doNotCreateOnWindows(new LdapWithDnsContainer("LDAP1", "test_example.ldif"))
 
-  private lazy val ldapPort = container match {
+  private lazy val dnsHost = container match {
+    case ldap: LdapWithDnsContainer => ldap.dnsHost
+    case _ => "localhost" // Just some random value - this test suite is ignored on Windows and the container is not started.
+  }
+  
+  private lazy val dnsPort = container match {
     case ldap: LdapWithDnsContainer => ldap.dnsPort
     case _ => 1234 // Just some random value - this test suite is ignored on Windows and the container is not started. But we still have to define port - required by configuration below.
   }
@@ -56,7 +61,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
        |  ldaps:
        |    - name: ldap1
        |      server_discovery:
-       |        dns_url: "dns://localhost:$ldapPort"
+       |        dns_url: "dns://$dnsHost:$dnsPort"
        |      ha: ROUND_ROBIN
        |      ssl_enabled: false                                        # default true
        |      ssl_trust_all_certs: true                                 # default false

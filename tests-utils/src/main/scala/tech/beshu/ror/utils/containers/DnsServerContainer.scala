@@ -47,6 +47,8 @@ class DnsServerContainer(srvServicePort: Int)
     cmd.withPortBindings(ports)
   }
 
+  def dnsHost: String = this.containerIpAddress
+
   def dnsPort: Int = {
     // This is hack to obtain mapping of UDP port as testcontainers doesn't allow explicit mapping of UDP ports,
     // although it is mapping each port exposed by container(even UDP).
