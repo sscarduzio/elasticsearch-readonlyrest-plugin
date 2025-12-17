@@ -68,6 +68,9 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     println(s"[TOXIPROXY DEBUG] Exposing host port: $innerMappedPort")
     Testcontainers.exposeHostPorts(innerMappedPort)
     
+    // Small delay to ensure Testcontainers has time to register the port before we start toxiproxy
+    Thread.sleep(100)
+    
     super.start()
 
     val toxiproxyClient = new ToxiproxyClient(container.getHost, container.getMappedPort(httpApiPort))
@@ -102,9 +105,24 @@ object ToxiproxyContainer {
         val proxy = toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
         println(s"[TOXIPROXY DEBUG] Proxy created successfully. Proxy details: ${proxy.getName}, listen=${proxy.getListen}, upstream=${proxy.getUpstream}")
         
+        // Test connectivity from toxiproxy to upstream by enabling the proxy
+        proxy.enable()
+        println(s"[TOXIPROXY DEBUG] Proxy enabled")
+        
         // Test if we can list proxies
         val allProxies = toxiproxyClient.getProxies
         println(s"[TOXIPROXY DEBUG] All proxies count: ${allProxies.size()}")
+        
+        // Test actual connectivity through the proxy by trying to connect to the mapped port
+        try {
+          val socket = new java.net.Socket()
+          socket.connect(new java.net.InetSocketAddress("localhost", waitStrategyTarget.getMappedPort(proxiedPort)), 1000)
+          socket.close()
+          println(s"[TOXIPROXY DEBUG] Successfully connected to toxiproxy mapped port: ${waitStrategyTarget.getMappedPort(proxiedPort)}")
+        } catch {
+          case ex: Exception =>
+            println(s"[TOXIPROXY DEBUG] Failed to connect to toxiproxy mapped port: ${ex.getMessage}")
+        }
         
         true
       } catch {
