@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClu
 object support {
 
   trait BaseEsClusterIntegrationTest
-    extends RorConfigFileNameProvider
+    extends RorSettingsFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
@@ -38,7 +38,7 @@ object support {
   }
 
   trait BaseEsRemoteClusterIntegrationTest
-    extends RorConfigFileNameProvider
+    extends RorSettingsFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
@@ -50,7 +50,7 @@ object support {
   }
 
   trait BaseManyEsClustersIntegrationTest
-    extends RorConfigFileNameProvider
+    extends RorSettingsFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
@@ -65,7 +65,7 @@ object support {
   }
 
   trait BaseSingleNodeEsClusterTest
-    extends RorConfigFileNameProvider
+    extends RorSettingsFileNameProvider
       with SingleClientSupport
       with TestSuiteWithClosedTaskAssertion
       with NodeInitializerProvider {

@@ -86,7 +86,7 @@ class RorSslSettingsTest
     }
     "be loaded from readonlyrest config file" when {
       "elasticsearch config file doesn't contain ROR ssl section" in {
-        val ssl = forceLoadRorSslSettings("/boot_tests/es_api_ssl_settings_in_readonlyrest_config")
+        val ssl = forceLoadRorSslSettings("/boot_tests/es_api_ssl_settings_in_readonlyrest_settings")
         inside(ssl.externalSsl) {
           case Some(ExternalSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, FipsMode.NonFips)) =>
             keystoreFile.value.name should be("ror-keystore.jks")
@@ -175,7 +175,7 @@ class RorSslSettingsTest
     }
     "be loaded from readonlyrest settings file" when {
       "elasticsearch config file doesn't contain ROR ssl section" in {
-        val ssl = forceLoadRorSslSettings("/boot_tests/internode_ssl_settings_in_readonlyrest_config")
+        val ssl = forceLoadRorSslSettings("/boot_tests/internode_ssl_settings_in_readonlyrest_settings")
         inside(ssl.internodeSsl) {
           case Some(InternodeSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled, FipsMode.NonFips)) =>
             keystoreFile.value.name should be("ror-keystore.jks")

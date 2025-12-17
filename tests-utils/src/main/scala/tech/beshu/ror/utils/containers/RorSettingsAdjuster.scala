@@ -21,25 +21,25 @@ import tech.beshu.ror.utils.containers.ContainerOps.*
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
-object RorConfigAdjuster {
+object RorSettingsAdjuster {
 
   private val hostPlaceholder = "HOST"
   private val portPlaceholder = "PORT"
 
   final case class Replacement(host: String, port: Int)
 
-  def adjustUsingDependencies(config: String,
+  def adjustUsingDependencies(settings: String,
                               startedDependencies: StartedClusterDependencies): String = {
     startedDependencies.values
-      .foldLeft(config)(replacePlaceholder)
+      .foldLeft(settings)(replacePlaceholder)
   }
 
   def adjustUsingDependencies(source: File,
                               startedDependencies: StartedClusterDependencies): File = {
-    val configWithResolvedDependencies = startedDependencies.values
+    val settingsWithResolvedDependencies = startedDependencies.values
       .foldLeft(source.contentAsString)(replacePlaceholder)
 
-    createTempFile.overwrite(configWithResolvedDependencies)
+    createTempFile.overwrite(settingsWithResolvedDependencies)
   }
 
   private def replacePlaceholder(fileContent: String,

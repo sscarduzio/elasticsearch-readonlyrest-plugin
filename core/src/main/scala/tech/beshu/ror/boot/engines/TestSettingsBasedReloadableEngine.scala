@@ -34,9 +34,9 @@ import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.ror.TestRorSettings.Expiration
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.{LoadingError, SavingError}
-import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
-import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError.SourceSpecificError
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError.SourceSpecificError
 import tech.beshu.ror.settings.ror.source.{IndexSettingsSource, TestSettingsIndexSource}
 import tech.beshu.ror.settings.ror.{RawRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -192,7 +192,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
   }
 
   private def saveSettingsInIndex[A](newSettings: TestRorSettings,
-                                     onFailure: SavingSettingsError[SavingError] => A): EitherT[Task, A, Unit] = {
+                                     onFailure: SettingsSavingError[SavingError] => A): EitherT[Task, A, Unit] = {
     EitherT(testSettingsSource.save(newSettings))
       .leftMap(onFailure)
   }
@@ -221,7 +221,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     EitherT(testSettingsSource.load())
       .map(Some(_))
       .leftFlatMap {
-        case LoadingSettingsError.SourceSpecificError(LoadingError.DocumentNotFound) =>
+        case SettingsLoadingError.SourceSpecificError(LoadingError.DocumentNotFound | LoadingError.IndexNotFound) =>
           EitherT.rightT(None)
         case error =>
           EitherT.leftT(IndexSettingsReloadError.IndexLoadingSettingsError(error): IndexSettingsReloadError)

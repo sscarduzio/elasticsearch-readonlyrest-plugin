@@ -1117,7 +1117,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                  |  ldaps:
                  |  - name: ldap1
                  |    server_discovery:
-                 |      dns_url: "dns://localhost:${ldapWithDnsContainer.dnsPort}"
+                 |      dns_url: "dns://${ldapWithDnsContainer.dnsHost}:${ldapWithDnsContainer.dnsPort}"
                  |      ttl: "3 hours"
                  |    ssl_enabled: false
                  |    ssl_trust_all_certs: true

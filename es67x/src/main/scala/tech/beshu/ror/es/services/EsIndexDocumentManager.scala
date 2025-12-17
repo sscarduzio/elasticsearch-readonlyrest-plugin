@@ -92,6 +92,7 @@ class EsIndexDocumentManager(client: NodeClient,
           client
             .prepareIndex()
             .setIndex(index.name.value)
+            .setType("settings")
             .setId(id)
             .setSource(document.noSpaces, XContentType.JSON)
             .setRefreshPolicy(RefreshPolicy.WAIT_UNTIL)

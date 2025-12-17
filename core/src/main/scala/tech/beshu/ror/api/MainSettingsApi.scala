@@ -31,7 +31,7 @@ import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsRel
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.IndexNotFound
-import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError.SourceSpecificError
 import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps

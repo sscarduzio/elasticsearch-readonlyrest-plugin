@@ -48,12 +48,12 @@ object providers {
     private[providers] def client(credentials: Credentials): RestClient
   }
 
-  trait RorConfigFileNameProvider {
-    implicit def rorConfigFileName: String
+  trait RorSettingsFileNameProvider {
+    implicit def rorSettingsFileName: String
   }
 
-  trait ResolvedRorConfigFileProvider {
-    def resolvedRorConfigFile: File
+  trait ResolvedRorSettingsFileProvider {
+    def resolvedRorSettingsFile: File
   }
 
   trait NodeInitializerProvider {

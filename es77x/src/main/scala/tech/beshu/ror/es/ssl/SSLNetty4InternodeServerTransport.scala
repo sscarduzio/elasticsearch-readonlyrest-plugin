@@ -30,6 +30,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.Netty4Transport
 import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
 import tech.beshu.ror.settings.es.SslSettings.InternodeSslSettings
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SSLCertHelper
 import tech.beshu.ror.utils.SSLCertHelper.HostAndPort
 
@@ -46,8 +47,8 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
   extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService)
     with Logging {
 
-  private val clientSslContext = SSLCertHelper.prepareClientSSLContext(ssl)
-  private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, clientAuthenticationEnabled = false)
+  private val clientSslContext = doPrivileged { SSLCertHelper.prepareClientSSLContext(ssl) }
+  private val serverSslContext = doPrivileged { SSLCertHelper.prepareServerSSLContext(ssl, clientAuthenticationEnabled = false) }
 
   override def getClientChannelInitializer(node: DiscoveryNode): ChannelHandler = new ClientChannelInitializer {
     override def initChannel(ch: Channel): Unit = {

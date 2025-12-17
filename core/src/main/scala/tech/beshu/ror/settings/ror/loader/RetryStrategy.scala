@@ -22,7 +22,7 @@ import cats.implicits.toShow
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings
 
 trait RetryStrategy {
   def withRetry[ERROR: Show, RESULT](operation: Task[Either[ERROR, RESULT]],
@@ -30,12 +30,6 @@ trait RetryStrategy {
   def withRetryT[ERROR: Show, RESULT](operation: EitherT[Task, ERROR, RESULT],
                                       operationDescription: String): EitherT[Task, ERROR, RESULT] =
     EitherT(withRetry(operation.value, operationDescription))
-}
-
-object NoRetryStrategy extends RetryStrategy {
-  override def withRetry[ERROR: Show, RESULT](operation: Task[Either[ERROR, RESULT]],
-                                              operationDescription: String): Task[Either[ERROR, RESULT]] =
-    operation
 }
 
 class ConfigurableRetryStrategy(config: LoadingRetryStrategySettings)

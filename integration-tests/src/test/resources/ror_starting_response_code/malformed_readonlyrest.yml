@@ -1,0 +1,5 @@
+readonlyrest:
+
+  access_control_rules:
+    - name: "CONTAINER ADMIN - basic"
+      auth_key1: "admin:container"

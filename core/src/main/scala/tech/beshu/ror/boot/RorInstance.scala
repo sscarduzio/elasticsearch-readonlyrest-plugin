@@ -29,11 +29,11 @@ import tech.beshu.ror.accesscontrol.factory.RorDependencies
 import tech.beshu.ror.api.{AuthMockApi, MainSettingsApi, TestSettingsApi}
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.CoreRefreshSettings
-import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, LoadingRorCoreStrategySettings}
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSettings
+import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, RorCoreSettingsLoadingStrategy}
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource
-import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -180,7 +180,7 @@ object RorInstance {
       boot = boot,
       esConfigBasedRorSettings = esConfigBasedRorSettings,
       creators = creators,
-      mode = modeFrom(esConfigBasedRorSettings.loadingRorCoreStrategy),
+      mode = modeFrom(esConfigBasedRorSettings.rorCoreSettingsLoadingStrategy),
       mainInitialEngine = mainEngine,
       mainReloadInProgress = isReloadInProgressSemaphore,
       testInitialEngine = testEngine,
@@ -188,13 +188,13 @@ object RorInstance {
     )
   }
 
-  private def modeFrom(strategy: LoadingRorCoreStrategySettings) = {
+  private def modeFrom(strategy: RorCoreSettingsLoadingStrategy) = {
     strategy match {
-      case LoadingRorCoreStrategySettings.ForceLoadingFromFileSettings =>
+      case RorCoreSettingsLoadingStrategy.ForceLoadingFromFileSettings =>
         Mode.NoPeriodicIndexCheck
-      case LoadingRorCoreStrategySettings.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Disabled) =>
+      case RorCoreSettingsLoadingStrategy.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Disabled) =>
         Mode.NoPeriodicIndexCheck
-      case LoadingRorCoreStrategySettings.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Enabled(refreshInterval)) =>
+      case RorCoreSettingsLoadingStrategy.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Enabled(refreshInterval)) =>
         Mode.WithPeriodicIndexCheck(refreshInterval)
     }
   }
@@ -210,13 +210,13 @@ object RorInstance {
   object IndexSettingsReloadWithUpdateError {
     final case class ReloadError(undefined: RawSettingsReloadError)
       extends IndexSettingsReloadWithUpdateError
-    final case class IndexSettingsSavingError(underlying: SavingSettingsError[IndexSettingsSource.SavingError])
+    final case class IndexSettingsSavingError(underlying: SettingsSavingError[IndexSettingsSource.SavingError])
       extends IndexSettingsReloadWithUpdateError
   }
 
   sealed trait IndexSettingsReloadError
   object IndexSettingsReloadError {
-    final case class IndexLoadingSettingsError(underlying: LoadingSettingsError[IndexSettingsSource.LoadingError])
+    final case class IndexLoadingSettingsError(underlying: SettingsLoadingError[IndexSettingsSource.LoadingError])
       extends IndexSettingsReloadError
     final case class ReloadError(underlying: RawSettingsReloadError)
       extends IndexSettingsReloadError
@@ -224,7 +224,7 @@ object RorInstance {
 
   sealed trait IndexSettingsUpdateError
   object IndexSettingsUpdateError {
-    final case class IndexSettingsSavingError(underlying: SavingSettingsError[IndexSettingsSource.SavingError])
+    final case class IndexSettingsSavingError(underlying: SettingsSavingError[IndexSettingsSource.SavingError])
       extends IndexSettingsUpdateError
     case object TestSettingsNotSet
       extends IndexSettingsUpdateError
@@ -234,7 +234,7 @@ object RorInstance {
 
   sealed trait IndexSettingsInvalidationError
   object IndexSettingsInvalidationError {
-    final case class IndexSettingsSavingError(underlying: SavingSettingsError[IndexSettingsSource.SavingError])
+    final case class IndexSettingsSavingError(underlying: SettingsSavingError[IndexSettingsSource.SavingError])
       extends IndexSettingsInvalidationError
   }
 

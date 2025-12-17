@@ -39,7 +39,7 @@ class RemoteClusterAuditingToolsSuite
 
   private val isDataStreamSupported = Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)
 
-  override implicit val rorConfigFileName: String = {
+  override implicit val rorSettingsFileName: String = {
     if (isDataStreamSupported) {
       "/ror_audit/cluster_auditing_tools/readonlyrest.yml"
     } else {
@@ -89,11 +89,11 @@ class RemoteClusterAuditingToolsSuite
 
   override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.fromListUnsafe(auditEsContainers)
 
-  override protected def baseRorConfig: String = resolvedRorConfigFile.contentAsString
+  override protected def baseRorSettingsYaml: String = resolvedRorSettingsFile.contentAsString
 
   override protected def baseAuditDataStreamName: Option[String] = Option.when(isDataStreamSupported)("audit_data_stream")
 
-  // Adding the ES cluster fields is enabled in the /cluster_auditing_tools/readonlyrest.yml config file (`DefaultAuditLogSerializerV2` is used)
+  // Adding the ES cluster fields is enabled in the /cluster_auditing_tools/readonlyrest.yml settings file (`DefaultAuditLogSerializerV2` is used)
   override def assertForEveryAuditEntry(entry: JSON): Unit = {
     entry("es_node_name").str shouldBe "ROR_SINGLE_1"
     entry("es_cluster_name").str shouldBe "ROR_SINGLE"
@@ -107,7 +107,7 @@ class RemoteClusterAuditingToolsSuite
   // This test suite does not execute on Windows: there is currently no Windows version of ToxiproxyContainer
   ignoreOnWindows {
     "Should report audit events in round-robin mode, even when some nodes are unreachable" in {
-      rorApiManager.updateRorInIndexSettings(baseRorConfig).forceOKStatusOrSettingsAlreadyLoaded()
+      rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml).forceOKStatusOrSettingsAlreadyLoaded()
       val auditNode1 = proxiedContainers(0)
       val auditNode2 = proxiedContainers(1)
 

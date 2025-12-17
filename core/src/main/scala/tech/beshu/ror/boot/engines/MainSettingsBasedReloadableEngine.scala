@@ -33,7 +33,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.ror.MainRorSettings
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
-import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError.SourceSpecificError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError.SourceSpecificError
 import tech.beshu.ror.settings.ror.source.{IndexSettingsSource, MainSettingsIndexSource}
 import tech.beshu.ror.utils.ScalaOps.value
 

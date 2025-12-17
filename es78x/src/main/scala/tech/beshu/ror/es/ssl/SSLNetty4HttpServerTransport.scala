@@ -27,6 +27,7 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport
 import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SSLCertHelper
 
 class SSLNetty4HttpServerTransport(settings: Settings,
@@ -40,7 +41,9 @@ class SSLNetty4HttpServerTransport(settings: Settings,
   extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, clusterSettings)
     with Logging {
 
-  private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, ssl.clientAuthenticationEnabled)
+  private val serverSslContext = doPrivileged {
+    SSLCertHelper.prepareServerSSLContext(ssl, ssl.clientAuthenticationEnabled)
+  }
 
   override def configureServerChannelHandler = new SSLHandler(this)
 

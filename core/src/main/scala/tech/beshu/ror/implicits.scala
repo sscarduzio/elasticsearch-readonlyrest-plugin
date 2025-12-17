@@ -60,13 +60,13 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.CoreRefreshSettings
-import tech.beshu.ror.settings.es.LoadingRorCoreStrategySettings.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSettings
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
-import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SavingSettingsError
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
+import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
 import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.ScalaOps.*
@@ -457,12 +457,12 @@ trait LogsShowInstances
 
   implicit val startingFailureShow: Show[StartingFailure] = Show.show(_.message)
 
-  implicit def loadingSettingsErrorShow[ERROR: Show]: Show[LoadingSettingsError[ERROR]] = Show.show {
-    case LoadingSettingsError.SettingsMalformed(cause) => s"ROR settings are malformed: $cause"
-    case LoadingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
+  implicit def settingsLoadingErrorShow[ERROR: Show]: Show[SettingsLoadingError[ERROR]] = Show.show {
+    case SettingsLoadingError.SettingsMalformed(cause) => s"ROR settings are malformed: $cause"
+    case SettingsLoadingError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
   }
 
-  implicit def savingSettingsErrorShow[ERROR: Show]: Show[SavingSettingsError[ERROR]] = Show.show {
-    case SavingSettingsError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
+  implicit def settingsSavingErrorShow[ERROR: Show]: Show[SettingsSavingError[ERROR]] = Show.show {
+    case SettingsSavingError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
   }
 }

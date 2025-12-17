@@ -35,18 +35,18 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
 
-class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike {
+class RorStartingResponseCodeSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike {
 
-  import RorStartingSuite.*
+  import RorStartingResponseCodeSuite.*
 
   implicit val scheduler: Scheduler = Scheduler.computation(10)
 
-  private val validRorConfigFile = "/basic/readonlyrest.yml"
+  private val validRorSettingsFile = "/ror_starting_response_code/malformed_readonlyrest.yml"
 
   private val notStartedResponseCodeKey = "readonlyrest.not_started_response_code"
 
   "ES" when {
-    "ROR does not started yet" should {
+    "ROR is not started yet" should {
       "return not started response with http code 403" when {
         "403 configured" in withTestEsContainerManager(Map(notStartedResponseCodeKey -> "403")) { esContainer =>
           testRorStartup(usingManager = esContainer, expectedResponseCode = 403)
@@ -66,7 +66,7 @@ class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
   private def withTestEsContainerManager(additionalEsYamlEntries: Map[String, String])
                                         (testCode: TestEsContainerManager => Task[Unit]): Unit = {
     val esContainer = new TestEsContainerManager(
-      rorConfigFile = validRorConfigFile,
+      rorSettingsFile = validRorSettingsFile,
       additionalEsYamlEntries = additionalEsYamlEntries
     )
     esContainer.start().runSyncUnsafe(5 minutes)
@@ -108,12 +108,12 @@ class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLi
   }
 }
 
-private object RorStartingSuite extends EsModulePatterns {
+private object RorStartingResponseCodeSuite extends EsModulePatterns {
   final case class TestResponse(responseCode: Int, responseJson: JSON)
 
   private val uniqueClusterId: AtomicInt = AtomicInt(1)
 
-  final class TestEsContainerManager(rorConfigFile: String,
+  final class TestEsContainerManager(rorSettingsFile: String,
                                      additionalEsYamlEntries: Map[String, String]) extends EsContainerCreator {
 
     private val esContainer = createEsContainer
@@ -135,16 +135,17 @@ private object RorStartingSuite extends EsModulePatterns {
     }
 
     private def createEsContainer: EsContainer = {
-      val clusterName = s"ROR_${uniqueClusterId.getAndIncrement()}"
+      val id = uniqueClusterId.getAndIncrement()
+      val clusterName = s"startingTest_EsCluster_$id"
       val nodeName = s"${clusterName}_1"
       create(
         nodeSettings = EsNodeSettings(
-          nodeName = nodeName,
           clusterName = clusterName,
+          nodeName = nodeName,
           securityType = SecurityType.RorWithXpackSecurity(
             ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-              rorConfigFileName = rorConfigFile,
-              rorInIndexConfigLoadingDelay = 5 seconds
+              rorSettingsFileName = rorSettingsFile,
+              rorInIndexSettingsLoadingDelay = 5 seconds
             )
           ),
           containerSpecification = ContainerSpecification.empty.copy(

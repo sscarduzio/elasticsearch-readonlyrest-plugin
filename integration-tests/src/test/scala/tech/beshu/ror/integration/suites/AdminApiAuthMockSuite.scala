@@ -24,18 +24,18 @@ import tech.beshu.ror.integration.suites.base.support.BaseManyEsClustersIntegrat
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport, SingletonLdapContainers}
 import ujson.Value.Value
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
+import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
-import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
+import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
-import java.time.{Instant, ZoneOffset}
 import java.time.temporal.ChronoUnit
+import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -52,9 +52,11 @@ class AdminApiAuthMockSuite
   override lazy val clusterContainers = NonEmptyList.of(esCluster)
   override lazy val esTargets = NonEmptyList.fromListUnsafe(esCluster.nodes)
 
-  override implicit val rorConfigFileName: String = "/admin_api_mocks/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/admin_api_mocks/readonlyrest.yml"
 
   private val readonlyrestIndexName = ".readonlyrest"
+  private val testSettingsEsDocumentId = "2"
+  private val settingsReloadInterval = 2 seconds
 
   private val esCluster: EsClusterContainer = {
     def esClusterSettingsCreator(securityType: SecurityType) =
@@ -69,9 +71,9 @@ class AdminApiAuthMockSuite
     createLocalClusterContainer(
       esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorConfigReloading = Enabled.Yes(2 seconds),
+          rorSettingsReloading = Enabled.Yes(settingsReloadInterval),
           rorCustomSettingsIndex = Some(readonlyrestIndexName),
-          rorConfigFileName = rorConfigFileName
+          rorSettingsFileName = rorSettingsFileName
         ))
       ),
     )
@@ -83,9 +85,6 @@ class AdminApiAuthMockSuite
     wiremock(name = "EXT1", portWhenRunningOnWindows = 8080, mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
     wiremock(name = "EXT1", portWhenRunningOnWindows = 8081, mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
   )
-
-  private val testEngineReloadInterval = 2 seconds
-  private val testSettingsEsDocumentId = "2"
 
   "An admin Auth Mock REST API" should {
     "return info that test settings are not configured" when {
@@ -192,16 +191,16 @@ class AdminApiAuthMockSuite
         ))
 
         rorClients.foreach { rorApiManager =>
-          val testConfigResponse = rorApiManager.currentRorTestSettings
-          testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
-          testConfigResponse.responseJson("warnings") should be(
+          val testSettingsResponse = rorApiManager.currentRorTestSettings
+          testSettingsResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
+          testSettingsResponse.responseJson("warnings") should be(
             ujson.read(
               s"""
                  |[
                  |  {
                  |    "block_name": "test2 (1)",
                  |    "rule_name": "auth_key_sha1",
-                 |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
+                 |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this use case.",
                  |    "hint": "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
                  |  },
                  |  {
@@ -650,7 +649,7 @@ class AdminApiAuthMockSuite
              |""".stripMargin
         ))
 
-        eventually { // await until all nodes load config
+        eventually { // await until all nodes load settings
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.currentMockedServices()
             response should have statusCode 200
@@ -669,7 +668,7 @@ class AdminApiAuthMockSuite
                |  {
                |    "block_name": "test2 (1)",
                |    "rule_name": "auth_key_sha1",
-               |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
+               |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this use case.",
                |    "hint": "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
                |  }
                |]
@@ -677,11 +676,11 @@ class AdminApiAuthMockSuite
           ))
         }
       }
-      "return info that all mocks are configured when old config version stored in index" in {
+      "return info that all mocks are configured when old settings version stored in index" in {
         setupTestSettingsOnAllNodes()
         invalidateTestSettingsOnAllNodes()
 
-        setupTestSettingsInIndex(
+        setupTestSettingsInIndex(ujson.read(
           s"""
              |{
              |  "ldapMocks": {
@@ -762,7 +761,7 @@ class AdminApiAuthMockSuite
              |  }
              |}
              |""".stripMargin
-        )
+        ))
 
         val payloadServices = ujson.read(
           s"""
@@ -886,7 +885,7 @@ class AdminApiAuthMockSuite
              |""".stripMargin
         )
 
-        eventually { // await until all nodes load config
+        eventually { // await until all nodes load settings
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.currentMockedServices()
             response should have statusCode 200
@@ -898,7 +897,7 @@ class AdminApiAuthMockSuite
     }
     "provide a method for reload mocked services" which {
       "is going to reload mocked services" when {
-        "configuration is correct" when {
+        "settings are correct" when {
           "all services are passed" in {
             setupTestSettingsOnAllNodes()
 
@@ -1234,19 +1233,27 @@ class AdminApiAuthMockSuite
     }
   }
 
+  override protected def beforeEach(): Unit = {
+    rorClients.foreach {
+      _.invalidateImpersonationMocks().force()
+    }
+
+    removeRorIndexAndAwaitForNotSetTestSettings()
+  }
+
   private def invalidateTestSettingsOnAllNodes(): Unit = {
     rorClients.head
       .invalidateRorTestSettings()
       .forceOkStatus()
 
-    eventually { // await until all nodes load config
+    eventually { // await until all nodes load settings
       rorClients.foreach {
-        assertTestSettings(_, expectedStatus = "TEST_SETTINGS_INVALIDATED")
+        assertCurrentTestSettings(_, expectedStatus = "TEST_SETTINGS_INVALIDATED")
       }
     }
   }
 
-  private def assertTestSettings(rorApiManager: RorApiManager, expectedStatus: String) = {
+  private def assertCurrentTestSettings(rorApiManager: RorApiManager, expectedStatus: String) = {
     val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
     response.responseJson("status").str should be(expectedStatus)
@@ -1263,38 +1270,29 @@ class AdminApiAuthMockSuite
     )
   }
 
-  private def testEngineConfig(): String = esCluster.resolvedRorConfig(getResourceContent(rorConfigFileName))
+  private def testSettingsFromFile(): String = esCluster.resolvedRorSettings(getResourceContent(rorSettingsFileName))
 
   override implicit val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = testEngineReloadInterval.plus(10 second), interval = 500 millis)
+    PatienceConfig(timeout = settingsReloadInterval.plus(10 second), interval = 500 millis)
 
-  override protected def beforeEach(): Unit = {
-    rorClients.foreach {
-      _
-        .invalidateImpersonationMocks()
-        .force()
-    }
-
-    removeRorIndexAndAwaitForNotSetTestConfig()
-  }
-
-  private def removeRorIndexAndAwaitForNotSetTestConfig(): Unit = {
-    // remove index storing test config
+  private def removeRorIndexAndAwaitForNotSetTestSettings(): Unit = {
+    // remove index storing test settings
     new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
       .removeIndex(readonlyrestIndexName)
+      .successOrNotFound()
 
-    eventually { // await until node invalidate the test config
+    eventually { // wait until node invalidate the test settings
       rorClients.foreach {
-        assertTestSettings(_, expectedStatus = "TEST_SETTINGS_NOT_CONFIGURED")
+        assertCurrentTestSettings(_, expectedStatus = "TEST_SETTINGS_NOT_CONFIGURED")
       }
     }
   }
 
   private def setupTestSettingsInIndex(mocksJson: Value) = {
-    val testSettings = testEngineConfig()
+    val testSettings = testSettingsFromFile()
     val expirationTtl = 30 minutes
     val expirationTime = Instant.now().plus(expirationTtl.toMillis, ChronoUnit.MILLIS)
-    val testSettingsJson = ujson.read(
+    val testSettingsRelatedDocument = ujson.read(
       s"""
          |{
          |  "settings": ${ujson.write(testSettings)},
@@ -1306,8 +1304,9 @@ class AdminApiAuthMockSuite
     )
     val documentType = "settings"
     val documentManager = new DocumentManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
-    val createDocResponse = documentManager.createDoc(readonlyrestIndexName, documentType, testSettingsEsDocumentId, testSettingsJson)
-    createDocResponse.isSuccess should be(true)
+    val createDocResponse = documentManager.createDoc(readonlyrestIndexName, documentType, testSettingsEsDocumentId, testSettingsRelatedDocument)
+
+    createDocResponse should have statusCode 200
   }
 
   private def assertAuthMocksInIndex(expectedMocks: Value) = {
@@ -1316,27 +1315,29 @@ class AdminApiAuthMockSuite
     indexSearchResponse should have statusCode 200
     val indexSearchHits = indexSearchResponse.responseJson("hits")("hits").arr.toList
     indexSearchHits.size should be >= 1 // at least main document or test document should be present
-    val testSettingsDocumentHit = indexSearchHits.find { searchResult =>
-      (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
-    }.value
+    val testSettingsDocumentHit = indexSearchHits
+      .find { searchResult =>
+        (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
+      }
+      .value
 
-    val mocksContent = ujson.read(testSettingsDocumentHit("_source")("auth_services_mocks").str)
+    val mocksContent = testSettingsDocumentHit("_source")("auth_services_mocks")
     mocksContent should be(expectedMocks)
   }
 
   private def setupTestSettingsOnAllNodes(): Unit = {
     rorClients.head
-      .updateRorTestSettings(testEngineConfig())
+      .updateRorTestSettings(testSettingsFromFile())
       .forceOkStatus()
 
-    eventually { // await until all nodes load config
+    eventually { // await until all nodes load settings
       rorClients.foreach {
-        assertTestSettings(_, expectedStatus = "TEST_SETTINGS_PRESENT")
+        assertCurrentTestSettings(_, expectedStatus = "TEST_SETTINGS_PRESENT")
       }
     }
   }
 
-  private def rorClients: List[RorApiManager] = {
+  private lazy val rorClients: List[RorApiManager] = {
     clients
       .toList
       .map(_.adminClient)

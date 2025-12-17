@@ -22,8 +22,8 @@ import io.circe.{Decoder, Json}
 import monix.eval.Task
 import tech.beshu.ror.settings.ror.source.FileSettingsSource.FileSettingsLoadingError
 import tech.beshu.ror.settings.ror.source.FileSettingsSource.LoadingError.FileNotExist
-import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError
-import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.LoadingSettingsError.SourceSpecificError
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError.SourceSpecificError
 
 class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
   extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
@@ -44,13 +44,13 @@ class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
       .subflatMap { raw =>
         Json
           .fromString(raw).as[SETTINGS]
-          .left.map { failure => LoadingSettingsError.SettingsMalformed(failure.message) }
+          .left.map { failure => SettingsLoadingError.SettingsMalformed(failure.message) }
       }
   }
 }
 object FileSettingsSource {
 
-  type FileSettingsLoadingError = LoadingSettingsError[LoadingError]
+  type FileSettingsLoadingError = SettingsLoadingError[LoadingError]
 
   sealed trait LoadingError
   object LoadingError {

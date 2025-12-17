@@ -82,10 +82,10 @@ trait EsContainerCreator {
                                                        additionalLogConsumer: Option[Consumer[OutputFrame]],
                                                        awaitingReadyStrategy: AwaitingReadyStrategy) = {
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
-    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
+    val rawRorSettingsFile = ContainerUtils.getResourceFile(attributes.rorSettingsFileName)
 
-    val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
-      source = rawRorConfigFile.toScala,
+    val adjustedRorSettings = RorSettingsAdjuster.adjustUsingDependencies(
+      source = rawRorSettingsFile.toScala,
       startedDependencies = startedClusterDependencies,
     )
 
@@ -101,7 +101,7 @@ trait EsContainerCreator {
       ),
       securityConfig = ReadonlyRestWithEnabledXpackSecurityPlugin.Config(
         rorPlugin = rorPluginFile.toScala,
-        rorConfig = adjustedRorConfig,
+        rorSettings = adjustedRorSettings,
         attributes = attributes
       ),
       initializer = nodeDataInitializer,
@@ -121,10 +121,10 @@ trait EsContainerCreator {
                                        additionalLogConsumer: Option[Consumer[OutputFrame]],
                                        awaitingReadyStrategy: AwaitingReadyStrategy) = {
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
-    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
+    val rawRorSettingsFile = ContainerUtils.getResourceFile(attributes.rorSettingsFileName)
 
-    val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
-      source = rawRorConfigFile.toScala,
+    val adjustedRorSettings = RorSettingsAdjuster.adjustUsingDependencies(
+      source = rawRorSettingsFile.toScala,
       startedDependencies = startedClusterDependencies,
     )
 
@@ -140,7 +140,7 @@ trait EsContainerCreator {
       ),
       rorConfig = ReadonlyRestPlugin.Config(
         rorPlugin = rorPluginFile.toScala,
-        rorConfig = adjustedRorConfig,
+        rorSettings = adjustedRorSettings,
         attributes = attributes
       ),
       initializer = nodeDataInitializer,

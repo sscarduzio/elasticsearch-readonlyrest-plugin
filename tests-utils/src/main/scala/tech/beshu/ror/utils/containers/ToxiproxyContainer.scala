@@ -17,25 +17,34 @@
 package tech.beshu.ror.utils.containers
 
 import com.dimafeng.testcontainers.{GenericContainer, SingleContainer}
+import com.typesafe.scalalogging.LazyLogging
 import eu.rekawek.toxiproxy.model.{ToxicDirection, toxic}
 import eu.rekawek.toxiproxy.{Proxy, ToxiproxyClient}
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.Network
-import tech.beshu.ror.utils.containers.ToxiproxyContainer.{ToxiproxyWaitStrategy, httpApiPort, proxiedPort}
+import org.testcontainers.containers.wait.strategy.{WaitStrategy, WaitStrategyTarget}
+import tech.beshu.ror.utils.containers.ToxiproxyContainer.{httpApiPort, proxiedPort}
+import tech.beshu.ror.utils.misc.ScalaUtils.*
 
+import java.time.Duration
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerServicePort: Int)
   extends GenericContainer(
-    dockerImage = "ghcr.io/shopify/toxiproxy:2.12.0",
+    dockerImage = "shopify/toxiproxy:2.1.4",
     exposedPorts = Seq(httpApiPort, proxiedPort),
-    waitStrategy = Some(new ToxiproxyWaitStrategy(innerContainer, innerServicePort))
-  ) {
+    waitStrategy = Some(new ToxiproxyApiWaitStrategy())
+  ) with LazyLogging {
 
   container.setNetwork(Network.SHARED)
+  container.withStartupTimeout(Duration.ofSeconds(120))
 
   private var innerContainerProxy: Option[Proxy] = None
   private var timeoutToxic: Option[toxic.Timeout] = None
+
+  def containerHost: String = container.getHost
 
   def innerContainerMappedPort: Int = container.getMappedPort(proxiedPort)
 
@@ -62,8 +71,7 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     innerContainer.start()
     super.start()
 
-    val toxiproxyClient = new ToxiproxyClient(container.getHost, container.getMappedPort(httpApiPort))
-    innerContainerProxy = Some(toxiproxyClient.getProxy("proxy"))
+    innerContainerProxy = Some(createProxy())
   }
 
   override def stop(): Unit = {
@@ -71,24 +79,67 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     super.stop()
   }
 
+  private def createProxy() = {
+    // Create proxy AFTER both containers are fully started
+    // Fetch fresh container info to get the correct IP address
+    val dockerClient = container.getDockerClient
+    val freshContainerInfo = dockerClient.inspectContainerCmd(innerContainer.containerId).exec()
+    val innerNetworks = freshContainerInfo.getNetworkSettings.getNetworks
+
+    val innerContainerIp =
+      if (innerNetworks.isEmpty) innerContainer.containerInfo.getConfig.getHostName
+      else innerNetworks.values().iterator().next().getIpAddress
+
+    val proxyUpstream = s"$innerContainerIp:$innerServicePort"
+    val proxyListen = s"0.0.0.0:$proxiedPort"
+
+    logger.debug(s"[TOXIPROXY] Creating proxy: listen=$proxyListen, upstream=$proxyUpstream (container IP)")
+    val toxiproxyClient = new ToxiproxyClient(container.getHost, container.getMappedPort(httpApiPort))
+    val proxy = toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
+    logger.debug(s"[TOXIPROXY] Proxy created successfully")
+
+    proxy
+  }
 }
 
-object ToxiproxyContainer {
+private class ToxiproxyApiWaitStrategy extends WaitStrategy with LazyLogging {
 
-  private class ToxiproxyWaitStrategy(innerContainer: SingleContainer[_], innerServicePort: Int)
-    extends WaitWithRetriesStrategy("toxiproxy") {
+  private var startupTimeout: Duration = Duration.ofSeconds(60)
 
-    override protected def isReady: Boolean = {
-      try {
-        val toxiproxyClient = new ToxiproxyClient(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(httpApiPort))
-        toxiproxyClient.createProxy("proxy", s"[::]:$proxiedPort", s"${innerContainer.containerInfo.getConfig.getHostName}:$innerServicePort")
-        true
-      } catch {
-        case _: Exception => false
-      }
+  override def waitUntilReady(waitStrategyTarget: WaitStrategyTarget): Unit = {
+    val host = waitStrategyTarget.getHost
+    val port = waitStrategyTarget.getMappedPort(ToxiproxyContainer.httpApiPort)
+
+    logger.debug(s"[TOXIPROXY_WAIT] Waiting for Toxiproxy API at $host:$port")
+
+    retryBackoff(
+      source = Task.delay(isToxiproxyReady(host, port)),
+      maxRetries = 150,
+      firstDelay = 1 second,
+      backOffScaler = 1
+    ).runSyncUnsafe(startupTimeout)
+  }
+
+  private def isToxiproxyReady(host: String, port: Int): Boolean = {
+    try {
+      val client = new ToxiproxyClient(host, port)
+      client.getProxies
+      logger.debug(s"[TOXIPROXY_WAIT] Toxiproxy API is ready at $host:$port")
+      true
+    } catch {
+      case e: Exception =>
+        logger.debug(s"[TOXIPROXY_WAIT] Toxiproxy API not ready yet: ${e.getMessage}")
+        false
     }
   }
 
-  private val httpApiPort = 8474
+  override def withStartupTimeout(startupTimeout: Duration): WaitStrategy = {
+    this.startupTimeout = startupTimeout
+    this
+  }
+}
+
+object ToxiproxyContainer {
+  private[containers] val httpApiPort = 8474
   val proxiedPort = 5000
 }

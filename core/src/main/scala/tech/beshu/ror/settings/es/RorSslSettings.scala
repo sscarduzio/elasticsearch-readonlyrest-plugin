@@ -211,7 +211,7 @@ object SslSettings {
                                        fipsMode: FipsMode)
     extends SslSettings {
 
-    val certificateVerificationEnabled: Boolean = false
+    override val certificateVerificationEnabled: Boolean = false
   }
 
   final case class InternodeSslSettings(serverCertificateSettings: ServerCertificateSettings,

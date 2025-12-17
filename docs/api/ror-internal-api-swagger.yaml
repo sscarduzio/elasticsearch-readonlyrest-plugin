@@ -1508,7 +1508,7 @@ components:
         warnings:
           - block_name: other
             rule_name: auth_key_sha1
-            message: "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration"
+            message: "The rule contains fully hashed username and password. It doesn't support impersonation in this use case."
             hint: "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
 
     TestSettingsNotConfiguredResponseExample:
@@ -1543,7 +1543,7 @@ components:
         warnings:
           - block_name: other
             rule_name: auth_key_sha1
-            message: "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration"
+            message: "The rule contains fully hashed username and password. It doesn't support impersonation in this use case."
             hint: "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
 
     TestSettingsUpdateFailedResponseExample:

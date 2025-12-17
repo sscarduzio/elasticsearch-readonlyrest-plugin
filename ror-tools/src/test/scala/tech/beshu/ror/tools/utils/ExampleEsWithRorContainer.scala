@@ -65,8 +65,8 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
     val clusterName = s"ROR_${uniqueClusterId.getAndIncrement()}"
     val nodeName = s"${clusterName}_1"
     val attributes = ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-      rorConfigReloading = Enabled.No,
-      rorConfigFileName = "/basic/readonlyrest.yml",
+      rorSettingsReloading = Enabled.No,
+      rorSettingsFileName = "/basic/readonlyrest.yml",
     )
     createCustomES(
       nodeSettings = EsNodeSettings(
@@ -90,9 +90,9 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
                              startedClusterDependencies: StartedClusterDependencies) = {
     val project = RorPluginGradleProject.fromSystemProperty
     val pluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
-    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
+    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorSettingsFileName)
 
-    val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
+    val adjustedRorConfig = RorSettingsAdjuster.adjustUsingDependencies(
       source = rawRorConfigFile.toScala,
       startedDependencies = startedClusterDependencies,
     )
@@ -109,7 +109,7 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
       ),
       securityConfig = ReadonlyRestWithEnabledXpackSecurityPlugin.Config(
         rorPlugin = pluginFile.toScala,
-        rorConfig = adjustedRorConfig,
+        rorSettings = adjustedRorConfig,
         attributes = attributes,
       ),
       initializer = nodeDataInitializer,
