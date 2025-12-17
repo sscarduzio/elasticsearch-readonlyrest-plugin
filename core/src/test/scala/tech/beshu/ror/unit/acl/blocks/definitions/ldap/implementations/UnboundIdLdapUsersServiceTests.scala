@@ -111,6 +111,8 @@ class UnboundIdLdapUsersServiceTests
           .get
       ),
       poolSize = positiveInt(1),
+      connectionHealthCheckInterval = Refined.unsafeApply(120 seconds),
+      connectionMaxAge = Refined.unsafeApply(120 seconds),
       connectionTimeout = Refined.unsafeApply(5 seconds),
       requestTimeout = Refined.unsafeApply(5 seconds),
       trustAllCerts = false,
