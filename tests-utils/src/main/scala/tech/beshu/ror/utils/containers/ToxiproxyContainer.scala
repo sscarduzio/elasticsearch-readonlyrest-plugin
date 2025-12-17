@@ -21,6 +21,7 @@ import com.typesafe.scalalogging.LazyLogging
 import eu.rekawek.toxiproxy.model.{ToxicDirection, toxic}
 import eu.rekawek.toxiproxy.{Proxy, ToxiproxyClient}
 import org.testcontainers.containers.Network
+import org.testcontainers.containers.wait.strategy.{HostPortWaitStrategy, WaitAllStrategy}
 import tech.beshu.ror.utils.containers.ToxiproxyContainer.{ToxiproxyWaitStrategy, httpApiPort, proxiedPort}
 
 import scala.concurrent.duration.*
@@ -30,7 +31,11 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
   extends GenericContainer(
     dockerImage = "shopify/toxiproxy:2.1.4",
     exposedPorts = Seq(httpApiPort, proxiedPort),
-    waitStrategy = Some(new ToxiproxyWaitStrategy(innerContainer, innerServicePort))
+    waitStrategy = Some(
+      new WaitAllStrategy()
+        .withStrategy(new ToxiproxyWaitStrategy(innerContainer, innerServicePort))
+        .withStrategy(new HostPortWaitStrategy())
+    )
   ) {
 
   container.setNetwork(Network.SHARED)
