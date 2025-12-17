@@ -43,6 +43,8 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
   private var innerContainerProxy: Option[Proxy] = None
   private var timeoutToxic: Option[toxic.Timeout] = None
 
+  def containerHost: String = container.getHost
+  
   def innerContainerMappedPort: Int = container.getMappedPort(proxiedPort)
 
   def disableNetwork(): Unit = {
