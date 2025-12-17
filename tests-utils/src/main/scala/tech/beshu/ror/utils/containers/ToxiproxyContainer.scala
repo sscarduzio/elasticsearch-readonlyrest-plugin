@@ -65,12 +65,14 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     // Expose the inner container's mapped port BEFORE starting toxiproxy
     // This is required for host.testcontainers.internal to work on Linux
     val innerMappedPort = innerContainer.mappedPort(innerServicePort)
+    println(s"[TOXIPROXY DEBUG] Exposing host port: $innerMappedPort")
     Testcontainers.exposeHostPorts(innerMappedPort)
     
     super.start()
 
     val toxiproxyClient = new ToxiproxyClient(container.getHost, container.getMappedPort(httpApiPort))
     innerContainerProxy = Some(toxiproxyClient.getProxy("proxy"))
+    println(s"[TOXIPROXY DEBUG] Toxiproxy container mapped port (proxiedPort=$proxiedPort): ${container.getMappedPort(proxiedPort)}")
   }
 
   override def stop(): Unit = {
@@ -92,12 +94,18 @@ object ToxiproxyContainer {
         val proxyUpstream = s"host.testcontainers.internal:$innerMappedPort"
         val proxyListen = s"0.0.0.0:$proxiedPort"
         println(s"[TOXIPROXY DEBUG] Creating proxy: listen=$proxyListen upstream=$proxyUpstream")
+        println(s"[TOXIPROXY DEBUG] Inner container service port: $innerServicePort, mapped to: $innerMappedPort")
         // Use host.testcontainers.internal to reference the host machine from within the toxiproxy container
         // This works cross-platform (Mac, Windows, Linux) in testcontainers 2.0
         // Note: exposeHostPorts must be called before container start (done in start() method)
         // Use 0.0.0.0 instead of [::] for better Linux compatibility
-        toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
-        println(s"[TOXIPROXY DEBUG] Proxy created successfully")
+        val proxy = toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
+        println(s"[TOXIPROXY DEBUG] Proxy created successfully. Proxy details: ${proxy.getName}, listen=${proxy.getListen}, upstream=${proxy.getUpstream}")
+        
+        // Test if we can list proxies
+        val allProxies = toxiproxyClient.getProxies
+        println(s"[TOXIPROXY DEBUG] All proxies count: ${allProxies.size()}")
+        
         true
       } catch {
         case ex: Exception => 
