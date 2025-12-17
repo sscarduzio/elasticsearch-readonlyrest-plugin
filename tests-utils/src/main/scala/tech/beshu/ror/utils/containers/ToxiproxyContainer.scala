@@ -20,9 +20,9 @@ import com.dimafeng.testcontainers.{GenericContainer, SingleContainer}
 import eu.rekawek.toxiproxy.model.{ToxicDirection, toxic}
 import eu.rekawek.toxiproxy.{Proxy, ToxiproxyClient}
 import org.testcontainers.containers.Network
-import org.testcontainers.Testcontainers
 import tech.beshu.ror.utils.containers.ToxiproxyContainer.{ToxiproxyWaitStrategy, httpApiPort, proxiedPort}
 
+import scala.annotation.nowarn
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -34,7 +34,6 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
   ) {
 
   container.setNetwork(Network.SHARED)
-  container.withAccessToHost(true)
 
   private var innerContainerProxy: Option[Proxy] = None
   private var timeoutToxic: Option[toxic.Timeout] = None
@@ -62,34 +61,10 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
 
   override def start(): Unit = {
     innerContainer.start()
-    // Expose the inner container's mapped port BEFORE starting toxiproxy
-    // This is required for host.testcontainers.internal to work on Linux
-    val innerMappedPort = innerContainer.mappedPort(innerServicePort)
-    println(s"[TOXIPROXY DEBUG] Exposing host port: $innerMappedPort")
-    Testcontainers.exposeHostPorts(innerMappedPort)
-    
-    // Small delay to ensure Testcontainers has time to register the port before we start toxiproxy
-    Thread.sleep(100)
-    
     super.start()
-    
-    // Debug: Check /etc/hosts and connectivity from inside toxiproxy container
-    try {
-      val hostsOutput = container.execInContainer("cat", "/etc/hosts")
-      println(s"[TOXIPROXY DEBUG] /etc/hosts from toxiproxy container:")
-      println(hostsOutput.getStdout)
-      
-      val pingOutput = container.execInContainer("sh", "-c", "getent hosts host.testcontainers.internal || echo 'FAILED TO RESOLVE'")
-      println(s"[TOXIPROXY DEBUG] getent hosts host.testcontainers.internal:")
-      println(pingOutput.getStdout)
-    } catch {
-      case ex: Exception =>
-        println(s"[TOXIPROXY DEBUG] Failed to exec diagnostics: ${ex.getMessage}")
-    }
 
     val toxiproxyClient = new ToxiproxyClient(container.getHost, container.getMappedPort(httpApiPort))
     innerContainerProxy = Some(toxiproxyClient.getProxy("proxy"))
-    println(s"[TOXIPROXY DEBUG] Toxiproxy container mapped port (proxiedPort=$proxiedPort): ${container.getMappedPort(proxiedPort)}")
   }
 
   override def stop(): Unit = {
@@ -104,50 +79,35 @@ object ToxiproxyContainer {
   private class ToxiproxyWaitStrategy(innerContainer: SingleContainer[_], innerServicePort: Int)
     extends WaitWithRetriesStrategy("toxiproxy") {
 
+    @nowarn("cat=deprecation")
     override protected def isReady: Boolean = {
       try {
         val innerMappedPort = innerContainer.mappedPort(innerServicePort)
         val toxiproxyClient = new ToxiproxyClient(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(httpApiPort))
-        val proxyUpstream = s"host.testcontainers.internal:$innerMappedPort"
-        // Use format "HOST:PORT" - toxiproxy will parse and bind correctly
-        val proxyListen = s"0.0.0.0:$proxiedPort"
-        println(s"[TOXIPROXY DEBUG] Creating proxy: listen=$proxyListen upstream=$proxyUpstream")
-        println(s"[TOXIPROXY DEBUG] Inner container service port: $innerServicePort, mapped to: $innerMappedPort")
-        // Use host.testcontainers.internal to reference the host machine from within the toxiproxy container
-        // This works cross-platform (Mac, Windows, Linux) in testcontainers 2.0
-        // Note: exposeHostPorts must be called before container start (done in start() method)
-        val proxy = toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
-        println(s"[TOXIPROXY DEBUG] Proxy created successfully. Proxy details: ${proxy.getName}, listen=${proxy.getListen}, upstream=${proxy.getUpstream}")
         
-        // Enable the proxy
-        proxy.enable()
-        println(s"[TOXIPROXY DEBUG] Proxy enabled")
-        
-        // Give toxiproxy a moment to start listening
-        Thread.sleep(200)
-        
-        // Test actual connectivity through the proxy by trying to connect to the mapped port
-        val mappedPort = waitStrategyTarget.getMappedPort(proxiedPort)
-        println(s"[TOXIPROXY DEBUG] Testing connection to localhost:$mappedPort")
-        try {
-          val socket = new java.net.Socket()
-          socket.connect(new java.net.InetSocketAddress("127.0.0.1", mappedPort), 2000)
-          socket.close()
-          println(s"[TOXIPROXY DEBUG] Successfully connected to toxiproxy mapped port: $mappedPort")
-        } catch {
-          case ex: Exception =>
-            println(s"[TOXIPROXY DEBUG] Failed to connect to toxiproxy mapped port $mappedPort: ${ex.getClass.getName}: ${ex.getMessage}")
-            // Try IPv6
-            try {
-              val socket6 = new java.net.Socket()
-              socket6.connect(new java.net.InetSocketAddress("::1", mappedPort), 2000)
-              socket6.close()
-              println(s"[TOXIPROXY DEBUG] Successfully connected via IPv6 to toxiproxy mapped port: $mappedPort")
-            } catch {
-              case ex6: Exception =>
-                println(s"[TOXIPROXY DEBUG] Failed to connect via IPv6 to toxiproxy mapped port $mappedPort: ${ex6.getClass.getName}: ${ex6.getMessage}")
-            }
+        // Get the gateway IP from the toxiproxy container's network settings
+        // This is the IP address that toxiproxy can use to reach the host machine
+        val networks = waitStrategyTarget.getContainerInfo.getNetworkSettings.getNetworks
+        val gatewayIp = if (networks.isEmpty) {
+          // Fallback to deprecated method if networks are empty (shouldn't happen)
+          waitStrategyTarget.getContainerInfo.getNetworkSettings.getGateway
+        } else {
+          // Get gateway from the first network (usually bridge or the shared network)
+          networks.values().iterator().next().getGateway
         }
+        
+        val proxyUpstream = s"$gatewayIp:$innerMappedPort"
+        val proxyListen = s"0.0.0.0:$proxiedPort"
+        
+        println(s"[TOXIPROXY DEBUG] Creating proxy:")
+        println(s"[TOXIPROXY DEBUG]   listen=$proxyListen")
+        println(s"[TOXIPROXY DEBUG]   upstream=$proxyUpstream (gateway IP)")
+        println(s"[TOXIPROXY DEBUG]   Inner container service port: $innerServicePort, mapped to: $innerMappedPort")
+        
+        // Create proxy pointing to the host's gateway IP + mapped port
+        // From inside toxiproxy container, we reach the host via the Docker bridge gateway
+        toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
+        println(s"[TOXIPROXY DEBUG] Proxy created successfully")
         
         true
       } catch {
