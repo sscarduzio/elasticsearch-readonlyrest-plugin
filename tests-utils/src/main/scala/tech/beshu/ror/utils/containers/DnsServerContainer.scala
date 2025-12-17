@@ -24,7 +24,7 @@ import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
 
 @nowarn("cat=deprecation")
-class DnsServerContainer(srvServicePort: Int)
+class DnsServerContainer(srvServiceHost: String, srvServicePort: Int)
   extends GenericContainer(
     dockerImage = new ImageFromDockerfile()
       .withFileFromClasspath("Dockerfile", "coredns-image/Dockerfile")
@@ -33,7 +33,7 @@ class DnsServerContainer(srvServicePort: Int)
       s"""
           |$$ORIGIN example.org.
           |@	3600	IN	SOA someorg.org.  someorg.com.  (2017042745 7200 3600 1209600 3600)
-          |_ldap._tcp.	 86400	IN	SRV	10	60     $srvServicePort	localhost.
+          |_ldap._tcp.	 86400	IN	SRV	10	60     $srvServicePort	$srvServiceHost.
           |""".stripMargin),
   ) {
 

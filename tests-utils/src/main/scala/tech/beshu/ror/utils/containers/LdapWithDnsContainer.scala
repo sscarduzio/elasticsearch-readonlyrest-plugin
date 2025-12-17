@@ -32,7 +32,7 @@ class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource)
 
   override def start(): Unit = {
     ldapContainer.start()
-    dnsContainer = Option(new DnsServerContainer(ldapContainer.ldapPort))
+    dnsContainer = Option(new DnsServerContainer(ldapContainer.ldapHost, ldapContainer.ldapPort))
     dnsContainer.foreach(_.start())
   }
 
