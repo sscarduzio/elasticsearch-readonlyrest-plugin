@@ -1336,7 +1336,7 @@ class ReadonlyRestStartingTests
         )
 
         val dataStreamService1 = mockedDataSteamService(dataStreamExists = false, ilmCreationResult = NotAcknowledged)
-        val dataStreamService2 = mockedDataSteamService(dataStreamExists = false, ilmCreationResult = Acknowledged, componentTemplateResult = NotAcknowledged)
+        val dataStreamService2 = mockedDataSteamService(dataStreamExists = false, componentTemplateResult = NotAcknowledged)
 
         val auditSinkServiceCreator = mock[DataStreamAndIndexBasedAuditSinkServiceCreator]
 
@@ -1652,12 +1652,12 @@ class ReadonlyRestStartingTests
   // anonymous class instead of mock due to final defs and protected methods in DataStreamService
   private def mockedDataSteamService(dataStreamExists: Boolean,
                                      ilmExists: Boolean = false,
-                                     ilmCreationResult: CreationResult = CreationResult.Acknowledged,
+                                     ilmCreationResult: CreationResult = Acknowledged,
                                      componentTemplateExists: Boolean = false,
-                                     componentTemplateResult: CreationResult = CreationResult.Acknowledged,
+                                     componentTemplateResult: CreationResult = Acknowledged,
                                      indexTemplateExists: Boolean = false,
-                                     indexTemplateResult: CreationResult = CreationResult.Acknowledged,
-                                     dataStreamResult: CreationResult = CreationResult.Acknowledged) = new DataStreamService {
+                                     indexTemplateResult: CreationResult = Acknowledged,
+                                     dataStreamResult: CreationResult = Acknowledged) = new DataStreamService {
     override def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean] = Task.now(dataStreamExists)
 
     override protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean] = Task.pure(ilmExists)

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.utils
 
-import io.circe.{Json, ParsingFailure}
+import io.circe.Json
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
