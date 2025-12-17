@@ -94,7 +94,7 @@ class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
             reloadResults.foreach(logSettingsReloadResult)
             scheduleNextIfNotStopping(interval, reloadTask)
           case Left(ex) =>
-            logger.error(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Checking index settings failed: error", ex)
+            logger.error(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Checking index settings failed: ${ex.getMessage}")
             scheduleNextIfNotStopping(interval, reloadTask)
         }
     }
