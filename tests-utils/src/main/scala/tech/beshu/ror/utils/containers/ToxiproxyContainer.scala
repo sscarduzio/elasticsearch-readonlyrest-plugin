@@ -17,18 +17,18 @@
 package tech.beshu.ror.utils.containers
 
 import com.dimafeng.testcontainers.{GenericContainer, SingleContainer}
+import com.typesafe.scalalogging.LazyLogging
 import eu.rekawek.toxiproxy.model.{ToxicDirection, toxic}
 import eu.rekawek.toxiproxy.{Proxy, ToxiproxyClient}
 import org.testcontainers.containers.Network
 import tech.beshu.ror.utils.containers.ToxiproxyContainer.{ToxiproxyWaitStrategy, httpApiPort, proxiedPort}
 
-import scala.annotation.nowarn
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerServicePort: Int)
   extends GenericContainer(
-    dockerImage = "ghcr.io/shopify/toxiproxy:2.12.0",
+    dockerImage = "shopify/toxiproxy:2.1.4",
     exposedPorts = Seq(httpApiPort, proxiedPort),
     waitStrategy = Some(new ToxiproxyWaitStrategy(innerContainer, innerServicePort))
   ) {
@@ -77,43 +77,17 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
 object ToxiproxyContainer {
 
   private class ToxiproxyWaitStrategy(innerContainer: SingleContainer[_], innerServicePort: Int)
-    extends WaitWithRetriesStrategy("toxiproxy") {
+    extends WaitWithRetriesStrategy("toxiproxy")
+      with LazyLogging {
 
-    @nowarn("cat=deprecation")
     override protected def isReady: Boolean = {
       try {
-        val innerMappedPort = innerContainer.mappedPort(innerServicePort)
         val toxiproxyClient = new ToxiproxyClient(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(httpApiPort))
-        
-        // Get the gateway IP from the toxiproxy container's network settings
-        // This is the IP address that toxiproxy can use to reach the host machine
-        val networks = waitStrategyTarget.getContainerInfo.getNetworkSettings.getNetworks
-        val gatewayIp = if (networks.isEmpty) {
-          // Fallback to deprecated method if networks are empty (shouldn't happen)
-          waitStrategyTarget.getContainerInfo.getNetworkSettings.getGateway
-        } else {
-          // Get gateway from the first network (usually bridge or the shared network)
-          networks.values().iterator().next().getGateway
-        }
-        
-        val proxyUpstream = s"$gatewayIp:$innerMappedPort"
-        val proxyListen = s"0.0.0.0:$proxiedPort"
-        
-        println(s"[TOXIPROXY DEBUG] Creating proxy:")
-        println(s"[TOXIPROXY DEBUG]   listen=$proxyListen")
-        println(s"[TOXIPROXY DEBUG]   upstream=$proxyUpstream (gateway IP)")
-        println(s"[TOXIPROXY DEBUG]   Inner container service port: $innerServicePort, mapped to: $innerMappedPort")
-        
-        // Create proxy pointing to the host's gateway IP + mapped port
-        // From inside toxiproxy container, we reach the host via the Docker bridge gateway
-        toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
-        println(s"[TOXIPROXY DEBUG] Proxy created successfully")
-        
+        toxiproxyClient.createProxy("proxy", s"[::]:$proxiedPort", s"${innerContainer.containerInfo.getConfig.getHostName}:$innerServicePort")
         true
       } catch {
-        case ex: Exception => 
-          println(s"[TOXIPROXY DEBUG] Failed to create proxy: ${ex.getClass.getName}: ${ex.getMessage}")
-          ex.printStackTrace()
+        case ex: Throwable =>
+          logger.debug("Toxic Proxy is not ready", ex)
           false
       }
     }
