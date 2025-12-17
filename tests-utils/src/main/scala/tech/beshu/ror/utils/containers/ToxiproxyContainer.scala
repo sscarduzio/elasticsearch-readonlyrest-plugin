@@ -72,6 +72,20 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     Thread.sleep(100)
     
     super.start()
+    
+    // Debug: Check /etc/hosts and connectivity from inside toxiproxy container
+    try {
+      val hostsOutput = container.execInContainer("cat", "/etc/hosts")
+      println(s"[TOXIPROXY DEBUG] /etc/hosts from toxiproxy container:")
+      println(hostsOutput.getStdout)
+      
+      val pingOutput = container.execInContainer("sh", "-c", "getent hosts host.testcontainers.internal || echo 'FAILED TO RESOLVE'")
+      println(s"[TOXIPROXY DEBUG] getent hosts host.testcontainers.internal:")
+      println(pingOutput.getStdout)
+    } catch {
+      case ex: Exception =>
+        println(s"[TOXIPROXY DEBUG] Failed to exec diagnostics: ${ex.getMessage}")
+    }
 
     val toxiproxyClient = new ToxiproxyClient(container.getHost, container.getMappedPort(httpApiPort))
     innerContainerProxy = Some(toxiproxyClient.getProxy("proxy"))
