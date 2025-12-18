@@ -23,11 +23,12 @@ configurations {
 }
 
 tasks.withType(ScalaCompile).configureEach {
+    // Use artifactView to safely access configuration files in Gradle 9.x
+    def pluginFiles = configurations.scalaCompilerPlugin.incoming.artifactView {
+        attributes { }
+    }.files
     // Map plugin jars to -Xplugin parameter
-    List<String> parameters =
-            configurations.scalaCompilerPlugin.files.collect {
-                '-Xplugin:' + it.absolutePath
-            }
+    List<String> parameters = pluginFiles.collect { '-Xplugin:' + it.absolutePath }
 
     // Add whatever flags you typically add
     parameters += [
@@ -53,10 +54,10 @@ dependencies {
     api group: 'commons-io',                     name: 'commons-io',                        version: '2.21.0'
     api group: 'org.apache.commons',             name: 'commons-lang3',                     version: '3.20.0'
     api group: 'org.apache.commons',             name: 'commons-text',                      version: '1.15.0'
-    api group: 'dev.failsafe',                   name: 'failsafe',                          version: '3.3.2'
+    api group: 'net.jodah',                      name: 'failsafe',                          version: '2.4.4'
     api group: 'org.gradle',                     name: 'gradle-tooling-api',                version: '9.2.1'
     api group: 'com.google.code.gson',           name: 'gson',                              version: '2.13.2'
-    api group: 'com.google.guava',               name: 'guava',                             version: '35.5.0-jre'
+    api group: 'com.google.guava',               name: 'guava',                             version: '33.5.0-jre'
     api group: 'org.apache.httpcomponents',      name: 'httpclient',                        version: '4.5.14'
     api group: 'org.apache.logging.log4j',       name: 'log4j-1.2-api',                     version: '2.25.2'
     api group: 'org.apache.logging.log4j',       name: 'log4j-core',                        version: '2.25.2'
