@@ -42,7 +42,7 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
         implicit val requestId: RequestId = requestContext.id.toRequestId
         requestContext.basicAuth.map(_.credentials) match {
           case Some(credentials) =>
-            logger.debug(s"[${requestId.show}] Attempting Login as: ${credentials.user.show}")
+            logger.debug(s"[${requestId.show}] Attempting authenticate as: ${credentials.user.show}")
             authenticateUsing(credentials)
               .map {
                 case true => Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(credentials.user))))

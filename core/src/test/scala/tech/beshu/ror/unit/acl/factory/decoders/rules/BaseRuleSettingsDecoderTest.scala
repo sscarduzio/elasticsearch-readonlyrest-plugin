@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules
 
+import better.files.File
 import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
@@ -26,10 +27,11 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
-import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.EnvironmentConfig
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
+import tech.beshu.ror.SystemContext
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -48,27 +50,28 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
-  protected def factory: RawRorConfigBasedCoreFactory = {
-    implicit val environmentConfig: EnvironmentConfig = new EnvironmentConfig(envVarsProvider = envVarsProvider)
-    new RawRorConfigBasedCoreFactory(defaultEsVersionForTests)
+  protected def factory: RawRorSettingsBasedCoreFactory = {
+    implicit val systemContext: SystemContext = new SystemContext(envVarsProvider = envVarsProvider)
+    val esEnv = EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
+    new RawRorSettingsBasedCoreFactory(esEnv)
   }
 
   def assertDecodingSuccess(yaml: String,
                             assertion: T => Unit,
-                            aFactory: RawRorConfigBasedCoreFactory = factory,
+                            aFactory: RawRorSettingsBasedCoreFactory = factory,
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory,
                             mocksProvider: MocksProvider = NoOpMocksProvider): Unit = {
     inside(
       aFactory
         .createCoreFrom(
-          rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+          rorSettingsFromUnsafe(yaml),
+          RorSettingsIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider,
           mocksProvider
         )
         .runSyncUnsafe()
-    ) { case Right(Core(acl: EnabledAccessControlList, _)) =>
+    ) { case Right(Core(acl: EnabledAccessControlList, _, _)) =>
       val rule = acl.blocks.head.rules.collect { case r: T => r }.headOption
         .getOrElse(throw new IllegalStateException("There was no expected rule in decoding result"))
       rule shouldBe a[T]
@@ -78,14 +81,14 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   def assertDecodingFailure(yaml: String,
                             assertion: NonEmptyList[CoreCreationError] => Unit,
-                            aFactory: RawRorConfigBasedCoreFactory = factory,
+                            aFactory: RawRorSettingsBasedCoreFactory = factory,
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory,
                             mocksProvider: MocksProvider = NoOpMocksProvider): Unit = {
     inside(
       aFactory
         .createCoreFrom(
-          rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+          rorSettingsFromUnsafe(yaml),
+          RorSettingsIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider,
           mocksProvider

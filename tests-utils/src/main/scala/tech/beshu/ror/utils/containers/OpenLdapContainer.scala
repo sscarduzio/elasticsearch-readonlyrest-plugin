@@ -23,7 +23,7 @@ import com.unboundid.ldap.sdk.{LDAPConnection, ResultCode}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.Network
-import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
+import org.testcontainers.containers.wait.strategy.{AbstractWaitStrategy, HostPortWaitStrategy}
 import tech.beshu.ror.utils.containers.LdapContainer.{InitScriptSource, defaults, initLdap}
 import tech.beshu.ror.utils.containers.LdapWaitStrategy.*
 import tech.beshu.ror.utils.misc.ScalaUtils.*
@@ -95,12 +95,18 @@ object NonStoppableOpenLdapContainer {
 
 private class LdapWaitStrategy(name: String,
                                ldapInitScript: InitScriptSource)
-  extends HostPortWaitStrategy()
+  extends AbstractWaitStrategy
     with LazyLogging
     with Implicits {
 
+  private val underlying = HostPortWaitStrategy().forPorts(OpenLdapContainer.port, OpenLdapContainer.sslPort)
+
   override def waitUntilReady(): Unit = {
-    super.waitUntilReady()
+    underlying.waitUntilReady(this.waitStrategyTarget)
+    waitForLdapInitialization()
+  }
+
+  private def waitForLdapInitialization(): Unit = {
     logger.info(s"Waiting for LDAP container '$name' ...")
     retryBackoff(ldapInitiate(), 15, 1 second, 1)
       .onErrorHandle { ex =>
@@ -112,12 +118,12 @@ private class LdapWaitStrategy(name: String,
   }
 
   private def ldapInitiate() = {
-    runOnBindedLdapConnection { connection =>
+    runOnBoundLdapConnection { connection =>
       initLdap(connection, ldapInitScript)
     }
   }
 
-  private def runOnBindedLdapConnection(action: LDAPConnection => Unit): Task[Unit] = {
+  private def runOnBoundLdapConnection(action: LDAPConnection => Unit): Task[Unit] = {
     defaults.ldap.bindDn match {
       case Some(bindDn) =>
         Task(new LDAPConnection(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(OpenLdapContainer.port)))

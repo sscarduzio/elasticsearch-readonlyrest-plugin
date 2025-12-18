@@ -24,10 +24,10 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.logging.log4j.scala.Logger
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
-import java.util
 import java.util.Base64
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.*
@@ -242,5 +242,27 @@ object ScalaOps {
     def +(duration: PositiveFiniteDuration): PositiveFiniteDuration = {
       Refined.unsafeApply(this.duration.value + duration.value)
     }
+  }
+
+  implicit class LoggerOps(logger: Logger) {
+    def dInfo(msg: String): Task[Unit] = {
+      Task.delay(logger.info(msg))
+    }
+
+    def dWarn(msg: String): Task[Unit] = {
+      Task.delay(logger.warn(msg))
+    }
+
+    def dDebug(msg: String): Task[Unit] = {
+      Task.delay(logger.debug(msg))
+    }
+
+    def dError(msg: String): Task[Unit] = {
+      Task.delay(logger.error(msg))
+    }
+  }
+
+  implicit class EitherTOps(t: EitherT.type) extends AnyVal {
+    def liftTask[A](value: => A): EitherT[Task, Nothing, A] = EitherT(Task.delay(Right(value)))
   }
 }

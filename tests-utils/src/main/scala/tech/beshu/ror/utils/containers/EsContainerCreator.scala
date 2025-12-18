@@ -21,6 +21,7 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer as JavaGenericContainer
 import org.testcontainers.containers.output.OutputFrame
+import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
@@ -53,20 +54,21 @@ trait EsContainerCreator {
              nodeDataInitializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
              esInstallationType: EsInstallationType = defaultEsInstallationType,
-             additionalLogConsumer: Option[Consumer[OutputFrame]] = None): EsContainer = {
+             additionalLogConsumer: Option[Consumer[OutputFrame]] = None,
+             awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness): EsContainer = {
     val project = nodeSettings.esVersion match {
       case EsVersion.DeclaredInProject => RorPluginGradleProject.fromSystemProperty
       case EsVersion.SpecificVersion(version) => RorPluginGradleProject.customModule(version)
     }
     nodeSettings.securityType match {
       case SecurityType.RorWithXpackSecurity(attributes) =>
-        createEsWithRorAndXpackSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, esInstallationType, additionalLogConsumer)
+        createEsWithRorAndXpackSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, esInstallationType, additionalLogConsumer, awaitingReadyStrategy)
       case SecurityType.RorSecurity(attributes) =>
-        createEsWithRorContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, esInstallationType, additionalLogConsumer)
+        createEsWithRorContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, esInstallationType, additionalLogConsumer, awaitingReadyStrategy)
       case SecurityType.XPackSecurity(attributes) =>
-        createEsWithXpackContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, esInstallationType, additionalLogConsumer)
+        createEsWithXpackContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, esInstallationType, additionalLogConsumer, awaitingReadyStrategy)
       case SecurityType.NoSecurityCluster =>
-        createEsWithNoSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, startedClusterDependencies, esInstallationType, additionalLogConsumer)
+        createEsWithNoSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, startedClusterDependencies, esInstallationType, additionalLogConsumer, awaitingReadyStrategy)
     }
   }
 
@@ -77,12 +79,13 @@ trait EsContainerCreator {
                                                        attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
                                                        startedClusterDependencies: StartedClusterDependencies,
                                                        esInstallationType: EsInstallationType,
-                                                       additionalLogConsumer: Option[Consumer[OutputFrame]]) = {
+                                                       additionalLogConsumer: Option[Consumer[OutputFrame]],
+                                                       awaitingReadyStrategy: AwaitingReadyStrategy) = {
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
-    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
+    val rawRorSettingsFile = ContainerUtils.getResourceFile(attributes.rorSettingsFileName)
 
-    val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
-      source = rawRorConfigFile.toScala,
+    val adjustedRorSettings = RorSettingsAdjuster.adjustUsingDependencies(
+      source = rawRorSettingsFile.toScala,
       startedDependencies = startedClusterDependencies,
     )
 
@@ -98,12 +101,13 @@ trait EsContainerCreator {
       ),
       securityConfig = ReadonlyRestWithEnabledXpackSecurityPlugin.Config(
         rorPlugin = rorPluginFile.toScala,
-        rorConfig = adjustedRorConfig,
+        rorSettings = adjustedRorSettings,
         attributes = attributes
       ),
       initializer = nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
       additionalLogConsumer = additionalLogConsumer,
+      awaitingReadyStrategy = awaitingReadyStrategy
     )
   }
 
@@ -114,12 +118,13 @@ trait EsContainerCreator {
                                        attributes: ReadonlyRestPlugin.Config.Attributes,
                                        startedClusterDependencies: StartedClusterDependencies,
                                        esInstallationType: EsInstallationType,
-                                       additionalLogConsumer: Option[Consumer[OutputFrame]]) = {
+                                       additionalLogConsumer: Option[Consumer[OutputFrame]],
+                                       awaitingReadyStrategy: AwaitingReadyStrategy) = {
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
-    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
+    val rawRorSettingsFile = ContainerUtils.getResourceFile(attributes.rorSettingsFileName)
 
-    val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
-      source = rawRorConfigFile.toScala,
+    val adjustedRorSettings = RorSettingsAdjuster.adjustUsingDependencies(
+      source = rawRorSettingsFile.toScala,
       startedDependencies = startedClusterDependencies,
     )
 
@@ -135,12 +140,13 @@ trait EsContainerCreator {
       ),
       rorConfig = ReadonlyRestPlugin.Config(
         rorPlugin = rorPluginFile.toScala,
-        rorConfig = adjustedRorConfig,
+        rorSettings = adjustedRorSettings,
         attributes = attributes
       ),
       initializer = nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
       additionalLogConsumer = additionalLogConsumer,
+      awaitingReadyStrategy = awaitingReadyStrategy
     )
   }
 
@@ -151,7 +157,8 @@ trait EsContainerCreator {
                                          attributes: XpackSecurityPlugin.Config.Attributes,
                                          startedClusterDependencies: StartedClusterDependencies,
                                          esInstallationType: EsInstallationType,
-                                         additionalLogConsumer: Option[Consumer[OutputFrame]]) = {
+                                         additionalLogConsumer: Option[Consumer[OutputFrame]],
+                                         awaitingReadyStrategy: AwaitingReadyStrategy) = {
     EsContainerWithXpackSecurity.create(
       esVersion = project.getModuleESVersion,
       esConfig = Elasticsearch.Config(
@@ -166,6 +173,7 @@ trait EsContainerCreator {
       initializer = nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
       additionalLogConsumer = additionalLogConsumer,
+      awaitingReadyStrategy = awaitingReadyStrategy
     )
   }
 
@@ -175,7 +183,8 @@ trait EsContainerCreator {
                                               nodeDataInitializer: ElasticsearchNodeDataInitializer,
                                               startedClusterDependencies: StartedClusterDependencies,
                                               esInstallationType: EsInstallationType,
-                                              additionalLogConsumer: Option[Consumer[OutputFrame]]) = {
+                                              additionalLogConsumer: Option[Consumer[OutputFrame]],
+                                              awaitingReadyStrategy: AwaitingReadyStrategy) = {
     EsContainerWithNoSecurity.create(
       esVersion = project.getModuleESVersion,
       esConfig = Elasticsearch.Config(
@@ -189,6 +198,7 @@ trait EsContainerCreator {
       initializer = nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
       additionalLogConsumer = additionalLogConsumer,
+      awaitingReadyStrategy = awaitingReadyStrategy
     )
   }
 }

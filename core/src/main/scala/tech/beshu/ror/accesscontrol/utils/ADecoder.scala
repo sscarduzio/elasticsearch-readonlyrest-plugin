@@ -20,8 +20,8 @@ import cats.implicits.*
 import cats.{Functor, Id}
 import io.circe.*
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.utils.yaml.YamlOps
 

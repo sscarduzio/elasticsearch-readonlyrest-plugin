@@ -23,6 +23,6 @@ class RRAdminActionType extends Action[RRAdminResponse](RRAdminActionType.name) 
   override def newResponse(): RRAdminResponse = new RRAdminResponse
 }
 object RRAdminActionType {
-  val name: String = RorAction.RorOldConfigAction.value
+  val name: String = RorAction.RorRefreshSettingsAction.value
   val instance = new RRAdminActionType()
 }

@@ -33,22 +33,22 @@ object constants {
 
   val CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user/"
   val AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event/"
-  val FORCE_RELOAD_CONFIG_PATH = "/_readonlyrest/admin/refreshconfig/"
-  val UPDATE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/"
-  val PROVIDE_TEST_CONFIG_PATH = "/_readonlyrest/admin/config/test/"
-  val UPDATE_TEST_CONFIG_PATH = "/_readonlyrest/admin/config/test/"
-  val DELETE_TEST_CONFIG_PATH = "/_readonlyrest/admin/config/test/"
+  val FORCE_RELOAD_SETTINGS_PATH = "/_readonlyrest/admin/refreshconfig/"
+  val UPDATE_INDEX_SETTINGS_PATH = "/_readonlyrest/admin/config/"
+  val PROVIDE_TEST_SETTINGS_PATH = "/_readonlyrest/admin/config/test/"
+  val UPDATE_TEST_SETTINGS_PATH = "/_readonlyrest/admin/config/test/"
+  val DELETE_TEST_SETTINGS_PATH = "/_readonlyrest/admin/config/test/"
   val PROVIDE_LOCAL_USERS_PATH = "/_readonlyrest/admin/config/test/localusers/"
   val CONFIGURE_AUTH_MOCK_PATH = "/_readonlyrest/admin/config/test/authmock/"
   val PROVIDE_AUTH_MOCK_PATH = "/_readonlyrest/admin/config/test/authmock/"
-  val PROVIDE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/"
-  val PROVIDE_FILE_CONFIG_PATH = "/_readonlyrest/admin/config/file/"
-  val MANAGE_ROR_CONFIG_PATH = "/_readonlyrest/admin/config/load"
+  val PROVIDE_INDEX_SETTINGS_PATH = "/_readonlyrest/admin/config/"
+  val PROVIDE_FILE_SETTINGS_PATH = "/_readonlyrest/admin/config/file/"
 
   val FIELDS_TRANSIENT = "_fields"
 
-  val FIELDS_ALWAYS_ALLOW: MutableSet[String] =
-    MutableSet("_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index")
+  val FIELDS_ALWAYS_ALLOW: MutableSet[String] = MutableSet(
+    "_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index"
+  )
 
   val AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd"
 

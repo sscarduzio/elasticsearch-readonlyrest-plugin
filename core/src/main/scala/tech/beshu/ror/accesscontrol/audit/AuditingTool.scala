@@ -33,14 +33,16 @@ import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditRequestContext, AuditResponseContext}
+import tech.beshu.ror.es.EsNodeSettings
 import tech.beshu.ror.implicits.*
 
 import java.time.Clock
 
 final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
-                                (implicit loggingContext: LoggingContext) {
+                                (implicit loggingContext: LoggingContext,
+                                 auditEnvironmentContext: AuditEnvironmentContext) {
 
-  def audit[B <: BlockContext](response: ResponseContext[B], auditEnvironmentContext: AuditEnvironmentContext): Task[Unit] = {
+  def audit[B <: BlockContext](response: ResponseContext[B]): Task[Unit] = {
     val auditResponseContext = toAuditResponse(response, auditEnvironmentContext)
     implicit val requestId: RequestId = response.requestContext.id.toRequestId
     auditSinks
@@ -150,7 +152,8 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
 
 object AuditingTool extends Logging {
 
-  final case class AuditSettings(auditSinks: NonEmptyList[AuditSettings.AuditSink])
+  final case class AuditSettings(auditSinks: NonEmptyList[AuditSettings.AuditSink],
+                                 esNodeSettings: EsNodeSettings)
 
   object AuditSettings {
 
@@ -212,6 +215,7 @@ object AuditingTool extends Logging {
     createAuditSinks(settings, auditSinkServiceCreator).map {
       _.map {
           case Some(auditSinks) =>
+            implicit val auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(settings.esNodeSettings)
             logger.info(s"The audit is enabled with the given outputs: [${auditSinks.toList.show}]")
             Some(new AuditingTool(auditSinks))
           case None =>

@@ -30,7 +30,7 @@ class KibanaAccessRuleTests
 
   override protected def settingsOf(access: KibanaAccess,
                                     customKibanaIndex: Option[KibanaIndexName] = None): Settings =
-    Settings(access, RorConfigurationIndex(rorIndex))
+    Settings(access, RorSettingsIndex(rorIndex))
 
   override protected def defaultOutputBlockContextAssertion(settings: Settings,
                                                             indices: Set[RequestedIndex[ClusterIndexName]],

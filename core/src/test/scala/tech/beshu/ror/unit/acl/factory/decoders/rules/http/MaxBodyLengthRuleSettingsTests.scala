@@ -19,15 +19,15 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.http
 import org.scalatest.matchers.should.Matchers.*
 import squants.information.Bytes
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 
 class MaxBodyLengthRuleSettingsTests extends BaseRuleSettingsDecoderTest[MaxBodyLengthRule] {
 
   "A MaxBodyLengthRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "max body length > 0 is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -63,7 +63,7 @@ class MaxBodyLengthRuleSettingsTests extends BaseRuleSettingsDecoderTest[MaxBody
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "max body length field is defined, but no value it set" in {
         assertDecodingFailure(
           yaml =

@@ -34,8 +34,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.mocks.{MockRequestContext, MockUserMetadataRequestContext}
 import tech.beshu.ror.syntax
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -71,7 +71,7 @@ class GroupsRuleSettingsTests
 
   forAll(simpleSyntaxTestParams) { (simpleSyntaxName, creator) =>
   s"A GroupsRule settings test for $simpleSyntaxName" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "a groups mapping is not used" when {
         "only one group is defined" when {
           "one, full username is used" in {
@@ -724,7 +724,7 @@ class GroupsRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "groups section is defined, but without any group" in {
         assertDecodingFailure(
           yaml =
@@ -1453,7 +1453,7 @@ class GroupsRuleSettingsTests
   }
 
   s"A Combined GroupsRule settings" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "a groups mapping is not used" when {
         "only one group is defined" when {
           "one, full username is used" in {

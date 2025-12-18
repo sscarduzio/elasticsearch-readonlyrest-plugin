@@ -26,24 +26,24 @@ import tech.beshu.ror.utils.containers.images.domain.Enabled
 import scala.concurrent.duration.FiniteDuration
 
 object ReadonlyRestWithEnabledXpackSecurityPlugin {
-  final case class Config(rorConfig: File,
+  final case class Config(rorSettings: File,
                           rorPlugin: File,
                           attributes: Attributes)
   object Config {
-    final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
-                                rorInIndexConfigLoadingDelay: FiniteDuration,
+    final case class Attributes(rorSettingsReloading: Enabled[FiniteDuration],
+                                rorInIndexSettingsLoadingDelay: FiniteDuration,
                                 rorCustomSettingsIndex: Option[String],
                                 restSsl: Enabled[RestSsl],
                                 internodeSsl: Enabled[InternodeSsl],
-                                rorConfigFileName: String)
+                                rorSettingsFileName: String)
     object Attributes {
       val default: Attributes = Attributes(
-        rorConfigReloading = ReadonlyRestPlugin.Config.Attributes.default.rorConfigReloading,
-        rorInIndexConfigLoadingDelay = ReadonlyRestPlugin.Config.Attributes.default.rorInIndexConfigLoadingDelay,
+        rorSettingsReloading = ReadonlyRestPlugin.Config.Attributes.default.rorSettingsReloading,
+        rorInIndexSettingsLoadingDelay = ReadonlyRestPlugin.Config.Attributes.default.rorInIndexSettingsLoadingDelay,
         rorCustomSettingsIndex = ReadonlyRestPlugin.Config.Attributes.default.rorCustomSettingsIndex,
         restSsl = if(XpackSecurityPlugin.Config.Attributes.default.restSslEnabled) Enabled.Yes(RestSsl.Xpack) else Enabled.No,
         internodeSsl = if(XpackSecurityPlugin.Config.Attributes.default.internodeSslEnabled) Enabled.Yes(InternodeSsl.Xpack) else Enabled.No,
-        rorConfigFileName = "/basic/readonlyrest.yml"
+        rorSettingsFileName = "/basic/readonlyrest.yml"
       )
     }
 
@@ -93,15 +93,15 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
 
   private def createRorConfig() = {
     ReadonlyRestPlugin.Config(
-      rorConfig = config.rorConfig,
+      rorSettings = config.rorSettings,
       rorPlugin = config.rorPlugin,
       attributes = ReadonlyRestPlugin.Config.Attributes(
-        config.attributes.rorConfigReloading,
-        config.attributes.rorInIndexConfigLoadingDelay,
+        config.attributes.rorSettingsReloading,
+        config.attributes.rorInIndexSettingsLoadingDelay,
         config.attributes.rorCustomSettingsIndex,
         restSsl = createRorRestSsl(),
         internodeSsl = createRorInternodeSsl(),
-        config.attributes.rorConfigFileName
+        config.attributes.rorSettingsFileName
       )
     )
   }

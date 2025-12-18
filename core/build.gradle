@@ -25,8 +25,8 @@ buildscript {
 plugins {
     id "readonlyrest.base-common-conventions"
 
-    id "com.github.johnrengelman.shadow" version "8.1.1"
     id "com.github.maiflai.scalatest" version "0.33"
+    id "com.gradleup.shadow" version "9.1.0"
     id "java-library"
 }
 
@@ -64,7 +64,6 @@ dependencies {
     api group: 'io.circe',                      name: 'circe-parser_3',                      version: '0.14.15'
     api group: 'io.circe',                      name: 'circe-refined_3',                     version: '0.14.9'
     api group: 'commons-codec',                 name: 'commons-codec',                       version: '1.15'
-    api group: 'org.typelevel',                 name: 'cats-free_3',                         version: '2.12.0'
     api group: 'com.beachape',                  name: 'enumeratum_3',                        version: '1.9.1'
     api group: 'com.hrakaroo',                  name: 'glob',                                version: '0.9.0'
     api group: 'com.comcast',                   name: 'ip4s-core_3',                         version: '2.0.4'
@@ -99,7 +98,7 @@ dependencies {
     testImplementation  group: 'org.scalamock',              name: 'scalamock_3',                version: '6.0.0'
     testImplementation  group: 'org.scalatestplus',          name: 'scalacheck-1-16_3',          version: '3.2.14.0'
     testImplementation  group: 'org.scalatest',              name: 'scalatest_3',                version: '3.2.16'
-    testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala-core_3',     version: '0.41.4'
+    testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala-core_3',     version: '0.44.0'
 
     constraints {
         api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.130.Final'
@@ -163,8 +162,8 @@ tasks.withType(ScalaCompile).configureEach {
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 tasks.named('shadowJar', ShadowJar) {
-    enableRelocation true
-    relocationPrefix "tech.beshu.ror"
+    enableAutoRelocation = true
+    relocationPrefix = "tech.beshu.ror"
 }
 
 tasks.withType(AbstractArchiveTask).configureEach {

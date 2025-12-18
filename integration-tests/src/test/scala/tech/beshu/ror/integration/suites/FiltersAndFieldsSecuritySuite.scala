@@ -33,7 +33,7 @@ class FiltersAndFieldsSecuritySuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/fls_dls/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/fls_dls/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(FiltersAndFieldsSecuritySuite.nodeDataInitializer())
 

@@ -1,10 +1,12 @@
 readonlyrest:
+
   fips_mode: SSL_ONLY
+  ssl:
+    enable: true
+    keystore_file: "ror-keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
 
   access_control_rules:
-
-    # ES container initializer need this rule to configure ES instance after startup
-    - name: "CONTAINER ADMIN"
-      verbosity: error
-      type: allow
-      auth_key: admin:container
+    - name: "ADMIN"
+      auth_key: admin:admin
