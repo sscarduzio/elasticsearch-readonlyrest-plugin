@@ -15,14 +15,15 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
+
+import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.{BasicAuthHttpExternalAuthenticationService, CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
@@ -574,7 +575,7 @@ class ExternalAuthenticationRuleSettingsTests
   }
 
   private val mockedHttpClientsFactory: HttpClientsFactory = {
-    val httpClientMock = mock[HttpClient]
+    val httpClientMock = mock[SimpleHttpClient[Task]]
     new MockHttpClientsFactoryWithFixedHttpClient(httpClientMock)
   }
 }

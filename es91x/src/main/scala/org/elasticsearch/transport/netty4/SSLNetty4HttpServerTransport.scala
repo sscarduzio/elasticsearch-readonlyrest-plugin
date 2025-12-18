@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.ssl
+package org.elasticsearch.transport.netty4
 
 import io.netty.channel.Channel
 import io.netty.handler.ssl.NotSslRecordException
@@ -25,7 +25,6 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport
 import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
 import org.elasticsearch.telemetry.tracing.Tracer
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.{SharedGroupFactory, TLSConfig}
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged

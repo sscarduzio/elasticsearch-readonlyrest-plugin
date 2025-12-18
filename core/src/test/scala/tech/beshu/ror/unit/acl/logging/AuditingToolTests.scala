@@ -281,7 +281,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
   }
 
-  private def mockedDataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService & reflect.Selectable = {
+  private def mockedDataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService = {
     val mockedDataStreamService = mock[DataStreamService]
 
     (mockedDataStreamService.checkDataStreamExists(_: DataStreamName.Full))
