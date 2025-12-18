@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{GettingIndexTemplates, GettingLegacyAndIndexTemplates, GettingLegacyTemplates}
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
-import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult

@@ -20,7 +20,7 @@ import org.elasticsearch.action.ActionListener
 
 object RRAuditEventActionHandler {
 
-  def handle(request: RRAuditEventRequest, listener: ActionListener[RRAuditEventResponse]): Unit = {
+  def handle(listener: ActionListener[RRAuditEventResponse]): Unit = {
     listener.onResponse(new RRAuditEventResponse())
   }
 }

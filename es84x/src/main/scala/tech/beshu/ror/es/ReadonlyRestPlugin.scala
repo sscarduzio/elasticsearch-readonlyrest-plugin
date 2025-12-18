@@ -45,6 +45,7 @@ import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.tracing.Tracer
+import org.elasticsearch.transport.netty4.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import org.elasticsearch.transport.netty4.{Netty4Utils, SharedGroupFactory}
 import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.watcher.ResourceWatcherService
@@ -65,7 +66,6 @@ import tech.beshu.ror.es.actions.rrtestsettings.rest.RestRRTestSettingsAction
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
-import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsEnvProvider, EsPatchVerifier, RemoteClusterServiceSupplier}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged

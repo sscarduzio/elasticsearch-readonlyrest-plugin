@@ -292,7 +292,7 @@ object QueryWithModifiableFields {
       ModifiableLeafQuery[QUERY].handleNotAllowedFieldsIn(leafQuery, notAllowedFields)
     }
 
-    private def handleCompoundQuery[QUERY <: QueryBuilder : Compound : QueryWithModifiableFields](compoundQuery: QUERY,
+    @nowarn("msg=unused implicit parameter")
                                                                                                   notAllowedFields: NonEmptyList[SpecificField]) = {
       QueryWithModifiableFields[QUERY].handleNotAllowedFieldsIn(compoundQuery, notAllowedFields)
     }
