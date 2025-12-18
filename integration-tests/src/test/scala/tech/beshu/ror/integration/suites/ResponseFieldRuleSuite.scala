@@ -32,7 +32,7 @@ class ResponseFieldRuleSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/response_field_rules/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/response_field_rules/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(ResponseFieldRuleSuite.nodeDataInitializer())
 

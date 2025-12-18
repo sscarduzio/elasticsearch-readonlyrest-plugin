@@ -76,7 +76,7 @@ class CurrentUserMetadataAccessControlTests
 
   override protected val httpClientsFactory: HttpClientsFactory = new AsyncHttpClientsFactory
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     s"""
        |readonlyrest:
        |

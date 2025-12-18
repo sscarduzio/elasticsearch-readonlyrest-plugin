@@ -21,8 +21,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{BasicAuthHttpExternalAut
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
@@ -31,7 +31,7 @@ class ExternalAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ExternalAuthenticationRule] with MockFactory {
 
   "An ExternalAuthenticationRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one authentication service is declared" in {
         assertDecodingSuccess(
           yaml =
@@ -191,7 +191,7 @@ class ExternalAuthenticationRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "extended version of rule definition doesn't declare cache TTL" in {
         assertDecodingFailure(
           yaml =

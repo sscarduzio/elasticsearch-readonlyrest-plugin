@@ -29,24 +29,24 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.postfixOps
 
 object ReadonlyRestPlugin {
-  final case class Config(rorConfig: File,
+  final case class Config(rorSettings: File,
                           rorPlugin: File,
                           attributes: Attributes)
   object Config {
-    final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
-                                rorInIndexConfigLoadingDelay: FiniteDuration,
+    final case class Attributes(rorSettingsReloading: Enabled[FiniteDuration],
+                                rorInIndexSettingsLoadingDelay: FiniteDuration,
                                 rorCustomSettingsIndex: Option[String],
                                 restSsl: Enabled[RestSsl],
                                 internodeSsl: Enabled[InternodeSsl],
-                                rorConfigFileName: String)
+                                rorSettingsFileName: String)
     object Attributes {
       val default: Attributes = Attributes(
-        rorConfigReloading = Enabled.No,
-        rorInIndexConfigLoadingDelay = 0 seconds,
+        rorSettingsReloading = Enabled.No,
+        rorInIndexSettingsLoadingDelay = 0 seconds,
         rorCustomSettingsIndex = None,
         restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.EsFile)),
         internodeSsl = Enabled.No,
-        rorConfigFileName = "/basic/readonlyrest.yml"
+        rorSettingsFileName = "/basic/readonlyrest.yml"
       )
     }
 
@@ -77,7 +77,7 @@ class ReadonlyRestPlugin(esVersion: String,
       .copyFile(esConfig.esConfigDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
       .copyFile(esConfig.esConfigDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .updateFipsDependencies(esConfig)
-      .copyFile(esConfig.esConfigDir / "readonlyrest.yml", config.rorConfig)
+      .copyFile(esConfig.esConfigDir / "readonlyrest.yml", config.rorSettings)
       .installRorPlugin(esConfig)
       .when(performPatching, _.patchES(esConfig))
   }
@@ -85,7 +85,7 @@ class ReadonlyRestPlugin(esVersion: String,
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
     builder
       .add("xpack.security.enabled: false")
-      .configureRorConfigAutoReloading()
+      .configureRorSettingsAutoReloading()
       .configureRorCustomIndexSettings()
       .configureRestSsl()
       .configureTransportSsl()
@@ -102,7 +102,7 @@ class ReadonlyRestPlugin(esVersion: String,
     s"-Dcom.unboundid.ldap.sdk.debug.enabled=${if (enabled) true else false}"
 
   private def rorReloadingInterval() = {
-    val interval = config.attributes.rorConfigReloading match {
+    val interval = config.attributes.rorSettingsReloading match {
       case Enabled.No => "0sec"
       case Enabled.Yes(interval: FiniteDuration) => s"${interval.toMillis.toInt}ms"
     }
@@ -111,7 +111,7 @@ class ReadonlyRestPlugin(esVersion: String,
 
   private def addLoadingSettings() = {
     Seq(
-      s"-Dcom.readonlyrest.settings.loading.delay=${config.attributes.rorInIndexConfigLoadingDelay.toMillis}ms",
+      s"-Dcom.readonlyrest.settings.loading.delay=${config.attributes.rorInIndexSettingsLoadingDelay.toMillis}ms",
       s"-Dcom.readonlyrest.settings.loading.attempts.count=1",
       s"-Dcom.readonlyrest.settings.loading.attempts.interval=0sec"
     )
@@ -187,8 +187,8 @@ class ReadonlyRestPlugin(esVersion: String,
 
   private implicit class ConfigureRorConfigReloading(val builder: EsConfigBuilder) {
 
-    def configureRorConfigAutoReloading(): EsConfigBuilder = {
-      config.attributes.rorConfigReloading match {
+    def configureRorSettingsAutoReloading(): EsConfigBuilder = {
+      config.attributes.rorSettingsReloading match {
         case Enabled.Yes(_) =>
           builder
         case Enabled.No =>

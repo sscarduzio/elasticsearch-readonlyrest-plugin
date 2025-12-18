@@ -25,11 +25,11 @@ import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 
 class XpackApiWithRorWithDisabledXpackSecuritySuite extends BaseXpackApiSuite {
 
-  override implicit val rorConfigFileName: String = "/xpack_api/readonlyrest_with_ror_ssl.yml"
+  override implicit val rorSettingsFileName: String = "/xpack_api/readonlyrest_with_ror_ssl.yml"
 
   override protected def rorClusterSecurityType: SecurityType =
     SecurityType.RorSecurity(Attributes.default.copy(
-      rorConfigFileName = rorConfigFileName,
+      rorSettingsFileName = rorSettingsFileName,
       restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.EsFile)),
       internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.EsFile))
     ))

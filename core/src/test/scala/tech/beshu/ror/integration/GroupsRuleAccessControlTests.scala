@@ -45,7 +45,7 @@ class GroupsRuleAccessControlTests
 
   override protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     s"""
        |readonlyrest:
        |

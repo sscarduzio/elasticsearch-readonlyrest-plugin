@@ -20,15 +20,15 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.Filter
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
 
   "A FilterRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "filter is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -65,7 +65,7 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no filter is defined" in {
         assertDecodingFailure(
           yaml =

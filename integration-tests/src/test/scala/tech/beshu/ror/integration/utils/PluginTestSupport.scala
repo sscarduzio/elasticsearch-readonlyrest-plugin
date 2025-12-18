@@ -31,21 +31,21 @@ trait SingletonPluginTestSupport
   extends PluginTestSupport
     with EsClusterProvider
     with BeforeAndAfterAll
-    with ResolvedRorConfigFileProvider {
+    with ResolvedRorSettingsFileProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
   override lazy val targetEs: EsContainer = SingletonEsContainerWithRorSecurity.singleton.nodes.head
 
   private var startedDependencies = StartedClusterDependencies(Nil)
 
-  override final def resolvedRorConfigFile: File = {
-    resolveConfig.toTry.get
+  override final def resolvedRorSettingsFile: File = {
+    resolveSettings.toTry.get
   }
 
   override protected def beforeAll(): Unit = {
     startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
     SingletonEsContainerWithRorSecurity.cleanUpContainer()
-    SingletonEsContainerWithRorSecurity.updateConfig(resolvedRorConfigFile.contentAsString)
+    SingletonEsContainerWithRorSecurity.updateSettings(resolvedRorSettingsFile.contentAsString)
     nodeDataInitializer.foreach(SingletonEsContainerWithRorSecurity.initNode)
     super.beforeAll()
   }
@@ -55,16 +55,16 @@ trait SingletonPluginTestSupport
     startedDependencies.values.foreach(started => started.container.stop())
   }
 
-  private def resolveConfig: Either[Throwable, File] = {
+  private def resolveSettings: Either[Throwable, File] = {
     Either.cond(
       test = startedDependencies.values.size === clusterDependencies.size,
-      right = resolvedConfig(startedDependencies),
-      left = new IllegalStateException("Not all dependencies are started. Cannot read resolved config yet")
+      right = resolvedSettings(startedDependencies),
+      left = new IllegalStateException("Not all dependencies are started. Cannot read resolved settings yet")
     )
   }
 
-  private def resolvedConfig(startedDependencies: StartedClusterDependencies) = {
-    val configFile = File.apply(getResourcePath(rorConfigFileName))
-    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies)
+  private def resolvedSettings(startedDependencies: StartedClusterDependencies) = {
+    val settingsFile = File.apply(getResourcePath(rorSettingsFileName))
+    RorSettingsAdjuster.adjustUsingDependencies(settingsFile, startedDependencies)
   }
 }

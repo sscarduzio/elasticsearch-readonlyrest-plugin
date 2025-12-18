@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.http
 import cats.data.NonEmptySet
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersOrRule
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class HeadersOrRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersOrRule] {
 
   "A HeadersOrRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one header requirement is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -92,7 +92,7 @@ class HeadersOrRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersOrRu
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no header is defined" in {
         assertDecodingFailure(
           yaml =

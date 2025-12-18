@@ -146,7 +146,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
     val ldapConnectionConfig = createLdapConnectionConfig(
       poolName = ldapId,
       connectionMethod = ConnectionMethod.SingleServer(
-        LdapHost.from(s"ldap://localhost:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}").get
+        LdapHost.from(s"ldap://${ldap1ContainerWithToxiproxy.containerHost}:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}").get
       )
     )
     val result = for {

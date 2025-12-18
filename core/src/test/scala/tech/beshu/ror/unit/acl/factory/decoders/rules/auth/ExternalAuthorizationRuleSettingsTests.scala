@@ -28,8 +28,8 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.*
@@ -42,7 +42,7 @@ class ExternalAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ExternalAuthorizationRule] with MockFactory with Inside {
 
   "An ExternalAuthorizationRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one authorization service is declared" in {
         assertDecodingSuccess(
           yaml =
@@ -477,7 +477,7 @@ class ExternalAuthorizationRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "authorization rule doesn't have service name declared" in {
         assertDecodingFailure(
           yaml =

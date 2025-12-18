@@ -41,8 +41,8 @@ class RemoteReindexSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/reindex_multi_containers/readonlyrest_dest_es.yml"
-  private val sourceEsRorConfigFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"
+  override implicit val rorSettingsFileName: String = "/reindex_multi_containers/readonlyrest_dest_es.yml"
+  private val sourceEsRorSettingsFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"
 
   private lazy val sourceEsCluster = createLocalClusterContainer(
     EsClusterSettings.create(
@@ -56,7 +56,7 @@ class RemoteReindexSuite
       },
       securityType = SecurityType.RorSecurity(
         ReadonlyRestPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName,
+          rorSettingsFileName = RemoteReindexSuite.this.sourceEsRorSettingsFileName,
           restSsl = Enabled.No
         ))
     )
@@ -77,7 +77,7 @@ class RemoteReindexSuite
       clusterSettingsCreator {
         SecurityType.RorWithXpackSecurity(
           ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-            rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
+            rorSettingsFileName = RemoteReindexSuite.this.rorSettingsFileName,
             restSsl = Enabled.No
           )
         )
