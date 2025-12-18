@@ -94,7 +94,7 @@ dependencies {
     testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                     version: '2.25.3'
     testRuntimeOnly     group: 'ch.qos.logback',             name: 'logback-classic',                version: '1.5.22'
     testImplementation  group: 'com.typesafe.scala-logging', name: 'scala-logging_3',                version: '3.9.5'
-    testImplementation  group: 'org.scalamock',              name: 'scalamock_3',                    version: '7.5.2'
+    testImplementation  group: 'org.scalamock',              name: 'scalamock_3',                    version: '7.3.0'
     testImplementation  group: 'org.scalatestplus',          name: 'scalacheck-1-18_3',              version: '3.2.19.0'
     testImplementation  group: 'org.scalatest',              name: 'scalatest_3',                    version: '3.2.19'
     testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala-core_3',    version: '0.44.0'
