@@ -29,6 +29,8 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
+import scala.annotation.nowarn
+
 private[auth] trait BaseAuthorizationRule
   extends AuthorizationRule
     with SimpleAuthorizationImpersonationSupport {
@@ -41,6 +43,7 @@ private[auth] trait BaseAuthorizationRule
                                               user: LoggedUser)
                                              (implicit requestId: RequestId): Task[UniqueList[Group]]
 
+  @nowarn("msg=unused explicit parameter")
   protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {

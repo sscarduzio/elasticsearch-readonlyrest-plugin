@@ -30,7 +30,7 @@ object support {
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
-    this: Suite with EsClusterProvider with ESVersionSupport =>
+    this: Suite & EsClusterProvider & ESVersionSupport =>
 
     override lazy val container: EsClusterContainer = clusterContainer
 
@@ -42,7 +42,7 @@ object support {
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
-    this: Suite with EsClusterProvider with ESVersionSupport =>
+    this: Suite & EsClusterProvider & ESVersionSupport =>
 
     override lazy val container: EsRemoteClustersContainer = remoteClusterContainer
 
@@ -54,12 +54,12 @@ object support {
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
-    this: Suite with EsClusterProvider with ESVersionSupport =>
+    this: Suite & EsClusterProvider & ESVersionSupport =>
 
     import com.dimafeng.testcontainers.LazyContainer.*
 
     override lazy val container: MultipleContainers =
-      MultipleContainers(clusterContainers.map(containerToLazyContainer(_)).toList: _*)
+      MultipleContainers(clusterContainers.map(containerToLazyContainer(_)).toList*)
 
     def clusterContainers: NonEmptyList[EsClusterContainer]
   }
@@ -69,7 +69,7 @@ object support {
       with SingleClientSupport
       with TestSuiteWithClosedTaskAssertion
       with NodeInitializerProvider {
-    this: Suite with EsClusterProvider with ESVersionSupport =>
+    this: Suite & EsClusterProvider & ESVersionSupport =>
 
     def clusterDependencies: List[DependencyDef] = List.empty
   }

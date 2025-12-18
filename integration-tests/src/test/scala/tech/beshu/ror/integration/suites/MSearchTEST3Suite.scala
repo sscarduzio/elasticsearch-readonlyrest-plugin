@@ -49,7 +49,7 @@ class MSearchTEST3Suite
       additionalHeaders = Map("X-Forwarded-For" -> "elastic.co")
     )
 
-    val response = searchManager.mSearchUnsafe(msearchBodyTryMatchBoth: _*)
+    val response = searchManager.mSearchUnsafe(msearchBodyTryMatchBoth*)
 
     response should have statusCode 200
     response.responses.size shouldBe 1
