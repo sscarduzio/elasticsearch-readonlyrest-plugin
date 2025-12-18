@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.settings.ror.source
 
+import scala.annotation.nowarn
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
@@ -23,6 +24,7 @@ import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSaving
 
 sealed trait SettingsSource[SETTINGS]
 
+@nowarn("msg=unused implicit parameter")
 trait ReadOnlySettingsSource[SETTINGS: Decoder, ERROR] extends SettingsSource[SETTINGS] {
   def load(): Task[Either[SettingsLoadingError[ERROR], SETTINGS]]
 }
@@ -34,6 +36,7 @@ object ReadOnlySettingsSource {
   }
 }
 
+@nowarn("msg=unused implicit parameter")
 trait ReadWriteSettingsSource[SETTINGS: Encoder : Decoder, READ_SPECIFIC_ERROR, WRITE_SPECIFIC_ERROR]
   extends ReadOnlySettingsSource[SETTINGS, READ_SPECIFIC_ERROR] {
 

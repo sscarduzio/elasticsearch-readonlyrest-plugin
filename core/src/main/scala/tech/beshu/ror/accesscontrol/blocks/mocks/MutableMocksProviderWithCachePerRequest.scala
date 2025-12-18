@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.mocks
 
+import scala.annotation.nowarn
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
@@ -39,6 +40,7 @@ class MutableMocksProviderWithCachePerRequest(initial: AuthServicesMocks)
       .executor(scheduler)
       .build()
 
+  @nowarn("msg=unused explicit parameter")
   def update(mocks: AuthServicesMocks): Unit = {
     currentMockProvider.transform { currentMockProviderConfig =>
       CurrentMocksProviderConfiguration(SimpleMocksProvider(mocks))

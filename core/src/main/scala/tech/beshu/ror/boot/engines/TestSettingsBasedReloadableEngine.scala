@@ -57,8 +57,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     reloadInProgress = reloadInProgress
   ) {
 
-  def currentTestSettings()
-                         (implicit requestId: RequestId): Task[TestSettings] = {
+  def currentTestSettings(): Task[TestSettings] = {
     Task.delay {
       currentEngineState match {
         case EngineState.NotStartedYet(None, _) | EngineState.Stopped =>
@@ -148,8 +147,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     }
   }
 
-  def saveServicesMocks(mocks: AuthServicesMocks)
-                       (implicit requestId: RequestId): Task[Either[IndexSettingsUpdateError, Unit]] = {
+  def saveServicesMocks(mocks: AuthServicesMocks): Task[Either[IndexSettingsUpdateError, Unit]] = {
     reloadInProgress.withPermit {
       value {
         for {
@@ -172,8 +170,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     }
   }
 
-  private def readCurrentTestSettingsForUpdate()
-                                              (implicit requestId: RequestId): EitherT[Task, IndexSettingsUpdateError, TestSettings.Present] = {
+  private def readCurrentTestSettingsForUpdate(): EitherT[Task, IndexSettingsUpdateError, TestSettings.Present] = {
     EitherT {
       currentTestSettings()
         .map {

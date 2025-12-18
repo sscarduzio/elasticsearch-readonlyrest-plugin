@@ -24,7 +24,7 @@ plugins {
     id "readonlyrest.base-common-conventions"
 
     id "com.github.maiflai.scalatest"           version "0.33"
-    id "com.gradleup.shadow"                    version "9.1.0"
+    id "com.gradleup.shadow"                    version "9.3.0"
 }
 
 repositories {

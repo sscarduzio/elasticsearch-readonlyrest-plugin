@@ -74,13 +74,12 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
 
   def load(esEnv: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, RorCoreSettingsLoadingStrategy]] = {
-    implicit val decoder: Decoder[RorCoreSettingsLoadingStrategy] = decoders.loadRorCoreStrategyDecoder(esEnv)
+    implicit val decoder: Decoder[RorCoreSettingsLoadingStrategy] = decoders.loadRorCoreStrategyDecoder()
     loadSetting[RorCoreSettingsLoadingStrategy](esEnv, "ROR loading core strategy settings")
   }
 
   private object decoders {
-    implicit def loadRorCoreStrategyDecoder(esEnv: EsEnv)
-                                           (implicit systemContext: SystemContext): Decoder[RorCoreSettingsLoadingStrategy] = {
+    implicit def loadRorCoreStrategyDecoder()(implicit systemContext: SystemContext): Decoder[RorCoreSettingsLoadingStrategy] = {
       YamlKeyDecoder[Boolean](
         path = NonEmptyList.of("readonlyrest", "force_load_from_file"),
         default = false

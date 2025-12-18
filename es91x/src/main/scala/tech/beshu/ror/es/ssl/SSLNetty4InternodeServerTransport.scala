@@ -53,7 +53,16 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
   private val serverSslContext = doPrivileged { SSLCertHelper.prepareServerSSLContext(ssl, clientAuthenticationEnabled = false) }
 
   override def getClientChannelInitializer(node: DiscoveryNode,
-                                           connectionProfile: ConnectionProfile): ChannelHandler = new ClientChannelInitializer {
+                                           connectionProfile: ConnectionProfile): ChannelHandler = {
+    new SSLClientChannelInitializer(node)
+  }
+
+  override def getServerChannelInitializer(name: String): ChannelHandler = {
+    new SSLServerChannelInitializer(name)
+  }
+
+  // Named inner class to work around Scala 3 limitation with protected Java inner class constructors
+  private class SSLClientChannelInitializer(node: DiscoveryNode) extends ClientChannelInitializer {
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
 
@@ -87,8 +96,8 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     }
   }
 
-  override def getServerChannelInitializer(name: String): ChannelHandler = new ServerChannelInitializer(name) {
-
+  // Named inner class to work around Scala 3 limitation with protected Java inner class constructors
+  private class SSLServerChannelInitializer(name: String) extends ServerChannelInitializer(name) {
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       ch.pipeline().addFirst("ror_internode_ssl_handler", serverSslContext.newHandler(ch.alloc()))
