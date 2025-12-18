@@ -109,11 +109,11 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
 
   private def createReleaseablePool(counter: Counter): ReleseablePool[M, counter.ReleasableResource, Unit] = {
 
-    def acquireR(@nowarn unit: Unit): M[counter.ReleasableResource] = acquire(counter)
+    def acquireR(counter: Counter)(@nowarn unit: Unit): M[counter.ReleasableResource] = acquire(counter)
 
     def releaseR(resource: counter.ReleasableResource): M[Unit] = release(counter)(resource)
 
-    new ReleseablePool[M, counter.ReleasableResource, Unit](acquireR)(releaseR)
+    new ReleseablePool[M, counter.ReleasableResource, Unit](acquireR(counter)(_))(releaseR)
 
   }
 }
