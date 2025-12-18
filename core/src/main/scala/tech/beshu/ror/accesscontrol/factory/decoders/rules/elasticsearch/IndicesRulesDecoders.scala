@@ -63,7 +63,7 @@ class IndicesRuleDecoders(variableCreator: RuntimeResolvableVariableCreator,
     Decoder.instance { c =>
       for {
         indices <- c.downField("patterns").as[NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]]
-        mustInvolveIndices <- c.downFields("must_involve_indices").as[Option[Boolean]]
+        mustInvolveIndices <- c.downField("must_involve_indices").as[Option[Boolean]]
       } yield {
         RuleDefinition.create(
           new IndicesRule(
