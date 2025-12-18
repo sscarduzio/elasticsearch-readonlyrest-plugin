@@ -193,6 +193,37 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
+      "one LDAP service is declared with connection health check settings" in {
+        assertDecodingSuccess(
+          yamls = NonEmptyList.of(
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    connection_health_check_interval: 30 sec
+               |    connection_max_age: 5 min
+               |    cache_ttl: 60 sec
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "uid"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    unique_member_attribute: "uniqueMember"
+            """.stripMargin,
+          ),
+          assertion = { definitions =>
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService shouldBe a[ComposedLdapAuthService]
+          }
+        )
+      }
       "one LDAP service is declared (with sever_side_groups_filtering /with typo in the name/)" in {
         assertDecodingSuccess(
           yamls = NonEmptyList.of(
@@ -2243,6 +2274,40 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
            """.stripMargin,
           assertion = { error =>
             error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'request_timeout_in_sec': Only positive values allowed. Found: -10 seconds")))
+          }
+        )
+      }
+      "connection health check interval is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    connection_health_check_interval: -10
+           """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'connection_health_check_interval': Only positive values allowed. Found: -10 seconds")))
+          }
+        )
+      }
+      "connection max age is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    connection_max_age: -10
+           """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'connection_max_age': Only positive values allowed. Found: -10 seconds")))
           }
         )
       }
