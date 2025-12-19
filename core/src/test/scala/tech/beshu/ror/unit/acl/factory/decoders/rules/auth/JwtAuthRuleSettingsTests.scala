@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Jwt.ClaimName
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -45,7 +45,7 @@ class JwtAuthRuleSettingsTests
     with MockFactory {
 
   "A JwtAuthRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "rule is defined using simplified version and minimal required set of fields in JWT definition" in {
         assertDecodingSuccess(
           yaml =
@@ -605,7 +605,7 @@ class JwtAuthRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no JWT definition name is defined in rule setting" in {
         assertDecodingFailure(
           yaml =

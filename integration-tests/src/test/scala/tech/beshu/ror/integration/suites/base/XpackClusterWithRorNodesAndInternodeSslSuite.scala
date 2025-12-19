@@ -53,7 +53,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
       nodeTypes = NonEmptyList.of(
         NodeType(
           securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
-            rorConfigFileName = rorConfigFileName,
+            rorSettingsFileName = rorSettingsFileName,
             restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)),
             internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile))
           )),
@@ -77,11 +77,11 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
 
     response should have statusCode 200
   }
-  "ROR config reload can be done" in {
+  "ROR settings reload can be done" in {
     val rorApiManager = new RorApiManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
 
     val updateResult = rorApiManager
-      .updateRorInIndexConfig(getResourceContent("/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_update.yml"))
+      .updateRorInIndexSettings(getResourceContent("/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_update.yml"))
 
     updateResult should have statusCode 200
     updateResult.responseJson("status").str should be("ok")

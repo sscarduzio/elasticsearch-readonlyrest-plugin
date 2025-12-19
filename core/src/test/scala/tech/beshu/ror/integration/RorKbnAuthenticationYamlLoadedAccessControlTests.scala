@@ -34,7 +34,7 @@ import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 class RorKbnAuthenticationYamlLoadedAccessControlTests
   extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     """
       |readonlyrest:
       |  access_control_rules:
@@ -74,7 +74,7 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
     """.stripMargin
 
   "An ACL" when {
-    "is configured using config above" should {
+    "is configured using settings above" should {
       "allow to proceed" when {
         "JWT token is defined with empty groups" in {
           val jwt = JwtUtils.Jwt(

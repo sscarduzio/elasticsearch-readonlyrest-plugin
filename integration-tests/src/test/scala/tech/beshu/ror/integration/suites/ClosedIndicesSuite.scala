@@ -31,7 +31,7 @@ class ClosedIndicesSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/closed_indices/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/closed_indices/readonlyrest.yml"
 
   override val nodeDataInitializer = Some {
     (esVersion, adminRestClient: RestClient) => {

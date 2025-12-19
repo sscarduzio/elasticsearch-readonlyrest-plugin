@@ -53,10 +53,10 @@ object SingletonEsContainerWithRorSecurity
     logOnFailure(snapshotManager.deleteAllRepositories().force())
   }
 
-  def updateConfig(rorConfig: String): Unit = {
+  def updateSettings(rorSettings: String): Unit = {
     rorApiManager
-      .updateRorInIndexConfig(rorConfig)
-      .forceOKStatusOrConfigAlreadyLoaded()
+      .updateRorInIndexSettings(rorSettings)
+      .forceOKStatusOrSettingsAlreadyLoaded()
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {

@@ -91,7 +91,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
         new GetComponentTemplateAction.Response(
           filter(
             templates = r.getComponentTemplates.asSafeMap,
-            usingTemplate = using.responseTemplateTransformation
+            usingTemplate = `using`.responseTemplateTransformation
           ),
           r.getRolloverConfiguration,
           r.getGlobalRetention

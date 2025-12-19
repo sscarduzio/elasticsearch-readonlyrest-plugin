@@ -18,8 +18,8 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -28,7 +28,7 @@ class ProxyAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ProxyAuthRule] {
 
   "A ProxyAuthRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one user is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -135,7 +135,7 @@ class ProxyAuthRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no proxy_auth data is defined" in {
         assertDecodingFailure(
           yaml =

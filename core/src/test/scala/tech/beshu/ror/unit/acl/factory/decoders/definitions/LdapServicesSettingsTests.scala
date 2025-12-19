@@ -30,8 +30,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
 import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
 import tech.beshu.ror.utils.RefinedUtils.*
@@ -74,7 +74,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
   )
 
   "An LdapService" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "one LDAP service is declared (without server_side_groups_filtering)" in {
         assertDecodingSuccess(
           yamls = NonEmptyList.of(
@@ -190,6 +190,37 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                   nestedGroupsConfig = None
                 )
             )
+          }
+        )
+      }
+      "one LDAP service is declared with connection health check settings" in {
+        assertDecodingSuccess(
+          yamls = NonEmptyList.of(
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    ssl_trust_all_certs: true
+               |    bind_dn: "cn=admin,dc=example,dc=com"
+               |    bind_password: "password"
+               |    connection_pool_size: 10
+               |    connection_timeout: 10 sec
+               |    request_timeout: 10 sec
+               |    connection_health_check_interval: 30 sec
+               |    connection_max_age: 5 min
+               |    cache_ttl: 60 sec
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "uid"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    unique_member_attribute: "uniqueMember"
+            """.stripMargin,
+          ),
+          assertion = { definitions =>
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService shouldBe a[ComposedLdapAuthService]
           }
         )
       }
@@ -1117,7 +1148,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                  |  ldaps:
                  |  - name: ldap1
                  |    server_discovery:
-                 |      dns_url: "dns://localhost:${ldapWithDnsContainer.dnsPort}"
+                 |      dns_url: "dns://${ldapWithDnsContainer.dnsHost}:${ldapWithDnsContainer.dnsPort}"
                  |      ttl: "3 hours"
                  |    ssl_enabled: false
                  |    ssl_trust_all_certs: true
@@ -1677,7 +1708,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
-      "groups related param is malformed when deprecated config format is used" in {
+      "groups related param is malformed when deprecated settings format is used" in {
         assertDecodingSuccess(
           yamls = NonEmptyList.of(
             // empty search_groups_base_DN which is required
@@ -1750,8 +1781,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
         )
       }
     }
-    "not be able to be loaded from config" when {
-      "circuit breaker config is malformed" in {
+    "not be able to be loaded from settings" when {
+      "circuit breaker settings are malformed" in {
         assertDecodingFailure(
           yaml =
             s"""
@@ -2243,6 +2274,40 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
            """.stripMargin,
           assertion = { error =>
             error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'request_timeout_in_sec': Only positive values allowed. Found: -10 seconds")))
+          }
+        )
+      }
+      "connection health check interval is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    connection_health_check_interval: -10
+           """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'connection_health_check_interval': Only positive values allowed. Found: -10 seconds")))
+          }
+        )
+      }
+      "connection max age is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    connection_max_age: -10
+           """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Error for field 'connection_max_age': Only positive values allowed. Found: -10 seconds")))
           }
         )
       }

@@ -170,7 +170,7 @@ object ImpersonationWarning {
           Some(ImpersonationWarning(
             block = blockName,
             ruleName = rule.name,
-            message = nes("The rule contains fully hashed username and password. It doesn't support impersonation in this configuration"),
+            message = nes("The rule contains fully hashed username and password. It doesn't support impersonation in this use case."),
             hint = s"You can use second version of the rule and use not hashed username. Like that: `${rule.name.show}: USER_NAME:hash(PASSWORD)"
           ))
         case _: HashedCredentials.HashedOnlyPassword =>

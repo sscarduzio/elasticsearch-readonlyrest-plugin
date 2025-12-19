@@ -28,10 +28,10 @@ import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 class RestRRAdminAction(controller: RestController)
   extends BaseRestHandler with RestHandler {
 
-  register("POST", constants.FORCE_RELOAD_CONFIG_PATH)
-  register("GET", constants.PROVIDE_INDEX_CONFIG_PATH)
-  register("POST", constants.UPDATE_INDEX_CONFIG_PATH)
-  register("GET", constants.PROVIDE_FILE_CONFIG_PATH)
+  register("POST", constants.FORCE_RELOAD_SETTINGS_PATH)
+  register("GET", constants.PROVIDE_FILE_SETTINGS_PATH)
+  register("GET", constants.PROVIDE_INDEX_SETTINGS_PATH)
+  register("POST", constants.UPDATE_INDEX_SETTINGS_PATH)
 
   override val getName: String = "ror-admin-handler"
 
