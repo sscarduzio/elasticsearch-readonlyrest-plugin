@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupIdPattern
 import tech.beshu.ror.accesscontrol.domain.{GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common.nonEmptyStringDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
@@ -78,7 +78,7 @@ trait JwtLikeRulesDecoders[
           val definitionE = findDefinition[AUTHN_RULE, AUTHN_DEF](authnDefs, allDefs.diff(authnDefs), name)
           (definitionE, groupsLogicOpt) match {
             case (Right(_), Some(_)) =>
-              Left(DefinitionsLevelCreationError(Message(s"Cannot create ${RuleName[AUTHN_RULE].name.show}, because there are superfluous groups settings. Remove the groups settings, or use ${RuleName[AUTHZ_RULE].name.show} or ${RuleName[AUTH_RULE].name.show} rule, if group settings are required.")))
+              Left(RulesLevelCreationError(Message(s"Cannot create ${RuleName[AUTHN_RULE].name.show}, because there are superfluous groups settings. Remove the groups settings, or use ${RuleName[AUTHZ_RULE].name.show} or ${RuleName[AUTH_RULE].name.show} rule, if group settings are required.")))
             case (Right(definition), None) =>
               val rule = createAuthenticationRule(definition, globalSettings)
               Right(RuleDefinition.create(rule))
@@ -102,7 +102,7 @@ trait JwtLikeRulesDecoders[
               val rule = createAuthorizationRule(definition, groupsLogic)
               Right(RuleDefinition.create[AUTHZ_RULE](rule))
             case (Right(_), None) =>
-              Left(DefinitionsLevelCreationError(Message(s"Cannot create ${RuleName[AUTHZ_RULE].name.show} - missing groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic)")))
+              Left(RulesLevelCreationError(Message(s"Cannot create ${RuleName[AUTHZ_RULE].name.show} - missing groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic)")))
             case (Left(error), _) =>
               Left(error)
           }
@@ -148,7 +148,7 @@ trait JwtLikeRulesDecoders[
   private def findDefinition[T <: Rule, CURRENT_DEF <: DEF](definitionsOfCurrentType: List[CURRENT_DEF],
                                                             definitionsOfOtherType: List[DEF],
                                                             name: String)
-                                                           (implicit ruleName: RuleName[T]): Either[DefinitionsLevelCreationError, CURRENT_DEF] = {
+                                                           (implicit ruleName: RuleName[T]): Either[RulesLevelCreationError, CURRENT_DEF] = {
     val definitionOfCurrentTypeOpt = findByName(definitionsOfCurrentType, name)
     lazy val definitionOfOtherTypeOpt = findByName(definitionsOfOtherType, name)
     definitionOfCurrentTypeOpt match {
@@ -162,7 +162,7 @@ trait JwtLikeRulesDecoders[
           case None =>
             s"Cannot find $ruleTypePrefix definition with name: $name"
         }
-        Left(DefinitionsLevelCreationError(Message(message)))
+        Left(RulesLevelCreationError(Message(message)))
     }
   }
 
@@ -194,7 +194,7 @@ trait JwtLikeRulesDecoders[
               Right((name, None))
             case GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(_, fields) =>
               val fieldsStr = fields.map(f => s"'$f'").mkString(" or ")
-              Left(DefinitionsLevelCreationError(Message(
+              Left(RulesLevelCreationError(Message(
                 s"Please specify either $fieldsStr for ${ruleTypePrefix}_authorization rule '$name'"
               )))
           }
