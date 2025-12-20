@@ -20,17 +20,17 @@ import just.semver.SemVer
 import org.objectweb.asm.*
 import org.objectweb.asm.tree.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es8190, es900, es903}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es8180, es8190, es900, es903}
 
 import java.io.{File, InputStream}
 
-private[patches] class ModifyPolicyCheckerImplClass(esVersion: SemVer)
+private[patches] class ModifyPolicyManagerClass(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
-      filePathString = "org/elasticsearch/entitlement/runtime/policy/PolicyCheckerImpl.class",
+      filePathString = "org/elasticsearch/entitlement/runtime/policy/PolicyManager.class",
       processFileContent = dontValidateFileAccessInCaseOfRorPlugin
     )
   }
@@ -54,11 +54,13 @@ private[patches] class ModifyPolicyCheckerImplClass(esVersion: SemVer)
         case "checkFileRead" =>
           esVersion match {
             case v if v >= es903 =>
+              super.visitMethod(access, name, descriptor, signature, exceptions)
+            case v if v >= es900 =>
               val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
               new CheckFileReadMethodShouldNotValidateFileAccessInCaseOfRorPlugin(access, name, descriptor, signature, exceptions, mv)
-            case v if v >= es900 =>
-              super.visitMethod(access, name, descriptor, signature, exceptions)
             case v if v >= es8190 =>
+              super.visitMethod(access, name, descriptor, signature, exceptions)
+            case v if v >= es8180 =>
               val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
               new CheckFileReadMethodShouldNotValidateFileAccessInCaseOfRorPlugin(access, name, descriptor, signature, exceptions, mv)
             case v =>

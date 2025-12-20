@@ -23,8 +23,8 @@ import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.{ModifyEntitlementInitializationClass, ModifyEntitlementRuntimePolicyParserClass, ModifyFilesEntitlementsValidationClass, ModifyPolicyCheckerImplClass}
-import tech.beshu.ror.tools.core.utils.EsUtil.es902
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.*
+import tech.beshu.ror.tools.core.utils.EsUtil.{es902, es903}
 
 import scala.language.postfixOps
 
@@ -40,7 +40,10 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
         case _ => new ModifyEntitlementInitializationClass(esVersion)
       },
       ModifyEntitlementRuntimePolicyParserClass,
-      new ModifyPolicyCheckerImplClass(esVersion)
+      esVersion match {
+        case v if v >= es903 => new ModifyPolicyCheckerImplClass(esVersion)
+        case _ => new ModifyPolicyManagerClass(esVersion)
+      },
     ),
     new XPackCoreJarPatchCreator(
       OpenModule,
