@@ -24,7 +24,7 @@ import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
 
 @nowarn("cat=deprecation")
-class DnsServerContainer(srvServicePort: Int)
+class DnsServerContainer(srvServiceHost: String, srvServicePort: Int)
   extends GenericContainer(
     dockerImage = new ImageFromDockerfile()
       .withFileFromClasspath("Dockerfile", "coredns-image/Dockerfile")
@@ -33,7 +33,7 @@ class DnsServerContainer(srvServicePort: Int)
       s"""
           |$$ORIGIN example.org.
           |@	3600	IN	SOA someorg.org.  someorg.com.  (2017042745 7200 3600 1209600 3600)
-          |_ldap._tcp.	 86400	IN	SRV	10	60     $srvServicePort	localhost.
+          |_ldap._tcp.	 86400	IN	SRV	10	60     $srvServicePort	$srvServiceHost.
           |""".stripMargin),
   ) {
 
@@ -42,14 +42,18 @@ class DnsServerContainer(srvServicePort: Int)
       new ExposedPort(53, InternetProtocol.UDP) :: cmd.getExposedPorts.toList: _*
     )
 
-    val ports = cmd.getPortBindings
-    ports.bind(ExposedPort.udp(53), Ports.Binding.empty())
+    val ports = new Ports()
+    ports.bind(ExposedPort.udp(53), Ports.Binding.bindPort(0))
     cmd.withPortBindings(ports)
   }
 
+  def dnsHost: String = this.containerIpAddress
+
   def dnsPort: Int = {
-    // This is hack to obtain mapping of UDP port as testcontainers doesn't allow explicit mapping of UDP ports
+    // This is hack to obtain mapping of UDP port as testcontainers doesn't allow explicit mapping of UDP ports,
     // although it is mapping each port exposed by container(even UDP).
+    // Wait a bit to ensure port binding is ready
+    Thread.sleep(500)
     this.containerInfo
       .getNetworkSettings
       .getPorts

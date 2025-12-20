@@ -257,12 +257,12 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
         )()
         assertMatchRuleUsingIndicesRequest(
           settingsOf(KibanaAccess.Admin),
-          Action.RorAction.RorOldConfigAction,
+          Action.RorAction.RorRefreshSettingsAction,
           requestedIndices = Set(RequestedIndex(Local(rorIndex), excluded = false))
         )()
         assertMatchRuleUsingIndicesRequest(
           settingsOf(KibanaAccess.Admin),
-          Action.RorAction.RorConfigAction,
+          Action.RorAction.RorMainSettingsAction,
           requestedIndices = Set(RequestedIndex(Local(rorIndex), excluded = false))
         )()
         assertMatchRuleUsingIndicesRequest(

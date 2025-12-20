@@ -27,9 +27,9 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{RulesLevelCreationError, ValueLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{RulesLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
@@ -39,7 +39,7 @@ import tech.beshu.ror.utils.js.JsCompiler
 
 import scala.util.{Failure, Success}
 
-class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
+class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
                                 variableCreator: RuntimeResolvableVariableCreator)
                                (implicit jsCompiler: JsCompiler)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule]
@@ -64,14 +64,12 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
           }
         } yield new KibanaUserDataRule(KibanaUserDataRule.Settings(
           access = access,
-          kibanaIndex = kibanaIndex.getOrElse(
-            RuntimeSingleResolvableVariable.AlreadyResolved(ClusterIndexName.Local.kibanaDefault
-            )),
+          kibanaIndex = kibanaIndex.getOrElse(RuntimeSingleResolvableVariable.AlreadyResolved(KibanaIndexName.default)),
           kibanaTemplateIndex = kibanaTemplateIndex,
           appsToHide = appsToHide.getOrElse(Set.empty),
           allowedApiPaths = allowedApiPaths.getOrElse(Set.empty),
           metadata = metadataResolvableJsonRepresentation,
-          rorIndex = configurationIndex
+          rorIndex = settingsIndex
         ))
       }
       .map(RuleDefinition.create[KibanaUserDataRule](_))

@@ -49,7 +49,8 @@ object EsContainerWithXpackSecurity extends StrictLogging {
              xpackSecurityConfig: XpackSecurityPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
-             additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
+             additionalLogConsumer: Option[Consumer[OutputFrame]],
+             awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
     new EsContainerWithXpackSecurity(
       esVersion,
       esConfig,
@@ -58,6 +59,7 @@ object EsContainerWithXpackSecurity extends StrictLogging {
       xpackSecurityConfig.attributes.restSslEnabled,
       initializer,
       additionalLogConsumer,
+      awaitingReadyStrategy
     )
   }
 

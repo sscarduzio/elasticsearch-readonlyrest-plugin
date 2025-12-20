@@ -79,6 +79,8 @@ class UnboundidLdapConnectionPoolProvider {
     pool.setConnectionPoolName(s"ROR-unboundid-connection-pool-${connectionConfig.poolName}")
     pool.setRetryFailedOperationsDueToInvalidConnections(true)
     pool.setCreateIfNecessary(true)
+    pool.setHealthCheckIntervalMillis(connectionConfig.connectionHealthCheckInterval.value.toMillis)
+    pool.setMaxConnectionAgeMillis(connectionConfig.connectionMaxAge.value.toMillis)
     pool
   }
 
@@ -89,6 +91,8 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
   final case class LdapConnectionConfig(poolName: LdapService.Name,
                                         connectionMethod: ConnectionMethod,
                                         poolSize: Int Refined Positive,
+                                        connectionHealthCheckInterval: PositiveFiniteDuration,
+                                        connectionMaxAge: PositiveFiniteDuration,
                                         connectionTimeout: PositiveFiniteDuration,
                                         requestTimeout: PositiveFiniteDuration,
                                         trustAllCerts: Boolean,

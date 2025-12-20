@@ -82,7 +82,7 @@ object HttpClientsFactory {
 }
 
 // todo: remove synchronized, use more sophisticated lock mechanism
-class AsyncHttpClientsFactory extends HttpClientsFactory {
+class AsyncHttpClientsFactory extends HttpClientsFactory with Logging {
 
   private val existingClients = new CopyOnWriteArrayList[AsyncHttpClient]()
   private val isWorking = AtomicBoolean(true)
@@ -103,17 +103,23 @@ class AsyncHttpClientsFactory extends HttpClientsFactory {
   }
 
   private def newAsyncHttpClient(config: Config) = {
-    val timer = new HashedWheelTimer
-    val maxIdleTimeout = 60.seconds
-    val connectionTtl = -1.milliseconds
-    val cleanerPeriod = -1.milliseconds
-    val pool = new DefaultChannelPool(maxIdleTimeout.toJava, connectionTtl.toJava, DefaultChannelPool.PoolLeaseStrategy.FIFO, timer, cleanerPeriod.toJava)
-    asyncHttpClient {
-      new DefaultAsyncHttpClientConfig.Builder()
-        .setNettyTimer(timer)
-        .setChannelPool(pool)
-        .setUseInsecureTrustManager(!config.validate)
-        .build()
+    try {
+      val timer = new HashedWheelTimer
+      val maxIdleTimeout = 60.seconds
+      val connectionTtl = -1.milliseconds
+      val cleanerPeriod = -1.milliseconds
+      val pool = new DefaultChannelPool(maxIdleTimeout.toJava, connectionTtl.toJava, DefaultChannelPool.PoolLeaseStrategy.FIFO, timer, cleanerPeriod.toJava)
+      asyncHttpClient {
+        new DefaultAsyncHttpClientConfig.Builder()
+          .setNettyTimer(timer)
+          .setChannelPool(pool)
+          .setUseInsecureTrustManager(!config.validate)
+          .build()
+      }
+    } catch {
+      case ex: Throwable =>
+        logger.error("ERR: ", ex)
+        throw ex
     }
   }
 }

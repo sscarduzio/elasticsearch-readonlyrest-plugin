@@ -54,7 +54,6 @@ object RoleIndexSearcherWrapper extends RequestIdAwareLogging {
                 }
                 .map(r => (r, r))
             case None =>
-              noRequestIdLogger.debug(s"FLS: ${constants.FIELDS_TRANSIENT} not found in threadContext")
               Success((reader, reader))
           }
         }

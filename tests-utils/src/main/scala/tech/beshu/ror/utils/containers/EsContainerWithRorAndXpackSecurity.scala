@@ -51,7 +51,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
              securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
-             additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
+             additionalLogConsumer: Option[Consumer[OutputFrame]],
+             awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
     create(
       esVersion = esVersion,
       esConfig = esConfig,
@@ -60,8 +61,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
       startedClusterDependencies = startedClusterDependencies,
       customEntrypoint = None,
       performPatching = true,
-      awaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness,
       additionalLogConsumer = additionalLogConsumer,
+      awaitingReadyStrategy = awaitingReadyStrategy,
     )
   }
 
@@ -71,8 +72,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
                                  initializer: ElasticsearchNodeDataInitializer,
                                  startedClusterDependencies: StartedClusterDependencies,
                                  customEntrypoint: Option[Path],
-                                 awaitingReadyStrategy: AwaitingReadyStrategy,
-                                 additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
+                                 additionalLogConsumer: Option[Consumer[OutputFrame]],
+                                 awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
     create(
       esVersion = esVersion,
       esConfig = esConfig,
@@ -81,8 +82,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
       startedClusterDependencies = startedClusterDependencies,
       customEntrypoint = customEntrypoint,
       performPatching = false,
-      awaitingReadyStrategy = awaitingReadyStrategy,
       additionalLogConsumer = additionalLogConsumer,
+      awaitingReadyStrategy = awaitingReadyStrategy,
     )
   }
 
@@ -93,8 +94,8 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
                      startedClusterDependencies: StartedClusterDependencies,
                      customEntrypoint: Option[Path],
                      performPatching: Boolean,
-                     awaitingReadyStrategy: AwaitingReadyStrategy,
-                     additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
+                     additionalLogConsumer: Option[Consumer[OutputFrame]],
+                     awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
     new EsContainerWithRorAndXpackSecurity(
       esConfig,
       esVersion,

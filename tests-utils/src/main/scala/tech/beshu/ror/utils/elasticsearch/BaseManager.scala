@@ -27,7 +27,6 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, SimpleHeader}
 import tech.beshu.ror.utils.httpclient.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
-import tech.beshu.ror.utils.misc.ScalaUtils.*
 import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
 import java.time.Duration
@@ -42,14 +41,15 @@ abstract class BaseManager(client: RestClient,
 
   protected def call[T <: SimpleResponse](request: HttpUriRequest, fromResponse: HttpResponse => T): T = {
     client
-      .execute {
-        additionalHeaders.foldLeft(request) {
+      .handle(
+        request = additionalHeaders.foldLeft(request) {
           case (req, (name, value)) =>
             req.addHeader(name, value)
             req
         }
-      }
-      .bracket(fromResponse)
+      )(
+        fromResponse = fromResponse
+      )
   }
 
   protected[elasticsearch] def eventually[T <: SimpleResponse](action: => T)
@@ -89,6 +89,13 @@ abstract class BaseManager(client: RestClient,
     def force(): this.type = {
       if (!isSuccess) throw new IllegalStateException(
         s"Expected success but got HTTP $responseCode, body: $body"
+      )
+      this
+    }
+
+    def successOrNotFound(): this.type = {
+      if (!(isSuccess || isNotFound)) throw new IllegalStateException(
+        s"Expected success or not found but got HTTP $responseCode, body: $body"
       )
       this
     }
