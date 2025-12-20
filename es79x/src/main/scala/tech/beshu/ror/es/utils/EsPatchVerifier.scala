@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.es.utils
 
-import tech.beshu.ror.utils.RequestIdAwareLogging
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.settings.Settings
 import tech.beshu.ror.tools.core.patches.PatchingVerifier
 import tech.beshu.ror.tools.core.patches.PatchingVerifier.Error.{CannotVerifyIfPatched, EsNotPatched}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
-object EsPatchVerifier extends RequestIdAwareLogging {
+object EsPatchVerifier extends Logging {
 
   def verify(settings: Settings): Unit = doPrivileged {
     pathHomeFrom(settings).flatMap(PatchingVerifier.verify) match {
@@ -30,7 +30,7 @@ object EsPatchVerifier extends RequestIdAwareLogging {
       case Left(e@EsNotPatched(_)) =>
         throw new IllegalStateException(e.message)
       case Left(e@CannotVerifyIfPatched(_)) =>
-        noRequestIdLogger.warn(e.message)
+        logger.warn(e.message)
     }
   }
 

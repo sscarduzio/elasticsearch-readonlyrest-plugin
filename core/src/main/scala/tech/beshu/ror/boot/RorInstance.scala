@@ -80,7 +80,7 @@ class RorInstance private(boot: ReadonlyRest,
   settingsAutoReloader.start()
 
   val id: String = UUID.randomUUID().toString
-  logger.info(s"[$id] ReadonlyREST was loaded!")
+  noRequestIdLogger.info(s"[$id] ReadonlyREST was loaded!")
 
   def engines: Option[Engines] = theMainSettingsEngine.engine.map(Engines(_, theTestSettingsEngine.engine))
 

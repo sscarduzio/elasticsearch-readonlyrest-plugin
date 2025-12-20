@@ -20,7 +20,6 @@ import better.files.*
 import cats.data.{EitherT, NonEmptyList}
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{EsConfigFile, RorSettingsFile}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
@@ -28,11 +27,11 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
-import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 sealed trait RorSslSettings
-object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
+object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with RequestIdAwareLogging {
 
   final case class OnlyExternalSslSettings(ssl: ExternalSslSettings) extends RorSslSettings
   final case class OnlyInternodeSslSettings(ssl: InternodeSslSettings) extends RorSslSettings
@@ -107,7 +106,7 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
       for {
         settings <- loadSslSettingsFrom(settingsFile)
         _ <- lift(settings match {
-          case None => logger.warn(s"Defining SSL settings in ReadonlyREST file is deprecated and will be removed in the future. Move your ReadonlyREST SSL settings to Elasticsearch config file. See https://docs.readonlyrest.com/elasticsearch#encryption for details")
+          case None => noRequestIdLogger.warn(s"Defining SSL settings in ReadonlyREST file is deprecated and will be removed in the future. Move your ReadonlyREST SSL settings to Elasticsearch config file. See https://docs.readonlyrest.com/elasticsearch#encryption for details")
           case Some(_) =>
         })
       } yield settings
@@ -120,9 +119,9 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with Logging {
                                  (implicit decoder: Decoder[Option[RorSslSettings]],
                                   systemContext: SystemContext) = {
     for {
-      _ <- lift(logger.info(s"Trying to load ROR SSL settings from '${settingsFile.show}' file ..."))
+      _ <- lift(noRequestIdLogger.info(s"Trying to load ROR SSL settings from '${settingsFile.show}' file ..."))
       settings <- EitherT(loadSetting[Option[RorSslSettings]](settingsFile, "ROR SSL settings"))
-      _ <- lift(logger.info(settings match {
+      _ <- lift(noRequestIdLogger.info(settings match {
         case Some(_) => s"ROR SSL settings loaded from '${settingsFile.show}' file."
         case None => s"No ROR SSL settings found in '${settingsFile.show}' file."
       }))
@@ -232,7 +231,7 @@ object SslSettings {
 
 }
 
-private object SslDecoders extends Logging {
+private object SslDecoders extends RequestIdAwareLogging {
 
   object consts {
     val rorSection = "readonlyrest"
@@ -285,7 +284,7 @@ private object SslDecoders extends Logging {
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
       if (presentKeys.intersect(truststoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
         val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${truststoreBasedKeys.show}] could not be present in the same settings section"
-        logger.error(errorMessage)
+        noRequestIdLogger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       } else if (presentKeys.intersect(truststoreBasedKeys).nonEmpty) {
         truststoreBasedClientCertificateSettingsDecoder(c)
@@ -296,7 +295,7 @@ private object SslDecoders extends Logging {
             .map(Option.apply)
         } else {
           val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
-          logger.error(errorMessage)
+          noRequestIdLogger.error(errorMessage)
           Left(DecodingFailure(errorMessage, List.empty))
         }
       } else {
@@ -320,7 +319,7 @@ private object SslDecoders extends Logging {
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
       if (presentKeys.intersect(keystoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
         val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${keystoreBasedKeys.show}] could not be present in the same settings section"
-        logger.error(errorMessage)
+        noRequestIdLogger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       } else if (presentKeys.intersect(keystoreBasedKeys).nonEmpty) {
         keystoreBasedServerCertificateSettingsDecoder(c)
@@ -329,12 +328,12 @@ private object SslDecoders extends Logging {
           fileBasedServerCertificateSettingsDecoder(c)
         } else {
           val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
-          logger.error(errorMessage)
+          noRequestIdLogger.error(errorMessage)
           Left(DecodingFailure(errorMessage, List.empty))
         }
       } else {
         val errorMessage = "There was no SSL settings present for server"
-        logger.error(errorMessage)
+        noRequestIdLogger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
       }
     }

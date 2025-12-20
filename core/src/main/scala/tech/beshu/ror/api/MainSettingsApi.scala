@@ -21,7 +21,6 @@ import cats.data.EitherT
 import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.MainSettingsApi.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest.Type
@@ -35,12 +34,13 @@ import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoading
 import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 class MainSettingsApi(rorInstance: RorInstance,
                       settingsYamlParser: RawRorSettingsYamlParser,
                       mainSettingsIndexSource: IndexSettingsSource[MainRorSettings],
                       mainSettingsFileSource: FileSettingsSource[MainRorSettings])
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   import MainSettingsApi.Utils.*
   import MainSettingsApi.Utils.decoders.*

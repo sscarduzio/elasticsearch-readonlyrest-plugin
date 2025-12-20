@@ -20,9 +20,9 @@ import cats.Show
 import cats.data.EitherT
 import cats.implicits.toShow
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 trait RetryStrategy {
   def withRetry[ERROR: Show, RESULT](operation: Task[Either[ERROR, RESULT]],
@@ -33,7 +33,7 @@ trait RetryStrategy {
 }
 
 class ConfigurableRetryStrategy(config: LoadingRetryStrategySettings)
-  extends RetryStrategy with Logging {
+  extends RetryStrategy with RequestIdAwareLogging {
 
   override def withRetry[ERROR: Show, RESULT](operation: Task[Either[ERROR, RESULT]],
                                               operationDescription: String): Task[Either[ERROR, RESULT]] =
@@ -51,10 +51,10 @@ class ConfigurableRetryStrategy(config: LoadingRetryStrategySettings)
         case Right(value) =>
           Task.now(Right(value))
         case Left(error) if shouldRetry(currentAttempt, maxAttempts) =>
-          logger.debug(s"$operationDescription - retry attempt $currentAttempt/$maxAttempts failed. Retrying in ${config.attemptsInterval.show}...")
+          noRequestIdLogger.debug(s"$operationDescription - retry attempt $currentAttempt/$maxAttempts failed. Retrying in ${config.attemptsInterval.show}...")
           attemptWithRetry(operation, currentAttempt + 1, maxAttempts, operationDescription)
         case Left(error) =>
-          logger.debug(s"$operationDescription - failed permanently after $currentAttempt attempts: ${error.show}")
+          noRequestIdLogger.debug(s"$operationDescription - failed permanently after $currentAttempt attempts: ${error.show}")
           Task.now(Left(error))
       }
     } yield finalResult

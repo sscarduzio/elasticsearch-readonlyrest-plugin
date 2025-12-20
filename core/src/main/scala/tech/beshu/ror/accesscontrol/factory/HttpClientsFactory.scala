@@ -82,7 +82,7 @@ object HttpClientsFactory {
 }
 
 // todo: remove synchronized, use more sophisticated lock mechanism
-class AsyncHttpClientsFactory extends HttpClientsFactory with Logging {
+class AsyncHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLogging {
 
   private val existingClients = new CopyOnWriteArrayList[AsyncHttpClient]()
   private val isWorking = AtomicBoolean(true)
@@ -118,7 +118,7 @@ class AsyncHttpClientsFactory extends HttpClientsFactory with Logging {
       }
     } catch {
       case ex: Throwable =>
-        logger.error("ERR: ", ex)
+        noRequestIdLogger.error("ERR: ", ex)
         throw ex
     }
   }

@@ -19,25 +19,25 @@ package tech.beshu.ror.settings.ror.loader
 import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.{EitherTOps, LoggerOps}
 
 trait StartingRorSettingsLoader {
-  this: Logging =>
+  this: RequestIdAwareLogging =>
 
   def load(): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]]
 
   protected def loadSettingsFromSource[S: Show, E: Show](source: ReadOnlySettingsSource[S, E],
                                                          settingsDescription: String): EitherT[Task, LoadingError, S] = {
     for {
-      _ <- EitherT.liftTask(logger.info(s"Loading ReadonlyREST $settingsDescription ..."))
+      _ <- EitherT.liftTask(noRequestIdLogger.info(s"Loading ReadonlyREST $settingsDescription ..."))
       loadedSettings <- EitherT(source.load())
         .biSemiflatTap(
-          error => logger.dInfo(s"Loading ReadonlyREST $settingsDescription failed: ${error.show}"),
-          settings => logger.dDebug(s"Loaded ReadonlyREST $settingsDescription:\n${settings.show}")
+          error => noRequestIdLogger.dInfo(s"Loading ReadonlyREST $settingsDescription failed: ${error.show}"),
+          settings => noRequestIdLogger.dDebug(s"Loaded ReadonlyREST $settingsDescription:\n${settings.show}")
         )
         .leftMap(error => error.show)
     } yield loadedSettings

@@ -17,16 +17,16 @@
 package tech.beshu.ror.settings.ror.loader
 
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.source.*
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIndexSource: MainSettingsIndexSource,
                                                                   mainSettingsIndexLoadingRetryStrategy: RetryStrategy,
                                                                   mainSettingsFileSource: MainSettingsFileSource,
                                                                   testSettingsIndexSource: TestSettingsIndexSource)
-  extends StartingRorSettingsLoader with Logging {
+  extends StartingRorSettingsLoader with RequestIdAwareLogging {
 
   override def load(): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
     val result = for {
