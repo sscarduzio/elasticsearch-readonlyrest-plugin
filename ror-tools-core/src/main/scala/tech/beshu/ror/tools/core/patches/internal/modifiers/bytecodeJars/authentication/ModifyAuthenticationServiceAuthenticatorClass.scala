@@ -32,7 +32,7 @@ import java.io.{File, InputStream}
   bytecode patch adapts to ES versions (6.7+/7.4+/7.15.x) — using an invokedynamic Consumer callback where required
   — while ES ≥ 7.16.0 is left unchanged.
 */
-private[patches] class ModifyAuthenticationServiceAuthenticatorClass(esVersion: SemVer)
+private[patches] class ModifyAuthenticationServiceAuthenticatorClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -984,4 +984,8 @@ private[patches] class ModifyAuthenticationServiceAuthenticatorClass(esVersion: 
       }
     }
   }
+}
+
+object ModifyAuthenticationServiceAuthenticatorClass {
+  def apply(esVersion: SemVer): ModifyAuthenticationServiceAuthenticatorClass = new ModifyAuthenticationServiceAuthenticatorClass(esVersion)
 }

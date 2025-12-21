@@ -28,7 +28,7 @@ import java.io.{File, InputStream}
   RepositoriesService to handle repositories and snapshots. In this bytecode modifier we remove the conditional check
   which was responsible for disabling cluster events update on RepositoriesService instance.
  */
-private [patches] class ModifyRepositoriesServiceClass(esVersion: SemVer)
+private[patches] class ModifyRepositoriesServiceClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -93,4 +93,8 @@ private [patches] class ModifyRepositoriesServiceClass(esVersion: SemVer)
       underlying.visitInsn(opcode)
     }
   }
+}
+
+object ModifyRepositoriesServiceClass {
+  def apply(esVersion: SemVer): ModifyRepositoriesServiceClass = new ModifyRepositoriesServiceClass(esVersion)
 }

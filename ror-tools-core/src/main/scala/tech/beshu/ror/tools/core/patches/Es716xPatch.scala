@@ -33,24 +33,24 @@ import scala.language.postfixOps
 
 private[patches] class Es716xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
-    new ElasticsearchJarPatchCreator(
-      new ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
+    ElasticsearchJarPatchCreator(
+      ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
         getPropertySecurityPermission
       )),
-      new ModifyRepositoriesServiceClass(esVersion),
-      new ModifySnapshotsServiceClass(esVersion)
+      ModifyRepositoriesServiceClass(esVersion),
+      ModifySnapshotsServiceClass(esVersion)
     ),
-    new RorSecurityPolicyPatchCreator(
+    RorSecurityPolicyPatchCreator(
       AddAdditionalPermissions(NonEmptyList.of(
         getPropertySecurityPermission
       )),
     ),
-    new XPackCoreJarPatchCreator(
+    XPackCoreJarPatchCreator(
       ModifyApplicationPermissionClass,
     ),
-    new XPackSecurityJarPatchCreator(
-      new ModifyAuthenticationChainClass(esVersion),
-      new ModifyAuthorizationServiceClass(esVersion),
+    XPackSecurityJarPatchCreator(
+      ModifyAuthenticationChainClass(esVersion),
+      ModifyAuthorizationServiceClass(esVersion),
       ModifySecurityClass,
       ModifySecurityServerTransportInterceptorClass,
     )

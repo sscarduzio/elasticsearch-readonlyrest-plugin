@@ -28,7 +28,7 @@ import java.io.{File, InputStream}
   SnapshotsService to handle snapshots. In this bytecode modifier we remove the conditional check
   which was responsible for disabling cluster events update on SnapshotsService instance.
  */
-private [patches] class ModifySnapshotsServiceClass(esVersion: SemVer)
+private[patches] class ModifySnapshotsServiceClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -80,4 +80,8 @@ private [patches] class ModifySnapshotsServiceClass(esVersion: SemVer)
       underlying.visitInsn(opcode)
     }
   }
+}
+
+object ModifySnapshotsServiceClass {
+  def apply(esVersion: SemVer): ModifySnapshotsServiceClass = new ModifySnapshotsServiceClass(esVersion)
 }

@@ -29,7 +29,7 @@ import java.io.{File, InputStream}
  * requires access to certain paths that would otherwise be blocked by Elasticsearch's
  * security entitlements system in versions 8.18.1 and 9.0.1+.
  */
-private[patches] class ModifyEntitlementInitializationClass(esVersion: SemVer)
+private[patches] class ModifyEntitlementInitializationClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -138,4 +138,8 @@ private[patches] class ModifyEntitlementInitializationClass(esVersion: SemVer)
       underlying.visitEnd()
     }
   }
+}
+
+object ModifyEntitlementInitializationClass {
+  def apply(esVersion: SemVer): ModifyEntitlementInitializationClass = new ModifyEntitlementInitializationClass(esVersion)
 }

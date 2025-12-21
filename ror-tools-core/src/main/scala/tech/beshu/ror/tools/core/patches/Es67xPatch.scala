@@ -29,13 +29,13 @@ import scala.language.postfixOps
 
 private[patches] class Es67xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
-    new ElasticsearchJarPatchCreator(
-      new ModifyRepositoriesServiceClass(esVersion),
-      new ModifySnapshotsServiceClass(esVersion)
+    ElasticsearchJarPatchCreator(
+      ModifyRepositoriesServiceClass(esVersion),
+      ModifySnapshotsServiceClass(esVersion)
     ),
-    new OptionalXPackSecurityJarPatchCreator(
-      new ModifyAuthenticationServiceAuthenticatorClass(esVersion),
-      new ModifyAuthorizationServiceClass(esVersion),
+    OptionalXPackSecurityJarPatchCreator(
+      ModifyAuthenticationServiceAuthenticatorClass(esVersion),
+      ModifyAuthorizationServiceClass(esVersion),
       ModifySecurityClass,
       ModifySecurityServerTransportInterceptorClass,
     )

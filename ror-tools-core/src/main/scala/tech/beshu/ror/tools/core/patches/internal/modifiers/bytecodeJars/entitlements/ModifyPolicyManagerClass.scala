@@ -36,7 +36,7 @@ import java.io.{File, InputStream}
  * This ensures ReadonlyREST is not blocked by the entitlements system when PolicyManager is the
  * class responsible for enforcing file-read permissions.
  */
-private[patches] class ModifyPolicyManagerClass(esVersion: SemVer)
+private[patches] class ModifyPolicyManagerClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -174,4 +174,8 @@ private[patches] class ModifyPolicyManagerClass(esVersion: SemVer)
       }
     }
   }
+}
+
+object ModifyPolicyManagerClass {
+  def apply(esVersion: SemVer): ModifyPolicyManagerClass = new ModifyPolicyManagerClass(esVersion)
 }

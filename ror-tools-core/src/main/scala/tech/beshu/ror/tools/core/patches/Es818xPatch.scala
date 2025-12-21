@@ -32,32 +32,32 @@ import scala.language.postfixOps
 
 private[patches] class Es818xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
-    new ElasticsearchJarPatchCreator(
+    ElasticsearchJarPatchCreator(
       OpenModule,
-      new ModifyRepositoriesServiceClass(esVersion)
+      ModifyRepositoriesServiceClass(esVersion)
     ),
-    new EntitlementJarPatchCreator(
+    EntitlementJarPatchCreator(
       esVersion match {
-        case v if v >= es8182 => new ModifyFilesEntitlementsValidationClass(esVersion)
-        case _ => new ModifyEntitlementInitializationClass(esVersion)
+        case v if v >= es8182 => ModifyFilesEntitlementsValidationClass(esVersion)
+        case _ => ModifyEntitlementInitializationClass(esVersion)
       },
       ModifyPolicyParserClass,
       esVersion match {
-        case v if v >= es8190 => new ModifyPolicyCheckerImplClass(esVersion)
-        case _ => new ModifyPolicyManagerClass(esVersion)
+        case v if v >= es8190 => ModifyPolicyCheckerImplClass(esVersion)
+        case _ => ModifyPolicyManagerClass(esVersion)
       },
     ),
-    new XPackCoreJarPatchCreator(
+    XPackCoreJarPatchCreator(
       OpenModule,
       ModifyAsyncSearchSecurityClass
     ),
-    new XPackSecurityJarPatchCreator(
+    XPackSecurityJarPatchCreator(
       OpenModule,
-      new ModifyAuthenticationChainClass(esVersion),
-      new ModifyAuthorizationServiceClass(esVersion),
+      ModifyAuthenticationChainClass(esVersion),
+      ModifyAuthorizationServiceClass(esVersion),
       ModifySecurityClass,
     ),
-    new XPackIlmJarPatchCreator(
+    XPackIlmJarPatchCreator(
       OpenModule
     )
   )

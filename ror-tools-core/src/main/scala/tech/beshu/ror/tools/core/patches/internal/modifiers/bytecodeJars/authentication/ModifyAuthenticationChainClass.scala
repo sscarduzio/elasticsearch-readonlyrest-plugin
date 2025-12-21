@@ -28,7 +28,7 @@ import java.io.{File, InputStream}
   build an internal X-Pack Authentication, call maybeLookupRunAsUser(...), and return. This bypasses the realm chain
   so ROR works even without configured realms/credentials.
 */
-private[patches] class ModifyAuthenticationChainClass(esVersion: SemVer)
+private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -567,4 +567,8 @@ private[patches] class ModifyAuthenticationChainClass(esVersion: SemVer)
       }
     }
   }
+}
+
+object ModifyAuthenticationChainClass {
+  def apply(esVersion: SemVer): ModifyAuthenticationChainClass = new ModifyAuthenticationChainClass(esVersion)
 }
