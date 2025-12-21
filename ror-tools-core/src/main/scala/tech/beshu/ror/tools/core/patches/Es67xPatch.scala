@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
-import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, XPackSecurityJarPatchCreator}
+import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, OptionalXPackSecurityJarPatchCreator, XPackSecurityJarPatchCreator}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
@@ -35,7 +35,7 @@ private[patches] class Es67xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       new ModifySnapshotsServiceClass(esVersion),
       new ModifyRepositoriesServiceClass(esVersion),
     ),
-    new XPackSecurityJarPatchCreator(
+    new OptionalXPackSecurityJarPatchCreator(
       new CreateRorAuthorizationInfoProviderClass(esVersion),
       new ModifyAuthenticationChainClass(esVersion),
       new ModifyAuthorizationServiceClass(esVersion),

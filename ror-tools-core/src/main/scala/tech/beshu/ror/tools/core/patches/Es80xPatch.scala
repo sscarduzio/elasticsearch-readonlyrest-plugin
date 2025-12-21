@@ -50,7 +50,6 @@ private[patches] class Es80xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       ModifyApplicationPermissionClass,
     ),
     new XPackSecurityJarPatchCreator(
-      OpenModule,
       new CreateRorAuthorizationInfoProviderClass(esVersion),
       new ModifyAuthenticationChainClass(esVersion),
       new ModifyAuthorizationServiceClass(esVersion),

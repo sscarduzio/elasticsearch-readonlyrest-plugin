@@ -39,7 +39,7 @@ private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new OptionalXPackCoreJarPatchCreator(
       ModifyApplicationPermissionClass,
     ),
-    new XPackSecurityJarPatchCreator(
+    new OptionalXPackSecurityJarPatchCreator(
       new CreateRorAuthorizationInfoProviderClass(esVersion),
       new ModifyAuthenticationChainClass(esVersion),
       new ModifyAuthorizationServiceClass(esVersion),
