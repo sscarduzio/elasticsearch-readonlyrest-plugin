@@ -22,7 +22,6 @@ import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, OptionalXPackSecurityJarPatchCreator}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationServiceAuthenticatorClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyAuthorizationServiceClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityServerTransportInterceptorClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{ModifyRepositoriesServiceClass, ModifySnapshotsServiceClass}
 
@@ -35,9 +34,9 @@ private[patches] class Es67xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       new ModifySnapshotsServiceClass(esVersion)
     ),
     new OptionalXPackSecurityJarPatchCreator(
-      ModifySecurityClass,
-      ModifySecurityServerTransportInterceptorClass,
       new ModifyAuthenticationServiceAuthenticatorClass(esVersion),
       new ModifyAuthorizationServiceClass(esVersion),
+      ModifySecurityClass,
+      ModifySecurityServerTransportInterceptorClass,
     )
   )

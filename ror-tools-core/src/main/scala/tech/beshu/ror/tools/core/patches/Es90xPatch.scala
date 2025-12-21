@@ -41,11 +41,11 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
         case v if v >= es902 => new ModifyFilesEntitlementsValidationClass(esVersion)
         case _ => new ModifyEntitlementInitializationClass(esVersion)
       },
-      ModifyPolicyParserClass,
       esVersion match {
         case v if v >= es903 => new ModifyPolicyCheckerImplClass(esVersion)
         case _ => new ModifyPolicyManagerClass(esVersion)
       },
+      ModifyPolicyParserClass,
     ),
     new XPackCoreJarPatchCreator(
       OpenModule,
@@ -53,9 +53,9 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      ModifySecurityClass,
       new ModifyAuthenticationChainClass(esVersion),
       new ModifyAuthorizationServiceClass(esVersion),
+      ModifySecurityClass,
     ),
     new XPackIlmJarPatchCreator(
       OpenModule

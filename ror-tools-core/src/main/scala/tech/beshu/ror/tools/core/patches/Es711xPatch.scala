@@ -50,9 +50,9 @@ private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       ModifyApplicationPermissionClass,
     ),
     new XPackSecurityJarPatchCreator(
-      ModifySecurityClass,
-      ModifySecurityServerTransportInterceptorClass,
       new ModifyAuthenticationServiceAuthenticatorClass(esVersion),
       new ModifyAuthorizationServiceClass(esVersion),
+      ModifySecurityClass,
+      ModifySecurityServerTransportInterceptorClass,
     )
   )

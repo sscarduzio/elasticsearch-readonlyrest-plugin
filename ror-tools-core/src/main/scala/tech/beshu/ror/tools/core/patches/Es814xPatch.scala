@@ -52,9 +52,9 @@ private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      ModifySecurityClass,
       new ModifyAuthenticationChainClass(esVersion),
       new ModifyAuthorizationServiceClass(esVersion),
+      ModifySecurityClass,
     ),
     new XPackIlmJarPatchCreator(
       OpenModule

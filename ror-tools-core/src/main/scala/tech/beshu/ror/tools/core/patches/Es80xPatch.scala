@@ -21,7 +21,6 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyAuthorizationServiceClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{ModifyApplicationPermissionClass, ModifyPolicyUtilClass}
@@ -49,8 +48,8 @@ private[patches] class Es80xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       ModifyApplicationPermissionClass
     ),
     new XPackSecurityJarPatchCreator(
-      ModifySecurityClass,
       new ModifyAuthenticationChainClass(esVersion),
       new ModifyAuthorizationServiceClass(esVersion),
+      ModifySecurityClass,
     )
   )
