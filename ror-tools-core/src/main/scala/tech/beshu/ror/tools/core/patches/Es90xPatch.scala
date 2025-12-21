@@ -33,36 +33,36 @@ import scala.language.postfixOps
 
 private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
-    new ElasticsearchJarPatchCreator(
+    ElasticsearchJarPatchCreator(
       OpenModule,
-      new ModifyRepositoriesServiceClass(esVersion)
+      ModifyRepositoriesServiceClass(esVersion)
     ),
-    new EntitlementJarPatchCreator(
+    EntitlementJarPatchCreator(
       esVersion match {
-        case v if v >= es902 => new ModifyFilesEntitlementsValidationClass(esVersion)
-        case _ => new ModifyEntitlementInitializationClass(esVersion)
+        case v if v >= es902 => ModifyFilesEntitlementsValidationClass(esVersion)
+        case _ => ModifyEntitlementInitializationClass(esVersion)
       },
       esVersion match {
-        case v if v >= es903 => new ModifyPolicyCheckerImplClass(esVersion)
-        case _ => new ModifyPolicyManagerClass(esVersion)
+        case v if v >= es903 => ModifyPolicyCheckerImplClass(esVersion)
+        case _ => ModifyPolicyManagerClass(esVersion)
       },
       ModifyPolicyParserClass,
     ),
-    new XPackCoreJarPatchCreator(
+    XPackCoreJarPatchCreator(
       OpenModule,
       ModifyAsyncSearchSecurityClass,
       ModifySecurityContextClass,
     ),
-    new XPackSecurityJarPatchCreator(
+    XPackSecurityJarPatchCreator(
       OpenModule,
-      new CreateRorAuthorizationInfoProviderClass(esVersion),
-      new ModifyAuthenticationChainClass(esVersion),
-      new ModifyAuthorizationServiceClass(esVersion),
+      CreateRorAuthorizationInfoProviderClass(esVersion),
+      ModifyAuthenticationChainClass(esVersion),
+      ModifyAuthorizationServiceClass(esVersion),
       ModifyRBACEngineClass,
       ModifyRestHasPrivilegesActionClass,
       ModifySecurityClass,
     ),
-    new XPackIlmJarPatchCreator(
+    XPackIlmJarPatchCreator(
       OpenModule
     )
   )

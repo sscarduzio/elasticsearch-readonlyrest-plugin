@@ -32,7 +32,7 @@ import java.io.File
  * (built from a role equivalent to “superuser”, with cluster privilege "all" and broad index
  * permissions on "*", plus application privileges where supported by the ES version).
  */
-private[patches] class CreateRorAuthorizationInfoProviderClass(esVersion: SemVer)
+private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -125,7 +125,7 @@ private[patches] class CreateRorAuthorizationInfoProviderClass(esVersion: SemVer
       case v if v >= es810 => emitRorCreateArtificialAuthorizationInfoForEsGE810(cw)
       case v if v >= es800 => emitRorCreateArtificialAuthorizationInfoForEsGE800(cw)
       case v if v >= es670 => emitRorCreateArtificialAuthorizationInfoForEsGE670(cw)
-      case _               => emitRorCreateArtificialAuthorizationInfoStub(cw) // return null
+      case _ => emitRorCreateArtificialAuthorizationInfoStub(cw) // return null
     }
 
     cw.visitEnd()
@@ -693,4 +693,8 @@ private[patches] class CreateRorAuthorizationInfoProviderClass(esVersion: SemVer
     mv.visitMaxs(6, 1)
     mv.visitEnd()
   }
+}
+
+object CreateRorAuthorizationInfoProviderClass {
+  def apply(esVersion: SemVer): CreateRorAuthorizationInfoProviderClass = new CreateRorAuthorizationInfoProviderClass(esVersion)
 }

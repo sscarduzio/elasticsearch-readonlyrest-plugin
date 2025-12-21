@@ -35,27 +35,27 @@ import scala.language.postfixOps
 
 private[patches] class Es89xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
-    new ElasticsearchJarPatchCreator(
+    ElasticsearchJarPatchCreator(
       OpenModule,
-      new ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
+      ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
         createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
-      new ModifyRepositoriesServiceClass(esVersion)
+      ModifyRepositoriesServiceClass(esVersion)
     ),
-    new RorSecurityPolicyPatchCreator(
+    RorSecurityPolicyPatchCreator(
       AddAdditionalPermissions(NonEmptyList.of(
         createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
     ),
-    new XPackCoreJarPatchCreator(
+    XPackCoreJarPatchCreator(
       OpenModule,
       ModifySecurityContextClass,
     ),
-    new XPackSecurityJarPatchCreator(
+    XPackSecurityJarPatchCreator(
       OpenModule,
-      new CreateRorAuthorizationInfoProviderClass(esVersion),
-      new ModifyAuthenticationChainClass(esVersion),
-      new ModifyAuthorizationServiceClass(esVersion),
+      CreateRorAuthorizationInfoProviderClass(esVersion),
+      ModifyAuthenticationChainClass(esVersion),
+      ModifyAuthorizationServiceClass(esVersion),
       ModifyRBACEngineClass,
       ModifyRestHasPrivilegesActionClass,
       ModifySecurityClass,

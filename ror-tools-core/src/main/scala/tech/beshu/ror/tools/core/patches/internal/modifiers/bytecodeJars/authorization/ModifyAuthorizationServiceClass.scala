@@ -28,7 +28,7 @@ import java.io.{File, InputStream}
   in controlled scenarios. This bytecode modifier rewrites authorize(…) to stash a superuser-like AuthorizationInfo
   in ThreadContext and immediately succeed, effectively short-circuiting X-Pack authorization.
 */
-private[patches] class ModifyAuthorizationServiceClass(esVersion: SemVer)
+private[patches] class ModifyAuthorizationServiceClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -402,4 +402,8 @@ private[patches] class ModifyAuthorizationServiceClass(esVersion: SemVer)
       underlying.visitEnd()
     }
   }
+}
+
+object ModifyAuthorizationServiceClass {
+  def apply(esVersion: SemVer): ModifyAuthorizationServiceClass = new ModifyAuthorizationServiceClass(esVersion)
 }

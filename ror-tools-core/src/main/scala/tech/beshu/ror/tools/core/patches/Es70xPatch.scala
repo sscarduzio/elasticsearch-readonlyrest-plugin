@@ -31,17 +31,17 @@ import scala.language.postfixOps
 
 private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
-    new ElasticsearchJarPatchCreator(
-      new ModifySnapshotsServiceClass(esVersion),
-      new ModifyRepositoriesServiceClass(esVersion),
+    ElasticsearchJarPatchCreator(
+      ModifyRepositoriesServiceClass(esVersion),
+      ModifySnapshotsServiceClass(esVersion)
     ),
-    new OptionalXPackCoreJarPatchCreator(
+    OptionalXPackCoreJarPatchCreator(
       ModifyApplicationPermissionClass,
     ),
-    new OptionalXPackSecurityJarPatchCreator(
-      new CreateRorAuthorizationInfoProviderClass(esVersion),
-      new ModifyAuthenticationServiceAuthenticatorClass(esVersion),
-      new ModifyAuthorizationServiceClass(esVersion),
+    OptionalXPackSecurityJarPatchCreator(
+      CreateRorAuthorizationInfoProviderClass(esVersion),
+      ModifyAuthenticationServiceAuthenticatorClass(esVersion),
+      ModifyAuthorizationServiceClass(esVersion),
       ModifyRBACEngineClass,
       ModifyRestHasPrivilegesActionClass,
       ModifySecurityClass,

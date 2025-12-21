@@ -40,8 +40,8 @@ import java.security.Permission
  * `validatePolicyPermissions(...)` is executed against the extended matcher instead of the default
  * allowed-permissions set; all other plugins continue to use the standard PolicyUtil validation.
  */
-private[patches] class ModifyPolicyUtilClass(esVersion: SemVer,
-                                             additionalAllowedPermissions: NonEmptyList[Permission])
+private[patches] class ModifyPolicyUtilClass private(esVersion: SemVer,
+                                                     additionalAllowedPermissions: NonEmptyList[Permission])
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -374,4 +374,10 @@ private[patches] class ModifyPolicyUtilClass(esVersion: SemVer,
     }
   }
 
+}
+
+object ModifyPolicyUtilClass {
+  def apply(esVersion: SemVer,
+            additionalAllowedPermissions: NonEmptyList[Permission]): ModifyPolicyUtilClass =
+    new ModifyPolicyUtilClass(esVersion, additionalAllowedPermissions)
 }

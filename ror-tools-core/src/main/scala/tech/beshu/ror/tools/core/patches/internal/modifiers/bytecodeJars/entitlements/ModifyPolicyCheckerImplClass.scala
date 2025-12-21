@@ -36,7 +36,7 @@ import java.io.{File, InputStream}
  * This applies both to the initial path and (when link following is enabled) to the resolved
  * real path, ensuring ReadonlyREST is not blocked by the entitlements system when reading files.
  */
-private[patches] class ModifyPolicyCheckerImplClass(esVersion: SemVer)
+private[patches] class ModifyPolicyCheckerImplClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -172,4 +172,8 @@ private[patches] class ModifyPolicyCheckerImplClass(esVersion: SemVer)
       }
     }
   }
+}
+
+object ModifyPolicyCheckerImplClass {
+  def apply(esVersion: SemVer): ModifyPolicyCheckerImplClass = new ModifyPolicyCheckerImplClass(esVersion)
 }
