@@ -14,14 +14,26 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security
 
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 
-private [patches] object DeactivateSecurityServerTransportInterceptor extends BytecodeJarModifier {
+/**
+ * Modifies the SecurityServerTransportInterceptor class to effectively disable X-Pack Security’s
+ * server-side transport interception logic.
+ *
+ * This patch overrides:
+ *  - `interceptSender(...)` to return the original sender passed as a method argument, and
+ *  - `interceptHandler(...)` to return the original request handler passed as a method argument.
+ *
+ * By short-circuiting both interception points, transport requests are no longer wrapped or
+ * modified by the Security interceptor layer, preventing X-Pack Security from injecting its
+ * transport-level authentication/authorization handling that can conflict with ReadonlyREST.
+ */
+private [patches] object ModifySecurityServerTransportInterceptorClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(

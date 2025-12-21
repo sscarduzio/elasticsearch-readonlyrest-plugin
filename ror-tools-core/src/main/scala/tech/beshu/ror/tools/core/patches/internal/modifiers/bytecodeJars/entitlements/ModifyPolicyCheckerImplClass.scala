@@ -24,6 +24,18 @@ import tech.beshu.ror.tools.core.utils.EsUtil.{es8190, es900, es903}
 
 import java.io.{File, InputStream}
 
+/**
+ * Modifies the PolicyCheckerImpl class to bypass file-read entitlement validation for the
+ * ReadonlyREST component.
+ *
+ * This patch rewrites `checkFileRead(...)` so that every `entitlements.fileAccess().canRead(path)`
+ * check is replaced with a conditional: if `entitlements.componentName()` equals `"readonlyrest"`,
+ * the check is treated as allowed (returns `true`); otherwise the original entitlement-based
+ * `canRead(...)` logic is executed.
+ *
+ * This applies both to the initial path and (when link following is enabled) to the resolved
+ * real path, ensuring ReadonlyREST is not blocked by the entitlements system when reading files.
+ */
 private[patches] class ModifyPolicyCheckerImplClass(esVersion: SemVer)
   extends BytecodeJarModifier {
 

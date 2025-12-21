@@ -25,8 +25,23 @@ import tech.beshu.ror.tools.core.utils.EsUtil.es800
 import java.io.{File, InputStream}
 import java.security.Permission
 
-private[patches] class ModifyBootstrapPolicyUtilClass(esVersion: SemVer,
-                                                      additionalAllowedPermissions: NonEmptyList[Permission])
+/**
+ * Modifies the PolicyUtil class to grant ReadonlyREST an extended (but still controlled) set of
+ * Java security permissions when its plugin policy is loaded.
+ *
+ * This patch injects two helper methods:
+ *  - `isItRorPlugin(PluginPolicyInfo)`, which detects the ReadonlyREST policy file by checking that
+ *    the policy path ends with `/readonlyrest/plugin-security.policy`, and
+ *  - `allowedPluginPermissionsExclusivelyForRor()`, which creates a new PermissionMatcher based on
+ *    Elasticsearch’s default `ALLOWED_PLUGIN_PERMISSIONS` and augments it with the
+ *    `additionalAllowedPermissions` provided to this patcher.
+ *
+ * It then rewrites `getPluginPolicyInfo(...)` so that when the loaded policy belongs to ReadonlyREST,
+ * `validatePolicyPermissions(...)` is executed against the extended matcher instead of the default
+ * allowed-permissions set; all other plugins continue to use the standard PolicyUtil validation.
+ */
+private[patches] class ModifyPolicyUtilClass(esVersion: SemVer,
+                                             additionalAllowedPermissions: NonEmptyList[Permission])
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {

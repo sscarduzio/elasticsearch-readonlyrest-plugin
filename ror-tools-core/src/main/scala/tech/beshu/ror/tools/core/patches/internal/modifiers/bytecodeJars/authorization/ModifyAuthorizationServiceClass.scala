@@ -29,7 +29,7 @@ import java.io.{File, InputStream}
   and rewrites authorize(…) to stash it in ThreadContext and immediately succeed, effectively short-circuiting
   X-Pack authorization.
 */
-private [patches] class DummyAuthorizeInAuthorizationService(esVersion: SemVer)
+private[patches] class ModifyAuthorizationServiceClass(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {

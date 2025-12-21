@@ -22,9 +22,11 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyBootstrapPolicyUtilClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyAuthorizationServiceClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyPolicyUtilClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.ModifySecurityClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
 
@@ -34,10 +36,10 @@ private[patches] class Es89xPatch(rorPluginDirectory: RorPluginDirectory, esVers
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       OpenModule,
-      new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
+      new ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
         createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+      new ModifyRepositoriesServiceClass(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
       AddAdditionalPermissions(NonEmptyList.of(
@@ -49,8 +51,8 @@ private[patches] class Es89xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
-      new DummyAuthenticationInAuthenticationChain(esVersion),
-      new DummyAuthorizeInAuthorizationService(esVersion),
+      ModifySecurityClass,
+      new ModifyAuthenticationChainClass(esVersion),
+      new ModifyAuthorizationServiceClass(esVersion),
     )
   )

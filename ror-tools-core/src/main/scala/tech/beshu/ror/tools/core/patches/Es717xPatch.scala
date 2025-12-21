@@ -22,9 +22,11 @@ import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, RorSecurityPolicyPatchCreator, XPackCoreJarPatchCreator, XPackSecurityJarPatchCreator}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{AlwaysGrantApplicationPermission, ModifyBootstrapPolicyUtilClass, SecurityManagerShouldAllowReadingEsConfigFile}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyAuthorizationServiceClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{ModifyApplicationPermissionClass, ModifyPolicyUtilClass, SecurityManagerShouldAllowReadingEsConfigFile}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityServerTransportInterceptorClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
 
@@ -33,10 +35,10 @@ import scala.language.postfixOps
 private[patches] class Es717xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
-      new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
+      new ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
         getPropertySecurityPermission
       )),
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion),
+      new ModifyRepositoriesServiceClass(esVersion),
       new SecurityManagerShouldAllowReadingEsConfigFile(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
@@ -45,12 +47,12 @@ private[patches] class Es717xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       )),
     ),
     new XPackCoreJarPatchCreator(
-      AlwaysGrantApplicationPermission
+      ModifyApplicationPermissionClass
     ),
     new XPackSecurityJarPatchCreator(
-      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
-      DeactivateSecurityServerTransportInterceptor,
-      new DummyAuthenticationInAuthenticationChain(esVersion),
-      new DummyAuthorizeInAuthorizationService(esVersion),
+      ModifySecurityClass,
+      ModifySecurityServerTransportInterceptorClass,
+      new ModifyAuthenticationChainClass(esVersion),
+      new ModifyAuthorizationServiceClass(esVersion),
     )
   )

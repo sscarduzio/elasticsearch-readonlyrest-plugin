@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services
 
 import just.semver.SemVer
 import org.objectweb.asm.*
@@ -28,7 +28,7 @@ import java.io.{File, InputStream}
   SnapshotsService to handle snapshots. In this bytecode modifier we remove the conditional check
   which was responsible for disabling cluster events update on SnapshotsService instance.
  */
-private [patches] class SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion: SemVer)
+private [patches] class ModifySnapshotsServiceClass(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {

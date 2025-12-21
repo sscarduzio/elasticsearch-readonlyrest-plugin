@@ -14,24 +14,34 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions
 
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 
-private [patches] object DisabledAsyncSearchSecurity extends BytecodeJarModifier {
+/**
+ * Modifies the ApplicationPermission class to disable application-level privilege filtering.
+ *
+ * This patch overrides the `grants(ApplicationPrivilege, String)` method so that it always returns
+ * `true`, regardless of the requested application privilege and resource.
+ *
+ * As a result, any application privilege check performed through `ApplicationPermission.grants(...)`
+ * is treated as granted, preventing X-Pack application permission evaluation from blocking requests
+ * that are authorized by ReadonlyREST.
+ */
+private [patches] object ModifyApplicationPermissionClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
-      filePathString = "org/elasticsearch/xpack/core/async/AsyncSearchSecurity.class",
-      processFileContent = doDisableAsyncSearchSecurity
+      filePathString = "org/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission.class",
+      processFileContent = doAlwaysGrantApplicationPermission
     )
   }
 
-  private def doDisableAsyncSearchSecurity(moduleInputStream: InputStream) = {
+  private def doAlwaysGrantApplicationPermission(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
@@ -47,34 +57,29 @@ private [patches] object DisabledAsyncSearchSecurity extends BytecodeJarModifier
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
       name match {
-        case "hasClusterPrivilege" =>
-          new HasClusterPrivilegeAlwaysReturnsTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
+        case "grants" =>
+          new GrantsMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
   }
 
-  private class HasClusterPrivilegeAlwaysReturnsTrue(underlying: MethodVisitor)
+  private class GrantsMethodReturningTrue(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
-      val label0 = new Label()
+      val label0 = new Label
       underlying.visitLabel(label0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
       underlying.visitInsn(Opcodes.ICONST_1)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/action/ActionListener", "onResponse", "(Ljava/lang/Object;)V", true)
-      val label1 = new Label()
+      underlying.visitInsn(Opcodes.IRETURN)
+      val label1 = new Label
       underlying.visitLabel(label1)
-      underlying.visitInsn(Opcodes.RETURN)
-      val label2 = new Label()
-      underlying.visitLabel(label2)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/async/AsyncSearchSecurity;", null, label0, label2, 0)
-      underlying.visitLocalVariable("privilegeName", "Ljava/lang/String;", null, label0, label2, 1)
-      underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Ljava/lang/Boolean;>;", label0, label2, 2)
-      underlying.visitMaxs(2, 3)
+      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission;", null, label0, label1, 0)
+      underlying.visitLocalVariable("other", "Lorg/elasticsearch/xpack/core/security/authz/privilege/ApplicationPrivilege;", null, label0, label1, 1)
+      underlying.visitLocalVariable("resource", "Ljava/lang/String;", null, label0, label1, 2)
+      underlying.visitMaxs(1, 3)
       underlying.visitEnd()
     }
   }

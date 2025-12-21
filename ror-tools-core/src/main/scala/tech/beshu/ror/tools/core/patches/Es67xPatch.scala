@@ -20,22 +20,24 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, OptionalXPackSecurityJarPatchCreator}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationServiceAuthenticator
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationServiceAuthenticatorClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyAuthorizationServiceClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityServerTransportInterceptorClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{ModifyRepositoriesServiceClass, ModifySnapshotsServiceClass}
 
 import scala.language.postfixOps
 
 private[patches] class Es67xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion),
-      new SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+      new ModifyRepositoriesServiceClass(esVersion),
+      new ModifySnapshotsServiceClass(esVersion)
     ),
     new OptionalXPackSecurityJarPatchCreator(
-      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
-      DeactivateSecurityServerTransportInterceptor,
-      new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion),
-      new DummyAuthorizeInAuthorizationService(esVersion),
+      ModifySecurityClass,
+      ModifySecurityServerTransportInterceptorClass,
+      new ModifyAuthenticationServiceAuthenticatorClass(esVersion),
+      new ModifyAuthorizationServiceClass(esVersion),
     )
   )

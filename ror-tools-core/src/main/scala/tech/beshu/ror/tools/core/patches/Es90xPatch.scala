@@ -21,9 +21,11 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyAuthorizationServiceClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifySecurityClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
 import tech.beshu.ror.tools.core.utils.EsUtil.{es902, es903}
 
 import scala.language.postfixOps
@@ -32,14 +34,14 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     new ElasticsearchJarPatchCreator(
       OpenModule,
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+      new ModifyRepositoriesServiceClass(esVersion)
     ),
     new EntitlementJarPatchCreator(
       esVersion match {
         case v if v >= es902 => new ModifyFilesEntitlementsValidationClass(esVersion)
         case _ => new ModifyEntitlementInitializationClass(esVersion)
       },
-      ModifyEntitlementRuntimePolicyParserClass,
+      ModifyPolicyParserClass,
       esVersion match {
         case v if v >= es903 => new ModifyPolicyCheckerImplClass(esVersion)
         case _ => new ModifyPolicyManagerClass(esVersion)
@@ -47,13 +49,13 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     ),
     new XPackCoreJarPatchCreator(
       OpenModule,
-      DisabledAsyncSearchSecurity
+      ModifyAsyncSearchSecurityClass
     ),
     new XPackSecurityJarPatchCreator(
       OpenModule,
-      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
-      new DummyAuthenticationInAuthenticationChain(esVersion),
-      new DummyAuthorizeInAuthorizationService(esVersion),
+      ModifySecurityClass,
+      new ModifyAuthenticationChainClass(esVersion),
+      new ModifyAuthorizationServiceClass(esVersion),
     ),
     new XPackIlmJarPatchCreator(
       OpenModule

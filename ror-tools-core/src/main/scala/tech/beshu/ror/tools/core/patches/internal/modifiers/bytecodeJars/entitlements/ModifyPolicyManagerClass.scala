@@ -24,6 +24,18 @@ import tech.beshu.ror.tools.core.utils.EsUtil.{es8180, es8190, es900, es903}
 
 import java.io.{File, InputStream}
 
+/**
+ * Modifies the PolicyManager class to bypass file-read entitlement validation for the
+ * ReadonlyREST component on Elasticsearch versions where PolicyManager performs the check.
+ *
+ * This patch rewrites `checkFileRead(...)` so that each `entitlements.fileAccess().canRead(path)`
+ * invocation is replaced with a conditional: if `entitlements.componentName()` equals `"readonlyrest"`,
+ * the read is treated as allowed (returns `true`); otherwise the original entitlement-based
+ * `canRead(...)` logic is executed.
+ *
+ * This ensures ReadonlyREST is not blocked by the entitlements system when PolicyManager is the
+ * class responsible for enforcing file-read permissions.
+ */
 private[patches] class ModifyPolicyManagerClass(esVersion: SemVer)
   extends BytecodeJarModifier {
 
