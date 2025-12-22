@@ -287,7 +287,7 @@ private[patches] class ModifyAuthorizationServiceClass private(esVersion: SemVer
         Opcodes.INVOKESTATIC,
         "org/elasticsearch/xpack/security/authz/RorAuthorizationInfoProvider",
         "get",
-        "()Ljava/lang/Object;",
+        "()Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;",
         false
       )
       underlying.visitMethodInsn(
