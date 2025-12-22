@@ -20,12 +20,15 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
 import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, RorPluginDirectory}
 
-private[patches] class EntitlementJarPatchCreator(patchingSteps: FileModifier*)
+private[patches] class EntitlementJarPatchCreator private(patchingSteps: Iterable[FileModifier])
   extends FilePatchCreator[EntitlementJarPatch] {
 
   override def create(rorPluginDirectory: RorPluginDirectory,
                       esVersion: SemVer): EntitlementJarPatch =
     new EntitlementJarPatch(rorPluginDirectory, esVersion, patchingSteps)
+}
+object EntitlementJarPatchCreator {
+  def apply(patchingSteps: FileModifier*): EntitlementJarPatchCreator = new EntitlementJarPatchCreator(patchingSteps)
 }
 
 private[patches] class EntitlementJarPatch(rorPluginDirectory: RorPluginDirectory,

@@ -35,7 +35,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
     ))
 
   "Security API" when {
-    "_has_privileges endpoint is called" should {
+    "/_security/user/_has_privileges endpoint is called" should {
       "return ROR artificial user" excludeES allEs6x in {
         val response = adminXpackApiManager.hasPrivileges(
           clusterPrivileges = "monitor" :: Nil,
@@ -111,7 +111,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         }
       }
     }
-    "user/_privileges endpoint is called" should {
+    "/_security/user/_privileges endpoint is called" should {
       "return ROR artificial user's privileges" excludeES allEs6x in {
         val response = adminXpackApiManager.userPrivileges()
         response should have statusCode 200

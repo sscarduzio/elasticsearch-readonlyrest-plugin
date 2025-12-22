@@ -20,12 +20,15 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
 import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, RorPluginDirectory}
 
-private[patches] class ElasticsearchJarPatchCreator(patchingSteps: FileModifier*)
+private[patches] class ElasticsearchJarPatchCreator private(patchingSteps: Iterable[FileModifier])
   extends FilePatchCreator[ElasticsearchJarPatch] {
 
   override def create(rorPluginDirectory: RorPluginDirectory,
                       esVersion: SemVer): ElasticsearchJarPatch =
     new ElasticsearchJarPatch(rorPluginDirectory, esVersion, patchingSteps)
+}
+object ElasticsearchJarPatchCreator {
+  def apply(patchingSteps: FileModifier*): ElasticsearchJarPatchCreator = new ElasticsearchJarPatchCreator(patchingSteps)
 }
 
 private[patches] class ElasticsearchJarPatch(rorPluginDirectory: RorPluginDirectory,
