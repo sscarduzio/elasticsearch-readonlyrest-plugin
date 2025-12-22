@@ -20,7 +20,7 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
 import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, OptionalFilePatchDecorator, RorPluginDirectory}
 
-private[patches] class XPackCoreJarPatchCreator(patchingSteps: FileModifier*)
+private[patches] class XPackCoreJarPatchCreator private(patchingSteps: Iterable[FileModifier])
   extends FilePatchCreator[XPackCoreJarPatch] {
 
   override def create(rorPluginDirectory: RorPluginDirectory,
@@ -28,8 +28,11 @@ private[patches] class XPackCoreJarPatchCreator(patchingSteps: FileModifier*)
     new XPackCoreJarPatch(rorPluginDirectory, esVersion, patchingSteps)
   }
 }
+object XPackCoreJarPatchCreator {
+  def apply(patchingSteps: FileModifier*): XPackCoreJarPatchCreator = new XPackCoreJarPatchCreator(patchingSteps)
+}
 
-private[patches] class OptionalXPackCoreJarPatchCreator(patchingSteps: FileModifier*)
+private[patches] class OptionalXPackCoreJarPatchCreator private(patchingSteps: Iterable[FileModifier])
   extends FilePatchCreator[OptionalFilePatchDecorator[XPackCoreJarPatch]] {
 
   override def create(rorPluginDirectory: RorPluginDirectory,
@@ -37,6 +40,9 @@ private[patches] class OptionalXPackCoreJarPatchCreator(patchingSteps: FileModif
     val patch = new XPackCoreJarPatch(rorPluginDirectory, esVersion, patchingSteps)
     new OptionalFilePatchDecorator(patch, patch.fileToPatchPath)
   }
+}
+object OptionalXPackCoreJarPatchCreator {
+  def apply(patchingSteps: FileModifier*): OptionalXPackCoreJarPatchCreator = new OptionalXPackCoreJarPatchCreator(patchingSteps)
 }
 
 private[patches] class XPackCoreJarPatch(rorPluginDirectory: RorPluginDirectory,

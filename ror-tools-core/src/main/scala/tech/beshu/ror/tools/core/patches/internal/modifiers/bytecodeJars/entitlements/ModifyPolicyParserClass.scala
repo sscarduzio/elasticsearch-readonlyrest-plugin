@@ -21,7 +21,20 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 
-private [patches] object ModifyEntitlementRuntimePolicyParserClass extends BytecodeJarModifier {
+/**
+ * Modifies the PolicyParser class to extend entitlements for the ReadonlyREST policy scope.
+ *
+ * This patch injects a new private helper method `upgradeIfRorPolicyName(policyName, scope)` and
+ * rewrites `parsePolicy(...)` so that every parsed scope is passed through this upgrader.
+ *
+ * When the policy name is `"readonlyrest"` and the scope targets the `"ALL-UNNAMED"` module,
+ * the upgrader returns a new `Scope` with the original entitlements plus an extra
+ * `CreateClassLoaderEntitlement`. Otherwise, the original scope is returned unchanged.
+ *
+ * This ensures the ReadonlyREST entitlement policy can create classloaders where required by the
+ * plugin, without modifying the original policy file format.
+ */
+private [patches] object ModifyPolicyParserClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
