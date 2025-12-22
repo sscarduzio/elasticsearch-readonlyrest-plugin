@@ -59,11 +59,19 @@ stages:
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key 
-              ci/upload_es_artifacts.sh
+              
+              export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
+              
+              ci/upload-es-artifacts.sh
             continueOnError: true
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
 
   - stage: GRADLE_WARMUP
     displayName: 'Warm up Gradle cache'
@@ -246,15 +254,9 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
               ROR_TASK: core_tests
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
@@ -295,15 +297,9 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
@@ -352,15 +348,9 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
@@ -437,15 +427,9 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
@@ -512,15 +496,9 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
@@ -565,15 +543,9 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
@@ -622,15 +594,9 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
             condition: failed()
@@ -939,15 +905,9 @@ stages:
           - script: |
               set -e
 
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Building ROR plugins" && ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
         strategy:
@@ -1025,12 +985,19 @@ stages:
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
 
+              export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
+        
               echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
             timeoutInMinutes: 600
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
         strategy:
@@ -1089,6 +1056,10 @@ stages:
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
+              
+              export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
 
               export DOCKER=docker
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
@@ -1101,6 +1072,9 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
