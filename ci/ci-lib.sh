@@ -47,7 +47,7 @@ function upload_to_ror_data_xdelta_bucket {
     -e AWS_ENDPOINT_URL=$ROR_ARTIFACTS_STORE_URL \
     -e AWS_ACCESS_KEY_ID=$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID \
     -e AWS_SECRET_ACCESS_KEY=$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET \
-    -v $LOCAL_FILE:"/tmp/$FILE_NAME":ro \
+    -v "$LOCAL_FILE":"/tmp/$FILE_NAME":ro \
     beshultd/deltaglider:$DELTA_GLIDER_VERSION \
-    cp /tmp/$FILE_NAME "s3://$BUCKET/${S3_PATH}/${FILE_NAME}"
+    cp "/tmp/$FILE_NAME" "s3://$BUCKET/${S3_PATH}/${FILE_NAME}"
 }
