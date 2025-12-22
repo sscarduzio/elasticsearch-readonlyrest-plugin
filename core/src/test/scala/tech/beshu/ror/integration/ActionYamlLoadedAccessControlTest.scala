@@ -26,7 +26,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 
 class ActionYamlLoadedAccessControlTest extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     """
       |readonlyrest:
       |
@@ -64,7 +64,7 @@ class ActionYamlLoadedAccessControlTest extends AnyWordSpec with BaseYamlLoadedA
           }
         }
         "it is a test config request and the action name match pattern on the configured list" in {
-          val request = MockRequestContext.indices.copy(action = Action.RorAction.RorTestConfigAction)
+          val request = MockRequestContext.indices.copy(action = Action.RorAction.RorTestSettingsAction)
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           inside(result.result) { case Allow(_, block) =>
             block.name.value should be("Allowed for test config action")
@@ -78,7 +78,7 @@ class ActionYamlLoadedAccessControlTest extends AnyWordSpec with BaseYamlLoadedA
           }
         }
         "it is a config request and the action name match pattern on the configured list with old name" in {
-          val request = MockRequestContext.indices.copy(action = Action.RorAction.RorConfigAction)
+          val request = MockRequestContext.indices.copy(action = Action.RorAction.RorMainSettingsAction)
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           inside(result.result) { case Allow(_, block) =>
             block.name.value should be("Allowed for config action")

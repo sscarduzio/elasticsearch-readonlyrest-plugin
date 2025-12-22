@@ -45,23 +45,23 @@ private[ror] object AuditSerializationHelper {
   }
 
   def serialize(responseContext: AuditResponseContext,
-                fields: Map[AuditFieldName, AuditFieldValueDescriptor],
+                fields: Map[AuditFieldPath, AuditFieldValueDescriptor],
                 allowedEventMode: AllowedEventMode): Option[JSONObject] = {
     responseContext match {
       case Allowed(requestContext, verbosity, reason) =>
         allowedEvent(
           allowedEventMode,
           verbosity,
-          createEntry(fields, EventData(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, None))
+          createEntry(fields, EventData(matched = true, FinalState.Allowed, reason, responseContext.duration, requestContext, None))
         )
       case ForbiddenBy(requestContext, _, reason) =>
-        Some(createEntry(fields, EventData(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, None)))
+        Some(createEntry(fields, EventData(matched = true, FinalState.Forbidden, reason, responseContext.duration, requestContext, None)))
       case Forbidden(requestContext) =>
-        Some(createEntry(fields, EventData(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None)))
+        Some(createEntry(fields, EventData(matched = false, FinalState.Forbidden, "default", responseContext.duration, requestContext, None)))
       case RequestedIndexNotExist(requestContext) =>
-        Some(createEntry(fields, EventData(matched = false, "INDEX NOT EXIST", "Requested index doesn't exist", responseContext.duration, requestContext, None)))
+        Some(createEntry(fields, EventData(matched = false, FinalState.IndexNotExist, "Requested index doesn't exist", responseContext.duration, requestContext, None)))
       case Errored(requestContext, cause) =>
-        Some(createEntry(fields, EventData(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause))))
+        Some(createEntry(fields, EventData(matched = false, FinalState.Errored, "error", responseContext.duration, requestContext, Some(cause))))
     }
   }
 
@@ -76,30 +76,58 @@ private[ror] object AuditSerializationHelper {
     }
   }
 
-  private def createEntry(fields: Map[AuditFieldName, AuditFieldValueDescriptor],
+  private def createEntry(fields: Map[AuditFieldPath, AuditFieldValueDescriptor],
                           eventData: EventData) = {
     val resolveAuditFieldValue = resolver(eventData)
-    val resolvedFields: Map[String, Any] =
-      Map("@timestamp" -> timestampFormatter.format(eventData.requestContext.timestamp)) ++
-        fields.map { case (name, valueDescriptor) => name.value -> resolveAuditFieldValue(valueDescriptor) }
+    val resolvedFields: Map[AuditFieldPath, Any] =
+      Map(AuditFieldPath("@timestamp") -> timestampFormatter.format(eventData.requestContext.timestamp)) ++
+        fields.map { case (name, valueDescriptor) => name -> resolveAuditFieldValue(valueDescriptor) }
 
-    resolvedFields
-      .foldLeft(new JSONObject()) { case (soFar, (key, value)) => soFar.put(key, value) }
-      .mergeWith(eventData.requestContext.generalAuditEvents)
+    resolvedFields.foldLeft(new JSONObject()) { case (soFar, (path, value)) =>
+      putNested(soFar, path.path.toList, value)
+    }.mergeWith(eventData.requestContext.generalAuditEvents)
+  }
+
+  private def putNested(json: JSONObject, path: List[String], value: Any): JSONObject = {
+    path match {
+      case Nil =>
+        json
+      case key :: Nil =>
+        json.put(key, value)
+        json
+      case key :: tail =>
+        val child = Option(json.optJSONObject(key)).getOrElse(new JSONObject())
+        json.put(key, putNested(child, tail, value))
+        json
+    }
   }
 
   private def resolver(eventData: EventData): AuditFieldValueDescriptor => Any = auditValue => {
     val requestContext = eventData.requestContext
     auditValue match {
       case AuditFieldValueDescriptor.IsMatched => eventData.matched
-      case AuditFieldValueDescriptor.FinalState => eventData.finalState
+      case AuditFieldValueDescriptor.FinalState => eventData.finalState match {
+        case FinalState.Allowed => "ALLOWED"
+        case FinalState.Forbidden => "FORBIDDEN"
+        case FinalState.Errored => "ERRORED"
+        case FinalState.IndexNotExist => "INDEX NOT EXIST"
+      }
+      case AuditFieldValueDescriptor.EcsEventOutcome => eventData.finalState match {
+        case FinalState.Allowed => "success"
+        case FinalState.Forbidden => "failure"
+        case FinalState.Errored => "unknown"
+        case FinalState.IndexNotExist => "unknown"
+      }
       case AuditFieldValueDescriptor.Reason => eventData.reason
       case AuditFieldValueDescriptor.User => SerializeUser.serialize(requestContext).orNull
+      case AuditFieldValueDescriptor.LoggedUser => requestContext.loggedInUserName.orNull
+      case AuditFieldValueDescriptor.PresentedIdentity => requestContext.attemptedUserName.orNull
       case AuditFieldValueDescriptor.ImpersonatedByUser => requestContext.impersonatedByUserName.orNull
       case AuditFieldValueDescriptor.Action => requestContext.action
       case AuditFieldValueDescriptor.InvolvedIndices => if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava
       case AuditFieldValueDescriptor.AclHistory => requestContext.history
       case AuditFieldValueDescriptor.ProcessingDurationMillis => eventData.duration.toMillis
+      case AuditFieldValueDescriptor.ProcessingDurationNanos => eventData.duration.toNanos
       case AuditFieldValueDescriptor.Timestamp => timestampFormatter.format(requestContext.timestamp)
       case AuditFieldValueDescriptor.Id => requestContext.id
       case AuditFieldValueDescriptor.CorrelationId => requestContext.correlationId
@@ -119,6 +147,8 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.EsNodeName => eventData.requestContext.auditEnvironmentContext.esNodeName
       case AuditFieldValueDescriptor.EsClusterName => eventData.requestContext.auditEnvironmentContext.esClusterName
       case AuditFieldValueDescriptor.StaticText(text) => text
+      case AuditFieldValueDescriptor.NumericValue(value) => value.bigDecimal
+      case AuditFieldValueDescriptor.BooleanValue(value) => value
       case AuditFieldValueDescriptor.Combined(values) => values.map(resolver(eventData)).mkString
     }
   }
@@ -139,11 +169,23 @@ private[ror] object AuditSerializationHelper {
   }
 
   private final case class EventData(matched: Boolean,
-                                     finalState: String,
+                                     finalState: FinalState,
                                      reason: String,
                                      duration: FiniteDuration,
                                      requestContext: AuditRequestContext,
                                      error: Option[Throwable])
+
+  private sealed trait FinalState
+
+  private object FinalState {
+    case object Allowed extends FinalState
+
+    case object Forbidden extends FinalState
+
+    case object Errored extends FinalState
+
+    case object IndexNotExist extends FinalState
+  }
 
   sealed trait AllowedEventMode
 
@@ -153,7 +195,15 @@ private[ror] object AuditSerializationHelper {
     final case class Include(types: Set[Verbosity]) extends AllowedEventMode
   }
 
-  final case class AuditFieldName(value: String)
+  final case class AuditFieldPath private(path: List[String])
+
+  object AuditFieldPath {
+    def apply(name: String): AuditFieldPath =
+      AuditFieldPath(List(name))
+
+    def apply(head: String, tail: List[String]): AuditFieldPath =
+      AuditFieldPath(head :: tail)
+  }
 
   sealed trait AuditFieldValueDescriptor
 
@@ -164,9 +214,16 @@ private[ror] object AuditSerializationHelper {
 
     case object FinalState extends AuditFieldValueDescriptor
 
+    case object EcsEventOutcome extends AuditFieldValueDescriptor
+
     case object Reason extends AuditFieldValueDescriptor
 
+    @deprecated("[ROR] The User audit field value descriptor should not be used. Use LoggedUser or PresentedIdentity instead", "1.68.0")
     case object User extends AuditFieldValueDescriptor
+
+    case object LoggedUser extends AuditFieldValueDescriptor
+
+    case object PresentedIdentity extends AuditFieldValueDescriptor
 
     case object ImpersonatedByUser extends AuditFieldValueDescriptor
 
@@ -177,6 +234,8 @@ private[ror] object AuditSerializationHelper {
     case object AclHistory extends AuditFieldValueDescriptor
 
     case object ProcessingDurationMillis extends AuditFieldValueDescriptor
+
+    case object ProcessingDurationNanos extends AuditFieldValueDescriptor
 
     // Identifiers
     case object Timestamp extends AuditFieldValueDescriptor
@@ -223,6 +282,10 @@ private[ror] object AuditSerializationHelper {
 
     final case class StaticText(value: String) extends AuditFieldValueDescriptor
 
+    final case class BooleanValue(value: Boolean) extends AuditFieldValueDescriptor
+
+    final case class NumericValue(value: BigDecimal) extends AuditFieldValueDescriptor
+
     final case class Combined(values: List[AuditFieldValueDescriptor]) extends AuditFieldValueDescriptor
 
   }
@@ -237,40 +300,42 @@ private[ror] object AuditSerializationHelper {
     case object FullRequestContentFields extends AuditFieldGroup
   }
 
-  private val commonFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
-    AuditFieldName("match") -> AuditFieldValueDescriptor.IsMatched,
-    AuditFieldName("block") -> AuditFieldValueDescriptor.Reason,
-    AuditFieldName("id") -> AuditFieldValueDescriptor.Id,
-    AuditFieldName("final_state") -> AuditFieldValueDescriptor.FinalState,
-    AuditFieldName("@timestamp") -> AuditFieldValueDescriptor.Timestamp,
-    AuditFieldName("correlation_id") -> AuditFieldValueDescriptor.CorrelationId,
-    AuditFieldName("processingMillis") -> AuditFieldValueDescriptor.ProcessingDurationMillis,
-    AuditFieldName("error_type") -> AuditFieldValueDescriptor.ErrorType,
-    AuditFieldName("error_message") -> AuditFieldValueDescriptor.ErrorMessage,
-    AuditFieldName("content_len") -> AuditFieldValueDescriptor.ContentLengthInBytes,
-    AuditFieldName("content_len_kb") -> AuditFieldValueDescriptor.ContentLengthInKb,
-    AuditFieldName("type") -> AuditFieldValueDescriptor.Type,
-    AuditFieldName("origin") -> AuditFieldValueDescriptor.RemoteAddress,
-    AuditFieldName("destination") -> AuditFieldValueDescriptor.LocalAddress,
-    AuditFieldName("xff") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
-    AuditFieldName("task_id") -> AuditFieldValueDescriptor.TaskId,
-    AuditFieldName("req_method") -> AuditFieldValueDescriptor.HttpMethod,
-    AuditFieldName("headers") -> AuditFieldValueDescriptor.HttpHeaderNames,
-    AuditFieldName("path") -> AuditFieldValueDescriptor.HttpPath,
-    AuditFieldName("user") -> AuditFieldValueDescriptor.User,
-    AuditFieldName("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
-    AuditFieldName("action") -> AuditFieldValueDescriptor.Action,
-    AuditFieldName("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
-    AuditFieldName("acl_history") -> AuditFieldValueDescriptor.AclHistory
+  private val commonFields: Map[AuditFieldPath, AuditFieldValueDescriptor] = Map(
+    AuditFieldPath("match") -> AuditFieldValueDescriptor.IsMatched,
+    AuditFieldPath("block") -> AuditFieldValueDescriptor.Reason,
+    AuditFieldPath("id") -> AuditFieldValueDescriptor.Id,
+    AuditFieldPath("final_state") -> AuditFieldValueDescriptor.FinalState,
+    AuditFieldPath("@timestamp") -> AuditFieldValueDescriptor.Timestamp,
+    AuditFieldPath("correlation_id") -> AuditFieldValueDescriptor.CorrelationId,
+    AuditFieldPath("processingMillis") -> AuditFieldValueDescriptor.ProcessingDurationMillis,
+    AuditFieldPath("error_type") -> AuditFieldValueDescriptor.ErrorType,
+    AuditFieldPath("error_message") -> AuditFieldValueDescriptor.ErrorMessage,
+    AuditFieldPath("content_len") -> AuditFieldValueDescriptor.ContentLengthInBytes,
+    AuditFieldPath("content_len_kb") -> AuditFieldValueDescriptor.ContentLengthInKb,
+    AuditFieldPath("type") -> AuditFieldValueDescriptor.Type,
+    AuditFieldPath("origin") -> AuditFieldValueDescriptor.RemoteAddress,
+    AuditFieldPath("destination") -> AuditFieldValueDescriptor.LocalAddress,
+    AuditFieldPath("xff") -> AuditFieldValueDescriptor.XForwardedForHttpHeader,
+    AuditFieldPath("task_id") -> AuditFieldValueDescriptor.TaskId,
+    AuditFieldPath("req_method") -> AuditFieldValueDescriptor.HttpMethod,
+    AuditFieldPath("headers") -> AuditFieldValueDescriptor.HttpHeaderNames,
+    AuditFieldPath("path") -> AuditFieldValueDescriptor.HttpPath,
+    AuditFieldPath("user") -> AuditFieldValueDescriptor.User,
+    AuditFieldPath("logged_user") -> AuditFieldValueDescriptor.LoggedUser,
+    AuditFieldPath("presented_identity") -> AuditFieldValueDescriptor.PresentedIdentity,
+    AuditFieldPath("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
+    AuditFieldPath("action") -> AuditFieldValueDescriptor.Action,
+    AuditFieldPath("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
+    AuditFieldPath("acl_history") -> AuditFieldValueDescriptor.AclHistory
   )
 
-  private val esEnvironmentFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
-    AuditFieldName("es_node_name") -> AuditFieldValueDescriptor.EsNodeName,
-    AuditFieldName("es_cluster_name") -> AuditFieldValueDescriptor.EsClusterName
+  private val esEnvironmentFields: Map[AuditFieldPath, AuditFieldValueDescriptor] = Map(
+    AuditFieldPath("es_node_name") -> AuditFieldValueDescriptor.EsNodeName,
+    AuditFieldPath("es_cluster_name") -> AuditFieldValueDescriptor.EsClusterName
   )
 
-  private val requestContentFields: Map[AuditFieldName, AuditFieldValueDescriptor] = Map(
-    AuditFieldName("content") -> AuditFieldValueDescriptor.Content
+  private val requestContentFields: Map[AuditFieldPath, AuditFieldValueDescriptor] = Map(
+    AuditFieldPath("content") -> AuditFieldValueDescriptor.Content
   )
 
 }

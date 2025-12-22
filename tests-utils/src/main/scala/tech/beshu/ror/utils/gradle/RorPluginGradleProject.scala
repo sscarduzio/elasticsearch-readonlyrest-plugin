@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.gradle
 
 import better.files.*
+import com.typesafe.scalalogging.LazyLogging
 import org.gradle.tooling.GradleConnector
 
 import java.io.File as JFile
@@ -48,7 +49,7 @@ object RorPluginGradleProject {
       .toList
 }
 
-class RorPluginGradleProject(val moduleName: String) {
+class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
   private val project = esProject(moduleName)
   private val esProjectProperties =
     GradleProperties
@@ -60,8 +61,10 @@ class RorPluginGradleProject(val moduleName: String) {
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
   def assemble: Option[JFile] = {
+    logger.info(s"Assembling ROR in module $moduleName")
     runTask(moduleName + ":packageRorPlugin")
     val plugin = new JFile(project, "build/distributions/" + pluginName)
+    logger.info(s"Finished assembling ROR in module $moduleName")
     if (!plugin.exists) None
     else Some(plugin)
   }

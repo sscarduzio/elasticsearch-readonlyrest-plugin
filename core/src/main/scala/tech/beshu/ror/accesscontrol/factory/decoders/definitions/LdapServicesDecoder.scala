@@ -36,9 +36,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.User
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
@@ -393,20 +393,24 @@ object LdapServicesDecoder extends Logging {
         for {
           connectionMethod <- c.as[ConnectionMethod]
           poolSize <- c.downFieldAs[Option[Int Refined Positive]]("connection_pool_size")
+          connectionHealthCheckInterval <- c.downFieldsAs[Option[PositiveFiniteDuration]]("connection_health_check_interval")
+          connectionMaxAge <- c.downFieldAs[Option[PositiveFiniteDuration]]("connection_max_age")
           connectionTimeout <- c.downFieldsAs[Option[PositiveFiniteDuration]]("connection_timeout_in_sec", "connection_timeout")
           requestTimeout <- c.downFieldsAs[Option[PositiveFiniteDuration]]("request_timeout_in_sec", "request_timeout")
           trustAllCertsOps <- c.downFieldAs[Option[Boolean]]("ssl_trust_all_certs")
           ignoreLdapConnectivityProblems <- c.downFieldAs[Option[Boolean]]("ignore_ldap_connectivity_problems")
           bindRequestUser <- c.as[BindRequestUser]
         } yield LdapConnectionConfig(
-          serviceName,
-          connectionMethod,
-          poolSize.getOrElse(positiveInt(30)),
-          connectionTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
-          requestTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
-          trustAllCertsOps.getOrElse(false),
-          bindRequestUser,
-          ignoreLdapConnectivityProblems.getOrElse(false)
+          poolName = serviceName,
+          connectionMethod = connectionMethod,
+          poolSize = poolSize.getOrElse(positiveInt(30)),
+          connectionHealthCheckInterval = connectionHealthCheckInterval.getOrElse(positiveFiniteDuration(120, TimeUnit.SECONDS)),
+          connectionMaxAge = connectionMaxAge.getOrElse(positiveFiniteDuration(10, TimeUnit.MINUTES)),
+          connectionTimeout = connectionTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
+          requestTimeout = requestTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
+          trustAllCerts = trustAllCertsOps.getOrElse(false),
+          bindRequestUser = bindRequestUser,
+          ignoreLdapConnectivityProblems = ignoreLdapConnectivityProblems.getOrElse(false)
         )
       }
       .decoder

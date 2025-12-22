@@ -133,6 +133,6 @@ object KibanaUserDataRule {
                             appsToHide: Set[KibanaApp],
                             allowedApiPaths: Set[KibanaAllowedApiPath],
                             metadata: Option[ResolvableJsonRepresentation],
-                            override val rorIndex: RorConfigurationIndex)
+                            override val rorIndex: RorSettingsIndex)
     extends BaseKibanaRule.Settings(access, rorIndex)
 }

@@ -33,7 +33,7 @@ class IndexAliasesManagementSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/aliases/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/aliases/readonlyrest.yml"
 
   private lazy val adminDocumentManager = new DocumentManager(basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)

@@ -53,12 +53,12 @@ class KibanaUserDataRuleTests
         val kibanaTemplateIndex = kibanaIndexName("kibana_template_index")
         val rule = createRuleFrom(KibanaUserDataRule.Settings(
           access = KibanaAccess.Unrestricted,
-          kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
+          kibanaIndex = AlreadyResolved(KibanaIndexName.default),
           kibanaTemplateIndex = Some(AlreadyResolved(kibanaTemplateIndex)),
           appsToHide = Set.empty,
           allowedApiPaths = Set.empty,
           metadata = None,
-          rorIndex = RorConfigurationIndex(rorIndex)
+          rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
         blockContext.userMetadata should be {
@@ -67,7 +67,7 @@ class KibanaUserDataRuleTests
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
             .withCurrentGroupId(GroupId("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
-            .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+            .withKibanaIndex(KibanaIndexName.default)
             .withKibanaTemplateIndex(kibanaTemplateIndex)
         }
       }
@@ -77,12 +77,12 @@ class KibanaUserDataRuleTests
         val apps: UniqueNonEmptyList[KibanaApp] = UniqueNonEmptyList.of(FullNameKibanaApp("app1"), FullNameKibanaApp("app2"))
         val rule = createRuleFrom(KibanaUserDataRule.Settings(
           access = KibanaAccess.Unrestricted,
-          kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
+          kibanaIndex = AlreadyResolved(KibanaIndexName.default),
           kibanaTemplateIndex = None,
           appsToHide = apps.toCovariantSet,
           allowedApiPaths = Set.empty,
           metadata = None,
-          rorIndex = RorConfigurationIndex(rorIndex)
+          rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
         blockContext.userMetadata should be {
@@ -91,7 +91,7 @@ class KibanaUserDataRuleTests
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
             .withCurrentGroupId(GroupId("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
-            .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+            .withKibanaIndex(KibanaIndexName.default)
             .withHiddenKibanaApps(apps)
         }
       }
@@ -114,12 +114,12 @@ class KibanaUserDataRuleTests
         )
         val rule = createRuleFrom(KibanaUserDataRule.Settings(
           access = KibanaAccess.Unrestricted,
-          kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
+          kibanaIndex = AlreadyResolved(KibanaIndexName.default),
           kibanaTemplateIndex = None,
           appsToHide = Set.empty,
           allowedApiPaths = paths.toCovariantSet,
           metadata = None,
-          rorIndex = RorConfigurationIndex(rorIndex)
+          rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
         blockContext.userMetadata should be {
@@ -128,7 +128,7 @@ class KibanaUserDataRuleTests
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
             .withCurrentGroupId(GroupId("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
-            .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+            .withKibanaIndex(KibanaIndexName.default)
             .withAllowedKibanaApiPaths(paths)
         }
       }
@@ -156,12 +156,12 @@ class KibanaUserDataRuleTests
         }
         val rule = createRuleFrom(KibanaUserDataRule.Settings(
           access = KibanaAccess.Unrestricted,
-          kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
+          kibanaIndex = AlreadyResolved(KibanaIndexName.default),
           kibanaTemplateIndex = None,
           appsToHide = Set.empty,
           allowedApiPaths = Set.empty,
           metadata = Option(resolvableMetadataJsonRepresentation),
-          rorIndex = RorConfigurationIndex(rorIndex)
+          rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
         blockContext.userMetadata should be {
@@ -170,7 +170,7 @@ class KibanaUserDataRuleTests
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
             .withCurrentGroupId(GroupId("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
-            .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+            .withKibanaIndex(KibanaIndexName.default)
             .withKibanaMetadata(
               JsonTree.Object(Map(
                 "a" -> JsonTree.Value(NumValue(1)),
@@ -221,12 +221,12 @@ class KibanaUserDataRuleTests
                                     customKibanaIndex: Option[KibanaIndexName] = None): KibanaUserDataRule.Settings =
     KibanaUserDataRule.Settings(
       access = access,
-      kibanaIndex = AlreadyResolved(customKibanaIndex.getOrElse(ClusterIndexName.Local.kibanaDefault)),
+      kibanaIndex = AlreadyResolved(customKibanaIndex.getOrElse(KibanaIndexName.default)),
       kibanaTemplateIndex = None,
       appsToHide = Set.empty,
       allowedApiPaths = Set.empty,
       metadata = None,
-      rorIndex = RorConfigurationIndex(rorIndex)
+      rorIndex = RorSettingsIndex(rorIndex)
     )
 
   override protected def defaultOutputBlockContextAssertion(settings: KibanaUserDataRule.Settings,

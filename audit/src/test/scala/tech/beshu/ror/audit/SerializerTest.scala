@@ -50,6 +50,8 @@ class SerializerTest extends AnyWordSpec {
             "headers" -> "array",
             "path" -> "string",
             "user" -> "string",
+            "logged_user" -> "string",
+            "presented_identity" -> "string",
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
@@ -80,6 +82,8 @@ class SerializerTest extends AnyWordSpec {
             "headers" -> "array",
             "path" -> "string",
             "user" -> "string",
+            "logged_user" -> "string",
+            "presented_identity" -> "string",
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
@@ -110,6 +114,8 @@ class SerializerTest extends AnyWordSpec {
             "headers" -> "array",
             "path" -> "string",
             "user" -> "string",
+            "logged_user" -> "string",
+            "presented_identity" -> "string",
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
@@ -138,6 +144,8 @@ class SerializerTest extends AnyWordSpec {
             "headers" -> "array",
             "path" -> "string",
             "user" -> "string",
+            "logged_user" -> "string",
+            "presented_identity" -> "string",
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
@@ -168,6 +176,8 @@ class SerializerTest extends AnyWordSpec {
             "headers" -> "array",
             "path" -> "string",
             "user" -> "string",
+            "logged_user" -> "string",
+            "presented_identity" -> "string",
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
@@ -197,6 +207,8 @@ class SerializerTest extends AnyWordSpec {
             "headers" -> "array",
             "path" -> "string",
             "user" -> "string",
+            "logged_user" -> "string",
+            "presented_identity" -> "string",
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
@@ -226,6 +238,8 @@ class SerializerTest extends AnyWordSpec {
             "headers" -> "array",
             "path" -> "string",
             "user" -> "string",
+            "logged_user" -> "string",
+            "presented_identity" -> "string",
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
@@ -255,6 +269,8 @@ class SerializerTest extends AnyWordSpec {
             "headers" -> "array",
             "path" -> "string",
             "user" -> "string",
+            "logged_user" -> "string",
+            "presented_identity" -> "string",
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
@@ -331,7 +347,7 @@ private object DummyAuditRequestContext extends AuditRequestContext {
 
   override def involvesIndices: Boolean = false
 
-  override def attemptedUserName: Option[String] = None
+  override def attemptedUserName: Option[String] = Some("basic_auth_username")
 
   override def rawAuthHeader: Option[String] = None
 

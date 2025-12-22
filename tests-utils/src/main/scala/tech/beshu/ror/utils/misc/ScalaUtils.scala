@@ -19,14 +19,18 @@ package tech.beshu.ror.utils.misc
 import java.time.Duration
 import cats.Functor
 import cats.implicits.*
+import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
 
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
+import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
-import scala.util.{Success, Try}
+import scala.util.Try
+import scala.util.control.NonFatal
 
-object ScalaUtils {
+object ScalaUtils extends LazyLogging {
 
   implicit class StringOps(val value: String) extends AnyVal {
     def stripMarginAndReplaceWindowsLineBreak: String = {
@@ -73,14 +77,30 @@ object ScalaUtils {
 
   implicit def finiteDurationToJavaDuration(interval: FiniteDuration): Duration = Duration.ofMillis(interval.toMillis)
 
-  def retry(times: Int)(action: Unit): Unit = {
-    LazyList
-      .fill(times)(())
-      .foldLeft(Success(()): Try[Unit]) {
-        case (Success(_), _) => Try(action)
-        case (failure, _) => failure
+  implicit def javaDurationToFiniteDuration(interval: Duration): FiniteDuration = FiniteDuration(interval.toMillis, TimeUnit.MILLISECONDS)
+
+  def retry(times: Int, cleanBeforeRetrying: => Unit = ())(action: => Unit): Unit = {
+    @tailrec
+    def loop(attempt: Int): Unit = {
+      try {
+        action
+      } catch {
+        case NonFatal(e) =>
+          val nextAttempt = attempt + 1
+          if (nextAttempt > times) {
+            logger.error(s"Attempt $attempt failed: ${e.getMessage}. Retries exhausted, failing with exception.")
+            throw e
+          } else {
+            logger.error(s"Attempt $attempt failed: ${e.getMessage}", e)
+            logger.warn(s"Starting cleaning after failed attempt")
+            cleanBeforeRetrying
+            logger.warn(s"Retrying...")
+            loop(nextAttempt)
+          }
       }
-      .get
+    }
+
+    loop(1)
   }
 
   def retryBackoff[A](source: Task[A],

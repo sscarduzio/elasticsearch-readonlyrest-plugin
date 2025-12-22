@@ -154,7 +154,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
           showBasicAuthPrompt = true,
           forbiddenRequestMessage = "Forbidden",
           flsEngine = FlsEngine.default,
-          configurationIndex = RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+          settingsIndex = RorSettingsIndex(IndexName.Full(".readonlyrest")),
           userIdCaseSensitivity = CaseSensitivity.Enabled,
           usersDefinitionDuplicateUsernamesValidationEnabled = true
         ),
@@ -176,6 +176,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
       Block.Name(name),
       policy,
       Block.Verbosity.Info,
+      Block.Audit.Enabled,
       NonEmptyList.of(
         new RegularRule {
           override val name: Rule.Name = Rule.Name("auth")

@@ -25,17 +25,17 @@ import tech.beshu.ror.utils.misc.Version
 
 class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
-  override implicit val rorConfigFileName: String = "/xpack_api/readonlyrest_without_ror_ssl.yml"
+  override implicit val rorSettingsFileName: String = "/xpack_api/readonlyrest_without_ror_ssl.yml"
 
   override protected def rorClusterSecurityType: SecurityType =
     SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-      rorConfigFileName = rorConfigFileName,
+      rorSettingsFileName = rorSettingsFileName,
       restSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.RestSsl.Xpack),
       internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
     ))
 
   "Security API" when {
-    "_has_privileges endpoint is called" should {
+    "/_security/user/_has_privileges endpoint is called" should {
       "return ROR artificial user" excludeES allEs6x in {
         val response = adminXpackApiManager.hasPrivileges(
           clusterPrivileges = "monitor" :: Nil,
@@ -111,7 +111,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         }
       }
     }
-    "user/_privileges endpoint is called" should {
+    "/_security/user/_privileges endpoint is called" should {
       "return ROR artificial user's privileges" excludeES allEs6x in {
         val response = adminXpackApiManager.userPrivileges()
         response should have statusCode 200

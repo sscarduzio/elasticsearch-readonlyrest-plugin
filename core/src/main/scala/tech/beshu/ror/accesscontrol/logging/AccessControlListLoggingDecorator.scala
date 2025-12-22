@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpd
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.audit.AuditEnvironmentContext
 import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.TaskOps.*
@@ -40,7 +39,6 @@ import scala.util.{Failure, Success}
 class AccessControlListLoggingDecorator(val underlying: AccessControlList,
                                         auditingTool: Option[AuditingTool])
                                        (implicit loggingContext: LoggingContext,
-                                        auditEnvironmentContext: AuditEnvironmentContext,
                                         scheduler: Scheduler)
   extends AccessControlList with Logging {
 
@@ -105,14 +103,30 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
       import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator.responseContextShow
       logger.info(responseContextShow[B].show(responseContext))
     }
-    auditingTool.foreach {
-      _
-        .audit(responseContext, auditEnvironmentContext)
-        .runAsync {
-          case Right(_) =>
-          case Left(ex) =>
-            logger.warn(s"[${responseContext.requestContext.id.show}] Auditing issue", ex)
+    blockAuditSettings(responseContext) match {
+      case Some(Block.Audit.Disabled) =>
+        ()
+      case None | Some(Block.Audit.Enabled) =>
+        auditingTool.foreach {
+          _
+            .audit(responseContext)
+            .runAsync {
+              case Right(_) =>
+              case Left(ex) =>
+                logger.warn(s"[${responseContext.requestContext.id.show}] Auditing issue", ex)
+            }
         }
+    }
+  }
+
+  private def blockAuditSettings[B <: BlockContext](responseContext: ResponseContext[B]): Option[Block.Audit] = {
+    responseContext match {
+      case AllowedBy(_, block, _, _) => Some(block.audit)
+      case Allow(_, _, block, _) => Some(block.audit)
+      case ForbiddenBy(_, block, _, _) => Some(block.audit)
+      case Forbidden(_, _) => None
+      case RequestedIndexNotExist(_, _) => None
+      case Errored(_, _) => None
     }
   }
 

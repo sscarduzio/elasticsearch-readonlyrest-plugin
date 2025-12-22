@@ -47,8 +47,8 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   public static WireMockContainer create(String... mappings) {
     ImageFromDockerfile dockerfile = new ImageFromDockerfile();
     List<File> mappingFiles = Lists.newArrayList(mappings).stream()
-                                   .map(ContainerUtils::getResourceFile)
-                                   .collect(Collectors.toList());
+        .map(ContainerUtils::getResourceFile)
+        .collect(Collectors.toList());
     mappingFiles.forEach(mappingFile -> dockerfile.withFileFromFile(mappingFile.getName(), mappingFile));
     logger.info("Creating WireMock container ...");
     WireMockContainer container = new WireMockContainer(
@@ -61,7 +61,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         .withExposedPorts(WIRE_MOCK_PORT)
         .waitingFor(
             container.waitStrategy()
-                     .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
+                .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
         );
 
     cont.setNetwork(Network.SHARED);
@@ -87,9 +87,10 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
       protected boolean isReady() {
         try {
           RestClient client = getClient();
-          return client
-              .execute(new HttpGet(client.from("/__admin/")))
-              .getStatusLine().getStatusCode() == 200;
+          return client.handle(
+              new HttpGet(client.from("/__admin/")),
+              r -> r.getStatusLine().getStatusCode() == 200
+          );
         } catch (Exception e) {
           return false;
         }

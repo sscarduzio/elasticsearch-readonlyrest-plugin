@@ -84,7 +84,7 @@ tasks.withType(ScalaCompile).configureEach {
 
 tasks.withType(Zip).configureEach { task ->
     task.doLast {
-        ant.checksum file: it.archivePath, algorithm: 'sha1'
+        ant.checksum file: task.archiveFile.get().asFile, algorithm: 'sha1'
     }
 }
 
@@ -102,6 +102,7 @@ tasks.register('generateVersionsFile') {
 tasks.register('toJar', Jar) {
     dependsOn generateVersionsFile
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveBaseName = pluginName
     from sourceSets.main.getOutput()
 }
 

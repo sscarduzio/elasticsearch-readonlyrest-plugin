@@ -25,6 +25,7 @@ import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.windows.WindowsEsPortProvider
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -40,8 +41,8 @@ class RemoteReindexSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/reindex_multi_containers/readonlyrest_dest_es.yml"
-  private val sourceEsRorConfigFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"
+  override implicit val rorSettingsFileName: String = "/reindex_multi_containers/readonlyrest_dest_es.yml"
+  private val sourceEsRorSettingsFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"
 
   private lazy val sourceEsCluster = createLocalClusterContainer(
     EsClusterSettings.create(
@@ -55,7 +56,7 @@ class RemoteReindexSuite
       },
       securityType = SecurityType.RorSecurity(
         ReadonlyRestPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName,
+          rorSettingsFileName = RemoteReindexSuite.this.sourceEsRorSettingsFileName,
           restSsl = Enabled.No
         ))
     )
@@ -66,7 +67,9 @@ class RemoteReindexSuite
       clusterName = "ROR_DEST_ES",
       containerSpecification = ContainerSpecification(
         environmentVariables = Map.empty,
-        additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "[\"*:9200\", \"*:9215\"]")
+        additionalElasticsearchYamlEntries = Map(
+          "reindex.remote.whitelist" -> s"[\"*:9200\", \"*:${WindowsEsPortProvider.get(nodeName = "ROR_SOURCE_ES_1").esPort}\"]"
+        )
       ),
       securityType = securityType
     )
@@ -74,7 +77,7 @@ class RemoteReindexSuite
       clusterSettingsCreator {
         SecurityType.RorWithXpackSecurity(
           ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-            rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
+            rorSettingsFileName = RemoteReindexSuite.this.rorSettingsFileName,
             restSsl = Enabled.No
           )
         )

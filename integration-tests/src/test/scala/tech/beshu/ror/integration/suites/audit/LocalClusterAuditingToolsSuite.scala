@@ -16,13 +16,14 @@
  */
 package tech.beshu.ror.integration.suites.audit
 
+import cats.data.NonEmptyList
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import tech.beshu.ror.utils.misc.Version
 
@@ -35,7 +36,7 @@ class LocalClusterAuditingToolsSuite
 
   private val isDataStreamSupported = Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)
 
-  override implicit val rorConfigFileName: String = {
+  override implicit val rorSettingsFileName: String = {
     if (isDataStreamSupported) {
       "/ror_audit/enabled_auditing_tools/readonlyrest.yml"
     } else {
@@ -45,14 +46,14 @@ class LocalClusterAuditingToolsSuite
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
-  override lazy val destNodeClientProvider: ClientProvider = this
+  override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.of(this)
 
-  override def baseRorConfig: String = resolvedRorConfigFile.contentAsString
+  override def baseRorSettingsYaml: String = resolvedRorSettingsFile.contentAsString
 
   override protected def baseAuditDataStreamName: Option[String] =
     Option.when(Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0))("audit_data_stream")
 
-  // Adding the ES cluster fields is disabled in the /enabled_auditing_tools/readonlyrest.yml config file (`DefaultAuditLogSerializerV1` is used)
+  // Adding the ES cluster fields is disabled in the /enabled_auditing_tools/readonlyrest.yml settings file (`DefaultAuditLogSerializerV1` is used)
   override def assertForEveryAuditEntry(entry: JSON): Unit = {
     entry.obj.get("es_node_name") shouldBe None
     entry.obj.get("es_cluster_name") shouldBe None
@@ -60,13 +61,13 @@ class LocalClusterAuditingToolsSuite
 
   "ES" should {
     "submit audit entries" when {
-      "first request uses V1 serializer, then ROR config is reloaded and second request uses V2 serializer" in {
+      "first request uses V1 serializer, then ROR settings is reloaded and second request uses V2 serializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+        updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
         performAndAssertExampleSearchRequest(indexManager)
 
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2")
+        updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV2")
         performAndAssertExampleSearchRequest(indexManager)
 
         forEachAuditManager { adminAuditManager =>
@@ -74,12 +75,14 @@ class LocalClusterAuditingToolsSuite
             val auditEntries = adminAuditManager.getEntries.force().jsons
 
             // On Linux we could assert number of entries equal to 2.
-            // On Windows reloading config sometimes takes a little longer,
+            // On Windows reloading settings sometimes takes a little longer,
             // and there are 3 or more messages (from before reload, so not important)
             auditEntries.size should be >= 2
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
+                entry("logged_user").str == "username" &&
+                entry("presented_identity").str == "username" &&
                 entry("block").str.contains("name: 'Rule 1'") &&
                 entry.obj.get("es_node_name").isEmpty &&
                 entry.obj.get("es_cluster_name").isEmpty
@@ -87,18 +90,20 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
+                entry("logged_user").str == "username" &&
+                entry("presented_identity").str == "username" &&
                 entry("block").str.contains("name: 'Rule 1'") &&
                 Try(entry("es_node_name")).map(_.str) == Success("ROR_SINGLE_1") &&
                 Try(entry("es_cluster_name")).map(_.str) == Success("ROR_SINGLE")
             ) shouldBe true
           }
         }
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+        updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
       }
       "using ReportingAllEventsAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.FullAuditLogSerializer")
+        updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.FullAuditLogSerializer")
         performAndAssertExampleSearchRequest(indexManager)
 
         forEachAuditManager { adminAuditManager =>
@@ -109,6 +114,8 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
+                entry("logged_user").str == "username" &&
+                entry("presented_identity").str == "username" &&
                 entry("block").str.contains("name: 'Rule 1'") &&
                 Try(entry("es_node_name")).map(_.str) == Success("ROR_SINGLE_1") &&
                 Try(entry("es_cluster_name")).map(_.str) == Success("ROR_SINGLE") &&
@@ -119,14 +126,14 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry => entry("path").str == "/audit_index/_search/") shouldBe true
           }
         }
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+        updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
         // This test uses serializer, that reports all events. We need to wait a moment, to ensure that there will be no more events using that serializer
         Thread.sleep(3000)
       }
       "using ReportingAllEventsWithQueryAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.FullAuditLogWithQuerySerializer")
+        updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.FullAuditLogWithQuerySerializer")
         performAndAssertExampleSearchRequest(indexManager)
 
         forEachAuditManager { adminAuditManager =>
@@ -136,6 +143,8 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry =>
               entry("final_state").str == "ALLOWED" &&
                 entry("user").str == "username" &&
+                entry("logged_user").str == "username" &&
+                entry("presented_identity").str == "username" &&
                 entry("block").str.contains("name: 'Rule 1'") &&
                 Try(entry("es_node_name")).map(_.str) == Success("ROR_SINGLE_1") &&
                 Try(entry("es_cluster_name")).map(_.str) == Success("ROR_SINGLE") &&
@@ -146,33 +155,111 @@ class LocalClusterAuditingToolsSuite
             auditEntries.exists(entry => entry("path").str == "/audit_index/_search/") shouldBe true
           }
         }
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+        updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
         // This test uses serializer, that reports all events. We need to wait a moment, to ensure that there will be no more events using that serializer
         Thread.sleep(3000)
       }
       "using ConfigurableQueryAuditLogSerializer" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        updateRorConfig(
+        // Change setting to use configurable serializer and perform the request
+        updateRorSettings(
           originalString = """type: "static"""",
           newString = """type: "configurable"""",
         )
         performAndAssertExampleSearchRequest(indexManager)
 
+        // Assert, that there is a single audit entry
         forEachAuditManager { adminAuditManager =>
           eventually {
             val auditEntries = adminAuditManager.getEntries.force().jsons
             auditEntries.size shouldBe 1
 
             auditEntries.exists(entry =>
-              entry("node_name_with_static_suffix").str == "ROR_SINGLE_1 with suffix" &&
+              entry("block").str.contains("name: 'Rule 1'") &&
+                entry("node_name_with_static_suffix").str == "ROR_SINGLE_1 with suffix" &&
                 entry("another_field").str == "ROR_SINGLE GET" &&
                 entry("tid").numOpt.isDefined &&
                 entry("bytes").num == 0
             ) shouldBe true
           }
         }
-        updateRorConfigToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+
+        // Disable audit for Rule 1, clean managers, perform second request
+        updateRorSettings(
+          "enabled: true ## twitter audit toggle",
+          "enabled: false ## twitter audit toggle",
+        )
+        adminAuditManagers.values.foreach(_.head.truncate())
+        performAndAssertExampleSearchRequest(indexManager)
+
+        // Wait for 2s and assert, that there is no serialized event
+        Thread.sleep(2000)
+        forEachAuditManager { adminAuditManager =>
+          val auditEntries = adminAuditManager.getEntries.force().jsons
+          auditEntries.size shouldBe 0
+        }
+
+        // Restore the default settings
+        updateRorSettings(
+          "enabled: false ## twitter audit toggle",
+          "enabled: true ## twitter audit toggle",
+        )
+        updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
+      }
+      "using ECS serializer" in {
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
+        // We need to create a new index with a different name for this test, because the ECS schema
+        // is not compatible with the Json object created by other serializers in previous tests.
+        val ecsAuditIndexName = "ecs_audit_index"
+        updateRorSettings(
+          replacements = Map(
+            """type: "static"""" -> """type: "ecs"""",
+            "audit_index" -> ecsAuditIndexName,
+          )
+        )
+        val auditIndexManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, ecsAuditIndexName)
+        performAndAssertExampleSearchRequest(indexManager)
+        eventually {
+          val auditEntries = auditIndexManager.getEntries.force().jsons
+          auditEntries.exists { entry =>
+            // ecs
+            entry("ecs")("version").str == "1.6.0" &&
+              // trace
+              entry("trace")("id").strOpt.isDefined &&
+              // timestamp (exists, not verified for exact value)
+              entry("@timestamp").strOpt.isDefined &&
+              // destination
+              entry("destination")("address").strOpt.isDefined &&
+              // source
+              entry("source")("address").strOpt.isDefined &&
+              // http request
+              entry("http")("request")("method").str == "GET" &&
+              entry("http")("request")("body")("bytes").num == 0 &&
+              // event
+              entry("event")("id").strOpt.isDefined &&
+              entry("event")("duration").numOpt.isDefined &&
+              entry("event")("action").str == "indices:admin/get" &&
+              entry("event")("reason").str == "GetIndexRequest" &&
+              entry("event")("outcome").str == "success" &&
+              // error (empty object)
+              entry("error").obj.isEmpty &&
+              // user
+              entry("user")("name").str == "username" &&
+              entry("user")("effective").obj.isEmpty &&
+              // url
+              entry("url")("path").str == "/twitter/" &&
+              // labels
+              entry("labels")("es_cluster_name").str == "ROR_SINGLE" &&
+              entry("labels")("es_node_name").str == "ROR_SINGLE_1" &&
+              entry("labels")("es_task_id").numOpt.isDefined &&
+              entry("labels")("ror_involved_indices").arrOpt.isDefined &&
+              entry("labels")("ror_acl_history").str == "[CONTAINER ADMIN-> RULES:[auth_key->false] RESOLVED:[indices=twitter]], [Rule 1-> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]" &&
+              entry("labels")("ror_final_state").str == "ALLOWED" &&
+              entry("labels")("ror_detailed_reason").str == "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices]"
+          } shouldBe true
+        }
+        updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
       }
     }
   }
@@ -182,15 +269,21 @@ class LocalClusterAuditingToolsSuite
     response should have statusCode 200
   }
 
-  private def updateRorConfigToUseSerializer(serializer: String) = updateRorConfig(
-    originalString = """class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"""",
-    newString = s"""class_name: "$serializer""""
-  )
+  private def updateRorSettingsToUseSerializer(serializer: String): Unit =
+    updateRorSettings(
+      originalString = """class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"""",
+      newString = s"""class_name: "$serializer""""
+    )
 
-  private def updateRorConfig(originalString: String, newString: String) = {
-    val initialConfig = getResourceContent(rorConfigFileName)
-    val modifiedConfig = initialConfig.replace(originalString, newString)
-    rorApiManager.updateRorInIndexConfig(modifiedConfig).forceOKStatusOrConfigAlreadyLoaded()
-    rorApiManager.reloadRorConfig().force()
+  private def updateRorSettings(originalString: String, newString: String): Unit =
+    updateRorSettings(Map(originalString -> newString))
+
+  private def updateRorSettings(replacements: Map[String, String]): Unit = {
+    val initialSettings = getResourceContent(rorSettingsFileName)
+    val modifiedSettings = replacements.foldLeft(initialSettings) { case (soFar, (originalString, newString)) =>
+      soFar.replace(originalString, newString)
+    }
+    rorApiManager.updateRorInIndexSettings(modifiedSettings).forceOKStatusOrSettingsAlreadyLoaded()
+    rorApiManager.reloadRorSettings().force()
   }
 }

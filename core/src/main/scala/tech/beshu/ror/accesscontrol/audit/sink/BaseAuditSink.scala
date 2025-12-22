@@ -18,11 +18,12 @@ package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
 private[audit] abstract class BaseAuditSink(auditLogSerializer: AuditLogSerializer) {
 
-  final def submit(auditEvent: AuditResponseContext): Task[Unit] = {
+  final def submit(auditEvent: AuditResponseContext)(implicit requestId: RequestId): Task[Unit] = {
     safeRunSerializer(auditEvent)
       .flatMap {
         case Some(serializedEvent) => submit(auditEvent, serializedEvent)
@@ -32,7 +33,8 @@ private[audit] abstract class BaseAuditSink(auditLogSerializer: AuditLogSerializ
 
   def close(): Task[Unit]
 
-  protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Task[Unit]
+  protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
+                      (implicit requestId: RequestId): Task[Unit]
 
   private def safeRunSerializer(context: AuditResponseContext) = {
     Task(auditLogSerializer.onResponse(context))
