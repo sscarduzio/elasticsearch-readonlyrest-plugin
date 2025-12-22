@@ -69,7 +69,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
-              ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
 
@@ -995,7 +995,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
-              ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
@@ -1072,7 +1072,7 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
-              ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
