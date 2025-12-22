@@ -40,10 +40,13 @@ function upload_to_ror_data_xdelta_bucket {
   S3_PATH=$(echo "$2" | sed 's:/*$::')
   FILE_NAME=$(basename $LOCAL_FILE)
 
-  BUCKET="readonlyrest-data-xdelta"
+  BUCKET="ror-builds-xdelta"
   DELTA_GLIDER_VERSION="main-012662c"
 
-  docker run --rm -e AWS_ACCESS_KEY_ID=$aws_access_key_id -e AWS_SECRET_ACCESS_KEY=$aws_secret_access_key \
+  docker run --rm \
+    -e AWS_ENDPOINT_URL=$ROR_ARTIFACTS_STORE_URL \
+    -e AWS_ACCESS_KEY_ID=$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID \
+    -e AWS_SECRET_ACCESS_KEY=$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET \
     -v $LOCAL_FILE:/tmp/$FILE_NAME:ro \
     beshultd/deltaglider:$DELTA_GLIDER_VERSION \
     cp /tmp/$FILE_NAME s3://$BUCKET/${S3_PATH}/${FILE_NAME}
