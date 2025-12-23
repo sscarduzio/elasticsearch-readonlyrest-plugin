@@ -872,7 +872,6 @@ stages:
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
 
-
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'
     dependsOn:
@@ -988,6 +987,12 @@ stages:
               export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
+
+              export DOCKER=docker
+              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
+                echo "Error: Failed to login to Docker registry"
+                exit 1
+              fi
         
               echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
@@ -998,6 +1003,8 @@ stages:
               VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
         strategy:

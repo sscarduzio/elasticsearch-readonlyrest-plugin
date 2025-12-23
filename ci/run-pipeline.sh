@@ -311,7 +311,7 @@ release_ror_plugin() {
       return 3
     fi
 
-    if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}" >/dev/null 2>&1; then
+    if $DOCKER manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}" >/dev/null 2>&1; then
       if ! ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
         echo "Failed to publish plugin Docker image"
         return 4
