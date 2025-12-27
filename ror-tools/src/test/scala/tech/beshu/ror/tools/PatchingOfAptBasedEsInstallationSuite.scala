@@ -106,7 +106,7 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
         }
         "installed on Ubuntu using apt" should {
           // ES 6.x is not available as apt package, so we do not test it
-          "ES {7.x, 8.0.x - 8.17.x} successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES(allEs6x, allEs9x, allEs818x) in {
+          "ES successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES allEs6x in {
             val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
               testRorStartup(usingManager = esContainer)
             }
@@ -114,16 +114,6 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
             dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
             dockerLogs should include("Loading ReadonlyREST main settings from file")
             dockerLogs shouldNot include("Cannot verify if the ES was patched")
-            dockerLogs should include("ReadonlyREST was loaded")
-          }
-          "ES {8.18.x, 9.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs7x, allEs8xBelowEs818x) in {
-            val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
-              testRorStartup(usingManager = esContainer)
-            }
-            dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
-            dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
-            dockerLogs should include("Loading ReadonlyREST main settings from file")
-            dockerLogs should include("Cannot verify if the ES was patched. component [readonlyrest], module [ALL-UNNAMED], class [class tech.beshu.ror.tools.core.utils.EsDirectory$], entitlement [file], operation [read], path [/usr/share/elasticsearch]")
             dockerLogs should include("ReadonlyREST was loaded")
           }
         }

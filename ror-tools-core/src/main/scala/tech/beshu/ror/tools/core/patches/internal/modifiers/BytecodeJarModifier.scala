@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers
 
-import better.files.FileExtensions
+import better.files.*
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 
 import java.io.{ByteArrayInputStream, File, InputStream}
