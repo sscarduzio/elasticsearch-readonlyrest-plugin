@@ -655,7 +655,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find jwt definition with name: jwt2")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `jwt` definition with name: jwt2")))
           }
         )
       }
@@ -720,7 +720,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find jwt definition with name: jwt1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `jwt` definition with name: jwt1")))
           }
         )
       }
@@ -786,7 +786,7 @@ class JwtAuthRuleSettingsTests
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for jwt_authorization rule 'jwt1'"
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `jwt_auth` rule 'jwt1'"
                 )))
               }
             )

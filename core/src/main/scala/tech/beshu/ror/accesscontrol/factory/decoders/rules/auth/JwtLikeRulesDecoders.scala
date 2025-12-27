@@ -128,7 +128,7 @@ trait JwtLikeRulesDecoders[
             case (Right(definition), None) =>
               logger.warn(
                 s"""Missing groups logic settings in ${RuleName[AUTH_RULE].name.show} rule.
-                   |For old configs, ROR treats this as `gr oups_any_of: ["*"]`.
+                   |For old configs, ROR treats this as `groups_any_of: ["*"]`.
                    |This syntax is deprecated. Add groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic),
                    |or use ${RuleName[AUTHN_RULE].name.show} if you only need authentication.
                    |""".stripMargin
@@ -160,7 +160,7 @@ trait JwtLikeRulesDecoders[
             s"The $ruleTypePrefix definition with name $name exists, but cannot be used for ${ruleName.name.show} rule. " +
               s"Please check in the documentation ($docsUrl) how to adjust the $ruleTypePrefix definition to use it for both authentication and authorization"
           case None =>
-            s"Cannot find $ruleTypePrefix definition with name: $name"
+            s"Cannot find `$ruleTypePrefix` definition with name: $name"
         }
         Left(RulesLevelCreationError(Message(message)))
     }
@@ -195,7 +195,7 @@ trait JwtLikeRulesDecoders[
             case GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(_, fields) =>
               val fieldsStr = fields.map(f => s"'$f'").mkString(" or ")
               Left(RulesLevelCreationError(Message(
-                s"Please specify either $fieldsStr for ${ruleTypePrefix}_authorization rule '$name'"
+                s"Please specify either $fieldsStr for `${RuleName[RULE].name.show}` rule '$name'"
               )))
           }
       }

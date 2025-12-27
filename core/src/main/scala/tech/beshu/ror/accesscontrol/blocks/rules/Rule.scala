@@ -21,11 +21,12 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
+import tech.beshu.ror.accesscontrol.utils.TaskRuleResultOps
 import tech.beshu.ror.syntax.*
 
 sealed trait Rule {
@@ -110,9 +111,17 @@ object Rule {
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
       authenticate(blockContext)
+        .flatMapT(postAuthenticateAction)
+    }
+
+    final def doAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
+      authenticate(blockContext)
     }
 
     protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
+
+    protected def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      Task.now(Fulfilled(blockContext))
   }
   object AuthenticationRule {
     sealed trait EligibleUsersSupport
@@ -127,9 +136,17 @@ object Rule {
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
       authorize(blockContext)
+        .flatMapT(postAuthorizationAction)
+    }
+
+    final def doAuthorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
+      authorize(blockContext)
     }
 
     protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
+
+    protected def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      Task.now(Fulfilled(blockContext))
   }
 
   trait AuthRule extends AuthenticationRule with AuthorizationRule {
@@ -137,13 +154,12 @@ object Rule {
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
       authenticate(blockContext)
-        .flatMap {
-          case Fulfilled(newBlockContext) =>
-            authorize(newBlockContext)
-          case rejected@Rejected(_) =>
-            Task.now(rejected)
-        }
+        .flatMapT(authorize)
+        .flatMapT(postAuthAction)
     }
+
+    protected def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      Task.now(Fulfilled(blockContext))
   }
 
 }

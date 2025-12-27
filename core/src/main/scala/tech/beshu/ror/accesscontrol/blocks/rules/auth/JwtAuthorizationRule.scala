@@ -48,6 +48,10 @@ final class JwtAuthorizationRule(val settings: Settings)
     }
   }
 
+  override protected def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    callExternalAuthenticationService(blockContext, settings.jwt)
+  }
+
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                  payload: Jwt.Payload,
                                                                  groupsLogic: GroupsLogic) = {
@@ -62,7 +66,10 @@ final class JwtAuthorizationRule(val settings: Settings)
           nonEmptyGroups <- UniqueNonEmptyList.from(groups)
           matchedGroups <- groupsLogic.availableGroupsFrom(nonEmptyGroups)
           if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))
-        } yield blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))).toRight(())
+          contextWithUserMetadata = blockContext.withUserMetadata(
+            _.addAvailableGroups(matchedGroups).withJwtToken(payload)
+          )
+        } yield contextWithUserMetadata).toRight(())
     }
   }
 

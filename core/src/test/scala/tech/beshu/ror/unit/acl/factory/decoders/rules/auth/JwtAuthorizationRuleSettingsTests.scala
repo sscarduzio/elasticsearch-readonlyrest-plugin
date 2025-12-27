@@ -159,7 +159,7 @@ class JwtAuthorizationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find jwt definition with name: jwt2")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `jwt` definition with name: jwt2")))
           }
         )
       }
@@ -176,7 +176,7 @@ class JwtAuthorizationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find jwt definition with name: jwt1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `jwt` definition with name: jwt1")))
           }
         )
       }
@@ -240,7 +240,7 @@ class JwtAuthorizationRuleSettingsTests
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for jwt_authorization rule 'jwt1'"
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `jwt_authorization` rule 'jwt1'"
                 )))
               }
             )
@@ -290,7 +290,7 @@ class JwtAuthorizationRuleSettingsTests
                    |      $groupsAnyOfKey: ["group1", "group2"]
                    |      $groupsAllOfKey: ["groups1", "groups2"]
                    |  jwt:
-                   |  - name: jwt2
+                   |  - name: jwt1
                    |    group_ids_claim: groups
                    |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                    |
@@ -298,7 +298,7 @@ class JwtAuthorizationRuleSettingsTests
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for jwt_authorization rule 'jwt1'")
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `jwt_authorization` rule 'jwt1'")
                 ))
               }
             )

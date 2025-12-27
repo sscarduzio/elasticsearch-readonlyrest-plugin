@@ -121,58 +121,6 @@ class JwtAuthenticationRuleSettingsTests
           }
         )
       }
-      "group names claim can be enabled in JWT definition" in {
-        assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    jwt_authentication: jwt1
-               |
-               |  jwt:
-              |
-               |  - name: jwt1
-               |    user_claim: user
-               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-               |
-               |""".stripMargin,
-          assertion = rule => {
-            rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
-            rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
-            rule.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-          }
-        )
-      }
-      "groups claim can be enabled in JWT definition and is a http address" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_authentication: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    user_claim: user
-              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
-            rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-          }
-        )
-      }
     }
     "be able to be loaded from config (token-related)" when {
       "RSA family algorithm can be used in JWT signature" in {
@@ -405,7 +353,7 @@ class JwtAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find jwt definition with name: jwt2")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `jwt` definition with name: jwt2")))
           }
         )
       }
@@ -422,7 +370,7 @@ class JwtAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find jwt definition with name: jwt1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `jwt` definition with name: jwt1")))
           }
         )
       }

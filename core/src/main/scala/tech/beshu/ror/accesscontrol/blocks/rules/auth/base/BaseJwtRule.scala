@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMeth
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.from
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.nes
@@ -36,49 +35,55 @@ import scala.util.Try
 
 trait BaseJwtRule extends Logging {
 
-  protected def processUsingJwtToken[
+  protected def callExternalAuthenticationService[
     B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B,
-    jwt: JWT_DEF,
-    disabledCallsToExternalAuthenticationService: Boolean = false)
-   (operation: Jwt.Payload => Either[Unit, B]): Task[RuleResult[B]] = {
-    implicit val jwtImpl: JWT_DEF = jwt
-    jwtTokenFrom(blockContext.requestContext) match {
-      case None =>
-        logger.debug(s"[${blockContext.requestContext.id.show}] Authorization header '${jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
-        Task.now(Rejected())
-      case Some(token) =>
-        implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-        claimsFrom(token) match {
-          case Left(_) =>
+  ](blockContext: B, jwt: JWT_DEF): Task[RuleResult[B]] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
+    jwt.checkMethod match {
+      case NoCheck(service) =>
+        jwtTokenFrom(blockContext, jwt) match {
+          case Left(()) =>
             Task.now(Rejected())
-          case Right(jwtPayload) =>
-            val claimProcessingResult = operation(jwtPayload)
-            claimProcessingResult match {
-              case Left(_) =>
-                Task.now(Rejected())
-              case Right(modifiedBlockContext) =>
-                jwt.checkMethod match {
-                  case NoCheck(service) if !disabledCallsToExternalAuthenticationService =>
-                    service
-                      .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
-                      .map(RuleResult.resultBasedOnCondition(modifiedBlockContext)(_))
-                  case _ =>
-                    Task.now(Fulfilled(modifiedBlockContext))
-                }
-            }
+          case Right(token) =>
+            service
+              .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
+              .map(RuleResult.resultBasedOnCondition(blockContext)(_))
         }
+      case _ =>
+        Task.now(Fulfilled(blockContext))
     }
   }
 
-  private def jwtTokenFrom[JWT_DEF <: JwtDef](requestContext: RequestContext)(implicit jwt: JWT_DEF) = {
-    requestContext
-      .authorizationToken(jwt.authorizationTokenDef)
-      .map(t => Jwt.Token(t.value))
+  protected def processUsingJwtToken[
+    B <: BlockContext, JWT_DEF <: JwtDef
+  ](blockContext: B, jwt: JWT_DEF)
+   (operation: Jwt.Payload => Either[Unit, B]): Task[RuleResult[B]] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
+    (for {
+      token <- jwtTokenFrom(blockContext, jwt)
+      jwtPayload <- claimsFrom(token, jwt)
+      claimProcessingResult <- operation(jwtPayload)
+    } yield claimProcessingResult) match {
+      case Left(()) =>
+        Task.now(Rejected())
+      case Right(modifiedBlockContext) =>
+        Task.now(Fulfilled(modifiedBlockContext))
+    }
   }
 
-  private def logBadToken(ex: Throwable, token: Jwt.Token)
-                         (implicit requestId: RequestId): Unit = {
+  private def jwtTokenFrom[
+    B <: BlockContext, JWT_DEF <: JwtDef
+  ](blockContext: B, jwt: JWT_DEF): Either[Unit, Jwt.Token] = {
+    blockContext.requestContext.authorizationToken(jwt.authorizationTokenDef) match {
+      case Some(t) =>
+        Right(Jwt.Token(t.value))
+      case None =>
+        logger.debug(s"[${blockContext.requestContext.id.show}] Authorization header '${jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
+        Left(())
+    }
+  }
+
+  private def logBadToken(ex: Throwable, token: Jwt.Token)(implicit requestId: RequestId): Unit = {
     val tokenParts = token.show.split("\\.")
     val printableToken = if (!logger.delegate.isDebugEnabled && tokenParts.length === 3) {
       // signed JWT, last block is the cryptographic digest, which should be treated as a secret.
@@ -90,9 +95,7 @@ trait BaseJwtRule extends Logging {
     logger.debug(s"[${requestId.show}] JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
   }
 
-  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token)
-                                           (implicit requestId: RequestId,
-                                            jwt: JWT_DEF) = {
+  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF)(implicit requestId: RequestId): Either[Unit, Jwt.Payload] = {
     val parser = jwt.checkMethod match {
       case NoCheck(_) => Jwts.parser().unsecured().build()
       case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()

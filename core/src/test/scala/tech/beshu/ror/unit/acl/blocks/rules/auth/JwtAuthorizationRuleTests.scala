@@ -77,7 +77,8 @@ class JwtAuthorizationRuleTests
           blockContext =>
             assertBlockContext(
               currentGroup = Some(GroupId("group2")),
-              availableGroups = UniqueList.of(group("group2", "Group 2"))
+              availableGroups = UniqueList.of(group("group2", "Group 2")),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             )(blockContext)
         }
       }
@@ -108,7 +109,8 @@ class JwtAuthorizationRuleTests
           blockContext =>
             assertBlockContext(
               currentGroup = Some(GroupId("group2")),
-              availableGroups = UniqueList.of(group("group2", "Group 2"))
+              availableGroups = UniqueList.of(group("group2", "Group 2")),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             )(blockContext)
         }
       }
@@ -139,7 +141,8 @@ class JwtAuthorizationRuleTests
           blockContext =>
             assertBlockContext(
               currentGroup = Some(GroupId("group1")),
-              availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
+              availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2")),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             )(blockContext)
         }
       }
@@ -170,7 +173,8 @@ class JwtAuthorizationRuleTests
           blockContext =>
             assertBlockContext(
               currentGroup = Some(GroupId("group1")),
-              availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
+              availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2")),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             )(blockContext)
         }
       }

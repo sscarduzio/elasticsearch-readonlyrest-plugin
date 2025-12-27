@@ -153,7 +153,7 @@ class RorKbnAuthorizationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find ror_kbn definition with name: kbn1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `ror_kbn` definition with name: kbn1")))
           }
         )
       }
@@ -170,7 +170,7 @@ class RorKbnAuthorizationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find ror_kbn definition with name: kbn1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `ror_kbn` definition with name: kbn1")))
           }
         )
       }
@@ -249,14 +249,14 @@ class RorKbnAuthorizationRuleSettingsTests
                    |      $groupsAllOfKey: ["groups1", "groups2"]
                    |  ror_kbn:
                    |
-                   |  - name: kbn2
+                   |  - name: kbn1
                    |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                    |
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for ror_kbn_authorization rule 'kbn1'")
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `ror_kbn_authorization` rule 'kbn1'")
                 ))
               }
             )

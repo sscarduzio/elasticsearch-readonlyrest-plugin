@@ -34,8 +34,7 @@ import tech.beshu.ror.implicits.*
 
 
 final class JwtAuthenticationRule(val settings: Settings,
-                                  override val userIdCaseSensitivity: CaseSensitivity,
-                                  disabledCallsToExternalAuthenticationService: Boolean = false)
+                                  override val userIdCaseSensitivity: CaseSensitivity)
   extends AuthenticationRule
     with AuthenticationImpersonationCustomSupport
     with BaseJwtRule {
@@ -45,19 +44,28 @@ final class JwtAuthenticationRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    processUsingJwtToken(blockContext, settings.jwt, disabledCallsToExternalAuthenticationService) { payload =>
+    processUsingJwtToken(blockContext, settings.jwt) { payload =>
       authenticate(blockContext, payload)
     }
+  }
+
+  override protected def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    callExternalAuthenticationService(blockContext, settings.jwt)
   }
 
   private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                     payload: Jwt.Payload) = {
     val result = payload.claims.userIdClaim(settings.jwt.userClaim)
     logClaimSearchResults(blockContext, result)
-    (result match {
-      case NotFound => Left(())
-      case Found(userId) => Right(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(userId))))
-    }).map(_.withUserMetadata(_.withJwtToken(payload)))
+    result match {
+      case Found(userId) =>
+        Right(blockContext.withUserMetadata(
+          _.withLoggedUser(DirectlyLoggedUser(userId))
+            .withJwtToken(payload)
+        ))
+      case NotFound =>
+        Left(())
+    }
   }
 
   private def logClaimSearchResults[B <: BlockContext](blockContext: B,
@@ -65,9 +73,6 @@ final class JwtAuthenticationRule(val settings: Settings,
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     logger.debug(s"[${requestId.show}] JWT resolved user for claim ${settings.jwt.userClaim.name.rawPath}: ${user.show}")
   }
-
-  def withDisabledCallsToExternalAuthenticationService =
-    new JwtAuthenticationRule(settings, userIdCaseSensitivity, disabledCallsToExternalAuthenticationService = true)
 
 }
 
