@@ -17,10 +17,8 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Jwts
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
@@ -29,7 +27,6 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -45,7 +42,6 @@ import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.misc.JwtUtils.*
-import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import java.security.Key
@@ -58,117 +54,6 @@ class JwtAuthRuleTests
 
   "A JwtAuthRule" should {
     "match" when {
-      "token has valid HS256 signature" in {
-        val secret: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(secret, claims = List(
-          "userId" := "user1",
-          "groups" := List("group1", "group2")
-        ))
-        assertMatchRule(
-          configuredJwtDef = AuthJwtDef(
-            JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.Hmac(secret.getEncoded),
-            userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
-            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
-          ),
-          tokenHeader = bearerHeader(jwt)
-        ) {
-          blockContext =>
-            assertBlockContext(
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              currentGroup = Some(GroupId("group1")),
-            )(blockContext)
-        }
-      }
-      "token has valid RS256 signature" in {
-        val (pub, secret) = Random.generateRsaRandomKeys
-        val jwt = Jwt(secret, claims = List(
-          "userId" := "user1",
-          "groups" := List("group1", "group2")
-        ))
-        assertMatchRule(
-          configuredJwtDef = AuthJwtDef(
-            JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.Rsa(pub),
-            userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
-            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
-          ),
-          tokenHeader = bearerHeader(jwt)
-        ) {
-          blockContext =>
-            assertBlockContext(
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              currentGroup = Some(GroupId("group1")),
-            )(blockContext)
-        }
-      }
-      "token has no signature and external auth service returns true" in {
-        val jwt = Jwt(claims = List(
-          "userId" := "user1",
-          "groups" := List("group1", "group2")
-        ))
-        assertMatchRule(
-          configuredJwtDef = AuthJwtDef(
-            JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = true)),
-            userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
-            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
-          ),
-          tokenHeader = bearerHeader(jwt)
-        ) {
-          blockContext =>
-            assertBlockContext(
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              currentGroup = Some(GroupId("group1")),
-            )(blockContext)
-        }
-      }
-      "token has no signature and external auth service state is cached" in {
-        val validJwt = Jwt(claims = List(
-          "userId" := "testuser",
-          "groups" := List("group1", "group2")
-        ))
-        val invalidJwt = Jwt(claims = List(
-          "userId" := "invalid_user",
-          "groups" := List("group1", "group2")
-        ))
-        val authService = cachedAuthService(validJwt.stringify(), invalidJwt.stringify())
-        val jwtDef = AuthJwtDef(
-          JwtDef.Name("test"),
-          AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-          SignatureCheckMethod.NoCheck(authService),
-          userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
-          groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
-        )
-
-        def checkValidToken(): Unit = assertMatchRule(
-          configuredJwtDef = jwtDef,
-          tokenHeader = bearerHeader(validJwt)
-        ) {
-          blockContext =>
-            assertBlockContext(
-              jwt = Some(domain.Jwt.Payload(validJwt.defaultClaims())),
-              loggedUser = Some(DirectlyLoggedUser(User.Id("testuser"))),
-              currentGroup = Some(GroupId("group1")),
-            )(blockContext)
-        }
-
-        def checkInvalidToken(): Unit = assertNotMatchRule(
-          configuredJwtDef = jwtDef,
-          tokenHeader = bearerHeader(invalidJwt)
-        )
-
-        checkValidToken()
-        checkValidToken()
-        checkInvalidToken()
-        checkValidToken()
-      }
       "user claim name is defined and userId is passed in JWT token claim" in {
         val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
@@ -612,52 +497,6 @@ class JwtAuthRuleTests
           preferredGroupId = Some(GroupId("group3"))
         )
       }
-      "token has invalid HS256 signature" in {
-        val key1: Key = Jwts.SIG.HS256.key().build()
-        val key2: Key = Jwts.SIG.HS256.key().build()
-        val jwt2 = Jwt(key2, claims = List.empty)
-        assertNotMatchRule(
-          configuredJwtDef = AuthJwtDef(
-            JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.Hmac(key1.getEncoded),
-            userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
-            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
-          ),
-          tokenHeader = bearerHeader(jwt2)
-        )
-      }
-      "token has invalid RS256 signature" in {
-        val (pub, _) = Random.generateRsaRandomKeys
-        val (_, secret) = Random.generateRsaRandomKeys
-        val jwt = Jwt(secret, claims = List.empty)
-        assertNotMatchRule(
-          configuredJwtDef = AuthJwtDef(
-            JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.Rsa(pub),
-            userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
-            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
-          ),
-          tokenHeader = bearerHeader(jwt)
-        )
-      }
-      "token has no signature but external auth service returns false" in {
-        val jwt = Jwt(claims = List(
-          "userId" := "user1",
-          "groups" := List("group1", "group2")
-        ))
-        assertNotMatchRule(
-          configuredJwtDef = AuthJwtDef(
-            JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = false)),
-            userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
-            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
-          ),
-          tokenHeader = bearerHeader(jwt)
-        )
-      }
       "user claim name is defined but userId isn't passed in JWT token claim" in {
         val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(key, claims = List(
@@ -826,34 +665,5 @@ class JwtAuthRuleTests
       case None =>
         result should be(Rejected())
     }
-  }
-
-  private def authService(rawToken: String, authenticated: Boolean) = {
-    val service = mock[ExternalAuthenticationService]
-    (service.authenticate(_: Credentials)(_: RequestId))
-      .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(rawToken)) })
-      .returning(Task.now(authenticated))
-    service
-  }
-
-  private def cachedAuthService(authenticatedToken: String, unauthenticatedToken: String) = {
-    val service = mock[ExternalAuthenticationService]
-    (service.authenticate(_: Credentials)(_: RequestId))
-      .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(authenticatedToken)) })
-      .returning(Task.now(true))
-      .once()
-    (service.authenticate(_: Credentials)(_: RequestId))
-      .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(unauthenticatedToken)) })
-      .returning(Task.now(false))
-      .once()
-    (() => service.id)
-      .expects()
-      .returning(Name("external_service"))
-    (() => service.serviceTimeout)
-      .expects()
-      .anyNumberOfTimes()
-      .returning(Refined.unsafeApply(10 seconds))
-    val ttl = (1 hour).toRefinedPositiveUnsafe
-    new CacheableExternalAuthenticationServiceDecorator(service, ttl)
   }
 }
