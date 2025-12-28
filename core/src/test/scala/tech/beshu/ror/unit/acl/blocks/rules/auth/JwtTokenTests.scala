@@ -323,6 +323,19 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           tokenHeader = bearerHeader(jwt)
         )
       }
+      "token is invalid and cannot be parsed" in {
+        val secret: Key = Jwts.SIG.HS256.key().build()
+        assertNotMatchRule(
+          configuredJwtDef = createJwtDef(
+            JwtDef.Name("test"),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            SignatureCheckMethod.Hmac(secret.getEncoded),
+            domain.Jwt.ClaimName(jsonPathFrom("userId")),
+            GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
+          ),
+          tokenHeader = bearerHeader("INVALID_JWT_TOKEN")
+        )
+      }
     }
   }
 
