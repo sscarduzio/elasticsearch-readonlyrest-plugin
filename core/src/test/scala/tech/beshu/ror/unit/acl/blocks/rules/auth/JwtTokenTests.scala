@@ -227,6 +227,57 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         checkInvalidToken()
         checkValidToken()
       }
+      "custom authorization header is used" in {
+        val key: Key = Jwts.SIG.HS256.key().build()
+        val jwt = Jwt(key, claims = List(
+          "userId" := "user1",
+          "groups" := List("group1", "group2")
+        ))
+        assertMatchRule(
+          configuredJwtDef = createJwtDef(
+            JwtDef.Name("test"),
+            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), "Bearer "),
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            domain.Jwt.ClaimName(jsonPathFrom("userId")),
+            GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
+          ),
+          tokenHeader = bearerHeader("x-jwt-custom-header", jwt)
+        ) {
+          blockContext =>
+            assertBlockContext(
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              loggedUser = expectedLoggedUser("user1"),
+              currentGroup = expectedCurrentGroup,
+            )(blockContext)
+        }
+      }
+      "custom authorization token prefix is used" in {
+        val key: Key = Jwts.SIG.HS256.key().build()
+        val jwt = Jwt(key, claims = List(
+          "userId" := "user1",
+          "groups" := List("group1", "group2")
+        ))
+        assertMatchRule(
+          configuredJwtDef = createJwtDef(
+            JwtDef.Name("test"),
+            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), "MyPrefix "),
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            domain.Jwt.ClaimName(jsonPathFrom("userId")),
+            GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
+          ),
+          tokenHeader = new Header(
+            Header.Name("x-jwt-custom-header"),
+            NonEmptyString.unsafeFrom(s"MyPrefix ${jwt.stringify()}")
+          )
+        ) {
+          blockContext =>
+            assertBlockContext(
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              loggedUser = expectedLoggedUser("user1"),
+              currentGroup = expectedCurrentGroup,
+            )(blockContext)
+        }
+      }
     }
     "not match" when {
       "token has invalid HS256 signature" in {

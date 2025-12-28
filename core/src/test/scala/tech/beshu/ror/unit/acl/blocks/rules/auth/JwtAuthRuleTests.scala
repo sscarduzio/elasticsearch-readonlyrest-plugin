@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Jwts
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -37,7 +36,6 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
@@ -423,57 +421,6 @@ class JwtAuthRuleTests
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group1")),
               availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
-            )(blockContext)
-        }
-      }
-      "custom authorization header is used" in {
-        val key: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(key, claims = List(
-          "userId" := "user1",
-          "groups" := List("group1", "group2")
-        ))
-        assertMatchRule(
-          configuredJwtDef = AuthJwtDef(
-            JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), "Bearer "),
-            SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
-            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
-          ),
-          tokenHeader = bearerHeader("x-jwt-custom-header", jwt)
-        ) {
-          blockContext =>
-            assertBlockContext(
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              currentGroup = Some(GroupId("group1")),
-            )(blockContext)
-        }
-      }
-      "custom authorization token prefix is used" in {
-        val key: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(key, claims = List(
-          "userId" := "user1",
-          "groups" := List("group1", "group2")
-        ))
-        assertMatchRule(
-          configuredJwtDef = AuthJwtDef(
-            JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), "MyPrefix "),
-            SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
-            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
-          ),
-          tokenHeader = new Header(
-            Header.Name("x-jwt-custom-header"),
-            NonEmptyString.unsafeFrom(s"MyPrefix ${jwt.stringify()}")
-          )
-        ) {
-          blockContext =>
-            assertBlockContext(
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              currentGroup = Some(GroupId("group1")),
             )(blockContext)
         }
       }
