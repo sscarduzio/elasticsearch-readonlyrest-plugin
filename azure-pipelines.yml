@@ -58,12 +58,12 @@ stages:
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key 
-              
+              export aws_secret_access_key=$var_aws_secret_access_key
+
               export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
-              
+
               ci/upload-es-artifacts.sh
             continueOnError: true
             env:
@@ -176,14 +176,14 @@ stages:
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition: 
+    condition:
       and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), 
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), 
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
+        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
-      - job: 
+      - job:
         container: eclipse-temurin:17-jdk
         steps:
           - checkout: self
@@ -961,13 +961,17 @@ stages:
       )
     jobs:
       - job:
-        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 600
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -988,11 +992,13 @@ stages:
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
 
-              export DOCKER=docker
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"
                 exit 1
               fi
+              
+              java -version
+              docker -version
         
               echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
@@ -1036,7 +1042,6 @@ stages:
       )
     jobs:
       - job:
-        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 180
         steps:
           - checkout: self
@@ -1044,6 +1049,11 @@ stages:
             clean: false
             persistCredentials: true
             timeoutInMinutes: 180
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -1063,12 +1073,11 @@ stages:
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
-              
+
               export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
 
-              export DOCKER=docker
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"
                 exit 1
@@ -1115,12 +1124,16 @@ stages:
       )
     jobs:
       - job:
-        container: eclipse-temurin:17-jdk
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -1200,7 +1213,6 @@ stages:
           - script: |
               set -ex
 
-              export DOCKER=docker
               docker login -u $var_docker_registry_user -p $var_docker_registry_password
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"
