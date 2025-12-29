@@ -35,16 +35,16 @@ import scala.util.Try
 
 trait BaseJwtRule extends Logging {
 
-  protected def callExternalAuthenticationService[
+  protected def doPostAuthAction[
     B <: BlockContext, JWT_DEF <: JwtDef
   ](blockContext: B, jwt: JWT_DEF): Task[RuleResult[B]] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     jwt.checkMethod match {
       case NoCheck(service) =>
         jwtTokenFrom(blockContext, jwt) match {
-          case Left(()) =>
-            Task.now(Rejected())
-          case Right(token) =>
+          case Rejected(cause) =>
+            Task.now(Rejected(cause))
+          case Fulfilled(token) =>
             service
               .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
               .map(RuleResult.resultBasedOnCondition(blockContext)(_))
@@ -57,29 +57,24 @@ trait BaseJwtRule extends Logging {
   protected def processUsingJwtToken[
     B <: BlockContext, JWT_DEF <: JwtDef
   ](blockContext: B, jwt: JWT_DEF)
-   (operation: Jwt.Payload => Either[Unit, B]): Task[RuleResult[B]] = {
+   (operation: Jwt.Payload => RuleResult[B]): Task[RuleResult[B]] = Task.delay {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-    (for {
+    for {
       token <- jwtTokenFrom(blockContext, jwt)
       jwtPayload <- claimsFrom(token, jwt)
       claimProcessingResult <- operation(jwtPayload)
-    } yield claimProcessingResult) match {
-      case Left(()) =>
-        Task.now(Rejected())
-      case Right(modifiedBlockContext) =>
-        Task.now(Fulfilled(modifiedBlockContext))
-    }
+    } yield claimProcessingResult
   }
 
   private def jwtTokenFrom[
     B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B, jwt: JWT_DEF): Either[Unit, Jwt.Token] = {
+  ](blockContext: B, jwt: JWT_DEF): RuleResult[Jwt.Token] = {
     blockContext.requestContext.authorizationToken(jwt.authorizationTokenDef) match {
       case Some(t) =>
-        Right(Jwt.Token(t.value))
+        RuleResult.Fulfilled(Jwt.Token(t.value))
       case None =>
         logger.debug(s"[${blockContext.requestContext.id.show}] Authorization header '${jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
-        Left(())
+        RuleResult.Rejected()
     }
   }
 
@@ -95,29 +90,34 @@ trait BaseJwtRule extends Logging {
     logger.debug(s"[${requestId.show}] JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
   }
 
-  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF)(implicit requestId: RequestId): Either[Unit, Jwt.Payload] = {
+  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF)(implicit requestId: RequestId): RuleResult[Jwt.Payload] = {
     val parser = jwt.checkMethod match {
       case NoCheck(_) => Jwts.parser().unsecured().build()
       case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
       case Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
       case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
     }
+
+    def rejected(ex: Throwable): RuleResult[Jwt.Payload] = {
+      logBadToken(ex, token)
+      RuleResult.Rejected()
+    }
+
     jwt.checkMethod match {
       case NoCheck(_) =>
         token.value.value.split("\\.").toList match {
           case fst :: snd :: _ =>
             Try(parser.parseUnsecuredClaims(s"$fst.$snd.").getPayload)
               .toEither
-              .map(Jwt.Payload.apply)
-              .left.map { ex => logBadToken(ex, token) }
+              .fold(rejected, claims => RuleResult.Fulfilled(Jwt.Payload(claims)))
           case _ =>
-            Left(())
+            RuleResult.Rejected()
         }
       case Hmac(_) | Rsa(_) | Ec(_) =>
         Try(parser.parseSignedClaims(token.value.value).getPayload)
           .toEither
           .map(Jwt.Payload.apply)
-          .left.map { ex => logBadToken(ex, token) }
+          .fold(rejected, RuleResult.Fulfilled(_))
     }
   }
 

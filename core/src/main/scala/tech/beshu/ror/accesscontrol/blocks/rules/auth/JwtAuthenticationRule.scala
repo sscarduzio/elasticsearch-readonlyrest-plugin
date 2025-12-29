@@ -49,22 +49,22 @@ final class JwtAuthenticationRule(val settings: Settings,
     }
   }
 
-  override protected def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    callExternalAuthenticationService(blockContext, settings.jwt)
+  override protected[rules] def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    doPostAuthAction(blockContext, settings.jwt)
   }
 
   private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                    payload: Jwt.Payload) = {
+                                                                    payload: Jwt.Payload): RuleResult[B] = {
     val result = payload.claims.userIdClaim(settings.jwt.userClaim)
     logClaimSearchResults(blockContext, result)
     result match {
       case Found(userId) =>
-        Right(blockContext.withUserMetadata(
+        RuleResult.Fulfilled(blockContext.withUserMetadata(
           _.withLoggedUser(DirectlyLoggedUser(userId))
             .withJwtToken(payload)
         ))
       case NotFound =>
-        Left(())
+        RuleResult.Rejected()
     }
   }
 

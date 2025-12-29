@@ -20,6 +20,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDefForAuthorization
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseJwtRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthorizationImpersonationCustomSupport
@@ -48,28 +49,28 @@ final class JwtAuthorizationRule(val settings: Settings)
     }
   }
 
-  override protected def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    callExternalAuthenticationService(blockContext, settings.jwt)
+  override protected[rules] def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    doPostAuthAction(blockContext, settings.jwt)
   }
 
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                  payload: Jwt.Payload,
-                                                                 groupsLogic: GroupsLogic) = {
+                                                                 groupsLogic: GroupsLogic): RuleResult[B] = {
     val groupsConfig = settings.jwt.groupsConfig
     val result = payload.claims.groupsClaim(groupsConfig.idsClaim, groupsConfig.namesClaim)
     logClaimSearchResults(blockContext, result)
     result match {
       case NotFound =>
-        Left(())
+        RuleResult.Rejected()
       case Found(groups) =>
-        (for {
-          nonEmptyGroups <- UniqueNonEmptyList.from(groups)
-          matchedGroups <- groupsLogic.availableGroupsFrom(nonEmptyGroups)
+        for {
+          nonEmptyGroups <- RuleResult.fromOption(UniqueNonEmptyList.from(groups))
+          matchedGroups <- RuleResult.fromOption(groupsLogic.availableGroupsFrom(nonEmptyGroups))
           if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))
           contextWithUserMetadata = blockContext.withUserMetadata(
             _.addAvailableGroups(matchedGroups).withJwtToken(payload)
           )
-        } yield contextWithUserMetadata).toRight(())
+        } yield contextWithUserMetadata
     }
   }
 

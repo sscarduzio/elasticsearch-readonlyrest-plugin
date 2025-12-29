@@ -31,8 +31,8 @@ final class JwtAuthRule(val authentication: JwtAuthenticationRule,
     authorizationRule = authorization
   ) with BaseJwtRule {
 
-  override protected def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    callExternalAuthenticationService(blockContext, authorization.settings.jwt)
+  override protected[rules] def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    doPostAuthAction(blockContext, authorization.settings.jwt)
   }
 
   override val name: Rule.Name = JwtAuthRule.Name.name
