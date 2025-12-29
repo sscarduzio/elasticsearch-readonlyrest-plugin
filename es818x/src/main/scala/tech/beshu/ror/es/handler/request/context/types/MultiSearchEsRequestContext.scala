@@ -158,7 +158,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
 
   private def updateRequestWithNonExistingIndex(request: SearchRequest): Unit = {
     val originRequestIndices = indicesFrom(request).toList
-    val notExistingIndex = originRequestIndices.randomNonexistentIndex()
+    val notExistingIndex = originRequestIndices.randomNonexistentLocalIndex()
     request.indices(notExistingIndex.stringify)
   }
 }

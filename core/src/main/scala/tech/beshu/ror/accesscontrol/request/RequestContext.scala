@@ -73,6 +73,7 @@ trait RequestContext extends Logging {
 
   def allTemplates: Set[Template]
 
+  // todo: rename to allRemoteClusterNames
   def allClusterNames: Set[ClusterName.Full]
 
   lazy val legacyTemplates: Set[Template.LegacyTemplate] =

@@ -517,9 +517,9 @@ object BlockContext {
 
   implicit class RandomIndexBasedOnBlockContextIndices[B <: BlockContext : HasIndices](blockContext: B) {
 
-    def randomNonexistentIndex(fromIndices: B => Iterable[RequestedIndex[ClusterIndexName]]): RequestedIndex[ClusterIndexName] = {
+    def randomNonexistentLocalIndex(fromIndices: B => Iterable[RequestedIndex[ClusterIndexName]]): RequestedIndex[ClusterIndexName.Local] = {
       import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
-      fromIndices(blockContext).toList.randomNonexistentIndex()
+      fromIndices(blockContext).toList.randomNonexistentLocalIndex()
     }
   }
 

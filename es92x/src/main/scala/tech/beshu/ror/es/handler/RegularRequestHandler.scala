@@ -71,7 +71,7 @@ class RegularRequestHandler(engine: Engine,
           onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
         case RegularRequestResult.ForbiddenByMismatched(causes) =>
           onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
-        case RegularRequestResult.IndexNotFound() =>
+        case RegularRequestResult.IndexNotFound(_) =>
           onIndexNotFound(request)
         case RegularRequestResult.AliasNotFound() =>
           onAliasNotFound(request)

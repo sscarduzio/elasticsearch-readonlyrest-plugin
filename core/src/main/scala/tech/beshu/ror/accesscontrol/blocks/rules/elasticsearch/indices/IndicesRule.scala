@@ -78,7 +78,7 @@ class IndicesRule(override val settings: Settings,
       case ClusterIndexName.Local(_) => ClusterName.Full.local
       case ClusterIndexName.Remote(_, cluster) => cluster
     }
-    val allClusterNames = requestContext.allClusterNames
+    val allClusterNames = requestContext.allClusterNames ++ Set(ClusterName.Full.local)
     val matcher = PatternsMatcher.create(clusterNamesFromIndices)
     matcher.filter(allClusterNames)
   }

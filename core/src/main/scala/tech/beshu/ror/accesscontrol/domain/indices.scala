@@ -174,6 +174,10 @@ object RequestedIndex {
   }
 
   implicit class RandomNonexistentRequestedIndex(val requestedIndex: RequestedIndex[ClusterIndexName]) {
+    def randomNonexistentLocalIndex(): RequestedIndex[ClusterIndexName.Local] = {
+      RequestedIndex(requestedIndex.name.randomNonexistentLocalIndex(), excluded = false)
+    }
+
     def randomNonexistentIndex(): RequestedIndex[ClusterIndexName] = {
       RequestedIndex(requestedIndex.name.randomNonexistentIndex(), excluded = false)
     }
@@ -260,6 +264,12 @@ object ClusterIndexName {
       }
     }
 
+    def randomNonexistentIndex(clusterName: ClusterName, prefix: String = ""): ClusterIndexName.Remote = fromString {
+      val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
+      if (prefix.contains("*")) s"${clusterName.stringify}:$nonexistentIndex*"
+      else s"${clusterName.stringify}:$nonexistentIndex"
+    } get
+
     implicit val matchableClusterIndexNameRemote: Matchable[ClusterIndexName.Remote] = Matchable.matchable(_.stringify)
   }
 
@@ -284,8 +294,8 @@ object ClusterIndexName {
     }
   }
 
-  implicit class RandomNonexistentIndex(val base: ClusterIndexName) extends AnyVal {
-    def randomNonexistentIndex(): ClusterIndexName = base match {
+  implicit class RandomNonexistentLocalIndex(val base: ClusterIndexName) extends AnyVal {
+    def randomNonexistentLocalIndex(): ClusterIndexName.Local = base match {
       case Local(IndexName.Full(name)) =>
         Local.randomNonexistentIndex(name)
       case Local(IndexName.Pattern(namePattern)) =>
@@ -294,6 +304,19 @@ object ClusterIndexName {
         Local.randomNonexistentIndex(s"${clusterName.stringify}_$name")
       case Remote(IndexName.Pattern(namePattern), clusterName) =>
         Local.randomNonexistentIndex(s"${clusterName.stringify}_$namePattern")
+    }
+  }
+
+  implicit class RandomNonexistentIndex(val base: ClusterIndexName) extends AnyVal {
+    def randomNonexistentIndex(): ClusterIndexName = base match {
+      case Local(IndexName.Full(name)) =>
+        Local.randomNonexistentIndex(name)
+      case Local(IndexName.Pattern(namePattern)) =>
+        Local.randomNonexistentIndex(namePattern)
+      case Remote(IndexName.Full(name), clusterName) =>
+        Remote.randomNonexistentIndex(clusterName, name)
+      case Remote(IndexName.Pattern(namePattern), clusterName) =>
+        Remote.randomNonexistentIndex(clusterName, namePattern)
     }
   }
 

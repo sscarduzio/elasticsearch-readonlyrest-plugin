@@ -17,17 +17,20 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.action.admin.indices.resolve.{ResolveClusterActionRequest, ResolveClusterActionResponse}
+import org.elasticsearch.action.admin.indices.resolve.ResolveClusterActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import org.elasticsearch.transport.NoSuchRemoteClusterException
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
+
+import scala.jdk.CollectionConverters.*
 
 class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
                                      esContext: EsContext,
@@ -47,20 +50,46 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
-    ModificationResult.UpdateResponse.sync(resp => filterResponse(resp, allAllowedIndices))
+    ModificationResult.Modified
+    //    ModificationResult.UpdateResponse.sync(resp => filterResponse(resp, allAllowedIndices))
   }
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
-    update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
+    val requestedFullClusterName =
+      initialBlockContext
+        .indices.toList
+        .flatMap[ClusterName] { r =>
+          r.name match {
+            case ClusterIndexName.Local(_) => Some(ClusterName.Full.local)
+            case ClusterIndexName.Remote(_, clusterName@ClusterName.Full(_)) => Some(clusterName)
+            case ClusterIndexName.Remote(_, clusterName@ClusterName.Pattern(_)) => None
+          }
+        }
+
+    requestedFullClusterName.diff(allowedClusters.toList) match {
+      case Nil =>
+        val newRequestedNonexistentIndices = initialBlockContext
+          .indices.toList
+          .distinctBy(_.name.index match {
+            case ClusterIndexName.Local(_) => ClusterName.Full.local
+            case ClusterIndexName.Remote(_, cluster) => cluster
+          })
+          .map(_.randomNonexistentIndex())
+
+        actionRequest.indices(newRequestedNonexistentIndices.stringify: _*)
+        ModificationResult.Modified
+      case head :: _ =>
+        throw new NoSuchRemoteClusterException(head.stringify)
+    }
+    //    update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
   }
 
-  private def filterResponse(response: ActionResponse, allAllowedIndices: NonEmptyList[ClusterIndexName]): ActionResponse = {
-    response match {
-      case r: ResolveClusterActionResponse =>
-        allAllowedIndices.toString
-        r
-      case r => r
-    }
-  }
+  //  private def filterResponse(response: ActionResponse, allAllowedIndices: NonEmptyList[ClusterIndexName]): ActionResponse = {
+  //    response match {
+  //      case r: ResolveClusterActionResponse =>
+  //        allAllowedIndices.toString
+  //        r
+  //      case r => r
+  //    }
+  //  }
 }

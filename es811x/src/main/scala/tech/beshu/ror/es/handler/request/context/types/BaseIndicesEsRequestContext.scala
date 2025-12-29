@@ -51,17 +51,17 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]) = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
+      val nonExistentIndex = initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentIndex()).toList)
+          .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
         update(actionRequest, nonExistingIndices, nonExistingIndices.map(_.name))
       } else {
         ShouldBeInterrupted
       }
     } else {
-      val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
+      val randomNonExistingIndex = initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)
       update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
     }
   }

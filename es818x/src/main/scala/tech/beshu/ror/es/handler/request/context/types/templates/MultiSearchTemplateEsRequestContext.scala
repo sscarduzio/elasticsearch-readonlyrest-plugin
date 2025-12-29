@@ -143,7 +143,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
   }
 
   private def randomNonexistentIndex(request: ReflectionBasedSearchTemplateRequest) =
-    indicesFrom(request).toList.randomNonexistentIndex()
+    indicesFrom(request).toList.randomNonexistentLocalIndex()
 
   private def indicesFrom(request: ReflectionBasedSearchTemplateRequest) = {
     request
