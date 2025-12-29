@@ -20,10 +20,12 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 
-extension [B](result: Task[RuleResult[B]]) {
-  def flatMapT[C <: BlockContext](f: B => Task[RuleResult[C]]): Task[RuleResult[C]] =
-    result.flatMap {
-      case RuleResult.Fulfilled(b) => f(b)
-      case RuleResult.Rejected(cause) => Task.pure(RuleResult.Rejected(cause))
-    }
+object TaskRuleResultOps {
+  extension [B](result: Task[RuleResult[B]]) {
+    def flatMapT[C <: BlockContext](f: B => Task[RuleResult[C]]): Task[RuleResult[C]] =
+      result.flatMap {
+        case RuleResult.Fulfilled(b) => f(b)
+        case RuleResult.Rejected(cause) => Task.pure(RuleResult.Rejected(cause))
+      }
+  }
 }

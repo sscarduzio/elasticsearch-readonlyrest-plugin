@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
-import tech.beshu.ror.accesscontrol.utils.TaskRuleResultOps
+import tech.beshu.ror.accesscontrol.utils.TaskRuleResultOps.*
 import tech.beshu.ror.syntax.*
 
 import scala.annotation.tailrec
