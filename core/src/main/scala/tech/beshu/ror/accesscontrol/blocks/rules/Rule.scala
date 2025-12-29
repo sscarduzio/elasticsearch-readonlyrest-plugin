@@ -87,12 +87,6 @@ object Rule {
           case RuleResult.Fulfilled(a) if p(a) => result
           case _ => RuleResult.Rejected(None)
         }
-
-      def toEither: Either[Option[Cause], B] =
-        result match {
-          case RuleResult.Fulfilled(b) => Right(b)
-          case r@RuleResult.Rejected(cause) => Left(cause)
-        }
     }
 
     implicit val ruleResultMonad: Monad[RuleResult] = new Monad[RuleResult] {

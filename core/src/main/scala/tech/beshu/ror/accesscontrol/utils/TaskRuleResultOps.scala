@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-import cats.implicits.toFunctorOps
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
@@ -28,8 +27,5 @@ implicit final class TaskRuleResultOps[B <: BlockContext](private val task: Task
       case RuleResult.Fulfilled(b) => f(b)
       case RuleResult.Rejected(cause) => Task.pure(RuleResult.Rejected(cause))
     }
-
-  def mapT[C <: BlockContext](f: B => C): Task[RuleResult[C]] =
-    task.map(_.map(f))
 
 }
