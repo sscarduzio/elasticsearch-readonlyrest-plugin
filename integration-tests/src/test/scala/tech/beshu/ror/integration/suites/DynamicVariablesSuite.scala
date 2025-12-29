@@ -34,7 +34,7 @@ class DynamicVariablesSuite
     with SingleClientSupport
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/dynamic_vars/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/dynamic_vars/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
 
@@ -54,7 +54,7 @@ class DynamicVariablesSuite
     createLocalClusterContainer(
       esClusterSettingsCreator(
         SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName
+          rorSettingsFileName = rorSettingsFileName
         ))
       )
     )

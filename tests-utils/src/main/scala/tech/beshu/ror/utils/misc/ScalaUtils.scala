@@ -23,6 +23,7 @@ import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
 
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
 import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
@@ -75,6 +76,8 @@ object ScalaUtils extends LazyLogging {
   }
 
   implicit def finiteDurationToJavaDuration(interval: FiniteDuration): Duration = Duration.ofMillis(interval.toMillis)
+
+  implicit def javaDurationToFiniteDuration(interval: Duration): FiniteDuration = FiniteDuration(interval.toMillis, TimeUnit.MILLISECONDS)
 
   def retry(times: Int, cleanBeforeRetrying: => Unit = ())(action: => Unit): Unit = {
     @tailrec

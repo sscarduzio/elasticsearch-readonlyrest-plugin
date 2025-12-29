@@ -24,7 +24,7 @@ class IndexApiWithFreeKibanaSupportSuite
   extends BaseIndexApiSuite
     with SingletonPluginTestSupport {
 
-  override implicit val rorConfigFileName: String = "/index_api/free_readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/index_api/free_readonlyrest.yml"
 
   override val notFoundIndexStatusReturned: Int = 401
   override val forbiddenStatusReturned: Int = 401

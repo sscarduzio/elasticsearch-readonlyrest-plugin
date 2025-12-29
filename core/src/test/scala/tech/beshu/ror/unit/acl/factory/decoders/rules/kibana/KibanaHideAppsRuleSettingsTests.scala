@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.kibana
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.{kibanaAppRegex, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaHideAppsRule] {
 
   "A KibanaHideAppsRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one kibana app is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -90,7 +90,7 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "empty string kibana app is defined" in {
         assertDecodingFailure(
           yaml =

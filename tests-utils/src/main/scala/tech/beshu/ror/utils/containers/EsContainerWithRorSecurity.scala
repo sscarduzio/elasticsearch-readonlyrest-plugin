@@ -52,7 +52,8 @@ object EsContainerWithRorSecurity extends StrictLogging {
              rorConfig: ReadonlyRestPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
-             additionalLogConsumer: Option[Consumer[OutputFrame]]): EsContainer = {
+             additionalLogConsumer: Option[Consumer[OutputFrame]],
+             awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
     new EsContainerWithRorSecurity(
       esVersion,
       esConfig,
@@ -64,6 +65,7 @@ object EsContainerWithRorSecurity extends StrictLogging {
       },
       initializer,
       additionalLogConsumer,
+      awaitingReadyStrategy
     )
   }
 

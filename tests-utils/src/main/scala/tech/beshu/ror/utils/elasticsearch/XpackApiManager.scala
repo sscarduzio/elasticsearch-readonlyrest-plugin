@@ -238,7 +238,6 @@ class XpackApiManager(client: RestClient,
     new HttpGet(client.from("/_security/user/_privileges"))
   }
 
-
   private def createGrantApiKeyPrivilegeRequest(username: String, password: String) = {
     val request = new HttpPost(client.from("/_security/api_key/grant"))
     request.setHeader("Content-Type", "application/json")

@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.Address
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.*
@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
 
   "A HostsRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "only one host is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -113,7 +113,7 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "no host is defined" in {
         assertDecodingFailure(
           yaml =

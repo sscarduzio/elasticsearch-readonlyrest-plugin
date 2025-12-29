@@ -39,7 +39,7 @@ class SearchApiSuite
     with IntegrationPatience
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/search_api/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/search_api/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(SearchApiSuite.nodeDataInitializer())
 

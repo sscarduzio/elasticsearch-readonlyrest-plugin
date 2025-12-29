@@ -49,37 +49,37 @@ trait BaseAdminApiSuite
 
   protected def readonlyrestIndexName: String
 
-  protected def rorWithIndexConfig: EsClusterContainer
+  protected def rorWithIndexSettings: EsClusterContainer
 
-  protected def rorWithNoIndexConfig: EsClusterContainer
+  protected def rorWithNoIndexSettings: EsClusterContainer
 
-  private lazy val ror1_1Node = rorWithIndexConfig.nodes.head
-  private lazy val ror1_2Node = rorWithIndexConfig.nodes.tail.head
-  private lazy val ror2_1Node = rorWithNoIndexConfig.nodes.head
+  private lazy val ror1_1Node = rorWithIndexSettings.nodes.head
+  private lazy val ror1_2Node = rorWithIndexSettings.nodes.tail.head
+  private lazy val ror2_1Node = rorWithNoIndexSettings.nodes.head
 
-  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)
-  private lazy val rorWithNoIndexConfigAdminActionManager = new RorApiManager(clients.last.adminClient, esVersionUsed)
+  private lazy val ror1WithIndexSettingsAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)
+  private lazy val rorWithNoIndexSettingsAdminActionManager = new RorApiManager(clients.last.adminClient, esVersionUsed)
 
   private lazy val adminSearchManager = new SearchManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
-  private val testConfigEsDocumentId = "2"
+  private val testSettingsEsDocumentId = "2"
   protected val settingsReloadInterval: FiniteDuration = 5 seconds
 
   override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
-  override lazy val clusterContainers = NonEmptyList.of(rorWithIndexConfig, rorWithNoIndexConfig)
+  override lazy val clusterContainers = NonEmptyList.of(rorWithIndexSettings, rorWithNoIndexSettings)
 
   "An admin REST API" should {
-    "provide a method for force refresh ROR config" which {
+    "provide a method for force refresh ROR settings" which {
       "is going to reload ROR core" when {
-        "in-index config is newer than current one" in {
-          rorWithNoIndexConfigAdminActionManager
-            .insertInIndexConfigDirectlyToRorIndex(
-              rorConfigIndex = readonlyrestIndexName,
-              config = getResourceContent("/admin_api/readonlyrest_index.yml")
+        "in-index settings is newer than current one" in {
+          rorWithNoIndexSettingsAdminActionManager
+            .insertInIndexSettingsDirectlyToRorIndex(
+              rorIndex = readonlyrestIndexName,
+              settings = getResourceContent("/admin_api/readonlyrest_index.yml")
             )
             .force()
 
-          val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
+          val result = rorWithNoIndexSettingsAdminActionManager.reloadRorSettings()
           result should have statusCode 200
           result.responseJson should be(ujson.read(
             """
@@ -91,16 +91,16 @@ trait BaseAdminApiSuite
           ))
         }
       }
-      "return info that config is up to date" when {
-        "in-index config is the same as current one" in {
-          rorWithNoIndexConfigAdminActionManager
-            .insertInIndexConfigDirectlyToRorIndex(
-              rorConfigIndex = readonlyrestIndexName,
-              config = getResourceContent("/admin_api/readonlyrest.yml")
+      "return info that settings are up to date" when {
+        "in-index settings are the same as current one" in {
+          rorWithNoIndexSettingsAdminActionManager
+            .insertInIndexSettingsDirectlyToRorIndex(
+              rorIndex = readonlyrestIndexName,
+              settings = getResourceContent("/admin_api/readonlyrest.yml")
             )
             .force()
 
-          val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
+          val result = rorWithNoIndexSettingsAdminActionManager.reloadRorSettings()
           result should have statusCode 200
           result.responseJson should be(ujson.read(
             """
@@ -112,30 +112,30 @@ trait BaseAdminApiSuite
           ))
         }
       }
-      "return info that in-index config does not exist" when {
+      "return info that in-index settings do not exist" when {
         "there is no in-index settings configured yet" in {
-          val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
+          val result = rorWithNoIndexSettingsAdminActionManager.reloadRorSettings()
           result should have statusCode 200
           result.responseJson should be(ujson.read(
             s"""
                |{
                |  "status": "ko",
-               |  "message": "Cannot find settings index"
+               |  "message": "Cannot find ReadonlyREST settings index"
                |}
                |""".stripMargin
           ))
         }
       }
-      "return info that cannot reload config" when {
-        "config cannot be reloaded (eg. because LDAP is not achievable)" in {
-          rorWithNoIndexConfigAdminActionManager
-            .insertInIndexConfigDirectlyToRorIndex(
-              rorConfigIndex = readonlyrestIndexName,
-              config = getResourceContent("/admin_api/readonlyrest_with_ldap.yml")
+      "return info that cannot reload settings" when {
+        "settings cannot be reloaded (eg. because LDAP is not achievable)" in {
+          rorWithNoIndexSettingsAdminActionManager
+            .insertInIndexSettingsDirectlyToRorIndex(
+              rorIndex = readonlyrestIndexName,
+              settings = getResourceContent("/admin_api/readonlyrest_with_ldap.yml")
             )
             .force()
 
-          val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
+          val result = rorWithNoIndexSettingsAdminActionManager.reloadRorSettings()
           result should have statusCode 200
           result.responseJson should be(ujson.read(
             """
@@ -148,11 +148,11 @@ trait BaseAdminApiSuite
         }
       }
     }
-    "provide a method for update in-index config" which {
-      "is going to reload ROR core and store new in-index config" when {
-        "configuration is new and correct" in {
+    "provide a method for update in-index settings" which {
+      "is going to reload ROR core and store new in-index settings" when {
+        "settings are new and correct" in {
           def forceReload(rorSettingsResource: String) = {
-            val result = ror1WithIndexConfigAdminActionManager.updateRorInIndexConfig(getResourceContent(rorSettingsResource))
+            val result = ror1WithIndexSettingsAdminActionManager.updateRorInIndexSettings(getResourceContent(rorSettingsResource))
             result should have statusCode 200
             result.responseJson should be(ujson.read(
               """
@@ -185,7 +185,7 @@ trait BaseAdminApiSuite
           forceReload("/admin_api/readonlyrest_first_update.yml")
 
           // after first reload only dev1 can access indices
-          Thread.sleep(settingsReloadInterval.plus(10 second).toMillis) // have to wait for ROR1_2 instance config reload
+          Thread.sleep(settingsReloadInterval.plus(10 second).toMillis) // have to wait for ROR1_2 instance settings reload
           val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After1stReloadResults should have statusCode 200
           val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
@@ -199,7 +199,7 @@ trait BaseAdminApiSuite
           forceReload("/admin_api/readonlyrest_second_update.yml")
 
           // after second reload dev1 & dev2 can access indices
-          Thread.sleep(settingsReloadInterval.plus(10 second).toMillis) // have to wait for ROR1_2 instance config reload
+          Thread.sleep(settingsReloadInterval.plus(10 second).toMillis) // have to wait for ROR1_2 instance settings reload
           val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After2ndReloadResults should have statusCode 200
           val dev2ror1After2ndReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
@@ -211,10 +211,10 @@ trait BaseAdminApiSuite
 
         }
       }
-      "return info that config is up to date" when {
-        "in-index config is the same as provided one" in {
-          val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+      "return info that settings are up to date" when {
+        "in-index settings are the same as provided one" in {
+          val result = ror1WithIndexSettingsAdminActionManager
+            .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_index.yml"))
           assertSettingsInIndex(getResourceContent("/admin_api/readonlyrest_index.yml"))
 
           result should have statusCode 200
@@ -228,10 +228,10 @@ trait BaseAdminApiSuite
           ))
         }
       }
-      "return info that config is malformed" when {
+      "return info that settings are malformed" when {
         "invalid YAML is provided" in {
-          val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
+          val result = ror1WithIndexSettingsAdminActionManager
+            .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
 
           result should have statusCode 200
           result.responseJson("status").str should be("ko")
@@ -240,8 +240,8 @@ trait BaseAdminApiSuite
       }
       "return info that request is malformed" when {
         "settings key missing" in {
-          val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfigRaw(rawRequestBody = "{}")
+          val result = ror1WithIndexSettingsAdminActionManager
+            .updateRorInIndexSettingsRaw(rawRequestBody = "{}")
 
           result should have statusCode 400
           result.responseJson should be(ujson.read(
@@ -256,8 +256,8 @@ trait BaseAdminApiSuite
       }
       "return info that cannot reload" when {
         "ROR core cannot be reloaded" in {
-          val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
+          val result = ror1WithIndexSettingsAdminActionManager
+            .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -271,11 +271,11 @@ trait BaseAdminApiSuite
         }
       }
     }
-    "provide a method for fetching current in-index config" which {
-      "return current config" when {
+    "provide a method for fetching current in-index settings" which {
+      "return current settings" when {
         "there is one in index" in {
-          val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
+          val result = ror1WithIndexSettingsAdminActionManager
+            .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -289,21 +289,21 @@ trait BaseAdminApiSuite
 
           assertSettingsInIndex(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
 
-          val getIndexConfigResult = ror1WithIndexConfigAdminActionManager.getRorInIndexConfig
+          val getIndexSettingsResult = ror1WithIndexSettingsAdminActionManager.getRorInIndexSettings
           result should have statusCode 200
-          getIndexConfigResult.responseJson("status").str should be("ok")
-          getIndexConfigResult.responseJson("message").str should be {
+          getIndexSettingsResult.responseJson("status").str should be("ok")
+          getIndexSettingsResult.responseJson("message").str should be {
             getResourceContent("/admin_api/readonlyrest_first_update.yml")
           }
         }
       }
-      "return info that there is no in-index config" when {
+      "return info that there is no in-index settings" when {
         "there is no index" in {
-          assertNoRorConfigInIndex(rorWithNoIndexConfigAdminActionManager)
+          assertNoRorSettingsInIndex(rorWithNoIndexSettingsAdminActionManager)
         }
-        "there is no config document in index" in {
-          val result = ror1WithIndexConfigAdminActionManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
+        "there are no settings document in index" in {
+          val result = ror1WithIndexSettingsAdminActionManager
+            .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -320,13 +320,13 @@ trait BaseAdminApiSuite
           val deleteResponse = adminDocumentManager.deleteByQuery(readonlyrestIndexName, matchAllQuery)
           deleteResponse should have statusCode 200
 
-          assertNoRorConfigInIndex(rorWithNoIndexConfigAdminActionManager)
+          assertNoRorSettingsInIndex(rorWithNoIndexSettingsAdminActionManager)
         }
       }
     }
-    "provide a method for fetching current file config" which {
-      "return current config" in {
-        val result = ror1WithIndexConfigAdminActionManager.getRorFileConfig
+    "provide a method for fetching current file settings" which {
+      "return current settings" in {
+        val result = ror1WithIndexSettingsAdminActionManager.getRorFileSettings
         result should have statusCode 200
         result.responseJson("status").str should be("ok")
         result.responseJson("message").str should be(getResourceContent("/admin_api/readonlyrest.yml"))
@@ -355,20 +355,20 @@ trait BaseAdminApiSuite
         }
       }
       "return current test settings" when {
-        "should invalidate configuration when index removed" in {
+        "should invalidate settings when index removed" in {
           def forceReload(rorSettingsResource: String): Unit = {
-            val testConfig = getResourceContent(rorSettingsResource)
-            val configTtl = 30.minutes
-            updateRorTestConfig(rorClients.head, testConfig, configTtl)
+            val testSettings = getResourceContent(rorSettingsResource)
+            val settingsTtl = 30.minutes
+            updateRorTestSettings(rorClients.head, testSettings, settingsTtl)
 
-            // check if config is present in index
+            // check if settings are present in index
             assertTestSettingsInIndex(
-              expectedConfig = testConfig,
-              expectedTtl = 30 minutes
+              expectedSettings = testSettings,
+              expectedTtl = settingsTtl
             )
 
-            eventually { // await until all nodes load config
-              rorClients.foreach(assertTestSettingsPresent(_, testConfig, "30 minutes"))
+            eventually { // await until all nodes load settings
+              rorClients.foreach(assertTestSettingsPresent(_, testSettings, "30 minutes"))
             }
           }
 
@@ -387,46 +387,46 @@ trait BaseAdminApiSuite
           }
 
           // before first reload no user can access indices
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
-          dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-          dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
+          dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+          dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
 
-          // reload config
+          // reload settings
           forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
 
           // check if impersonation works
-          dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-          dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
-          dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
-          dev2SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
+          dev1SearchManagers.foreach(assertAllowedSearch(_, "test1_index"))
+          dev1SearchManagers.foreach(assertIndexNotFound(_, "test2_index"))
+          dev2SearchManagers.foreach(assertOperationNotAllowed(_, "test1_index"))
+          dev2SearchManagers.foreach(assertOperationNotAllowed(_, "test2_index"))
 
-          // drop index containing ror config
+          // drop index containing ror settings
           val indexManager = new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
           indexManager.removeIndex(readonlyrestIndexName).force()
 
-          eventually { // await until all nodes invalidate the config
+          eventually { // await until all nodes invalidate the settings
             rorClients.foreach {
               assertTestSettingsNotConfigured
             }
           }
 
           // check if impersonation is not configured
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
-          dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-          dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
+          dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+          dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
         }
-        "configuration is valid and response without warnings" in {
+        "settings are valid and response without warnings" in {
           def forceReload(rorSettingsResource: String): Unit = {
-            val testConfig = getResourceContent(rorSettingsResource)
-            updateRorTestConfig(rorClients.head, testConfig, 30 minutes)
+            val testSettingsYaml = getResourceContent(rorSettingsResource)
+            updateRorTestSettings(rorClients.head, testSettingsYaml, 30 minutes)
 
-            assertTestSettingsInIndex(testConfig, 30 minutes)
+            assertTestSettingsInIndex(testSettingsYaml, 30 minutes)
 
-            eventually { // await until all nodes load config
+            eventually { // await until all nodes load settings
               rorClients.foreach { rorApiManager =>
-                assertTestSettingsPresent(rorApiManager, testConfig, "30 minutes")
+                assertTestSettingsPresent(rorApiManager, testSettingsYaml, "30 minutes")
               }
             }
           }
@@ -446,37 +446,37 @@ trait BaseAdminApiSuite
           }
 
           // before first reload no user can access indices
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
-          dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-          dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
+          dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+          dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
 
           // first reload
           forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
 
           // after first reload only dev1 can access indices
-          dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-          dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
-          dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
-          dev2SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
+          dev1SearchManagers.foreach(assertAllowedSearch(_, "test1_index"))
+          dev1SearchManagers.foreach(assertIndexNotFound(_, "test2_index"))
+          dev2SearchManagers.foreach(assertOperationNotAllowed(_, "test1_index"))
+          dev2SearchManagers.foreach(assertOperationNotAllowed(_, "test2_index"))
 
           // second reload
           forceReload("/admin_api/readonlyrest_second_update_with_impersonation.yml")
 
           // after second reload dev1 & dev2 can access indices
-          dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-          dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
-          dev2SearchManagers.foreach(indexNotFound(_, "test1_index"))
-          dev2SearchManagers.foreach(allowedSearch(_, "test2_index"))
+          dev1SearchManagers.foreach(assertAllowedSearch(_, "test1_index"))
+          dev1SearchManagers.foreach(assertIndexNotFound(_, "test2_index"))
+          dev2SearchManagers.foreach(assertIndexNotFound(_, "test1_index"))
+          dev2SearchManagers.foreach(assertAllowedSearch(_, "test2_index"))
         }
-        "configuration is valid and response with warnings" in {
+        "settings are valid and response with warnings" in {
           val warningsJson = ujson.read(
             """
               |[
               |  {
               |    "block_name": "test1",
               |    "rule_name": "auth_key_sha256",
-              |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
+              |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this use case.",
               |    "hint": "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha256: USER_NAME:hash(PASSWORD)"
               |  }
               |]
@@ -484,18 +484,18 @@ trait BaseAdminApiSuite
           )
 
           def forceReload(rorSettingsResource: String, warnings: ujson.Value): Unit = {
-            val testConfig = getResourceContent(rorSettingsResource)
-            updateRorTestConfig(rorClients.head, testConfig, 30 minutes, warnings)
+            val testSettingsYaml = getResourceContent(rorSettingsResource)
+            updateRorTestSettings(rorClients.head, testSettingsYaml, 30 minutes, warnings)
 
-            // check if config is present in index
+            // check if settings are present in index
             assertTestSettingsInIndex(
-              expectedConfig = testConfig,
+              expectedSettings = testSettingsYaml,
               expectedTtl = 30 minutes
             )
 
-            eventually { // await until all nodes load config
+            eventually { // await until all nodes load settings
               rorClients.foreach { rorApiManager =>
-                val response = rorApiManager.currentRorTestConfig
+                val response = rorApiManager.currentRorTestSettings
                 response should have statusCode 200
                 response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
               }
@@ -510,16 +510,16 @@ trait BaseAdminApiSuite
           }
 
           // before reload no user can access indices
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
 
           val rorSettingsResource = "/admin_api/readonlyrest_with_warnings.yml"
           forceReload(rorSettingsResource, warningsJson)
 
-          val testConfig = getResourceContent(rorSettingsResource)
+          val testSettings = getResourceContent(rorSettingsResource)
           rorClients.foreach { rorApiManager =>
             assertTestSettingsPresent(
               rorApiManager,
-              testConfig,
+              testSettings,
               "30 minutes",
               warningsJson
             )
@@ -527,18 +527,18 @@ trait BaseAdminApiSuite
 
           // user with hashed credential cannot be impersonated
           dev1SearchManagers.foreach {
-            impersonationNotAllowed(_, "test1_index")
+            assertImpersonationNotAllowed(_, "test1_index")
           }
         }
         "return local users" in {
-          val testConfig = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
-          updateRorTestConfig(rorClients.head, testConfig, 30 minutes)
+          val testSettingsYaml = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
+          updateRorTestSettings(rorClients.head, testSettingsYaml, 30 minutes)
 
-          assertTestSettingsInIndex(expectedConfig = testConfig, expectedTtl = 30 minutes)
+          assertTestSettingsInIndex(expectedSettings = testSettingsYaml, expectedTtl = 30 minutes)
 
-          eventually { // await until all nodes load config
+          eventually { // await until all nodes load settings
             rorClients.foreach {
-              assertTestSettingsPresent(_, testConfig, "30 minutes")
+              assertTestSettingsPresent(_, testSettingsYaml, "30 minutes")
             }
           }
 
@@ -551,16 +551,16 @@ trait BaseAdminApiSuite
           }
         }
       }
-      "return info that configuration was invalidated" in {
+      "return info that settings were invalidated" in {
         def forceReload(rorSettingsResource: String): Unit = {
-          val testConfig = getResourceContent(rorSettingsResource)
-          updateRorTestConfig(rorClients.head, testConfig, 30 minutes)
+          val testSettings = getResourceContent(rorSettingsResource)
+          updateRorTestSettings(rorClients.head, testSettings, 30 minutes)
 
-          assertTestSettingsInIndex(expectedConfig = testConfig, expectedTtl = 30 minutes)
+          assertTestSettingsInIndex(expectedSettings = testSettings, expectedTtl = 30 minutes)
 
-          eventually { // await until all nodes load config
+          eventually { // await until all nodes load settings
             rorClients.foreach { rorApiManager =>
-              assertTestSettingsPresent(rorApiManager, testConfig, "30 minutes")
+              assertTestSettingsPresent(rorApiManager, testSettings, "30 minutes")
             }
           }
         }
@@ -580,35 +580,35 @@ trait BaseAdminApiSuite
         }
 
         // before first reload no user can access indices
-        dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-        dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
-        dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-        dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
+        dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+        dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
+        dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+        dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
 
         // first reload
         forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
 
         // after first reload only dev1 can access indices
-        dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-        dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
-        dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
-        dev2SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
+        dev1SearchManagers.foreach(assertAllowedSearch(_, "test1_index"))
+        dev1SearchManagers.foreach(assertIndexNotFound(_, "test2_index"))
+        dev2SearchManagers.foreach(assertOperationNotAllowed(_, "test1_index"))
+        dev2SearchManagers.foreach(assertOperationNotAllowed(_, "test2_index"))
 
         // second reload
         val rorSettingsResource = "/admin_api/readonlyrest_second_update_with_impersonation.yml"
         forceReload(rorSettingsResource)
 
         // after second reload dev1 & dev2 can access indices
-        dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-        dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
-        dev2SearchManagers.foreach(indexNotFound(_, "test1_index"))
-        dev2SearchManagers.foreach(allowedSearch(_, "test2_index"))
+        dev1SearchManagers.foreach(assertAllowedSearch(_, "test1_index"))
+        dev1SearchManagers.foreach(assertIndexNotFound(_, "test2_index"))
+        dev2SearchManagers.foreach(assertIndexNotFound(_, "test1_index"))
+        dev2SearchManagers.foreach(assertAllowedSearch(_, "test2_index"))
 
-        invalidateRorTestConfig(rorClients.head)
+        invalidateRorTestSettings(rorClients.head)
 
         eventually {
           rorClients.foreach { rorApiManager =>
-            val response = rorApiManager.currentRorTestConfig
+            val response = rorApiManager.currentRorTestSettings
             response should have statusCode 200
             response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
             response.responseJson("message").str should be("ROR Test settings are invalidated")
@@ -618,29 +618,29 @@ trait BaseAdminApiSuite
         }
 
         // after test core invalidation, impersonations requests should be rejected
-        dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-        dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
-        dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-        dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
+        dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+        dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
+        dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+        dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
       }
     }
-    "provide a method for reload test config engine" which {
+    "provide a method for reload test settings engine" which {
       "is going to reload ROR test core with TTL" when {
-        "configuration is new and correct" in {
-          def forceReload(rorSettingsResource: String, configTtl: FiniteDuration, configTtlString: String): Unit = {
-            val testConfig = getResourceContent(rorSettingsResource)
-            updateRorTestConfig(rorClients.head, testConfig, configTtl)
+        "settings are new and correct" in {
+          def forceReload(rorSettingsResource: String, settingsTtl: FiniteDuration, settingsTtlString: String): Unit = {
+            val testSettings = getResourceContent(rorSettingsResource)
+            updateRorTestSettings(rorClients.head, testSettings, settingsTtl)
 
-            assertTestSettingsInIndex(expectedConfig = testConfig, expectedTtl = configTtl)
+            assertTestSettingsInIndex(expectedSettings = testSettings, expectedTtl = settingsTtl)
 
-            eventually { // await until all nodes load config
+            eventually { // await until all nodes load settings
               rorClients.foreach { rorApiManager =>
-                assertTestSettingsPresent(rorApiManager, testConfig, configTtlString)
+                assertTestSettingsPresent(rorApiManager, testSettings, settingsTtlString)
               }
             }
           }
 
-          eventually { // await until all nodes load config
+          eventually { // await until all nodes load settings
             rorClients.foreach { rorApiManager =>
               assertTestSettingsNotConfigured(rorApiManager)
             }
@@ -661,85 +661,85 @@ trait BaseAdminApiSuite
           }
 
           // before first reload no user can access indices
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
-          dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-          dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
+          dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+          dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
 
           // first reload
           forceReload(
             rorSettingsResource = "/admin_api/readonlyrest_first_update_with_impersonation.yml",
-            configTtl = 30 minutes,
-            configTtlString = "30 minutes"
+            settingsTtl = 30 minutes,
+            settingsTtlString = "30 minutes"
           )
 
-          eventually { // await until all nodes load config
+          eventually { // await until all nodes load settings
             rorClients.foreach { rorApiManager =>
               assertTestSettingsPresent(
                 rorApiManager = rorApiManager,
-                testConfig = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml"),
+                testSettings = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml"),
                 expectedTtl = "30 minutes"
               )
             }
           }
 
           // after first reload only dev1 can access indices
-          dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-          dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
-          dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
-          dev2SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
+          dev1SearchManagers.foreach(assertAllowedSearch(_, "test1_index"))
+          dev1SearchManagers.foreach(assertIndexNotFound(_, "test2_index"))
+          dev2SearchManagers.foreach(assertOperationNotAllowed(_, "test1_index"))
+          dev2SearchManagers.foreach(assertOperationNotAllowed(_, "test2_index"))
 
           // second reload
           val rorSettingsResource = "/admin_api/readonlyrest_second_update_with_impersonation.yml"
-          val configTtl = 15.seconds
+          val settingsTtl = 15.seconds
           forceReload(
             rorSettingsResource = rorSettingsResource,
-            configTtl = configTtl,
-            configTtlString = "15 seconds"
+            settingsTtl = settingsTtl,
+            settingsTtlString = "15 seconds"
           )
 
-          eventually { // await until all nodes load config
+          eventually { // await until all nodes load settings
             rorClients.foreach { rorApiManager =>
               assertTestSettingsPresent(
                 rorApiManager = rorApiManager,
-                testConfig = getResourceContent(rorSettingsResource),
+                testSettings = getResourceContent(rorSettingsResource),
                 expectedTtl = "15 seconds"
               )
             }
           }
 
           // after second reload dev1 & dev2 can access indices
-          dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-          dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
-          dev2SearchManagers.foreach(indexNotFound(_, "test1_index"))
-          dev2SearchManagers.foreach(allowedSearch(_, "test2_index"))
+          dev1SearchManagers.foreach(assertAllowedSearch(_, "test1_index"))
+          dev1SearchManagers.foreach(assertIndexNotFound(_, "test2_index"))
+          dev2SearchManagers.foreach(assertIndexNotFound(_, "test1_index"))
+          dev2SearchManagers.foreach(assertAllowedSearch(_, "test2_index"))
 
           // wait for test engine auto-destruction
-          Thread.sleep(configTtl.toMillis)
+          Thread.sleep(settingsTtl.toMillis)
 
           rorClients.foreach { rorApiManager =>
             assertTestSettingsInvalidated(rorApiManager, getResourceContent(rorSettingsResource), "15 seconds")
           }
 
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-          dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
-          dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-          dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+          dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
+          dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+          dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
         }
-        "configuration is up to date and new ttl is passed" in {
-          val testConfig = getResourceContent("/admin_api/readonlyrest_index.yml")
-          updateRorTestConfig(rorClients.head, testConfig, 30 minutes)
-          assertTestSettingsInIndex(expectedConfig = testConfig, expectedTtl = 30 minutes)
+        "settings are up to date and new ttl is passed" in {
+          val testSettings = getResourceContent("/admin_api/readonlyrest_index.yml")
+          updateRorTestSettings(rorClients.head, testSettings, 30 minutes)
+          assertTestSettingsInIndex(expectedSettings = testSettings, expectedTtl = 30 minutes)
 
-          eventually { // await until all nodes load config
+          eventually { // await until all nodes load settings
             rorClients.foreach {
-              assertTestSettingsPresent(_, testConfig, "30 minutes")
+              assertTestSettingsPresent(_, testSettings, "30 minutes")
             }
           }
 
           val timestamps =
             rorClients
-              .map(_.currentRorTestConfig.responseJson("valid_to").str)
+              .map(_.currentRorTestSettings.responseJson("valid_to").str)
               .map(Instant.parse).toSet
 
           timestamps.size should be(1)
@@ -747,18 +747,18 @@ trait BaseAdminApiSuite
           // wait for valid_to comparison purpose
           Thread.sleep(100)
 
-          updateRorTestConfig(rorClients.head, testConfig, 45 minutes)
-          assertTestSettingsInIndex(expectedConfig = testConfig, expectedTtl = 45 minutes)
+          updateRorTestSettings(rorClients.head, testSettings, 45 minutes)
+          assertTestSettingsInIndex(expectedSettings = testSettings, expectedTtl = 45 minutes)
 
-          eventually { // await until all nodes load config
+          eventually { // await until all nodes load settings
             rorClients.foreach {
-              assertTestSettingsPresent(_, testConfig, "45 minutes")
+              assertTestSettingsPresent(_, testSettings, "45 minutes")
             }
           }
 
           val timestampsAfterReload =
             rorClients
-              .map(_.currentRorTestConfig.responseJson("valid_to").str)
+              .map(_.currentRorTestSettings.responseJson("valid_to").str)
               .map(Instant.parse)
               .toSet
           timestampsAfterReload.size should be(1)
@@ -768,12 +768,12 @@ trait BaseAdminApiSuite
       }
       "return info that request is malformed" when {
         "ttl missing" in {
-          val config = getResourceContent("/admin_api/readonlyrest_index.yml")
-          val requestBody = s"""{"settings": "${escapeJava(config)}"}"""
+          val settings = getResourceContent("/admin_api/readonlyrest_index.yml")
+          val requestBody = s"""{"settings": "${escapeJava(settings)}"}"""
 
           rorClients.foreach { rorApiManager =>
             val result = rorApiManager
-              .updateRorTestConfigRaw(rawRequestBody = requestBody)
+              .updateRorTestSettingsRaw(rawRequestBody = requestBody)
 
             result should have statusCode 400
             result.responseJson should be(ujson.read(
@@ -790,7 +790,7 @@ trait BaseAdminApiSuite
           val requestBody = s"""{"ttl": "30 m"}"""
           rorClients.foreach { rorApiManager =>
             val result = rorApiManager
-              .updateRorTestConfigRaw(rawRequestBody = requestBody)
+              .updateRorTestSettingsRaw(rawRequestBody = requestBody)
 
             result should have statusCode 400
             result.responseJson should be(ujson.read(
@@ -804,12 +804,12 @@ trait BaseAdminApiSuite
           }
         }
         "ttl value in invalid format" in {
-          val config = getResourceContent("/admin_api/readonlyrest_index.yml")
-          val requestBody = s"""{"settings": "${escapeJava(config)}", "ttl": "30 units"}"""
+          val settings = getResourceContent("/admin_api/readonlyrest_index.yml")
+          val requestBody = s"""{"settings": "${escapeJava(settings)}", "ttl": "30 units"}"""
 
           rorClients.foreach { rorApiManager =>
             val result = rorApiManager
-              .updateRorTestConfigRaw(rawRequestBody = requestBody)
+              .updateRorTestSettingsRaw(rawRequestBody = requestBody)
 
             result should have statusCode 400
             result.responseJson should be(ujson.read(
@@ -823,11 +823,11 @@ trait BaseAdminApiSuite
           }
         }
       }
-      "return info that config is malformed" when {
+      "return info that settings are malformed" when {
         "invalid YAML is provided" in {
           rorClients.foreach { rorApiManager =>
             val result = rorApiManager
-              .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
+              .updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
 
             result should have statusCode 200
             result.responseJson("status").str should be("FAILED")
@@ -839,7 +839,7 @@ trait BaseAdminApiSuite
         "ROR core cannot be reloaded" in {
           rorClients.foreach { rorApiManager =>
             val result = rorApiManager
-              .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
+              .updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
 
             result should have statusCode 200
             result.responseJson should be(ujson.read(
@@ -854,21 +854,21 @@ trait BaseAdminApiSuite
         }
       }
     }
-    "provide a method for test config engine invalidation" which {
+    "provide a method for test settings engine invalidation" which {
       "will destruct the engine on demand" in {
         def forceReload(rorSettingsResource: String): Unit = {
-          val testConfig = getResourceContent(rorSettingsResource)
+          val testSettings = getResourceContent(rorSettingsResource)
 
-          updateRorTestConfig(rorClients.head, testConfig, 30 minutes)
+          updateRorTestSettings(rorClients.head, testSettings, 30 minutes)
 
           assertTestSettingsInIndex(
-            expectedConfig = testConfig,
+            expectedSettings = testSettings,
             expectedTtl = 30 minutes
           )
 
-          eventually { // await until all nodes load config
+          eventually { // await until all nodes load settings
             rorClients.foreach { rorApiManager =>
-              assertTestSettingsPresent(rorApiManager, testConfig, "30 minutes")
+              assertTestSettingsPresent(rorApiManager, testSettings, "30 minutes")
             }
           }
         }
@@ -887,30 +887,30 @@ trait BaseAdminApiSuite
           )
         }
 
-        dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-        dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
-        dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-        dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
+        dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+        dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
+        dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+        dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
 
         // first reload
         forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
 
         // after first reload only dev1 can access indices
-        dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-        dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
-        dev2SearchManagers.foreach(operationNotAllowed(_, "test1_index"))
-        dev2SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
+        dev1SearchManagers.foreach(assertAllowedSearch(_, "test1_index"))
+        dev1SearchManagers.foreach(assertIndexNotFound(_, "test2_index"))
+        dev2SearchManagers.foreach(assertOperationNotAllowed(_, "test1_index"))
+        dev2SearchManagers.foreach(assertOperationNotAllowed(_, "test2_index"))
 
         // second reload
         forceReload("/admin_api/readonlyrest_second_update_with_impersonation.yml")
 
         // after second reload dev1 & dev2 can access indices
-        dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
-        dev1SearchManagers.foreach(indexNotFound(_, "test2_index"))
-        dev2SearchManagers.foreach(indexNotFound(_, "test1_index"))
-        dev2SearchManagers.foreach(allowedSearch(_, "test2_index"))
+        dev1SearchManagers.foreach(assertAllowedSearch(_, "test1_index"))
+        dev1SearchManagers.foreach(assertIndexNotFound(_, "test2_index"))
+        dev2SearchManagers.foreach(assertIndexNotFound(_, "test1_index"))
+        dev2SearchManagers.foreach(assertAllowedSearch(_, "test2_index"))
 
-        invalidateRorTestConfig(rorClients.head)
+        invalidateRorTestSettings(rorClients.head)
 
         Thread.sleep(settingsReloadInterval.toMillis) // wait for engines reload
 
@@ -918,33 +918,33 @@ trait BaseAdminApiSuite
         rorClients.foreach { rorApiManager =>
           assertTestSettingsInvalidated(
             rorApiManager = rorApiManager,
-            testConfig = getResourceContent("/admin_api/readonlyrest_second_update_with_impersonation.yml"),
+            testSettingsYaml = getResourceContent("/admin_api/readonlyrest_second_update_with_impersonation.yml"),
             expectedTtl = "30 minutes"
           )
         }
 
         // after test core invalidation, impersonations requests should be rejected
-        dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-        dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
-        dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
-        dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
+        dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+        dev1SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
+        dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test1_index"))
+        dev2SearchManagers.foreach(assertTestSettingsNotConfigured(_, "test2_index"))
       }
     }
-    "main ROR config and test ROR config coexistence check" when {
-      "get main ROR index config" should {
-        "return no index config" when {
-          "no main and test config in the index" in {
+    "main ROR settings and test ROR settings coexistence check" when {
+      "get main ROR index settings" should {
+        "return no index settings" when {
+          "no main and test settings in the index" in {
             adminIndexManager.removeIndex(readonlyrestIndexName)
             rorClients.foreach { rorApiManager =>
-              assertNoRorConfigInIndex(rorApiManager)
+              assertNoRorSettingsInIndex(rorApiManager)
               assertTestSettingsNotConfigured(rorApiManager)
             }
           }
-          "only test config in the index" in {
-            def forceReloadTestSettings(testConfig: String): Unit = {
-              updateRorTestConfig(rorClients.head, testConfig, 30 minutes)
+          "only test settings in the index" in {
+            def forceReloadTestSettings(testSettings: String): Unit = {
+              updateRorTestSettings(rorClients.head, testSettings, 30 minutes)
               assertTestSettingsInIndex(
-                expectedConfig = testConfig,
+                expectedSettings = testSettings,
                 expectedTtl = 30 minutes
               )
             }
@@ -952,56 +952,56 @@ trait BaseAdminApiSuite
             adminIndexManager.removeIndex(readonlyrestIndexName)
 
             rorClients.foreach { rorApiManager =>
-              assertNoRorConfigInIndex(rorApiManager)
+              assertNoRorSettingsInIndex(rorApiManager)
               assertTestSettingsNotConfigured(rorApiManager)
             }
 
-            val config = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
-            forceReloadTestSettings(config)
+            val settings = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
+            forceReloadTestSettings(settings)
             Thread.sleep(settingsReloadInterval.toMillis) // wait for engines reload
 
             rorClients.foreach { rorApiManager =>
-              assertNoRorConfigInIndex(rorApiManager)
+              assertNoDocumentWithMainRorSettingsInIndex(rorApiManager)
               assertTestSettingsPresent(
                 rorApiManager,
-                testConfig = config,
+                testSettings = settings,
                 expectedTtl = "30 minutes"
               )
             }
           }
         }
-        "return index config" when {
-          "only main config in the index" in {
-            def forceReloadMainSettings(config: String) = {
-              updateRorMainConfig(rorClients.head, config)
-              assertSettingsInIndex(expectedConfig = config)
+        "return index settings" when {
+          "only main settings in the index" in {
+            def forceReloadMainSettings(mainSettingsYaml: String) = {
+              updateRorMainSettings(rorClients.head, mainSettingsYaml)
+              assertSettingsInIndex(expectedSettings = mainSettingsYaml)
             }
 
             adminIndexManager.removeIndex(readonlyrestIndexName)
 
             rorClients.foreach { rorApiManager =>
-              assertNoRorConfigInIndex(rorApiManager)
+              assertNoRorSettingsInIndex(rorApiManager)
               assertTestSettingsNotConfigured(rorApiManager)
             }
 
-            val config = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
-            forceReloadMainSettings(config)
+            val settings = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
+            forceReloadMainSettings(settings)
 
             rorClients.foreach { rorApiManager =>
-              assertInIndexConfigPresent(rorApiManager, config)
+              assertInIndexSettingsPresent(rorApiManager, settings)
               assertTestSettingsNotConfigured(rorApiManager)
             }
           }
-          "main and test configs in the index" in {
-            def forceReloadMainSettings(config: String) = {
-              updateRorMainConfig(rorClients.head, config)
-              assertSettingsInIndex(expectedConfig = config)
+          "main and test settings in the index" in {
+            def forceReloadMainSettings(settings: String) = {
+              updateRorMainSettings(rorClients.head, settings)
+              assertSettingsInIndex(expectedSettings = settings)
             }
 
-            def forceReloadTestSettings(testConfig: String): Unit = {
-              updateRorTestConfig(rorClients.head, testConfig, 30 minutes)
+            def forceReloadTestSettings(testSettings: String): Unit = {
+              updateRorTestSettings(rorClients.head, testSettings, 30 minutes)
               assertTestSettingsInIndex(
-                expectedConfig = testConfig,
+                expectedSettings = testSettings,
                 expectedTtl = 30 minutes
               )
             }
@@ -1009,18 +1009,18 @@ trait BaseAdminApiSuite
             adminIndexManager.removeIndex(readonlyrestIndexName)
 
             rorClients.foreach { rorApiManager =>
-              assertNoRorConfigInIndex(rorApiManager)
+              assertNoRorSettingsInIndex(rorApiManager)
               assertTestSettingsNotConfigured(rorApiManager)
             }
 
-            val config = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
-            forceReloadMainSettings(config)
-            forceReloadTestSettings(config)
+            val settings = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
+            forceReloadMainSettings(settings)
+            forceReloadTestSettings(settings)
 
             Thread.sleep(settingsReloadInterval.toMillis) // wait for engines reload
             rorClients.foreach { client =>
-              assertInIndexConfigPresent(client, config = config)
-              assertTestSettingsPresent(client, testConfig = config, expectedTtl = "30 minutes")
+              assertInIndexSettingsPresent(client, settings)
+              assertTestSettingsPresent(client, testSettings = settings, expectedTtl = "30 minutes")
             }
           }
         }
@@ -1029,20 +1029,20 @@ trait BaseAdminApiSuite
   }
 
   override protected def beforeEach(): Unit = {
-    // back to configuration loaded on container start
-    rorWithNoIndexConfigAdminActionManager
-      .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest.yml"))
+    // back to settings loaded on container start
+    rorWithNoIndexSettingsAdminActionManager
+      .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest.yml"))
       .force()
 
     new IndexManager(ror2_1Node.adminClient, esVersionUsed).removeIndex(readonlyrestIndexName)
 
     adminIndexManager.removeIndex(readonlyrestIndexName)
 
-    ror1WithIndexConfigAdminActionManager
-      .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+    ror1WithIndexSettingsAdminActionManager
+      .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_index.yml"))
       .force()
 
-    eventually { // await until all nodes invalidate the config
+    eventually { // await until all nodes invalidate the settings
       rorClients.foreach(assertTestSettingsNotConfigured)
     }
   }
@@ -1062,7 +1062,7 @@ trait BaseAdminApiSuite
     }
   }
 
-  private def assertSettingsInIndex(expectedConfig: String) = {
+  private def assertSettingsInIndex(expectedSettings: String) = {
     val indexSearchResponse = adminSearchManager.search(readonlyrestIndexName)
     indexSearchResponse should have statusCode 200
     val indexSearchHits = indexSearchResponse.responseJson("hits")("hits").arr.toList
@@ -1072,50 +1072,66 @@ trait BaseAdminApiSuite
     }.value
 
     val testSettingsDocumentContent = testSettingsDocumentHit("_source")
-    testSettingsDocumentContent("settings").str should be(expectedConfig)
+    testSettingsDocumentContent("settings").str should be(expectedSettings)
   }
 
-  private def assertTestSettingsInIndex(expectedConfig: String, expectedTtl: FiniteDuration) = {
+  private def assertTestSettingsInIndex(expectedSettings: String, expectedTtl: FiniteDuration) = {
     val indexSearchResponse = adminSearchManager.search(readonlyrestIndexName)
     indexSearchResponse should have statusCode 200
     val indexSearchHits = indexSearchResponse.responseJson("hits")("hits").arr.toList
     indexSearchHits.size should be >= 1 // at least main document or test document should be present
-    val testSettingsDocumentHit = indexSearchHits.find { searchResult =>
-      (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testConfigEsDocumentId)
-    }.value
+    val testSettingsDocumentHit = indexSearchHits
+      .find { searchResult =>
+        (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
+      }
+      .value
 
     val testSettingsDocumentContent = testSettingsDocumentHit("_source")
-    testSettingsDocumentContent("settings").str should be(expectedConfig)
+    testSettingsDocumentContent("settings").str should be(expectedSettings)
     testSettingsDocumentContent("expiration_ttl_millis").str should be(expectedTtl.toMillis.toString)
     testSettingsDocumentContent("expiration_timestamp").str.isInIsoDateTimeFormat should be(true)
-    val mocksContent = ujson.read(testSettingsDocumentContent("auth_services_mocks").str)
+
+    val mocksContent = testSettingsDocumentContent("auth_services_mocks")
     mocksContent("ldapMocks").obj.isEmpty should be(true)
     mocksContent("externalAuthenticationMocks").obj.isEmpty should be(true)
     mocksContent("externalAuthorizationMocks").obj.isEmpty should be(true)
   }
 
-  private def assertNoRorConfigInIndex(rorApiManager: RorApiManager) = {
-    val result = rorApiManager.getRorInIndexConfig
+  private def assertNoRorSettingsInIndex(rorApiManager: RorApiManager) = {
+    val result = rorApiManager.getRorInIndexSettings
     result should have statusCode 200
     result.responseJson should be(ujson.read(
       """
         |{
         |  "status": "empty",
-        |  "message": "Cannot find settings index"
+        |  "message": "Cannot find ReadonlyREST settings index"
         |}
         |""".stripMargin
     ))
   }
 
-  private def assertInIndexConfigPresent(rorApiManager: RorApiManager, config: String) = {
-    val getIndexConfigResult = rorApiManager.getRorInIndexConfig
-    getIndexConfigResult should have statusCode 200
-    getIndexConfigResult.responseJson("status").str should be("ok")
-    getIndexConfigResult.responseJson("message").str should be(config)
+  private def assertNoDocumentWithMainRorSettingsInIndex(rorApiManager: RorApiManager) = {
+    val result = rorApiManager.getRorInIndexSettings
+    result should have statusCode 200
+    result.responseJson should be(ujson.read(
+      """
+        |{
+        |  "status": "ko",
+        |  "message": "Cannot found document with ReadonlyREST settings"
+        |}
+        |""".stripMargin
+    ))
+  }
+
+  private def assertInIndexSettingsPresent(rorApiManager: RorApiManager, settings: String) = {
+    val result = rorApiManager.getRorInIndexSettings
+    result should have statusCode 200
+    result.responseJson("status").str should be("ok")
+    result.responseJson("message").str should be(settings)
   }
 
   private def assertTestSettingsNotConfigured(rorApiManager: RorApiManager) = {
-    val response = rorApiManager.currentRorTestConfig
+    val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
     response.responseJson should be(ujson.read(
       """
@@ -1128,34 +1144,34 @@ trait BaseAdminApiSuite
   }
 
   private def assertTestSettingsPresent(rorApiManager: RorApiManager,
-                                        testConfig: String,
+                                        testSettings: String,
                                         expectedTtl: String,
                                         expectedWarningsJson: Value = ujson.read("[]")) = {
-    val response = rorApiManager.currentRorTestConfig
+    val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
     response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
-    response.responseJson("settings").str should be(testConfig)
+    response.responseJson("settings").str should be(testSettings)
     response.responseJson("ttl").str should be(expectedTtl)
     response.responseJson("valid_to").str.isInIsoDateTimeFormat should be(true)
     response.responseJson("warnings") should be(expectedWarningsJson)
   }
 
   private def assertTestSettingsInvalidated(rorApiManager: RorApiManager,
-                                            testConfig: String,
+                                            testSettingsYaml: String,
                                             expectedTtl: String) = {
-    val response = rorApiManager.currentRorTestConfig
+    val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
     response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
     response.responseJson("message").str should be("ROR Test settings are invalidated")
-    response.responseJson("settings").str should be(testConfig)
+    response.responseJson("settings").str should be(testSettingsYaml)
     response.responseJson("ttl").str should be(expectedTtl)
   }
 
-  private def updateRorTestConfig(rorApiManager: RorApiManager,
-                                  testConfig: String,
-                                  configTtl: FiniteDuration,
-                                  expectedWarningsJson: Value = ujson.read("[]")) = {
-    val response = rorApiManager.updateRorTestConfig(testConfig, configTtl)
+  private def updateRorTestSettings(rorApiManager: RorApiManager,
+                                    testSettingsYaml: String,
+                                    settingsTtl: FiniteDuration,
+                                    expectedWarningsJson: Value = ujson.read("[]")) = {
+    val response = rorApiManager.updateRorTestSettings(testSettingsYaml, settingsTtl)
     response should have statusCode 200
     response.responseJson("status").str should be("OK")
     response.responseJson("message").str should be("updated settings")
@@ -1163,8 +1179,8 @@ trait BaseAdminApiSuite
     response.responseJson("warnings") should be(expectedWarningsJson)
   }
 
-  private def updateRorMainConfig(rorApiManager: RorApiManager, config: String) = {
-    val result = rorApiManager.updateRorInIndexConfig(config)
+  private def updateRorMainSettings(rorApiManager: RorApiManager, mainSettingsYaml: String) = {
+    val result = rorApiManager.updateRorInIndexSettings(mainSettingsYaml)
     result should have statusCode 200
     result.responseJson should be(ujson.read(
       """
@@ -1176,8 +1192,8 @@ trait BaseAdminApiSuite
     ))
   }
 
-  private def invalidateRorTestConfig(rorApiManager: RorApiManager) = {
-    val response = rorApiManager.invalidateRorTestConfig()
+  private def invalidateRorTestSettings(rorApiManager: RorApiManager) = {
+    val response = rorApiManager.invalidateRorTestSettings()
     response should have statusCode 200
     response.responseJson should be(ujson.read(
       """
@@ -1189,7 +1205,7 @@ trait BaseAdminApiSuite
     ))
   }
 
-  private def testSettingsNotConfigured(sm: SearchManager, indexName: String) = {
+  private def assertTestSettingsNotConfigured(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
     results should have statusCode 403
     results.responseJson should be(ujson.read(
@@ -1213,12 +1229,12 @@ trait BaseAdminApiSuite
     ))
   }
 
-  private def allowedSearch(sm: SearchManager, indexName: String) = {
+  private def assertAllowedSearch(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
     results should have statusCode 200
   }
 
-  private def indexNotFound(sm: SearchManager, indexName: String) = {
+  private def assertIndexNotFound(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
     results should have statusCode 404
 
@@ -1258,8 +1274,7 @@ trait BaseAdminApiSuite
     ))
   }
 
-
-  private def operationNotAllowed(sm: SearchManager, indexName: String) = {
+  private def assertOperationNotAllowed(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
     results should have statusCode 403
     results.responseJson should be(ujson.read(
@@ -1282,7 +1297,7 @@ trait BaseAdminApiSuite
     ))
   }
 
-  private def impersonationNotAllowed(sm: SearchManager, indexName: String) = {
+  private def assertImpersonationNotAllowed(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
     results should have statusCode 403
     results.responseJson should be(ujson.read(

@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.utils
 
+import better.files.File
 import org.elasticsearch.Version
 import org.elasticsearch.cluster.ClusterName
 import org.elasticsearch.env.Environment
@@ -26,8 +27,8 @@ object EsEnvProvider {
   def create(environment: Environment): EsEnv = {
     val settings = environment.settings()
     EsEnv(
-      configPath = environment.configFile(),
-      modulesPath = environment.modulesFile(),
+      configDir = File(environment.configFile()),
+      modulesDir = File(environment.configFile()),
       esVersion = EsVersion(major = Version.CURRENT.major, minor = Version.CURRENT.minor, revision = Version.CURRENT.revision),
       esNodeSettings = EsNodeSettings(
         nodeName = Node.NODE_NAME_SETTING.get(settings),

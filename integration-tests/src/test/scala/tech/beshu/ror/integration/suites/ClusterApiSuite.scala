@@ -36,7 +36,7 @@ class ClusterApiSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/cluster_api/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/cluster_api/readonlyrest.yml"
   override lazy val targetEs = container.nodes.head
 
   override lazy val clusterContainer: EsClusterContainer = {
@@ -50,7 +50,7 @@ class ClusterApiSuite
     createLocalClusterContainer(
       esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName
+          rorSettingsFileName = rorSettingsFileName
         ))
       )
     )

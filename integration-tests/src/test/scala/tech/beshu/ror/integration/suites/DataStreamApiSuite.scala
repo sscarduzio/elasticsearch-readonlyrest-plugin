@@ -38,7 +38,7 @@ class DataStreamApiSuite
     with BeforeAndAfterEach
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName: String = "/data_stream_api/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/data_stream_api/readonlyrest.yml"
 
   private lazy val client = clients.head.adminClient
   private lazy val user1Client = clients.head.basicAuthClient("user1", "pass")

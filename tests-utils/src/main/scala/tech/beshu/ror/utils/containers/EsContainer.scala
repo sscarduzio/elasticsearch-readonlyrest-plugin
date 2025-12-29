@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.containers.EsContainer.{Credentials, EsContainerImpl
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
 import tech.beshu.ror.utils.containers.logs.CompositeLogConsumer
 import tech.beshu.ror.utils.containers.providers.ClientProvider
-import tech.beshu.ror.utils.containers.windows.WindowsPseudoEsContainer
+import tech.beshu.ror.utils.containers.windows.{WindowsEsPortProvider, WindowsPseudoEsContainer}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
@@ -53,11 +53,17 @@ abstract class EsContainer(val esVersion: String,
 
   private val esClient = Coeval(adminClient)
 
-  private val waitStrategy = new ElasticsearchNodeWaitingStrategy(esVersion, esConfig.nodeName, esClient, initializer, awaitingReadyStrategy)
-
   private val containerImplementation: EsContainerImplementation = {
     OsUtils.currentOs match {
       case CurrentOs.Windows =>
+        val waitStrategy = new ElasticsearchNodeWaitingStrategy(
+          esVersion = esVersion,
+          esPort = WindowsEsPortProvider.get(esConfig.nodeName).esPort,
+          containerName = esConfig.nodeName,
+          restClient = esClient,
+          initializer = initializer,
+          strategy = awaitingReadyStrategy
+        )
         EsContainerImplementation.Windows(
           container = new WindowsPseudoEsContainer(elasticsearch, waitStrategy, additionalLogConsumer),
         )
@@ -69,6 +75,14 @@ abstract class EsContainer(val esVersion: String,
           case Some(additional) => new CompositeLogConsumer(slf4jConsumer, additional)
           case scala.None => slf4jConsumer
         }
+        val waitStrategy = new ElasticsearchNodeWaitingStrategy(
+          esVersion = esVersion,
+          esPort = 9200,
+          containerName = esConfig.nodeName,
+          restClient = esClient,
+          initializer = initializer,
+          strategy = awaitingReadyStrategy
+        )
         container.setLogConsumers((logConsumer :: Nil).asJava)
         container.addExposedPort(9200)
         container.addExposedPort(9300)
@@ -123,6 +137,15 @@ abstract class EsContainer(val esVersion: String,
     case None => new RestClient(sslEnabled, ip, port, Option.empty)
   }
 
+  override def start(): Unit = {
+    try {
+      super.start()
+    } catch {
+      case ex: Throwable =>
+        logger.error("Container starting error", ex)
+        throw ex
+    }
+  }
 }
 
 object EsContainer {

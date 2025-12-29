@@ -47,7 +47,7 @@ class CrossClusterCallsSuite
 
   import tech.beshu.ror.integration.suites.CrossClusterCallsSuite.*
 
-  override implicit val rorConfigFileName: String = "/cross_cluster_search/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/cross_cluster_search/readonlyrest.yml"
 
   override lazy val targetEs = container.localCluster.nodes.head
 
@@ -55,7 +55,7 @@ class CrossClusterCallsSuite
     esClusterSettings = EsClusterSettings.create(
       clusterName = "ROR_L1",
       securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName,
+        rorSettingsFileName = rorSettingsFileName,
         internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
       )),
       nodeDataInitializer = localClusterNodeDataInitializer(),
@@ -81,7 +81,7 @@ class CrossClusterCallsSuite
     EsClusterSettings.create(
       clusterName = name,
       securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName,
+        rorSettingsFileName = rorSettingsFileName,
         internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
       )),
       nodeDataInitializer = nodeDataInitializer

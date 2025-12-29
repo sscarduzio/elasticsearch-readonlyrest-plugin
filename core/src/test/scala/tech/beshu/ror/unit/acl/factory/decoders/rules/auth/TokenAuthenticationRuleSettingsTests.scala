@@ -20,8 +20,8 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -31,7 +31,7 @@ class TokenAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[TokenAuthenticationRule] {
 
   "A TokenAuthenticationRule" should {
-    "be able to be loaded from config" when {
+    "be able to be loaded from settings" when {
       "token and username defined" in {
         assertDecodingSuccess(
           yaml =
@@ -119,7 +119,7 @@ class TokenAuthenticationRuleSettingsTests
         )
       }
     }
-    "not be able to be loaded from config" when {
+    "not be able to be loaded from settings" when {
       "username is not defined" in {
         assertDecodingFailure(
           yaml =

@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
@@ -245,26 +244,24 @@ trait IndicesRuleLocalIndexTests {
           )
         }
       }
-      "some indices are excluded" when {
-        "todo" in { // todo
-          assertMatchRuleForIndexRequest(
-            configured = NonEmptySet.of(indexNameVar("test-index1-*")),
-            requestIndices = Set(requestedIndex("test-index*"), requestedIndex("-*old")),
-            modifyRequestContext = _.copy(
-              allIndicesAndAliases = Set(
-                fullLocalIndexWithAliases(fullIndexName("test-index1-0001")),
-                fullLocalIndexWithAliases(fullIndexName("test-index1-0002")),
-                fullLocalIndexWithAliases(fullIndexName("test-index1-old")),
-                fullLocalIndexWithAliases(fullIndexName("test-index2-0001")),
-                fullLocalIndexWithAliases(fullIndexName("test-index2-old")),
-              )
-            ),
-            filteredRequestedIndices = Set(
-              requestedIndex("test-index1-0001"),
-              requestedIndex("test-index1-0002")
-            ),
-          )
-        }
+      "some indices are excluded" in {
+        assertMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("test-index1-*")),
+          requestIndices = Set(requestedIndex("test-index*"), requestedIndex("-*old")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(
+              fullLocalIndexWithAliases(fullIndexName("test-index1-0001")),
+              fullLocalIndexWithAliases(fullIndexName("test-index1-0002")),
+              fullLocalIndexWithAliases(fullIndexName("test-index1-old")),
+              fullLocalIndexWithAliases(fullIndexName("test-index2-0001")),
+              fullLocalIndexWithAliases(fullIndexName("test-index2-old")),
+            )
+          ),
+          filteredRequestedIndices = Set(
+            requestedIndex("test-index1-0001"),
+            requestedIndex("test-index1-0002")
+          ),
+        )
       }
     }
     "not match" when {

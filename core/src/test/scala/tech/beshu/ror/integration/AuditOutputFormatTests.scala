@@ -29,13 +29,12 @@ import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStre
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
-import tech.beshu.ror.audit.AuditEnvironmentContext
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, testAuditEnvironmentContext}
+import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, testEsNodeSettings}
 
 import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration.*
@@ -44,7 +43,7 @@ import scala.language.postfixOps
 
 class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory {
 
-  override protected def configYaml: String =
+  override protected def settingsYaml: String =
     """
       |readonlyrest:
       |
@@ -159,7 +158,6 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private def auditedAcl(indexBasedAuditSinkService: IndexBasedAuditSinkService,
                          dataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-    implicit val auditEnvironmentContext: AuditEnvironmentContext = testAuditEnvironmentContext
     val settings = AuditingTool.AuditSettings(
       NonEmptyList.of(
         AuditSink.Enabled(Config.EsIndexBasedSink(
@@ -172,7 +170,8 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
           RorAuditDataStream.default,
           AuditCluster.LocalAuditCluster
         ))
-      )
+      ),
+      testEsNodeSettings
     )
     val auditingTool = AuditingTool.create(
       settings = settings,

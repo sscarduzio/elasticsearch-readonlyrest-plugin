@@ -22,7 +22,7 @@ import cats.implicits.*
 import io.circe.DecodingFailure
 import org.scalatest.Inside
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.utils.ADecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.utils.TestsUtils
