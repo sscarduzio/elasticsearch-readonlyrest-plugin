@@ -43,7 +43,7 @@ function upload_to_ror_data_xdelta_bucket {
   BUCKET="ror-builds-xdelta"
   DELTA_GLIDER_VERSION="main-012662c"
 
-  $DOCKER run --rm \
+  docker run --rm \
     -e AWS_ENDPOINT_URL=$ROR_ARTIFACTS_STORE_URL \
     -e AWS_ACCESS_KEY_ID=$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID \
     -e AWS_SECRET_ACCESS_KEY=$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET \
