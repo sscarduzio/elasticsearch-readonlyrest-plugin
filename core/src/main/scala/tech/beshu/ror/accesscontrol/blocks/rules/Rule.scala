@@ -16,18 +16,21 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.Show
+import cats.{Monad, Show}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
+import tech.beshu.ror.accesscontrol.utils.TaskRuleResultOps.*
 import tech.beshu.ror.syntax.*
+
+import scala.annotation.tailrec
 
 sealed trait Rule {
   def name: Rule.Name
@@ -44,11 +47,13 @@ object Rule {
     def apply[T <: Rule](implicit ev: RuleName[T]): RuleName[T] = ev
   }
 
-  sealed trait RuleResult[B <: BlockContext]
+  sealed trait RuleResult[B]
+
   object RuleResult {
-    final case class Fulfilled[B <: BlockContext](blockContext: B)
+    final case class Fulfilled[B](blockContext: B)
       extends RuleResult[B]
-    final case class Rejected[B <: BlockContext](specialCause: Option[Cause] = None)
+
+    final case class Rejected[B](specialCause: Option[Cause] = None)
       extends RuleResult[B]
     object Rejected {
       def apply[B <: BlockContext](specialCause: Cause): Rejected[B] = new Rejected(Some(specialCause))
@@ -70,6 +75,39 @@ object Rule {
     private[rules] def fulfilled[B <: BlockContext](blockContext: B): RuleResult[B] = RuleResult.Fulfilled(blockContext)
 
     private[rules] def rejected[B <: BlockContext](specialCause: Option[Cause] = None): RuleResult[B] = RuleResult.Rejected(specialCause)
+
+    def fromOption[A](opt: Option[A], ifEmpty: => Rejected[A] = Rejected[A]()): RuleResult[A] =
+      opt match {
+        case Some(value) => Fulfilled(value)
+        case None => ifEmpty
+      }
+
+    extension [B](result: RuleResult[B]) {
+      def withFilter(p: B => Boolean): RuleResult[B] =
+        result match {
+          case RuleResult.Fulfilled(a) if p(a) => result
+          case _ => RuleResult.Rejected(None)
+        }
+    }
+
+    implicit val ruleResultMonad: Monad[RuleResult] = new Monad[RuleResult] {
+      override def pure[A](a: A): RuleResult[A] =
+        RuleResult.Fulfilled(a)
+
+      override def flatMap[A, B](fa: RuleResult[A])(f: A => RuleResult[B]): RuleResult[B] =
+        fa match {
+          case RuleResult.Fulfilled(value) => f(value)
+          case RuleResult.Rejected(cause) => RuleResult.Rejected(cause)
+        }
+
+      @tailrec
+      override def tailRecM[A, B](a: A)(f: A => RuleResult[Either[A, B]]): RuleResult[B] =
+        f(a) match {
+          case RuleResult.Fulfilled(Left(next)) => tailRecM(next)(f)
+          case RuleResult.Fulfilled(Right(b)) => RuleResult.Fulfilled(b)
+          case RuleResult.Rejected(cause) => RuleResult.Rejected(cause)
+        }
+    }
   }
 
   final case class Name(value: String) extends AnyVal
@@ -111,9 +149,17 @@ object Rule {
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
       authenticate(blockContext)
+        .flatMapT(postAuthenticateAction)
+    }
+
+    private[rules] final def doAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
+      authenticate(blockContext)
     }
 
     protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
+
+    protected def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      Task.now(Fulfilled(blockContext))
   }
   object AuthenticationRule {
     sealed trait EligibleUsersSupport
@@ -128,9 +174,17 @@ object Rule {
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
       authorize(blockContext)
+        .flatMapT(postAuthorizationAction)
+    }
+
+    private[rules] def doAuthorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
+      authorize(blockContext)
     }
 
     protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
+
+    protected def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      Task.now(Fulfilled(blockContext))
   }
 
   trait AuthRule extends AuthenticationRule with AuthorizationRule {
@@ -138,13 +192,12 @@ object Rule {
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
       authenticate(blockContext)
-        .flatMap {
-          case Fulfilled(newBlockContext) =>
-            authorize(newBlockContext)
-          case rejected@Rejected(_) =>
-            Task.now(rejected)
-        }
+        .flatMapT(authorize)
+        .flatMapT(postAuthAction)
     }
+
+    protected def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      Task.now(Fulfilled(blockContext))
   }
 
 }

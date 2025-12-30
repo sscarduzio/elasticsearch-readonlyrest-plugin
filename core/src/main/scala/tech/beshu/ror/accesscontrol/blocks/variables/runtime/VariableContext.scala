@@ -86,6 +86,8 @@ object VariableContext {
     implicit val headersAndRule: VariableUsage[HeadersAndRule] = NotUsingVariable()
     implicit val headersOrRule: VariableUsage[HeadersOrRule] = NotUsingVariable()
     implicit val jwtAuthRule: VariableUsage[JwtAuthRule] = NotUsingVariable()
+    implicit val jwtAuthenticationRule: VariableUsage[JwtAuthenticationRule] = NotUsingVariable()
+    implicit val jwtAuthorizationRule: VariableUsage[JwtAuthorizationRule] = NotUsingVariable()
     implicit val kibanaHideAppsRule: VariableUsage[KibanaHideAppsRule] = NotUsingVariable()
     implicit val ldapAuthenticationRule: VariableUsage[LdapAuthenticationRule] = NotUsingVariable()
     implicit val ldapAuthorizationRule: VariableUsage[LdapAuthorizationRule] = NotUsingVariable()
@@ -142,6 +144,8 @@ object VariableContext {
         rulesBefore
           .collect {
             case rule: JwtAuthRule => rule
+            case rule: JwtAuthenticationRule => rule
+            case rule: JwtAuthorizationRule => rule
             case rule: RorKbnAuthRule => rule
             case rule: RorKbnAuthenticationRule => rule
             case rule: RorKbnAuthorizationRule => rule
