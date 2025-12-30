@@ -28,8 +28,8 @@ private[auth] abstract class BaseComposedAuthenticationAndAuthorizationRule(auth
     with AuthorizationImpersonationCustomSupport {
 
   override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    authenticationRule.check(blockContext)
+    authenticationRule.doAuthenticate(blockContext)
 
   override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    authorizationRule.check(blockContext)
+    authorizationRule.doAuthorize(blockContext)
 }

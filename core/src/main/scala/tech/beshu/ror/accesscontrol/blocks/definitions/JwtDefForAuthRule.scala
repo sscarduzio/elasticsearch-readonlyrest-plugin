@@ -24,16 +24,16 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Ite
 
 import java.security.PublicKey
 
-final case class JwtDef(override val id: Name,
-                        authorizationTokenDef: AuthorizationTokenDef,
-                        checkMethod: SignatureCheckMethod,
-                        userClaim: Option[Jwt.ClaimName],
-                        groupsConfig: Option[GroupsConfig])
-  extends Item {
-
+sealed trait JwtDef extends Item {
   override type Id = Name
   override val idShow: Show[Name] = Show.show(_.value.value)
+
+  override def id: Name
+
+  def authorizationTokenDef: AuthorizationTokenDef
+  def checkMethod: SignatureCheckMethod
 }
+
 object JwtDef {
   final case class Name(value: NonEmptyString)
 
@@ -49,3 +49,30 @@ object JwtDef {
 
   implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
 }
+
+trait JwtDefForAuthentication extends JwtDef {
+  def userClaim: Jwt.ClaimName
+}
+
+trait JwtDefForAuthorization extends JwtDef {
+  def groupsConfig: GroupsConfig
+}
+
+trait JwtDefForAuth extends JwtDefForAuthentication with JwtDefForAuthorization
+
+
+final case class AuthenticationJwtDef(override val id: Name,
+                                      authorizationTokenDef: AuthorizationTokenDef,
+                                      checkMethod: SignatureCheckMethod,
+                                      userClaim: Jwt.ClaimName) extends JwtDefForAuthentication
+
+final case class AuthorizationJwtDef(override val id: Name,
+                                     authorizationTokenDef: AuthorizationTokenDef,
+                                     checkMethod: SignatureCheckMethod,
+                                     groupsConfig: GroupsConfig) extends JwtDefForAuthorization
+
+final case class AuthJwtDef(override val id: Name,
+                            authorizationTokenDef: AuthorizationTokenDef,
+                            checkMethod: SignatureCheckMethod,
+                            userClaim: Jwt.ClaimName,
+                            groupsConfig: GroupsConfig) extends JwtDefForAuth
