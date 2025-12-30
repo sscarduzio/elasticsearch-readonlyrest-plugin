@@ -81,23 +81,26 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
         }
 
     requestedFullClusterName.diff(allowedClusters.toList) match {
+      case Nil if actionRequest.clusterInfoOnly() =>
+        modifyClusterOnlyRequestAndResponse(actionRequest, allowedClusters)
       case Nil =>
-        val newRequestedNonexistentIndices = initialBlockContext
-          .indices.toList
-          .distinctBy(_.name.index match {
-            case ClusterIndexName.Local(_) => ClusterName.Full.local
-            case ClusterIndexName.Remote(_, cluster) => cluster
-          })
-          .map(_.randomNonexistentIndex())
-
-        actionRequest.indices(newRequestedNonexistentIndices.stringify: _*)
-        if (actionRequest.clusterInfoOnly()) {
-          Reflect.on(actionRequest).set("clusterInfoOnly", false)
-        }
-        ModificationResult.Modified
+        requestNonexistentIndices()
       case head :: _ =>
         ModificationResult.CustomResponse.Failure(new NoSuchRemoteClusterException(head.stringify))
     }
+  }
+
+  private def requestNonexistentIndices() = {
+    val newRequestedNonexistentIndices = initialBlockContext
+      .indices.toList
+      .distinctBy(_.name.index match {
+        case ClusterIndexName.Local(_) => ClusterName.Full.local
+        case ClusterIndexName.Remote(_, cluster) => cluster
+      })
+      .map(_.randomNonexistentIndex())
+
+    actionRequest.indices(newRequestedNonexistentIndices.stringify: _*)
+    ModificationResult.Modified
   }
 
   private def modifyClusterOnlyRequestAndResponse(request: ResolveClusterActionRequest,

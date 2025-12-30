@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -60,7 +59,6 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     val randomNonExistingIndex = initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)
     update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name), allowedClusters)
-    Modified // todo: fixme!!!
   }
 
   private def filterResponse(response: ActionResponse, indices: NonEmptyList[ClusterIndexName]): ActionResponse = {
