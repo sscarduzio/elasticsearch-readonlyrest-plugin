@@ -19,6 +19,7 @@ package tech.beshu.ror.es.handler.request.context
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -68,7 +69,11 @@ object ModificationResult {
   case object Modified extends ModificationResult
   case object CannotModify extends ModificationResult
   case object ShouldBeInterrupted extends ModificationResult
-  final case class CustomResponse(response: ActionResponse) extends ModificationResult
+  sealed trait CustomResponse extends ModificationResult
+  object CustomResponse {
+    final case class Success(response: ActionResponse) extends CustomResponse
+    final case class Failure(exception: ElasticsearchException) extends CustomResponse
+  }
   final case class UpdateResponse private(update: ActionResponse => Task[ActionResponse]) extends ModificationResult
 
   object UpdateResponse {

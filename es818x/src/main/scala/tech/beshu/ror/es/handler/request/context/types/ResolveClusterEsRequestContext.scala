@@ -17,9 +17,10 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.admin.indices.resolve.ResolveClusterActionRequest
+import org.elasticsearch.action.admin.indices.resolve.{ResolveClusterActionRequest, ResolveClusterActionResponse, ResolveClusterInfo}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.NoSuchRemoteClusterException
+import org.joor.Reflect
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName.*
@@ -27,6 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
+import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, UpdateResponse}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -40,18 +42,29 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
   extends BaseIndicesEsRequestContext[ResolveClusterActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def requestedIndicesFrom(request: ResolveClusterActionRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    request
+    val indices = request
       .indices().asSafeSet
       .flatMap(RequestedIndex.fromString)
-      .orWildcardWhenEmpty
+    if (indices.nonEmpty) {
+      indices
+    } else {
+      (RequestedIndex.fromString("*") ++ RequestedIndex.fromString("*:*")).toCovariantSet
+    }
   }
 
   override protected def update(request: ResolveClusterActionRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    request.indices(filteredIndices.stringify: _*)
-    ModificationResult.Modified
-    //    ModificationResult.UpdateResponse.sync(resp => filterResponse(resp, allAllowedIndices))
+    if (filteredIndices.toCovariantSet != requestedIndicesFrom(request)) {
+      if (request.clusterInfoOnly()) {
+        modifyClusterOnlyRequestAndResponse(request, allAllowedIndices)
+      } else {
+        request.indices(filteredIndices.stringify: _*)
+        Modified
+      }
+    } else {
+      Modified
+    }
   }
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
@@ -77,19 +90,33 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
           .map(_.randomNonexistentIndex())
 
         actionRequest.indices(newRequestedNonexistentIndices.stringify: _*)
+        if (actionRequest.clusterInfoOnly()) {
+          Reflect.on(actionRequest).set("clusterInfoOnly", false)
+        }
         ModificationResult.Modified
       case head :: _ =>
-        throw new NoSuchRemoteClusterException(head.stringify)
+        ModificationResult.CustomResponse.Failure(new NoSuchRemoteClusterException(head.stringify))
     }
-    //    update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
   }
 
-  //  private def filterResponse(response: ActionResponse, allAllowedIndices: NonEmptyList[ClusterIndexName]): ActionResponse = {
-  //    response match {
-  //      case r: ResolveClusterActionResponse =>
-  //        allAllowedIndices.toString
-  //        r
-  //      case r => r
-  //    }
-  //  }
+  private def modifyClusterOnlyRequestAndResponse(request: ResolveClusterActionRequest,
+                                                  allAllowedIndices: NonEmptyList[ClusterIndexName]) = {
+    val allowedClustersWithWildcardIndex = allAllowedIndices.toList.map {
+      case ClusterIndexName.Local(_) => "*"
+      case ClusterIndexName.Remote(_, cluster) => s"${cluster.stringify}:*"
+    }
+    request.indices(allowedClustersWithWildcardIndex: _*)
+    Reflect.on(actionRequest).set("clusterInfoOnly", false)
+    UpdateResponse.sync {
+      case response: ResolveClusterActionResponse =>
+        new ResolveClusterActionResponse(
+          response.getResolveClusterInfo.asScala
+            .map { case (name, info) =>
+              (name, new ResolveClusterInfo(info, info.getSkipUnavailable, true))
+            }
+            .asJava
+        )
+      case response => response
+    }
+  }
 }

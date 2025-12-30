@@ -103,7 +103,7 @@ class RegularRequestHandler(engine: Engine,
       case ModificationResult.CannotModify =>
         logger.error(s"[${request.id.toRequestId.show}] Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
-      case CustomResponse(response) =>
+      case response: CustomResponse =>
         respond(request, response)
       case UpdateResponse(updateFunc) =>
         proceed(request, new AtEsLevelUpdateActionResponseListener(esContext, updateFunc, threadPool))
@@ -232,7 +232,7 @@ class RegularRequestHandler(engine: Engine,
         onForbidden(requestContext, NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.ShouldBeInterrupted =>
         onForbidden(requestContext, NonEmptyList.one(OperationNotAllowed))
-      case CustomResponse(response) =>
+      case response: CustomResponse =>
         respond(requestContext, response)
       case UpdateResponse(updateFunc) =>
         proceed(requestContext, new AtEsLevelUpdateActionResponseListener(esContext, updateFunc, threadPool))
@@ -261,9 +261,12 @@ class RegularRequestHandler(engine: Engine,
       threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(esContext.nodeName)
   }
 
-  private def respond(requestContext: RequestContext, response: ActionResponse): Unit = {
+  private def respond(requestContext: RequestContext, response: CustomResponse): Unit = {
     logRequestProcessingTime(requestContext)
-    esContext.listener.onResponse(response)
+    response match {
+      case CustomResponse.Success(response) => esContext.listener.onResponse(response)
+      case CustomResponse.Failure(exception) => esContext.listener.onFailure(exception)
+    }
   }
 
   private def logRequestProcessingTime(requestContext: RequestContext): Unit = {
