@@ -42,7 +42,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
                                                    aclContext: AccessControlStaticContext,
                                                    clusterService: RorClusterService,
                                                    override val threadPool: ThreadPool)
-// note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
+  // note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
   extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def requestedIndicesFrom(request: SimulateIndexTemplateRequest): Set[RequestedIndex[ClusterIndexName]] =

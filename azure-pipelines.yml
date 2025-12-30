@@ -996,9 +996,6 @@ stages:
                 echo "Error: Failed to login to Docker registry"
                 exit 1
               fi
-              
-              java -version
-              docker -version
         
               echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh

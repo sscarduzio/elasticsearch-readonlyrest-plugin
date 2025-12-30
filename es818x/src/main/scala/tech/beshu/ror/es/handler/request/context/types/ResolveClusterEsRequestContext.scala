@@ -69,18 +69,7 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
   }
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    val requestedFullClusterName =
-      initialBlockContext
-        .indices.toList
-        .flatMap[ClusterName] { r =>
-          r.name match {
-            case ClusterIndexName.Local(_) => Some(ClusterName.Full.local)
-            case ClusterIndexName.Remote(_, clusterName@ClusterName.Full(_)) => Some(clusterName)
-            case ClusterIndexName.Remote(_, clusterName@ClusterName.Pattern(_)) => None
-          }
-        }
-
-    requestedFullClusterName.diff(allowedClusters.toList) match {
+    determineRequestedFullClusterNames().diff(allowedClusters.toList) match {
       case Nil if actionRequest.clusterInfoOnly() =>
         modifyClusterOnlyRequestAndResponse(actionRequest, allowedClusters)
       case Nil =>
@@ -88,6 +77,18 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
       case head :: _ =>
         ModificationResult.CustomResponse.Failure(new NoSuchRemoteClusterException(head.stringify))
     }
+  }
+
+  private def determineRequestedFullClusterNames() = {
+    initialBlockContext
+      .indices.toList
+      .flatMap[ClusterName] { r =>
+        r.name match {
+          case ClusterIndexName.Local(_) => Some(ClusterName.Full.local)
+          case ClusterIndexName.Remote(_, clusterName@ClusterName.Full(_)) => Some(clusterName)
+          case ClusterIndexName.Remote(_, clusterName@ClusterName.Pattern(_)) => None
+        }
+      }
   }
 
   private def requestNonexistentIndices() = {
