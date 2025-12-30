@@ -24,6 +24,7 @@ import org.elasticsearch.cluster.metadata.Template as EsMetadataTemplate
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, RequestedIndex, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -41,7 +42,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
                                                    aclContext: AccessControlStaticContext,
                                                    clusterService: RorClusterService,
                                                    override val threadPool: ThreadPool)
-  // note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
+// note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
   extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def requestedIndicesFrom(request: SimulateIndexTemplateRequest): Set[RequestedIndex[ClusterIndexName]] =
@@ -51,7 +52,8 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
 
   override protected def update(request: SimulateIndexTemplateRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
     }

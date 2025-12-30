@@ -47,8 +47,9 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
   }
 
   override protected def update(request: BulkShardRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                       allAllowedIndices: NonEmptyList[ClusterIndexName],
+                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     tryUpdate(request, filteredIndices) match {
       case Success(_) =>
         Modified

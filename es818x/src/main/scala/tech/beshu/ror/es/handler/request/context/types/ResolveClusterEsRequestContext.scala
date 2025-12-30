@@ -54,10 +54,11 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
 
   override protected def update(request: ResolveClusterActionRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (filteredIndices.toCovariantSet != requestedIndicesFrom(request)) {
       if (request.clusterInfoOnly()) {
-        modifyClusterOnlyRequestAndResponse(request, allAllowedIndices)
+        modifyClusterOnlyRequestAndResponse(request, allowedClusters)
       } else {
         request.indices(filteredIndices.stringify: _*)
         Modified
@@ -100,10 +101,10 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
   }
 
   private def modifyClusterOnlyRequestAndResponse(request: ResolveClusterActionRequest,
-                                                  allAllowedIndices: NonEmptyList[ClusterIndexName]) = {
-    val allowedClustersWithWildcardIndex = allAllowedIndices.toList.map {
-      case ClusterIndexName.Local(_) => "*"
-      case ClusterIndexName.Remote(_, cluster) => s"${cluster.stringify}:*"
+                                                  allowedClusters: Set[ClusterName.Full]) = {
+    val allowedClustersWithWildcardIndex = allowedClusters.toList.map {
+      case cluster if cluster == ClusterName.Full.local => "*"
+      case cluster => s"${cluster.stringify}:*"
     }
     request.indices(allowedClustersWithWildcardIndex: _*)
     Reflect.on(actionRequest).set("clusterInfoOnly", false)

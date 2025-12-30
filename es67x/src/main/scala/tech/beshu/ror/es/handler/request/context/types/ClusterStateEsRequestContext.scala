@@ -42,8 +42,9 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
   }
 
   override protected def update(request: ClusterStateRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                       allAllowedIndices: NonEmptyList[ClusterIndexName],
+                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     requestedIndicesFrom(request).toList match {
       case Nil if filteredIndices.exists(_.name === ClusterIndexName.Local.wildcard) =>
         // hack: when empty indices list is replaced with wildcard index, returned result is wrong

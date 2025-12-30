@@ -40,8 +40,9 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
     getRequestedIndexFrom(request).toCovariantSet
 
   override protected def update(request: ClusterAllocationExplainRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                       allAllowedIndices: NonEmptyList[ClusterIndexName],
+                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     getRequestedIndexFrom(request) match {
       case Some(_) =>
         if (filteredIndices.tail.nonEmpty) {

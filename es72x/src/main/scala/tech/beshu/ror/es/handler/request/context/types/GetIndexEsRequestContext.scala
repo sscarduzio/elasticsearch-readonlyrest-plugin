@@ -46,8 +46,9 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
   }
 
   override protected def update(request: GetIndexRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                       allAllowedIndices: NonEmptyList[ClusterIndexName],
+                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     ModificationResult.UpdateResponse.sync(filterAliases(_, allAllowedIndices))
   }

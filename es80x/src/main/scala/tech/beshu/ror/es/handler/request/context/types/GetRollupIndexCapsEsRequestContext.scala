@@ -41,8 +41,9 @@ class GetRollupIndexCapsEsRequestContext private(actionRequest: ActionRequest,
   }
 
   override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                       allAllowedIndices: NonEmptyList[ClusterIndexName],
+                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     on(request).call("indices", filteredIndices.stringify.toArray)
     Modified
   }

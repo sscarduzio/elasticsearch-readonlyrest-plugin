@@ -43,8 +43,9 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
   }
 
   override protected def update(request: MultiTermVectorsRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                       allAllowedIndices: NonEmptyList[ClusterIndexName],
+                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     request.getRequests.removeIf { request => removeOrAlter(request, filteredIndices.toCovariantSet) }
     if (request.getRequests.asScala.isEmpty) {
       logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. All indices were filtered out.")

@@ -47,8 +47,9 @@ class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
   override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] = originIndices
 
   override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                       allAllowedIndices: NonEmptyList[ClusterIndexName],
+                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if(originIndices == filteredIndices.toList.toCovariantSet) {
       Modified
     } else {

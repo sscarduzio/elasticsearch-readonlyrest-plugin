@@ -95,8 +95,11 @@ class IndicesRule(override val settings: Settings,
       val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
       processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices, blockContext.userMetadata.kibanaIndex)
         .map {
-          case ProcessResult.Ok(filteredIndices) => Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices))
-          case ProcessResult.Failed(cause) => Rejected(cause)
+          case ProcessResult.Ok(filteredIndices) =>
+            val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allAllowedIndices)
+            Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices).withClusters(allowedClusters))
+          case ProcessResult.Failed(cause) =>
+            Rejected(cause)
         }
     }
   }
