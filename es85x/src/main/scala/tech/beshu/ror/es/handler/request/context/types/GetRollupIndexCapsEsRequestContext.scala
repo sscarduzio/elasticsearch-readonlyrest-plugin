@@ -21,6 +21,7 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -41,9 +42,9 @@ class GetRollupIndexCapsEsRequestContext private(actionRequest: ActionRequest,
   }
 
   override protected def update(request: ActionRequest,
-                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                       allAllowedIndices: NonEmptyList[ClusterIndexName],
-                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     on(request).call("indices", filteredIndices.stringify.toArray)
     Modified
   }

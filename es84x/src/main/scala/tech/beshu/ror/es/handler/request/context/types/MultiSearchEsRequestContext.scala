@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -113,7 +114,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
   }
 
-  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]) = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     val requests = actionRequest.requests().asScala.toList
     requests.foreach(updateRequestWithNonExistingIndex)
     Modified

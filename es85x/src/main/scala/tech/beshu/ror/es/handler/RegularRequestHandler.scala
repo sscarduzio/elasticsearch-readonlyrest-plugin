@@ -27,18 +27,20 @@ import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields, ResponseTransformation}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
-import tech.beshu.ror.es.{RorActionListener, AtEsLevelUpdateActionResponseListener}
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps.*
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.Set
 import tech.beshu.ror.utils.LoggerOps.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -71,8 +73,8 @@ class RegularRequestHandler(engine: Engine,
           onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
         case RegularRequestResult.ForbiddenByMismatched(causes) =>
           onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
-        case RegularRequestResult.IndexNotFound() =>
-          onIndexNotFound(request)
+        case RegularRequestResult.IndexNotFound(allowedClusters) =>
+          onIndexNotFound(request, allowedClusters)
         case RegularRequestResult.AliasNotFound() =>
           onAliasNotFound(request)
         case RegularRequestResult.TemplateNotFound() =>
@@ -101,7 +103,7 @@ class RegularRequestHandler(engine: Engine,
       case ModificationResult.CannotModify =>
         logger.error(s"[${request.id.toRequestId.show}] Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
-      case CustomResponse(response) =>
+      case response: CustomResponse =>
         respond(request, response)
       case UpdateResponse(updateFunc) =>
         proceed(request, new AtEsLevelUpdateActionResponseListener(esContext, updateFunc, threadPool))
@@ -115,16 +117,29 @@ class RegularRequestHandler(engine: Engine,
     ))
   }
 
-  private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
+  private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B],
+                                                                       allowedClusters: Set[ClusterName.Full]): Unit = {
     BlockContextUpdater[B] match {
       case GeneralIndexRequestBlockContextUpdater =>
-        handleIndexNotFoundForGeneralIndexRequest(request.asInstanceOf[EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]])
+        handleIndexNotFoundForGeneralIndexRequest(
+          request.asInstanceOf[EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]],
+          allowedClusters
+        )
       case FilterableRequestBlockContextUpdater =>
-        handleIndexNotFoundForSearchRequest(request.asInstanceOf[EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]])
+        handleIndexNotFoundForSearchRequest(
+          request.asInstanceOf[EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]],
+          allowedClusters
+        )
       case FilterableMultiRequestBlockContextUpdater =>
-        handleIndexNotFoundForMultiSearchRequest(request.asInstanceOf[EsRequest[FilterableMultiRequestBlockContext] with RequestContext.Aux[FilterableMultiRequestBlockContext]])
+        handleIndexNotFoundForMultiSearchRequest(
+          request.asInstanceOf[EsRequest[FilterableMultiRequestBlockContext] with RequestContext.Aux[FilterableMultiRequestBlockContext]],
+          allowedClusters
+        )
       case AliasRequestBlockContextUpdater =>
-        handleIndexNotFoundForAliasRequest(request.asInstanceOf[EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]])
+        handleIndexNotFoundForAliasRequest(
+          request.asInstanceOf[EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]],
+          allowedClusters
+        )
       case CurrentUserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
@@ -175,23 +190,27 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def handleIndexNotFoundForGeneralIndexRequest(request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]): Unit = {
-    val modificationResult = request.modifyWhenIndexNotFound
+  private def handleIndexNotFoundForGeneralIndexRequest(request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext],
+                                                        allowedClusters: Set[ClusterName.Full]): Unit = {
+    val modificationResult = request.modifyWhenIndexNotFound(allowedClusters)
     handleModificationResult(request, modificationResult)
   }
 
-  private def handleIndexNotFoundForSearchRequest(request: EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]): Unit = {
-    val modificationResult = request.modifyWhenIndexNotFound
+  private def handleIndexNotFoundForSearchRequest(request: EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext],
+                                                  allowedClusters: Set[ClusterName.Full]): Unit = {
+    val modificationResult = request.modifyWhenIndexNotFound(allowedClusters)
     handleModificationResult(request, modificationResult)
   }
 
-  private def handleIndexNotFoundForMultiSearchRequest(request: EsRequest[FilterableMultiRequestBlockContext] with RequestContext.Aux[FilterableMultiRequestBlockContext]): Unit = {
-    val modificationResult = request.modifyWhenIndexNotFound
+  private def handleIndexNotFoundForMultiSearchRequest(request: EsRequest[FilterableMultiRequestBlockContext] with RequestContext.Aux[FilterableMultiRequestBlockContext],
+                                                       allowedClusters: Set[ClusterName.Full]): Unit = {
+    val modificationResult = request.modifyWhenIndexNotFound(allowedClusters)
     handleModificationResult(request, modificationResult)
   }
 
-  private def handleIndexNotFoundForAliasRequest(request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]): Unit = {
-    val modificationResult = request.modifyWhenIndexNotFound
+  private def handleIndexNotFoundForAliasRequest(request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext],
+                                                 allowedClusters: Set[ClusterName.Full]): Unit = {
+    val modificationResult = request.modifyWhenIndexNotFound(allowedClusters)
     handleModificationResult(request, modificationResult)
   }
 
@@ -213,7 +232,7 @@ class RegularRequestHandler(engine: Engine,
         onForbidden(requestContext, NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.ShouldBeInterrupted =>
         onForbidden(requestContext, NonEmptyList.one(OperationNotAllowed))
-      case CustomResponse(response) =>
+      case response: CustomResponse =>
         respond(requestContext, response)
       case UpdateResponse(updateFunc) =>
         proceed(requestContext, new AtEsLevelUpdateActionResponseListener(esContext, updateFunc, threadPool))
@@ -242,9 +261,12 @@ class RegularRequestHandler(engine: Engine,
       threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(esContext.nodeName)
   }
 
-  private def respond(requestContext: RequestContext, response: ActionResponse): Unit = {
+  private def respond(requestContext: RequestContext, response: CustomResponse): Unit = {
     logRequestProcessingTime(requestContext)
-    esContext.listener.onResponse(response)
+    response match {
+      case CustomResponse.Success(response) => esContext.listener.onResponse(response)
+      case CustomResponse.Failure(exception) => esContext.listener.onFailure(exception)
+    }
   }
 
   private def logRequestProcessingTime(requestContext: RequestContext): Unit = {

@@ -22,12 +22,12 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.*
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -46,9 +46,9 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
   }
 
   override protected def update(request: GetIndexRequest,
-                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                       allAllowedIndices: NonEmptyList[ClusterIndexName],
-                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     ModificationResult.UpdateResponse.sync(filterAliases(_, allAllowedIndices))
   }

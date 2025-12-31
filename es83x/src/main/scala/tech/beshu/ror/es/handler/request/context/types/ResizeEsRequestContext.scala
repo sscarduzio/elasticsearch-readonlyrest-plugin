@@ -21,6 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.indices.shrink.ResizeRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -45,9 +46,9 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
   }
 
   override protected def update(request: ResizeRequest,
-                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                       allAllowedIndices: NonEmptyList[ClusterIndexName],
-                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     val notAllowedIndices = requestedIndicesFrom(actionRequest) -- filteredIndices.toCovariantSet
     if (notAllowedIndices.isEmpty) {
       Modified
